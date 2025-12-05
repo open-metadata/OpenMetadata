@@ -12,22 +12,23 @@
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
-  TestCase,
-  TestCaseStatus,
-  TestSummary,
-} from '../../../generated/tests/testCase';
+  ContractExecutionStatus,
+  DataContractResult,
+} from '../../../generated/entity/datacontract/dataContractResult';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
-import {
-  getListTestCaseBySearch,
-  getTestCaseExecutionSummary,
-} from '../../../rest/testAPI';
+import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ContractQualityCard from './ContractQualityCard.component';
 
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn(() => ({
+    fqn: 'fqn',
+  })),
+}));
+
 jest.mock('../../../rest/testAPI', () => ({
-  getTestCaseExecutionSummary: jest.fn(),
   getListTestCaseBySearch: jest.fn(),
 }));
 
@@ -67,11 +68,18 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getTestCaseDetailPagePath: jest.fn((fqn) => `/test-case/${fqn}`),
 }));
 
-const mockTestSummary: TestSummary = {
-  total: 100,
-  success: 70,
-  failed: 20,
-  aborted: 10,
+const mockLatestContractResults: DataContractResult = {
+  id: '0cdc53d6-0711-4776-b005-444100c76b4d',
+  dataContractFQN:
+    'Configure.default.openmetadata_db.ACT_EVT_LOG.dataContract_Banking Sectors',
+  timestamp: 1758865987530,
+  contractExecutionStatus: ContractExecutionStatus.Success,
+  qualityValidation: {
+    passed: 70,
+    failed: 20,
+    total: 100,
+    qualityScore: 100,
+  },
 };
 
 const commonCaseMock = {
@@ -101,7 +109,7 @@ const commonCaseMock = {
 const mockTestCases: TestCase[] = [
   {
     id: 'test-case-1',
-    name: 'Test Case 1',
+    name: 'CLV Must be Positive',
     fullyQualifiedName: 'table.test_case_1',
     testCaseResult: {
       testCaseStatus: TestCaseStatus.Success,
@@ -115,7 +123,7 @@ const mockTestCases: TestCase[] = [
   },
   {
     id: 'test-case-2',
-    name: 'Test Case 2',
+    name: 'Customer ID To Be Unique',
     fullyQualifiedName: 'table.test_case_2',
     testCaseResult: {
       testCaseStatus: TestCaseStatus.Failed,
@@ -129,7 +137,7 @@ const mockTestCases: TestCase[] = [
   },
   {
     id: 'test-case-3',
-    name: 'Test Case 3',
+    name: 'Table Row Count To Equal',
     fullyQualifiedName: 'table.test_case_3',
     testCaseResult: {
       testCaseStatus: TestCaseStatus.Aborted,
@@ -161,46 +169,48 @@ describe('ContractQualityCard', () => {
   });
 
   it('should fetch and display test case summary and test cases', async () => {
-    (getTestCaseExecutionSummary as jest.Mock).mockResolvedValue(
-      mockTestSummary
-    );
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: mockTestCases,
     });
 
     render(
       <MemoryRouter>
-        <ContractQualityCard contract={MOCK_DATA_CONTRACT} />
+        <ContractQualityCard
+          contract={MOCK_DATA_CONTRACT}
+          latestContractResults={mockLatestContractResults}
+        />
       </MemoryRouter>
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Test Case 1')).toBeInTheDocument();
-      expect(screen.getByText('Test Case 2')).toBeInTheDocument();
-      expect(screen.getByText('Test Case 3')).toBeInTheDocument();
+      expect(screen.getByText('CLV Must be Positive')).toBeInTheDocument();
+      expect(screen.getByText('Customer ID To Be Unique')).toBeInTheDocument();
+      expect(screen.getByText('Table Row Count To Equal')).toBeInTheDocument();
     });
 
-    expect(getTestCaseExecutionSummary).toHaveBeenCalledWith(
-      MOCK_DATA_CONTRACT.testSuite.id
-    );
     expect(getListTestCaseBySearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        testSuiteId: MOCK_DATA_CONTRACT.testSuite.id,
+        entityLink: '<#E::table::fqn>',
+        include: 'non-deleted',
+        includeAllTests: true,
+        limit: 10000,
+        sortField: 'testCaseResult.timestamp',
+        sortType: 'desc',
       })
     );
   });
 
   it('should display test summary chart when data is available', async () => {
-    (getTestCaseExecutionSummary as jest.Mock).mockResolvedValue(
-      mockTestSummary
-    );
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: mockTestCases,
     });
 
     render(
       <MemoryRouter>
-        <ContractQualityCard contract={MOCK_DATA_CONTRACT} />
+        <ContractQualityCard
+          contract={MOCK_DATA_CONTRACT}
+          latestContractResults={mockLatestContractResults}
+        />
       </MemoryRouter>
     );
 
@@ -215,9 +225,6 @@ describe('ContractQualityCard', () => {
   });
 
   it('should display contract status when provided', async () => {
-    (getTestCaseExecutionSummary as jest.Mock).mockResolvedValue(
-      mockTestSummary
-    );
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: mockTestCases,
     });
@@ -227,6 +234,7 @@ describe('ContractQualityCard', () => {
         <ContractQualityCard
           contract={MOCK_DATA_CONTRACT}
           contractStatus="Passed"
+          latestContractResults={mockLatestContractResults}
         />
       </MemoryRouter>
     );
@@ -239,31 +247,7 @@ describe('ContractQualityCard', () => {
     });
   });
 
-  it('should handle test case summary fetch error silently', async () => {
-    (getTestCaseExecutionSummary as jest.Mock).mockRejectedValue(
-      new Error('API Error')
-    );
-    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
-      data: mockTestCases,
-    });
-
-    render(
-      <MemoryRouter>
-        <ContractQualityCard contract={MOCK_DATA_CONTRACT} />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Test Case 1')).toBeInTheDocument();
-    });
-
-    expect(showErrorToast).not.toHaveBeenCalled();
-  });
-
   it('should show error toast when test cases fetch fails', async () => {
-    (getTestCaseExecutionSummary as jest.Mock).mockResolvedValue(
-      mockTestSummary
-    );
     (getListTestCaseBySearch as jest.Mock).mockRejectedValue(
       new Error('API Error')
     );
@@ -281,28 +265,7 @@ describe('ContractQualityCard', () => {
     });
   });
 
-  it('should not fetch data when testSuite id is not available', async () => {
-    const contractWithoutTestSuite: DataContract = {
-      ...MOCK_DATA_CONTRACT,
-      testSuite: undefined,
-    };
-
-    render(
-      <MemoryRouter>
-        <ContractQualityCard contract={contractWithoutTestSuite} />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(getTestCaseExecutionSummary).not.toHaveBeenCalled();
-      expect(getListTestCaseBySearch).not.toHaveBeenCalled();
-    });
-  });
-
   it('should render test case links correctly', async () => {
-    (getTestCaseExecutionSummary as jest.Mock).mockResolvedValue(
-      mockTestSummary
-    );
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: mockTestCases,
     });
@@ -316,50 +279,32 @@ describe('ContractQualityCard', () => {
     await waitFor(() => {
       const links = screen.getAllByRole('link');
 
-      expect(links[0]).toHaveAttribute('href', '/test-case/table.test_case_1');
-      expect(links[1]).toHaveAttribute('href', '/test-case/table.test_case_2');
-      expect(links[2]).toHaveAttribute('href', '/test-case/table.test_case_3');
-    });
-  });
-
-  it('should handle test cases with missing test results', async () => {
-    const testCasesWithoutResults: TestCase[] = [
-      {
-        id: 'test-case-4',
-        name: 'Test Case 4',
-        fullyQualifiedName: 'table.test_case_4',
-      } as TestCase,
-    ];
-
-    (getTestCaseExecutionSummary as jest.Mock).mockResolvedValue(
-      mockTestSummary
-    );
-    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
-      data: testCasesWithoutResults,
-    });
-
-    render(
-      <MemoryRouter>
-        <ContractQualityCard contract={MOCK_DATA_CONTRACT} />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Test Case 4')).toBeInTheDocument();
+      expect(links[0]).toHaveAttribute(
+        'href',
+        '/test-case/fqn.CLV Must be Positive'
+      );
+      expect(links[1]).toHaveAttribute(
+        'href',
+        '/test-case/fqn.Customer ID To Be Unique'
+      );
+      expect(links[2]).toHaveAttribute(
+        'href',
+        '/test-case/fqn.Table Row Count To Equal'
+      );
     });
   });
 
   it('should calculate segment widths correctly', async () => {
-    (getTestCaseExecutionSummary as jest.Mock).mockResolvedValue(
-      mockTestSummary
-    );
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: mockTestCases,
     });
 
     const { container } = render(
       <MemoryRouter>
-        <ContractQualityCard contract={MOCK_DATA_CONTRACT} />
+        <ContractQualityCard
+          contract={MOCK_DATA_CONTRACT}
+          latestContractResults={mockLatestContractResults}
+        />
       </MemoryRouter>
     );
 
@@ -381,23 +326,24 @@ describe('ContractQualityCard', () => {
   });
 
   it('should not show test summary chart when total is 0', async () => {
-    const emptyTestSummary: TestSummary = {
-      total: 0,
-      success: 0,
-      failed: 0,
-      aborted: 0,
-    };
-
-    (getTestCaseExecutionSummary as jest.Mock).mockResolvedValue(
-      emptyTestSummary
-    );
     (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: [],
     });
 
     const { container } = render(
       <MemoryRouter>
-        <ContractQualityCard contract={MOCK_DATA_CONTRACT} />
+        <ContractQualityCard
+          contract={MOCK_DATA_CONTRACT}
+          latestContractResults={{
+            ...mockLatestContractResults,
+            qualityValidation: {
+              passed: 0,
+              failed: 0,
+              total: 0,
+              qualityScore: 0,
+            },
+          }}
+        />
       </MemoryRouter>
     );
 
@@ -407,50 +353,6 @@ describe('ContractQualityCard', () => {
       );
 
       expect(chartContainer).not.toBeInTheDocument();
-    });
-  });
-
-  it('should re-fetch data when contract changes', async () => {
-    (getTestCaseExecutionSummary as jest.Mock).mockResolvedValue(
-      mockTestSummary
-    );
-    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
-      data: mockTestCases,
-    });
-
-    const { rerender } = render(
-      <MemoryRouter>
-        <ContractQualityCard contract={MOCK_DATA_CONTRACT} />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(getTestCaseExecutionSummary).toHaveBeenCalledTimes(1);
-      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1);
-    });
-
-    const updatedContract: DataContract = {
-      ...MOCK_DATA_CONTRACT,
-      testSuite: {
-        id: 'test-suite-2',
-        name: 'Updated Test Suite',
-        fullyQualifiedName: 'test.suite.updated',
-        type: 'testSuite',
-      },
-    };
-
-    rerender(
-      <MemoryRouter>
-        <ContractQualityCard contract={updatedContract} />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => {
-      expect(getTestCaseExecutionSummary).toHaveBeenCalledTimes(2);
-      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(2);
-      expect(getTestCaseExecutionSummary).toHaveBeenLastCalledWith(
-        'test-suite-2'
-      );
     });
   });
 });
