@@ -18,7 +18,7 @@ import {
 import { Box, Chip, Divider, Menu, MenuItem } from '@mui/material';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SEVERITY_COLORS } from '../../../../constants/Color.constants';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
@@ -72,19 +72,19 @@ const InlineSeverity = ({
     [onSubmit]
   );
 
+  const dropdownIcon = useMemo(() => {
+    if (!hasEditPermission) {
+      return undefined;
+    }
+
+    return showMenu ? <ArrowUpIcon /> : <ArrowDownIcon />;
+  }, [hasEditPermission, showMenu]);
+
   return (
     <Box ref={chipRef} sx={{ display: 'inline-flex', alignItems: 'center' }}>
       <Chip
         className={classNames('severity', severity && toLower(severity))}
-        deleteIcon={
-          hasEditPermission ? (
-            showMenu ? (
-              <ArrowUpIcon />
-            ) : (
-              <ArrowDownIcon />
-            )
-          ) : undefined
-        }
+        deleteIcon={dropdownIcon}
         disabled={isLoading}
         label={severity ? startCase(severity) : 'No Severity'}
         sx={{
@@ -137,7 +137,7 @@ const InlineSeverity = ({
           selected={!severity}
           sx={{
             minWidth: 150,
-            fontWeight: !severity ? 600 : 400,
+            fontWeight: severity ? 400 : 600,
             '&.Mui-selected': {
               backgroundColor: 'primary.main',
               color: 'primary.contrastText',

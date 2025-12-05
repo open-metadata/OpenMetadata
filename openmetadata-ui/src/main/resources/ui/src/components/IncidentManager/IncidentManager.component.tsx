@@ -205,7 +205,7 @@ const IncidentManager = ({
           include: tableDetails?.deleted ? Include.Deleted : Include.NonDeleted,
           originEntityFQN: tableDetails?.fullyQualifiedName,
           domain:
-            activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined,
+            activeDomain === DEFAULT_DOMAIN_VALUE ? undefined : activeDomain,
           ...params,
         });
         const assigneeOptions = data.reduce((acc, curr) => {
