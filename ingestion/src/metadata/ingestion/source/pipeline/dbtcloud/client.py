@@ -28,8 +28,6 @@ from metadata.ingestion.source.pipeline.dbtcloud.models import (
     DBTRunList,
 )
 from metadata.ingestion.source.pipeline.dbtcloud.queries import (
-    DBT_GET_MODEL_DEPENDS_ON,
-    DBT_GET_MODELS_SEEDS,
     DBT_GET_MODELS_WITH_LINEAGE,
 )
 from metadata.utils.constants import AUTHORIZATION_HEADER
@@ -76,11 +74,7 @@ class DBTCloudClient:
         project_id: str = None,
     ) -> Iterable[DBTJob]:
         """
-        Fetch jobs for an account in dbt cloud using generator pattern.
-
-        Args:
-            job_id: Optional specific job ID to fetch
-            project_id: Optional project ID to filter jobs
+        Fetch jobs for an account in dbt cloud
         """
         query_params = {"offset": 0, "limit": 100}
 
@@ -137,7 +131,7 @@ class DBTCloudClient:
     def get_jobs(self) -> Iterable[DBTJob]:
         """
         List jobs for an account in dbt cloud using generator pattern.
-        Yields jobs one at a time for memory efficiency.
+        yields job one at a time for memory efficiency.
         """
         try:
             # case when job_ids are specified and project_ids are not
@@ -183,13 +177,15 @@ class DBTCloudClient:
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get latest successful run for job {job_id}: {exc}")
+            logger.warning(
+                f"Unable to get latest successful run for job {job_id}: {exc}"
+            )
             return None
 
     def get_runs(self, job_id: int) -> Iterable[DBTRun]:
         """
         List runs for a job in dbt cloud using generator pattern.
-        Yields runs one at a time for memory efficiency.
+        yields run one at a time for memory efficiency.
         """
         try:
             number_of_runs = self.config.numberOfRuns
@@ -242,17 +238,14 @@ class DBTCloudClient:
 
     def get_models_with_lineage(
         self, job_id: int, run_id: int
-    ) -> Tuple[Optional[List[DBTModel]], Optional[List[DBTModel]], Optional[List[DBTModel]]]:
+    ) -> Tuple[
+        Optional[List[DBTModel]], Optional[List[DBTModel]], Optional[List[DBTModel]]
+    ]:
         """
         Get models with dependsOn and seeds in a single GraphQL call.
-        This is the optimized method that replaces separate get_model_details
-        and get_models_and_seeds_details calls.
-
-        Returns:
-            Tuple of (models_with_depends_on, seeds) or (None, None) on error
         """
         try:
-            
+
             query_params = {
                 "query": DBT_GET_MODELS_WITH_LINEAGE,
                 "variables": {"jobId": job_id, "runId": run_id},
@@ -273,52 +266,3 @@ class DBTCloudClient:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get models with lineage info: {exc}")
         return None, None
-
-    def get_model_details(self, job_id: int, run_id: int):
-        """
-        get model details for a job in dbt cloud for lineage
-        """
-        try:
-            query_params = {
-                "query": DBT_GET_MODEL_DEPENDS_ON,
-                "variables": {"jobId": job_id, "runId": run_id},
-            }
-
-            result = self.graphql_client.post("", json=query_params)
-
-            if result.get("data") and result["data"].get("job"):
-                model_list = DBTModelList.model_validate(result["data"]["job"]).models
-                logger.debug(
-                    f"Successfully fetched models from dbt for job_id:{job_id} run_id:{run_id}: {model_list}"
-                )
-                return model_list
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get model info :{exc}")
-        return None
-
-    def get_models_and_seeds_details(self, job_id: int, run_id: int):
-        """
-        get parent model details for a job in dbt cloud for lineage
-        """
-        try:
-            query_params = {
-                "query": DBT_GET_MODELS_SEEDS,
-                "variables": {"jobId": job_id, "runId": run_id},
-            }
-
-            result = self.graphql_client.post("", json=query_params)
-
-            if result.get("data") and result["data"].get("job"):
-                result = DBTModelList.model_validate(result["data"]["job"])
-                parents_list = result.models + result.seeds
-                logger.debug(
-                    f"Successfully fetched parent models from dbt for job_id:{job_id} run_id:{run_id}: {parents_list}"
-                )
-                return parents_list
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get parents model info :{exc}")
-        return None

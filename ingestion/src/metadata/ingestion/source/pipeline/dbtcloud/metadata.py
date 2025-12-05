@@ -237,9 +237,7 @@ class DbtcloudSource(PipelineServiceSource):
                     )
                     continue
 
-                for dbservicename in (
-                    self.get_db_service_names() or ['*']
-                ):
+                for dbservicename in self.get_db_service_names() or ["*"]:
                     to_entity_fqn = fqn.build(
                         metadata=self.metadata,
                         entity_type=Table,
@@ -271,9 +269,7 @@ class DbtcloudSource(PipelineServiceSource):
                         if not parent:
                             continue
 
-                        if not all(
-                            [parent.name, parent.database, parent.dbtschema]
-                        ):
+                        if not all([parent.name, parent.database, parent.dbtschema]):
                             logger.debug(
                                 f"Skipping parent with missing attributes: name={getattr(parent, 'name', None)}, "
                                 f"database={getattr(parent, 'database', None)}, schema={getattr(parent, 'dbtschema', None)}"
@@ -296,10 +292,7 @@ class DbtcloudSource(PipelineServiceSource):
                             continue
 
                         # Add to context table FQNs
-                        if (
-                            from_entity_fqn
-                            not in self.context.get().current_table_fqns
-                        ):
+                        if from_entity_fqn not in self.context.get().current_table_fqns:
                             self.context.get().current_table_fqns.append(
                                 from_entity_fqn
                             )
