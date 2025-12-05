@@ -220,6 +220,7 @@ const ProfilerConfigurationPage = () => {
                                 ]}>
                                 <Select
                                   allowClear
+                                  showSearch
                                   data-testid="data-type-select"
                                   options={dataTypeOptions}
                                   placeholder={t('label.select-field', {
