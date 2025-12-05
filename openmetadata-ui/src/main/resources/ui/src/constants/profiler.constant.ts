@@ -69,45 +69,51 @@ export const PROFILER_CHART_DATA_SIZE = 500;
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
     days: 1,
-    title: t('label.yesterday'),
+    title: 'label.yesterday',
   },
   last3days: {
     days: 3,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 3,
-    }),
+    },
   },
   last7days: {
     days: 7,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 7,
-    }),
+    },
   },
   last14days: {
     days: 14,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 14,
-    }),
+    },
   },
   last30days: {
     days: 30,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 30,
-    }),
+    },
   },
   last60days: {
     days: 60,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 60,
-    }),
+    },
   },
 };
 
 export const DEFAULT_SELECTED_RANGE = {
   key: 'last7days',
-  title: t('label.last-number-of-days', {
+  title: 'label.last-number-of-days',
+  titleData: {
     numberOfDays: 7,
-  }),
+  },
   days: 7,
 };
 

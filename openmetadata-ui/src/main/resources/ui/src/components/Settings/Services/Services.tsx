@@ -539,7 +539,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                   ? t('label.add-entity', {
                       entity: t('label.service'),
                     })
-                  : NO_PERMISSION_FOR_ACTION
+                  : t(NO_PERMISSION_FOR_ACTION)
               }>
               {addServicePermission && (
                 <LimitWrapper resource="dataAssets">

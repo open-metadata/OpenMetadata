@@ -35,59 +35,59 @@ export const DATATYPES_HAVING_SUBFIELDS = [
 export const entityData = [
   {
     type: SearchIndex.TABLE,
-    label: t('label.table-plural'),
+    label: 'label.table-plural',
   },
   {
     type: SearchIndex.DASHBOARD,
-    label: t('label.dashboard-plural'),
+    label: 'label.dashboard-plural',
   },
   {
     type: SearchIndex.TOPIC,
-    label: t('label.topic-plural'),
+    label: 'label.topic-plural',
   },
   {
     type: SearchIndex.MLMODEL,
-    label: t('label.ml-model-plural'),
+    label: 'label.ml-model-plural',
   },
   {
     type: SearchIndex.CONTAINER,
-    label: t('label.container-plural'),
+    label: 'label.container-plural',
   },
   {
     type: SearchIndex.PIPELINE,
-    label: t('label.pipeline-plural'),
+    label: 'label.pipeline-plural',
   },
   {
     type: SearchIndex.SEARCH_INDEX,
-    label: t('label.search-index-plural'),
+    label: 'label.search-index-plural',
   },
   {
     type: SearchIndex.DASHBOARD_DATA_MODEL,
-    label: t('label.data-model-plural'),
+    label: 'label.data-model-plural',
   },
   {
     type: SearchIndex.API_ENDPOINT_INDEX,
-    label: t('label.api-endpoint-plural'),
+    label: 'label.api-endpoint-plural',
   },
   {
     type: SearchIndex.METRIC_SEARCH_INDEX,
-    label: t('label.metric-plural'),
+    label: 'label.metric-plural',
   },
   {
     type: SearchIndex.DIRECTORY_SEARCH_INDEX,
-    label: t('label.directory-plural'),
+    label: 'label.directory-plural',
   },
   {
     type: SearchIndex.FILE_SEARCH_INDEX,
-    label: t('label.file-plural'),
+    label: 'label.file-plural',
   },
   {
     type: SearchIndex.SPREADSHEET_SEARCH_INDEX,
-    label: t('label.spreadsheet-plural'),
+    label: 'label.spreadsheet-plural',
   },
   {
     type: SearchIndex.WORKSHEET_SEARCH_INDEX,
-    label: t('label.worksheet-plural'),
+    label: 'label.worksheet-plural',
   },
 ];
 

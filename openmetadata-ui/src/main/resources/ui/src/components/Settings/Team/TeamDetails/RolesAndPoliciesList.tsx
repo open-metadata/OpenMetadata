@@ -94,7 +94,9 @@ const ListEntities = ({
           return (
             <Tooltip
               placement="left"
-              title={hasAccess ? t('label.remove') : NO_PERMISSION_FOR_ACTION}>
+              title={
+                hasAccess ? t('label.remove') : t(NO_PERMISSION_FOR_ACTION)
+              }>
               <Button
                 data-testid={`remove-action-${getEntityName(record)}`}
                 disabled={!hasAccess}

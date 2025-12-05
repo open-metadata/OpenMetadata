@@ -32,6 +32,7 @@ import {
 } from '../../../../generated/entity/data/table';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getBreadcrumbsFromFqn } from '../../../../utils/EntityUtils';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
 import {
   escapeESReservedCharacters,
@@ -249,6 +250,24 @@ const TableConstraintsModal = ({
     getSearchResults(searchValue);
   }, []);
 
+  const translatedRelationShipTypeOptions = useMemo(
+    () =>
+      RELATIONSHIP_TYPE_OPTION.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
+  const translatedTableConstrantTypeOptions = useMemo(
+    () =>
+      TABLE_CONSTRAINTS_TYPE_OPTIONS.map((option) => ({
+        ...option,
+        label: translateWithNestedKeys(option.label, option.labelData),
+      })),
+    [t]
+  );
+
   return (
     <Modal
       centered
@@ -291,7 +310,7 @@ const TableConstraintsModal = ({
             allowClear
             autoClearSearchValue
             data-testid="constraint-type-select"
-            options={TABLE_CONSTRAINTS_TYPE_OPTIONS}
+            options={translatedTableConstrantTypeOptions}
             placeholder={t('label.select-entity', {
               entity: t('label.constraint-type'),
             })}
@@ -442,7 +461,7 @@ const TableConstraintsModal = ({
                       ]}>
                       <Select
                         data-testid={`${key}-relationship-type-select`}
-                        options={RELATIONSHIP_TYPE_OPTION}
+                        options={translatedRelationShipTypeOptions}
                         placeholder={t('label.select-entity', {
                           entity: t('label.relationship-type'),
                         })}
