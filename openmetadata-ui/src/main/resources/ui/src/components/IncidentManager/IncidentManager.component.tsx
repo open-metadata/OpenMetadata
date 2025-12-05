@@ -328,49 +328,49 @@ const IncidentManager = ({
     }
   };
 
-  const handleAssigneeUpdate = async (
-    record: TestCaseResolutionStatus,
-    assignee?: EntityReference[]
-  ) => {
-    const assigneeData = assignee?.[0];
+  const handleAssigneeUpdate = useCallback(
+    async (record: TestCaseResolutionStatus, assignee?: EntityReference[]) => {
+      const assigneeData = assignee?.[0];
 
-    const updatedData: TestCaseResolutionStatus = {
-      ...record,
-      testCaseResolutionStatusDetails: {
-        ...record?.testCaseResolutionStatusDetails,
-        assignee: assigneeData,
-      },
-      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
-    };
-
-    try {
-      await postTestCaseIncidentStatus({
-        severity: record.severity,
-        testCaseReference: record.testCaseReference?.fullyQualifiedName ?? '',
-        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      const updatedData: TestCaseResolutionStatus = {
+        ...record,
         testCaseResolutionStatusDetails: {
+          ...record?.testCaseResolutionStatusDetails,
           assignee: assigneeData,
         },
-      });
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      };
 
-      setTestCaseListData((prev) => {
-        const testCaseList = prev.data.map((item) => {
-          if (item.stateId === updatedData.stateId) {
-            return updatedData;
-          }
-
-          return item;
+      try {
+        await postTestCaseIncidentStatus({
+          severity: record.severity,
+          testCaseReference: record.testCaseReference?.fullyQualifiedName ?? '',
+          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+          testCaseResolutionStatusDetails: {
+            assignee: assigneeData,
+          },
         });
 
-        return {
-          ...prev,
-          data: testCaseList,
-        };
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+        setTestCaseListData((prev) => {
+          const testCaseList = prev.data.map((item) => {
+            if (item.stateId === updatedData.stateId) {
+              return updatedData;
+            }
+
+            return item;
+          });
+
+          return {
+            ...prev,
+            data: testCaseList,
+          };
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    []
+  );
 
   const fetchUserFilterOptions = async (query: string) => {
     if (!query) {
@@ -431,22 +431,25 @@ const IncidentManager = ({
     }
   };
 
-  const handleStatusSubmit = (value: TestCaseResolutionStatus) => {
-    setTestCaseListData((prev) => {
-      const testCaseList = prev.data.map((item) => {
-        if (item.stateId === value.stateId) {
-          return value;
-        }
+  const handleStatusSubmit = useCallback(
+    (value: TestCaseResolutionStatus) => {
+      setTestCaseListData((prev) => {
+        const testCaseList = prev.data.map((item) => {
+          if (item.stateId === value.stateId) {
+            return value;
+          }
 
-        return item;
+          return item;
+        });
+
+        return {
+          ...prev,
+          data: testCaseList,
+        };
       });
-
-      return {
-        ...prev,
-        data: testCaseList,
-      };
-    });
-  };
+    },
+    []
+  );
 
   const searchTestCases = async (searchValue = WILD_CARD_CHAR) => {
     try {
@@ -654,6 +657,8 @@ const IncidentManager = ({
       testCaseListData.data,
       testCasePermissions,
       isPermissionLoading,
+      handleAssigneeUpdate,
+      handleStatusSubmit,
     ]
   );
 
