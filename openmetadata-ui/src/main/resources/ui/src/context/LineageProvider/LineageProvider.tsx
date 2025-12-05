@@ -1066,10 +1066,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         return;
       }
 
-      if (selectedColumn) {
-        return;
-      }
-
       if (node.type === EntityLineageNodeType.LOAD_MORE) {
         selectLoadMoreNode(node);
       } else {
