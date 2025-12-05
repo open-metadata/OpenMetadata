@@ -43,7 +43,11 @@ import { DatabaseServiceSearchSource } from '../../../interface/search.interface
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import { getServiceLogo } from '../../../utils/CommonUtils';
-import { getEntityName, highlightSearchText } from '../../../utils/EntityUtils';
+import {
+  getColumnSorter,
+  getEntityName,
+  highlightSearchText,
+} from '../../../utils/EntityUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getAddServicePath,
@@ -225,33 +229,61 @@ const Services = ({ serviceName }: ServicesProps) => {
   );
 
   const getServicePageHeader = useCallback(() => {
+    let pageHeader;
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES:
-        return PAGE_HEADERS.DATABASES_SERVICES;
+        pageHeader = PAGE_HEADERS.DATABASES_SERVICES;
+
+        break;
       case ServiceCategory.DASHBOARD_SERVICES:
-        return PAGE_HEADERS.DASHBOARD_SERVICES;
+        pageHeader = PAGE_HEADERS.DASHBOARD_SERVICES;
+
+        break;
       case ServiceCategory.MESSAGING_SERVICES:
-        return PAGE_HEADERS.MESSAGING_SERVICES;
+        pageHeader = PAGE_HEADERS.MESSAGING_SERVICES;
+
+        break;
       case ServiceCategory.METADATA_SERVICES:
-        return PAGE_HEADERS.METADATA_SERVICES;
+        pageHeader = PAGE_HEADERS.METADATA_SERVICES;
+
+        break;
       case ServiceCategory.ML_MODEL_SERVICES:
-        return PAGE_HEADERS.ML_MODELS_SERVICES;
+        pageHeader = PAGE_HEADERS.ML_MODELS_SERVICES;
+
+        break;
       case ServiceCategory.PIPELINE_SERVICES:
-        return PAGE_HEADERS.PIPELINES_SERVICES;
+        pageHeader = PAGE_HEADERS.PIPELINES_SERVICES;
+
+        break;
       case ServiceCategory.STORAGE_SERVICES:
-        return PAGE_HEADERS.STORAGE_SERVICES;
+        pageHeader = PAGE_HEADERS.STORAGE_SERVICES;
+
+        break;
       case ServiceCategory.SEARCH_SERVICES:
-        return PAGE_HEADERS.SEARCH_SERVICES;
+        pageHeader = PAGE_HEADERS.SEARCH_SERVICES;
+
+        break;
       case ServiceCategory.API_SERVICES:
-        return PAGE_HEADERS.API_SERVICES;
+        pageHeader = PAGE_HEADERS.API_SERVICES;
+
+        break;
       case ServiceCategory.SECURITY_SERVICES:
-        return PAGE_HEADERS.SECURITY_SERVICES;
+        pageHeader = PAGE_HEADERS.SECURITY_SERVICES;
+
+        break;
       case ServiceCategory.DRIVE_SERVICES:
-        return PAGE_HEADERS.DRIVE_SERVICES;
+        pageHeader = PAGE_HEADERS.DRIVE_SERVICES;
+
+        break;
       default:
-        return PAGE_HEADERS.DATABASES_SERVICES;
+        pageHeader = PAGE_HEADERS.DATABASES_SERVICES;
     }
-  }, [serviceName]);
+
+    return {
+      header: t(pageHeader.header),
+      subHeader: t(pageHeader.subHeader),
+    };
+  }, [serviceName, t]);
 
   const noDataPlaceholder = useMemo(() => {
     if (
@@ -263,10 +295,14 @@ const Services = ({ serviceName }: ServicesProps) => {
         <ErrorPlaceHolder
           className="p-lg border-none"
           doc={CONNECTORS_DOCS}
-          heading={servicesDisplayName[serviceName]}
+          heading={t(servicesDisplayName[serviceName].key, {
+            entity: t(servicesDisplayName[serviceName].entity),
+          })}
           permission={addServicePermission}
           permissionValue={t('label.create-entity', {
-            entity: `${servicesDisplayName[serviceName]}`,
+            entity: t(servicesDisplayName[serviceName].key, {
+              entity: t(servicesDisplayName[serviceName].entity),
+            }),
           })}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
           onClick={handleAddServiceClick}
@@ -327,6 +363,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       dataIndex: TABLE_COLUMNS_KEYS.NAME,
       key: TABLE_COLUMNS_KEYS.NAME,
       width: 200,
+      sorter: getColumnSorter<ServicesType, 'name'>('name'),
       render: (name, record) => (
         <div className="d-flex gap-2 items-center">
           {getServiceLogo(record.serviceType || '', 'w-4')}
@@ -502,7 +539,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                   ? t('label.add-entity', {
                       entity: t('label.service'),
                     })
-                  : NO_PERMISSION_FOR_ACTION
+                  : t(NO_PERMISSION_FOR_ACTION)
               }>
               {addServicePermission && (
                 <LimitWrapper resource="dataAssets">

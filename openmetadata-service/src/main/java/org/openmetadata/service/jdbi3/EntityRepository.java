@@ -54,6 +54,7 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
@@ -195,6 +196,7 @@ import org.openmetadata.service.exception.EntityLockedException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
@@ -2957,7 +2959,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Populate Glossary Tags on Read
-    return addDerivedTags(daoCollection.tagUsageDAO().getTags(fqn));
+    return addDerivedTagsGracefully(daoCollection.tagUsageDAO().getTags(fqn));
   }
 
   public final Map<String, List<TagLabel>> getTagsByPrefix(String prefix, String postfix) {
@@ -5807,10 +5809,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   // Validate if a given column exists in the table
   public static void validateColumn(Table table, String columnName) {
-    boolean validColumn =
-        table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
-    if (!validColumn && !columnName.equalsIgnoreCase("all")) {
-      throw new IllegalArgumentException("Invalid column name " + columnName);
+    validateColumn(table, columnName, Boolean.TRUE);
+  }
+
+  // Validate if a given column exists in the table with optional case sensitivity
+  public static void validateColumn(Table table, String columnName, Boolean caseSensitive) {
+    if (Boolean.FALSE.equals(caseSensitive)) {
+      boolean validColumn =
+          table.getColumns().stream().anyMatch(col -> col.getName().equalsIgnoreCase(columnName));
+      if (!validColumn && !columnName.equalsIgnoreCase("all")) {
+        throw new IllegalArgumentException("Invalid column name " + columnName);
+      }
+    } else {
+      boolean validColumn =
+          table.getColumns().stream().anyMatch(col -> col.getName().equals(columnName));
+      if (!validColumn && !columnName.equalsIgnoreCase("all")) {
+        throw new IllegalArgumentException("Invalid column name " + columnName);
+      }
     }
   }
 
@@ -6571,7 +6586,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           if (fieldTags == null) {
             field.setTags(new ArrayList<>());
           } else {
-            field.setTags(addDerivedTags(fieldTags));
+            field.setTags(addDerivedTagsGracefully(fieldTags));
           }
         }
       }
@@ -6708,12 +6723,55 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   private PutResponse<T> bulkCreateOrUpdateEntity(UriInfo uriInfo, T updated, String userName) {
-    T original = findByNameOrNull(updated.getFullyQualifiedName(), NON_DELETED);
+    T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) {
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
     return update(uriInfo, original, updated, userName, null);
+  }
+
+  private void createChangeEventForBulkOperation(T entity, EventType eventType, String userName) {
+    try {
+      if (eventType.equals(ENTITY_NO_CHANGE)) {
+        return;
+      }
+
+      ChangeEvent changeEvent =
+          FormatterUtil.createChangeEventForEntity(userName, eventType, entity);
+
+      if (changeEvent.getEntity() != null) {
+        Object entityObject = changeEvent.getEntity();
+        changeEvent = copyChangeEvent(changeEvent);
+        changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityObject));
+      }
+
+      LOG.debug(
+          "Recording change event for bulk operation {}:{}:{}:{}",
+          changeEvent.getTimestamp(),
+          changeEvent.getEntityId(),
+          changeEvent.getEventType(),
+          changeEvent.getEntityType());
+
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    } catch (Exception e) {
+      LOG.error("Failed to create change event for bulk operation", e);
+    }
+  }
+
+  private static ChangeEvent copyChangeEvent(ChangeEvent changeEvent) {
+    return new ChangeEvent()
+        .withId(changeEvent.getId())
+        .withEventType(changeEvent.getEventType())
+        .withEntityId(changeEvent.getEntityId())
+        .withEntityType(changeEvent.getEntityType())
+        .withUserName(changeEvent.getUserName())
+        .withImpersonatedBy(changeEvent.getImpersonatedBy())
+        .withTimestamp(changeEvent.getTimestamp())
+        .withChangeDescription(changeEvent.getChangeDescription())
+        .withCurrentVersion(changeEvent.getCurrentVersion())
+        .withPreviousVersion(changeEvent.getPreviousVersion())
+        .withEntityFullyQualifiedName(changeEvent.getEntityFullyQualifiedName());
   }
 
   public BulkOperationResult bulkCreateOrUpdateEntities(
@@ -6732,11 +6790,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
           CompletableFuture.runAsync(
               () -> {
                 try {
-                  bulkCreateOrUpdateEntity(uriInfo, entity, userName);
+                  PutResponse<T> putResponse = bulkCreateOrUpdateEntity(uriInfo, entity, userName);
                   successRequests.add(
                       new BulkResponse()
                           .withRequest(entity.getFullyQualifiedName())
                           .withStatus(Status.OK.getStatusCode()));
+                  createChangeEventForBulkOperation(
+                      putResponse.getEntity(), putResponse.getChangeType(), userName);
                 } catch (Exception e) {
                   LOG.warn("Failed to process entity in bulk operation", e);
                   failedRequests.add(

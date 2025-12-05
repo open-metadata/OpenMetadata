@@ -16,7 +16,10 @@ import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
-import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import {
+  DEFAULT_SCHEDULE_CRON_DAILY,
+  SCHEDULAR_OPTIONS,
+} from '../../../../constants/Schedular.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { FormSubmitType } from '../../../../enums/form.enum';
@@ -30,6 +33,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import {
   getDefaultFilterPropertyValues,
   getSuccessMessage,
@@ -101,6 +105,15 @@ const AddIngestion = ({
         isEditMode,
       }),
     [pipelineType, serviceCategory, data, serviceData, isEditMode]
+  );
+
+  const translatedSteps = useMemo(
+    () =>
+      STEPS_FOR_ADD_INGESTION.map((step) => ({
+        ...step,
+        name: translateWithNestedKeys(step.name, step.nameData),
+      })),
+    []
   );
 
   // lazy initialization to initialize the data only once
@@ -308,6 +321,16 @@ const AddIngestion = ({
     [onFocus]
   );
 
+  const schedularOptionsTranslated = useMemo(
+    () =>
+      SCHEDULAR_OPTIONS.map((option) => ({
+        ...option,
+        title: t(option.title),
+        description: t(option.description),
+      })),
+    [t]
+  );
+
   return (
     <div data-testid="add-ingestion-container">
       <Typography.Title className="font-normal" level={5}>
@@ -317,7 +340,7 @@ const AddIngestion = ({
       <IngestionStepper
         activeStep={activeIngestionStep}
         excludeSteps={[]}
-        steps={STEPS_FOR_ADD_INGESTION}
+        steps={translatedSteps}
       />
 
       <div className="p-t-lg">
@@ -351,6 +374,7 @@ const AddIngestion = ({
               raiseOnError: data?.raiseOnError ?? true,
             }}
             isEditMode={isEditMode}
+            schedularOptions={schedularOptionsTranslated}
             status={saveState}
             onBack={() => handlePrev(1)}
             onDeploy={handleScheduleIntervalDeployClick}>

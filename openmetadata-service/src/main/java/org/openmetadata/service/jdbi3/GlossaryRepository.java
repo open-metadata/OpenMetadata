@@ -236,6 +236,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      GlossaryTermRepository repository =
+          (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       if (csvRecord == null) return;
       GlossaryTerm glossaryTerm = new GlossaryTerm().withGlossary(glossary.getEntityReference());
@@ -262,6 +264,18 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withEntityStatus(getTermStatus(printer, csvRecord))
           .withStyle(getStyle(csvRecord))
           .withExtension(getExtension(printer, csvRecord, 13));
+
+      // Validate during dry run to catch logical errors early
+      if (processRecord && importResult.getDryRun()) {
+        try {
+          repository.validateForDryRun(glossaryTerm, dryRunCreatedEntities);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          processRecord = false;
+          return;
+        }
+      }
+
       if (processRecord) {
         createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
       }
@@ -519,7 +533,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
       // adding the reviewer in glossary  should add the person as assignee to the task - for all
       // draft terms present in glossary
-      if (!original.getReviewers().equals(updated.getReviewers())) {
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
 
         List<GlossaryTerm> childTerms = getAllTerms(updated);
         for (GlossaryTerm term : childTerms) {

@@ -3,8 +3,8 @@ package org.openmetadata.service.search.opensearch;
 import static org.openmetadata.common.utils.CommonUtil.collectionOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
-import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.GRAPH_AGGREGATION;
 import static org.openmetadata.service.search.SearchUtils.buildDirectionToFqnSet;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
@@ -132,7 +132,7 @@ public class OSLineageGraphBuilder {
     SearchRequest searchRequest =
         getSearchRequest(
             lineageRequest.getDirection(),
-            DATA_ASSET_SEARCH_ALIAS,
+            GLOBAL_SEARCH_ALIAS,
             lineageRequest.getUpstreamDepth() == remainingDepth
                 ? null
                 : lineageRequest.getQueryFilter(),
@@ -221,7 +221,7 @@ public class OSLineageGraphBuilder {
     SearchRequest searchRequest =
         getSearchRequest(
             lineageRequest.getDirection(),
-            DATA_ASSET_SEARCH_ALIAS,
+            GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
             GRAPH_AGGREGATION,
             directionKeyAndValues,
@@ -303,7 +303,7 @@ public class OSLineageGraphBuilder {
             .withDownstreamEdges(new HashMap<>());
 
     // First, fetch and add the root entity with proper paging counts
-    addRootEntityWithPagingCounts(lineageRequest, result);
+    addRootEntityWithPagingCounts(lineageRequest, result, false);
 
     // Then fetch upstream lineage if upstreamDepth > 0
     if (lineageRequest.getUpstreamDepth() > 0) {
@@ -357,7 +357,7 @@ public class OSLineageGraphBuilder {
             .withDownstreamEdges(new HashMap<>());
 
     // First, fetch and add the root entity with proper paging counts
-    addRootEntityWithPagingCounts(lineageRequest, result);
+    addRootEntityWithPagingCounts(lineageRequest, result, true);
 
     // Based on direction, fetch only the requested lineage direction
     if (lineageRequest.getDirection() == null
@@ -403,12 +403,13 @@ public class OSLineageGraphBuilder {
   }
 
   private void addRootEntityWithPagingCounts(
-      SearchLineageRequest lineageRequest, SearchLineageResult result) throws IOException {
+      SearchLineageRequest lineageRequest, SearchLineageResult result, boolean isDirectionBased)
+      throws IOException {
     Map<String, Object> rootEntityMap =
         OsUtils.searchEntityByKey(
             esClient,
             null,
-            DATA_ASSET_SEARCH_ALIAS,
+            GLOBAL_SEARCH_ALIAS,
             FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
             Pair.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
             SOURCE_FIELDS_TO_EXCLUDE);
@@ -417,10 +418,18 @@ public class OSLineageGraphBuilder {
       String rootFqn = rootEntityMap.get(FQN_FIELD).toString();
       List<EsLineageData> upstreamEntities = getUpstreamLineageListIfExist(rootEntityMap);
 
-      int downstreamCount = countDownstreamEntities(lineageRequest.getFqn(), lineageRequest);
+      Integer upstreamCount = null;
+      if (isDirectionBased && lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)) {
+        upstreamCount = upstreamEntities.size();
+      }
+
+      Integer downstreamCount = null;
+      if (isDirectionBased && lineageRequest.getDirection().equals(LineageDirection.DOWNSTREAM)) {
+        downstreamCount = countDownstreamEntities(lineageRequest.getFqn(), lineageRequest);
+      }
 
       NodeInformation rootNode =
-          getNodeInformation(rootEntityMap, downstreamCount, upstreamEntities.size(), 0);
+          getNodeInformation(rootEntityMap, downstreamCount, upstreamCount, 0);
 
       result.getNodes().put(rootFqn, rootNode);
     }
@@ -437,7 +446,7 @@ public class OSLineageGraphBuilder {
     SearchRequest searchRequest =
         getSearchRequest(
             LineageDirection.DOWNSTREAM,
-            DATA_ASSET_SEARCH_ALIAS,
+            GLOBAL_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
             GRAPH_AGGREGATION,
             directionKeyAndValues,
@@ -568,7 +577,8 @@ public class OSLineageGraphBuilder {
             .withIncludeDeleted(request.getIncludeDeleted())
             .withIsConnectedVia(request.getIsConnectedVia())
             .withIncludeSourceFields(request.getIncludeSourceFields()),
-        result);
+        result,
+        false);
     // If nodeDepth is specifically 0, return just root entity
     if (request.getNodeDepth() != null && request.getNodeDepth() == 0) {
       return result;
@@ -630,7 +640,7 @@ public class OSLineageGraphBuilder {
       SearchRequest searchRequest =
           getSearchRequest(
               direction,
-              DATA_ASSET_SEARCH_ALIAS,
+              GLOBAL_SEARCH_ALIAS,
               depth == 0 ? null : queryFilter,
               GRAPH_AGGREGATION,
               directionKeyAndValues,
@@ -701,7 +711,7 @@ public class OSLineageGraphBuilder {
       SearchRequest searchRequest =
           getSearchRequest(
               direction,
-              DATA_ASSET_SEARCH_ALIAS,
+              GLOBAL_SEARCH_ALIAS,
               queryFilter,
               GRAPH_AGGREGATION,
               directionKeyAndValues,
@@ -751,7 +761,7 @@ public class OSLineageGraphBuilder {
           OsUtils.searchEntityByKey(
               esClient,
               null,
-              DATA_ASSET_SEARCH_ALIAS,
+              GLOBAL_SEARCH_ALIAS,
               FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
               Pair.of(FullyQualifiedName.buildHash(entityFqn), entityFqn),
               SOURCE_FIELDS_TO_EXCLUDE);
@@ -852,7 +862,7 @@ public class OSLineageGraphBuilder {
       SearchRequest searchRequest =
           getSearchRequest(
               request.getDirection(),
-              DATA_ASSET_SEARCH_ALIAS,
+              GLOBAL_SEARCH_ALIAS,
               depth == 0 ? null : request.getQueryFilter(),
               GRAPH_AGGREGATION,
               directionKeyAndValues,

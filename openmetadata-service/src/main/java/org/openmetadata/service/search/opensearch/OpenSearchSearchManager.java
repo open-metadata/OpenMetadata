@@ -379,6 +379,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
       List<Map<String, Object>> results = new ArrayList<>();
       Object[] lastHitSortValues = null;
+      Object[] lastDocumentsInBatch = null;
 
       if (response.hits().hits() != null && !response.hits().hits().isEmpty()) {
         List<Hit<JsonData>> hits = response.hits().hits();
@@ -400,6 +401,14 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             lastHitSortValues = lastHit.sort().toArray();
           }
         }
+
+        if (hits.size() <= size) {
+          Hit<JsonData> lastHit = hits.getLast();
+          List<String> sortValues = lastHit.sort();
+          if (sortValues != null && !sortValues.isEmpty()) {
+            lastDocumentsInBatch = sortValues.stream().map(String::valueOf).toArray(String[]::new);
+          }
+        }
       }
 
       long totalHits = 0;
@@ -407,7 +416,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         totalHits = response.hits().total().value();
       }
 
-      return new SearchResultListMapper(results, totalHits, lastHitSortValues);
+      return new SearchResultListMapper(
+          results, totalHits, lastHitSortValues, lastDocumentsInBatch);
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
         throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
@@ -897,7 +907,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             request.getQuery(),
             request.getFrom(),
             request.getSize(),
-            request.getExplain());
+            request.getExplain(),
+            request.getIncludeAggregations() != null ? request.getIncludeAggregations() : true);
 
     LOG.debug(
         "OpenSearch query for index '{}' with sanitized query '{}': {}",

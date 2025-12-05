@@ -166,13 +166,16 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
   );
 
   const filteredPeriodOptions = useMemo(() => {
-    if (includePeriodOptions) {
-      return PERIOD_OPTIONS.filter((option) =>
-        includePeriodOptions.includes(option.value)
-      );
-    } else {
-      return PERIOD_OPTIONS;
-    }
+    const options = includePeriodOptions
+      ? PERIOD_OPTIONS.filter((option) =>
+          includePeriodOptions.includes(option.value)
+        )
+      : PERIOD_OPTIONS;
+
+    return options.map((option) => ({
+      ...option,
+      label: t(option.label),
+    }));
   }, [includePeriodOptions]);
 
   const cronExpressionCard = useMemo(() => {
@@ -319,7 +322,7 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
                         disabled={disabled}
                         key={`${label}-${optionValue}`}
                         value={optionValue}>
-                        {label[0]}
+                        {t(label[0])}
                       </Radio.Button>
                     ))}
                   </Radio.Group>
