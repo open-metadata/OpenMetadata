@@ -19,11 +19,9 @@ import { CondensedBreadcrumb } from '../../components/CondensedBreadcrumb/Conden
 import {
   ColumnLevelLineageNode,
   EdgeDetails,
+  NodeData,
 } from '../../components/Lineage/Lineage.interface';
-import {
-  EImpactLevel,
-  LineageNodeData,
-} from '../../components/LineageTable/LineageTable.interface';
+import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { TableSearchSource } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
@@ -57,7 +55,7 @@ export const LINEAGE_DEPENDENCY_OPTIONS = [
 
 export const prepareColumnLevelNodesFromEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeData>,
+  nodes: Record<string, NodeData>,
   direction: LineageDirection = LineageDirection.Downstream
 ) => {
   const entityKey =
@@ -76,7 +74,7 @@ export const prepareColumnLevelNodesFromEdges = (
           0
         );
 
-        const picked = pick<LineageNodeData['entity']>(
+        const picked = pick<NodeData['entity']>(
           entityData,
           'owners',
           'tier',
@@ -103,7 +101,7 @@ export const prepareColumnLevelNodesFromEdges = (
 
 export const prepareDownstreamColumnLevelNodesFromDownstreamEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeData>
+  nodes: Record<string, NodeData>
 ) => {
   return prepareColumnLevelNodesFromEdges(
     edges,
@@ -114,7 +112,7 @@ export const prepareDownstreamColumnLevelNodesFromDownstreamEdges = (
 
 export const prepareUpstreamColumnLevelNodesFromUpstreamEdges = (
   edges: EdgeDetails[],
-  nodes: Record<string, LineageNodeData>
+  nodes: Record<string, NodeData>
 ) => {
   return prepareColumnLevelNodesFromEdges(
     edges,
