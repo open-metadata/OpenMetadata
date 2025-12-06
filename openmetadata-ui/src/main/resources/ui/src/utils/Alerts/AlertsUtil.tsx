@@ -1233,49 +1233,49 @@ export const getFormattedDestinations = (
   return formattedDestinations;
 };
 
+// Destination category exclusions by entity type
+const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
+  // Default: exclude Assignees and Mentions for all non-thread entities
+  __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
+  // Thread-specific exclusions
+  task: [
+    SubscriptionCategory.Followers,
+    SubscriptionCategory.Admins,
+    SubscriptionCategory.Users,
+    SubscriptionCategory.Teams,
+  ],
+  conversation: [
+    SubscriptionCategory.Followers,
+    SubscriptionCategory.Admins,
+    SubscriptionCategory.Users,
+    SubscriptionCategory.Teams,
+    SubscriptionCategory.Assignees,
+  ],
+  announcement: [SubscriptionCategory.Assignees],
+};
+
 export const getFilteredDestinationOptions = (
   key: keyof typeof DESTINATION_SOURCE_ITEMS,
   selectedSource: string
 ) => {
-  // Get options based on destination type key ("Internal" OR "External").
-  const newOptions = DESTINATION_SOURCE_ITEMS[key];
+  const options = DESTINATION_SOURCE_ITEMS[key];
+  const isExternalDestination = !isEqual(
+    key,
+    DESTINATION_DROPDOWN_TABS.internal
+  );
 
-  const isInternalOptions = isEqual(key, DESTINATION_DROPDOWN_TABS.internal);
+  if (isExternalDestination) {
+    return options;
+  }
 
-  // Logic to filter the options based on destination type and selected source.
-  const filteredOptions = newOptions.filter((option) => {
-    // If the destination type is external, always show all options.
-    if (!isInternalOptions) {
-      return true;
-    }
+  const excludedCategories =
+    DESTINATION_CATEGORY_EXCLUDES[selectedSource] ||
+    DESTINATION_CATEGORY_EXCLUDES.__default__;
 
-    // Logic to filter options for destination type "Internal"
-
-    // Show all options except "Assignees" and "Mentions" for all sources.
-    let shouldShowOption =
-      option.value !== SubscriptionCategory.Assignees &&
-      option.value !== SubscriptionCategory.Mentions;
-
-    // Only show "Owners" and "Assignees" options for "Task" source.
-    if (selectedSource === 'task') {
-      shouldShowOption = [
-        SubscriptionCategory.Owners,
-        SubscriptionCategory.Assignees,
-      ].includes(option.value as SubscriptionCategory);
-    }
-
-    // Only show "Owners" and "Mentions" options for "Conversation" source.
-    if (selectedSource === 'conversation') {
-      shouldShowOption = [
-        SubscriptionCategory.Owners,
-        SubscriptionCategory.Mentions,
-      ].includes(option.value as SubscriptionCategory);
-    }
-
-    return shouldShowOption;
-  });
-
-  return filteredOptions;
+  return options.filter(
+    (option) =>
+      !excludedCategories.includes(option.value as SubscriptionCategory)
+  );
 };
 
 export const getSourceOptionsFromResourceList = (
