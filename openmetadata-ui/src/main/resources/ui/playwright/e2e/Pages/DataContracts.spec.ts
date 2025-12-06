@@ -861,8 +861,8 @@ test.describe('Data Contracts', () => {
 
         await saveContractResponse;
 
-        // Check all schema from 1 to 50, and 10 is the max-pagination chip
-        await expect(page.getByTitle('10')).toBeVisible();
+        // Check all schema from 1 to 50, and 25 is the max-pagination chip
+        await expect(page.getByTitle('25')).toBeVisible();
 
         for (let i = 1; i <= 50; i++) {
           if (i < 10) {

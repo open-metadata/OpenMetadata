@@ -16,7 +16,10 @@ import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
+import {
+  PAGE_SIZE_MEDIUM,
+  TABLE_ENTITY_PAGE_SIZE_OPTIONS,
+} from '../../../../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS,
@@ -75,7 +78,7 @@ const ModelTab = () => {
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging(PAGE_SIZE_MEDIUM);
 
   const { data: dataModel, permissions } =
     useGenericContext<DashboardDataModel>();
@@ -267,6 +270,7 @@ const ModelTab = () => {
       paging,
       pagingHandler: handleColumnsPageChange,
       onShowSizeChange: handlePageSizeChange,
+      pageSizeOptions: TABLE_ENTITY_PAGE_SIZE_OPTIONS,
     }),
     [
       currentPage,
