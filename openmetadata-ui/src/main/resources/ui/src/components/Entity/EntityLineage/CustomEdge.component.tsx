@@ -218,10 +218,11 @@ export const CustomEdge = ({
     showDqTracing,
     style,
     theme.palette.primary.main,
-    theme.palette.allShades.purple,
+    theme.palette.allShades.indigo,
+    theme.palette.allShades.error,
     isColumnHighlighted,
-    selectedColumn,
     areBothColumnHandlesPresentInCurrentPage,
+    selectedColumn,
   ]);
 
   const shouldShowEdgeIcon = updatedStyle.display === 'block';
