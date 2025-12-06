@@ -1,7 +1,5 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -23,7 +21,13 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
           "tableProfile",
           "joins",
           "changeDescription",
-          "schemaDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel",
+          "schemaDefinition",
+          "tableProfilerConfig",
+          "profile",
+          "location",
+          "queries",
+          "tests",
+          "dataModel",
           "testSuite.changeDescription");
 
   @Override
@@ -77,9 +81,6 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
     doc.put(
         "upstreamEntityRelationship", SearchIndex.populateUpstreamEntityRelationshipData(table));
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
-    if (!nullOrEmpty(table.getQueries())) {
-      doc.put("queries", table.getQueries());
-    }
     doc.put(
         "changeSummary",
         Optional.ofNullable(table.getChangeDescription())
