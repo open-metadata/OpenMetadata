@@ -12,10 +12,11 @@
  */
 
 import { Divider, Link } from '@mui/material';
-import { Avatar, Card, Col, Row, Tabs, Typography } from 'antd';
+import { Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
@@ -32,6 +33,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getColumnNameFromEntityLink } from '../../../../utils/EntityUtils';
 import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -39,49 +41,47 @@ import DataQualitySection from '../../../common/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
+import {
+  DataQualityTabProps,
+  DetailItemProps,
+  FilterStatus,
+  IncidentFilterStatus,
+  IncidentStatusCounts,
+  TestCaseCardProps,
+  TestCaseStatusCounts,
+} from './DataQualityTab.interface';
 import './DataQualityTab.less';
 
-interface DataQualityTabProps {
-  entityFQN: string;
-  entityType: string;
-}
-
-interface TestCaseStatusCounts {
-  success: number;
-  failed: number;
-  aborted: number;
-  ack: number;
-  total: number;
-}
-
-interface IncidentStatusCounts {
-  new: number;
-  assigned: number;
-  resolved: number;
-  ack: number;
-  total: number;
-}
-
-type FilterStatus = 'success' | 'failed' | 'aborted';
-type IncidentFilterStatus = 'new' | 'ack' | 'assigned' | 'resolved';
-
-interface TestCaseCardProps {
-  testCase: TestCase;
-  incident?: TestCaseResolutionStatus;
-}
+const DetailItem: React.FC<DetailItemProps> = ({
+  label,
+  value,
+  showDottedBorder = false,
+}) => (
+  <div
+    className={`test-case-detail-item ${showDottedBorder ? 'dotted-row' : ''}`}>
+    <Typography.Text className="detail-label">{label}</Typography.Text>
+    {typeof value === 'string' ? (
+      <Typography.Text className="detail-value">{value}</Typography.Text>
+    ) : (
+      <div className="detail-value">{value}</div>
+    )}
+  </div>
+);
 
 const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
   const { t } = useTranslation();
 
   const getColumnName = (entityLink: string) => {
-    if (entityLink.includes('::columns::')) {
-      const parts = entityLink.split('::columns::');
+    const isColumn = entityLink.includes('::columns::');
+    if (isColumn) {
+      const name = getColumnNameFromEntityLink(entityLink ?? '');
 
-      return parts.at(-1);
+      return name;
     }
 
     return null;
@@ -117,28 +117,6 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
     return lowerStatus as StatusType;
   };
 
-  const renderAssigneeInfo = () => {
-    const assignee = incident?.testCaseResolutionStatusDetails?.assignee;
-    if (!assignee) {
-      return <Typography.Text className="detail-value">--</Typography.Text>;
-    }
-
-    const avatarText =
-      assignee.displayName?.charAt(0) || assignee.name?.charAt(0) || 'U';
-    const displayName = assignee.displayName || assignee.name || 'Unknown';
-
-    return (
-      <>
-        <Avatar className="assignee-avatar" size={18}>
-          {avatarText}
-        </Avatar>
-        <Typography.Text className="assignee-name">
-          {displayName}
-        </Typography.Text>
-      </>
-    );
-  };
-
   // If incident is provided, use incident data; otherwise use test case data
   const isIncidentMode = !!incident;
 
@@ -157,6 +135,80 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
   const statusBadgeType = isIncidentMode
     ? getStatusBadgeType(status as TestCaseResolutionStatusTypes)
     : getTestCaseStatusType(status as string);
+
+  // Build detail items array for cleaner rendering
+  const detailItems = useMemo(() => {
+    const items: Array<{
+      label: string;
+      value: ReactNode;
+      showDottedBorder: boolean;
+    }> = [];
+
+    if (!isIncidentMode) {
+      // Test case mode: show test type and column name if applicable
+      if (columnName) {
+        items.push({
+          label: t('label.test-type'),
+          value: t('label.column'),
+          showDottedBorder: true, // Always show border before column name
+        });
+        items.push({
+          label: t('label.column-name'),
+          value: columnName,
+          showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
+        });
+      } else {
+        items.push({
+          label: t('label.test-type'),
+          value: t('label.table'),
+          showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
+        });
+      }
+
+      // Add incident if present
+      if (testCase.incidentId) {
+        items.push({
+          label: t('label.incident'),
+          value: (
+            <StatusBadgeV2
+              label="Assigned"
+              showIcon={false}
+              status={StatusType.Warning}
+            />
+          ),
+          showDottedBorder: false, // Last item, no border
+        });
+      }
+    } else {
+      // Incident mode: show severity and assignee
+      const assignee = incident?.testCaseResolutionStatusDetails?.assignee;
+
+      if (severity) {
+        items.push({
+          label: t('label.severity'),
+          value: <Severity hasPermission={false} severity={severity} />,
+          showDottedBorder: true, // Always show border before assignee
+        });
+      }
+
+      items.push({
+        label: t('label.assignee'),
+        value: (
+          <div className="assignee-info">
+            <OwnerLabel
+              owners={assignee ? [assignee] : []}
+              placeHolder={t('label.no-entity', {
+                entity: t('label.assignee'),
+              })}
+            />
+          </div>
+        ),
+        showDottedBorder: false, // Last item, no border
+      });
+    }
+
+    return items;
+  }, [isIncidentMode, columnName, testCase.incidentId, severity, incident, t]);
 
   return (
     <Card
@@ -187,48 +239,14 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
 
         {/* Details Section */}
         <div className="test-case-details">
-          {!isIncidentMode && columnName && (
-            <div className="test-case-detail-item dotted-row">
-              <Typography.Text className="detail-label">
-                {t('label.column')}
-              </Typography.Text>
-              <Typography.Text className="detail-value">
-                {columnName}
-              </Typography.Text>
-            </div>
-          )}
-
-          {isIncidentMode && severity && (
-            <div className="test-case-detail-item dotted-row">
-              <Typography.Text className="detail-label">
-                {t('label.severity')}
-              </Typography.Text>
-              <div className="detail-value">
-                <Severity hasPermission={false} severity={severity} />
-              </div>
-            </div>
-          )}
-
-          <div className="test-case-detail-item">
-            <Typography.Text className="detail-label">
-              {isIncidentMode ? t('label.assignee') : t('label.incident')}
-            </Typography.Text>
-            {isIncidentMode ? (
-              <div className="assignee-info">{renderAssigneeInfo()}</div>
-            ) : (
-              <Typography.Text className="detail-value">
-                {testCase.incidentId ? (
-                  <StatusBadgeV2
-                    label="Assigned"
-                    showIcon={false}
-                    status={StatusType.Warning}
-                  />
-                ) : (
-                  '--'
-                )}
-              </Typography.Text>
-            )}
-          </div>
+          {detailItems.map((item, index) => (
+            <DetailItem
+              key={`${item.label}-${index}`}
+              label={item.label}
+              showDottedBorder={item.showDottedBorder}
+              value={item.value}
+            />
+          ))}
         </div>
       </div>
     </Card>
@@ -716,7 +734,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
               </div>
               <div>
                 <button
-                  className="resolved-section"
+                  className={classNames('resolved-section', {
+                    active: activeIncidentFilter === 'resolved',
+                  })}
                   type="button"
                   onClick={() => handleIncidentFilterChange('resolved')}>
                   <Typography.Text className="resolved-label">

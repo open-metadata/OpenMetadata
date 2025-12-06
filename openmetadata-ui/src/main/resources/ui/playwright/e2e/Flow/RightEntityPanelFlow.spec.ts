@@ -456,7 +456,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(fieldCard).toBeVisible();
 
       const dataTypeBadge = fieldCard.locator(
-        `[data-testid="data-type-badge-${child.dataType}"]`
+        `[data-testid="data-type-text-${child.dataType}"]`
       );
 
       await expect(dataTypeBadge).toBeVisible();
@@ -832,14 +832,15 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(testCaseDetails).toBeVisible();
 
       // Verify column name is shown for column-level test
+      // Look for the detail item with "Column Name" label that contains the actual column name
+      const columnName = (testEntity.entity?.columns as Column[])[0].name;
       const columnDetail = testCaseDetails
         .locator('.test-case-detail-item')
-        .filter({ hasText: /column/i });
+        .filter({ hasText: /column name/i })
+        .filter({ hasText: columnName });
 
       await expect(columnDetail).toBeVisible();
-      await expect(columnDetail).toContainText(
-        (testEntity.entity?.columns as Column[])[0].name
-      );
+      await expect(columnDetail).toContainText(columnName);
 
       // Switch to success filter
 
@@ -1531,7 +1532,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
       await expect(fieldCard).toBeVisible();
 
       const dataTypeBadge = fieldCard.locator(
-        `[data-testid="data-type-badge-${child.dataType}"]`
+        `[data-testid="data-type-text-${child.dataType}"]`
       );
 
       await expect(dataTypeBadge).toBeVisible();
@@ -1796,7 +1797,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
       await expect(fieldCard).toBeVisible();
 
       const dataTypeBadge = fieldCard.locator(
-        `[data-testid="data-type-badge-${child.dataType}"]`
+        `[data-testid="data-type-text-${child.dataType}"]`
       );
 
       await expect(dataTypeBadge).toBeVisible();
