@@ -97,6 +97,7 @@ import {
   EntityNameWithAdditionFields,
 } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { ColumnDetailPanel } from '../ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
@@ -109,6 +110,8 @@ const SchemaTable = () => {
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [editColumn, setEditColumn] = useState<Column>();
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
   const {
     currentPage,
@@ -159,6 +162,7 @@ const SchemaTable = () => {
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editDisplayNamePermission,
+    viewAllPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -672,6 +676,41 @@ const SchemaTable = () => {
     navigate(getEntityBulkEditPath(EntityType.TABLE, decodedEntityFqn));
   };
 
+  const handleColumnClick = (column: Column) => {
+    setSelectedColumn(column);
+    setIsColumnDetailOpen(true);
+  };
+
+  const handleCloseColumnDetail = () => {
+    setIsColumnDetailOpen(false);
+    setSelectedColumn(null);
+  };
+
+  const handleColumnUpdate = (updatedColumn: Column) => {
+    setTableColumns((prev) =>
+      prev.map((col) =>
+        col.fullyQualifiedName === updatedColumn.fullyQualifiedName
+          ? updatedColumn
+          : col
+      )
+    );
+    setSelectedColumn(updatedColumn);
+  };
+
+  const handleColumnNavigate = (column: Column, index: number) => {
+    setSelectedColumn(column);
+  };
+
+  const currentColumnIndex = useMemo(() => {
+    if (!selectedColumn) {
+      return 0;
+    }
+
+    return tableColumns.findIndex(
+      (col) => col.fullyQualifiedName === selectedColumn.fullyQualifiedName
+    );
+  }, [selectedColumn, tableColumns]);
+
   useEffect(() => {
     setExpandedRowKeys(
       getAllRowKeysByKeyName<Column>(tableColumns ?? [], 'fullyQualifiedName')
@@ -755,6 +794,10 @@ const SchemaTable = () => {
           searchProps={searchProps}
           size="middle"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onRow={(record) => ({
+            onClick: () => handleColumnClick(record),
+            style: { cursor: 'pointer' },
+          })}
         />
       </Col>
       {editColumn && (
@@ -785,6 +828,23 @@ const SchemaTable = () => {
           onSave={handleEditColumnData}
         />
       )}
+      <ColumnDetailPanel
+        allColumns={tableColumns}
+        column={selectedColumn}
+        currentColumnIndex={currentColumnIndex}
+        hasEditPermission={{
+          tags: editTagsPermission,
+          glossaryTerms: editGlossaryTermsPermission,
+          description: editDescriptionPermission,
+          viewAllPermission: viewAllPermission,
+        }}
+        isOpen={isColumnDetailOpen}
+        tableConstraints={table?.tableConstraints}
+        tableFqn={tableFqn}
+        onClose={handleCloseColumnDetail}
+        onColumnUpdate={handleColumnUpdate}
+        onNavigate={handleColumnNavigate}
+      />
     </Row>
   );
 };
