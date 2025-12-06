@@ -48,10 +48,16 @@
       "type": "string",
       "default": null
     },
+    "credentialsRef": {
+      "title": "Credentials Reference",
+      "description": "Reference to stored credentials entity for authentication",
+      "$ref": "../../../../type/entityReference.json"
+    },
     "credentials": {
-      "title": "GCP Credentials",
-      "description": "GCP Credentials",
-      "$ref": "../../../../security/credentials/gcpCredentials.json"
+      "title": "GCP Credentials (Legacy)",
+      "description": "GCP Credentials - Use credentialsRef instead for new configurations",
+      "$ref": "../../../../security/credentials/gcpCredentials.json",
+      "deprecated": true
     },
     "includePolicyTags": {
       "title": "Include Policy Tags",
@@ -152,7 +158,8 @@
     }
   },
   "additionalProperties": false,
-  "required": [
-    "credentials"
+  "anyOf": [
+    {"required": ["credentialsRef"]},
+    {"required": ["credentials"]}
   ]
 }
