@@ -33,8 +33,6 @@ import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
-import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
-import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
@@ -164,10 +162,6 @@ export default function EntitySummaryPanel({
         getContainerByFQN(fqn, { fields: commonFields }),
       [EntityType.GLOSSARY_TERM]: (fqn: string) =>
         getGlossaryTermByFQN(fqn, { fields: commonFields }),
-      [EntityType.API_ENDPOINT]: (fqn: string) =>
-        getApiEndPointByFQN(fqn, { fields: commonFields }),
-      [EntityType.API_COLLECTION]: (fqn: string) =>
-        getApiCollectionByFQN(fqn, { fields: commonFields }),
       [EntityType.CHART]: (fqn: string) =>
         getChartByFqn(fqn, { fields: commonFields }),
       [EntityType.METRIC]: (fqn: string) =>
