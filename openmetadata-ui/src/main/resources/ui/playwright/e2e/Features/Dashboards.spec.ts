@@ -215,7 +215,7 @@ test.describe('Data Model', () => {
     });
 
     // Should not show expand icon for non-nested columns
-    expect(
+    await expect(
       page
         .locator('[data-row-key="revenue_metrics_0031"]')
         .getByTestId('expand-icon')

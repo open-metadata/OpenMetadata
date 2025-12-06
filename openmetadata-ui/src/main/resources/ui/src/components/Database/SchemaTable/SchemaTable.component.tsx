@@ -27,7 +27,7 @@ import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
   TABLE_ENTITY_PAGE_SIZE_OPTIONS,
 } from '../../../constants/constants';
 import {
@@ -119,7 +119,7 @@ const SchemaTable = () => {
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE, 'contentListPageSize', 500);
+  } = usePaging(PAGE_SIZE_MEDIUM, 'contentListPageSize', 500);
 
   // Pagination state for columns
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
