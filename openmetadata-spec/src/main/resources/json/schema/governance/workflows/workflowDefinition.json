@@ -89,6 +89,11 @@
       "description": "When `true` indicates the workflow is deployed.",
       "type": "boolean"
     },
+    "suspended": {
+      "description": "When `true` indicates the workflow is suspended and not accepting new executions.",
+      "type": "boolean",
+      "default": false
+    },
     "config": {
       "$ref": "#/definitions/workflowConfiguration"
     },
