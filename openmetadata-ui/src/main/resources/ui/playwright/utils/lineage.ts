@@ -229,8 +229,6 @@ export const connectEdgeBetweenNodes = async (
     `lineage-node-${fromNodeFqn}`,
     `lineage-node-${toNodeFqn}`
   );
-
-  await page.getByTestId(`lineage-node-${toNodeFqn}`).click();
 };
 
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {

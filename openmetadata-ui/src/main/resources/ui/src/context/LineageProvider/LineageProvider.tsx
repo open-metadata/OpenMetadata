@@ -1187,7 +1187,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       setStatus('waiting');
       setLoading(true);
-      setTracedNodes([]);
 
       const targetNode = nodes?.find((n) => target === n.id);
       const sourceNode = nodes?.find((n) => source === n.id);
@@ -1286,6 +1285,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           .finally(() => {
             setStatus('initial');
             setLoading(false);
+            setTracedNodes([]);
           });
       }
     },
