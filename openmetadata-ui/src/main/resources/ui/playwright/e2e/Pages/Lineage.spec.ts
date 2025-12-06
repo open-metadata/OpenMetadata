@@ -161,6 +161,14 @@ for (const EntityClass of entities) {
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
         await page.waitForTimeout(500); // wait for the nodes to settle
 
+        const fromNodeFqn = get(
+          currentEntity,
+          'entityResponseData.fullyQualifiedName'
+        );
+        await page
+          .locator(`[data-testid="lineage-node-${fromNodeFqn}"]`)
+          .click();
+
         for (const entity of entities) {
           await applyPipelineFromModal(page, currentEntity, entity, pipeline);
         }

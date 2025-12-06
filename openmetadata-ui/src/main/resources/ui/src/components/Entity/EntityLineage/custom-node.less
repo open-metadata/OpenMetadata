@@ -175,6 +175,27 @@
       padding-top: 0;
       background-color: @grey-1;
 
+      .inside-current-page-item {
+        margin-top: 0px;
+        display: block;
+        .custom-node-header-column-tracing {
+          display: block;
+        }
+      }
+      .outside-current-page-item:has(.custom-node-column-container) {
+        display: none;
+      }
+      .outside-current-page-item:has(.custom-node-header-column-tracing) {
+        display: block;
+        margin-top: 0px;
+      }
+
+      .outside-current-page-items:has(.custom-node-header-column-tracing) {
+        border-top: 1px solid silver;
+        margin-top: 8px;
+        padding-top: 8px;
+      }
+
       .lineage-collapse-column.ant-collapse {
         border: none;
         border-radius: 0;
@@ -183,10 +204,6 @@
           padding: 4px;
           font-size: 12px;
           display: inherit; // to fix the overflow issue of parent column node, which has children.
-
-          .custom-node-column-container {
-            background-color: @lineage-collapse-header;
-          }
         }
 
         .ant-collapse-content-box {
@@ -204,21 +221,11 @@
         position: relative;
         font-size: 12px;
         font-weight: 400;
-        border: 1px solid transparent;
+        border: 1px solid @grey-1;
         border-left: 6px solid transparent;
         border-radius: 4px;
         border-top-left-radius: 6px;
         border-bottom-left-radius: 6px;
-
-        &:hover {
-          background-color: @primary-1;
-          color: @blue-44;
-          .custom-node-column-label {
-            color: inherit;
-            font-weight: 500;
-          }
-          border-left-color: @primary-color;
-        }
 
         .custom-node-name-container {
           min-width: 0;
@@ -246,6 +253,14 @@
         .ant-skeleton-element {
           .ant-skeleton-button-sm {
             height: 32px; // Height of the skeleton button, to match the height of the column name
+          }
+        }
+      }
+      &:not(.any-column-selected) {
+        .custom-node-column-container {
+          &:hover {
+            background-color: #d1e9ff;
+            border-left-color: #1570ef;
           }
         }
       }
@@ -281,10 +296,6 @@
         }
         .column-container {
           background-color: #eff8ff;
-          .custom-node-column-container.custom-node-header-column-tracing {
-            background-color: #ffffff;
-            border-color: #1570ef;
-          }
         }
       }
       .lineage-node-badge-container {
@@ -339,27 +350,42 @@
     }
   }
 
-  &.columns-expanded {
-    .lineage-node-content {
-      .label-container {
-        .custom-node-label-container {
-          .entity-label-container {
-            &::after {
-              content: none;
-            }
+  .lineage-node-content {
+    .label-container {
+      .custom-node-label-container {
+        .entity-label-container {
+          &::after {
+            content: none;
           }
-          .entity-footer {
-            background-color: @grey-1;
+        }
+        .entity-footer {
+          background-color: @grey-1;
+        }
+      }
+    }
+    .column-container {
+      .custom-node-column-container.custom-node-header-column-tracing {
+        background-color: #d1e9ff;
+        border-left-color: #1570ef;
+        &:hover {
+          background-color: #d1e9ff;
+        }
+      }
+      &.any-column-selected {
+        .custom-node-column-container.custom-node-header-column-tracing {
+          background-color: #e0eaff;
+          border-left-color: #444ce7;
+          &:hover {
+            background-color: #e0eaff;
+            border-left-color: #444ce7;
           }
         }
       }
-      .column-container {
-        .custom-node-column-container.custom-node-header-column-tracing {
-          background-color: #ffffff;
-          border-color: #1570ef;
-          &:hover {
-            background-color: @primary-1;
-          }
+
+      &.creating-edge {
+        .custom-node-column-container:not(.custom-node-header-column-tracing):hover {
+          background-color: #d1e9ff;
+          border-left-color: #1570ef;
         }
       }
     }
@@ -631,4 +657,8 @@
   display: flex;
   gap: 10px;
   margin: 0px;
+}
+
+.react-flow__edge :hover {
+  stroke: @primary-color;
 }
