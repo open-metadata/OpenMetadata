@@ -59,36 +59,79 @@ export const acknowledgeTask = async (data: {
   ).toContainText('Ack');
 };
 
+export const addAssigneeFromPopoverWidget = async (data: {
+  page: Page;
+  user: { name: string; displayName: string };
+}) => {
+  const { page, user } = data;
+  // direct assignment from edit assignee icon
+  await page.click('[data-testid="assignee"] [data-testid="edit-owner"]');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await page.getByRole('tab', { name: 'Users' }).click();
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  const searchUserResponse = page.waitForResponse('/api/v1/search/query?q=*');
+  await page.fill(
+    '[data-testid="owner-select-users-search-bar"]',
+    user.displayName
+  );
+  await searchUserResponse;
+
+  const updateIncident = page.waitForResponse(
+    '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
+  );
+  await page.click(`.ant-popover [title="${user.displayName}"]`);
+  await updateIncident;
+
+  await page.waitForSelector(
+    '[data-testid="assignee"] [data-testid="owner-link"]'
+  );
+
+  await expect(page.locator(`[data-testid=${user.displayName}]`)).toBeVisible();
+};
+
 export const assignIncident = async (data: {
   testCaseName: string;
   page: Page;
   user: { name: string; displayName: string };
+  direct?: boolean; // Whether to update from edit assignee icon or from status dropdown
 }) => {
-  const { testCaseName, page, user } = data;
+  const { testCaseName, page, user, direct = false } = data;
   await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
   await page.waitForLoadState('networkidle');
   await page.waitForSelector(`[data-testid="test-case-${testCaseName}"]`);
-  await page.click(`[data-testid="${testCaseName}-status"]`);
-  await page.getByRole('menuitem', { name: 'Assigned' }).click();
-  await page.waitForSelector(
-    `[data-testid="${testCaseName}-assignee-popover"]`
-  );
-  await page.click('[data-testid="assignee-search-input"]');
+  if (direct) {
+    // direct assignment from edit assignee icon
+    await addAssigneeFromPopoverWidget({ page, user });
+  } else {
+    await page.click(`[data-testid="${testCaseName}-status"]`);
+    await page.getByRole('menuitem', { name: 'Assigned' }).click();
+    await page.waitForSelector(
+      `[data-testid="${testCaseName}-assignee-popover"]`
+    );
+    await page.click('[data-testid="assignee-search-input"]');
 
-  const searchUserResponse = page.waitForResponse(
-    'api/v1/search/query?q=*&index=user_search_index*'
-  );
-  await page.fill(
-    '[data-testid="assignee-search-input"] input',
-    user.displayName
-  );
-  await searchUserResponse;
-  await page.click(`[data-testid="${user.name.toLocaleLowerCase()}"]`);
-  const updateIncident = page.waitForResponse(
-    '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-  );
-  await page.click('[data-testid="submit-assignee-popover-button"]');
-  await updateIncident;
+    const searchUserResponse = page.waitForResponse(
+      'api/v1/search/query?q=*&index=user_search_index*'
+    );
+    await page.fill(
+      '[data-testid="assignee-search-input"] input',
+      user.displayName
+    );
+    await searchUserResponse;
+    await page.click(`[data-testid="${user.name.toLocaleLowerCase()}"]`);
+    const updateIncident = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
+    );
+    await page.click('[data-testid="submit-assignee-popover-button"]');
+    await updateIncident;
+  }
   await page.waitForSelector(
     `[data-testid="${testCaseName}-status"] >> text=Assigned`
   );
