@@ -287,12 +287,12 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    // 50 Row + 1 Header row
+    // 25 Row + 1 Header row (default page size is 25)
     expect(
       page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(51);
+    ).toHaveCount(26);
 
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 72`);
 
     await page.getByTestId('next').click();
 
@@ -300,15 +300,15 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 36`);
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 2 of 72`);
 
     expect(
       page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(51);
+    ).toHaveCount(26);
 
     await page.getByTestId('previous').click();
 
-    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
+    expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 72`);
 
     // Change page size to 15
     await page.getByTestId('page-size-selection-dropdown').click();
