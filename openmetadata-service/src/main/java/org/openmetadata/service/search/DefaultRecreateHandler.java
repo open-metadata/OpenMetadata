@@ -79,6 +79,18 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         // Remove any null or blank aliases
         aliasesToAttach.removeIf(alias -> alias == null || alias.isBlank());
 
+        // Add aliases to new index FIRST before deleting old indices
+        // This ensures the alias always points to a valid index during the swap
+        if (!aliasesToAttach.isEmpty()) {
+          searchClient.addAliases(stagedIndex, aliasesToAttach);
+        }
+        LOG.info(
+            "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
+            stagedIndex,
+            entityType,
+            aliasesToAttach);
+
+        // Now it's safe to delete old indices
         Set<String> allEntityIndices = searchClient.listIndicesByPrefix(canonicalIndex);
         for (String oldIndex : allEntityIndices) {
           if (oldIndex.equals(stagedIndex)) {
@@ -106,20 +118,15 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           }
         }
 
-        if (activeIndex != null && searchClient.indexExists(activeIndex)) {
+        // Only delete activeIndex if it's not the same as canonicalIndex which is now an alias as
+        // added it above
+        if (activeIndex != null
+            && !activeIndex.equals(canonicalIndex)
+            && searchClient.indexExists(activeIndex)) {
           searchClient.deleteIndex(activeIndex);
           LOG.info(
               "Deleted previously active index '{}' for entity '{}'.", activeIndex, entityType);
         }
-
-        if (!aliasesToAttach.isEmpty()) {
-          searchClient.addAliases(stagedIndex, aliasesToAttach);
-        }
-        LOG.info(
-            "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
-            stagedIndex,
-            entityType,
-            aliasesToAttach);
       } catch (Exception ex) {
         LOG.error(
             "Failed to promote staged index '{}' for entity '{}'.", stagedIndex, entityType, ex);

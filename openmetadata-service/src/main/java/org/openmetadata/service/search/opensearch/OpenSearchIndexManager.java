@@ -12,8 +12,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.HealthStatus;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.mapping.TypeMapping;
+import os.org.opensearch.client.opensearch.cluster.HealthRequest;
+import os.org.opensearch.client.opensearch.cluster.HealthResponse;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import os.org.opensearch.client.opensearch.indices.CreateIndexResponse;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexRequest;
@@ -408,5 +411,45 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       LOG.error("Failed to list indices by prefix {} due to", prefix, e);
     }
     return indices;
+  }
+
+  @Override
+  public boolean waitForIndexReady(String indexName, int timeoutSeconds) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot wait for index.");
+      return false;
+    }
+
+    LOG.info("Waiting for index '{}' to become ready (timeout: {}s)", indexName, timeoutSeconds);
+
+    try {
+      HealthRequest healthRequest =
+          HealthRequest.of(
+              h ->
+                  h.index(indexName)
+                      .waitForStatus(HealthStatus.Yellow)
+                      .timeout(t -> t.time(timeoutSeconds + "s")));
+
+      HealthResponse healthResponse = client.cluster().health(healthRequest);
+
+      boolean isReady =
+          healthResponse.status() == HealthStatus.Green
+              || healthResponse.status() == HealthStatus.Yellow;
+
+      if (isReady) {
+        LOG.info("Index '{}' is ready with status: {}", indexName, healthResponse.status());
+      } else {
+        LOG.warn(
+            "Index '{}' not ready after {}s, status: {}",
+            indexName,
+            timeoutSeconds,
+            healthResponse.status());
+      }
+
+      return isReady;
+    } catch (Exception e) {
+      LOG.error("Failed to wait for index '{}' readiness: {}", indexName, e.getMessage(), e);
+      return false;
+    }
   }
 }
