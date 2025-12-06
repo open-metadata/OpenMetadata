@@ -42,7 +42,7 @@ from metadata.ingestion.source.api.api_service import ApiServiceSource
 from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
 from metadata.ingestion.source.api.rest.parser import parse_openapi_schema
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_collection
+from metadata.utils.filters import filter_by_api_endpoint, filter_by_collection
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -146,29 +146,46 @@ class RestSource(ApiServiceSource):
                     )
                     if not endpoint:
                         continue
-                    yield Either(
-                        right=CreateAPIEndpointRequest(
-                            name=endpoint.name,
-                            displayName=endpoint.display_name,
-                            description=endpoint.description,
-                            endpointURL=endpoint.url,
-                            requestMethod=self._get_api_request_method(method_type),
-                            requestSchema=self._get_request_schema(info),
-                            responseSchema=self._get_response_schema(info),
-                            apiCollection=FullyQualifiedEntityName(
-                                fqn.build(
-                                    self.metadata,
-                                    entity_type=APICollection,
-                                    service_name=self.context.get().api_service,
-                                    api_collection_name=collection.name.root,
-                                )
-                            ),
-                        )
+
+                    # Apply endpoint filtering
+                    endpoint_name = (
+                        endpoint.name.root
+                        if hasattr(endpoint.name, "root")
+                        else endpoint.name
                     )
+                    logger.debug(
+                        f"DEBUG: Checking endpoint '{endpoint_name}' with filter pattern: {self.source_config.apiEndpointFilterPattern}"
+                    )
+                    if filter_by_api_endpoint(
+                        self.source_config.apiEndpointFilterPattern,
+                        endpoint_name,
+                    ):
+                        self.status.filter(endpoint_name, "API Endpoint filtered out")
+                        continue
+
+                    endpoint_request = CreateAPIEndpointRequest(
+                        name=endpoint.name,
+                        displayName=endpoint.display_name,
+                        description=endpoint.description,
+                        endpointURL=endpoint.url,
+                        requestMethod=self._get_api_request_method(method_type),
+                        requestSchema=self._get_request_schema(info),
+                        responseSchema=self._get_response_schema(info),
+                        apiCollection=FullyQualifiedEntityName(
+                            fqn.build(
+                                self.metadata,
+                                entity_type=APICollection,
+                                service_name=self.context.get().api_service,
+                                api_collection_name=collection.name.root,
+                            )
+                        ),
+                    )
+                    yield Either(right=endpoint_request)
+                    self.register_record_api_endpoint(endpoint_request=endpoint_request)
                 except Exception as exc:  # pylint: disable=broad-except
                     yield Either(
                         left=StackTraceError(
-                            name=endpoint.name,
+                            name=endpoint.name if endpoint else "unknown",
                             error=f"Error creating API Endpoint request [{info.get('operationId')}]: {exc}",
                             stackTrace=traceback.format_exc(),
                         )
