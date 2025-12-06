@@ -110,6 +110,10 @@ export interface Directory {
      */
     path?: string;
     /**
+     * Reviewers of this directory.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to the drive service this directory belongs to
      */
     service: EntityReference;

@@ -104,6 +104,10 @@ export interface Pipeline {
      */
     pipelineStatus?: PipelineStatus;
     /**
+     * Reviewers of this pipeline.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Scheduler Interval for the pipeline in cron format.
      */
     scheduleInterval?: string;
