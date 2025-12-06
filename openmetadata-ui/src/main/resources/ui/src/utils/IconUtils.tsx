@@ -34,6 +34,7 @@ import {
   Home02,
   Image01,
   Laptop01,
+  LayersThree01,
   Link01,
   Lock01,
   Mail01,
@@ -102,6 +103,7 @@ export const ICON_MAP: Record<
   Rss01: Rss01,
   Browser: Browser,
   Calendar: Calendar,
+  LayersThree01: LayersThree01,
 };
 
 /**
