@@ -368,7 +368,7 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
 
 export const checkTeamTabCount = async (page: Page) => {
   const fetchResponse = page.waitForResponse(
-    '/api/v1/teams/name/*?fields=*childrenCount*include=all'
+    '/api/v1/teams?parentTeam=Organization&include=non-deleted&fields=**'
   );
 
   await settingClick(page, GlobalSettingOptions.TEAMS);
@@ -376,11 +376,13 @@ export const checkTeamTabCount = async (page: Page) => {
   const response = await fetchResponse;
   const jsonRes = await response.json();
 
+  const childrenCount = jsonRes.data?.length ?? 0;
+
   await expect(
     page.locator(
       '[data-testid="teams"] [data-testid="count"] [data-testid="filter-count"]'
     )
-  ).toContainText(jsonRes.childrenCount.toString());
+  ).toContainText(childrenCount.toString());
 };
 
 export const addEmailTeam = async (page: Page, email: string) => {
