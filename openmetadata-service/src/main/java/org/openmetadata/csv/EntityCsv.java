@@ -131,6 +131,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected final CsvImportResult importResult = new CsvImportResult();
   protected boolean processRecord; // When set to false record processing is discontinued
   protected final Map<String, T> dryRunCreatedEntities = new HashMap<>();
+  private final Map<Integer, Boolean> columnRecordCreateStatus = new HashMap<>();
   protected final String importedBy;
   protected int recordIndex = 0;
 
@@ -712,6 +713,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static String[] getResultHeaders(List<CsvHeader> csvHeaders) {
     List<String> importResultsCsvHeader = listOf(IMPORT_STATUS_HEADER, IMPORT_STATUS_DETAILS);
     importResultsCsvHeader.addAll(CsvUtil.getHeaders(csvHeaders));
+    importResultsCsvHeader.add("changeDescription");
     return importResultsCsvHeader.toArray(new String[0]);
   }
 
@@ -1391,7 +1393,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       LOG.warn("column not found, will be created");
     }
     if (column == null) columnExists = false;
-
+    columnRecordCreateStatus.put((int) csvRecord.getRecordNumber(), !columnExists);
     if (!columnExists) {
       column =
           new Column()
@@ -1481,7 +1483,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
       try {
         JsonPatch jsonPatch = JsonUtils.getJsonPatch(original, updated);
         tableRepo.patch(null, updated.getId(), importedBy, jsonPatch);
-        importSuccess(printer, csvRecord, ENTITY_UPDATED);
+        boolean isCreated =
+            columnRecordCreateStatus.getOrDefault((int) csvRecord.getRecordNumber(), false);
+        String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
+        importSuccess(printer, csvRecord, status);
       } catch (Exception ex) {
         importFailure(printer, ex.getMessage(), csvRecord);
         importResult.setStatus(ApiStatus.FAILURE);
@@ -1496,7 +1501,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
       if (existing == null) {
         dryRunCreatedEntities.put(updated.getFullyQualifiedName(), (T) updated);
       }
-      importSuccess(printer, csvRecord, ENTITY_UPDATED);
+      boolean isCreated =
+          columnRecordCreateStatus.getOrDefault((int) csvRecord.getRecordNumber(), false);
+      String status = isCreated ? ENTITY_CREATED : ENTITY_UPDATED;
+      importSuccess(printer, csvRecord, status);
     }
   }
 
@@ -1630,6 +1638,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
     List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
     recordList.addAll(inputRecord.toList());
+    recordList.add(""); // Empty changeDescription column for consistency
     printer.printRecord(recordList);
     importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
     importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
@@ -1639,6 +1648,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       throws IOException {
     List<String> recordList = listOf(IMPORT_FAILED, failedReason);
     recordList.addAll(inputRecord.toList());
+    recordList.add(""); // Empty changeDescription column for consistency
     printer.printRecord(recordList);
     importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
     importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);

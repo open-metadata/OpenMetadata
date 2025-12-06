@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
@@ -36,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -1473,135 +1475,318 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TEST_CASE, false);
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
 
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
+
     TestCaseCsv(String user) {
       super(TEST_CASE, HEADERS, user);
     }
 
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
+    }
+
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
-      // Process each test case record using getNextRecord to increment recordIndex
-      while (recordIndex < csvRecords.size()) {
-        CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-        if (csvRecord == null) {
-          return; // Error has already been logged by getNextRecord
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) {
+        return;
+      }
+
+      try {
+        // Parse CSV record
+        String name = csvRecord.get(0);
+        String displayName = nullOrEmpty(csvRecord.get(1)) ? null : csvRecord.get(1);
+        String description = nullOrEmpty(csvRecord.get(2)) ? null : csvRecord.get(2);
+        String testDefinitionFqn = csvRecord.get(3);
+        String entityFQN = csvRecord.get(4);
+        String testSuiteFqn = nullOrEmpty(csvRecord.get(5)) ? null : csvRecord.get(5);
+        String parameterValuesStr = nullOrEmpty(csvRecord.get(6)) ? null : csvRecord.get(6);
+        String computePassedFailedRowCountStr =
+            nullOrEmpty(csvRecord.get(7)) ? null : csvRecord.get(7);
+        String useDynamicAssertionStr = nullOrEmpty(csvRecord.get(8)) ? null : csvRecord.get(8);
+        String inspectionQuery = nullOrEmpty(csvRecord.get(9)) ? null : csvRecord.get(9);
+
+        // Convert entityFQN to EntityLink
+        String entityLink = convertFQNToEntityLink(entityFQN);
+
+        // Compute test case FQN
+        EntityLink parsedLink = EntityLink.parse(entityLink);
+        String testCaseFqn =
+            FullyQualifiedName.add(
+                parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
+
+        // Check if test case exists
+        TestCase existingTestCase;
+        boolean testCaseExists;
+        try {
+          existingTestCase =
+              Entity.getEntityByName(
+                  TEST_CASE,
+                  testCaseFqn,
+                  "id,displayName,description,testDefinition,testSuite,parameterValues,computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags",
+                  Include.NON_DELETED);
+          testCaseExists = true;
+        } catch (EntityNotFoundException ex) {
+          existingTestCase = new TestCase().withName(name).withEntityLink(entityLink);
+          testCaseExists = false;
         }
 
+        // Store create status with null check
+        int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+        if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+          recordCreateStatusArray[recordIndex] = !testCaseExists;
+        }
+
+        List<FieldChange> fieldsAdded = new ArrayList<>();
+        List<FieldChange> fieldsUpdated = new ArrayList<>();
+
+        // Get test definition
+        TestDefinition testDefinition =
+            Entity.getEntityByName(TEST_DEFINITION, testDefinitionFqn, "", Include.NON_DELETED);
+        EntityReference testDefRef = testDefinition.getEntityReference();
+
+        // Parse parameter values and other fields
+        List<TestCaseParameterValue> parameterValues = parseParameterValues(parameterValuesStr);
+        Boolean computePassedFailedRowCount =
+            computePassedFailedRowCountStr != null
+                ? Boolean.parseBoolean(computePassedFailedRowCountStr)
+                : null;
+        Boolean useDynamicAssertion =
+            useDynamicAssertionStr != null ? Boolean.parseBoolean(useDynamicAssertionStr) : null;
+        List<TagLabel> tagLabels =
+            getTagLabels(
+                printer,
+                csvRecord,
+                List.of(
+                    Pair.of(10, TagLabel.TagSource.CLASSIFICATION),
+                    Pair.of(11, TagLabel.TagSource.GLOSSARY)));
+
+        // Track field changes
+        if (!testCaseExists) {
+          // New test case - all fields are added
+          if (!nullOrEmpty(displayName)) {
+            fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(displayName));
+          }
+          if (!nullOrEmpty(description)) {
+            fieldsAdded.add(new FieldChange().withName("description").withNewValue(description));
+          }
+          fieldsAdded.add(
+              new FieldChange()
+                  .withName("testDefinition")
+                  .withNewValue(JsonUtils.pojoToJson(testDefRef)));
+          if (!nullOrEmpty(parameterValues)) {
+            fieldsAdded.add(
+                new FieldChange()
+                    .withName("parameterValues")
+                    .withNewValue(JsonUtils.pojoToJson(parameterValues)));
+          }
+          if (computePassedFailedRowCount != null) {
+            fieldsAdded.add(
+                new FieldChange()
+                    .withName("computePassedFailedRowCount")
+                    .withNewValue(computePassedFailedRowCount));
+          }
+          if (useDynamicAssertion != null) {
+            fieldsAdded.add(
+                new FieldChange()
+                    .withName("useDynamicAssertion")
+                    .withNewValue(useDynamicAssertion));
+          }
+          if (!nullOrEmpty(inspectionQuery)) {
+            fieldsAdded.add(
+                new FieldChange().withName("inspectionQuery").withNewValue(inspectionQuery));
+          }
+          if (!nullOrEmpty(tagLabels)) {
+            fieldsAdded.add(
+                new FieldChange().withName("tags").withNewValue(JsonUtils.pojoToJson(tagLabels)));
+          }
+        } else {
+          // Existing test case - compare and track updates
+          if (!Objects.equals(existingTestCase.getDisplayName(), displayName)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("displayName")
+                    .withOldValue(existingTestCase.getDisplayName())
+                    .withNewValue(displayName));
+          }
+          if (!Objects.equals(existingTestCase.getDescription(), description)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("description")
+                    .withOldValue(existingTestCase.getDescription())
+                    .withNewValue(description));
+          }
+          if (!Objects.equals(existingTestCase.getTestDefinition(), testDefRef)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("testDefinition")
+                    .withOldValue(JsonUtils.pojoToJson(existingTestCase.getTestDefinition()))
+                    .withNewValue(JsonUtils.pojoToJson(testDefRef)));
+          }
+          if (!Objects.equals(existingTestCase.getParameterValues(), parameterValues)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("parameterValues")
+                    .withOldValue(JsonUtils.pojoToJson(existingTestCase.getParameterValues()))
+                    .withNewValue(JsonUtils.pojoToJson(parameterValues)));
+          }
+          if (computePassedFailedRowCount != null
+              && !Objects.equals(
+                  existingTestCase.getComputePassedFailedRowCount(), computePassedFailedRowCount)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("computePassedFailedRowCount")
+                    .withOldValue(existingTestCase.getComputePassedFailedRowCount())
+                    .withNewValue(computePassedFailedRowCount));
+          }
+          if (useDynamicAssertion != null
+              && !Objects.equals(existingTestCase.getUseDynamicAssertion(), useDynamicAssertion)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("useDynamicAssertion")
+                    .withOldValue(existingTestCase.getUseDynamicAssertion())
+                    .withNewValue(useDynamicAssertion));
+          }
+          if (!Objects.equals(existingTestCase.getInspectionQuery(), inspectionQuery)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("inspectionQuery")
+                    .withOldValue(existingTestCase.getInspectionQuery())
+                    .withNewValue(inspectionQuery));
+          }
+          if (!Objects.equals(existingTestCase.getTags(), tagLabels)) {
+            fieldsUpdated.add(
+                new FieldChange()
+                    .withName("tags")
+                    .withOldValue(JsonUtils.pojoToJson(existingTestCase.getTags()))
+                    .withNewValue(JsonUtils.pojoToJson(tagLabels)));
+          }
+        }
+
+        ChangeDescription changeDescription = new ChangeDescription();
+        if (!fieldsAdded.isEmpty()) {
+          changeDescription.setFieldsAdded(fieldsAdded);
+        }
+        if (!fieldsUpdated.isEmpty()) {
+          changeDescription.setFieldsUpdated(fieldsUpdated);
+        }
+        // Store change description with null check
+        if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+          recordFieldChangesArray[recordIndex] = changeDescription;
+        }
+
+        // Build complete test case
+        TestCase testCase =
+            existingTestCase
+                .withDisplayName(displayName)
+                .withDescription(description)
+                .withTestDefinition(testDefRef)
+                .withEntityLink(entityLink)
+                .withParameterValues(parameterValues)
+                .withComputePassedFailedRowCount(computePassedFailedRowCount)
+                .withUseDynamicAssertion(useDynamicAssertion)
+                .withInspectionQuery(inspectionQuery)
+                .withTags(tagLabels);
+
+        // Handle test suite
+        TestCaseRepository repository = (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+        if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
+          try {
+            TestSuite testSuite =
+                Entity.getEntityByName(TEST_SUITE, testSuiteFqn, "", Include.NON_DELETED);
+            testCase.withTestSuite(testSuite.getEntityReference());
+          } catch (EntityNotFoundException e) {
+            importFailure(
+                printer, String.format("Test suite '%s' not found", testSuiteFqn), csvRecord);
+            importResult.withStatus(ApiStatus.ABORTED);
+            return;
+          }
+        } else {
+          EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
+          testCase.withTestSuite(testSuite);
+        }
+
+        // Set required fields
+        testCase.setFullyQualifiedName(testCaseFqn);
+        testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
+        if (testCase.getId() == null) {
+          testCase.setId(UUID.randomUUID());
+        }
+        if (testCase.getUpdatedAt() == null) {
+          testCase.setUpdatedAt(System.currentTimeMillis());
+        }
+        if (testCase.getUpdatedBy() == null) {
+          testCase.setUpdatedBy(importedBy);
+        }
+
+        if (processRecord) {
+          createEntityWithChangeDescription(printer, csvRecord, testCase);
+        }
+
+      } catch (Exception ex) {
+        importFailure(printer, ex.getMessage(), csvRecord);
+        importResult.withStatus(ApiStatus.FAILURE);
+      }
+    }
+
+    private void createEntityWithChangeDescription(
+        CSVPrinter printer, CSVRecord csvRecord, TestCase testCase) throws IOException {
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      boolean isCreated =
+          recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length
+              ? recordCreateStatusArray[recordIndex]
+              : false;
+      ChangeDescription changeDescription =
+          recordFieldChangesArray != null
+                  && recordIndex < recordFieldChangesArray.length
+                  && recordFieldChangesArray[recordIndex] != null
+              ? recordFieldChangesArray[recordIndex]
+              : new ChangeDescription();
+
+      String status = isCreated ? "EntityCreated" : "EntityUpdated";
+
+      if (!Boolean.TRUE.equals(importResult.getDryRun())) {
         try {
-          // Parse CSV record
-          String name = csvRecord.get(0);
-          String displayName = nullOrEmpty(csvRecord.get(1)) ? null : csvRecord.get(1);
-          String description = nullOrEmpty(csvRecord.get(2)) ? null : csvRecord.get(2);
-          String testDefinitionFqn = csvRecord.get(3);
-          String entityFQN = csvRecord.get(4);
-          String testSuiteFqn = nullOrEmpty(csvRecord.get(5)) ? null : csvRecord.get(5);
-          String parameterValuesStr = nullOrEmpty(csvRecord.get(6)) ? null : csvRecord.get(6);
-          String computePassedFailedRowCountStr =
-              nullOrEmpty(csvRecord.get(7)) ? null : csvRecord.get(7);
-          String useDynamicAssertionStr = nullOrEmpty(csvRecord.get(8)) ? null : csvRecord.get(8);
-          String inspectionQuery = nullOrEmpty(csvRecord.get(9)) ? null : csvRecord.get(9);
-
-          // Convert entityFQN to EntityLink
-          String entityLink = convertFQNToEntityLink(entityFQN);
-
-          // Get test definition
-          TestDefinition testDefinition =
-              Entity.getEntityByName(TEST_DEFINITION, testDefinitionFqn, "", Include.NON_DELETED);
-
-          // Parse parameter values
-          List<TestCaseParameterValue> parameterValues = parseParameterValues(parameterValuesStr);
-
-          // Create test case
-          TestCase testCase = new TestCase();
-          testCase.withName(name);
-          testCase.withDisplayName(displayName);
-          testCase.withDescription(description);
-          testCase.withTestDefinition(testDefinition.getEntityReference());
-          testCase.withEntityLink(entityLink);
-          testCase.withParameterValues(parameterValues);
-
-          if (computePassedFailedRowCountStr != null) {
-            testCase.withComputePassedFailedRowCount(
-                Boolean.parseBoolean(computePassedFailedRowCountStr));
-          }
-          if (useDynamicAssertionStr != null) {
-            testCase.withUseDynamicAssertion(Boolean.parseBoolean(useDynamicAssertionStr));
-          }
-          if (inspectionQuery != null) {
-            testCase.withInspectionQuery(inspectionQuery);
-          }
-
-          // Parse and set tags and glossary terms
-          List<TagLabel> tagLabels =
-              getTagLabels(
-                  printer,
-                  csvRecord,
-                  List.of(
-                      Pair.of(10, TagLabel.TagSource.CLASSIFICATION),
-                      Pair.of(11, TagLabel.TagSource.GLOSSARY)));
-          testCase.withTags(tagLabels);
-
-          // Get repository instance first
           TestCaseRepository repository =
               (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
-
-          // Get test suite if provided, otherwise get or create default test suite
-          if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
-            try {
-              TestSuite testSuite =
-                  Entity.getEntityByName(TEST_SUITE, testSuiteFqn, "", Include.NON_DELETED);
-              testCase.withTestSuite(testSuite.getEntityReference());
-            } catch (EntityNotFoundException e) {
-              importFailure(
-                  printer, String.format("Test suite '%s' not found", testSuiteFqn), csvRecord);
-              importResult.withStatus(ApiStatus.ABORTED);
-              continue;
-            }
-          } else {
-            // No test suite provided - get or create the default basic test suite
-            EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
-            testCase.withTestSuite(testSuite);
-          }
-
-          // Compute and set FQN manually (same logic as setFullyQualifiedName)
-          EntityLink parsedLink = EntityLink.parse(entityLink);
-          String testCaseFqn =
-              FullyQualifiedName.add(
-                  parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
-          testCase.setFullyQualifiedName(testCaseFqn);
-          testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
-
-          // Set required fields for new entities - createOrUpdateForImport doesn't call
-          // prepareInternal which would normally set these
-          if (testCase.getId() == null) {
-            testCase.setId(UUID.randomUUID());
-          }
-          if (testCase.getUpdatedAt() == null) {
-            testCase.setUpdatedAt(System.currentTimeMillis());
-          }
-          if (testCase.getUpdatedBy() == null) {
-            testCase.setUpdatedBy(importedBy);
-          }
-
-          if (!importResult.getDryRun()) {
-            // Use createOrUpdateForImport which handles both create and update
-            RestUtil.PutResponse<TestCase> response =
-                repository.createOrUpdateForImport(null, testCase, importedBy);
-            if (response.getStatus() == Response.Status.CREATED) {
-              importSuccess(printer, csvRecord, ENTITY_CREATED);
-            } else {
-              importSuccess(printer, csvRecord, ENTITY_UPDATED);
-            }
-          } else {
-            // Dry run - just validate
-            repository.prepareInternal(testCase, true);
-            importSuccess(printer, csvRecord, ENTITY_CREATED);
-          }
-
+          repository.createOrUpdate(null, testCase, importedBy);
         } catch (Exception ex) {
           importFailure(printer, ex.getMessage(), csvRecord);
-          importResult.withStatus(ApiStatus.FAILURE);
+          importResult.setStatus(ApiStatus.FAILURE);
+          return;
         }
       }
+      importSuccessWithChangeDescription(printer, csvRecord, status, changeDescription);
+    }
+
+    private void importSuccessWithChangeDescription(
+        CSVPrinter printer,
+        CSVRecord inputRecord,
+        String successDetails,
+        ChangeDescription changeDescription)
+        throws IOException {
+      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
+      recordList.addAll(inputRecord.toList());
+
+      if (changeDescription != null) {
+        recordList.add(JsonUtils.pojoToJson(changeDescription));
+      } else {
+        recordList.add("");
+      }
+
+      printer.printRecord(recordList);
+      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     @Override

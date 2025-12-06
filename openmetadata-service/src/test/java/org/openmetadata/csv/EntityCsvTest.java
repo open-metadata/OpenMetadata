@@ -92,12 +92,14 @@ public class EntityCsvTest {
   }
 
   public static String getSuccessRecord(String record, String successDetails) {
-    return String.format("%s,%s,%s", EntityCsv.IMPORT_SUCCESS, successDetails, record);
+    return String.format(
+        "%s,%s,%s,\"{\"\"fieldsAdded\"\":[],\"\"fieldsUpdated\"\":[],\"\"fieldsDeleted\"\":[],\"\"previousVersion\"\":0.1}\"",
+        EntityCsv.IMPORT_SUCCESS, successDetails, record);
   }
 
   public static String getFailedRecord(String record, String errorDetails) {
     errorDetails = StringEscapeUtils.escapeCsv(errorDetails);
-    String format = errorDetails.startsWith("\"") ? "%s,%s,%s" : "%s,\"%s\",%s";
+    String format = errorDetails.startsWith("\"") ? "%s,%s,%s," : "%s,\"%s\",%s,";
     return String.format(format, EntityCsv.IMPORT_FAILED, errorDetails, record);
   }
 

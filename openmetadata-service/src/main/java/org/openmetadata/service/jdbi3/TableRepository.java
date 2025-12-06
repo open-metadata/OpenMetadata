@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -76,6 +77,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
@@ -85,6 +87,7 @@ import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityProfile;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.PipelineObservability;
@@ -1849,10 +1852,25 @@ public class TableRepository extends EntityRepository<Table> {
     public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
 
     private final Table table;
+    private boolean[] recordCreateStatusArray;
+    private ChangeDescription[] recordFieldChangesArray;
 
     TableCsv(Table table, String user) {
       super(TABLE, HEADERS, user);
       this.table = table;
+    }
+
+    private void initializeArrays(int csvRecordCount) {
+      recordCreateStatusArray = new boolean[csvRecordCount];
+      recordFieldChangesArray = new ChangeDescription[csvRecordCount];
+    }
+
+    @Override
+    public CsvImportResult importCsv(List<CSVRecord> records, boolean dryRun) throws IOException {
+      if (records != null && !records.isEmpty()) {
+        initializeArrays(records.size());
+      }
+      return super.importCsv(records, dryRun);
     }
 
     @Override
@@ -1905,14 +1923,64 @@ public class TableRepository extends EntityRepository<Table> {
       }
 
       for (int i = 1; i < records.size(); i++) {
-        importSuccess(resultsPrinter, records.get(i), ENTITY_UPDATED);
+        CSVRecord record = records.get(i);
+        boolean isCreated =
+            recordCreateStatusArray != null
+                && i < recordCreateStatusArray.length
+                && recordCreateStatusArray[i];
+        ChangeDescription changeDescription =
+            recordFieldChangesArray != null
+                    && i < recordFieldChangesArray.length
+                    && recordFieldChangesArray[i] != null
+                ? recordFieldChangesArray[i]
+                : new ChangeDescription();
+        String status;
+        if (isCreated) {
+          status = ENTITY_CREATED;
+        } else {
+          status = ENTITY_UPDATED;
+        }
+
+        importSuccessWithChangeDescription(resultsPrinter, record, status, changeDescription);
       }
+    }
+
+    // Enhanced import success that includes ChangeDescription
+    private void importSuccessWithChangeDescription(
+        CSVPrinter printer,
+        CSVRecord inputRecord,
+        String successDetails,
+        ChangeDescription changeDescription)
+        throws IOException {
+      List<String> recordList = listOf(IMPORT_SUCCESS, successDetails);
+      recordList.addAll(inputRecord.toList());
+
+      // Add structured change description as JSON at the end
+      if (changeDescription != null) {
+        recordList.add(JsonUtils.pojoToJson(changeDescription));
+      } else {
+        recordList.add("");
+      }
+
+      printer.printRecord(recordList);
+      importResult.withNumberOfRowsProcessed((int) inputRecord.getRecordNumber());
+      importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
     }
 
     public void updateColumnsFromCsv(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
       String columnFqn = csvRecord.get(0);
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;
+      // Store create status with null check
+      int recordIndex = (int) csvRecord.getRecordNumber() - 1;
+      if (recordCreateStatusArray != null && recordIndex < recordCreateStatusArray.length) {
+        recordCreateStatusArray[recordIndex] = !columnExists;
+      }
+
+      // Track field changes for Phase 2 using ChangeDescription structure
+      List<FieldChange> fieldsAdded = new ArrayList<>();
+      List<FieldChange> fieldsUpdated = new ArrayList<>();
+
       if (!columnExists) {
         // Create Column, if not found
         column =
@@ -1920,7 +1988,115 @@ public class TableRepository extends EntityRepository<Table> {
                 .withName(getLocalColumnName(table.getFullyQualifiedName(), columnFqn))
                 .withFullyQualifiedName(
                     table.getFullyQualifiedName() + Entity.SEPARATOR + columnFqn);
+
+        // For new columns, all non-null fields are "added"
+        if (!nullOrEmpty(csvRecord.get(1))) {
+          fieldsAdded.add(new FieldChange().withName("displayName").withNewValue(csvRecord.get(1)));
+        }
+        if (!nullOrEmpty(csvRecord.get(2))) {
+          fieldsAdded.add(new FieldChange().withName("description").withNewValue(csvRecord.get(2)));
+        }
+        if (!nullOrEmpty(csvRecord.get(4))) {
+          fieldsAdded.add(new FieldChange().withName("dataType").withNewValue(csvRecord.get(4)));
+        }
+      } else {
+        // Compare existing values with CSV values to track changes with actual values
+        String newDisplayName = csvRecord.get(1);
+        if (!Objects.equals(column.getDisplayName(), newDisplayName)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("displayName")
+                  .withOldValue(column.getDisplayName())
+                  .withNewValue(newDisplayName));
+        }
+
+        String newDescription = csvRecord.get(2);
+        if (!Objects.equals(column.getDescription(), newDescription)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("description")
+                  .withOldValue(column.getDescription())
+                  .withNewValue(newDescription));
+        }
+
+        String newDataTypeDisplay = csvRecord.get(3);
+        if (!Objects.equals(column.getDataTypeDisplay(), newDataTypeDisplay)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("dataTypeDisplay")
+                  .withOldValue(column.getDataTypeDisplay())
+                  .withNewValue(newDataTypeDisplay));
+        }
+
+        ColumnDataType newDataType =
+            nullOrEmpty(csvRecord.get(4)) ? null : ColumnDataType.fromValue(csvRecord.get(4));
+        if (!Objects.equals(column.getDataType(), newDataType)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("dataType")
+                  .withOldValue(
+                      column.getDataType() == null ? null : column.getDataType().toString())
+                  .withNewValue(newDataType == null ? null : newDataType.toString()));
+        }
+
+        ColumnDataType newArrayDataType =
+            nullOrEmpty(csvRecord.get(5)) ? null : ColumnDataType.fromValue(csvRecord.get(5));
+        if (!Objects.equals(column.getArrayDataType(), newArrayDataType)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("arrayDataType")
+                  .withOldValue(
+                      column.getArrayDataType() == null
+                          ? null
+                          : column.getArrayDataType().toString())
+                  .withNewValue(newArrayDataType == null ? null : newArrayDataType.toString()));
+        }
+
+        Integer newDataLength =
+            nullOrEmpty(csvRecord.get(6)) ? null : Integer.parseInt(csvRecord.get(6));
+        if (!Objects.equals(column.getDataLength(), newDataLength)) {
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("dataLength")
+                  .withOldValue(
+                      column.getDataLength() == null ? null : column.getDataLength().toString())
+                  .withNewValue(newDataLength == null ? null : newDataLength.toString()));
+        }
+
+        List<TagLabel> newTagLabels =
+            getTagLabels(
+                printer,
+                csvRecord,
+                List.of(
+                    Pair.of(7, TagLabel.TagSource.CLASSIFICATION),
+                    Pair.of(8, TagLabel.TagSource.GLOSSARY)));
+        if (!Objects.equals(column.getTags(), newTagLabels)) {
+          // Convert tag lists to JSON for proper storage in FieldChange
+          String oldTagsJson =
+              column.getTags() == null ? null : JsonUtils.pojoToJson(column.getTags());
+          String newTagsJson = newTagLabels == null ? null : JsonUtils.pojoToJson(newTagLabels);
+          fieldsUpdated.add(
+              new FieldChange()
+                  .withName("tags")
+                  .withOldValue(oldTagsJson)
+                  .withNewValue(newTagsJson));
+        }
       }
+
+      // Create ChangeDescription object and store for this record
+      ChangeDescription changeDescription = new ChangeDescription();
+      if (!fieldsAdded.isEmpty()) {
+        changeDescription.setFieldsAdded(fieldsAdded);
+      }
+      if (!fieldsUpdated.isEmpty()) {
+        changeDescription.setFieldsUpdated(fieldsUpdated);
+      }
+      // Store change description with null check
+      if (recordFieldChangesArray != null && recordIndex < recordFieldChangesArray.length) {
+        recordFieldChangesArray[recordIndex] = changeDescription;
+      }
+
+      // Apply the updates
       column.withDisplayName(csvRecord.get(1));
       column.withDescription(csvRecord.get(2));
       column.withDataTypeDisplay(csvRecord.get(3));
