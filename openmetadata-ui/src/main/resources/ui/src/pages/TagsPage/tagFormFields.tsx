@@ -69,10 +69,15 @@ export const getNameField = (disabled: boolean): FieldProp => ({
   placeholder: i18n.t('label.name'),
   type: FieldTypes.TEXT_MUI,
   props: {
-    'data-testid': 'name',
+    inputProps: {
+      'data-testid': 'name',
+    },
     disabled,
   },
   rules: NAME_FIELD_RULES,
+  formItemProps: {
+    validateTrigger: ['onChange', 'onBlur'],
+  },
 });
 
 export const getDisplayNameField = (disabled: boolean): FieldProp => ({
@@ -83,7 +88,9 @@ export const getDisplayNameField = (disabled: boolean): FieldProp => ({
   placeholder: i18n.t('label.display-name'),
   type: FieldTypes.TEXT_MUI,
   props: {
-    'data-testid': 'display-name',
+    inputProps: {
+      'data-testid': 'displayName',
+    },
     disabled,
   },
 });
@@ -169,7 +176,9 @@ export const getDisabledField = ({
   type: FieldTypes.SWITCH_MUI,
   formItemLayout: FormItemLayout.HORIZONTAL,
   props: {
-    'data-testid': 'disabled',
+    inputProps: {
+      'data-testid': 'disabled',
+    },
     initialValue,
     disabled,
   },
@@ -187,6 +196,7 @@ export const getMutuallyExclusiveField = ({
   type: FieldTypes.SWITCH_MUI,
   required: false,
   props: {
+    id: 'tags_mutuallyExclusive',
     'data-testid': 'mutually-exclusive-button',
     disabled,
   },

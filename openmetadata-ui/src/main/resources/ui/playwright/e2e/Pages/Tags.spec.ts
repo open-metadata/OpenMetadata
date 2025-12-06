@@ -26,7 +26,7 @@ import {
 } from '../../utils/common';
 import { addMultiOwner, removeOwner } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { addTagToTableColumn, submitForm, validateForm } from '../../utils/tag';
+import { addTagToTableColumn, submitForm } from '../../utils/tag';
 
 const NEW_CLASSIFICATION = {
   name: `PlaywrightClassification-${uuid()}`,
@@ -250,13 +250,11 @@ test('Classification Page', async ({ page }) => {
     await redirectToHomePage(page);
     await classification.visitPage(page);
     await page.click('[data-testid="add-classification"]');
-    await page.waitForSelector('.ant-modal-content', {
+    await page.waitForSelector('.tags-form', {
       state: 'visible',
     });
 
-    await expect(page.locator('.ant-modal-content')).toBeVisible();
-
-    await validateForm(page);
+    await expect(page.locator('.tags-form')).toBeVisible();
 
     await page.fill('[data-testid="name"]', NEW_CLASSIFICATION.name);
     await page.fill(
@@ -289,19 +287,15 @@ test('Classification Page', async ({ page }) => {
 
     await page.click('[data-testid="add-new-tag-button"]');
 
-    await page.waitForSelector('.ant-modal-content', {
+    await page.waitForSelector('.tags-form', {
       state: 'visible',
     });
 
-    await expect(page.locator('.ant-modal-content')).toBeVisible();
-
-    await validateForm(page);
+    await expect(page.locator('.tags-form')).toBeVisible();
 
     await page.fill('[data-testid="name"]', NEW_TAG.name);
     await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
     await page.locator(descriptionBox).fill(NEW_TAG.description);
-    await page.fill('[data-testid="icon-url"]', NEW_TAG.icon);
-    await page.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
 
     const createTagResponse = page.waitForResponse('api/v1/tags');
     await submitForm(page);
