@@ -143,7 +143,7 @@
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
             <artifactId>jetty-http</artifactId>
-            <version>${jetty.version}</version>
+            <version>12.0.12</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty</groupId>
