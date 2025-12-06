@@ -10,6 +10,9 @@ from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeQueryLogEntry,
     SnowflakeQueryResult,
@@ -290,7 +293,12 @@ class SnowflakeSystemMetricsComputer(
 ):
     """Snowflake system metrics source"""
 
-    def __init__(self, session: Session, runner: QueryRunner):
+    def __init__(
+        self,
+        session: Session,
+        runner: QueryRunner,
+        service_connection_config: SnowflakeConnection,
+    ):
         self.session = session
         self.runner = runner
         self.table = runner.table_name
@@ -299,6 +307,7 @@ class SnowflakeSystemMetricsComputer(
         self.resolver = SnowflakeTableResovler(
             session=session,
         )
+        self.service_connection_config = service_connection_config
 
     def get_inserts(self) -> List[SystemProfile]:
         return self.get_system_profile(
@@ -403,6 +412,7 @@ class SnowflakeSystemMetricsComputer(
             SnowflakeQueryLogEntry.get_for_table,
             session=self.session,
             tablename=table,
+            service_connection_config=self.service_connection_config,
         )
         results = [
             get_snowflake_system_queries(
