@@ -36,7 +36,6 @@ import {
   removeAssetsFromTag,
   setupAssetsForTag,
   submitForm,
-  validateForm,
   verifyCertificationTagPageUI,
   verifyTagPageUI,
 } from '../../utils/tag';
@@ -250,13 +249,11 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await adminPage.click('[data-testid="add-new-tag-button"]');
 
-    await adminPage.waitForSelector('.ant-modal-content', {
+    await adminPage.waitForSelector('.tags-form', {
       state: 'visible',
     });
 
-    await expect(adminPage.locator('.ant-modal-content')).toBeVisible();
-
-    await validateForm(adminPage);
+    await expect(adminPage.locator('.tags-form')).toBeVisible();
 
     await fillTagForm(adminPage, domain);
 

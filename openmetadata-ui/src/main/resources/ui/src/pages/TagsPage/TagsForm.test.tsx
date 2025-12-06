@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { Form } from 'antd';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
 import TagsForm from './TagsForm';
+import { SubmitProps } from './TagsPage.interface';
 
 jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockImplementation(({ initialValue }) => {
@@ -31,72 +33,102 @@ jest.mock('../../hooks/useEntityRules', () => ({
     entityRules: {
       canAddMultipleUserOwners: true,
       canAddMultipleTeamOwner: true,
+      canAddMultipleDomains: false,
     },
   })),
 }));
 
-const mockCancel = jest.fn();
+jest.mock('../../hooks/useDomainStore', () => ({
+  useDomainStore: jest.fn().mockReturnValue({
+    activeDomainEntityRef: undefined,
+  }),
+}));
+
+jest.mock('../../rest/domainAPI', () => ({
+  searchData: jest.fn().mockResolvedValue({
+    data: { hits: { hits: [] } },
+  }),
+}));
+
 const mockSubmit = jest.fn();
 
-const MOCK_PROPS = {
-  visible: true,
-  onCancel: mockCancel,
-  header: 'Add Test',
-  initialValues: DEFAULT_FORM_VALUE,
-  onSubmit: mockSubmit,
-  showMutuallyExclusive: false,
-  isClassification: false,
-  disableName: false,
-  isLoading: false,
-  isSystemTag: false,
-  isTier: false,
-  isEditing: true,
+// Create a wrapper component to use the form hook
+const TestWrapper = ({
+  showMutuallyExclusive = false,
+  isClassification = false,
+}: {
+  showMutuallyExclusive?: boolean;
+  isClassification?: boolean;
+}) => {
+  const [formRef] = Form.useForm<SubmitProps>();
+
+  return (
+    <TagsForm
+      isEditing
+      formRef={formRef}
+      initialValues={{
+        ...DEFAULT_FORM_VALUE,
+        autoClassificationConfig: {
+          enabled: false,
+        },
+      }}
+      isClassification={isClassification}
+      isSystemTag={false}
+      isTier={false}
+      showMutuallyExclusive={showMutuallyExclusive}
+      onSubmit={mockSubmit}
+    />
+  );
 };
 
 describe('TagForm component', () => {
-  it('Rename Modal component should render properly', async () => {
-    render(<TagsForm {...MOCK_PROPS} />);
-
-    const modal = await screen.findByTestId('modal-container');
-
-    const modalTitle = await screen.findByText(MOCK_PROPS.header);
-
-    const cancelButton = await screen.findByText('Cancel');
-    const submitButton = await screen.findByText('label.save');
-
-    expect(modal).toBeInTheDocument();
-    expect(modalTitle).toBeInTheDocument();
-    expect(cancelButton).toBeInTheDocument();
-    expect(submitButton).toBeInTheDocument();
-  });
-
-  it('Callback on button click should work', async () => {
-    render(<TagsForm {...MOCK_PROPS} />);
-    const cancelButton = await screen.findByText('Cancel');
-
-    fireEvent.click(cancelButton);
-
-    expect(mockCancel).toHaveBeenCalledTimes(1);
+  beforeEach(() => {
+    mockSubmit.mockClear();
   });
 
   it('Form component should render properly', async () => {
-    render(<TagsForm {...MOCK_PROPS} />);
+    const { container } = render(<TestWrapper />);
 
+    const form = container.querySelector('.tags-form');
     const name = await screen.findByTestId('name');
 
+    expect(form).toBeInTheDocument();
     expect(name).toBeInTheDocument();
     expect(
       await screen.findByText(/MarkdownWithPreview component/i)
     ).toBeInTheDocument();
   });
 
-  it('Form component should render Mutually Exclusive field', async () => {
-    render(<TagsForm {...MOCK_PROPS} showMutuallyExclusive />);
+  it('Form component should render name and displayName fields', async () => {
+    render(<TestWrapper />);
 
-    const mutuallyExclusiveButton = await screen.findByTestId(
+    const nameField = await screen.findByTestId('name');
+    const displayNameField = await screen.findByTestId('displayName');
+
+    expect(nameField).toBeInTheDocument();
+    expect(displayNameField).toBeInTheDocument();
+  });
+
+  it('Form component should render Mutually Exclusive field when showMutuallyExclusive is true', async () => {
+    const { container } = render(
+      <TestWrapper isClassification showMutuallyExclusive />
+    );
+
+    // Check for the Form.Item with id that contains mutuallyExclusive
+    const mutuallyExclusiveFormItem = container.querySelector(
+      '#tags_mutuallyExclusive'
+    );
+
+    expect(mutuallyExclusiveFormItem).toBeInTheDocument();
+  });
+
+  it('Form component should not render Mutually Exclusive field when showMutuallyExclusive is false', async () => {
+    render(<TestWrapper showMutuallyExclusive={false} />);
+
+    const mutuallyExclusiveButton = screen.queryByTestId(
       'mutually-exclusive-button'
     );
 
-    expect(mutuallyExclusiveButton).toBeInTheDocument();
+    expect(mutuallyExclusiveButton).not.toBeInTheDocument();
   });
 });

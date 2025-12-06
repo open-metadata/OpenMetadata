@@ -22,6 +22,7 @@ import {
   queryByTitle,
   render,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -400,7 +401,7 @@ describe('Test TagsPage page', () => {
     expect(getByText(getAllCounts[2], '5')).toBeInTheDocument();
   });
 
-  it('OnClick of add new tag, FormModal should display', async () => {
+  it('OnClick of add new tag, Form should display in drawer', async () => {
     render(<TagsPage {...mockProps} />);
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
@@ -408,16 +409,12 @@ describe('Test TagsPage page', () => {
 
     expect(addNewTag).toBeInTheDocument();
 
-    fireEvent.click(
-      addNewTag,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-    const FormModal = await screen.findAllByTestId('modal-container');
+    fireEvent.click(addNewTag);
 
-    expect(FormModal[0]).toBeInTheDocument();
+    // Wait for the drawer to open and form to render (setTimeout is used in the code)
+    await waitFor(() => {
+      expect(screen.getByTestId('name')).toBeInTheDocument();
+    });
   });
 
   it('OnClick of delete tag, confirmation modal should display', async () => {
@@ -428,12 +425,19 @@ describe('Test TagsPage page', () => {
     expect(deleteBtn[0]).toBeInTheDocument();
 
     fireEvent.click(deleteBtn[0]);
-
-    expect(
-      await findByTestId(container, 'confirmation-modal')
-    ).toBeInTheDocument();
+    await waitFor(async () => {
+      expect(
+        await findByTestId(container, 'confirmation-modal')
+      ).toBeInTheDocument();
+    });
 
     fireEvent.click(deleteBtn[0]);
+
+    await waitFor(async () => {
+      expect(
+        await findByTestId(container, 'confirmation-modal')
+      ).toBeInTheDocument();
+    });
 
     expect(
       await findByTestId(container, 'confirmation-modal')
@@ -442,33 +446,35 @@ describe('Test TagsPage page', () => {
     fireEvent.click(await findByTestId(container, 'confirm-modal'));
   });
 
-  it('OnClick of add new category, FormModal should display', async () => {
+  it('OnClick of add new category, Form should display in drawer', async () => {
     render(<TagsPage {...mockProps} />);
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
-    const addNewCategory = screen.getByTestId('add-classification');
+    const loader = screen.queryByTestId('loader');
+    if (loader) {
+      await waitForElementToBeRemoved(loader);
+    }
+
+    const addNewCategory = await screen.findByTestId('add-classification');
 
     expect(addNewCategory).toBeInTheDocument();
 
-    fireEvent.click(
-      addNewCategory,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
+    fireEvent.click(addNewCategory);
 
-    const FormModal = await screen.findAllByTestId('modal-container');
-
-    expect(FormModal[0]).toBeInTheDocument();
+    // Wait for the drawer to open and form to render (setTimeout is used in the code)
+    await waitFor(() => {
+      expect(screen.getByTestId('name')).toBeInTheDocument();
+    });
   });
 
   it('Description should be in document', async () => {
     const { container } = render(<TagsPage {...mockProps} />);
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
-    const descriptionContainer = await findByTestId(
-      container,
+    const loader = screen.queryByTestId('loader');
+    if (loader) {
+      await waitForElementToBeRemoved(loader);
+    }
+
+    const descriptionContainer = await screen.findByTestId(
       'description-container'
     );
     const description = await findByText(container, /DescriptionComponent/i);
@@ -479,7 +485,11 @@ describe('Test TagsPage page', () => {
 
   it('Table with respective header should be render', async () => {
     const { container } = render(<TagsPage {...mockProps} />);
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    const loader = screen.queryByTestId('loader');
+    if (loader) {
+      await waitForElementToBeRemoved(loader);
+    }
 
     const table = await findByTestId(container, 'table');
     const name = await findByText(container, 'label.tag');

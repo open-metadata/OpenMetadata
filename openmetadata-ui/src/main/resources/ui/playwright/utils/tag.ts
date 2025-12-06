@@ -31,6 +31,7 @@ import {
   redirectToHomePage,
   uuid,
 } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
 export const TAG_INVALID_NAMES = {
@@ -489,30 +490,28 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.fill('[data-testid="name"]', NEW_TAG.name);
   await adminPage.fill('[data-testid="displayName"]', NEW_TAG.displayName);
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
-  await adminPage.fill('[data-testid="icon-url"]', NEW_TAG.icon);
-  await adminPage.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
 
-  await adminPage.click(
-    '[data-testid="modal-container"] [data-testid="add-domain"]'
-  );
+  const domainInput = adminPage.locator('#async-tree-select');
+  await domainInput.scrollIntoViewIfNeeded();
+  await domainInput.waitFor({ state: 'visible' });
+  await domainInput.click();
+  await waitForAllLoadersToDisappear(adminPage);
 
   const searchDomain = adminPage.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.responseData.name)}*`
+    `/api/v1/search/query?q=*index=domain_search_index*`
   );
 
-  await adminPage
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domain.responseData.name);
+  await domainInput.fill(domain.responseData.displayName);
 
   await searchDomain;
+  await waitForAllLoadersToDisappear(adminPage);
 
-  // Wait for the tag element to be visible and ensure page is still valid
-  const tagSelector = adminPage.getByTestId(
-    `tag-${domain.responseData.fullyQualifiedName}`
+  const domainOption = adminPage.getByText(
+    domain.responseData.displayName || domain.responseData.name
   );
-  await tagSelector.waitFor({ state: 'visible' });
-  await tagSelector.click();
+
+  await domainOption.waitFor({ state: 'visible', timeout: 5000 });
+  await domainOption.click();
 };
 
 export const setTagDisabled = async (
