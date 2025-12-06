@@ -12,20 +12,7 @@
 GraphQL Queries used during ingestion
 """
 
-DBT_GET_MODEL_DEPENDS_ON = """
-query Query($jobId: BigInt!, $runId: BigInt) {
-  job(id: $jobId, runId: $runId) {
-    models {
-      name
-      database
-      schema
-      dependsOn
-    }
-  }
-}
-"""
-
-DBT_GET_MODELS_SEEDS = """
+DBT_GET_MODELS_WITH_LINEAGE = """
 query Query($jobId: BigInt!, $runId: BigInt) {
   job(id: $jobId, runId: $runId) {
     models {
@@ -33,8 +20,15 @@ query Query($jobId: BigInt!, $runId: BigInt) {
       name
       database
       schema
+      dependsOn
     }
     seeds {
+      uniqueId
+      name
+      schema
+      database
+    }
+    sources {
       uniqueId
       name
       schema
