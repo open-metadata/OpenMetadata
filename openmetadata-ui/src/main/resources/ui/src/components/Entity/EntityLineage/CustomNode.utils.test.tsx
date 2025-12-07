@@ -82,21 +82,21 @@ describe('Custom Node Utils', () => {
 
   describe('getExpandHandle', () => {
     it('renders a Button component', () => {
-      const { getByRole } = render(
+      const { getByTestId } = render(
         getExpandHandle(LineageDirection.Downstream, jest.fn())
       );
 
-      expect(getByRole('button')).toBeInTheDocument();
-      expect(getByRole('button')).toHaveClass('lineage-expand-icon');
+      expect(getByTestId('plus-icon')).toBeInTheDocument();
+      expect(getByTestId('plus-icon')).toHaveClass('lineage-expand-icon');
     });
 
     it('calls the onClickHandler when clicked', () => {
       const onClickHandler = jest.fn();
-      const { getByRole } = render(
+      const { getByTestId } = render(
         getExpandHandle(LineageDirection.Downstream, onClickHandler)
       );
 
-      fireEvent.click(getByRole('button'));
+      fireEvent.click(getByTestId('plus-icon'));
 
       expect(onClickHandler).toHaveBeenCalled();
     });
