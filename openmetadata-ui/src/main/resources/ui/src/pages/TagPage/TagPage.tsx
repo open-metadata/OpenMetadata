@@ -761,7 +761,7 @@ const TagPage = () => {
 
         <GenericProvider<Tag>
           customizedPage={customizedPage}
-          data={tagItem as Tag}
+          data={tagItem}
           isVersionView={false}
           permissions={disabledAwarePermissions}
           type={EntityType.TAG as CustomizeEntityType}

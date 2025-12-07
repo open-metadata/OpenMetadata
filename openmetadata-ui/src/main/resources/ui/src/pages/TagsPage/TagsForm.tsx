@@ -178,13 +178,17 @@ const TagsForm = ({
   );
 
   const handleSave = async (data: SubmitProps) => {
+    let domains: EntityReference[] = [];
+    if (isArray(selectedDomain)) {
+      domains = selectedDomain;
+    } else if (selectedDomain) {
+      domains = [selectedDomain];
+    }
     try {
       const submitData = {
         ...data,
-        domains: selectedDomain
-          ? (isArray(selectedDomain) ? selectedDomain : [selectedDomain])?.map(
-              (domain) => domain.fullyQualifiedName
-            )
+        domains: domains
+          ? domains?.map((domain) => domain.fullyQualifiedName)
           : undefined,
       };
       await onSubmit(submitData as any);

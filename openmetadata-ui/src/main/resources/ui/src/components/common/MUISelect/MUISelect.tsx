@@ -83,7 +83,7 @@ const MUISelect: FC<MUISelectProps> = ({
             (option) => option.value === selected
           );
 
-          return selectedOption?.label ?? (selected as string | number | '');
+          return selectedOption?.label ?? (selected as string | number);
         }}
         value={value || ''}
         onChange={onChange}

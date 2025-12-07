@@ -24,9 +24,6 @@ export interface MUIFormItemLabelProps {
   helperTextType?: HelperTextType;
   showHelperText?: boolean;
   placement?: TooltipProps['placement'];
-  overlayClassName?: string;
-  overlayInnerStyle?: React.CSSProperties;
-  align?: TooltipProps['placement'];
   isBeta?: boolean;
   required?: boolean;
   slotProps?: Partial<TooltipProps>;

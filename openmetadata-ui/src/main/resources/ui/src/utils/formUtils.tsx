@@ -371,13 +371,11 @@ export const getField = (field: FieldProp) => {
       break;
 
     case FieldTypes.USER_TEAM_SELECT_INPUT:
-      {
-        fieldElement = (
-          <UserTeamSelectableListSearchInput
-            {...(props as unknown as UserSelectDropdownProps)}
-          />
-        );
-      }
+      fieldElement = (
+        <UserTeamSelectableListSearchInput
+          {...(props as unknown as UserSelectDropdownProps)}
+        />
+      );
 
       break;
 
@@ -558,13 +556,15 @@ export const getField = (field: FieldProp) => {
   );
 
   if (type === FieldTypes.SWITCH && newLook) {
+    const labelClass =
+      typeof props.labelClassName === 'string' ? `${props.labelClassName}` : '';
+
     return (
       <div className="d-flex gap-2 form-switch-container items-center">
         <Form.Item className="m-b-0" {...formProps}>
           <Switch />
         </Form.Item>
-        <Typography.Text
-          className={`font-medium ${props.labelClassName ?? ''}`}>
+        <Typography.Text className={`font-medium ${labelClass}`}>
           {labelValue}
         </Typography.Text>
       </div>
