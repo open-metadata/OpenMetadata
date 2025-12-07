@@ -767,152 +767,6 @@ class DBTCloudUnitTest(TestCase):
                 list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))[0].left
             )
 
-    def test_get_model_details(self):
-        """
-        Test getting model details from DBT Cloud
-        """
-        # Mock the graphql client's post method
-        with patch.object(self.dbtcloud.client.graphql_client, "post") as mock_post:
-            # Set up mock return value
-            mock_post.return_value = {
-                "data": {
-                    "job": {
-                        "models": [
-                            {
-                                "uniqueId": "model.dbt_test_new.model_32",
-                                "name": "model_32",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": [
-                                    "model.dbt_test_new.model_15",
-                                    "model.dbt_test_new.model_11",
-                                ],
-                            },
-                            {
-                                "uniqueId": "model.dbt_test_new.model_15",
-                                "name": "model_15",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": None,
-                            },
-                            {
-                                "uniqueId": "model.dbt_test_new.model_11",
-                                "name": "model_11",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": None,
-                            },
-                        ]
-                    }
-                }
-            }
-
-            # Call the method
-            models = self.dbtcloud.client.get_model_details(
-                70403103936332, 70403110257794
-            )
-
-            # Verify we got the expected models
-            self.assertEqual(len(models), 3)
-
-            # Verify the first model (model_32)
-            model_32 = next(m for m in models if m.name == "model_32")
-            self.assertEqual(model_32.database, "dev")
-            self.assertEqual(model_32.dbtschema, "dbt_test_new")
-            self.assertEqual(len(model_32.dependsOn), 2)
-            self.assertIn("model.dbt_test_new.model_15", model_32.dependsOn)
-            self.assertIn("model.dbt_test_new.model_11", model_32.dependsOn)
-
-            # Test error case
-            mock_post.side_effect = Exception("Test error")
-            error_models = self.dbtcloud.client.get_model_details(
-                70403103936332, 70403110257794
-            )
-            self.assertIsNone(error_models)
-
-    def test_get_models_and_seeds_details(self):
-        """
-        Test getting models and seeds details from DBT Cloud
-        """
-        # Mock the graphql client's post method
-        with patch.object(self.dbtcloud.client.graphql_client, "post") as mock_post:
-            # Set up mock return value
-            mock_post.return_value = {
-                "data": {
-                    "job": {
-                        "models": [
-                            {
-                                "uniqueId": "model.dbt_test_new.model_32",
-                                "name": "model_32",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": [
-                                    "model.dbt_test_new.model_15",
-                                    "model.dbt_test_new.model_11",
-                                ],
-                            },
-                            {
-                                "uniqueId": "model.dbt_test_new.model_15",
-                                "name": "model_15",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": None,
-                            },
-                            {
-                                "uniqueId": "model.dbt_test_new.model_11",
-                                "name": "model_11",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": None,
-                            },
-                        ],
-                        "seeds": [
-                            {
-                                "uniqueId": "seed.dbt_test_new.raw_payments",
-                                "name": "raw_payments",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                            },
-                            {
-                                "uniqueId": "seed.dbt_test_new.raw_orders",
-                                "name": "raw_orders",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                            },
-                        ],
-                    }
-                }
-            }
-
-            # Call the method
-            models_and_seeds = self.dbtcloud.client.get_models_and_seeds_details(
-                70403103936332, 70403110257794
-            )
-
-            # Verify we got the expected models and seeds
-            self.assertEqual(len(models_and_seeds), 5)
-
-            # Verify the first model (model_32)
-            model_32 = next(m for m in models_and_seeds if m.name == "model_32")
-            self.assertEqual(model_32.database, "dev")
-            self.assertEqual(model_32.dbtschema, "dbt_test_new")
-            self.assertEqual(len(model_32.dependsOn), 2)
-            self.assertIn("model.dbt_test_new.model_15", model_32.dependsOn)
-            self.assertIn("model.dbt_test_new.model_11", model_32.dependsOn)
-
-            # Verify seeds
-            seeds = [m for m in models_and_seeds if m.uniqueId.startswith("seed.")]
-            self.assertEqual(len(seeds), 2)
-            self.assertIn("raw_payments", [s.name for s in seeds])
-            self.assertIn("raw_orders", [s.name for s in seeds])
-
-            # Test error case
-            mock_post.side_effect = Exception("Test error")
-            error_models = self.dbtcloud.client.get_models_and_seeds_details(
-                70403103936332, 70403110257794
-            )
-            self.assertIsNone(error_models)
-
     def test_error_handling_in_lineage(self):
         """
         Test error handling in lineage generation
@@ -998,32 +852,32 @@ class DBTCloudUnitTest(TestCase):
 
             mock_get_by_name.side_effect = get_by_name_side_effect
 
-            # Mock the graphql client's post method
+            # Mock the combined GraphQL method
             with patch.object(
-                self.dbtcloud.client, "get_models_and_seeds_details"
-            ) as mock_get_parents, patch.object(
-                self.dbtcloud.client, "get_model_details"
-            ) as mock_get_models:
+                self.dbtcloud.client, "get_models_with_lineage"
+            ) as mock_get_models_with_lineage:
 
-                mock_get_parents.return_value = [
-                    DBTModel(
-                        uniqueId="model.dbt_test_new.model_15",
-                        name="model_15",
-                        dbtschema="dbt_test_new",
-                        database="dev",
-                        dependsOn=None,
-                    )
-                ]
-
-                mock_get_models.return_value = [
-                    DBTModel(
-                        uniqueId="model.dbt_test_new.model_32",
-                        name="model_32",
-                        dbtschema="dbt_test_new",
-                        database="dev",
-                        dependsOn=["model.dbt_test_new.model_15"],
-                    )
-                ]
+                # Return (models, seeds, sources) tuple
+                mock_get_models_with_lineage.return_value = (
+                    [
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.model_32",
+                            name="model_32",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            dependsOn=["model.dbt_test_new.model_15"],
+                        ),
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.model_15",
+                            name="model_15",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            dependsOn=None,
+                        ),
+                    ],
+                    [],  # seeds
+                    [],  # sources
+                )
 
                 # Get the lineage details
                 lineage_details = list(
