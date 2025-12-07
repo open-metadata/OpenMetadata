@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from '@mui/material';
+import { Button, IconButton } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as FilterIcon1 } from '../../../assets/svg/ic-filter.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
@@ -192,6 +193,13 @@ const EntityFooter = ({
     [toggleColumnsList]
   );
 
+  const handleOnlyShowColumnsWithLineage = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+    },
+    []
+  );
+
   if (childrenCount === 0) {
     return null;
   }
@@ -209,6 +217,16 @@ const EntityFooter = ({
         {childrenInfoDropdownLabel}
       </Button>
       <TestSuiteSummaryContainer node={node} />
+      <IconButton>
+        <FilterIcon1
+          className="mapping-icon"
+          height={20}
+          width={20}
+          onClick={() => {
+            handleOnlyShowColumnsWithLineage;
+          }}
+        />
+      </IconButton>
     </div>
   );
 };
