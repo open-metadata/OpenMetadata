@@ -6230,9 +6230,13 @@ public interface CollectionDAO {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
+      String supportedService = filter.getQueryParam("supportedService");
       String condition = filter.getCondition();
 
-      if (entityType == null && testPlatform == null && supportedDataType == null) {
+      if (entityType == null
+          && testPlatform == null
+          && supportedDataType == null
+          && supportedService == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
@@ -6260,6 +6264,18 @@ public interface CollectionDAO {
         psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
       }
 
+      if (supportedService != null) {
+        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
+        mysqlCondition.append(
+            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
+                + "OR json_extract(json, '$.supportedServices') IS NULL "
+                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
+        psqlCondition.append(
+            "AND (json->>'supportedServices' = '[]' "
+                + "OR json->>'supportedServices' IS NULL "
+                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
+      }
+
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
@@ -6275,9 +6291,13 @@ public interface CollectionDAO {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
+      String supportedService = filter.getQueryParam("supportedService");
       String condition = filter.getCondition();
 
-      if (entityType == null && testPlatform == null && supportedDataType == null) {
+      if (entityType == null
+          && testPlatform == null
+          && supportedDataType == null
+          && supportedService == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
@@ -6305,6 +6325,18 @@ public interface CollectionDAO {
         psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
       }
 
+      if (supportedService != null) {
+        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
+        mysqlCondition.append(
+            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
+                + "OR json_extract(json, '$.supportedServices') IS NULL "
+                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
+        psqlCondition.append(
+            "AND (json->>'supportedServices' = '[]' "
+                + "OR json->>'supportedServices' IS NULL "
+                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
+      }
+
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
@@ -6320,9 +6352,13 @@ public interface CollectionDAO {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
+      String supportedService = filter.getQueryParam("supportedService");
       String condition = filter.getCondition();
 
-      if (entityType == null && testPlatform == null && supportedDataType == null) {
+      if (entityType == null
+          && testPlatform == null
+          && supportedDataType == null
+          && supportedService == null) {
         return EntityDAO.super.listCount(filter);
       }
 
@@ -6348,6 +6384,18 @@ public interface CollectionDAO {
         mysqlCondition.append(
             "AND json_extract(json, '$.supportedDataTypes') LIKE :supportedDataTypeLike ");
         psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
+      }
+
+      if (supportedService != null) {
+        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
+        mysqlCondition.append(
+            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
+                + "OR json_extract(json, '$.supportedServices') IS NULL "
+                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
+        psqlCondition.append(
+            "AND (json->>'supportedServices' = '[]' "
+                + "OR json->>'supportedServices' IS NULL "
+                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
       return listCount(
           getTableName(),

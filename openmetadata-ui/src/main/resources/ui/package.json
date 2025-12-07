@@ -258,6 +258,7 @@
     "dompurify": "3.2.4",
     "on-headers": "1.1.0",
     "form-data": "3.0.4",
-    "tar-fs": "2.1.4"
+    "tar-fs": "2.1.4",
+    "js-yaml": "4.1.1"
   }
 }

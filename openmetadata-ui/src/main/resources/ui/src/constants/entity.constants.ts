@@ -12,7 +12,6 @@
  */
 
 import { FeedCounts } from '../interface/feed.interface';
-import i18n from '../utils/i18next/LocalUtil';
 import { EntityField } from './Feeds.constants';
 
 export const FEED_COUNT_INITIAL_DATA: FeedCounts = {
@@ -37,11 +36,11 @@ export const STEPS_FOR_IMPORT_ENTITY = [
 
 export const ENTITY_TASKS_TOOLTIP = {
   [EntityField.DESCRIPTION]: {
-    request: i18n.t('message.request-description'),
-    update: i18n.t('message.request-update-description'),
+    request: 'message.request-description',
+    update: 'message.request-update-description',
   },
   [EntityField.TAGS]: {
-    request: i18n.t('label.request-tag-plural'),
-    update: i18n.t('label.update-request-tag-plural'),
+    request: 'label.request-tag-plural',
+    update: 'label.update-request-tag-plural',
   },
 };
