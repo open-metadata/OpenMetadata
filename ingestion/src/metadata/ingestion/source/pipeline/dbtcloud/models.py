@@ -65,6 +65,7 @@ class DBTRunList(BaseModel):
 
 
 class DBTSources(BaseModel):
+    uniqueId: Optional[str] = None
     name: Optional[str] = None
     dbtschema: Optional[str] = Field(None, alias="schema")
     database: Optional[str] = None
@@ -82,4 +83,5 @@ class DBTModel(BaseModel):
 class DBTModelList(BaseModel):
     models: Optional[List[DBTModel]] = []
     seeds: Optional[List[DBTModel]] = []
+    sources: Optional[List[DBTModel]] = []
     extra: Optional[Extra] = None
