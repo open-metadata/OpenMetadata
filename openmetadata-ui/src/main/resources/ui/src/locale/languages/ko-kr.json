@@ -1591,6 +1591,7 @@
     "show-more": "더 보기",
     "show-more-entity": "{{entity}} 더 보기",
     "show-more-lowercase": "더 보기e",
+    "show-nested": "중첩 표시",
     "show-or-hide-advanced-config": "고급 구성 {{showAdv}}",
     "show-or-hide-column-plural": "열 표시/숨기기",
     "sign-in": "로그인",
