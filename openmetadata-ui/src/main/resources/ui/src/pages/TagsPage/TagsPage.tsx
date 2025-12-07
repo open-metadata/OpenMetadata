@@ -447,7 +447,7 @@ const TagsPage = () => {
       if (currentClassification) {
         setDeleteTags({
           data: {
-            id: record.id as string,
+            id: record.id,
             name: record.name,
             categoryName: currentClassification?.fullyQualifiedName,
             isCategory: false,
