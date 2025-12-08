@@ -1591,6 +1591,7 @@
     "show-more": "Показать больше",
     "show-more-entity": "Показать больше элементов \"{{entity}}\"",
     "show-more-lowercase": "показать больше",
+    "show-nested": "Показать вложенные",
     "show-or-hide-advanced-config": "{{showAdv}} Расширенная конфигурация",
     "show-or-hide-column-plural": "Показать / скрыть столбцы",
     "sign-in": "Войти",

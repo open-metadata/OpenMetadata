@@ -90,7 +90,14 @@ const TierSection: React.FC<TierSectionProps> = ({
         t,
       });
 
-      if (!result.success) {
+      if (result.success && result.data === tags) {
+        const newTier = result.data.find((tag) =>
+          tag.tagFQN.startsWith('Tier.')
+        );
+        setDisplayTier(newTier);
+        onTierUpdate?.(newTier);
+        completeEditing();
+      } else if (!result.success) {
         setIsLoading(false);
       }
     },

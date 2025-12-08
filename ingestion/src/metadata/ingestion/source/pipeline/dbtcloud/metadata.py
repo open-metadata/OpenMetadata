@@ -93,6 +93,18 @@ class DbtcloudSource(PipelineServiceSource):
         super().__init__(config, metadata)
         # Cache for observability data: {(job_id, run_id): {models, parents, pipeline_entity, ...}}
         self.observability_cache: Dict[Tuple[int, str], Dict[str, Any]] = {}
+        # Cache for table entity lookups to avoid redundant API calls
+        self._table_entity_cache: Dict[str, Optional[Table]] = {}
+
+    def _get_table_entity(self, table_fqn: str) -> Optional[Table]:
+        """
+        Cached table entity lookup to avoid redundant API calls.
+        """
+        if table_fqn not in self._table_entity_cache:
+            self._table_entity_cache[table_fqn] = self.metadata.get_by_name(
+                entity=Table, fqn=table_fqn
+            )
+        return self._table_entity_cache[table_fqn]
 
     def _get_task_list(self, job_id: int) -> Optional[List[Task]]:
         """
@@ -104,22 +116,23 @@ class DbtcloudSource(PipelineServiceSource):
         self.context.get().current_runs = None
         try:
             task_list: List[Task] = []
-            runs = self.client.get_runs(job_id=job_id)
-            if runs:
-                for run in runs or []:
-                    task = Task(
-                        name=str(run.id),
-                        sourceUrl=SourceUrl(run.href),
-                        startDate=str(run.started_at),
-                        endDate=str(run.finished_at),
-                    )
-                    task_list.append(task)
-                self.context.get().latest_run_id = (
-                    task_list[0].name if task_list else None
+            runs_list: List = []
+            # Consume generator and store runs for later use
+            for run in self.client.get_runs(job_id=job_id):
+                runs_list.append(run)
+                task = Task(
+                    name=str(run.id),
+                    sourceUrl=SourceUrl(run.href),
+                    startDate=str(run.started_at),
+                    endDate=str(run.finished_at),
                 )
+                task_list.append(task)
+
+            if task_list:
+                self.context.get().latest_run_id = runs_list[0].id
                 # Store full run object and all runs for observability
-                self.context.get().latest_run = runs[0] if runs else None
-                self.context.get().current_runs = runs
+                self.context.get().latest_run = runs_list[0] if runs_list else None
+                self.context.get().current_runs = runs_list
             return task_list or None
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -166,169 +179,152 @@ class DbtcloudSource(PipelineServiceSource):
         self, pipeline_details: DBTJob
     ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Get lineage between pipeline and data sources
+        Get lineage between pipeline and data sources.
+        Uses combined GraphQL call for models and seeds, with optimized caching.
         """
         try:  # pylint: disable=too-many-nested-blocks
-            if self.source_config.lineageInformation:
-                pipeline_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Pipeline,
-                    service_name=self.context.get().pipeline_service,
-                    pipeline_name=self.context.get().pipeline,
-                )
 
-                pipeline_entity = self.metadata.get_by_name(
-                    entity=Pipeline, fqn=pipeline_fqn
-                )
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
+            )
 
-                if not pipeline_entity:
-                    logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")
-                    return
+            pipeline_entity = self.metadata.get_by_name(
+                entity=Pipeline, fqn=pipeline_fqn
+            )
 
-                dbt_models = self.client.get_model_details(
-                    job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
-                )
+            if not pipeline_entity:
+                logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")
+                return
 
-                dbt_parents = self.client.get_models_and_seeds_details(
-                    job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
-                )
+            # Use combined GraphQL call instead of two separate calls
+            dbt_models, dbt_seeds, dbt_sources = self.client.get_models_with_lineage(
+                job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
+            )
 
-                # Cache observability details - store in context for current job
-                self.context.get().current_pipeline_entity = pipeline_entity
-                self.context.get().current_table_fqns = []
+            # Combine models and seeds for parent lookup
+            dbt_parents = (dbt_models or []) + (dbt_seeds or []) + (dbt_sources or [])
 
-                if self.context.get().latest_run_id:
-                    cache_key = (
-                        pipeline_details.id,
-                        str(self.context.get().latest_run_id),
+            # Build parent lookup dict for O(1) access instead of O(n) list search
+            parent_by_unique_id = {p.uniqueId: p for p in dbt_parents if p.uniqueId}
+
+            # Cache observability details - store in context for current job
+            self.context.get().current_pipeline_entity = pipeline_entity
+            self.context.get().current_table_fqns = []
+
+            # Create cache_key once at the start
+            cache_key = (
+                (pipeline_details.id, str(self.context.get().latest_run_id))
+                if self.context.get().latest_run_id
+                else None
+            )
+
+            if cache_key:
+                self.observability_cache[cache_key] = {
+                    "pipeline_entity": pipeline_entity,
+                    "job_details": pipeline_details,
+                    "table_fqns": set(),  # Use set for O(1) lookup
+                    "runs": self.context.get().current_runs,
+                }
+
+            for model in dbt_models or []:
+                if not all([model.name, model.database, model.dbtschema]):
+                    logger.debug(
+                        f"Skipping model with missing attributes: name={getattr(model, 'name', None)}, "
+                        f"database={getattr(model, 'database', None)}, schema={getattr(model, 'dbtschema', None)}"
                     )
-                    self.observability_cache[cache_key] = {
-                        "pipeline_entity": pipeline_entity,
-                        "job_details": pipeline_details,
-                        "table_fqns": [],
-                        "runs": self.context.get().current_runs,
-                    }
+                    continue
 
-                for model in dbt_models or []:
-                    if not all([model.name, model.database, model.dbtschema]):
-                        logger.debug(
-                            f"Skipping model with missing attributes: name={getattr(model, 'name', None)}, database={getattr(model, 'database', None)}, schema={getattr(model, 'dbtschema', None)}"
-                        )
+                for dbservicename in self.get_db_service_names() or ["*"]:
+                    to_entity_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Table,
+                        table_name=model.name,
+                        database_name=model.database,
+                        schema_name=model.dbtschema,
+                        service_name=dbservicename,
+                    )
+
+                    # Use cached table entity lookup
+                    to_entity = self._get_table_entity(to_entity_fqn)
+
+                    if to_entity is None:
                         continue
 
-                    for dbservicename in (
-                        self.source_config.lineageInformation.dbServiceNames or []
-                    ):
-                        to_entity_fqn = fqn.build(
-                            metadata=self.metadata,
-                            entity_type=Table,
-                            table_name=model.name,
-                            database_name=model.database,
-                            schema_name=model.dbtschema,
-                            service_name=dbservicename,
-                        )
-                        to_entity = self.metadata.get_by_name(
-                            entity=Table,
-                            fqn=to_entity_fqn,
+                    # Add to context table FQNs
+                    if to_entity_fqn not in self.context.get().current_table_fqns:
+                        self.context.get().current_table_fqns.append(to_entity_fqn)
+
+                    # Add to observability cache using set.add() for O(1)
+                    if cache_key and cache_key in self.observability_cache:
+                        self.observability_cache[cache_key]["table_fqns"].add(
+                            to_entity_fqn
                         )
 
-                        if to_entity is None:
+                    for unique_id in model.dependsOn or []:
+                        # Use dict lookup instead of list comprehension
+                        parent = parent_by_unique_id.get(unique_id)
+                        if not parent:
                             continue
 
-                        if to_entity_fqn not in self.context.get().current_table_fqns:
-                            self.context.get().current_table_fqns.append(to_entity_fqn)
-
-                        if self.context.get().latest_run_id:
-                            cache_key = (
-                                pipeline_details.id,
-                                str(self.context.get().latest_run_id),
+                        if not all([parent.name, parent.database, parent.dbtschema]):
+                            logger.debug(
+                                f"Skipping parent with missing attributes: name={getattr(parent, 'name', None)}, "
+                                f"database={getattr(parent, 'database', None)}, schema={getattr(parent, 'dbtschema', None)}"
                             )
-                            if cache_key in self.observability_cache:
-                                if (
-                                    to_entity_fqn
-                                    not in self.observability_cache[cache_key][
-                                        "table_fqns"
-                                    ]
-                                ):
-                                    self.observability_cache[cache_key][
-                                        "table_fqns"
-                                    ].append(to_entity_fqn)
+                            continue
 
-                        for unique_id in model.dependsOn or []:
-                            parents = [
-                                d for d in dbt_parents if d.uniqueId == unique_id
-                            ]
-                            if parents:
-                                parent = parents[0]
-                                if not all(
-                                    [parent.name, parent.database, parent.dbtschema]
-                                ):
-                                    logger.debug(
-                                        f"Skipping parent with missing attributes: name={getattr(parent, 'name', None)}, database={getattr(parent, 'database', None)}, schema={getattr(parent, 'dbtschema', None)}"
-                                    )
-                                    continue
+                        from_entity_fqn = fqn.build(
+                            metadata=self.metadata,
+                            entity_type=Table,
+                            table_name=parent.name,
+                            database_name=parent.database,
+                            schema_name=parent.dbtschema,
+                            service_name=dbservicename,
+                        )
 
-                                from_entity_fqn = fqn.build(
-                                    metadata=self.metadata,
-                                    entity_type=Table,
-                                    table_name=parent.name,
-                                    database_name=parent.database,
-                                    schema_name=parent.dbtschema,
-                                    service_name=dbservicename,
-                                )
-                                from_entity = self.metadata.get_by_name(
-                                    entity=Table, fqn=from_entity_fqn
-                                )
+                        # Use cached table entity lookup
+                        from_entity = self._get_table_entity(from_entity_fqn)
 
-                                if from_entity is None:
-                                    continue
+                        if from_entity is None:
+                            continue
 
-                                if (
-                                    from_entity_fqn
-                                    not in self.context.get().current_table_fqns
-                                ):
-                                    self.context.get().current_table_fqns.append(
-                                        from_entity_fqn
-                                    )
+                        # Add to context table FQNs
+                        if from_entity_fqn not in self.context.get().current_table_fqns:
+                            self.context.get().current_table_fqns.append(
+                                from_entity_fqn
+                            )
 
-                                if self.context.get().latest_run_id:
-                                    cache_key = (
-                                        pipeline_details.id,
-                                        str(self.context.get().latest_run_id),
-                                    )
-                                    if cache_key in self.observability_cache:
-                                        if (
-                                            from_entity_fqn
-                                            not in self.observability_cache[cache_key][
-                                                "table_fqns"
-                                            ]
-                                        ):
-                                            self.observability_cache[cache_key][
-                                                "table_fqns"
-                                            ].append(from_entity_fqn)
+                        # Add to observability cache using set.add() for O(1)
+                        if cache_key and cache_key in self.observability_cache:
+                            self.observability_cache[cache_key]["table_fqns"].add(
+                                from_entity_fqn
+                            )
 
-                                lineage_details = LineageDetails(
-                                    pipeline=EntityReference(
-                                        id=pipeline_entity.id.root, type="pipeline"
+                        lineage_details = LineageDetails(
+                            pipeline=EntityReference(
+                                id=pipeline_entity.id.root, type="pipeline"
+                            ),
+                            source=LineageSource.PipelineLineage,
+                        )
+
+                        yield Either(
+                            right=AddLineageRequest(
+                                edge=EntitiesEdge(
+                                    fromEntity=EntityReference(
+                                        id=from_entity.id,
+                                        type="table",
                                     ),
-                                    source=LineageSource.PipelineLineage,
+                                    toEntity=EntityReference(
+                                        id=to_entity.id,
+                                        type="table",
+                                    ),
+                                    lineageDetails=lineage_details,
                                 )
-
-                                yield Either(
-                                    right=AddLineageRequest(
-                                        edge=EntitiesEdge(
-                                            fromEntity=EntityReference(
-                                                id=from_entity.id,
-                                                type="table",
-                                            ),
-                                            toEntity=EntityReference(
-                                                id=to_entity.id,
-                                                type="table",
-                                            ),
-                                            lineageDetails=lineage_details,
-                                        )
-                                    )
-                                )
+                            )
+                        )
 
         except Exception as exc:
             yield Either(
@@ -462,7 +458,7 @@ class DbtcloudSource(PipelineServiceSource):
                 if hasattr(ctx, "current_job_id") and job_id == ctx.current_job_id:
                     continue
 
-                table_fqns = cached_data.get("table_fqns", [])
+                table_fqns = cached_data.get("table_fqns", set())
                 pipeline_entity = cached_data.get("pipeline_entity")
                 job_details = cached_data.get("job_details")
                 runs = cached_data.get("runs")
