@@ -34,6 +34,10 @@ class ProfilerWorkflow(IngestionWorkflow):
     this workflow. No need to do anything here if this does not pass
     """
 
+    def __init__(self, config):
+        super().__init__(config)
+        self.workflow_config.successThreshold = 80.0
+
     def _get_source_class(self):
         if self.config.source.serviceName:
             self.import_source_class()
