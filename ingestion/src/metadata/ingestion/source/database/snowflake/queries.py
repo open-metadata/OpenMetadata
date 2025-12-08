@@ -472,7 +472,7 @@ SNOWFLAKE_QUERY_LOG_QUERY = """
         ROWS_INSERTED,
         ROWS_UPDATED,
         ROWS_DELETED
-    FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
+    FROM {account_usage_schema}."QUERY_HISTORY"
     WHERE
     start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
     AND QUERY_TEXT ILIKE '%{tablename}%'
