@@ -714,6 +714,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public EntityRepository<GlossaryTerm>.EntityUpdater getUpdater(
       GlossaryTerm original, GlossaryTerm updated, Operation operation, ChangeSource changeSource) {
+    if (operation == Operation.PATCH || operation == Operation.PUT) {
+      checkDuplicateTermsForUpdate(original, updated);
+    }
     return new GlossaryTermUpdater(original, updated, operation);
   }
 
@@ -1182,6 +1185,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
+  private void checkDuplicateTermsForUpdate(GlossaryTerm original, GlossaryTerm updated) {
+    if (!original.getName().equals(updated.getName())) {
+      int count =
+          daoCollection
+              .glossaryTermDAO()
+              .getGlossaryTermCountIgnoreCaseExcludingId(
+                  updated.getGlossary().getName(), updated.getName(), original.getId().toString());
+      if (count > 0) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.duplicateGlossaryTerm(
+                updated.getName(), updated.getGlossary().getName()));
+      }
+    }
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryTermUpdater extends EntityUpdater {
     public GlossaryTermUpdater(GlossaryTerm original, GlossaryTerm updated, Operation operation) {
@@ -1353,7 +1371,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        checkDuplicateTerms(updated);
         // Glossary term name changed - update the FQNs of the children terms to reflect this
         setFullyQualifiedName(updated);
         LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
@@ -1382,6 +1399,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 updated.getFullyQualifiedName());
 
         updateEntityLinks(original, updated);
+        //        updateAssetIndexes(original, updated);
       }
     }
 
