@@ -74,6 +74,10 @@ export const prepareColumnLevelNodesFromEdges = (
           0
         );
 
+        if (!entityData) {
+          continue;
+        }
+
         const picked = pick<NodeData['entity']>(
           entityData,
           'owners',
@@ -86,12 +90,16 @@ export const prepareColumnLevelNodesFromEdges = (
           'tags' | 'tier' | 'domains' | 'description' | 'owners' | 'id'
         >; // Type assertion to Include type to ensure only these fields are
 
-        acc.push({
-          ...omit(node, 'columns'),
-          column: col,
-          nodeDepth,
-          ...picked,
-        });
+        // flatten the fromColumns to create separate nodes for each
+        for (const fromCol of col.fromColumns || []) {
+          acc.push({
+            ...omit(node, 'columns'),
+            column: { ...col, fromColumns: [fromCol] },
+            docId: fromCol + '->' + col.toColumn,
+            nodeDepth,
+            ...picked,
+          });
+        }
       }
     }
 

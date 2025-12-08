@@ -37,6 +37,7 @@ import {
   IMPACT_ANALYSIS_STATIC_COLUMNS,
 } from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
+import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
@@ -442,13 +443,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   // Fetch Lineage data when dependencies change
   useEffect(() => {
     fetchNodes();
-  }, [nodeDepth, currentPage, pageSize, impactLevel]);
-
-  useEffect(() => {
-    if (impactLevel === EImpactLevel.TableLevel) {
-      fetchNodes();
-    }
-  }, [queryFilter, impactLevel]);
+  }, [nodeDepth, currentPage, impactLevel, pageSize, queryFilter]);
 
   useEffect(() => {
     if (impactLevel === EImpactLevel.TableLevel) {
@@ -460,7 +455,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         setLoading(false);
       }, 500);
     }
-  }, [lineageDirection, impactLevel]);
+  }, [lineageDirection]);
 
   useEffect(() => {
     updateEntityData(entityType, entity, false);
@@ -742,19 +737,24 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   // Initialize quick filters on component mount
   useEffect(() => {
-    const updatedQuickFilters = LINEAGE_DROPDOWN_ITEMS.map(
-      (selectedFilterItem) => {
-        const originalFilterItem = selectedQuickFilters?.find(
-          (filter) => filter.key === selectedFilterItem.key
-        );
+    const items =
+      impactLevel === EImpactLevel.TableLevel
+        ? LINEAGE_DROPDOWN_ITEMS
+        : LINEAGE_DROPDOWN_ITEMS.filter(
+            (item) =>
+              ![EntityFields.TAG, EntityFields.COLUMN].includes(item.key)
+          );
+    const updatedQuickFilters = items.map((selectedFilterItem) => {
+      const originalFilterItem = selectedQuickFilters?.find(
+        (filter) => filter.key === selectedFilterItem.key
+      );
 
-        return {
-          ...(originalFilterItem || selectedFilterItem),
-          // preserve original values if exists else set to empty array
-          value: originalFilterItem?.value || [],
-        };
-      }
-    );
+      return {
+        ...(originalFilterItem || selectedFilterItem),
+        // preserve original values if exists else set to empty array
+        value: originalFilterItem?.value || [],
+      };
+    });
 
     if (updatedQuickFilters.length > 0) {
       setSelectedQuickFilters(updatedQuickFilters);
@@ -849,7 +849,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         rowKey={
           impactLevel === EImpactLevel.TableLevel
             ? 'fullyQualifiedName'
-            : 'docUniqueId'
+            : 'docId'
         }
         staticVisibleColumns={IMPACT_ANALYSIS_STATIC_COLUMNS}
       />
