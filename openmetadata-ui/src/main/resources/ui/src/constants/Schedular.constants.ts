@@ -53,31 +53,31 @@ export const PERIOD_OPTIONS = [
 
 export const DAY_OPTIONS = [
   {
-    label: 'label.sunday',
+    label: 'Sunday',
     value: '0',
   },
   {
-    label: 'label.monday',
+    label: 'Monday',
     value: '1',
   },
   {
-    label: 'label.tuesday',
+    label: 'Tuesday',
     value: '2',
   },
   {
-    label: 'label.wednesday',
+    label: 'Wednesday',
     value: '3',
   },
   {
-    label: 'label.thursday',
+    label: 'Thursday',
     value: '4',
   },
   {
-    label: 'label.friday',
+    label: 'Friday',
     value: '5',
   },
   {
-    label: 'label.saturday',
+    label: 'Saturday',
     value: '6',
   },
 ];
