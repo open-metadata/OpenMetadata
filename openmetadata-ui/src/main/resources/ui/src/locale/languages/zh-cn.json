@@ -1591,6 +1591,7 @@
     "show-more": "Show More",
     "show-more-entity": "显示更多{{entity}}",
     "show-more-lowercase": "显示更多",
+    "show-nested": "显示嵌套",
     "show-or-hide-advanced-config": "{{showAdv}}高级配置",
     "show-or-hide-column-plural": "Show / Hide Columns",
     "sign-in": "Sign In",
