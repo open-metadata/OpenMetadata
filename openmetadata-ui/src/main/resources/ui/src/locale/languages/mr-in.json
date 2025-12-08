@@ -1591,6 +1591,7 @@
     "show-more": "Show More",
     "show-more-entity": "अधिक {{entity}} दाखवा",
     "show-more-lowercase": "अधिक दर्शवा",
+    "show-nested": "नेस्टेड दर्शवा",
     "show-or-hide-advanced-config": "{{showAdv}} प्रगत संरचना दाखवा किंवा लपवा",
     "show-or-hide-column-plural": "स्तंभ दर्शवा / लपवा",
     "sign-in": "Sign In",

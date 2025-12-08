@@ -1591,6 +1591,7 @@
     "show-more": "Mostrar más",
     "show-more-entity": "Mostrar más {{entity}}",
     "show-more-lowercase": "mostrar más",
+    "show-nested": "Mostrar anidados",
     "show-or-hide-advanced-config": "{{showAdv}} Configuración Avanzada",
     "show-or-hide-column-plural": "Mostrar / Ocultar columnas",
     "sign-in": "Iniciar sesión",

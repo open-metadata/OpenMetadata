@@ -68,6 +68,10 @@ export interface WorkflowDefinition {
      */
     owners?: EntityReference[];
     /**
+     * When `true` indicates the workflow is suspended and not accepting new executions.
+     */
+    suspended?: boolean;
+    /**
      * Workflow Trigger.
      */
     trigger?: any[] | boolean | number | number | null | TriggerObject | string;
