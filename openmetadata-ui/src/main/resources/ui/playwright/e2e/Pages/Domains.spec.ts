@@ -20,8 +20,8 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import {
-  EntityTypeEndpoint,
   ENTITY_PATH,
+  EntityTypeEndpoint,
 } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -769,6 +769,130 @@ test.describe('Domains', () => {
       await user.delete(apiContext);
     }
     await afterAction();
+  });
+
+  test('Verify domain and subdomain asset count accuracy', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const { assets: domainAssets, assetCleanup: domainAssetCleanup } =
+      await setupAssetsForDomain(page);
+    const { assets: subDomainAssets, assetCleanup: subDomainAssetCleanup } =
+      await setupAssetsForDomain(page);
+
+    let subDomain!: SubDomain;
+
+    try {
+      await test.step('Create domain and subdomain via API', async () => {
+        await domain.create(apiContext);
+        subDomain = new SubDomain(domain);
+        await subDomain.create(apiContext);
+      });
+
+      await test.step('Add assets to domain', async () => {
+        await page.reload();
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
+        await page.getByTestId('assets').click();
+        await addAssetsToDomain(page, domain, domainAssets, false);
+      });
+
+      await test.step('Add assets to subdomain', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
+        await page.getByTestId('subdomains').getByText('Sub Domains').click();
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await Promise.all([
+          page.getByTestId(subDomain.data.name).click(),
+          page.waitForResponse('/api/v1/domains/name/*'),
+        ]);
+
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page.getByTestId('assets').click();
+        await addAssetsToDomain(
+          page,
+          subDomain as unknown as Domain,
+          subDomainAssets,
+          false
+        );
+      });
+
+      await test.step(
+        'Verify domain asset count matches displayed cards',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+          await page.getByTestId('assets').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          const assetCountElement = page
+            .getByTestId('assets')
+            .getByTestId('count');
+          const countText = await assetCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+          const totalCount = domainAssets.length + subDomainAssets.length;
+          const assetCards = await page
+            .locator('[data-testid*="table-data-card_"]')
+            .count();
+
+          expect(displayedCount).toBe(totalCount);
+          expect(assetCards).toBe(totalCount);
+        }
+      );
+
+      await test.step(
+        'Verify subdomain asset count matches displayed cards',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+          await page.getByTestId('subdomains').getByText('Sub Domains').click();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await Promise.all([
+            page.getByTestId(subDomain.data.name).click(),
+            page.waitForResponse('/api/v1/domains/name/*'),
+          ]);
+
+          await page.getByTestId('assets').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          const assetCountElement = page
+            .getByTestId('assets')
+            .getByTestId('count');
+          const countText = await assetCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          const assetCards = await page
+            .locator('[data-testid*="table-data-card_"]')
+            .count();
+
+          expect(displayedCount).toBe(subDomainAssets.length);
+          expect(assetCards).toBe(subDomainAssets.length);
+        }
+      );
+    } finally {
+      await subDomain?.delete(apiContext);
+      await domain.delete(apiContext);
+      await domainAssetCleanup();
+      await subDomainAssetCleanup();
+      await afterAction();
+    }
   });
 
   test('Verify domain tags and glossary terms', async ({ page }) => {
