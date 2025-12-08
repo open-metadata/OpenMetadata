@@ -802,6 +802,11 @@ test.describe('Teams Page', () => {
       // Toggle to show deleted teams
       await page.locator('[data-testid="show-deleted"]').click();
 
+      const fetchDeletedTeamsResponse = page.waitForResponse(
+        '/api/v1/teams?parentTeam=Organization&include=deleted&fields=**'
+      );
+      await fetchDeletedTeamsResponse;
+
       // Wait for deleted team to appear and active team to disappear
       await expect(
         page.getByRole('link', { name: deletedTeam.data.displayName })
@@ -812,6 +817,11 @@ test.describe('Teams Page', () => {
 
       // Toggle back to show non-deleted teams
       await page.locator('[data-testid="show-deleted"]').click();
+
+      const fetchActiveTeamsResponse = page.waitForResponse(
+        '/api/v1/teams?parentTeam=Organization&include=non-deleted&fields=**'
+      );
+      await fetchActiveTeamsResponse;
 
       // Wait for active team to appear and deleted team to disappear
       await expect(
