@@ -430,10 +430,12 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     if metric_func.column is not None:
                         column = metric_func.column.name
                         self.status.scanned(
-                            f"{metric_func.table.__tablename__}.{column}"
+                            f"{metric_func.table.__tablename__}.{column}__{metric_func.metric_type.value}"
                         )
                     else:
-                        self.status.scanned(metric_func.table.__tablename__)
+                        self.status.scanned(
+                            f"{metric_func.table.__tablename__}__{metric_func.metric_type.value}"
+                        )
                         column = None
 
                     return row, column, metric_func.metric_type.value
