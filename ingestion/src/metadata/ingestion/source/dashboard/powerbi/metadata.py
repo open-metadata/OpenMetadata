@@ -71,6 +71,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBiMeasureModel,
     PowerBIReport,
     PowerBiTable,
+    ReportPage,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.utils import fqn
@@ -305,9 +306,23 @@ class PowerbiSource(DashboardServiceSource):
         """
         Method to build the dashboard url
         """
+        page_id = ""
+        try:
+            pages: Optional[
+                List[ReportPage]
+            ] = self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)
+            if len(pages) >= 1:
+                # get first page out of multiple pages otherwise
+                # get page if of single page
+                page_id = pages[0].name
+            page_id = f"/{page_id}" if page_id else ""
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error building report page url: {exc}")
+        # https://app.powerbi.com/groups/4e57dcbb-***/reports/a2902011-***/098b***?experience=power-bi
         return (
             f"{clean_uri(self.service_connection.hostPort)}/groups/"
-            f"{workspace_id}/reports/{dashboard_id}/ReportSection?experience=power-bi"
+            f"{workspace_id}/reports/{dashboard_id}{page_id}?experience=power-bi"
         )
 
     def _get_dataset_url(self, workspace_id: str, dataset_id: str) -> str:

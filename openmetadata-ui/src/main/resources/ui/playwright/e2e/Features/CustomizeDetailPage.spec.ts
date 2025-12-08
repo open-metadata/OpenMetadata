@@ -27,6 +27,7 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  clickOutside,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -180,6 +181,15 @@ test.describe('Persona customize UI tab', async () => {
   test('customize navigation should work', async ({ adminPage, userPage }) => {
     test.slow();
 
+    const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
+    await adminPage.goBack();
+    await personaListResponse;
+    await adminPage.waitForLoadState('networkidle');
+    await navigateToPersonaWithPagination(
+      adminPage,
+      navigationPersona.data.name,
+      true
+    );
     await adminPage.getByText('Navigation').click();
 
     await test.step(
@@ -222,8 +232,13 @@ test.describe('Persona customize UI tab', async () => {
 
         // Select navigation persona
         await redirectToHomePage(userPage);
-        await userPage.reload();
-        await userPage.waitForLoadState('networkidle');
+        await userPage.getByTestId('dropdown-profile').click();
+        await userPage
+          .getByRole('menuitem', {
+            name: navigationPersona.responseData.displayName,
+          })
+          .click();
+        await clickOutside(userPage);
 
         // Validate changes in navigation tree
         await validateLeftSidebarWithHiddenItems(userPage, [
@@ -291,9 +306,16 @@ test.describe('Persona customize UI tab', async () => {
           /^Page layout (created|updated) successfully\.$/
         );
 
-        // Reload user page to validate changes
-        await userPage.reload();
-        await userPage.waitForLoadState('networkidle');
+        // Select navigation persona
+        await redirectToHomePage(userPage);
+        await userPage.getByTestId('dropdown-profile').click();
+        await userPage
+          .getByRole('menuitem', {
+            name: navigationPersona.responseData.displayName,
+          })
+          .click();
+        await clickOutside(userPage);
+        await userPage.waitForTimeout(500);
 
         // Validate changes in navigation tree
         await validateLeftSidebarWithHiddenItems(userPage, [

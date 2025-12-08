@@ -17,6 +17,11 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
+import { TeamClass } from '../../support/team/TeamClass';
+import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToExplorePage, uuid } from '../../utils/common';
 import {
@@ -25,6 +30,22 @@ import {
   setValueForProperty,
 } from '../../utils/customProperty';
 import { getCurrentMillis } from '../../utils/dateTime';
+import {
+  addOwnerWithoutValidation,
+  assignTier,
+  updateDescription,
+} from '../../utils/entity';
+import {
+  clearAndAddGlossaryTerms,
+  clearDataProducts,
+  clickDataQualityStatCard,
+  editDomain,
+  editTags,
+  navigateToEntityPanelTab,
+  navigateToIncidentsTab,
+  openEntitySummaryPanel,
+  verifyDeletedEntityNotVisible,
+} from '../../utils/entityPanel';
 import { addPipelineBetweenNodes } from '../../utils/lineage';
 
 const testEntity = new TableClass();
@@ -66,28 +87,6 @@ test.afterAll('Cleanup shared test data', async ({ browser }) => {
   await afterAction();
 });
 
-async function openEntitySummaryPanel(page: Page, entityName: string) {
-  const searchResponse = page.waitForResponse('/api/v1/search/query*');
-
-  await page.getByTestId('searchBox').fill(entityName);
-  await searchResponse;
-
-  await page.getByTestId('searchBox').press('Enter');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
-  await page.waitForLoadState('networkidle');
-
-  const entityCard = page
-    .locator('[data-testid="table-data-card"]')
-    .filter({ hasText: entityName })
-    .first();
-  if (await entityCard.isVisible()) {
-    await entityCard.click();
-    await page.waitForLoadState('networkidle');
-  }
-}
-
 async function navigateToExploreAndSelectTable(page: Page) {
   await redirectToExplorePage(page);
 
@@ -100,15 +99,6 @@ async function navigateToExploreAndSelectTable(page: Page) {
       // Loader might not appear, continue
     });
   await openEntitySummaryPanel(page, testEntity.entity.name);
-}
-
-async function waitForPatchResponse(page: Page) {
-  return page.waitForResponse(
-    (resp) =>
-      resp.url().includes('/api/v1/') &&
-      resp.request().method() === 'PATCH' &&
-      !resp.url().includes('/api/v1/analytics')
-  );
 }
 
 test.describe('Right Entity Panel - Admin User Flow', () => {
@@ -124,65 +114,284 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(descriptionSection).toBeVisible();
 
-    const editButton = descriptionSection.getByTestId('edit-description');
-    if (await editButton.isVisible()) {
-      await editButton.click();
+    await updateDescription(adminPage, 'Admin updated description', false, '');
 
-      await expect(adminPage.getByTestId('header')).toHaveText(
-        'Edit Description'
-      );
+    await expect(adminPage.getByTestId('markdown-editor')).not.toBeVisible();
+    await expect(
+      adminPage.getByText(/Description updated successfully/)
+    ).toBeVisible();
+  });
 
-      const editor = adminPage
-        .locator('.ProseMirror[contenteditable="true"]')
-        .first();
-      await editor.click();
-      await editor.fill('Admin updated description');
+  test('Admin - Overview Tab - Owners Section - Add and Update, Verify Deleted Users Not Visible', async ({
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const deletedUser = new UserClass();
 
-      const patchResp = waitForPatchResponse(adminPage);
-      await adminPage.getByTestId('save').click();
-      await patchResp;
+    try {
+      await deletedUser.create(apiContext);
 
-      await expect(adminPage.getByTestId('markdown-editor')).not.toBeVisible();
+      const deletedUserDisplayName = deletedUser.getUserDisplayName();
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const ownersSection = summaryPanel.locator('.owners-section');
+
+      await expect(ownersSection).toBeVisible();
+
+      await addOwnerWithoutValidation({
+        page: adminPage,
+        owner: deletedUserDisplayName,
+        type: 'Users',
+        initiatorId: 'edit-owners',
+      });
+
       await expect(
-        adminPage.getByText(/Description updated successfully/)
+        adminPage.getByText(/Owners updated successfully/i)
       ).toBeVisible();
+
+      await deletedUser.delete(apiContext, false);
+
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanelAfterDelete = adminPage.locator(
+        '.entity-summary-panel-container'
+      );
+      await summaryPanelAfterDelete.waitFor({ state: 'visible' });
+
+      const ownersSectionAfterDelete =
+        summaryPanelAfterDelete.locator('.owners-section');
+      await ownersSectionAfterDelete.waitFor({ state: 'visible' });
+      await ownersSectionAfterDelete.scrollIntoViewIfNeeded();
+
+      await expect(ownersSectionAfterDelete).toBeVisible();
+
+      const editButtonAfterDelete =
+        ownersSectionAfterDelete.getByTestId('edit-owners');
+      if (await editButtonAfterDelete.isVisible()) {
+        await editButtonAfterDelete.click();
+
+        const popoverAfterDelete = adminPage.getByTestId('select-owner-tabs');
+
+        await expect(popoverAfterDelete).toBeVisible();
+
+        await adminPage.getByRole('tab', { name: 'Users' }).click();
+
+        const deletedUserItem = await verifyDeletedEntityNotVisible(
+          adminPage,
+          deletedUserDisplayName,
+          'owner-select-users-search-bar',
+          'user'
+        );
+
+        await expect(deletedUserItem).not.toBeVisible();
+
+        await adminPage.waitForSelector('.ant-list-empty-text', {
+          state: 'visible',
+        });
+      }
+    } finally {
+      await afterAction();
     }
   });
 
-  test('Admin - Overview Tab - Owners Section - Add and Update', async ({
+  test('Admin - Overview Tab - Owners Section - Add Team Owner and Verify Deleted Teams Not Visible', async ({
     adminPage,
   }) => {
-    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
-    const ownersSection = summaryPanel.locator('.owners-section');
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const deletedTeam = new TeamClass();
 
-    await expect(ownersSection).toBeVisible();
+    try {
+      await deletedTeam.create(apiContext);
 
-    const editButton = ownersSection.getByTestId('edit-owners');
-    if (await editButton.isVisible()) {
-      await editButton.click();
+      const deletedTeamDisplayName = deletedTeam.getTeamDisplayName();
 
-      const popover = adminPage.getByTestId('select-owner-tabs');
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const ownersSection = summaryPanel.locator('.owners-section');
 
-      await expect(popover).toBeVisible();
+      await expect(ownersSection).toBeVisible();
 
-      await adminPage.getByRole('tab', { name: 'Users' }).click();
-
-      const firstOwner = adminPage.getByRole('listitem', {
-        name: 'admin',
-        exact: true,
+      await addOwnerWithoutValidation({
+        page: adminPage,
+        owner: deletedTeamDisplayName,
+        type: 'Teams',
+        initiatorId: 'edit-owners',
       });
-      if (await firstOwner.isVisible()) {
-        await firstOwner.click();
-        const updateBtn = adminPage.getByRole('button', { name: 'Update' });
-        if (await updateBtn.isVisible()) {
-          await updateBtn.click();
-          await waitForPatchResponse(adminPage);
 
-          await expect(
-            adminPage.getByText(/Owners updated successfully/i)
-          ).toBeVisible();
-        }
+      await expect(
+        adminPage.getByText(/Owners updated successfully/i)
+      ).toBeVisible();
+
+      await deletedTeam.delete(apiContext);
+
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanelAfterDelete = adminPage.locator(
+        '.entity-summary-panel-container'
+      );
+      await summaryPanelAfterDelete.waitFor({ state: 'visible' });
+
+      const ownersSectionAfterDelete =
+        summaryPanelAfterDelete.locator('.owners-section');
+      await ownersSectionAfterDelete.waitFor({ state: 'visible' });
+      await ownersSectionAfterDelete.scrollIntoViewIfNeeded();
+
+      await expect(ownersSectionAfterDelete).toBeVisible();
+
+      const editButtonAfterDelete =
+        ownersSectionAfterDelete.getByTestId('edit-owners');
+      if (await editButtonAfterDelete.isVisible()) {
+        await editButtonAfterDelete.click();
+
+        const popoverAfterDelete = adminPage.getByTestId('select-owner-tabs');
+
+        await expect(popoverAfterDelete).toBeVisible();
+
+        await adminPage.getByRole('tab', { name: 'Teams' }).click();
+
+        const deletedTeamItem = await verifyDeletedEntityNotVisible(
+          adminPage,
+          deletedTeamDisplayName,
+          'owner-select-teams-search-bar',
+          'team'
+        );
+
+        await expect(deletedTeamItem).not.toBeVisible();
+
+        await adminPage.waitForSelector('.ant-list-empty-text', {
+          state: 'visible',
+        });
       }
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('Admin - Overview Tab - Tags Section - Add Tag and Verify Deleted Tags Not Visible', async ({
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const testClassification = new ClassificationClass();
+    const deletedTag = new TagClass({
+      classification: testClassification.data.name,
+    });
+
+    try {
+      await testClassification.create(apiContext);
+      await deletedTag.create(apiContext);
+
+      const deletedTagDisplayName = deletedTag.getTagDisplayName();
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const tagsSection = summaryPanel.locator('.tags-section');
+
+      await tagsSection.scrollIntoViewIfNeeded();
+
+      await expect(tagsSection).toBeVisible();
+
+      await editTags(adminPage, deletedTagDisplayName, true);
+
+      await expect(
+        adminPage.getByText(/Tags updated successfully/i)
+      ).toBeVisible();
+
+      await deletedTag.delete(apiContext);
+
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanelAfterDelete = adminPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const tagsSectionAfterDelete =
+        summaryPanelAfterDelete.locator('.tags-section');
+      await tagsSectionAfterDelete.scrollIntoViewIfNeeded();
+
+      await expect(tagsSectionAfterDelete).toBeVisible();
+
+      await adminPage
+        .locator('[data-testid="edit-icon-tags"]')
+        .scrollIntoViewIfNeeded();
+
+      await adminPage.locator('[data-testid="edit-icon-tags"]').click();
+
+      const deletedTagItem = await verifyDeletedEntityNotVisible(
+        adminPage,
+        deletedTagDisplayName,
+        'tag-select-search-bar',
+        'tag'
+      );
+
+      await expect(deletedTagItem).not.toBeVisible();
+
+      const cancelBtn = adminPage.getByRole('button', { name: 'Cancel' });
+      if (await cancelBtn.isVisible()) {
+        await cancelBtn.click();
+      }
+    } finally {
+      await testClassification.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Admin - Overview Tab - Glossary Terms Section - Add Term and Verify Deleted Terms Not Visible', async ({
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const deletedTerm = new GlossaryTerm();
+
+    try {
+      await deletedTerm.create(apiContext);
+
+      const deletedTermDisplayName = deletedTerm.getTermDisplayName();
+
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+      const glossarySection = summaryPanel.locator('.glossary-terms-section');
+
+      await glossarySection.scrollIntoViewIfNeeded();
+
+      await expect(glossarySection).toBeVisible();
+
+      await clearAndAddGlossaryTerms(adminPage, deletedTermDisplayName);
+
+      await expect(
+        adminPage.getByText(/Glossary terms updated successfully/i)
+      ).toBeVisible();
+
+      await deletedTerm.delete(apiContext);
+
+      await navigateToExploreAndSelectTable(adminPage);
+
+      const summaryPanelAfterDelete = adminPage.locator(
+        '.entity-summary-panel-container'
+      );
+      const glossarySectionAfterDelete = summaryPanelAfterDelete.locator(
+        '.glossary-terms-section'
+      );
+      await glossarySectionAfterDelete.scrollIntoViewIfNeeded();
+
+      await expect(glossarySectionAfterDelete).toBeVisible();
+
+      await adminPage
+        .locator('[data-testid="edit-glossary-terms"]')
+        .scrollIntoViewIfNeeded();
+
+      await adminPage.locator('[data-testid="edit-glossary-terms"]').click();
+
+      const deletedTermItem = await verifyDeletedEntityNotVisible(
+        adminPage,
+        deletedTermDisplayName,
+        'glossary-term-select-search-bar',
+        'glossaryTerm'
+      );
+
+      await expect(deletedTermItem).not.toBeVisible();
+
+      await adminPage.waitForSelector('.ant-list-empty-text', {
+        state: 'visible',
+      });
+      const cancelBtn = adminPage.getByRole('button', { name: 'Cancel' });
+      await cancelBtn.click();
+    } finally {
+      await afterAction();
     }
   });
 
@@ -194,102 +403,15 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tierSection).toBeVisible();
 
-    await adminPage
-      .locator('[data-testid="edit-icon-tier"]')
-      .scrollIntoViewIfNeeded();
-
-    await adminPage.locator('[data-testid="edit-icon-tier"]').click();
-
-    await adminPage.locator('[data-testid="cards"]').scrollIntoViewIfNeeded();
-
-    await expect(adminPage.locator('[data-testid="cards"]')).toBeVisible();
-
-    const tier1Radio = adminPage.getByTestId('radio-btn-Tier1');
-    await tier1Radio.click();
-    await adminPage.waitForSelector('[data-testid="update-tier-card"]', {
-      state: 'visible',
-    });
-    await adminPage.getByTestId('update-tier-card').click();
-    const patchResp = waitForPatchResponse(adminPage);
-    await patchResp;
+    await assignTier(
+      adminPage,
+      'Tier1',
+      EntityTypeEndpoint.Table,
+      'edit-icon-tier'
+    );
 
     await expect(
       adminPage.getByText(/Tier updated successfully/i)
-    ).toBeVisible();
-  });
-
-  test('Admin - Overview Tab - Tags Section - Add and Update', async ({
-    adminPage,
-  }) => {
-    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
-    const tagsSection = summaryPanel.locator('.tags-section');
-
-    await expect(tagsSection).toBeVisible();
-
-    await adminPage
-      .locator('[data-testid="edit-icon-tags"]')
-      .scrollIntoViewIfNeeded();
-
-    await adminPage.locator('[data-testid="edit-icon-tags"]').click();
-
-    await adminPage
-      .locator('[data-testid="selectable-list"]')
-      .scrollIntoViewIfNeeded();
-
-    await expect(
-      adminPage.locator('[data-testid="selectable-list"]')
-    ).toBeVisible();
-
-    const tagOption = adminPage.getByTitle('None');
-    if (await tagOption.isVisible()) {
-      await tagOption.click();
-
-      const updateBtn = adminPage.getByRole('button', { name: 'Update' });
-      if (await updateBtn.isVisible()) {
-        await updateBtn.click();
-        await waitForPatchResponse(adminPage);
-
-        await expect(
-          adminPage.getByText(/Tags updated successfully/i)
-        ).toBeVisible();
-      }
-    }
-  });
-
-  test('Admin - Overview Tab - Glossary Terms Section - Add and Update', async ({
-    adminPage,
-  }) => {
-    const summaryPanel = adminPage.locator('.entity-summary-panel-container');
-    const glossarySection = summaryPanel.locator('.glossary-terms-section');
-
-    await expect(glossarySection).toBeVisible();
-
-    await adminPage
-      .locator('[data-testid="edit-glossary-terms"]')
-      .scrollIntoViewIfNeeded();
-    await adminPage.waitForSelector('[data-testid="edit-glossary-terms"]', {
-      state: 'visible',
-    });
-
-    await adminPage.locator('[data-testid="edit-glossary-terms"]').click();
-
-    await adminPage
-      .locator('[data-testid="selectable-list"]')
-      .scrollIntoViewIfNeeded();
-
-    await expect(
-      adminPage.locator('[data-testid="selectable-list"]')
-    ).toBeVisible();
-
-    const firstTerm = adminPage.locator('.ant-list-item').first();
-    await firstTerm.click();
-
-    const patchResp = waitForPatchResponse(adminPage);
-    await adminPage.getByRole('button', { name: 'Update' }).click();
-    await patchResp;
-
-    await expect(
-      adminPage.getByText(/Glossary terms updated successfully/i)
     ).toBeVisible();
   });
 
@@ -299,78 +421,13 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const domainsSection = summaryPanel.locator('.domains-section');
 
-    await expect(domainsSection).toBeVisible();
+    await domainsSection.scrollIntoViewIfNeeded();
 
-    const dataProductItems = adminPage.locator(
-      '[data-testid="data-product-item"]'
-    );
-    const dataProductCount = await dataProductItems.count();
+    await domainsSection.waitFor({ state: 'visible' });
 
-    if (dataProductCount >= 1) {
-      const editDataProductsButton = adminPage.locator(
-        '[data-testid="edit-data-products"]'
-      );
-      if (await editDataProductsButton.isVisible()) {
-        await editDataProductsButton.click();
-        await adminPage.waitForTimeout(500);
+    await clearDataProducts(adminPage);
 
-        const clearAllButton = adminPage.locator(
-          '[data-testid="clear-all-button"]'
-        );
-        if (await clearAllButton.isVisible()) {
-          await clearAllButton.click();
-
-          const updateButton = adminPage.getByRole('button', {
-            name: 'Update',
-          });
-          await updateButton.click();
-          await waitForPatchResponse(adminPage);
-          await adminPage.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
-
-          await expect(
-            adminPage.getByText(/Data products updated successfully/i)
-          ).toBeVisible();
-        }
-      }
-    }
-
-    await domainsSection
-      .locator('[data-testid="add-domain"]')
-      .scrollIntoViewIfNeeded();
-    await adminPage.waitForSelector('[data-testid="add-domain"]', {
-      state: 'visible',
-    });
-    await adminPage.locator('[data-testid="add-domain"]').click();
-    const tree = adminPage.getByTestId('domain-selectable-tree');
-
-    await expect(tree).toBeVisible();
-
-    const searchDomain = adminPage.waitForResponse(
-      `/api/v1/search/query?q=*TestDomain*`
-    );
-
-    await adminPage
-      .getByTestId('domain-selectable-tree')
-      .getByTestId('searchbar')
-      .fill('TestDomain');
-
-    await searchDomain;
-
-    const tagSelector = adminPage.getByTestId('tag-TestDomain');
-    await tagSelector.waitFor({ state: 'visible' });
-
-    const patchReq = adminPage.waitForResponse(
-      (req) => req.request().method() === 'PATCH'
-    );
-
-    await tagSelector.click();
-
-    await patchReq;
-    await adminPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await editDomain(adminPage, 'TestDomain');
 
     await expect(
       adminPage.getByText(/Domains updated successfully/i)
@@ -733,10 +790,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(abortedStat).toHaveText('1Aborted');
 
       // Click on failed filter to see failed test cases
-      await failedStat.click();
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await clickDataQualityStatCard(adminPage, 'failed');
 
       // Verify test case cards section
       const testCaseCardsSection = tabContent.locator(
@@ -789,10 +843,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       // Switch to success filter
 
-      await successStat.click();
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await clickDataQualityStatCard(adminPage, 'success');
 
       // Verify success test case card
       const successCards = testCaseCardsSection.locator('.test-case-card');
@@ -808,10 +859,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(successBadge).toContainText(/success/i);
 
-      await abortedStat.click();
-      await adminPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await clickDataQualityStatCard(adminPage, 'aborted');
       // Verify aborted test case card
       const abortedCards = testCaseCardsSection.locator('.test-case-card');
 
@@ -879,83 +927,68 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
       // Click on Incidents tab
-      const incidentsTabButton = tabContent
-        .locator('.ant-tabs-tab')
-        .filter({ hasText: /incident/i });
+      await navigateToIncidentsTab(adminPage);
 
-      if (await incidentsTabButton.isVisible()) {
-        await incidentsTabButton.click();
+      // Verify incidents tab content is visible
+      const incidentsTabContent = tabContent.locator('.incidents-tab-content');
+
+      await expect(incidentsTabContent).toBeVisible();
+
+      // Verify incident stats container
+      const incidentStatsContainer = incidentsTabContent.locator(
+        '.incidents-stats-container'
+      );
+
+      await expect(incidentStatsContainer).toBeVisible();
+
+      // Verify incident stat cards
+      const newCard = incidentStatsContainer.locator(
+        '.incident-stat-card.new-card'
+      );
+
+      await expect(newCard).toBeVisible();
+      await expect(
+        incidentStatsContainer.locator('.incident-stat-card.ack-card')
+      ).toBeVisible();
+      await expect(
+        incidentStatsContainer.locator('.incident-stat-card.assigned-card')
+      ).toBeVisible();
+      await expect(
+        incidentStatsContainer.locator('.resolved-section')
+      ).toBeVisible();
+
+      // Click on a filter to see incidents
+      const activeFilter = await newCard.evaluate((el) =>
+        el.classList.contains('active')
+      );
+
+      if (!activeFilter) {
+        await newCard.click();
         await adminPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
-        // Verify incidents tab content is visible
-        const incidentsTabContent = tabContent.locator(
-          '.incidents-tab-content'
-        );
+      }
 
-        await expect(incidentsTabContent).toBeVisible();
+      // Verify incident cards section (may be empty if no incidents)
+      const incidentCardsSection = incidentsTabContent.locator(
+        '.incident-cards-section'
+      );
 
-        // Verify incident stats container
-        const incidentStatsContainer = incidentsTabContent.locator(
-          '.incidents-stats-container'
-        );
+      await expect(incidentCardsSection).toBeVisible();
 
-        await expect(incidentStatsContainer).toBeVisible();
+      // If incidents exist, verify card structure
+      const incidentCards = incidentCardsSection.locator('.test-case-card');
+      const cardCount = await incidentCards.count();
 
-        // Verify incident stat cards
-        const newCard = incidentStatsContainer.locator(
-          '.incident-stat-card.new-card'
-        );
-        const ackCard = incidentStatsContainer.locator(
-          '.incident-stat-card.ack-card'
-        );
-        const assignedCard = incidentStatsContainer.locator(
-          '.incident-stat-card.assigned-card'
-        );
+      if (cardCount > 0) {
+        const firstIncidentCard = incidentCards.first();
 
-        await expect(newCard).toBeVisible();
-        await expect(ackCard).toBeVisible();
-        await expect(assignedCard).toBeVisible();
+        // Verify assignee info
+        const assigneeSection = firstIncidentCard
+          .locator('.test-case-detail-item')
+          .filter({ hasText: /assignee/i });
 
-        // Verify resolved section
-        const resolvedSection =
-          incidentStatsContainer.locator('.resolved-section');
-
-        await expect(resolvedSection).toBeVisible();
-
-        // Click on a filter to see incidents
-        const activeFilter = await newCard.evaluate((el) =>
-          el.classList.contains('active')
-        );
-
-        if (!activeFilter) {
-          await newCard.click();
-          await adminPage.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
-        }
-
-        // Verify incident cards section (may be empty if no incidents)
-        const incidentCardsSection = incidentsTabContent.locator(
-          '.incident-cards-section'
-        );
-
-        await expect(incidentCardsSection).toBeVisible();
-
-        // If incidents exist, verify card structure
-        const incidentCards = incidentCardsSection.locator('.test-case-card');
-        const cardCount = await incidentCards.count();
-
-        if (cardCount > 0) {
-          const firstIncidentCard = incidentCards.first();
-
-          // Verify assignee info
-          const assigneeSection = firstIncidentCard
-            .locator('.test-case-detail-item')
-            .filter({ hasText: /assignee/i });
-
-          await expect(assigneeSection).toBeVisible();
-        }
+        await expect(assigneeSection).toBeVisible();
       }
     } finally {
       await afterAction();
@@ -1370,31 +1403,19 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(descriptionSection).toBeVisible();
 
-    const editButton = descriptionSection.getByTestId('edit-description');
-    if (await editButton.isVisible()) {
-      await editButton.click();
+    await updateDescription(
+      dataStewardPage,
+      'Data Steward updated description',
+      false,
+      ''
+    );
 
-      await expect(dataStewardPage.getByTestId('header')).toHaveText(
-        'Edit Description'
-      );
-
-      const editor = dataStewardPage
-        .locator('.ProseMirror[contenteditable="true"]')
-        .first();
-      await editor.click();
-      await editor.fill('Data Steward updated description');
-
-      const patchResp = waitForPatchResponse(dataStewardPage);
-      await dataStewardPage.getByTestId('save').click();
-      await patchResp;
-
-      await expect(
-        dataStewardPage.getByTestId('markdown-editor')
-      ).not.toBeVisible();
-      await expect(
-        dataStewardPage.getByText(/Description updated successfully/)
-      ).toBeVisible();
-    }
+    await expect(
+      dataStewardPage.getByTestId('markdown-editor')
+    ).not.toBeVisible();
+    await expect(
+      dataStewardPage.getByText(/Description updated successfully/)
+    ).toBeVisible();
   });
 
   test('Data Steward - Overview Tab - Owners Section - Add and Update', async ({
@@ -1407,35 +1428,16 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(ownersSection).toBeVisible();
 
-    const editButton = ownersSection.getByTestId('edit-owners');
-    if (await editButton.isVisible()) {
-      await editButton.click();
+    await addOwnerWithoutValidation({
+      page: dataStewardPage,
+      owner: 'admin',
+      type: 'Users',
+      initiatorId: 'edit-owners',
+    });
 
-      const popover = dataStewardPage.getByTestId('select-owner-tabs');
-
-      await expect(popover).toBeVisible();
-
-      await dataStewardPage.getByRole('tab', { name: 'Users' }).click();
-
-      const firstOwner = dataStewardPage.getByRole('listitem', {
-        name: 'admin',
-        exact: true,
-      });
-      if (await firstOwner.isVisible()) {
-        await firstOwner.click();
-        const updateBtn = dataStewardPage.getByRole('button', {
-          name: 'Update',
-        });
-        if (await updateBtn.isVisible()) {
-          await updateBtn.click();
-          await waitForPatchResponse(dataStewardPage);
-
-          await expect(
-            dataStewardPage.getByText(/Owners updated successfully/i)
-          ).toBeVisible();
-        }
-      }
-    }
+    await expect(
+      dataStewardPage.getByText(/Owners updated successfully/i)
+    ).toBeVisible();
   });
 
   test('Data Steward - Overview Tab - Tier Section - Add and Update', async ({
@@ -1448,31 +1450,12 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(tierSection).toBeVisible();
 
-    await dataStewardPage
-      .locator('[data-testid="edit-icon-tier"]')
-      .scrollIntoViewIfNeeded();
-    await dataStewardPage.waitForSelector('[data-testid="edit-icon-tier"]', {
-      state: 'visible',
-    });
-
-    await dataStewardPage.locator('[data-testid="edit-icon-tier"]').click();
-
-    await dataStewardPage
-      .locator('[data-testid="cards"]')
-      .scrollIntoViewIfNeeded();
-
-    await expect(
-      dataStewardPage.locator('[data-testid="cards"]')
-    ).toBeVisible();
-
-    const tier2Radio = dataStewardPage.getByTestId('radio-btn-Tier2');
-    await tier2Radio.click();
-    await dataStewardPage.waitForSelector('[data-testid="update-tier-card"]', {
-      state: 'visible',
-    });
-    await dataStewardPage.getByTestId('update-tier-card').click();
-    const patchResp = waitForPatchResponse(dataStewardPage);
-    await patchResp;
+    await assignTier(
+      dataStewardPage,
+      'Tier2',
+      EntityTypeEndpoint.Table,
+      'edit-icon-tier'
+    );
 
     await expect(
       dataStewardPage.getByText(/Tier updated successfully/i)
@@ -1487,40 +1470,15 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
     );
     const tagsSection = summaryPanel.locator('.tags-section');
 
+    await tagsSection.scrollIntoViewIfNeeded();
+
     await expect(tagsSection).toBeVisible();
 
-    await dataStewardPage
-      .locator('[data-testid="edit-icon-tags"]')
-      .scrollIntoViewIfNeeded();
-
-    await dataStewardPage.waitForSelector('[data-testid="edit-icon-tags"]', {
-      state: 'visible',
-    });
-
-    await dataStewardPage.locator('[data-testid="edit-icon-tags"]').click();
-
-    await dataStewardPage
-      .locator('[data-testid="selectable-list"]')
-      .scrollIntoViewIfNeeded();
+    await editTags(dataStewardPage, 'NonSensitive', true);
 
     await expect(
-      dataStewardPage.locator('[data-testid="selectable-list"]')
+      dataStewardPage.getByText(/Tags updated successfully/i)
     ).toBeVisible();
-
-    const tagOption = dataStewardPage.getByTitle('PII.Sensitive');
-    if (await tagOption.isVisible()) {
-      await tagOption.click();
-
-      const updateBtn = dataStewardPage.getByRole('button', { name: 'Update' });
-      if (await updateBtn.isVisible()) {
-        await updateBtn.click();
-        await waitForPatchResponse(dataStewardPage);
-
-        await expect(
-          dataStewardPage.getByText(/Tags updated successfully/i)
-        ).toBeVisible();
-      }
-    }
   });
 
   test('Data Steward - Overview Tab - Glossary Terms Section - Add and Update', async ({
@@ -1533,37 +1491,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(glossarySection).toBeVisible();
 
-    await dataStewardPage
-      .locator('[data-testid="edit-glossary-terms"]')
-      .scrollIntoViewIfNeeded();
-    await dataStewardPage.waitForSelector(
-      '[data-testid="edit-glossary-terms"]',
-      {
-        state: 'visible',
-      }
-    );
-
-    await dataStewardPage
-      .locator('[data-testid="edit-glossary-terms"]')
-      .click();
-
-    await dataStewardPage
-      .locator('[data-testid="selectable-list"]')
-      .scrollIntoViewIfNeeded();
-
-    await expect(
-      dataStewardPage.locator('[data-testid="selectable-list"]')
-    ).toBeVisible();
-
-    await dataStewardPage.waitForSelector('.ant-list-item', {
-      state: 'visible',
-    });
-    const firstTerm = dataStewardPage.locator('.ant-list-item').first();
-    await firstTerm.click();
-
-    const patchResp = waitForPatchResponse(dataStewardPage);
-    await dataStewardPage.getByRole('button', { name: 'Update' }).click();
-    await patchResp;
+    await clearAndAddGlossaryTerms(dataStewardPage);
 
     await expect(
       dataStewardPage.getByText(/Glossary terms updated successfully/i)
@@ -1740,31 +1668,19 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(descriptionSection).toBeVisible();
 
-    const editButton = descriptionSection.getByTestId('edit-description');
-    if (await editButton.isVisible()) {
-      await editButton.click();
+    await updateDescription(
+      dataConsumerPage,
+      'Data Consumer updated description',
+      false,
+      ''
+    );
 
-      await expect(dataConsumerPage.getByTestId('header')).toHaveText(
-        'Edit Description'
-      );
-
-      const editor = dataConsumerPage
-        .locator('.ProseMirror[contenteditable="true"]')
-        .first();
-      await editor.click();
-      await editor.fill('Data Consumer updated description');
-
-      const patchResp = waitForPatchResponse(dataConsumerPage);
-      await dataConsumerPage.getByTestId('save').click();
-      await patchResp;
-
-      await expect(
-        dataConsumerPage.getByTestId('markdown-editor')
-      ).not.toBeVisible();
-      await expect(
-        dataConsumerPage.getByText(/Description updated successfully/)
-      ).toBeVisible();
-    }
+    await expect(
+      dataConsumerPage.getByTestId('markdown-editor')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByText(/Description updated successfully/)
+    ).toBeVisible();
   });
 
   test('Data Consumer - Overview Tab - Owners Section - Add and Update', async ({
@@ -1777,35 +1693,16 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(ownersSection).toBeVisible();
 
-    const editButton = ownersSection.getByTestId('edit-owners');
-    if (await editButton.isVisible()) {
-      await editButton.click();
+    await addOwnerWithoutValidation({
+      page: dataConsumerPage,
+      owner: 'admin',
+      type: 'Users',
+      initiatorId: 'edit-owners',
+    });
 
-      const popover = dataConsumerPage.getByTestId('select-owner-tabs');
-
-      await expect(popover).toBeVisible();
-
-      await dataConsumerPage.getByRole('tab', { name: 'Users' }).click();
-
-      const firstOwner = dataConsumerPage.getByRole('listitem', {
-        name: 'admin',
-        exact: true,
-      });
-      if (await firstOwner.isVisible()) {
-        await firstOwner.click();
-        const updateBtn = dataConsumerPage.getByRole('button', {
-          name: 'Update',
-        });
-        if (await updateBtn.isVisible()) {
-          await updateBtn.click();
-          await waitForPatchResponse(dataConsumerPage);
-
-          await expect(
-            dataConsumerPage.getByText(/Owners updated successfully/i)
-          ).toBeVisible();
-        }
-      }
-    }
+    await expect(
+      dataConsumerPage.getByText(/Owners updated successfully/i)
+    ).toBeVisible();
   });
 
   test('Data Consumer - Overview Tab - Tier Section - Add and Update', async ({
@@ -1818,31 +1715,12 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tierSection).toBeVisible();
 
-    await dataConsumerPage
-      .locator('[data-testid="edit-icon-tier"]')
-      .scrollIntoViewIfNeeded();
-    await dataConsumerPage.waitForSelector('[data-testid="edit-icon-tier"]', {
-      state: 'visible',
-    });
-
-    await dataConsumerPage.locator('[data-testid="edit-icon-tier"]').click();
-
-    await dataConsumerPage
-      .locator('[data-testid="cards"]')
-      .scrollIntoViewIfNeeded();
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="cards"]')
-    ).toBeVisible();
-
-    const tier3Radio = dataConsumerPage.getByTestId('radio-btn-Tier3');
-    await tier3Radio.click();
-    await dataConsumerPage.waitForSelector('[data-testid="update-tier-card"]', {
-      state: 'visible',
-    });
-    await dataConsumerPage.getByTestId('update-tier-card').click();
-    const patchResp = waitForPatchResponse(dataConsumerPage);
-    await patchResp;
+    await assignTier(
+      dataConsumerPage,
+      'Tier3',
+      EntityTypeEndpoint.Table,
+      'edit-icon-tier'
+    );
 
     await expect(
       dataConsumerPage.getByText(/Tier updated successfully/i)
@@ -1859,42 +1737,11 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tagsSection).toBeVisible();
 
-    await dataConsumerPage
-      .locator('[data-testid="edit-icon-tags"]')
-      .scrollIntoViewIfNeeded();
-    await dataConsumerPage.waitForSelector('[data-testid="edit-icon-tags"]', {
-      state: 'visible',
-    });
-
-    await dataConsumerPage.locator('[data-testid="edit-icon-tags"]').click();
-
-    await dataConsumerPage.locator('loader').waitFor({
-      state: 'detached',
-    });
-    await dataConsumerPage
-      .locator('[data-testid="selectable-list"]')
-      .scrollIntoViewIfNeeded();
+    await editTags(dataConsumerPage, 'NonSensitive', true);
 
     await expect(
-      dataConsumerPage.locator('[data-testid="selectable-list"]')
+      dataConsumerPage.getByText(/Tags updated successfully/i)
     ).toBeVisible();
-
-    const tagOption = dataConsumerPage.getByTitle('PersonalData.Personal');
-    if (await tagOption.isVisible()) {
-      await tagOption.click();
-
-      const updateBtn = dataConsumerPage.getByRole('button', {
-        name: 'Update',
-      });
-      if (await updateBtn.isVisible()) {
-        await updateBtn.click();
-        await waitForPatchResponse(dataConsumerPage);
-
-        await expect(
-          dataConsumerPage.getByText(/Tags updated successfully/i)
-        ).toBeVisible();
-      }
-    }
   });
 
   test('Data Consumer - Overview Tab - Glossary Terms Section - Add and Update', async ({
@@ -1907,34 +1754,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(glossarySection).toBeVisible();
 
-    await dataConsumerPage
-      .locator('[data-testid="edit-glossary-terms"]')
-      .scrollIntoViewIfNeeded();
-    await dataConsumerPage.waitForSelector(
-      '[data-testid="edit-glossary-terms"]',
-      {
-        state: 'visible',
-      }
-    );
-
-    await dataConsumerPage
-      .locator('[data-testid="edit-glossary-terms"]')
-      .click();
-
-    await dataConsumerPage
-      .locator('[data-testid="selectable-list"]')
-      .scrollIntoViewIfNeeded();
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="selectable-list"]')
-    ).toBeVisible();
-
-    const firstTerm = dataConsumerPage.locator('.ant-list-item').first();
-    await firstTerm.click();
-
-    const patchResp = waitForPatchResponse(dataConsumerPage);
-    await dataConsumerPage.getByRole('button', { name: 'Update' }).click();
-    await patchResp;
+    await clearAndAddGlossaryTerms(dataConsumerPage);
 
     await expect(
       dataConsumerPage.getByText(/Glossary terms updated successfully/i)
@@ -1960,12 +1780,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
   test('Data Consumer - Schema Tab - View Schema', async ({
     dataConsumerPage,
   }) => {
-    const schemaTab = dataConsumerPage.locator('[data-testid="schema-tab"]');
-
-    await schemaTab.click();
-    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await navigateToEntityPanelTab(dataConsumerPage, 'schema');
 
     const tabContent = dataConsumerPage.locator(
       '[data-testid="entity-details-section"]'
@@ -2004,18 +1819,11 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
   test('Data Consumer - Lineage Tab - No Lineage', async ({
     dataConsumerPage,
   }) => {
+    await navigateToEntityPanelTab(dataConsumerPage, 'lineage');
+
     const summaryPanel = dataConsumerPage.locator(
       '.entity-summary-panel-container'
     );
-    const lineageTab = summaryPanel.getByRole('menuitem', {
-      name: /lineage/i,
-    });
-
-    await lineageTab.click();
-    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
     const tabContent = summaryPanel.locator(
       '.entity-summary-panel-tab-content'
     );
@@ -2031,18 +1839,11 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
   test('Data Consumer - Data Quality Tab - No Test Cases', async ({
     dataConsumerPage,
   }) => {
+    await navigateToEntityPanelTab(dataConsumerPage, 'data quality');
+
     const summaryPanel = dataConsumerPage.locator(
       '.entity-summary-panel-container'
     );
-    const dqTab = summaryPanel.getByRole('menuitem', {
-      name: /data quality/i,
-    });
-
-    await dqTab.click();
-    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
     const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
     await expect(tabContent).toBeVisible();
@@ -2058,18 +1859,11 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
   test('Data Consumer - Data Quality Tab - Incidents Empty State', async ({
     dataConsumerPage,
   }) => {
+    await navigateToEntityPanelTab(dataConsumerPage, 'data quality');
+
     const summaryPanel = dataConsumerPage.locator(
       '.entity-summary-panel-container'
     );
-    const dqTab = summaryPanel.getByRole('menuitem', {
-      name: /data quality/i,
-    });
-
-    await dqTab.click();
-    await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-
     const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
     await expect(tabContent).toBeVisible();
@@ -2093,10 +1887,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     });
 
     if (await cpTab.isVisible()) {
-      await cpTab.click();
-      await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await navigateToEntityPanelTab(dataConsumerPage, 'custom property');
 
       const tabContent = summaryPanel.locator(
         '.entity-summary-panel-tab-content'
