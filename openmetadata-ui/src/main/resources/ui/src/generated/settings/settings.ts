@@ -1412,6 +1412,9 @@ export interface SP {
  * Token Validation Algorithm to use.
  */
 export enum TokenValidationAlgorithm {
+    Es256 = "ES256",
+    Es384 = "ES384",
+    Es512 = "ES512",
     Rs256 = "RS256",
     Rs384 = "RS384",
     Rs512 = "RS512",
@@ -2172,18 +2175,6 @@ export interface Config {
 export enum Templates {
     Collate = "collate",
     Openmetadata = "openmetadata",
-}
-
-/**
- * Token Validation Algorithm to use.
- */
-export enum TokenValidationAlgorithm {
-    Es256 = "ES256",
-    Es384 = "ES384",
-    Es512 = "ES512",
-    Rs256 = "RS256",
-    Rs384 = "RS384",
-    Rs512 = "RS512",
 }
 
 export enum TransportationStrategy {
