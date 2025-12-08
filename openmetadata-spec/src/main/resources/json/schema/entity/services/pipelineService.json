@@ -38,7 +38,8 @@
         "DataFactory",
         "Wherescape",
         "SSIS",
-        "Snowplow"
+        "Snowplow",
+        "MicrosoftFabricPipeline"
       ],
       "javaEnums": [
         {
@@ -106,6 +107,9 @@
         },
         {
           "name": "Snowplow"
+        },
+        {
+          "name": "MicrosoftFabricPipeline"
         }
       ]
     },
@@ -185,6 +189,9 @@
             },
             {
               "$ref": "./connections/pipeline/snowplowConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/microsoftFabricPipelineConnection.json"
             }
           ]
         }

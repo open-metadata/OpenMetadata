@@ -1,0 +1,64 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/microsoftFabricPipelineConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MicrosoftFabricPipelineConnection",
+  "description": "Microsoft Fabric Data Factory Pipeline Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.MicrosoftFabricPipelineConnection",
+  "definitions": {
+    "MicrosoftFabricPipelineType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["MicrosoftFabricPipeline"],
+      "default": "MicrosoftFabricPipeline"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/MicrosoftFabricPipelineType",
+      "default": "MicrosoftFabricPipeline"
+    },
+    "tenantId": {
+      "title": "Tenant ID",
+      "description": "Microsoft Entra (Azure AD) Tenant ID for authentication.",
+      "type": "string"
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "Application (client) ID of the Service Principal for authentication.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "Client secret for Service Principal authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "authorityUri": {
+      "title": "Authority URI",
+      "description": "Microsoft Entra authority URI for authentication.",
+      "type": "string",
+      "default": "https://login.microsoftonline.com/"
+    },
+    "workspaceId": {
+      "title": "Workspace ID",
+      "description": "Microsoft Fabric Workspace ID (GUID). Required for identifying the Fabric workspace.",
+      "type": "string"
+    },
+    "runFilterDays": {
+      "title": "Pipeline Run Filter Days",
+      "description": "Number of days in the past to filter pipeline runs.",
+      "type": "integer",
+      "default": 7
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex to filter pipelines by name.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["tenantId", "clientId", "clientSecret", "workspaceId"]
+}
