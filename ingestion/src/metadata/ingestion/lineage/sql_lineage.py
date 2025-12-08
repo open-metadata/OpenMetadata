@@ -326,7 +326,7 @@ def _replace_target_table(
                 try:
                     # remove the old edge
                     stmt_holder.graph.remove_edge(col_lineage[-2], tgt_col)
-                except Exception as _:
+                except Exception:
                     # if the edge is not present, pass
                     pass
 
@@ -718,7 +718,7 @@ def _create_lineage_by_table_name(
         yield Either(
             left=StackTraceError(
                 name="Lineage",
-                error=f"Error creating lineage for service [{service_name}] from table [{from_table}]: {exc}",
+                error=f"Error creating lineage for service [{service_names}] from table [{from_table}]: {exc}",
                 stackTrace=traceback.format_exc(),
             )
         )
@@ -949,7 +949,10 @@ def get_lineage_via_table_entity(
         Either(
             left=StackTraceError(
                 name="Lineage",
-                error=f"Failed to create view lineage for database [{database_name}] and table [{table_entity}] with service(s) [{service_names}]: {exc}",
+                error=(
+                    f"Failed to create view lineage for database [{database_name}] and table [{table_entity}]"
+                    f" with service(s) [{service_names}]: {exc}"
+                ),
                 stackTrace=traceback.format_exc(),
             )
         )

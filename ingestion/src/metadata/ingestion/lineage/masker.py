@@ -10,13 +10,19 @@
 #  limitations under the License.
 """
 Query masking utilities
+
+All masking functions (sqlparse, sqlfluff, sqlglot) reuse the already-parsed AST
+from the LineageRunner to avoid duplicate parsing and improve performance.
 """
 
 import traceback
 from typing import Optional
 
 from cachetools import LRUCache
-from collate_sqllineage.runner import SQLPARSE_DIALECT, LineageRunner
+from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
+from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyzer
+from collate_sqllineage.runner import LineageRunner
+from sqlglot import exp
 from sqlparse.sql import Comparison
 from sqlparse.tokens import Literal, Number, String
 
@@ -114,6 +120,34 @@ def mask_literals_with_sqlfluff(query: str, parser: LineageRunner) -> str:
     return query
 
 
+def mask_literals_with_sqlglot(query: str, parser: LineageRunner) -> str:
+    """
+    Mask literals in a query using SQLGlot.
+    """
+    logger = get_logger()
+    try:
+        if not parser._evaluated:
+            parser._eval()
+
+        parsed = parser._parsed_result
+
+        def replace_literal(node):
+            """Replace literal nodes with placeholders."""
+            if isinstance(node, (exp.Literal, exp.Null, exp.Boolean)):
+                return exp.Placeholder()
+            return node
+
+        transformed = parsed.transform(replace_literal, copy=True)
+        masked_query = transformed.sql(dialect=None)
+
+        return masked_query
+    except Exception as exc:
+        logger.debug(f"Failed to mask query with sqlglot: {exc}")
+        logger.debug(traceback.format_exc())
+
+    return query
+
+
 @calculate_execution_time(context="MaskQuery")
 def mask_query(
     query: str,
@@ -122,7 +156,7 @@ def mask_query(
     parser_required: bool = False,
 ) -> str:
     """
-    Mask a query using sqlparse or sqlfluff.
+    Mask a query using sqlparse, sqlfluff, or sqlglot based on the analyzer used.
     """
     logger = get_logger()
     try:
@@ -131,19 +165,36 @@ def mask_query(
         if parser_required and not parser:
             return None
         if not parser:
+            # Try to create a parser with the same fallback strategy as LineageParser
+            # Try SQLGlot first, then SQLFluff, then SQLParse
             try:
-                parser = LineageRunner(query, dialect=dialect)
+                parser = LineageRunner(
+                    query, dialect=dialect, analyzer=SqlGlotLineageAnalyzer
+                )
                 len(parser.source_tables)
             except Exception:
-                parser = LineageRunner(query)
-                len(parser.source_tables)
-        if parser._dialect == SQLPARSE_DIALECT:
-            masked_query = mask_literals_with_sqlparse(query, parser)
-        else:
+                try:
+                    parser = LineageRunner(
+                        query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer
+                    )
+                    len(parser.source_tables)
+                except Exception:
+                    # Fall back to default sqlparse
+                    parser = LineageRunner(query)
+                    len(parser.source_tables)
+
+        # Check which analyzer was used based on _analyzer attribute
+        if parser._analyzer == SqlGlotLineageAnalyzer:
+            masked_query = mask_literals_with_sqlglot(query, parser)
+        elif parser._analyzer == SqlFluffLineageAnalyzer:
             masked_query = mask_literals_with_sqlfluff(query, parser)
+        else:
+            # Default to sqlparse (when _analyzer is None)
+            masked_query = mask_literals_with_sqlparse(query, parser)
+
         masked_query_cache[(query, dialect)] = masked_query
         return masked_query
     except Exception as exc:
-        logger.debug(f"Failed to mask query with sqlfluff: {exc}")
+        logger.debug(f"Failed to mask query: {exc}")
         logger.debug(traceback.format_exc())
     return None
