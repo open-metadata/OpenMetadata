@@ -249,5 +249,8 @@ export class UserClass {
     await page.getByTestId('confirm-logout').click();
 
     await waitLogout;
+
+    // Confirm the signin redirection to ensure the token is cleared
+    await page.waitForURL('**/signin');
   }
 }
