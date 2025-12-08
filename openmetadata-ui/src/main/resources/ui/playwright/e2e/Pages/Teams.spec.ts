@@ -322,8 +322,11 @@ test.describe('Teams Page', () => {
       // Click on the show deleted button
       await page.locator('[data-testid="show-deleted"]').click();
 
-      await page.waitForLoadState('networkidle');
-    
+      const fetchDeletedTeamsResponse = page.waitForResponse(
+        '/api/v1/teams?parentTeam=Organization&include=deleted&fields=**'
+      );
+      await fetchDeletedTeamsResponse;
+
       // Check if the table contains the team name and click on it
       await expect(
         page.getByRole('link', { name: teamDetails?.updatedName })
