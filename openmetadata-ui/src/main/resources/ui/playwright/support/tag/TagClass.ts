@@ -46,21 +46,22 @@ export type TagData = {
 };
 
 export class TagClass {
-  randomName = getRandomLastName();
-  data: TagData = {
-    name: `pw-tier-${this.randomName}`,
-    displayName: `PW Tier ${this.randomName}`,
-    description: 'Tier tag for the Collate platform',
-    style: {
-      color: '#FFD700',
-    },
-    classification: 'Tier',
-  };
+  randomName: string;
+  data: TagData;
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(tag: Partial<TagData>) {
-    this.data.classification = tag.classification ?? this.data.classification;
+    this.randomName = getRandomLastName();
+    this.data = {
+      name: `pw-tier-${this.randomName}`,
+      displayName: `PW Tier ${this.randomName}`,
+      description: 'Tier tag for the Collate platform',
+      style: {
+        color: '#FFD700',
+      },
+      classification: tag.classification ?? 'Tier',
+    };
   }
 
   async visitPage(page: Page) {
@@ -94,5 +95,9 @@ export class TagClass {
     );
 
     return await response.json();
+  }
+
+  getTagDisplayName() {
+    return this.responseData.displayName;
   }
 }

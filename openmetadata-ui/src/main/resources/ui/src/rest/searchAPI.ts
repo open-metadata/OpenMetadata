@@ -167,7 +167,6 @@ export const rawSearchQuery = <
     sortField,
     sortOrder,
     searchIndex,
-    includeDeleted,
     trackTotalHits,
     postFilter,
     fetchSource,
@@ -175,6 +174,8 @@ export const rawSearchQuery = <
   } = req;
 
   const queryWithSlash = getQueryWithSlash(query || '');
+  const includeDeletedParam =
+    'includeDeleted' in req ? req.includeDeleted : false;
 
   const apiQuery =
     query && query !== '**'
@@ -195,7 +196,7 @@ export const rawSearchQuery = <
       index: getSearchIndexParam(searchIndex),
       from: (pageNumber - 1) * pageSize,
       size: pageSize,
-      deleted: includeDeleted,
+      deleted: includeDeletedParam,
       query_filter: JSON.stringify(queryFilter),
       post_filter: JSON.stringify(postFilter),
       sort_field: sortField,

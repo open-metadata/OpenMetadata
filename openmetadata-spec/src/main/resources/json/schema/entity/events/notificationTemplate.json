@@ -42,9 +42,19 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to this template resource.",
       "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "templateSubject": {
+      "description": "Handlebars template for the email subject line with placeholders.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
     },
     "templateBody": {
       "description": "Handlebars HTML template body with placeholders.",
@@ -68,11 +78,17 @@
       "description": "When `true` indicates the template has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "isModifiedFromDefault": {
+      "description": "Indicates if this system template has been modified from its default version. Only applicable to system templates.",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [
     "id",
     "name",
+    "templateSubject",
     "templateBody"
   ],
   "additionalProperties": false

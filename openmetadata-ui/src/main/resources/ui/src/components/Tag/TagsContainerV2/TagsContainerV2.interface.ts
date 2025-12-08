@@ -24,6 +24,7 @@ export interface TagsContainerV2Props {
   tagType: TagSource;
   columnData?: {
     fqn: string;
+    name?: string;
   };
   showBottomEditButton?: boolean;
   showInlineEditButton?: boolean;
@@ -38,4 +39,5 @@ export interface TagsContainerV2Props {
   // Props to control the dropdown state from the Generic Provider
   useGenericControls?: boolean;
   tagNewLook?: boolean;
+  multiSelect?: boolean;
 }

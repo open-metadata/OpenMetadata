@@ -22,7 +22,8 @@ import {
   Domain,
   DomainType,
 } from '../../../../generated/entity/domains/domain';
-import { searchData } from '../../../../rest/miscAPI';
+import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import DomainsWidget from './DomainsWidget';
 
 const mockProps = {
@@ -47,6 +48,7 @@ const mockDomains: Domain[] = [
     id: '1',
     name: 'clients',
     displayName: 'Clients',
+    fullyQualifiedName: 'clients',
     assets: [{ id: 'a1', type: 'table' }],
     style: { color: '#4F8CFF', iconURL: 'icon1.svg' },
     domainType: DomainType.Aggregate,
@@ -56,6 +58,7 @@ const mockDomains: Domain[] = [
     id: '2',
     name: 'marketing',
     displayName: 'Marketing',
+    fullyQualifiedName: 'marketing',
     assets: [
       { id: 'a2', type: 'table' },
       { id: 'a3', type: 'table' },
@@ -67,26 +70,24 @@ const mockDomains: Domain[] = [
 ];
 
 const mockSearchResponse = {
-  data: {
-    hits: {
-      hits: mockDomains.map((domain) => ({
-        _source: domain,
-        _index: 'domain_search_index',
-        _id: domain.id,
-      })),
-      total: { value: mockDomains.length },
-    },
-    aggregations: {},
+  hits: {
+    hits: mockDomains.map((domain) => ({
+      _source: domain,
+      _index: 'domain_search_index',
+      _id: domain.id,
+    })),
+    total: { value: mockDomains.length },
   },
-  status: 200,
-  statusText: 'OK',
-  headers: {},
-  config: {},
+  aggregations: {},
 } as any;
 
 // Mock API functions
-jest.mock('../../../../rest/miscAPI', () => ({
-  searchData: jest.fn(),
+jest.mock('../../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
+}));
+
+jest.mock('../../../../rest/domainAPI', () => ({
+  getAllDomainsWithAssetsCount: jest.fn(),
 }));
 
 jest.mock('../../../../constants/Widgets.constant', () => ({
@@ -99,7 +100,11 @@ jest.mock('../../../../utils/DomainUtils', () => ({
   getDomainIcon: jest.fn().mockReturnValue(<div data-testid="domain-icon" />),
 }));
 
-const mockSearchData = searchData as jest.MockedFunction<typeof searchData>;
+const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
+const mockGetAllDomainsWithAssetsCount =
+  getAllDomainsWithAssetsCount as jest.MockedFunction<
+    typeof getAllDomainsWithAssetsCount
+  >;
 
 const mockGetSortField = getSortField as jest.MockedFunction<
   typeof getSortField
@@ -121,7 +126,11 @@ describe('DomainsWidget', () => {
     mockGetSortField.mockReturnValue('updatedAt');
     mockGetSortOrder.mockReturnValue('desc');
     mockApplySortToData.mockImplementation((data) => data);
-    mockSearchData.mockResolvedValue(mockSearchResponse);
+    mockSearchQuery.mockResolvedValue(mockSearchResponse);
+    mockGetAllDomainsWithAssetsCount.mockResolvedValue({
+      clients: 1,
+      marketing: 2,
+    });
   });
 
   const renderDomainsWidget = (props = {}) => {
@@ -161,15 +170,13 @@ describe('DomainsWidget', () => {
   });
 
   it('renders empty state when no domains', async () => {
-    mockSearchData.mockResolvedValue({
+    mockSearchQuery.mockResolvedValue({
       ...mockSearchResponse,
-      data: {
-        hits: {
-          hits: [],
-          total: { value: 0 },
-        },
-        aggregations: {},
+      hits: {
+        hits: [],
+        total: { value: 0 },
       },
+      aggregations: {},
     });
 
     renderDomainsWidget();
@@ -184,7 +191,7 @@ describe('DomainsWidget', () => {
   });
 
   it('renders error state when API fails', async () => {
-    mockSearchData.mockRejectedValue(new Error('API Error'));
+    mockSearchQuery.mockRejectedValue(new Error('API Error'));
 
     renderDomainsWidget();
 
@@ -196,19 +203,18 @@ describe('DomainsWidget', () => {
     });
   });
 
-  it('calls searchData with correct parameters on mount', async () => {
+  it('calls searchQuery with correct parameters on mount', async () => {
     renderDomainsWidget();
 
     await waitFor(() => {
-      expect(mockSearchData).toHaveBeenCalledWith(
-        '',
-        1,
-        PAGE_SIZE_MEDIUM,
-        '',
-        'updatedAt',
-        'desc',
-        'domain_search_index'
-      );
+      expect(mockSearchQuery).toHaveBeenCalledWith({
+        query: '',
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_MEDIUM,
+        sortField: 'updatedAt',
+        sortOrder: 'desc',
+        searchIndex: 'domain_search_index',
+      });
     });
   });
 
@@ -231,7 +237,7 @@ describe('DomainsWidget', () => {
     // Simulate sort option selection - this would trigger the callback
     // Since the dropdown behavior is complex, we'll test the effect
     // by verifying the API is called again with new sort parameters
-    expect(mockSearchData).toHaveBeenCalled();
+    expect(mockSearchQuery).toHaveBeenCalled();
   });
 
   it('renders domains in full size layout', async () => {
@@ -321,19 +327,17 @@ describe('DomainsWidget', () => {
       })
     );
 
-    mockSearchData.mockResolvedValue({
+    mockSearchQuery.mockResolvedValue({
       ...mockSearchResponse,
-      data: {
-        hits: {
-          hits: manyDomains.map((domain) => ({
-            _source: domain,
-            _index: 'domain_search_index',
-            _id: domain.id,
-          })),
-          total: { value: manyDomains.length },
-        },
-        aggregations: {},
+      hits: {
+        hits: manyDomains.map((domain) => ({
+          _source: domain,
+          _index: 'domain_search_index',
+          _id: domain.id,
+        })),
+        total: { value: manyDomains.length },
       },
+      aggregations: {},
     });
 
     renderDomainsWidget();
@@ -358,7 +362,7 @@ describe('DomainsWidget', () => {
   });
 
   it('handles loading state correctly', () => {
-    mockSearchData.mockImplementation(
+    mockSearchQuery.mockImplementation(
       () =>
         new Promise(() => {
           // Never resolves to simulate loading state
@@ -377,21 +381,22 @@ describe('DomainsWidget', () => {
       assets: undefined,
     };
 
-    mockSearchData.mockResolvedValue({
+    mockSearchQuery.mockResolvedValue({
       ...mockSearchResponse,
-      data: {
-        hits: {
-          hits: [
-            {
-              _source: domainWithNoAssets,
-              _index: 'domain_search_index',
-              _id: domainWithNoAssets.id,
-            },
-          ],
-          total: { value: 1 },
-        },
-        aggregations: {},
+      hits: {
+        hits: [
+          {
+            _source: domainWithNoAssets,
+            _index: 'domain_search_index',
+            _id: domainWithNoAssets.id,
+          },
+        ],
+        total: { value: 1 },
       },
+      aggregations: {},
+    });
+    mockGetAllDomainsWithAssetsCount.mockResolvedValue({
+      clients: 0,
     });
 
     renderDomainsWidget();

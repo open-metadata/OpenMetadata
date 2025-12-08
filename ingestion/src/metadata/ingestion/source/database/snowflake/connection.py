@@ -53,6 +53,8 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_TEST_GET_VIEWS,
 )
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.credentials import normalize_pem_string
+from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -72,6 +74,12 @@ def _init_database(engine_wrapper: SnowflakeEngineWrapper):
         if not engine_wrapper.database_name:
             databases = engine_wrapper.engine.execute(SNOWFLAKE_GET_DATABASES)
             for database in databases:
+                if filter_by_database(
+                    engine_wrapper.service_connection.databaseFilterPattern,
+                    database.name,
+                ):
+                    continue
+
                 engine_wrapper.database_name = database.name
                 break
     else:
@@ -166,8 +174,16 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
                 logger.warning(
                     "Snowflake Private Key Passphrase not found, replacing it with empty string"
                 )
+
+            encrypted_private_key = normalize_pem_string(
+                connection.privateKey.get_secret_value()
+            )
+
             p_key = serialization.load_pem_private_key(
-                bytes(connection.privateKey.get_secret_value(), "utf-8"),
+                bytes(
+                    encrypted_private_key,
+                    "utf-8",
+                ),
                 password=snowflake_private_key_passphrase.encode() or None,
                 backend=default_backend(),
             )

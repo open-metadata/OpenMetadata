@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
+import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
@@ -72,6 +73,7 @@ const BotListV1 = ({
     handlePageChange,
     handlePageSizeChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
@@ -87,7 +89,10 @@ const BotListV1 = ({
    *
    * @param after - Pagination value if passed data will be fetched post cursor value
    */
-  const fetchBots = async (showDeleted?: boolean, pagingOffset?: Paging) => {
+  const fetchBots = async (
+    showDeleted?: boolean,
+    pagingOffset?: Partial<Paging>
+  ) => {
     try {
       setLoading(true);
       const { data, paging } = await getBots({
@@ -201,12 +206,17 @@ const BotListV1 = ({
     currentPage,
     cursorType,
   }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
-    cursorType &&
+    if (cursorType) {
       fetchBots(false, {
         [cursorType]: paging[cursorType],
         total: paging.total,
       } as Paging);
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
+    }
   };
 
   /**
@@ -233,12 +243,25 @@ const BotListV1 = ({
     }
   };
 
+  const handleShowDeletedBots = (checked: boolean) => {
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
+    handleShowDeleted(checked);
+  };
   // Fetch initial bot
   useEffect(() => {
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
     setBotUsers([]);
     setSearchedData([]);
-    fetchBots(showDeleted);
-  }, [showDeleted, pageSize]);
+    if (cursorType && cursorValue) {
+      fetchBots(showDeleted, { [cursorType]: cursorValue });
+    } else {
+      fetchBots(showDeleted);
+    }
+  }, [pageSize, showDeleted, pagingCursor]);
 
   const addBotLabel = t('label.add-entity', { entity: t('label.bot') });
 
@@ -250,7 +273,7 @@ const BotListV1 = ({
             checked={showDeleted}
             id="switch-deleted"
             size="small"
-            onClick={handleShowDeleted}
+            onClick={handleShowDeletedBots}
           />
           <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
         </Space>
@@ -276,7 +299,12 @@ const BotListV1 = ({
       </Col>
 
       <Col span={12}>
-        <PageHeader data={PAGE_HEADERS.BOTS} />
+        <PageHeader
+          data={{
+            header: t(PAGE_HEADERS.BOTS.header),
+            subHeader: t(PAGE_HEADERS.BOTS.subHeader),
+          }}
+        />
       </Col>
 
       <Col span={12}>
@@ -286,7 +314,7 @@ const BotListV1 = ({
               checked={showDeleted}
               data-testid="switch-deleted"
               id="switch-deleted"
-              onClick={handleShowDeleted}
+              onClick={handleShowDeletedBots}
             />
             <label htmlFor="switch-deleted">{t('label.show-deleted')}</label>
           </Space>

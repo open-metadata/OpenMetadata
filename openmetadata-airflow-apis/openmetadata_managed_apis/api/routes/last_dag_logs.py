@@ -16,7 +16,11 @@ from typing import Callable
 
 from flask import Blueprint, Response, request
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import get_arg_dag_id, get_request_arg
+from openmetadata_managed_apis.api.utils import (
+    get_arg_dag_id,
+    get_request_arg,
+    sanitize_task_id,
+)
 from openmetadata_managed_apis.operations.last_dag_logs import last_dag_logs
 from openmetadata_managed_apis.utils.logger import routes_logger
 
@@ -32,20 +36,42 @@ def get_fn(blueprint: Blueprint) -> Callable:
 
     # Lazy import the requirements
     # pylint: disable=import-outside-toplevel
-    from airflow.api_connexion import security
     from airflow.security import permissions
-    from airflow.www.app import csrf
+    from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
+    from openmetadata_managed_apis.utils.security_compat import (
+        requires_access_decorator,
+    )
+
+    # CSRF protection import - different between Airflow 2.x and 3.x
+    if not is_airflow_3_or_higher():
+        from airflow.www.app import csrf
+    else:
+        # Airflow 3.x doesn't have csrf in the same location, use a no-op
+        class csrf:
+            @staticmethod
+            def exempt(f):
+                return f
 
     @blueprint.route("/last_dag_logs", methods=["GET"])
     @csrf.exempt
-    @security.requires_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
+    @requires_access_decorator(
+        [(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)]
+    )
     def last_logs() -> Response:
         """
         Retrieve all logs from the task instances of a last DAG run
         """
 
         dag_id = get_arg_dag_id()
-        task_id = get_request_arg(request, "task_id")
+        raw_task_id = get_request_arg(request, "task_id")
+        task_id = sanitize_task_id(raw_task_id)
+
+        if task_id is None:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_BAD_REQUEST,
+                error="Invalid or missing task_id parameter",
+            )
+
         after = get_request_arg(request, "after", raise_missing=False)
 
         try:

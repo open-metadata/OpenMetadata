@@ -156,6 +156,15 @@ const DataAssetsWidget = ({
     [services, loading]
   );
 
+  const translatedSortOptions = useMemo(
+    () =>
+      DATA_ASSETS_SORT_BY_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -165,10 +174,9 @@ const DataAssetsWidget = ({
         icon={<DataAssetIcon height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}
-        sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.data-asset-plural')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />
@@ -184,6 +192,7 @@ const DataAssetsWidget = ({
       selectedSortBy,
       handleSortByClick,
       handleTitleClick,
+      translatedSortOptions,
     ]
   );
 

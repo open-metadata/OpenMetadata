@@ -364,6 +364,10 @@ export const CustomizablePage = () => {
     case PageType.APIEndpoint:
     case PageType.APICollection:
     case PageType.Chart:
+    case PageType.Directory:
+    case PageType.File:
+    case PageType.Spreadsheet:
+    case PageType.Worksheet:
       return (
         <CustomizeDetailsPage
           initialPageData={currentPage}

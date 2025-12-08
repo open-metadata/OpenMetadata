@@ -18,6 +18,7 @@ import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE_MEDIUM,
 } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDomain } from '../generated/api/domains/createDomain';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
@@ -34,6 +35,17 @@ export const getDomainList = async (params?: ListParams) => {
   });
 
   return response.data;
+};
+
+export const getDomainCount = async () => {
+  const response = await APIClient.get<PagingResponse<Domain[]>>(BASE_URL, {
+    params: {
+      limit: 0,
+      fields: TabSpecificField.PARENT,
+    },
+  });
+
+  return response.data.paging.total;
 };
 
 export const addDomains = async (data: CreateDomain) => {
@@ -122,18 +134,51 @@ export const listDomainHierarchy = async (params?: ListParams) => {
   return response.data;
 };
 
-export const searchDomains = async (search: string, page = 1) => {
+export const getDomainChildrenPaginated = async (
+  parentFQN?: string,
+  pageSize = 15,
+  offset = 0
+) => {
+  const apiUrl = `${BASE_URL}/hierarchy`;
+  const requestParams: Record<string, string | number | string[]> = {
+    limit: pageSize,
+    offset,
+    fields: [TabSpecificField.PARENT, TabSpecificField.CHILDREN_COUNT],
+  };
+
+  if (parentFQN) {
+    requestParams.directChildrenOf = parentFQN;
+  }
+
+  const { data } = await APIClient.get<PagingResponse<Domain[]>>(apiUrl, {
+    params: requestParams,
+  });
+
+  return data;
+};
+
+export const searchDomains = async (
+  search: string,
+  page = 1,
+  queryFilter?: Record<string, unknown>
+) => {
   const apiUrl = `/search/query?q=*${search ?? ''}*`;
 
+  const params: Record<string, string | number | boolean> = {
+    index: SearchIndex.DOMAIN,
+    from: (page - 1) * PAGE_SIZE_MEDIUM,
+    size: PAGE_SIZE_MEDIUM,
+    deleted: false,
+    track_total_hits: true,
+    getHierarchy: true,
+  };
+
+  if (queryFilter) {
+    params.query_filter = JSON.stringify(queryFilter);
+  }
+
   const { data } = await APIClient.get(apiUrl, {
-    params: {
-      index: SearchIndex.DOMAIN,
-      from: (page - 1) * PAGE_SIZE_MEDIUM,
-      size: PAGE_SIZE_MEDIUM,
-      deleted: false,
-      track_total_hits: true,
-      getHierarchy: true,
-    },
+    params,
   });
 
   return data;
@@ -158,6 +203,14 @@ export const removeFollower = async (domainID: string, userId: string) => {
   const response = await APIClient.delete<{
     changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
   }>(`${BASE_URL}/${domainID}/followers/${userId}`);
+
+  return response.data;
+};
+
+export const getAllDomainsWithAssetsCount = async () => {
+  const response = await APIClient.get<Record<string, number>>(
+    `${BASE_URL}/assets/counts`
+  );
 
   return response.data;
 };

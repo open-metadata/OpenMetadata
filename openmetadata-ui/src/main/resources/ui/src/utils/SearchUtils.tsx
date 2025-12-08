@@ -189,6 +189,26 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = MetricIcon;
 
       break;
+    case SearchIndex.DIRECTORY_SEARCH_INDEX:
+      label = i18next.t('label.directory-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.FILE_SEARCH_INDEX:
+      label = i18next.t('label.file-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.SPREADSHEET_SEARCH_INDEX:
+      label = i18next.t('label.spreadsheet-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.WORKSHEET_SEARCH_INDEX:
+      label = i18next.t('label.worksheet-plural');
+      GroupIcon = MetricIcon;
+
+      break;
 
     default: {
       const { label: indexLabel, GroupIcon: IndexIcon } =
@@ -307,9 +327,24 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
  * @returns An array of objects with value and title properties
  */
 export const parseBucketsData = (
-  buckets: Array<any>,
-  sourceFields?: string
+  buckets: Array<Record<string, unknown>>,
+  sourceFields?: string,
+  sourceFieldOptionType?: {
+    label: string;
+    value: string;
+  }
 ) => {
+  if (sourceFieldOptionType) {
+    return buckets.map((bucket) => {
+      const data = bucket['top_hits#top']?.hits?.hits?.[0]?._source;
+
+      return {
+        title: data[sourceFieldOptionType.label],
+        value: data[sourceFieldOptionType.value],
+      };
+    });
+  }
+
   return buckets.map((bucket) => {
     const actualValue = sourceFields
       ? sourceFields
@@ -326,4 +361,118 @@ export const parseBucketsData = (
       title: bucket.label ?? actualValue,
     };
   });
+};
+
+/**
+ * Generic term query builder from object
+ * Creates an Elasticsearch query filter structure from field-value pairs
+ * @param terms - Record of field names and their values, or mixed query configuration
+ * @param queryType - Type of boolean query: 'must' | 'must_not' | 'should' | 'should_not'
+ * @param minimumShouldMatch - Minimum number of should clauses that must match (only for 'should')
+ * @param wildcardTerms - Optional record for wildcard queries
+ * @returns Query filter object for searchQuery API
+ */
+export const getTermQuery = (
+  terms: Record<string, string | string[] | number | boolean>,
+  queryType: 'must' | 'must_not' | 'should' | 'should_not' = 'must',
+  minimumShouldMatch?: number,
+  options?: {
+    wildcardTerms?: Record<string, string>;
+    wildcardShouldQueries?: Record<string, string>;
+    mustNotTerms?: Record<string, string | string[] | number | boolean>;
+    matchTerms?: Record<string, string | number | boolean>;
+    wildcardMustNotQueries?: Record<string, string | string[]>;
+  }
+) => {
+  const termQueries = Object.entries(terms)
+    .map(([field, value]) => {
+      if (Array.isArray(value)) {
+        return value.map((v) => ({ term: { [field]: v } }));
+      }
+
+      return { term: { [field]: value } };
+    })
+    .flat();
+
+  const wildcardQueries = options?.wildcardTerms
+    ? Object.entries(options.wildcardTerms).map(([field, value]) => ({
+        wildcard: { [field]: value },
+      }))
+    : [];
+
+  const mustNotQueries = options?.mustNotTerms
+    ? Object.entries(options.mustNotTerms)
+        .map(([field, value]) => {
+          if (Array.isArray(value)) {
+            return value.map((v) => ({ term: { [field]: v } }));
+          }
+
+          return { term: { [field]: value } };
+        })
+        .flat()
+    : [];
+
+  const matchQueries = options?.matchTerms
+    ? Object.entries(options.matchTerms).map(([field, value]) => ({
+        match: { [field]: value },
+      }))
+    : [];
+
+  const allQueries: any[] = [
+    ...termQueries,
+    ...wildcardQueries,
+    ...matchQueries,
+  ];
+
+  // Handle wildcardShouldQueries - creates a nested bool with should clauses
+  if (
+    options?.wildcardShouldQueries &&
+    Object.keys(options.wildcardShouldQueries).length > 0
+  ) {
+    const shouldWildcardQueries = Object.entries(
+      options.wildcardShouldQueries
+    ).map(([field, value]) => ({
+      wildcard: { [field]: value },
+    }));
+
+    allQueries.push({
+      bool: {
+        should: shouldWildcardQueries,
+        minimum_should_match: 1,
+      },
+    });
+  }
+
+  const boolQuery: any = {
+    [queryType]: allQueries,
+  };
+
+  // Handle wildcardMustNotQueries
+  const wildcardMustNotQueries = options?.wildcardMustNotQueries
+    ? Object.entries(options.wildcardMustNotQueries)
+        .map(([field, value]) => {
+          if (Array.isArray(value)) {
+            return value.map((v) => ({ wildcard: { [field]: v } }));
+          }
+
+          return { wildcard: { [field]: value } };
+        })
+        .flat()
+    : [];
+
+  const allMustNotQueries = [...mustNotQueries, ...wildcardMustNotQueries];
+
+  if (allMustNotQueries.length > 0) {
+    boolQuery.must_not = allMustNotQueries;
+  }
+
+  if (queryType === 'should' && minimumShouldMatch !== undefined) {
+    boolQuery.minimum_should_match = minimumShouldMatch;
+  }
+
+  return {
+    query: {
+      bool: boolQuery,
+    },
+  };
 };

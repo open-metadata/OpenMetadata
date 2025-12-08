@@ -54,6 +54,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
@@ -235,7 +236,10 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      GlossaryTermRepository repository =
+          (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) return;
       GlossaryTerm glossaryTerm = new GlossaryTerm().withGlossary(glossary.getEntityReference());
       String glossaryTermFqn =
           nullOrEmpty(csvRecord.get(0))
@@ -258,7 +262,20 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withReviewers(getReviewers(printer, csvRecord, 8))
           .withOwners(getOwners(printer, csvRecord, 9))
           .withEntityStatus(getTermStatus(printer, csvRecord))
-          .withExtension(getExtension(printer, csvRecord, 11));
+          .withStyle(getStyle(csvRecord))
+          .withExtension(getExtension(printer, csvRecord, 13));
+
+      // Validate during dry run to catch logical errors early
+      if (processRecord && importResult.getDryRun()) {
+        try {
+          repository.validateForDryRun(glossaryTerm, dryRunCreatedEntities);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          processRecord = false;
+          return;
+        }
+      }
+
       if (processRecord) {
         createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
       }
@@ -312,6 +329,29 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
     }
 
+    private Style getStyle(CSVRecord csvRecord) {
+      if (!processRecord) {
+        return null;
+      }
+      String color = csvRecord.get(11);
+      String iconURL = csvRecord.get(12);
+
+      // If both fields are empty, explicitly return null to remove any existing style
+      if (nullOrEmpty(color) && nullOrEmpty(iconURL)) {
+        return null;
+      }
+
+      Style style = new Style();
+      if (!nullOrEmpty(color)) {
+        style.setColor(color);
+      }
+      if (!nullOrEmpty(iconURL)) {
+        style.setIconURL(iconURL);
+      }
+
+      return style;
+    }
+
     @Override
     protected void addRecord(CsvFile csvFile, GlossaryTerm entity) {
       List<String> recordList = new ArrayList<>();
@@ -326,6 +366,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addReviewers(recordList, entity.getReviewers());
       addOwners(recordList, entity.getOwners());
       addField(recordList, entity.getEntityStatus().value());
+      addField(recordList, entity.getStyle() != null ? entity.getStyle().getColor() : null);
+      addField(recordList, entity.getStyle() != null ? entity.getStyle().getIconURL() : null);
       addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
@@ -491,7 +533,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
       // adding the reviewer in glossary  should add the person as assignee to the task - for all
       // draft terms present in glossary
-      if (!original.getReviewers().equals(updated.getReviewers())) {
+      if (original.getReviewers() != null
+          && updated.getReviewers() != null
+          && !original.getReviewers().equals(updated.getReviewers())) {
 
         List<GlossaryTerm> childTerms = getAllTerms(updated);
         for (GlossaryTerm term : childTerms) {

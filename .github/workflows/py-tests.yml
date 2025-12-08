@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        py-version: ["3.9", "3.10", "3.11"]
+        py-version: ["3.10", "3.11"] # , "3.12"]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -80,13 +80,21 @@ jobs:
           args: "-m no-ui"
           ingestion_dependency: "mysql,elasticsearch,sample-data"
 
-      - name: Run Python Tests
-        if: ${{ matrix.py-version != '3.10' }}
+      - name: Run Python Tests (3.11)
+        if: ${{ matrix.py-version == '3.11' }}
         run: |
           source env/bin/activate
           make run_python_tests
         env:
           TESTCONTAINERS_RYUK_DISABLED: true
+
+      # - name: Run Python Tests (3.12)
+      #   if: ${{ matrix.py-version == '3.12' }}
+      #   run: |
+      #     source env/bin/activate
+      #     make run_python_tests
+      #   env:
+      #     TESTCONTAINERS_RYUK_DISABLED: true
 
       - name: Run Python Tests & record coverage
         if: ${{ matrix.py-version == '3.10' }}

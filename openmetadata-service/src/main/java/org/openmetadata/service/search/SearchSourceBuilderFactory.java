@@ -6,7 +6,6 @@ import static org.openmetadata.service.search.SearchUtil.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtil.isTimeSeriesIndex;
 import static org.openmetadata.service.search.SearchUtil.mapEntityTypesToIndexNames;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -74,81 +73,110 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
    */
   default S getSearchSourceBuilder(
       String indexName, String searchQuery, int fromOffset, int size, boolean includeExplain) {
+    return getSearchSourceBuilder(indexName, searchQuery, fromOffset, size, includeExplain, true);
+  }
+
+  /**
+   * Get the appropriate search source builder based on the index name.
+   */
+  default S getSearchSourceBuilder(
+      String indexName,
+      String searchQuery,
+      int fromOffset,
+      int size,
+      boolean includeExplain,
+      boolean includeAggregations) {
     indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
 
     if (isTimeSeriesIndex(indexName)) {
-      return buildTimeSeriesSearchBuilder(indexName, searchQuery, fromOffset, size);
+      return buildTimeSeriesSearchBuilderV2(indexName, searchQuery, fromOffset, size);
     }
 
     if (isServiceIndex(indexName)) {
-      return buildServiceSearchBuilder(searchQuery, fromOffset, size);
+      return buildServiceSearchBuilderV2(searchQuery, fromOffset, size);
     }
 
     if (isDataQualityIndex(indexName)) {
-      return buildDataQualitySearchBuilder(indexName, searchQuery, fromOffset, size);
+      return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size);
     }
 
     if (isDataAssetIndex(indexName)) {
-      return buildDataAssetSearchBuilder(indexName, searchQuery, fromOffset, size, includeExplain);
+      return buildDataAssetSearchBuilderV2(
+          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     if (indexName.equals("all") || indexName.equals("dataAsset")) {
       // For consistency, use entity-specific search builder for dataAsset searches
       // This ensures both /search/query and /search/entityTypeCounts use the same logic
-      return buildDataAssetSearchBuilder(indexName, searchQuery, fromOffset, size, includeExplain);
+      return buildDataAssetSearchBuilderV2(
+          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     return switch (indexName) {
-      case "user_search_index", "user", "team_search_index", "team" -> buildUserOrTeamSearchBuilder(
-          searchQuery, fromOffset, size);
-      default -> buildAggregateSearchBuilder(searchQuery, fromOffset, size);
+      case "user_search_index",
+          "user",
+          "team_search_index",
+          "team" -> buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
+      default -> buildAggregateSearchBuilderV2(searchQuery, fromOffset, size, includeAggregations);
     };
   }
 
-  S buildServiceSearchBuilder(String query, int from, int size);
+  S buildServiceSearchBuilderV2(String query, int from, int size);
 
-  S buildDataAssetSearchBuilder(String indexName, String query, int from, int size);
+  default S buildDataAssetSearchBuilderV2(String indexName, String query, int from, int size) {
+    return buildDataAssetSearchBuilderV2(indexName, query, from, size, false, true);
+  }
 
-  S buildDataAssetSearchBuilder(
-      String indexName, String query, int from, int size, boolean explain);
+  default S buildDataAssetSearchBuilderV2(
+      String indexName, String query, int from, int size, boolean explain) {
+    return buildDataAssetSearchBuilderV2(indexName, query, from, size, explain, true);
+  }
 
-  S buildCommonSearchBuilder(String query, int from, int size);
+  S buildDataAssetSearchBuilderV2(
+      String indexName,
+      String query,
+      int from,
+      int size,
+      boolean explain,
+      boolean includeAggregations);
 
-  S buildEntitySpecificAggregateSearchBuilder(String query, int from, int size);
+  S buildUserOrTeamSearchBuilderV2(String query, int from, int size);
 
-  S buildUserOrTeamSearchBuilder(String query, int from, int size);
+  default S buildAggregateSearchBuilderV2(String query, int from, int size) {
+    return buildAggregateSearchBuilderV2(query, from, size, true);
+  }
 
-  S buildAggregateSearchBuilder(String query, int from, int size);
+  S buildAggregateSearchBuilderV2(String query, int from, int size, boolean includeAggregations);
 
-  default S buildTimeSeriesSearchBuilder(String indexName, String query, int from, int size) {
+  default S buildTimeSeriesSearchBuilderV2(String indexName, String query, int from, int size) {
     return switch (indexName) {
-      case "test_case_result_search_index" -> buildTestCaseResultSearch(query, from, size);
-      case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
+      case "test_case_result_search_index" -> buildTestCaseResultSearchV2(query, from, size);
+      case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearchV2(
           query, from, size);
       case "raw_cost_analysis_report_data_index",
-          "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
+          "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearchV2(
           query, from, size);
-      default -> buildAggregateSearchBuilder(query, from, size);
+      default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }
 
-  default S buildDataQualitySearchBuilder(String indexName, String query, int from, int size) {
+  default S buildDataQualitySearchBuilderV2(String indexName, String query, int from, int size) {
     return switch (indexName) {
       case "test_case_search_index",
           "testCase",
           "test_suite_search_index",
-          "testSuite" -> buildTestCaseSearch(query, from, size);
-      default -> buildAggregateSearchBuilder(query, from, size);
+          "testSuite" -> buildTestCaseSearchV2(query, from, size);
+      default -> buildAggregateSearchBuilderV2(query, from, size);
     };
   }
 
-  S buildTestCaseSearch(String query, int from, int size);
+  S buildTestCaseSearchV2(String query, int from, int size);
 
-  S buildTestCaseResultSearch(String query, int from, int size);
+  S buildTestCaseResultSearchV2(String query, int from, int size);
 
-  S buildTestCaseResolutionStatusSearch(String query, int from, int size);
+  S buildTestCaseResolutionStatusSearchV2(String query, int from, int size);
 
-  S buildCostAnalysisReportDataSearch(String query, int from, int size);
+  S buildCostAnalysisReportDataSearchV2(String query, int from, int size);
 
   default AssetTypeConfiguration findAssetTypeConfig(
       String indexName, SearchSettings searchSettings) {
@@ -159,67 +187,20 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
         .orElse(searchSettings.getDefaultConfiguration());
   }
 
-  default Map<String, Float> getAllSearchFieldsFromSettings(SearchSettings searchSettings) {
-    Map<String, Float> fields = new HashMap<>();
-
-    for (AssetTypeConfiguration config : searchSettings.getAssetTypeConfigurations()) {
-      String assetType = config.getAssetType();
-      boolean shouldInclude =
-          switch (assetType) {
-            case "table",
-                "storedProcedure",
-                "dashboard",
-                "dashboardDataModel",
-                "pipeline",
-                "topic",
-                "mlmodel",
-                "container",
-                "searchIndex",
-                "glossaryTerm",
-                "tag",
-                "dataProduct",
-                "apiEndpoint" -> true;
-            default -> false;
-          };
-
-      if (shouldInclude && config.getSearchFields() != null) {
-        config
-            .getSearchFields()
-            .forEach(
-                fieldBoost ->
-                    fields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
-      }
-    }
-
-    // Add fields from default configuration
-    if (searchSettings.getDefaultConfiguration() != null
-        && searchSettings.getDefaultConfiguration().getSearchFields() != null) {
-      searchSettings
-          .getDefaultConfiguration()
-          .getSearchFields()
-          .forEach(
-              fieldBoost -> fields.put(fieldBoost.getField(), fieldBoost.getBoost().floatValue()));
-    }
-
-    return fields;
-  }
-
   /**
    * Build a search query builder with the specified fields and weights.
    */
-  Q buildSearchQueryBuilder(String query, Map<String, Float> fields);
+  Q buildSearchQueryBuilderV2(String query, Map<String, Float> fields);
 
   /**
    * Build highlights for the specified fields.
    */
-  H buildHighlights(List<String> fields);
+  H buildHighlightsV2(List<String> fields);
 
   /**
    * Create a search source builder with the specified query builder, highlights, and pagination.
    */
-  S searchBuilder(Q queryBuilder, H highlightBuilder, int fromOffset, int size);
-
-  S addAggregationsToNLQQuery(S searchSourceBuilder, String indexName);
+  S searchBuilderV2(Q queryBuilder, H highlightBuilder, int fromOffset, int size);
 
   default boolean containsQuerySyntax(String query) {
     if (query == null || query.isEmpty()) {

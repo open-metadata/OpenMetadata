@@ -32,6 +32,7 @@ const TableTags = <T extends TableUnion>({
   handleTagSelection,
   entityType,
   newLook = false,
+  multiSelect,
 }: TableTagsComponentProps<T>) => {
   const { onThreadLinkSelect, updateActiveTagDropdownKey } =
     useGenericContext();
@@ -48,9 +49,11 @@ const TableTags = <T extends TableUnion>({
           useGenericControls
           columnData={{
             fqn: record.fullyQualifiedName ?? '',
+            name: record.name ?? '',
           }}
           entityFqn={entityFqn}
           entityType={entityType}
+          multiSelect={multiSelect}
           permission={hasTagEditAccess && !isReadOnly}
           selectedTags={tags}
           showInlineEditButton={showInlineEditTagButton}

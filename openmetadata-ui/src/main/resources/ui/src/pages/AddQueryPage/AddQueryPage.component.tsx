@@ -39,8 +39,8 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
-import { searchData } from '../../rest/miscAPI';
 import { postQuery } from '../../rest/queryAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
@@ -99,15 +99,12 @@ const AddQueryPage = () => {
     searchValue = ''
   ): Promise<DefaultOptionType[]> => {
     try {
-      const { data } = await searchData(
-        searchValue,
-        INITIAL_PAGING_VALUE,
-        PAGE_SIZE_MEDIUM,
-        '',
-        '',
-        '',
-        SearchIndex.TABLE
-      );
+      const data = await searchQuery({
+        query: searchValue,
+        pageNumber: INITIAL_PAGING_VALUE,
+        pageSize: PAGE_SIZE_MEDIUM,
+        searchIndex: SearchIndex.TABLE,
+      });
       const options = data.hits.hits.map((value) => ({
         label: getEntityLabel(value._source),
         value: value._source.id,
@@ -294,7 +291,8 @@ const AddQueryPage = () => {
                     <Tooltip
                       placement="top"
                       title={
-                        !permissions.query?.Create && NO_PERMISSION_FOR_ACTION
+                        !permissions.query?.Create &&
+                        t(NO_PERMISSION_FOR_ACTION)
                       }>
                       <Button
                         data-testid="save-btn"

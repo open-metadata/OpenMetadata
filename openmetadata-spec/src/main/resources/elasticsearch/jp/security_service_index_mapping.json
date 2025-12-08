@@ -193,7 +193,7 @@
                             }
                         }
                     },
-                    "owner": {
+                    "owners": {
                         "properties": {
                             "id": {
                                 "type": "keyword",
@@ -293,7 +293,7 @@
                     }
                 }
             },
-            "owner": {
+            "owners": {
                 "properties": {
                     "id": {
                         "type": "keyword",
@@ -390,6 +390,14 @@
                         "analyzer": "om_analyzer_jp"
                     }
                 }
+            },
+            "classificationTags": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+            },
+            "glossaryTags": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
             },
             "tags": {
                 "properties": {

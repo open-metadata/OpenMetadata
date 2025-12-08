@@ -92,6 +92,8 @@ class BaseTableParameter:
             ),
             privateKey=None,
             passPhrase=None,
+            key_columns=key_columns,
+            extra_columns=extra_columns,
         )
 
     @staticmethod
@@ -122,13 +124,17 @@ class BaseTableParameter:
             "___SERVICE___", "__DATABASE__", schema, table
         ).replace("___SERVICE___.__DATABASE__.", "")
 
-    @staticmethod
+    @classmethod
     def _get_service_connection_config(
+        cls,
         service_connection_config,
     ) -> Optional[Union[str, dict]]:
         """
         Get the connection dictionary for the service.
         """
+        if not service_connection_config:
+            return None
+
         service_spec_patch = ServiceSpecPatch(
             ServiceType.Database, service_connection_config.type.value.lower()
         )
@@ -150,8 +156,15 @@ class BaseTableParameter:
                 else None
             )
 
-    @staticmethod
+    @classmethod
+    def get_service_connection_config(
+        cls,
+        service: DatabaseService,
+    ) -> Optional[Union[str, dict]]:
+        return cls._get_service_connection_config(service.connection.config)
+
     def get_data_diff_url(
+        self,
         db_service: DatabaseService,
         table_fqn,
         override_url: Optional[Union[str, dict]] = None,
@@ -167,9 +180,7 @@ class BaseTableParameter:
             str: The url for the data diff service
         """
         source_url = (
-            BaseTableParameter._get_service_connection_config(
-                db_service.connection.config
-            )
+            self._get_service_connection_config(db_service.connection.config)
             if not override_url
             else override_url
         )
@@ -180,12 +191,13 @@ class BaseTableParameter:
         url = urlparse(source_url)
         # remove the driver name from the url because table-diff doesn't support it
         kwargs = {"scheme": url.scheme.split("+")[0]}
-        service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
-            table_fqn
-        )
+        _, database, schema, _ = fqn.split(table_fqn)  # pylint: disable=unused-variable
         # path needs to include the database AND schema in some of the connectors
         if hasattr(db_service.connection.config, "supportsDatabase"):
-            kwargs["path"] = f"/{database}"
+            if kwargs["scheme"] in {Dialects.UnityCatalog, Dialects.Databricks}:
+                kwargs["query"] = f"catalog={database}"
+            else:
+                kwargs["path"] = f"/{database}"
         if kwargs["scheme"] in {Dialects.MSSQL, Dialects.Snowflake, Dialects.Trino}:
             kwargs["path"] = f"/{database}/{schema}"
         return url._replace(**kwargs).geturl()

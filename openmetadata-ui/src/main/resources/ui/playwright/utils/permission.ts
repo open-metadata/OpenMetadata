@@ -156,46 +156,38 @@ export const validateViewPermissions = async (
   }
 
   await page.click('[data-testid="sample_data"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(
     page,
     /Sample Data/,
     permission?.viewSampleData
   );
   await page.click('[data-testid="table_queries"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(page, /Queries/, permission?.viewQueries);
-  await page.click('[data-testid="profiler"]');
-  await page
-    .getByTestId('table-profiler-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
-  await page.waitForLoadState('domcontentloaded');
 
-  await page.waitForSelector('[data-testid="profiler-tab-left-panel"]', {
-    state: 'visible',
-  });
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .waitFor({ state: 'visible' });
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .click();
-  await page.waitForLoadState('domcontentloaded');
+  await page.click('[data-testid="profiler"]');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(
     page,
     /Data Observability/,
     permission?.viewTests
   );
   await page.click('[data-testid="lineage"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
 
-  await expect(page.locator('[data-testid="edit-lineage"]')).toBeDisabled();
+  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
 
   await page.click('[data-testid="custom_properties"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(page, /Custom Properties/);
 };
 
@@ -242,10 +234,10 @@ export const updateDefaultOrganizationPolicy = async (
 };
 
 export const cleanupPermissions = async (apiContext: APIRequestContext) => {
-  if (role && role.responseData?.id) {
+  if (role?.responseData?.id) {
     await role.delete(apiContext);
   }
-  if (policy && policy.responseData?.id) {
+  if (policy?.responseData?.id) {
     await policy.delete(apiContext);
   }
 };

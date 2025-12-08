@@ -67,6 +67,7 @@ import {
 import EntitySearchSettings from '../SearchSettings/EntitySeachSettings/EntitySearchSettings';
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
 import AdminPermissionDebugger from '../Settings/Users/AdminPermissionDebugger/AdminPermissionDebugger.component';
+import SettingsSso from '../SettingsSso/SettingsSso';
 import AdminProtectedRoute from './AdminProtectedRoute';
 
 const NotificationAlertDetailsPage = () => (
@@ -80,6 +81,7 @@ const SettingsRouter = () => {
   return (
     <Routes>
       <Route element={<GlobalSettingPage />} path="/" />
+      <Route element={<SettingsSso />} path={ROUTES.SETTINGS_SSO} />
 
       {/* keep these route above the setting route always */}
       <Route
@@ -199,7 +201,7 @@ const SettingsRouter = () => {
             <NotificationListPage />
           </AdminProtectedRoute>
         }
-        path={getSettingPathRelative(GlobalSettingsMenuCategory.NOTIFICATIONS)}
+        path={ROUTES.NOTIFICATION_ALERT_LIST.replace(ROUTES.SETTINGS, '')}
       />
 
       <Route
@@ -627,6 +629,10 @@ const SettingsRouter = () => {
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.OM_HEALTH
         )}
+      />
+      <Route
+        element={<SettingsSso />}
+        path={getSettingPathRelative(GlobalSettingsMenuCategory.SSO)}
       />
     </Routes>
   );

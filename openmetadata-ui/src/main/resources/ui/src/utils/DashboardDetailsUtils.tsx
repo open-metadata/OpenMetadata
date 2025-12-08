@@ -12,17 +12,19 @@
  */
 
 import { AxiosError } from 'axios';
+import { get } from 'lodash';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { DashboardChartTable } from '../components/Dashboard/DashboardChartTable/DashboardChartTable';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import Lineage from '../components/Lineage/Lineage.component';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -33,6 +35,11 @@ import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.co
 import { getChartById } from '../rest/chartAPI';
 import { DashboardDetailsTabsProps } from './DashboardDetailsClassBase';
 import { t } from './i18next/LocalUtil';
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.DOMAINS},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
@@ -71,12 +78,14 @@ export const getDashboardDetailPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   handleFeedCount,
   feedCount,
   activeTab,
   deleted,
   getEntityFeedCount,
   fetchDashboard,
+  labelMap,
 }: DashboardDetailsTabsProps): TabProps[] => {
   return [
     {
@@ -113,15 +122,25 @@ export const getDashboardDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
             entity={dashboardDetails as SourceType}
             entityType={EntityType.DASHBOARD}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (
@@ -135,7 +154,7 @@ export const getDashboardDetailPageTabs = ({
         <CustomPropertyTable<EntityType.DASHBOARD>
           entityType={EntityType.DASHBOARD}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

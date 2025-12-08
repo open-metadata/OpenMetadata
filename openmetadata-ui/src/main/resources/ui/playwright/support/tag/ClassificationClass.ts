@@ -26,28 +26,29 @@ type ClassificationData = {
 };
 
 export class ClassificationClass {
-  randomName = getRandomLastName();
-  data: ClassificationData = {
-    name: `pw-classification-${this.randomName}`,
-    displayName: `PW Classification ${this.randomName}`,
-    description: 'Classification for the Collate platform',
-  };
+  randomName: string;
+  data: ClassificationData;
 
   responseData: ClassificationData = {} as ClassificationData;
 
   constructor(classification?: Partial<ClassificationData>) {
+    this.randomName = getRandomLastName();
     this.data = {
-      ...this.data,
+      name: `pw-classification-${this.randomName}`,
+      displayName: `PW Classification ${this.randomName}`,
+      description: 'Classification for the Collate platform',
       ...classification,
     };
   }
 
   async visitPage(page: Page) {
+    const getClassification = page.waitForResponse('/api/v1/classifications**');
+    const getTags = page.waitForResponse('/api/v1/tags**');
     await sidebarClick(page, SidebarItem.TAGS);
-
-    const getTags = page.waitForResponse('/api/v1/tags*');
-    await page.waitForSelector('[data-testid="side-panel-classification"]');
+    await getClassification;
     await getTags;
+    await page.waitForSelector('[data-testid="side-panel-classification"]');
+
     await page
       .locator(`[data-testid="side-panel-classification"]`)
       .filter({ hasText: this.data.displayName })

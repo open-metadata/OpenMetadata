@@ -15,6 +15,7 @@ import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
+import { makeRetryRequest } from './serviceIngestion';
 import { sidebarClick } from './sidebar';
 
 export const visitProfilerTab = async (page: Page, table: TableClass) => {
@@ -30,11 +31,7 @@ export const acknowledgeTask = async (data: {
 }) => {
   const { testCase, page, table } = data;
   await visitProfilerTab(page, table);
-  await page.click('[data-testid="profiler-tab-left-panel"]');
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .click();
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
 
   await expect(
     page.locator(`[data-testid="status-badge-${testCase}"]`)
@@ -42,6 +39,8 @@ export const acknowledgeTask = async (data: {
 
   await page.waitForSelector(`[data-testid="${testCase}-status"] >> text=New`);
   await page.click(`[data-testid="${testCase}"] >> text=${testCase}`);
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.click('[data-testid="edit-resolution-icon"]');
   await page.click('[data-testid="test-case-resolution-status-type"]');
   await page.click('[title="Ack"]');
@@ -69,25 +68,18 @@ export const assignIncident = async (data: {
   await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
   await page.waitForLoadState('networkidle');
   await page.waitForSelector(`[data-testid="test-case-${testCaseName}"]`);
-  await page.click(
-    `[data-testid="${testCaseName}-status"] [data-testid="edit-resolution-icon"]`
+  await page.click(`[data-testid="${testCaseName}-status"]`);
+  await page.getByRole('menuitem', { name: 'Assigned' }).click();
+  await page.waitForSelector(
+    `[data-testid="${testCaseName}-assignee-popover"]`
   );
-  await page.click('[data-testid="test-case-resolution-status-type"]');
-  await page.click('[title="Assigned"]');
-  await page.waitForSelector('#testCaseResolutionStatusDetails_assignee');
-  await page.click('#testCaseResolutionStatusDetails_assignee');
-  await page
-    .locator(
-      '.ant-select-dropdown #testCaseResolutionStatusDetails_assignee_list + .rc-virtual-list'
-    )
-    .waitFor({ state: 'visible' });
-  await page.waitForLoadState('networkidle');
+  await page.click('[data-testid="assignee-search-input"]');
 
   const searchUserResponse = page.waitForResponse(
     'api/v1/search/query?q=*&index=user_search_index*'
   );
   await page.fill(
-    '#testCaseResolutionStatusDetails_assignee',
+    '[data-testid="assignee-search-input"] input',
     user.displayName
   );
   await searchUserResponse;
@@ -95,16 +87,14 @@ export const assignIncident = async (data: {
   const updateIncident = page.waitForResponse(
     '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
   );
-  await page.click('#update-status-button');
+  await page.click('[data-testid="submit-assignee-popover-button"]');
   await updateIncident;
   await page.waitForSelector(
-    `[data-testid="${testCaseName}-status"] [data-testid="badge-container"] >> text=Assigned`
+    `[data-testid="${testCaseName}-status"] >> text=Assigned`
   );
 
   await expect(
-    page.locator(
-      `[data-testid="${testCaseName}-status"] [data-testid="badge-container"]`
-    )
+    page.locator(`[data-testid="${testCaseName}-status"]`)
   ).toContainText('Assigned');
 };
 
@@ -114,19 +104,33 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   pipeline: ResponseDataType;
 }) => {
   const { page, apiContext, pipeline } = data;
-  // wait for 2s before the pipeline to be run
-  await page.waitForTimeout(2000);
-  await apiContext
-    .post(`/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`)
-    .then((res) => {
-      if (res.status() !== 200) {
-        return apiContext.post(
-          `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
-        );
-      }
+  // wait for 5s before the pipeline to be run
+  await page.waitForTimeout(5000);
+  const response = await apiContext.post(
+    `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
+  );
 
-      return res;
+  if (response.status() !== 200) {
+    // re-deploy the pipeline then trigger it
+    await makeRetryRequest({
+      page,
+      fn: () =>
+        apiContext.post(
+          `/api/v1/services/ingestionPipelines/deploy/${pipeline?.['id']}`
+        ),
     });
+
+    // wait for 5s before the pipeline to be run
+    await page.waitForTimeout(5000);
+
+    await makeRetryRequest({
+      page,
+      fn: () =>
+        apiContext.post(
+          `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
+        ),
+    });
+  }
 
   // Wait for the run to complete
   await page.waitForTimeout(2000);
@@ -148,7 +152,7 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
       {
         // Custom expect message for reporting, optional.
         message: 'Wait for the pipeline to be successful',
-        timeout: 90_000,
+        timeout: 180_000,
         intervals: [5_000, 10_000],
       }
     )

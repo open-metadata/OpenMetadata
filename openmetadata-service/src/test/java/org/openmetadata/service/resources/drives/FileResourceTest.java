@@ -18,14 +18,21 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.resources.EntityResourceTest.PERSONAL_DATA_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,9 +50,11 @@ import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FileType;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -449,5 +458,425 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
     GoogleDriveConnection googleDriveConnection =
         new GoogleDriveConnection().withDriveId("test-drive-id").withCredentials(gcpCredentials);
     return new DriveConnection().withConfig(googleDriveConnection);
+  }
+
+  @Test
+  void test_listFilesWithRootParameter(TestInfo test) throws IOException {
+    // Create drive service
+    DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
+    CreateDriveService createService =
+        driveServiceResourceTest
+            .createRequest(test)
+            .withName("driveForFileRootTest")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    DriveService service = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a directory at root level (no parent)
+    DirectoryResourceTest directoryResourceTest = new DirectoryResourceTest();
+    CreateDirectory createRootDir =
+        directoryResourceTest
+            .createRequest("documentsDir")
+            .withService(service.getFullyQualifiedName());
+    Directory documentsDir = directoryResourceTest.createEntity(createRootDir, ADMIN_AUTH_HEADERS);
+
+    // Create files at root level (no directory parent - these are root files)
+    CreateFile createRootFile1 =
+        createRequest("rootFile1.txt")
+            .withService(service.getFullyQualifiedName())
+            .withFileType(FileType.Text);
+    File rootFile1 = createAndCheckEntity(createRootFile1, ADMIN_AUTH_HEADERS);
+
+    CreateFile createRootFile2 =
+        createRequest("rootFile2.pdf")
+            .withService(service.getFullyQualifiedName())
+            .withFileType(FileType.PDF);
+    File rootFile2 = createAndCheckEntity(createRootFile2, ADMIN_AUTH_HEADERS);
+
+    // Create files in directory (have directory parent - NOT root files)
+    CreateFile createChildFile1 =
+        createRequest("childFile1.csv")
+            .withService(service.getFullyQualifiedName())
+            .withDirectory(documentsDir.getFullyQualifiedName())
+            .withFileType(FileType.CSV);
+    File childFile1 = createAndCheckEntity(createChildFile1, ADMIN_AUTH_HEADERS);
+
+    CreateFile createChildFile2 =
+        createRequest("childFile2.json")
+            .withService(service.getFullyQualifiedName())
+            .withDirectory(documentsDir.getFullyQualifiedName())
+            .withFileType(FileType.CSV);
+    File childFile2 = createAndCheckEntity(createChildFile2, ADMIN_AUTH_HEADERS);
+
+    // Test 1: List all files without root parameter
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", service.getFullyQualifiedName());
+    ResultList<File> allFiles = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(4, allFiles.getData().size());
+
+    // Test 2: List only root files with root=true (files with no directory parent)
+    queryParams.put("root", "true");
+    ResultList<File> rootFiles = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, rootFiles.getData().size());
+
+    // Verify only root files are returned (those with no directory)
+    for (File file : rootFiles.getData()) {
+      assertNull(file.getDirectory());
+      assertTrue(file.getName().equals("rootFile1.txt") || file.getName().equals("rootFile2.pdf"));
+    }
+
+    // Test 3: List with root=false should return all files
+    queryParams.put("root", "false");
+    ResultList<File> nonRootFiles = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(4, nonRootFiles.getData().size());
+  }
+
+  @Test
+  void test_listFilesWithRootParameterAndPagination(TestInfo test) throws IOException {
+    // Create drive service
+    DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
+    CreateDriveService createService =
+        driveServiceResourceTest
+            .createRequest(test)
+            .withName("driveForFileRootPaginationTest")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    DriveService service = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create a directory for child files
+    DirectoryResourceTest directoryResourceTest = new DirectoryResourceTest();
+    CreateDirectory createDir =
+        directoryResourceTest
+            .createRequest("filesContainer")
+            .withService(service.getFullyQualifiedName());
+    Directory container = directoryResourceTest.createEntity(createDir, ADMIN_AUTH_HEADERS);
+
+    // Create multiple root files for pagination testing
+    List<File> rootFiles = new ArrayList<>();
+    for (int i = 1; i <= 6; i++) {
+      CreateFile createRoot =
+          createRequest("rootFile" + i + ".txt")
+              .withService(service.getFullyQualifiedName())
+              .withFileType(FileType.Text);
+      rootFiles.add(createAndCheckEntity(createRoot, ADMIN_AUTH_HEADERS));
+    }
+
+    // Create files in directory (not root) - these should not appear in root results
+    for (int i = 1; i <= 4; i++) {
+      CreateFile createChild =
+          createRequest("childFile" + i + ".pdf")
+              .withService(service.getFullyQualifiedName())
+              .withDirectory(container.getFullyQualifiedName())
+              .withFileType(FileType.PDF);
+      createAndCheckEntity(createChild, ADMIN_AUTH_HEADERS);
+    }
+
+    // Test 1: Paginate through root files with limit
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", service.getFullyQualifiedName());
+    queryParams.put("root", "true");
+    queryParams.put("limit", "2");
+
+    ResultList<File> firstPage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, firstPage.getData().size());
+    assertNotNull(firstPage.getPaging().getAfter());
+
+    // Verify all returned files are root level (no directory parent)
+    for (File file : firstPage.getData()) {
+      assertNull(file.getDirectory());
+    }
+
+    // Test 2: Get next page using after parameter
+    queryParams.put("after", firstPage.getPaging().getAfter());
+    ResultList<File> secondPage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, secondPage.getData().size());
+
+    // Verify second page files are also root level
+    for (File file : secondPage.getData()) {
+      assertNull(file.getDirectory());
+    }
+
+    // Test 3: Get third page
+    queryParams.put("after", secondPage.getPaging().getAfter());
+    ResultList<File> thirdPage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, thirdPage.getData().size());
+    for (File file : thirdPage.getData()) {
+      assertNull(file.getDirectory());
+    }
+
+    // Test 4: Verify total count of root files
+    queryParams.remove("after");
+    queryParams.remove("limit");
+    ResultList<File> allRootFiles = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(6, allRootFiles.getData().size());
+
+    // Test 5: Verify pagination with limit larger than result set
+    queryParams.put("limit", "10");
+    ResultList<File> largeLimitPage = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(6, largeLimitPage.getData().size());
+  }
+
+  @Test
+  void test_listFilesWithRootParameterEmptyResult(TestInfo test) throws IOException {
+    // Create drive service
+    DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
+    CreateDriveService createService =
+        driveServiceResourceTest
+            .createRequest(test)
+            .withName("driveForFileEmptyRootTest")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    DriveService service = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
+
+    // Create directories
+    DirectoryResourceTest directoryResourceTest = new DirectoryResourceTest();
+    CreateDirectory createDir1 =
+        directoryResourceTest
+            .createRequest("documents")
+            .withService(service.getFullyQualifiedName());
+    Directory documentsDir = directoryResourceTest.createEntity(createDir1, ADMIN_AUTH_HEADERS);
+
+    CreateDirectory createDir2 =
+        directoryResourceTest.createRequest("images").withService(service.getFullyQualifiedName());
+    Directory imagesDir = directoryResourceTest.createEntity(createDir2, ADMIN_AUTH_HEADERS);
+
+    // Create only files in directories (no root files)
+    for (int i = 1; i <= 3; i++) {
+      CreateFile createDocFile =
+          createRequest("document" + i + ".docx")
+              .withService(service.getFullyQualifiedName())
+              .withDirectory(documentsDir.getFullyQualifiedName())
+              .withFileType(FileType.Text);
+      createAndCheckEntity(createDocFile, ADMIN_AUTH_HEADERS);
+    }
+
+    for (int i = 1; i <= 2; i++) {
+      CreateFile createImageFile =
+          createRequest("image" + i + ".png")
+              .withService(service.getFullyQualifiedName())
+              .withDirectory(imagesDir.getFullyQualifiedName())
+              .withFileType(FileType.Image);
+      createAndCheckEntity(createImageFile, ADMIN_AUTH_HEADERS);
+    }
+
+    // Test: List root files should return empty result
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", service.getFullyQualifiedName());
+    queryParams.put("root", "true");
+
+    ResultList<File> rootFiles = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(0, rootFiles.getData().size());
+
+    // Verify all files are in directories
+    queryParams.put("root", "false");
+    ResultList<File> allFiles = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(5, allFiles.getData().size());
+    for (File file : allFiles.getData()) {
+      assertNotNull(file.getDirectory());
+    }
+  }
+
+  @Test
+  void test_listFilesWithRootParameterAcrossMultipleServices(TestInfo test) throws IOException {
+    DriveServiceResourceTest driveServiceResourceTest = new DriveServiceResourceTest();
+    DirectoryResourceTest directoryResourceTest = new DirectoryResourceTest();
+
+    // Create first drive service (OneDrive)
+    CreateDriveService createService1 =
+        driveServiceResourceTest
+            .createRequest(test)
+            .withName("oneDriveService")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    DriveService service1 =
+        driveServiceResourceTest.createEntity(createService1, ADMIN_AUTH_HEADERS);
+
+    // Create second drive service (Box)
+    CreateDriveService createService2 =
+        driveServiceResourceTest
+            .createRequest(test)
+            .withName("boxService")
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    DriveService service2 =
+        driveServiceResourceTest.createEntity(createService2, ADMIN_AUTH_HEADERS);
+
+    // Create directory in first service
+    CreateDirectory createOnedriveDir =
+        directoryResourceTest
+            .createRequest("oneDriveFolder")
+            .withService(service1.getFullyQualifiedName());
+    Directory oneDriveDir =
+        directoryResourceTest.createEntity(createOnedriveDir, ADMIN_AUTH_HEADERS);
+
+    // Create root files in first service
+    CreateFile createOnedriveRoot1 =
+        createRequest("oneDriveRootFile1.xlsx")
+            .withService(service1.getFullyQualifiedName())
+            .withFileType(FileType.CSV);
+    createAndCheckEntity(createOnedriveRoot1, ADMIN_AUTH_HEADERS);
+
+    CreateFile createOnedriveRoot2 =
+        createRequest("oneDriveRootFile2.pptx")
+            .withService(service1.getFullyQualifiedName())
+            .withFileType(FileType.PDF);
+    createAndCheckEntity(createOnedriveRoot2, ADMIN_AUTH_HEADERS);
+
+    // Create child files in first service
+    CreateFile createOnedriveChild =
+        createRequest("oneDriveChildFile.doc")
+            .withService(service1.getFullyQualifiedName())
+            .withDirectory(oneDriveDir.getFullyQualifiedName())
+            .withFileType(FileType.Text);
+    createAndCheckEntity(createOnedriveChild, ADMIN_AUTH_HEADERS);
+
+    // Create directory in second service
+    CreateDirectory createBoxDir =
+        directoryResourceTest
+            .createRequest("boxFolder")
+            .withService(service2.getFullyQualifiedName());
+    Directory boxDir = directoryResourceTest.createEntity(createBoxDir, ADMIN_AUTH_HEADERS);
+
+    // Create root files in second service
+    for (int i = 1; i <= 3; i++) {
+      CreateFile createBoxRoot =
+          createRequest("boxRootFile" + i + ".txt")
+              .withService(service2.getFullyQualifiedName())
+              .withFileType(FileType.Text);
+      createAndCheckEntity(createBoxRoot, ADMIN_AUTH_HEADERS);
+    }
+
+    // Create child files in second service
+    for (int i = 1; i <= 2; i++) {
+      CreateFile createBoxChild =
+          createRequest("boxChildFile" + i + ".csv")
+              .withService(service2.getFullyQualifiedName())
+              .withDirectory(boxDir.getFullyQualifiedName())
+              .withFileType(FileType.CSV);
+      createAndCheckEntity(createBoxChild, ADMIN_AUTH_HEADERS);
+    }
+
+    // Test 1: List root files for first service
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", service1.getFullyQualifiedName());
+    queryParams.put("root", "true");
+
+    ResultList<File> oneDriveRootFiles = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, oneDriveRootFiles.getData().size());
+    for (File file : oneDriveRootFiles.getData()) {
+      assertNull(file.getDirectory());
+      assertTrue(file.getName().startsWith("oneDriveRootFile"));
+    }
+
+    // Test 2: List root files for second service
+    queryParams.put("service", service2.getFullyQualifiedName());
+    ResultList<File> boxRootFiles = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(3, boxRootFiles.getData().size());
+    for (File file : boxRootFiles.getData()) {
+      assertNull(file.getDirectory());
+      assertTrue(file.getName().startsWith("boxRootFile"));
+    }
+
+    // Test 3: Verify total files in first service
+    queryParams.put("service", service1.getFullyQualifiedName());
+    queryParams.put("root", "false");
+    ResultList<File> allOneDriveFiles = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(3, allOneDriveFiles.getData().size()); // 2 root + 1 child
+
+    // Test 4: Verify total files in second service
+    queryParams.put("service", service2.getFullyQualifiedName());
+    ResultList<File> allBoxFiles = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(5, allBoxFiles.getData().size()); // 3 root + 2 child
+
+    // Test 5: Verify services are properly isolated
+    int rootFileCount1 = 0;
+    int childFileCount1 = 0;
+    for (File file : allOneDriveFiles.getData()) {
+      if (file.getDirectory() == null) {
+        rootFileCount1++;
+      } else {
+        childFileCount1++;
+      }
+    }
+    assertEquals(2, rootFileCount1);
+    assertEquals(1, childFileCount1);
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    CreateFile botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    File entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", entity.getDescription());
+    assertEquals(1, entity.getTags().size());
+
+    String originalJson = JsonUtils.pojoToJson(entity);
+    String userDescription = "User-edited description - should be preserved";
+    entity.setDescription(userDescription);
+    entity.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    File userEditedEntity = patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedEntity.getDescription());
+    assertEquals(2, userEditedEntity.getTags().size());
+
+    CreateFile botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    File verifyEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        userDescription,
+        verifyEntity.getDescription(),
+        "Bot should not overwrite user's description");
+
+    assertEquals(
+        3, verifyEntity.getTags().size(), "Tags should be merged (2 user tags + 1 new bot tag)");
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(USER_ADDRESS_TAG_LABEL.getTagFQN())));
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(PERSONAL_DATA_TAG_LABEL.getTagFQN())));
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(PII_SENSITIVE_TAG_LABEL.getTagFQN())));
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    CreateFile botCreate =
+        createRequest(test.getDisplayName()).withDescription("Bot initial description");
+
+    File entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(entity);
+    entity.setDescription("User description");
+    File userEditedEntity = patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals("User description", userEditedEntity.getDescription());
+
+    CreateFile adminUpdate =
+        createRequest(test.getDisplayName()).withDescription("Admin override description");
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+
+    File verifyEntity = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals("Admin override description", verifyEntity.getDescription());
   }
 }

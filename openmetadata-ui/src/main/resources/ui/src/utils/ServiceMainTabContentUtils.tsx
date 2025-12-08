@@ -20,20 +20,25 @@ import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/Rich
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
+import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
+import { Directory } from '../generated/entity/data/directory';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import { patchDatabaseDetails } from '../rest/databaseAPI';
+import { patchDriveAssetDetails } from '../rest/driveAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
 import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
+import { getColumnSorter, highlightSearchText } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
+import { stringToHTML } from './StringsUtils';
 import {
   dataProductTableObject,
   domainTableObject,
@@ -48,21 +53,25 @@ export const getServiceMainTabColumns = (
   handleDisplayNameUpdate?: (
     entityData: EntityName,
     id?: string
-  ) => Promise<void>
+  ) => Promise<void>,
+  searchValue?: string
 ): ColumnsType<ServicePageData> => [
   {
     title: t('label.name'),
     dataIndex: TABLE_COLUMNS_KEYS.NAME,
     key: TABLE_COLUMNS_KEYS.NAME,
     width: 280,
+    sorter: getColumnSorter<ServicePageData, 'name'>('name'),
     render: (_, record: ServicePageData) => (
       <DisplayName
-        displayName={record.displayName}
+        displayName={stringToHTML(
+          highlightSearchText(record.displayName, searchValue)
+        )}
         hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}
         link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}
-        name={record.name}
+        name={stringToHTML(highlightSearchText(record.name, searchValue))}
         onEditDisplayName={handleDisplayNameUpdate}
       />
     ),
@@ -144,6 +153,12 @@ export const callServicePatchAPI = async (
       return await patchSearchIndexDetails(id, jsonPatch);
     case ServiceCategory.API_SERVICES:
       return await patchApiCollection(id, jsonPatch);
+    case ServiceCategory.DRIVE_SERVICES:
+      return await patchDriveAssetDetails<Directory>(
+        id,
+        jsonPatch,
+        EntityType.DIRECTORY
+      );
     default:
       return;
   }

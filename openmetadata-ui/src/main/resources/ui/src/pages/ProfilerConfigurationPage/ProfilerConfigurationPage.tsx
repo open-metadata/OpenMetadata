@@ -139,7 +139,7 @@ const ProfilerConfigurationPage = () => {
           ? DEFAULT_PROFILER_CONFIG_VALUE
           : data?.config_value
       );
-    } catch (error) {
+    } catch {
       // do nothing
     } finally {
       setIsLoading(false);
@@ -220,6 +220,7 @@ const ProfilerConfigurationPage = () => {
                                 ]}>
                                 <Select
                                   allowClear
+                                  showSearch
                                   data-testid="data-type-select"
                                   options={dataTypeOptions}
                                   placeholder={t('label.select-field', {

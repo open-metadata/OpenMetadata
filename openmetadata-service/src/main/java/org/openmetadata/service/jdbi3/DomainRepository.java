@@ -18,11 +18,11 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,6 +46,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
+import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -54,6 +58,8 @@ import org.openmetadata.service.util.LineageUtil;
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
+
+  private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public DomainRepository() {
     super(
@@ -65,16 +71,26 @@ public class DomainRepository extends EntityRepository<Domain> {
         UPDATE_FIELDS);
     supportsSearch = true;
 
+    // Initialize inherited field search
+    if (searchRepository != null) {
+      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    }
+
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put(FIELD_ASSETS, this::fetchAndSetAssets);
     fieldFetchers.put("parent", this::fetchAndSetParents);
     fieldFetchers.put("experts", this::fetchAndSetExperts);
+    fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
   }
 
   @Override
   public void setFields(Domain entity, Fields fields) {
-    entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
     entity.withParent(getParent(entity));
+    entity.withChildrenCount(
+        fields.contains("childrenCount") ? getChildrenCount(entity) : entity.getChildrenCount());
+  }
+
+  private Integer getChildrenCount(Domain entity) {
+    return daoCollection.domainDAO().countNestedDomains(entity.getFullyQualifiedName());
   }
 
   @Override
@@ -82,14 +98,6 @@ public class DomainRepository extends EntityRepository<Domain> {
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
-  }
-
-  // Individual field fetchers registered in constructor
-  private void fetchAndSetAssets(List<Domain> domains, Fields fields) {
-    if (!fields.contains(FIELD_ASSETS) || domains == null || domains.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, domains, batchFetchAssets(domains), Domain::setAssets);
   }
 
   private void fetchAndSetParents(List<Domain> domains, Fields fields) {
@@ -106,9 +114,21 @@ public class DomainRepository extends EntityRepository<Domain> {
     setFieldFromMap(true, domains, batchFetchExperts(domains), Domain::setExperts);
   }
 
+  private void fetchAndSetChildrenCount(List<Domain> entities, Fields fields) {
+    if (!fields.contains("childrenCount") || entities.isEmpty()) {
+      return;
+    }
+
+    for (Domain entity : entities) {
+      int count = daoCollection.domainDAO().countNestedDomains(entity.getFullyQualifiedName());
+      entity.setChildrenCount(count);
+    }
+  }
+
   @Override
   public void clearFields(Domain entity, Fields fields) {
     entity.withParent(fields.contains("parent") ? entity.getParent() : null);
+    entity.withChildrenCount(fields.contains("childrenCount") ? entity.getChildrenCount() : null);
   }
 
   @Override
@@ -146,10 +166,6 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
-  private List<EntityReference> getAssets(Domain entity) {
-    return findTo(entity.getId(), DOMAIN, Relationship.HAS, null);
-  }
-
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
     return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
@@ -158,6 +174,66 @@ public class DomainRepository extends EntityRepository<Domain> {
   public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
     return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
+  }
+
+  public ResultList<EntityReference> getDomainAssets(UUID domainId, int limit, int offset) {
+    Domain domain = get(null, domainId, getFields("id,fullyQualifiedName"));
+
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for domain assets. Returning empty list.");
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
+    }
+
+    // Use the forDomain helper method with pagination
+    InheritedFieldQuery query =
+        InheritedFieldQuery.forDomain(domain.getFullyQualifiedName(), offset, limit);
+
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForField(
+            query,
+            () -> {
+              LOG.warn(
+                  "Search fallback for domain {} assets. Returning empty list.",
+                  domain.getFullyQualifiedName());
+              return new InheritedFieldResult(new ArrayList<>(), 0);
+            });
+
+    return new ResultList<>(result.entities(), null, null, result.total());
+  }
+
+  public ResultList<EntityReference> getDomainAssetsByName(
+      String domainName, int limit, int offset) {
+    Domain domain = getByName(null, domainName, getFields("id,fullyQualifiedName"));
+    return getDomainAssets(domain.getId(), limit, offset);
+  }
+
+  public Map<String, Integer> getAllDomainsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for domain asset counts");
+      return new HashMap<>();
+    }
+
+    List<Domain> allDomains = listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> domainAssetCounts = new LinkedHashMap<>();
+
+    for (Domain domain : allDomains) {
+      InheritedFieldQuery query =
+          InheritedFieldQuery.forDomain(domain.getFullyQualifiedName(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for domain {} asset count. Returning 0.",
+                    domain.getFullyQualifiedName());
+                return 0;
+              });
+
+      domainAssetCounts.put(domain.getFullyQualifiedName(), count);
+    }
+
+    return domainAssetCounts;
   }
 
   @Transaction
@@ -294,45 +370,25 @@ public class DomainRepository extends EntityRepository<Domain> {
         : null;
   }
 
-  public List<EntityHierarchy> buildHierarchy(String fieldsParam, int limit) {
+  public ResultList<EntityHierarchy> buildHierarchy(
+      String fieldsParam, int limit, String directChildrenOf, int offset) {
     fieldsParam = EntityUtil.addField(fieldsParam, Entity.FIELD_PARENT);
     Fields fields = getFields(fieldsParam);
-    ResultList<Domain> resultList = listAfter(null, fields, new ListFilter(null), limit, null);
+    ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("directChildrenOf", directChildrenOf);
+    filter.addQueryParam("offset", String.valueOf(offset));
+    filter.addQueryParam("hierarchyFilter", "true"); // Enable hierarchy filtering
+    ResultList<Domain> resultList = listAfter(null, fields, filter, limit, null);
     List<Domain> domains = resultList.getData();
 
-    /*
-      Maintaining hierarchy in terms of EntityHierarchy to get all other fields of Domain like style,
-      which would have been restricted if built using hierarchy of Domain, as Domain.getChildren() returns List<EntityReference>
-      and EntityReference does not support additional properties
-    */
-    List<EntityHierarchy> rootDomains = new ArrayList<>();
-
-    Map<UUID, EntityHierarchy> entityHierarchyMap =
+    List<EntityHierarchy> hierarchyList =
         domains.stream()
-            .collect(
-                Collectors.toMap(
-                    Domain::getId,
-                    domain -> {
-                      EntityHierarchy entityHierarchy =
-                          JsonUtils.readValue(JsonUtils.pojoToJson(domain), EntityHierarchy.class);
-                      entityHierarchy.setChildren(new ArrayList<>());
-                      return entityHierarchy;
-                    }));
+            .map(domain -> JsonUtils.readValue(JsonUtils.pojoToJson(domain), EntityHierarchy.class))
+            .collect(Collectors.toList());
 
-    for (Domain domain : domains) {
-      EntityHierarchy entityHierarchy = entityHierarchyMap.get(domain.getId());
-
-      if (domain.getParent() != null) {
-        EntityHierarchy parentHierarchy = entityHierarchyMap.get(domain.getParent().getId());
-        if (parentHierarchy != null) {
-          parentHierarchy.getChildren().add(entityHierarchy);
-        }
-      } else {
-        rootDomains.add(entityHierarchy);
-      }
-    }
-
-    return rootDomains;
+    int total =
+        resultList.getPaging() != null ? resultList.getPaging().getTotal() : hierarchyList.size();
+    return new ResultList<>(hierarchyList, null, null, total);
   }
 
   public class DomainUpdater extends EntityUpdater {
@@ -345,35 +401,6 @@ public class DomainRepository extends EntityRepository<Domain> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("domainType", original.getDomainType(), updated.getDomainType());
     }
-  }
-
-  private Map<UUID, List<EntityReference>> batchFetchAssets(List<Domain> domains) {
-    var assetsMap = new HashMap<UUID, List<EntityReference>>();
-    if (domains == null || domains.isEmpty()) {
-      return assetsMap;
-    }
-
-    // Initialize empty lists for all domains
-    domains.forEach(domain -> assetsMap.put(domain.getId(), new ArrayList<>()));
-
-    // Single batch query to get all assets for all domains
-    var records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatchAllTypes(
-                entityListToStrings(domains), Relationship.HAS.ordinal(), Include.ALL);
-
-    // Group assets by domain ID
-    records.forEach(
-        record -> {
-          var domainId = UUID.fromString(record.getFromId());
-          var assetRef =
-              getEntityReferenceById(
-                  record.getToEntity(), UUID.fromString(record.getToId()), NON_DELETED);
-          assetsMap.get(domainId).add(assetRef);
-        });
-
-    return assetsMap;
   }
 
   private Map<UUID, EntityReference> batchFetchParents(List<Domain> domains) {

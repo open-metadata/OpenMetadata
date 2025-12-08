@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedureType,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -113,6 +114,30 @@ def search_table_entities(
     if isinstance(service_names, str):
         service_names = [service_names]
     for service_name in service_names:
+        # Detect the connection type
+        try:
+            service: DatabaseService = metadata.get_by_name(
+                entity=DatabaseService, fqn=service_name
+            )
+
+            conn_type = service.connection.config.type.value.lower()
+            logger.debug(
+                f"Searching for connection type '{conn_type}' in service '{service.name}'"
+            )
+
+        except Exception:
+            conn_type = None
+            logger.warning(
+                f"Could not determine connection type for service '{service_name}'"
+            )
+
+        # ClickHouse normalization
+        if conn_type == "clickhouse" and database:
+            logger.debug(
+                f"ClickHouse detected. Using database_schema='{database_schema}' as schema, table='{table}'"
+            )
+            database = None
+
         search_tuple = (service_name, database, database_schema, table)
         if search_tuple in search_cache:
             result = search_cache.get(search_tuple)
@@ -182,6 +207,11 @@ def get_table_fqn_from_query_name(
         database_query, schema_query, table = (
             empty_list * (3 - len(split_table))
         ) + split_table
+
+        logger.debug(
+            f"[UsageSink] Extracted components before cleanup -> "
+            f"database: {database_query}, schema: {schema_query}, table: {table}"
+        )
 
     if schema_query == DEFAULT_SCHEMA_NAME:
         schema_query = None
