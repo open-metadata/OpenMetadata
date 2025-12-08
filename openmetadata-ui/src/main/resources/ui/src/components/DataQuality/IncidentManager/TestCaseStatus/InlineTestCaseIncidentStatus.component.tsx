@@ -12,16 +12,10 @@
  */
 
 import {
-  ArrowBack as ArrowBackIcon,
-  Check as CheckIcon,
-  Close as CloseIcon,
-  KeyboardArrowDown as ArrowDownIcon,
-  KeyboardArrowUp as ArrowUpIcon,
-} from '@mui/icons-material';
-import {
   Box,
   Chip,
   Divider,
+  Icon,
   IconButton,
   List,
   ListItem,
@@ -32,6 +26,13 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import {
+  ArrowLeft as ArrowBackIcon,
+  ChevronDown as ArrowDownIcon,
+  ChevronUp as ArrowUpIcon,
+  Check as CheckIcon,
+  XClose as CloseIcon,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty, startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -155,14 +156,14 @@ const InlineTestCaseIncidentStatus = ({
           const isAssigneeInResults = suggestOptions.some(
             (opt) => opt.value === assigneeId
           );
-          if (!isAssigneeInResults) {
-            setUserOptions([initialOptions[0], ...suggestOptions]);
-          } else {
+          if (isAssigneeInResults) {
             // Move assignee to top
             const filteredOptions = suggestOptions.filter(
               (opt) => opt.value !== assigneeId
             );
             setUserOptions([initialOptions[0], ...filteredOptions]);
+          } else {
+            setUserOptions([initialOptions[0], ...suggestOptions]);
           }
         } else {
           setUserOptions(suggestOptions);
@@ -349,20 +350,73 @@ const InlineTestCaseIncidentStatus = ({
 
   const statusColor = STATUS_COLORS[statusType] || STATUS_COLORS.New;
 
+  const dropdownIcon = useMemo(() => {
+    if (!hasEditPermission) {
+      return undefined;
+    }
+
+    return showStatusMenu || showAssigneePopover || showResolvedPopover ? (
+      <ArrowUpIcon />
+    ) : (
+      <ArrowDownIcon />
+    );
+  }, [
+    hasEditPermission,
+    showStatusMenu,
+    showAssigneePopover,
+    showResolvedPopover,
+  ]);
+
+  const userListContent = useMemo(() => {
+    if (isLoadingUsers) {
+      return (
+        <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
+          <Loader size="small" />
+        </Box>
+      );
+    }
+
+    if (userOptions.length === 0) {
+      return (
+        <Box sx={{ p: 2, textAlign: 'center' }}>
+          <Typography color="text.secondary" variant="body2">
+            {t('message.no-username-available', { user: '' })}
+          </Typography>
+        </Box>
+      );
+    }
+
+    return userOptions.map((option) => {
+      const user: EntityReference = {
+        id: option.value,
+        name: option.name,
+        displayName: option.displayName,
+        type: option.type ?? EntityType.USER,
+      };
+
+      return (
+        <ListItem disablePadding key={option.value}>
+          <ListItemButton
+            data-testid={option.name}
+            selected={selectedAssignee?.id === option.value}
+            sx={{ py: 1.5 }}
+            onClick={() => handleAssigneeSelect(user)}>
+            <UserTag
+              avatarType="outlined"
+              id={option.name ?? ''}
+              name={option.label}
+            />
+          </ListItemButton>
+        </ListItem>
+      );
+    });
+  }, [isLoadingUsers, userOptions, selectedAssignee, t]);
+
   return (
     <Box ref={chipRef} sx={{ display: 'inline-flex', alignItems: 'center' }}>
       <Chip
         data-testid={`${data.testCaseReference?.name}-status`}
-        deleteIcon={
-          hasEditPermission ? (
-            showStatusMenu || showAssigneePopover || showResolvedPopover ? (
-              <ArrowUpIcon />
-            ) : (
-              <ArrowDownIcon />
-            )
-          ) : undefined
-        }
-        disabled={!hasEditPermission}
+        deleteIcon={dropdownIcon}
         label={statusType}
         sx={{
           px: 1,
@@ -380,23 +434,23 @@ const InlineTestCaseIncidentStatus = ({
             color: statusColor.color,
             fontSize: '16px',
             margin: '0 4px 0 -4px',
+            height: '16px',
+            width: '16px',
           },
-          '&:hover': hasEditPermission
-            ? {
-                backgroundColor: statusColor.bg,
-                opacity: 0.8,
-              }
-            : {},
+          '&:hover': {
+            backgroundColor: statusColor.bg,
+            opacity: 0.8,
+          },
         }}
         onClick={handleStatusClick}
-        onDelete={handleStatusClick}
+        onDelete={hasEditPermission ? handleStatusClick : undefined}
       />
 
       <Menu
         anchorEl={anchorEl}
         anchorOrigin={{
           vertical: 'bottom',
-          horizontal: 'left',
+          horizontal: 'right',
         }}
         open={showStatusMenu}
         sx={{
@@ -406,7 +460,7 @@ const InlineTestCaseIncidentStatus = ({
         }}
         transformOrigin={{
           vertical: 'top',
-          horizontal: 'left',
+          horizontal: 'right',
         }}
         onClose={handleCloseStatusMenu}>
         {Object.values(TestCaseResolutionStatusTypes).map((status) => (
@@ -435,7 +489,7 @@ const InlineTestCaseIncidentStatus = ({
         anchorEl={anchorEl}
         anchorOrigin={{
           vertical: 'bottom',
-          horizontal: 'left',
+          horizontal: 'right',
         }}
         data-testid={`${data.testCaseReference?.name}-assignee-popover`}
         open={showAssigneePopover}
@@ -451,7 +505,7 @@ const InlineTestCaseIncidentStatus = ({
         }}
         transformOrigin={{
           vertical: 'top',
-          horizontal: 'left',
+          horizontal: 'right',
         }}
         onClose={handleCloseAllPopovers}>
         <Box
@@ -474,7 +528,7 @@ const InlineTestCaseIncidentStatus = ({
             size="small"
             sx={ACTION_BUTTON_STYLES.cancel}
             onClick={handleCloseAllPopovers}>
-            <CloseIcon sx={ACTION_BUTTON_STYLES.icon} />
+            <CloseIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
           <IconButton
             data-testid="submit-assignee-popover-button"
@@ -482,7 +536,7 @@ const InlineTestCaseIncidentStatus = ({
             size="small"
             sx={ACTION_BUTTON_STYLES.submit}
             onClick={handleAssigneeSubmit}>
-            <CheckIcon sx={ACTION_BUTTON_STYLES.icon} />
+            <CheckIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
         </Box>
         <Divider sx={{ borderColor: 'grey.300' }} />
@@ -497,42 +551,7 @@ const InlineTestCaseIncidentStatus = ({
           />
 
           <List sx={{ maxHeight: 300, overflow: 'auto' }}>
-            {isLoadingUsers ? (
-              <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
-                <Loader size="small" />
-              </Box>
-            ) : userOptions.length === 0 ? (
-              <Box sx={{ p: 2, textAlign: 'center' }}>
-                <Typography color="text.secondary" variant="body2">
-                  {t('message.no-username-available', { user: '' })}
-                </Typography>
-              </Box>
-            ) : (
-              userOptions.map((option) => {
-                const user: EntityReference = {
-                  id: option.value,
-                  name: option.name,
-                  displayName: option.displayName,
-                  type: option.type || EntityType.USER,
-                };
-
-                return (
-                  <ListItem disablePadding key={option.value}>
-                    <ListItemButton
-                      data-testid={option.name}
-                      selected={selectedAssignee?.id === option.value}
-                      sx={{ py: 1.5 }}
-                      onClick={() => handleAssigneeSelect(user)}>
-                      <UserTag
-                        avatarType="outlined"
-                        id={option.name || ''}
-                        name={option.label}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                );
-              })
-            )}
+            {userListContent}
           </List>
         </Box>
       </Popover>
@@ -579,7 +598,7 @@ const InlineTestCaseIncidentStatus = ({
             size="small"
             sx={ACTION_BUTTON_STYLES.cancel}
             onClick={handleCloseAllPopovers}>
-            <CloseIcon sx={ACTION_BUTTON_STYLES.icon} />
+            <CloseIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
           <IconButton
             data-testid="submit-resolved-popover-button"
@@ -587,7 +606,7 @@ const InlineTestCaseIncidentStatus = ({
             size="small"
             sx={ACTION_BUTTON_STYLES.submit}
             onClick={handleResolvedSubmit}>
-            <CheckIcon sx={ACTION_BUTTON_STYLES.icon} />
+            <CheckIcon style={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
         </Box>
 
@@ -600,7 +619,8 @@ const InlineTestCaseIncidentStatus = ({
                 data-testid={`reason-chip-${reason}`}
                 icon={
                   selectedReason === reason ? (
-                    <CheckIcon
+                    <Icon
+                      component={CheckIcon}
                       sx={{ fontSize: 14, color: 'common.white', mx: 0.5 }}
                     />
                   ) : undefined
