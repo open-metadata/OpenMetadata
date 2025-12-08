@@ -32,6 +32,7 @@ class DBTJob(BaseModel):
     job_type: Optional[str] = None
     schedule: Optional[DBTSchedule] = None
     project_id: int
+    environment_id: Optional[int] = None
 
 
 class Pagination(BaseModel):
