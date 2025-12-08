@@ -86,7 +86,12 @@ class LineageParser:
         )
         if self.masked_query is None:
             self.masked_query = (
-                mask_query(self._clean_query, parser=self.parser, parser_required=True)
+                mask_query(
+                    self._clean_query,
+                    parser=self.parser,
+                    parser_required=True,
+                    query_hash=self.query_hash,
+                )
                 or self._clean_query
             )
 

@@ -792,7 +792,10 @@ def get_lineage_by_query(
                 query, dialect, timeout_seconds=timeout_seconds
             )
         masked_query = lineage_parser.masked_query
-        logger.debug(f"Running lineage with query: {masked_query or query}")
+        query_hash = lineage_parser.query_hash
+        logger.debug(
+            f"[{query_hash}] Running lineage with query: {masked_query or query}"
+        )
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
@@ -865,6 +868,9 @@ def get_lineage_by_query(
                             schema_fallback=schema_fallback,
                         )
         if not lineage_parser.query_parsing_success:
+            logger.debug(
+                f"[{query_hash}] Query parsing failed: {lineage_parser.query_parsing_failure_reason}"
+            )
             query_parsing_failures.add(
                 QueryParsingError(
                     query=masked_query or query,
@@ -908,8 +914,9 @@ def get_lineage_via_table_entity(
                 query, dialect, timeout_seconds=timeout_seconds
             )
         masked_query = lineage_parser.masked_query
+        query_hash = lineage_parser.query_hash
         logger.debug(
-            f"Getting lineage via table entity using query: {masked_query or query}"
+            f"[{query_hash}] Getting lineage via table entity using query: {masked_query or query}"
         )
         to_table_name = table_entity.name.root
 
@@ -939,6 +946,9 @@ def get_lineage_via_table_entity(
                     schema_fallback=schema_fallback,
                 ) or []
         if not lineage_parser.query_parsing_success:
+            logger.debug(
+                f"[{query_hash}] Query parsing failed: {lineage_parser.query_parsing_failure_reason}"
+            )
             query_parsing_failures.add(
                 QueryParsingError(
                     query=masked_query,
