@@ -320,11 +320,10 @@ test.describe('Teams Page', () => {
       ).not.toBeVisible();
 
       // Click on the show deleted button
-      await page.locator('[data-testid="show-deleted"]').click();
-
       const fetchDeletedTeamsResponse = page.waitForResponse(
         '/api/v1/teams?parentTeam=Organization&include=deleted&fields=**'
       );
+      await page.locator('[data-testid="show-deleted"]').click();
       await fetchDeletedTeamsResponse;
 
       // Check if the table contains the team name and click on it
@@ -800,11 +799,10 @@ test.describe('Teams Page', () => {
       ).not.toBeVisible();
 
       // Toggle to show deleted teams
-      await page.locator('[data-testid="show-deleted"]').click();
-
       const fetchDeletedTeamsResponse = page.waitForResponse(
         '/api/v1/teams?parentTeam=Organization&include=deleted&fields=**'
       );
+      await page.locator('[data-testid="show-deleted"]').click();
       await fetchDeletedTeamsResponse;
 
       // Wait for deleted team to appear and active team to disappear
@@ -816,11 +814,10 @@ test.describe('Teams Page', () => {
       ).not.toBeVisible();
 
       // Toggle back to show non-deleted teams
-      await page.locator('[data-testid="show-deleted"]').click();
-
       const fetchActiveTeamsResponse = page.waitForResponse(
         '/api/v1/teams?parentTeam=Organization&include=non-deleted&fields=**'
       );
+      await page.locator('[data-testid="show-deleted"]').click();
       await fetchActiveTeamsResponse;
 
       // Wait for active team to appear and deleted team to disappear
