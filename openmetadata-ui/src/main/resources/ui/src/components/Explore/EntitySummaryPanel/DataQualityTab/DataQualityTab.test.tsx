@@ -463,7 +463,7 @@ describe('DataQualityTab', () => {
           return card !== null;
         });
 
-        expect(failedStatusBadges).toHaveLength(1);
+        expect(failedStatusBadges).toHaveLength(2); // Failed test case with incidentId has 2 badges (Failed + Assigned)
       });
     });
 
@@ -497,7 +497,7 @@ describe('DataQualityTab', () => {
       const failedButton = screen.getByTestId('test-failed');
       fireEvent.click(failedButton);
 
-      expect(screen.getByText('ASSIGNED')).toBeInTheDocument();
+      expect(screen.getByText('Assigned')).toBeInTheDocument();
     });
   });
 

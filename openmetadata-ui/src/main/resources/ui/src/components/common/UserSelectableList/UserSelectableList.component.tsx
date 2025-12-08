@@ -135,7 +135,7 @@ export const UserSelectableList = ({
       {children ?? (
         <Tooltip
           placement="topRight"
-          title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>
+          title={hasPermission ? '' : t(NO_PERMISSION_FOR_ACTION)}>
           <Button
             className="p-0 flex-center"
             data-testid="add-user"

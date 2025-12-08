@@ -118,6 +118,22 @@ export const downloadContractYamlFile = (contract: DataContract) => {
   document.body.removeChild(element);
 };
 
+export const downloadContractAsODCSYaml = (
+  yamlContent: string,
+  contractName: string
+) => {
+  const element = document.createElement('a');
+  const file = new Blob([yamlContent], { type: 'application/yaml' });
+  element.textContent = 'download-file';
+  element.href = URL.createObjectURL(file);
+  element.download = `${contractName}.odcs.yaml`;
+  document.body.appendChild(element);
+  element.click();
+
+  URL.revokeObjectURL(element.href);
+  document.body.removeChild(element);
+};
+
 export const getDataContractStatusIcon = (status: ContractExecutionStatus) => {
   switch (status) {
     case ContractExecutionStatus.Failed:

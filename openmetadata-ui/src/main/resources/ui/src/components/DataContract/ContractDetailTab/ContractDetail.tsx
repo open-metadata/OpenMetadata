@@ -45,11 +45,13 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import {
+  exportContractToODCSYaml,
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import {
+  downloadContractAsODCSYaml,
   downloadContractYamlFile,
   getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
@@ -59,7 +61,7 @@ import { getPopupContainer } from '../../../utils/formUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
@@ -158,6 +160,18 @@ const ContractDetail: React.FC<{
         key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT,
       },
       {
+        label: (
+          <div
+            className="contract-action-dropdown-item"
+            data-testid="export-odcs-contract-button">
+            <ExportIcon className="anticon" />
+
+            {t('label.export-odcs')}
+          </div>
+        ),
+        key: DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT_ODCS,
+      },
+      {
         type: 'divider',
       },
       {
@@ -183,6 +197,24 @@ const ContractDetail: React.FC<{
     downloadContractYamlFile(contract);
   }, [contract]);
 
+  const handleExportODCSContract = useCallback(async () => {
+    if (!contract?.id) {
+      return;
+    }
+
+    try {
+      const yamlContent = await exportContractToODCSYaml(contract.id);
+      downloadContractAsODCSYaml(yamlContent, contract.name ?? 'contract');
+      showSuccessToast(
+        t('message.export-entity-successfully', {
+          entity: t('label.odcs-contract'),
+        })
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [contract]);
+
   const handleRunNow = async () => {
     if (contract?.id) {
       try {
@@ -206,6 +238,9 @@ const ContractDetail: React.FC<{
         case DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT:
           return handleExportContract();
 
+        case DATA_CONTRACT_ACTION_DROPDOWN_KEY.EXPORT_ODCS:
+          return handleExportODCSContract();
+
         case DATA_CONTRACT_ACTION_DROPDOWN_KEY.DELETE:
           return onDelete();
 
@@ -213,7 +248,13 @@ const ContractDetail: React.FC<{
           return onEdit();
       }
     },
-    [onDelete, onEdit, handleRunNow, handleExportContract]
+    [
+      onDelete,
+      onEdit,
+      handleRunNow,
+      handleExportContract,
+      handleExportODCSContract,
+    ]
   );
 
   const handleModeChange = useCallback((e: RadioChangeEvent) => {
@@ -261,7 +302,7 @@ const ContractDetail: React.FC<{
                   onClick: handleContractAction,
                 }}
                 overlayClassName="contract-action-dropdown"
-                overlayStyle={{ width: 150 }}
+                overlayStyle={{ width: 180 }}
                 placement="bottomRight"
                 trigger={['click']}>
                 <Button
@@ -388,11 +429,11 @@ const ContractDetail: React.FC<{
 
   if (!contract) {
     return (
-      <ErrorPlaceHolderNew
+      <ErrorPlaceHolder
         icon={
           <EmptyContractIcon className="empty-contract-icon" height={140} />
         }
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
         <Typography.Paragraph className="m-t-md w-80" type="secondary">
           {t('message.create-contract-description')}
         </Typography.Paragraph>
@@ -405,7 +446,7 @@ const ContractDetail: React.FC<{
           onClick={onEdit}>
           {t('label.add-entity', { entity: t('label.contract') })}
         </Button>
-      </ErrorPlaceHolderNew>
+      </ErrorPlaceHolder>
     );
   }
 

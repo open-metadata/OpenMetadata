@@ -19,6 +19,10 @@ export interface PipelineSummary {
      */
     endTime?: number;
     /**
+     * List of fully qualified names of tables impacted by this pipeline
+     */
+    impactedAssets?: string[];
+    /**
      * Total count of tables impacted by this pipeline
      */
     impactedAssetsCount: number;

@@ -14,6 +14,7 @@
 import { Divider, Link } from '@mui/material';
 import { Avatar, Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
@@ -178,7 +179,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           <div className="test-case-status-section">
             <StatusBadgeV2
               label={status || 'Unknown'}
-              showIcon={!isIncidentMode}
+              showIcon={false}
               status={statusBadgeType}
             />
           </div>
@@ -216,7 +217,15 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
               <div className="assignee-info">{renderAssigneeInfo()}</div>
             ) : (
               <Typography.Text className="detail-value">
-                {testCase.incidentId ? 'ASSIGNED' : '--'}
+                {testCase.incidentId ? (
+                  <StatusBadgeV2
+                    label="Assigned"
+                    showIcon={false}
+                    status={StatusType.Warning}
+                  />
+                ) : (
+                  '--'
+                )}
               </Typography.Text>
             )}
           </div>
@@ -528,8 +537,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     return (
       <div className="no-incidents">
         <Typography.Text className="text-grey-muted">
-          {t('label.no-entity', {
-            entity: activeIncidentFilter,
+          {t('message.no-entity-found-for-name', {
+            entity: t('label.incident-plural'),
+            name: `${t('label.type-filed-name', {
+              fieldName: startCase(activeIncidentFilter),
+            })}`,
           })}
         </Typography.Text>
       </div>
@@ -584,6 +596,17 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
             />
 
             <div className="test-case-cards-section">
+              <div className="p-b-md p-r-md">
+                <SearchBarComponent
+                  containerClassName="searchbar-container"
+                  placeholder={t('label.search-for-type', {
+                    type: t('label.test-case-plural'),
+                  })}
+                  searchValue={searchText}
+                  typingInterval={350}
+                  onSearch={setSearchText}
+                />
+              </div>
               {filteredTestCases.length > 0 ? (
                 <Row gutter={[0, 12]} style={{ marginLeft: '-16px' }}>
                   {filteredTestCases.map((testCase) => (
@@ -708,6 +731,17 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
 
             {/* Test Cases Section */}
             <div className="test-cases-section">
+              <div className="p-b-md">
+                <SearchBarComponent
+                  containerClassName="searchbar-container"
+                  placeholder={t('label.search-for-type', {
+                    type: t('label.incident-plural'),
+                  })}
+                  searchValue={searchText}
+                  typingInterval={350}
+                  onSearch={setSearchText}
+                />
+              </div>
               {/* Incident Cards */}
               <div className="incident-cards-section">
                 {renderIncidentCards()}
@@ -730,20 +764,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
 
   return (
     <div className="data-quality-tab-container">
-      <div className="p-x-md">
-        <SearchBarComponent
-          containerClassName="searchbar-container"
-          placeholder={t('label.search-for-type', {
-            type:
-              activeTab === 'data-quality'
-                ? t('label.test-case-plural')
-                : t('label.incident-plural'),
-          })}
-          searchValue={searchText}
-          typingInterval={350}
-          onSearch={setSearchText}
-        />
-      </div>
       <Tabs
         activeKey={activeTab}
         className="data-quality-tabs"
