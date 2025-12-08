@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nimbusds.jose.util.Pair;
 import java.io.IOException;
 import java.util.Base64;
@@ -422,5 +423,65 @@ public class OsUtils {
         LOG.error("Error parsing query_filter from query parameters, ignoring filter", ex);
       }
     }
+  }
+
+  public static JsonNode transformStemmerForOpenSearch(JsonNode settingsNode) {
+    try {
+      // Clone the settings to avoid modifying the original
+      ObjectNode transformedNode = (ObjectNode) JsonUtils.readTree(settingsNode.toString());
+
+      // Navigate to the filters section if it exists
+      JsonNode analysisNode = transformedNode.path("analysis");
+      if (!analysisNode.isMissingNode() && analysisNode.isObject()) {
+        ObjectNode analysisObj = (ObjectNode) analysisNode;
+
+        JsonNode filtersNode = analysisObj.path("filter");
+        if (!filtersNode.isMissingNode() && filtersNode.isObject()) {
+          ObjectNode filtersObj = (ObjectNode) filtersNode;
+
+          // Transform stemmer configuration from Elasticsearch to OpenSearch format
+          JsonNode omStemmerNode = filtersObj.path("om_stemmer");
+          if (!omStemmerNode.isMissingNode() && omStemmerNode.has("type")) {
+            String type = omStemmerNode.get("type").asText();
+            if ("stemmer".equals(type) && omStemmerNode.has("name")) {
+              String name = omStemmerNode.get("name").asText();
+              // OpenSearch uses "language" instead of "name" for stemmer configuration
+              ObjectNode newStemmerNode = JsonUtils.getObjectMapper().createObjectNode();
+              newStemmerNode.put("type", "stemmer");
+              newStemmerNode.put("language", name);
+
+              // Replace the om_stemmer configuration
+              filtersObj.set("om_stemmer", newStemmerNode);
+            }
+          } else {
+            LOG.debug("No om_stemmer filter found in settings");
+          }
+        } else {
+          LOG.debug("No filter section found in analysis settings");
+        }
+      } else {
+        LOG.debug("No analysis section found in settings");
+      }
+
+      return transformedNode;
+    } catch (Exception e) {
+      LOG.warn("Failed to transform stemmer settings for OpenSearch, using original settings", e);
+      return settingsNode;
+    }
+  }
+
+  public static String enrichIndexMappingWithStemmer(String indexMappingContent) {
+    if (nullOrEmpty(indexMappingContent)) {
+      throw new IllegalArgumentException("Empty Index Mapping Content.");
+    }
+    JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+    JsonNode settingsNode = rootNode.get("settings");
+
+    if (settingsNode != null && !settingsNode.isNull()) {
+      JsonNode transformedSettings = transformStemmerForOpenSearch(settingsNode);
+      ((ObjectNode) rootNode).set("settings", transformedSettings);
+    }
+
+    return rootNode.toString();
   }
 }

@@ -13,6 +13,7 @@ import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -61,6 +62,7 @@ import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
@@ -162,9 +164,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'install-app', 'delete-app', 'create-user', 'reset-password', "
-            + "'syncAlertOffset', 'analyze-tables'");
+            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
+    LOG.info(
+        "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
     return 0;
   }
 
@@ -931,6 +935,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
       TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+
+      // Prepare search repository for reindexing (e.g., initialize vector services)
+      searchRepository.prepareForReindex();
+
       String appName = "SearchIndexingApplication";
       // Handle entityStr with or without quotes
       String cleanEntityStr = entityStr;
@@ -1410,6 +1418,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
 
       printToAsciiTable(columns, pipelineStatuses, "No Pipelines Found");
+
+      // Check if any pipeline deployments failed by examining the status column
+      boolean hasFailures =
+          pipelineStatuses.stream().anyMatch(status -> status.get(3).startsWith("FAILED"));
+
+      if (hasFailures) {
+        LOG.error("Some pipeline deployments failed. Check the table above for details.");
+        return 1;
+      }
+
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
@@ -1661,6 +1679,58 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "cleanup-flowable-history",
+      description =
+          "Cleans up old workflow deployments and history. "
+              + "For Periodic Batch workflows: cleans up both deployments and history. "
+              + "For Event Based workflows: cleans up only history. "
+              + "By default, runs in dry-run mode to only analyze what would be cleaned.")
+  public Integer cleanupFlowableHistory(
+      @Option(
+              names = {"--delete"},
+              defaultValue = "false",
+              description =
+                  "Actually perform the cleanup. Without this flag, the command only analyzes what would be cleaned (dry-run mode).")
+          boolean delete,
+      @Option(
+              names = {"--runtime-batch-size"},
+              defaultValue = "1000",
+              description = "Batch size for runtime instance cleanup.")
+          int runtimeBatchSize,
+      @Option(
+              names = {"--history-batch-size"},
+              defaultValue = "1000",
+              description = "Batch size for history instance cleanup.")
+          int historyBatchSize) {
+    try {
+      boolean dryRun = !delete;
+      LOG.info("Running Flowable workflow cleanup. Dry run: {}", dryRun);
+
+      parseConfig();
+      initializeCollectionRegistry();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+      WorkflowHandler.initialize(config);
+
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      FlowableCleanup cleanup = new FlowableCleanup(workflowHandler, dryRun);
+      FlowableCleanup.FlowableCleanupResult result =
+          cleanup.performCleanup(historyBatchSize, runtimeBatchSize);
+
+      if (dryRun && !result.getCleanedWorkflows().isEmpty()) {
+        LOG.info("Dry run completed. To actually perform the cleanup, run with --delete");
+        return 1;
+      }
+
+      LOG.info("Flowable cleanup completed successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup Flowable history due to ", e);
+      return 1;
+    }
+  }
+
   private void analyzeEntityTable(String entity) {
     try {
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entity);
@@ -1828,7 +1898,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       // Decrypt the JWT token - this is the crucial step that was missing
       secretsManager.decryptJWTAuthMechanism(jwtAuthMechanism);
-
+      String token = jwtAuthMechanism.getJWTToken();
+      if (secretsManager.isSecret(token)) {
+        return secretsManager.getSecretValue(token);
+      }
       return jwtAuthMechanism.getJWTToken();
     } catch (Exception e) {
       LOG.error("Failed to retrieve ingestion-bot token", e);
@@ -1845,27 +1918,48 @@ public class OpenMetadataOperations implements Callable<Integer> {
     return null;
   }
 
-  @SuppressWarnings("unchecked")
   private void updatePipelineStatuses(
       List<IngestionPipeline> pipelines, String responseBody, List<List<String>> pipelineStatuses) {
     try {
-      // Parse the bulk deploy response
-      List<Map<String, Object>> responses = JsonUtils.readValue(responseBody, List.class);
+      // Parse the bulk deploy response to typed PipelineServiceClientResponse objects
+      List<PipelineServiceClientResponse> responses =
+          JsonUtils.readValue(
+              responseBody, new TypeReference<List<PipelineServiceClientResponse>>() {});
 
-      // Create a map for quick lookup
-      Map<UUID, String> statusMap =
-          responses.stream()
-              .collect(
-                  Collectors.toMap(
-                      response -> UUID.fromString((String) response.get("pipelineId")),
-                      response -> {
-                        Integer code = (Integer) response.get("code");
-                        return code != null && code == 200 ? "DEPLOYED" : "FAILED";
-                      }));
+      // Log the parsed responses for debugging
+      LOG.info("Received {} deployment responses", responses.size());
+      for (int i = 0; i < responses.size(); i++) {
+        PipelineServiceClientResponse response = responses.get(i);
+        String pipelineName = i < pipelines.size() ? pipelines.get(i).getName() : "unknown";
+        LOG.info(
+            "Pipeline {}: code={}, platform={}, reason={}",
+            pipelineName,
+            response.getCode(),
+            response.getPlatform(),
+            response.getReason() != null ? response.getReason() : "N/A");
+      }
 
-      // Update status table for display
-      for (IngestionPipeline pipeline : pipelines) {
-        String status = statusMap.getOrDefault(pipeline.getId(), "UNKNOWN");
+      // Correlate responses with pipelines by position (assuming same order)
+      for (int i = 0; i < pipelines.size(); i++) {
+        IngestionPipeline pipeline = pipelines.get(i);
+        String status;
+
+        if (i < responses.size()) {
+          PipelineServiceClientResponse response = responses.get(i);
+          Integer code = response.getCode();
+          String reason = response.getReason();
+
+          if (code != null && (code == 200 || code == 201)) {
+            status = "DEPLOYED";
+          } else if (code != null) {
+            status = "FAILED - " + code + (reason != null ? ": " + reason : "");
+          } else {
+            status = "UNKNOWN";
+          }
+        } else {
+          status = "NO_RESPONSE";
+        }
+
         pipelineStatuses.add(
             Arrays.asList(
                 pipeline.getName(),
@@ -1887,7 +1981,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
-  private void parseConfig() throws Exception {
+  public void parseConfig() throws Exception {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
     Validator validator = Validators.newValidator();

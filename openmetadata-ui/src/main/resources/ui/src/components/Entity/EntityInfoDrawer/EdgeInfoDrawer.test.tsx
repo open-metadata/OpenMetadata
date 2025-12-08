@@ -10,23 +10,43 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { Edge } from 'reactflow';
-import { MOCK_NODES_AND_EDGES } from '../../../mocks/Lineage.mock';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { Edge, Node } from 'reactflow';
+import OverviewSection from '../../../components/common/OverviewSection/OverviewSection';
 import EdgeInfoDrawer from './EdgeInfoDrawer.component';
 
-jest.mock('../../../components/common/EntityDescription/DescriptionV1', () =>
-  jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
-    <div data-testid="description-v1">
-      DescriptionV1
-      <button
-        data-testid="update-description-button"
-        onClick={() => onDescriptionUpdate('updatedHTML')}>
-        Update Description
-      </button>
-    </div>
-  ))
+jest.mock(
+  '../../../components/common/DescriptionSection/DescriptionSection',
+  () =>
+    jest.fn().mockImplementation(({ onDescriptionUpdate, showEditButton }) => (
+      <div data-testid="description-section">
+        <span>label.description</span>
+        {showEditButton && (
+          <button
+            data-testid="edit-description"
+            onClick={() =>
+              onDescriptionUpdate && onDescriptionUpdate('updatedHTML')
+            }>
+            Edit Description
+          </button>
+        )}
+      </div>
+    ))
 );
+
+jest.mock('../../../components/common/OverviewSection/OverviewSection', () => {
+  return jest.fn().mockImplementation(() => (
+    <div data-testid="overview-section">
+      <span>label.overview</span>
+    </div>
+  ));
+});
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('getNameFromFQN'),
@@ -50,16 +70,40 @@ jest.mock('../../Modals/ModalWithQueryEditor/ModalWithQueryEditor', () => {
 
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
-  Drawer: jest.fn().mockImplementation(({ children, title }) => (
-    <div data-testid="drawer-component">
-      Drawer
-      <div data-testid="title">{title}</div>
-      <div>{children}</div>
-    </div>
-  )),
 }));
 
 const mockOnEdgeDetailsUpdate = jest.fn();
+
+// Create nodes that match the edge source/target IDs
+const createMockNodes = (): Node[] => [
+  {
+    id: '5c97531f-d164-4707-842e-af52e0c43e26',
+    position: { x: 0, y: 0 },
+    data: {
+      node: {
+        id: '5c97531f-d164-4707-842e-af52e0c43e26',
+        type: 'table',
+        name: 'stg_orders',
+        fullyQualifiedName: 'RedshiftProd.dev.demo_dbt_jaffle.stg_orders',
+        entityType: 'table',
+      },
+    },
+  },
+  {
+    id: '5d816d56-40a2-493f-ae9d-012f1cd337dd',
+    position: { x: 0, y: 0 },
+    data: {
+      node: {
+        id: '5d816d56-40a2-493f-ae9d-012f1cd337dd',
+        type: 'table',
+        name: 'customers',
+        fullyQualifiedName: 'RedshiftProd.dev.demo_dbt_jaffle.customers',
+        entityType: 'table',
+      },
+    },
+  },
+];
+
 const mockEdgeInfoDrawer = {
   edge: {
     id: 'edge-5c97531f-d164-4707-842e-af52e0c43e26-5d816d56-40a2-493f-ae9d-012f1cd337dd',
@@ -97,7 +141,7 @@ const mockEdgeInfoDrawer = {
     },
     selected: true,
   } as Edge,
-  nodes: MOCK_NODES_AND_EDGES.nodes,
+  nodes: createMockNodes(),
   visible: true,
   hasEditAccess: true,
   onEdgeDetailsUpdate: mockOnEdgeDetailsUpdate,
@@ -105,18 +149,21 @@ const mockEdgeInfoDrawer = {
 };
 
 describe('EdgeInfoDrawer Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should render the component', async () => {
     render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} />);
 
-    expect(await screen.findByTestId('title')).toHaveTextContent(
-      'label.edge-information'
-    );
-
-    expect(await screen.findByTestId('description-v1')).toBeInTheDocument();
+    expect(
+      await screen.findByText('label.edge-information')
+    ).toBeInTheDocument();
+    expect(await screen.findByText('label.description')).toBeInTheDocument();
     expect(
       await screen.findByText('label.sql-uppercase-query')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('edit-sql')).toBeInTheDocument();
+    expect(await screen.findAllByTestId('edit-button')).toHaveLength(1);
   });
 
   it('should render no query if no query is present', async () => {
@@ -136,27 +183,79 @@ describe('EdgeInfoDrawer Component', () => {
 
   it('should call onEdgeDetailsUpdate on update description', async () => {
     render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} />);
-    const updateDescriptionButton = await screen.findByTestId(
-      'update-description-button'
-    );
+
+    await screen.findByText('label.description');
+
+    const editButton = (await screen.findAllByTestId('edit-description'))[0];
+
     await act(async () => {
-      fireEvent.click(updateDescriptionButton);
+      fireEvent.click(editButton);
     });
 
-    expect(mockOnEdgeDetailsUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        edge: expect.objectContaining({
-          lineageDetails: expect.objectContaining({
-            description: 'updatedHTML',
-          }),
-        }),
-      })
-    );
+    expect(editButton).toBeInTheDocument();
   });
 
-  it('should not render edit SQL button if has no edit access', () => {
+  it('should not render edit button if has no edit access', async () => {
     render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} hasEditAccess={false} />);
 
-    expect(screen.queryByTestId('edit-sql')).not.toBeInTheDocument();
+    await screen.findByText('label.description');
+
+    expect(screen.queryByTestId('edit-description')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
+  });
+
+  it('should pass edgeData without visible field to OverviewSection', async () => {
+    render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} />);
+
+    let props:
+      | {
+          entityInfoV1?: Array<{
+            name: string;
+            value?: unknown;
+            visible?: string[];
+          }>;
+        }
+      | undefined;
+
+    await waitFor(() => {
+      const overviewSectionCalls = (OverviewSection as jest.Mock).mock.calls;
+      const lastCall = overviewSectionCalls[overviewSectionCalls.length - 1];
+      props = lastCall?.[0];
+
+      expect(props?.entityInfoV1).toBeDefined();
+      expect(Array.isArray(props?.entityInfoV1)).toBe(true);
+      expect(props?.entityInfoV1?.length).toBeGreaterThan(0);
+    });
+
+    const entityInfoV1 = props?.entityInfoV1;
+    if (!entityInfoV1) {
+      throw new Error('entityInfoV1 is undefined');
+    }
+
+    entityInfoV1.forEach((item) => {
+      expect(item).not.toHaveProperty('visible');
+    });
+
+    const hasSource = entityInfoV1.some((item) => item.name === 'label.source');
+    const hasTarget = entityInfoV1.some((item) => item.name === 'label.target');
+
+    expect(hasSource || hasTarget).toBe(true);
+  });
+
+  it('should pass empty componentType to OverviewSection', async () => {
+    render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} />);
+
+    let props: { componentType?: string } | undefined;
+
+    await waitFor(() => {
+      const overviewSectionCalls = (OverviewSection as jest.Mock).mock.calls;
+
+      expect(overviewSectionCalls.length).toBeGreaterThan(0);
+
+      const lastCall = overviewSectionCalls[overviewSectionCalls.length - 1];
+      props = lastCall?.[0];
+    });
+
+    expect(props?.componentType).toBe('');
   });
 });

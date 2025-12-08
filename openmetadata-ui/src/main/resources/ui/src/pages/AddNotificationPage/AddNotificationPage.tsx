@@ -47,13 +47,21 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
+import {
+  NotificationTemplate,
+  ProviderType,
+} from '../../generated/entity/events/notificationTemplate';
+import { Operation } from '../../generated/entity/policies/policy';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
   EventSubscription,
-  ProviderType,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -68,6 +76,10 @@ import {
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import alertsClassBase from '../../utils/AlertsClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
@@ -96,10 +108,13 @@ const AddNotificationPage = () => {
   const [entityFunctions, setEntityFunctions] = useState<
     FilterResourceDescriptor[]
   >([]);
+  const { getResourcePermission } = usePermissionProvider();
   const [isButtonLoading, setIsButtonLoading] = useState<boolean>(false);
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
   const [initialData, setInitialData] = useState<EventSubscription>();
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
+  const [templateResourcePermission, setTemplateResourcePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const isSystemProvider = useMemo(
     () => alert?.provider === ProviderType.System,
@@ -235,11 +250,20 @@ const AddNotificationPage = () => {
   const fetchTemplates = useCallback(async () => {
     setLoadingState((state) => ({ ...state, templates: true }));
     try {
-      const { data } = await getAllNotificationTemplates({
-        limit: PAGE_SIZE_LARGE,
-      });
+      const permission = await getResourcePermission(
+        ResourceEntity.NOTIFICATION_TEMPLATE
+      );
 
-      setTemplates(data);
+      setTemplateResourcePermission(permission);
+
+      if (getPrioritizedViewPermission(permission, Operation.ViewAll)) {
+        const { data } = await getAllNotificationTemplates({
+          limit: PAGE_SIZE_LARGE,
+          provider: ProviderType.User,
+        });
+
+        setTemplates(data);
+      }
     } catch {
       showErrorToast(
         t('server.entity-fetch-error', { entity: t('label.template-plural') })
@@ -375,6 +399,9 @@ const AddNotificationPage = () => {
                                         alertDetails={alert}
                                         formRef={form}
                                         loading={isLoading}
+                                        templateResourcePermission={
+                                          templateResourcePermission
+                                        }
                                         templates={templates}
                                       />
                                     </Col>
@@ -419,6 +446,9 @@ const AddNotificationPage = () => {
                                 alertDetails={alert}
                                 formRef={form}
                                 key={name}
+                                templateResourcePermission={
+                                  templateResourcePermission
+                                }
                                 templates={templates}
                               />
                             )

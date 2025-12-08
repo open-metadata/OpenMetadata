@@ -68,6 +68,7 @@ import {
   getStartOfDayInMillis,
 } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   getEntityDetailsPath,
   getTestCaseDetailPagePath,
@@ -102,7 +103,10 @@ const IncidentManager = ({
   const defaultRange = useMemo(
     () => ({
       key: 'last30days',
-      title: PROFILER_FILTER_RANGE.last30days.title,
+      title: translateWithNestedKeys(
+        PROFILER_FILTER_RANGE.last30days.title,
+        PROFILER_FILTER_RANGE.last30days.titleData
+      ),
     }),
     []
   );

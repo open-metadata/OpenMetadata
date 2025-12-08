@@ -155,7 +155,7 @@ const PoliciesListPage = () => {
                     {getEntityName(role)}
                   </Link>
                 ) : (
-                  <Tooltip key={uniqueId()} title={NO_PERMISSION_TO_VIEW}>
+                  <Tooltip key={uniqueId()} title={t(NO_PERMISSION_TO_VIEW)}>
                     {getEntityName(role)}
                   </Tooltip>
                 )
@@ -177,7 +177,7 @@ const PoliciesListPage = () => {
                         ) : (
                           <Tooltip
                             key={uniqueId()}
-                            title={NO_PERMISSION_TO_VIEW}>
+                            title={t(NO_PERMISSION_TO_VIEW)}>
                             {getEntityName(role)}
                           </Tooltip>
                         )
@@ -212,7 +212,7 @@ const PoliciesListPage = () => {
                   ? t('label.delete-entity', {
                       entity: t('label.policy'),
                     })
-                  : NO_PERMISSION_FOR_ACTION
+                  : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}
@@ -290,7 +290,12 @@ const PoliciesListPage = () => {
         </Col>
         <Col span={24}>
           <Space className="w-full justify-between">
-            <PageHeader data={PAGE_HEADERS.POLICIES} />
+            <PageHeader
+              data={{
+                header: t(PAGE_HEADERS.POLICIES.header),
+                subHeader: t(PAGE_HEADERS.POLICIES.subHeader),
+              }}
+            />
 
             {addPolicyPermission && (
               <Button

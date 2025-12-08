@@ -46,6 +46,45 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn().mockReturnValue([]),
+      getEntityRuleValidation: jest.fn().mockReturnValue({
+        canAddMultipleUserOwners: true,
+        canAddMultipleTeamOwner: true,
+        canAddMultipleDomains: true,
+        canAddMultipleDataProducts: true,
+        maxDomains: Infinity,
+        maxDataProducts: Infinity,
+        canAddMultipleGlossaryTerm: true,
+        requireDomainForDataProduct: false,
+      }),
+      rules: {},
+      isLoading: false,
+    })),
+  })
+);
+
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+      canAddMultipleDomains: true,
+      canAddMultipleDataProducts: true,
+      maxDomains: Infinity,
+      maxDataProducts: Infinity,
+      canAddMultipleGlossaryTerm: true,
+      requireDomainForDataProduct: false,
+    },
+    rules: [],
+    isLoading: false,
+  })),
+}));
+
 describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
     await act(async () => {
@@ -165,5 +204,72 @@ describe('EntitySummaryPanel component tests', () => {
     const chartSummary = screen.getByTestId('ChartSummary');
 
     expect(chartSummary).toBeInTheDocument();
+  });
+
+  it('should render drawer header when isSideDrawer is true', async () => {
+    await act(async () => {
+      render(
+        <EntitySummaryPanel
+          isSideDrawer
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+    });
+
+    const closeIcon = screen.getByTestId('drawer-close-icon');
+
+    expect(closeIcon).toBeInTheDocument();
+  });
+
+  it('should not render drawer header when isSideDrawer is false', async () => {
+    await act(async () => {
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+          isSideDrawer={false}
+        />
+      );
+    });
+
+    const closeIcon = screen.queryByTestId('drawer-close-icon');
+
+    expect(closeIcon).not.toBeInTheDocument();
+  });
+
+  it('should apply drawer-specific CSS classes when isSideDrawer is true', async () => {
+    const { container } = await act(async () => {
+      return render(
+        <EntitySummaryPanel
+          isSideDrawer
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+    });
+
+    const summaryPanelContainer = container.querySelector(
+      '.drawer-summary-panel-container'
+    );
+    const contentArea = container.querySelector('.drawer-content-area');
+
+    expect(summaryPanelContainer).toBeInTheDocument();
+    expect(contentArea).toBeInTheDocument();
   });
 });
