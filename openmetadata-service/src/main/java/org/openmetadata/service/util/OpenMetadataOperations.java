@@ -935,6 +935,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
       TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+
+      // Prepare search repository for reindexing (e.g., initialize vector services)
+      searchRepository.prepareForReindex();
+
       String appName = "SearchIndexingApplication";
       // Handle entityStr with or without quotes
       String cleanEntityStr = entityStr;
