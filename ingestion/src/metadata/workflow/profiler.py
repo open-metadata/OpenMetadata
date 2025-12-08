@@ -36,7 +36,7 @@ class ProfilerWorkflow(IngestionWorkflow):
 
     def __init__(self, config):
         super().__init__(config)
-        self.workflow_config.successThreshold = 80.0
+        self.workflow_config.successThreshold = 80
 
     def _get_source_class(self):
         if self.config.source.serviceName:
