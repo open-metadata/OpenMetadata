@@ -76,6 +76,8 @@ export const DataAssetSummaryPanelV1 = ({
   onDataProductsUpdate,
   onGlossaryTermsUpdate,
   onDescriptionUpdate,
+  onLinkClick,
+  isSideDrawer = false,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
@@ -362,7 +364,6 @@ export const DataAssetSummaryPanelV1 = ({
       case EntityType.TEST_CASE:
       case EntityType.DOMAIN:
       case EntityType.CLASSIFICATION:
-      case EntityType.GLOSSARIES:
       case EntityType.METADATA_SERVICE:
       case EntityType.SECURITY_SERVICE:
       case EntityType.DRIVE_SERVICE:
@@ -426,6 +427,7 @@ export const DataAssetSummaryPanelV1 = ({
               componentType={componentType}
               entityInfoV1={entityInfo}
               isDomainVisible={isDomainVisible}
+              onLinkClick={onLinkClick}
             />
             {isTestCaseLoading ? (
               <Loader size="small" />
@@ -668,6 +670,7 @@ export const DataAssetSummaryPanelV1 = ({
               componentType={componentType}
               entityInfoV1={entityInfo}
               isDomainVisible={isDomainVisible}
+              onLinkClick={onLinkClick}
             />
             {dataAsset.owners && (
               <div>

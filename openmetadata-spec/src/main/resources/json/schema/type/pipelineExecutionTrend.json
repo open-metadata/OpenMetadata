@@ -34,6 +34,11 @@
       "default": 0,
       "description": "Number of skipped pipeline executions on this date"
     },
+    "runningCount": {
+      "type": "integer",
+      "default": 0,
+      "description": "Number of running pipeline executions on this date"
+    },
     "totalCount": {
       "type": "integer",
       "default": 0,

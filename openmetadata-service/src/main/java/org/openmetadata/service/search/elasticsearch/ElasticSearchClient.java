@@ -245,6 +245,11 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public boolean waitForIndexReady(String indexName, int timeoutSeconds) {
+    return indexManager.waitForIndexReady(indexName, timeoutSeconds);
+  }
+
+  @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
     indexManager.updateIndex(indexMapping, indexMappingContent);
   }

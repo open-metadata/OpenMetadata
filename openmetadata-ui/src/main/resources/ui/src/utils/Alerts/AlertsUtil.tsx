@@ -855,6 +855,12 @@ export const getFieldByArgumentType = (
       showDisplayNameAsLabel: false,
     });
   };
+  const translatedContractStatusOptions = DATA_CONTRACT_STATUS_OPTIONS.map(
+    (option) => ({
+      ...option,
+      label: t(option.label),
+    })
+  );
 
   switch (argument) {
     case 'fqnList':
@@ -1057,7 +1063,7 @@ export const getFieldByArgumentType = (
           className="w-full"
           data-testid="contract-status-select"
           mode="multiple"
-          options={DATA_CONTRACT_STATUS_OPTIONS}
+          options={translatedContractStatusOptions}
           placeholder={t('label.select-field', {
             field: t('label.data-contract-status'),
           })}
