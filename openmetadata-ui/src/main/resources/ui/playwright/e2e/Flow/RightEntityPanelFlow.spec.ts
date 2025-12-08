@@ -34,6 +34,7 @@ import {
   addOwnerWithoutValidation,
   assignTier,
   updateDescription,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
   clearAndAddGlossaryTerms,
@@ -1689,6 +1690,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     const summaryPanel = dataConsumerPage.locator(
       '.entity-summary-panel-container'
     );
+    await waitForAllLoadersToDisappear(dataConsumerPage, 'loader');
     const ownersSection = summaryPanel.locator('.owners-section');
 
     await expect(ownersSection).toBeVisible();

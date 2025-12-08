@@ -164,6 +164,7 @@ const TeamDetailsV1 = ({
   }>(DELETE_USER_INITIAL_STATE);
   const [searchTerm, setSearchTerm] = useState('');
   const [childTeamList, setChildTeamList] = useState<Team[]>([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [slashedTeamName, setSlashedTeamName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -256,6 +257,7 @@ const TeamDetailsV1 = ({
   );
 
   const searchTeams = async (text: string) => {
+    setIsSearchLoading(true);
     try {
       const res = await searchQuery({
         query: `*${text}*`,
@@ -291,6 +293,8 @@ const TeamDetailsV1 = ({
       );
     } catch {
       setChildTeamList([]);
+    } finally {
+      setIsSearchLoading(false);
     }
   };
 
@@ -665,6 +669,7 @@ const TeamDetailsV1 = ({
         handleAddTeamButtonClick={handleAddTeamButtonClick}
         handleTeamSearch={handleTeamSearch}
         isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+        isSearchLoading={isSearchLoading}
         isTeamDeleted={isTeamDeleted}
         searchTerm={searchTerm}
         showDeletedTeam={showDeletedTeam}
@@ -680,6 +685,7 @@ const TeamDetailsV1 = ({
     showDeletedTeam,
     entityPermissions.Create,
     isFetchingAllTeamAdvancedDetails,
+    isSearchLoading,
     onTeamExpand,
     handleAddTeamButtonClick,
     handleTeamSearch,

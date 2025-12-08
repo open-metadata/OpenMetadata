@@ -52,6 +52,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   data,
   onTeamExpand,
   isFetchingAllTeamAdvancedDetails,
+  isSearchLoading,
   searchTerm,
   showDeletedTeam,
   onShowDeletedTeamChange,
@@ -301,7 +302,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
             )}
           </Space>
         }
-        loading={isTableLoading}
+        loading={isTableLoading || isSearchLoading}
         locale={{
           emptyText: <FilterTablePlaceHolder />,
         }}
