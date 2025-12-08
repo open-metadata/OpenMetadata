@@ -16,7 +16,7 @@ import { Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
@@ -29,14 +29,15 @@ import {
 import { Include } from '../../../../generated/type/include';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { listTestCases } from '../../../../rest/testAPI';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../../../utils/date-time/DateTimeUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityUtils';
 import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../../utils/date-time/DateTimeUtils';
+import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import DataQualitySection from '../../../common/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
@@ -45,7 +46,6 @@ import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
-import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import {
   DataQualityTabProps,
   DetailItemProps,
@@ -65,11 +65,7 @@ const DetailItem: React.FC<DetailItemProps> = ({
   <div
     className={`test-case-detail-item ${showDottedBorder ? 'dotted-row' : ''}`}>
     <Typography.Text className="detail-label">{label}</Typography.Text>
-    {typeof value === 'string' ? (
-      <Typography.Text className="detail-value">{value}</Typography.Text>
-    ) : (
-      <div className="detail-value">{value}</div>
-    )}
+    <div className="detail-value">{value}</div>
   </div>
 );
 
@@ -138,76 +134,75 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
 
   // Build detail items array for cleaner rendering
   const detailItems = useMemo(() => {
-    const items: Array<{
-      label: string;
-      value: ReactNode;
-      showDottedBorder: boolean;
-    }> = [];
-
-    if (!isIncidentMode) {
-      // Test case mode: show test type and column name if applicable
-      if (columnName) {
-        items.push({
-          label: t('label.test-type'),
-          value: t('label.column'),
-          showDottedBorder: true, // Always show border before column name
-        });
-        items.push({
-          label: t('label.column-name'),
-          value: columnName,
-          showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
-        });
-      } else {
-        items.push({
-          label: t('label.test-type'),
-          value: t('label.table'),
-          showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
-        });
-      }
-
-      // Add incident if present
-      if (testCase.incidentId) {
-        items.push({
-          label: t('label.incident'),
-          value: (
-            <StatusBadgeV2
-              label="Assigned"
-              showIcon={false}
-              status={StatusType.Warning}
-            />
-          ),
-          showDottedBorder: false, // Last item, no border
-        });
-      }
-    } else {
+    if (isIncidentMode) {
       // Incident mode: show severity and assignee
       const assignee = incident?.testCaseResolutionStatusDetails?.assignee;
 
-      if (severity) {
-        items.push({
-          label: t('label.severity'),
-          value: <Severity hasPermission={false} severity={severity} />,
-          showDottedBorder: true, // Always show border before assignee
-        });
-      }
-
-      items.push({
-        label: t('label.assignee'),
-        value: (
-          <div className="assignee-info">
-            <OwnerLabel
-              owners={assignee ? [assignee] : []}
-              placeHolder={t('label.no-entity', {
-                entity: t('label.assignee'),
-              })}
-            />
-          </div>
-        ),
-        showDottedBorder: false, // Last item, no border
-      });
+      return [
+        ...(severity
+          ? [
+              {
+                label: t('label.severity'),
+                value: <Severity hasPermission={false} severity={severity} />,
+                showDottedBorder: true, // Always show border before assignee
+              },
+            ]
+          : []),
+        {
+          label: t('label.assignee'),
+          value: (
+            <div className="assignee-info">
+              <OwnerLabel
+                owners={assignee ? [assignee] : []}
+                placeHolder={t('label.no-entity', {
+                  entity: t('label.assignee'),
+                })}
+              />
+            </div>
+          ),
+          showDottedBorder: false, // Last item, no border
+        },
+      ];
     }
 
-    return items;
+    // Test case mode: show test type and column name if applicable
+    return [
+      ...(columnName
+        ? [
+            {
+              label: t('label.test-type'),
+              value: t('label.column'),
+              showDottedBorder: true, // Always show border before column name
+            },
+            {
+              label: t('label.column-name'),
+              value: columnName,
+              showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
+            },
+          ]
+        : [
+            {
+              label: t('label.test-type'),
+              value: t('label.table'),
+              showDottedBorder: !!testCase.incidentId, // Show border only if incident follows
+            },
+          ]),
+      ...(testCase.incidentId
+        ? [
+            {
+              label: t('label.incident'),
+              value: (
+                <StatusBadgeV2
+                  label="Assigned"
+                  showIcon={false}
+                  status={StatusType.Warning}
+                />
+              ),
+              showDottedBorder: false, // Last item, no border
+            },
+          ]
+        : []),
+    ];
   }, [isIncidentMode, columnName, testCase.incidentId, severity, incident, t]);
 
   return (

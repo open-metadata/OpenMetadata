@@ -271,11 +271,7 @@ const SchemaFieldCardsV1: React.FC<{
         };
 
         let data: Column[] = [];
-        let paging = {
-          offset: 0,
-          total: 0,
-          limit: PAGE_SIZE_LARGE,
-        };
+        let paging;
 
         if (entityType === EntityType.TABLE) {
           if (search) {
