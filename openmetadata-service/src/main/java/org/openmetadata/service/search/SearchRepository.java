@@ -295,6 +295,15 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * Hook method called before reindexing starts, after ApplicationContext is initialized.
+   * Subclasses can override this to perform additional initialization that depends on ApplicationContext.
+   */
+  public void prepareForReindex() {
+    // Default implementation does nothing
+    // Sub-classes like SearchRepositoryExt can override to initialize vector services
+  }
+
   public IndexMapping getIndexMapping(String entityType) {
     return entityIndexMap.get(entityType);
   }
