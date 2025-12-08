@@ -12,8 +12,7 @@
  */
 
 import { CloseOutlined } from '@mui/icons-material';
-import { Link } from '@mui/material';
-import { Button, Card, Tooltip } from 'antd';
+import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
 import { get } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -47,17 +46,16 @@ import { getTopicByFqn } from '../../../rest/topicsAPI';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
-  getEntityName,
 } from '../../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
+import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
@@ -522,32 +520,11 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && !isSideDrawer && (
-              <div className="title-section">
-                <div className="title-container">
-                  <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
-                    title={entityDetails.details.name}
-                    trigger="hover">
-                    <div className="d-flex items-center">
-                      <span className="entity-icon">
-                        {searchClassBase.getEntityIcon(
-                          entityDetails.details.entityType ?? ''
-                        )}
-                      </span>
-                      <Link
-                        className="entity-title-link"
-                        data-testid="entity-link"
-                        href={entityLink as string}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                        underline="hover">
-                        {stringToHTML(getEntityName(entityDetails.details))}
-                      </Link>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
             )}
             <div className="overview-tab-content">{summaryComponentV1}</div>
           </>
@@ -556,32 +533,11 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && !isSideDrawer && (
-              <div className="title-section">
-                <div className="title-container">
-                  <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
-                    title={entityDetails.details.name}
-                    trigger="hover">
-                    <div className="d-flex items-center">
-                      <span className="entity-icon">
-                        {searchClassBase.getEntityIcon(
-                          entityDetails.details.entityType ?? ''
-                        )}
-                      </span>
-                      <Link
-                        className="entity-title-link"
-                        data-testid="entity-link"
-                        href={entityLink as string}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                        underline="hover">
-                        {stringToHTML(getEntityName(entityDetails.details))}
-                      </Link>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
             )}
             <div className="entity-summary-panel-tab-content">
               <EntityDetailsSection
@@ -597,32 +553,11 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && !isSideDrawer && (
-              <div className="title-section">
-                <div className="title-container">
-                  <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
-                    title={entityDetails.details.name}
-                    trigger="hover">
-                    <div className="d-flex items-center">
-                      <span className="entity-icon">
-                        {searchClassBase.getEntityIcon(
-                          entityDetails.details.entityType ?? ''
-                        )}
-                      </span>
-                      <Link
-                        className="entity-title-link"
-                        data-testid="entity-link"
-                        href={entityLink as string}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                        underline="hover">
-                        {stringToHTML(getEntityName(entityDetails.details))}
-                      </Link>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
             )}
             <div className="entity-summary-panel-tab-content">
               <div className="p-x-md">{renderLineageContent()}</div>
@@ -633,32 +568,11 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && !isSideDrawer && (
-              <div className="title-section">
-                <div className="title-container">
-                  <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
-                    title={entityDetails.details.name}
-                    trigger="hover">
-                    <div className="d-flex items-center">
-                      <span className="entity-icon">
-                        {searchClassBase.getEntityIcon(
-                          entityDetails.details.entityType ?? ''
-                        )}
-                      </span>
-                      <Link
-                        className="entity-title-link"
-                        data-testid="entity-link"
-                        href={entityLink as string}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                        underline="hover">
-                        {stringToHTML(getEntityName(entityDetails.details))}
-                      </Link>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
             )}
             <DataQualityTab
               entityFQN={entityDetails.details.fullyQualifiedName || ''}
@@ -670,32 +584,11 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && !isSideDrawer && (
-              <div className="title-section">
-                <div className="title-container">
-                  <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
-                    title={entityDetails.details.name}
-                    trigger="hover">
-                    <div className="d-flex items-center">
-                      <span className="entity-icon">
-                        {searchClassBase.getEntityIcon(
-                          entityDetails.details.entityType ?? ''
-                        )}
-                      </span>
-                      <Link
-                        className="entity-title-link"
-                        data-testid="entity-link"
-                        href={entityLink as string}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                        underline="hover">
-                        {stringToHTML(getEntityName(entityDetails.details))}
-                      </Link>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
             )}
             <CustomPropertiesSection
               entityData={entityData}
@@ -720,32 +613,13 @@ export default function EntitySummaryPanel({
     <div className="entity-summary-panel-container">
       {isSideDrawer && (
         <div className="d-flex items-center justify-between">
-          <div className="title-section drawer-title-section">
-            <div className="title-container">
-              <Tooltip
-                mouseEnterDelay={0.5}
-                placement="bottomLeft"
-                title={entityDetails.details.name}
-                trigger="hover">
-                <div className="d-flex items-center">
-                  <span className="entity-icon">
-                    {searchClassBase.getEntityIcon(
-                      entityDetails.details.entityType ?? ''
-                    )}
-                  </span>
-                  <Link
-                    className="entity-title-link"
-                    data-testid="entity-header-title"
-                    href={entityLink as string}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                    underline="hover">
-                    {stringToHTML(getEntityName(entityDetails.details))}
-                  </Link>
-                </div>
-              </Tooltip>
-            </div>
-          </div>
+          <EntityTitleSection
+            className="drawer-title-section"
+            entityDetails={entityDetails.details}
+            entityLink={entityLink}
+            testId="entity-header-title"
+            tooltipPlacement="bottomLeft"
+          />
           <Button
             aria-label={t('label.close')}
             className="drawer-close-icon flex-center mr-2"
