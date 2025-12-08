@@ -19,7 +19,10 @@ import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BORDER_COLOR } from '../../../../constants/constants';
+import {
+  BORDER_COLOR,
+  LINEAGE_CHILD_ITEMS_PER_PAGE,
+} from '../../../../constants/constants';
 import {
   DATATYPES_HAVING_SUBFIELDS,
   LINEAGE_COLUMN_NODE_SUPPORTED,
@@ -58,7 +61,6 @@ const CustomPaginatedList = ({
   page,
   setPage,
 }: CustomPaginatedListProps) => {
-  const ITEMS_PER_PAGE = 5;
   const [itemsOfPreviousPage, setItemsOfPreviousPage] = useState<string[]>([]);
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
@@ -94,9 +96,9 @@ const CustomPaginatedList = ({
     outsideCurrentPageItems,
     itemsOfCurrentPage,
   } = useMemo(() => {
-    const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
-    const startIdx = (page - 1) * ITEMS_PER_PAGE;
-    const endIdx = startIdx + ITEMS_PER_PAGE;
+    const totalPages = Math.ceil(items.length / LINEAGE_CHILD_ITEMS_PER_PAGE);
+    const startIdx = (page - 1) * LINEAGE_CHILD_ITEMS_PER_PAGE;
+    const endIdx = startIdx + LINEAGE_CHILD_ITEMS_PER_PAGE;
 
     const insideCurrentPageItems: React.ReactNode[] = [];
     const outsideCurrentPageItems: React.ReactNode[] = [];
@@ -189,7 +191,7 @@ const CustomPaginatedList = ({
         mt={2}
         spacing={1}>
         <IconButton
-          data-testId="prev-btn"
+          data-testid="prev-btn"
           disabled={page === 1}
           size="small"
           onClick={handlePrev}>
@@ -201,7 +203,7 @@ const CustomPaginatedList = ({
         </Typography>
 
         <IconButton
-          data-testId="next-btn"
+          data-testid="next-btn"
           disabled={page === totalPages}
           size="small"
           onClick={handleNext}>

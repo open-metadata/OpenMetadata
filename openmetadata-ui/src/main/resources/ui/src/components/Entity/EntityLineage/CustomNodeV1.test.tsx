@@ -10,13 +10,65 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { act } from 'react-test-renderer';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import { ModelType } from '../../../generated/entity/data/table';
 import { LineageLayer } from '../../../generated/settings/settings';
 import CustomNodeV1Component from './CustomNodeV1.component';
-import { assertPaginationState } from './CustomNodeV1.test.utils';
+
+interface PaginationAssertionParams {
+  columnsContainer: HTMLElement;
+  expectedPageText: string;
+  expectedColumns: string[];
+  direction: 'next' | 'prev';
+  shouldBeDisabled?: 'prev' | 'next';
+}
+
+const getInsidePageColumns = (columnsContainer: HTMLElement): string[] => {
+  const insidePageContainer = columnsContainer.querySelector(
+    '.inside-current-page-items'
+  );
+
+  return insidePageContainer
+    ? Array.from(
+        insidePageContainer.querySelectorAll('.inside-current-page-item')
+      ).map((el) => el.textContent?.trim() ?? '')
+    : [];
+};
+
+const assertPaginationState = ({
+  columnsContainer,
+  expectedPageText,
+  expectedColumns,
+  direction,
+  shouldBeDisabled,
+}: PaginationAssertionParams): void => {
+  const prevButton = within(columnsContainer).getByTestId('prev-btn');
+  const nextButton = within(columnsContainer).getByTestId('next-btn');
+  const button = direction === 'next' ? nextButton : prevButton;
+
+  expect(screen.getByText(expectedPageText)).toBeInTheDocument();
+
+  const visibleColumns = getInsidePageColumns(columnsContainer);
+
+  expect(visibleColumns).toEqual(expectedColumns);
+
+  if (shouldBeDisabled === 'prev') {
+    expect(prevButton).toBeDisabled();
+    expect(nextButton).not.toBeDisabled();
+  } else if (shouldBeDisabled === 'next') {
+    expect(prevButton).not.toBeDisabled();
+    expect(nextButton).toBeDisabled();
+  } else {
+    expect(prevButton).not.toBeDisabled();
+    expect(nextButton).not.toBeDisabled();
+  }
+
+  act(() => {
+    fireEvent.click(button);
+  });
+};
 
 const mockNodeDataProps = {
   id: 'node1',
@@ -459,7 +511,9 @@ describe('CustomNodeV1', () => {
       );
 
       const nextButton = screen.getByTestId('next-btn');
-      fireEvent.click(nextButton);
+      act(() => {
+        fireEvent.click(nextButton);
+      });
 
       expect(screen.getByText('2 / 3')).toBeVisible();
       expect(screen.getByTestId('column-col3')).toHaveClass(
