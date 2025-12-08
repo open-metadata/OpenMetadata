@@ -33,7 +33,7 @@ export class Glossary extends EntityClass {
     const randomName = getRandomFirstName();
     const randomId = uuid();
     this.data = {
-      name: name ?? `PW%${randomId}.${randomName}`,
+      name: name ?? `PW%'${randomId}.${randomName}`,
       displayName: `PW % ${randomId} ${randomName}`,
       description:
         'Glossary terms that describe general conceptual terms. Note that these conceptual terms are used for automatically labeling the data.',
