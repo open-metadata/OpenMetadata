@@ -24,10 +24,12 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.http.client.HttpResponseException;
@@ -817,7 +819,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
-  void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo) throws IOException {
+  void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo)
+      throws IOException, InterruptedException {
     if (supportsSearchIndex) {
       Random rand = new Random();
       int tablesNum = rand.nextInt(3) + 3;
@@ -826,7 +829,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
 
       List<Table> tables = new ArrayList<>();
-      Map<String, TestSuite> testSuites = new HashMap<>();
+      List<UUID> createdTestSuiteIds = new ArrayList<>();
 
       for (int i = 0; i < tablesNum; i++) {
         CreateTable tableReq =
@@ -847,9 +850,66 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
         TestSuite testSuite =
             testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
-        testSuites.put(table.getFullyQualifiedName(), testSuite);
+        createdTestSuiteIds.add(testSuite.getId());
       }
-      validateEntityListFromSearchWithPagination(new HashMap<>(), testSuites.size());
+
+      Thread.sleep(3000);
+
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("sortField", "id");
+      queryParams.put("sortOrder", "asc");
+
+      ResultList<TestSuite> allTestSuites =
+          listEntitiesFromSearch(queryParams, 1000, 0, ADMIN_AUTH_HEADERS);
+
+      List<TestSuite> createdTestSuites =
+          allTestSuites.getData().stream()
+              .filter(ts -> createdTestSuiteIds.contains(ts.getId()))
+              .sorted((a, b) -> a.getId().compareTo(b.getId()))
+              .collect(Collectors.toList());
+
+      assertEquals(
+          tablesNum,
+          createdTestSuites.size(),
+          "Expected to find all created test suites in search results");
+
+      List<UUID> sortedCreatedIds =
+          createdTestSuites.stream().map(TestSuite::getId).collect(Collectors.toList());
+      for (int i = 0; i < createdTestSuites.size() - 1; i++) {
+        assertTrue(
+            createdTestSuites.get(i).getId().compareTo(createdTestSuites.get(i + 1).getId()) < 0,
+            "Test suites should be sorted by ID in ascending order");
+      }
+
+      Set<UUID> foundTestSuiteIds = new HashSet<>();
+      for (int limit = 1; limit <= Math.min(5, tablesNum); limit++) {
+        foundTestSuiteIds.clear();
+        int offset = 0;
+        int pageCount = 0;
+        int maxPages = 10000; // Safety limit to prevent infinite loops
+
+        while (pageCount < maxPages) {
+          ResultList<TestSuite> page =
+              listEntitiesFromSearch(queryParams, limit, offset, ADMIN_AUTH_HEADERS);
+
+          if (page.getData().isEmpty()) {
+            break;
+          }
+
+          page.getData().stream()
+              .filter(ts -> createdTestSuiteIds.contains(ts.getId()))
+              .forEach(ts -> foundTestSuiteIds.add(ts.getId()));
+
+          offset += limit;
+          pageCount++;
+        }
+
+        assertEquals(
+            new HashSet<>(createdTestSuiteIds),
+            foundTestSuiteIds,
+            String.format(
+                "All created test suites should be found when paginating with limit %d", limit));
+      }
     }
   }
 
