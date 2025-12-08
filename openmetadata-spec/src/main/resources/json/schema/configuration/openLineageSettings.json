@@ -23,8 +23,7 @@
         "type": "string",
         "javaType": "org.openmetadata.schema.configuration.OpenLineageEventType",
         "enum": ["START", "RUNNING", "COMPLETE", "ABORT", "FAIL", "OTHER"]
-      },
-      "default": ["COMPLETE"]
+      }
     },
     "defaultPipelineService": {
       "description": "Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage jobs. This service must exist in OpenMetadata.",
