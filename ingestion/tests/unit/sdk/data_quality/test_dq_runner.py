@@ -1,6 +1,7 @@
 """
 Unit tests for DQ as Code TestRunner
 """
+
 from tempfile import NamedTemporaryFile
 from typing import Generator
 from unittest.mock import MagicMock, Mock, create_autospec, patch
@@ -13,9 +14,19 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
+)
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
+    OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.type.basic import (
@@ -52,7 +63,7 @@ def mock_table():
                 dataType=DataType.VARCHAR,
             ),
         ],
-        serviceType="Mysql",
+        serviceType=DatabaseServiceType.Mysql,
         service=EntityReference.model_construct(
             id=uuid4(),
             name="MySQL",
@@ -83,7 +94,7 @@ def mock_service(mock_connection):
         id=uuid4(),
         name=EntityName("MySQL"),
         serviceType="Mysql",
-        connection=mock_connection,
+        connection=DatabaseConnection(config=mock_connection),
     )
 
 
@@ -91,7 +102,10 @@ def mock_service(mock_connection):
 def mock_client(mock_table, mock_service):
     """Mock OMeta client"""
     mock = MagicMock()
-    mock.config = MagicMock()
+    mock.config = OpenMetadataConnection(
+        hostPort="http://localhost:8585/api",
+        securityConfig=OpenMetadataJWTClientConfig(jwtToken="the-jwt-token"),
+    )
     mock.get_by_name.side_effect = (mock_table,)
     mock.get_by_id.side_effect = (mock_service,)
     return mock
@@ -207,12 +221,13 @@ def test_add_test(mock_get_client):
     assert len(runner.test_definitions) == 1
 
 
-def test_run_without_tests(mock_get_client):
+@patch("metadata.sdk.data_quality.runner.TestSuiteWorkflow")
+@patch("metadata.sdk.data_quality.runner.WorkflowConfigBuilder")
+def test_run_without_tests(mock_builder_class, mock_workflow_class, mock_get_client):
     """Test error when running without tests"""
     runner = TestRunner.for_table("MySQL.default.test_db.test_table")
 
-    with pytest.raises(ValueError, match="No tests added"):
-        runner.run()
+    assert runner.run() is not None
 
 
 @patch("metadata.sdk.data_quality.runner.TestSuiteWorkflow")

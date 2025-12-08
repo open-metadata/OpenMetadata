@@ -47,7 +47,10 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import spreadsheetClassBase from '../../../utils/SpreadsheetClassBase';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
@@ -262,6 +265,7 @@ function SpreadsheetDetails({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -291,6 +295,10 @@ function SpreadsheetDetails({
           Operation.EditLineage
         ) && !deleted,
       viewAllPermission: spreadsheetPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        spreadsheetPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [spreadsheetPermissions, deleted]
   );
@@ -330,7 +338,7 @@ function SpreadsheetDetails({
         <CustomPropertyTable<EntityType.SPREADSHEET>
           entityType={EntityType.SPREADSHEET}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       activeTab,
@@ -364,6 +372,7 @@ function SpreadsheetDetails({
     editLineagePermission,
     editAllPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {

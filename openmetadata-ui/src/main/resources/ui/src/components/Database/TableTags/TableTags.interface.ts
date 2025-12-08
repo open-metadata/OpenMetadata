@@ -35,6 +35,7 @@ export interface TableTagsComponentProps<T> {
     editColumnTag: T
   ) => Promise<void>;
   newLook?: boolean;
+  multiSelect?: boolean;
 }
 
 export interface TableTagsProps {

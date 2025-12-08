@@ -59,35 +59,163 @@
   }
 
   .field-card-content {
+    display: flex;
     .field-description {
-      color: #364254;
-      font-size: 13px;
+      color: @grey-700;
+      font-size: 13px !important;
       font-weight: 400;
       .no-description-text {
         color: @grey-700;
+      }
+      .block-editor-wrapper .tiptap.ProseMirror {
+        font-size: 13px !important;
+      }
+
+      .description-display {
+        .description-text {
+          &.expanded {
+            display: block;
+            line-height: 1.4;
+          }
+
+          &.collapsed {
+            .rich-text-editor-container {
+              .markdown-parser {
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-size: 13px;
+                word-wrap: break-word;
+                word-break: break-word;
+                white-space: normal;
+              }
+            }
+          }
+        }
+
+        .show-more-button {
+          background: none;
+          border: none;
+          color: @primary-color;
+          cursor: pointer;
+          font-size: 12px;
+          padding: 0;
+          padding-top: 4px;
+          text-decoration: none;
+          transition: color 0.2s ease;
+
+          &:hover {
+            color: @primary-6;
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+            color: @primary-6;
+          }
+        }
       }
     }
 
     .field-metadata {
       display: flex;
-      gap: 16px;
+      flex-direction: column;
+      gap: 8px;
       margin-bottom: 8px;
 
-      .metadata-item {
+      .metadata-section {
         display: flex;
-        align-items: center;
-        gap: 4px;
+        flex-direction: row;
+        gap: 8px;
+        align-items: flex-start;
 
-        .metadata-label {
-          font-size: 13px;
-          color: @grey-700;
-          font-weight: 400;
+        &.expanded {
+          flex-direction: column;
+          gap: 8px;
+
+          .tags-display,
+          .glossary-terms-display {
+            width: 100%;
+          }
         }
 
-        .metadata-value {
-          font-size: 13px;
-          color: @grey-900;
-          font-weight: 400;
+        .metadata-label {
+          font-size: 12px;
+          color: @grey-700;
+          white-space: nowrap;
+          font-weight: 500;
+          line-height: 26px;
+        }
+
+        .tags-display,
+        .glossary-terms-display {
+          flex: 1;
+          min-width: 0;
+
+          .tags-list,
+          .glossary-terms-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+
+            .tag-item,
+            .glossary-term-item {
+              display: inline-flex;
+              align-items: center;
+              gap: 5px;
+              padding: 5px 6px;
+              height: 26px;
+              border-radius: 8px;
+              min-width: 0;
+              background-color: @blue-29;
+              border: 1px solid @blue-30;
+
+              .tag-icon,
+              .glossary-term-icon {
+                width: 12px;
+                height: 12px;
+                flex-shrink: 0;
+                color: @tag-text;
+              }
+
+              .tag-name,
+              .glossary-term-name {
+                color: @tag-text;
+                font-size: 10px;
+                font-weight: 400;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+            }
+
+            .show-more-tags-button,
+            .show-more-terms-button {
+              background: none;
+              border: none;
+              color: @primary-color;
+              cursor: pointer;
+              font-size: 12px;
+              padding: 2px 4px;
+              text-decoration: none;
+              transition: color 0.2s ease;
+              white-space: nowrap;
+              line-height: 26px;
+
+              &:hover {
+                color: @primary-6;
+                text-decoration: underline;
+              }
+
+              &:focus {
+                outline: none;
+                color: @primary-6;
+              }
+            }
+          }
         }
       }
     }

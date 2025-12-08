@@ -296,6 +296,8 @@ final class SlackBlockAssembler extends AbstractVisitor {
       } else if (c instanceof IndentedCodeBlock) {
         String code = ((IndentedCodeBlock) c).getLiteral();
         part = formatCodeForList(code);
+      } else if (c instanceof BlockQuote) {
+        part = formatBlockQuoteForList((BlockQuote) c);
       } else {
         SlackBlockAssembler tempVisitor = new SlackBlockAssembler();
         part = tempVisitor.inline.renderInlineChildren(c).trim();
@@ -326,6 +328,47 @@ final class SlackBlockAssembler extends AbstractVisitor {
     String truncated =
         body.length() <= budget ? body : body.substring(0, Math.max(0, budget - 1)) + "…";
     return "```\n" + escapeMrkdwn(truncated) + "\n```";
+  }
+
+  private String formatBlockQuoteForList(BlockQuote blockQuote) {
+    StringBuilder quotedContent = new StringBuilder();
+
+    // Process each child of the blockquote
+    for (Node child = blockQuote.getFirstChild(); child != null; child = child.getNext()) {
+      switch (child) {
+        case Paragraph paragraph -> {
+          String text = inline.renderInlineChildren(child).trim();
+          if (!text.isEmpty()) {
+            quotedContent.append("> ").append(text).append("\n");
+          }
+        }
+        case BulletList bulletList -> {
+          StringBuilder listText = new StringBuilder();
+          appendList(listText, child, 0, null);
+          // Prefix each line with "> " for blockquote
+          String[] lines = listText.toString().split("\n");
+          for (String line : lines) {
+            if (!line.trim().isEmpty()) {
+              quotedContent.append("> ").append(line).append("\n");
+            }
+          }
+        }
+        case OrderedList orderedList -> {
+          StringBuilder listText = new StringBuilder();
+          appendList(listText, child, 0, orderedList.getMarkerStartNumber());
+          // Prefix each line with "> " for blockquote
+          String[] lines = listText.toString().split("\n");
+          for (String line : lines) {
+            if (!line.trim().isEmpty()) {
+              quotedContent.append("> ").append(line).append("\n");
+            }
+          }
+        }
+        default -> {}
+      }
+    }
+
+    return quotedContent.toString().trim();
   }
 
   private void appendList(StringBuilder out, Node list, int indent, Integer start) {

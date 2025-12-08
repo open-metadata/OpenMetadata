@@ -617,12 +617,12 @@ const TagPage = () => {
   useEffect(() => {
     getTagData();
     fetchClassificationTagAssets();
-    fetchFeedCount();
   }, [tagFqn]);
 
   useEffect(() => {
     if (tagItem) {
       fetchCurrentTagPermission();
+      fetchFeedCount();
     }
   }, [tagItem]);
 
@@ -718,7 +718,13 @@ const TagPage = () => {
           onUpdate={(updatedData: Tag) =>
             Promise.resolve(updateTag(updatedData))
           }>
-          <Col span={24} style={{ overflowY: 'auto' }}>
+          <Col
+            span={24}
+            style={{
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              height: 'calc(100vh - 170px)',
+            }}>
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab}

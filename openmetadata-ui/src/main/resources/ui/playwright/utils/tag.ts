@@ -513,6 +513,4 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   );
   await tagSelector.waitFor({ state: 'visible' });
   await tagSelector.click();
-
-  await adminPage.getByTestId('saveAssociatedTag').click();
 };

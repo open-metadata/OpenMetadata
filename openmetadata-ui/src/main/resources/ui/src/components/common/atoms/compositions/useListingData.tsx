@@ -35,6 +35,7 @@ interface UseListingDataProps<T> {
   addPath?: string;
   onCustomEntityClick?: (entity: T) => void;
   onCustomAddClick?: () => void;
+  searchKey?: string;
 }
 
 export const useListingData = <
@@ -55,9 +56,10 @@ export const useListingData = <
     addPath,
     onCustomEntityClick,
     onCustomAddClick,
+    searchKey,
   } = props;
 
-  const urlStateHook = useUrlState({ filterKeys, filterConfigs });
+  const urlStateHook = useUrlState({ searchKey, filterKeys, filterConfigs });
   const {
     urlState,
     parsedFilters,

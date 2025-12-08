@@ -4,6 +4,7 @@ import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import org.openmetadata.schema.search.AggregationRequest;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.tests.DataQualityReport;
 
 /**
@@ -47,4 +48,15 @@ public interface AggregationManagementClient {
   JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException;
+
+  /**
+   * Get entity type counts with aggregation.
+   * Returns count of entities grouped by entity type.
+   *
+   * @param request the search request containing query and filter parameters
+   * @param index the index to search (or "all" for all indexes)
+   * @return the response containing entity type counts in aggregations
+   * @throws IOException if the aggregation operation fails
+   */
+  Response getEntityTypeCounts(SearchRequest request, String index) throws IOException;
 }

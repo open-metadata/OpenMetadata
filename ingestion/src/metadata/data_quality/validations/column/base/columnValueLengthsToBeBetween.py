@@ -20,6 +20,8 @@ from typing import List, Optional, Tuple, Union
 from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
+    DIMENSION_FAILED_COUNT_KEY,
+    DIMENSION_TOTAL_COUNT_KEY,
     BaseTestValidator,
     DimensionInfo,
     DimensionResult,
@@ -144,20 +146,23 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
     ) -> TestEvaluation:
         """Evaluate the max-to-be-between test condition
 
-        For max test, the condition passes if the max value is within the specified bounds.
-        Since this is a statistical validator (group-level), passed/failed row counts are not applicable.
+        For dimensional validation, computes row-level passed/failed counts.
+        For non-dimensional validation, row counts are not applicable.
 
         Args:
             metric_values: Dictionary with keys from Metrics enum names
-                          e.g., {"MAX": 42.5}
-            test_params: Dictionary with 'minValueForMaxInCol' and 'maxValueForMaxInCol'
+                          e.g., {"MAX_LENGTH": 10, "MIN_LENGTH": 1}
+                          For dimensional validation, also includes:
+                          - DIMENSION_TOTAL_COUNT_KEY: total rows
+                          - DIMENSION_FAILED_COUNT_KEY: failed rows
+            test_params: Dictionary with 'minLength' and 'maxLength'
 
         Returns:
             dict with keys:
-                - matched: bool - whether test passed (max within bounds)
-                - passed_rows: None - not applicable for statistical validators
-                - failed_rows: None - not applicable for statistical validators
-                - total_rows: None - not applicable for statistical validators
+                - matched: bool - whether test passed (lengths within bounds)
+                - passed_rows: Optional[int] - rows with valid lengths (or None for non-dimensional)
+                - failed_rows: Optional[int] - rows with invalid lengths (or None for non-dimensional)
+                - total_rows: Optional[int] - total rows (or None for non-dimensional)
         """
         min_length_value = metric_values[Metrics.MIN_LENGTH.name]
         max_length_value = metric_values[Metrics.MAX_LENGTH.name]
@@ -166,11 +171,18 @@ class BaseColumnValueLengthsToBeBetweenValidator(BaseTestValidator):
 
         matched = min_bound <= min_length_value and max_length_value <= max_bound
 
+        # Extract row counts if available (dimensional validation)
+        total_rows = metric_values.get(DIMENSION_TOTAL_COUNT_KEY)
+        failed_rows = metric_values.get(DIMENSION_FAILED_COUNT_KEY)
+        passed_rows = None
+        if total_rows is not None and failed_rows is not None:
+            passed_rows = total_rows - failed_rows
+
         return {
             "matched": matched,
-            "passed_rows": None,
-            "failed_rows": None,
-            "total_rows": None,
+            "passed_rows": passed_rows,
+            "failed_rows": failed_rows,
+            "total_rows": total_rows,
         }
 
     def _format_result_message(

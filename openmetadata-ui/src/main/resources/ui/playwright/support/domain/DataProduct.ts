@@ -34,31 +34,39 @@ type ResponseDataType = {
 };
 
 export class DataProduct extends EntityClass {
-  id = uuid();
-  data: ResponseDataType = {
-    name: `PW%dataProduct.${this.id}`,
-    displayName: `PW Data Product ${this.id}`,
-    description: 'playwright data product description',
-    domains: ['PW%domain.1'],
-    // eslint-disable-next-line no-useless-escape
-    fullyQualifiedName: `\"PW%dataProduct.${this.id}\"`,
-  };
+  id: string;
+  data: ResponseDataType;
+  private domains: Domain[];
+  private subDomains?: SubDomain[];
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(domains: Domain[], name?: string, subDomains?: SubDomain[]) {
     super(EntityTypeEndpoint.DATA_PRODUCT);
-    this.data.domains = subDomains?.length
-      ? subDomains.map(
-          (subDomain) => subDomain.data.fullyQualifiedName ?? ''
-        ) ?? []
-      : domains.map((domain) => domain.data.fullyQualifiedName ?? '') ?? [];
-    this.data.name = name ?? this.data.name;
-    // eslint-disable-next-line no-useless-escape
-    this.data.fullyQualifiedName = `\"${this.data.name}\"`;
+
+    this.id = uuid();
+    this.domains = domains;
+    this.subDomains = subDomains;
+    const dataName = name ?? `PW%dataProduct.${this.id}`;
+
+    this.data = {
+      name: dataName,
+      displayName: `PW Data Product ${this.id}`,
+      description: 'playwright data product description',
+      domains: [],
+      // eslint-disable-next-line no-useless-escape
+      fullyQualifiedName: `\"${dataName}\"`,
+    };
   }
 
   async create(apiContext: APIRequestContext) {
+    this.data.domains = this.subDomains?.length
+      ? this.subDomains.map(
+          (subDomain) => subDomain.data.fullyQualifiedName ?? ''
+        ) ?? []
+      : this.domains.map((domain) => domain.data.fullyQualifiedName ?? '') ??
+        [];
+
     const response = await apiContext.post('/api/v1/dataProducts', {
       data: this.data,
     });

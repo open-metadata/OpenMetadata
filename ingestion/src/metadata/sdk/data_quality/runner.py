@@ -55,7 +55,7 @@ class TestRunner:
         table_fqn: Fully qualified name of the table to test
         client: OpenMetadata API client
 
-    Example:
+    Examples:
         >>> from metadata.sdk.data_quality import TestRunner, TableRowCountToBeBetween
         >>> runner = TestRunner.for_table("MySQL.default.db.table")
         >>> runner.add_test(TableRowCountToBeBetween(min_count=100, max_count=1000))
@@ -129,7 +129,7 @@ class TestRunner:
         Returns:
             TestRunner instance
 
-        Example:
+        Examples:
             >>> from metadata.sdk.data_quality import TestRunner, TableColumnCountToBeBetween
             >>> runner = TestRunner.for_table("MySQL.default.db.table")
             >>> runner.add_test(TableColumnCountToBeBetween(min_count=10))
@@ -228,7 +228,7 @@ class TestRunner:
         Returns:
             Self for method chaining
 
-        Example:
+        Examples:
             >>> runner.add_tests(
             ...     TableRowCountToBeBetween(min_count=100),
             ...     ColumnValuesToBeNotNull(column="user_id")
@@ -242,13 +242,7 @@ class TestRunner:
 
         Returns:
             List of test case results
-
-        Raises:
-            ValueError: If no tests have been added
         """
-        if not self.test_definitions:
-            raise ValueError("No tests added. Use add_test() to add test definitions.")
-
         config = self.config_builder.build()
 
         workflow = TestSuiteWorkflow.create(  # pyright: ignore[reportUnknownMemberType]

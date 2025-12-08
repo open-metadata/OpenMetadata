@@ -430,11 +430,8 @@ class StreamableLogHandler(logging.Handler):
             if self.worker_thread.is_alive():
                 self.worker_thread.join(timeout=5.0)
 
-            # Close the log stream if we have a session
-            if self.session_id and hasattr(self.metadata, "close_log_stream"):
-                self.metadata.close_log_stream(
-                    self.pipeline_fqn, self.run_id, self.session_id
-                )
+            # Close the log stream
+            self.metadata.close_log_stream(self.pipeline_fqn, self.run_id)
 
         # Close fallback handler
         self.fallback_handler.close()

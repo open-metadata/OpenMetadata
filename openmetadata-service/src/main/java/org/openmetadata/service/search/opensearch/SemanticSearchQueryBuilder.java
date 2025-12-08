@@ -1,19 +1,21 @@
 package org.openmetadata.service.search.opensearch;
 
+import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.semantic.EmbeddingService;
-import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
-import os.org.opensearch.index.query.BoolQueryBuilder;
-import os.org.opensearch.index.query.QueryBuilder;
-import os.org.opensearch.index.query.QueryBuilders;
-import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
-import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
-import os.org.opensearch.script.Script;
-import os.org.opensearch.script.ScriptType;
+import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.opensearch._types.Script;
+import os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode;
+import os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
+import os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType;
 
 /**
  * Builds semantic search queries for OpenSearch that combine:
@@ -34,44 +36,68 @@ public class SemanticSearchQueryBuilder {
     this.embeddingService = EmbeddingService.getInstance();
   }
 
-  public QueryBuilder buildSemanticQuery(SearchRequest request) {
+  public Query buildSemanticQuery(SearchRequest request) {
     String queryText = request.getQuery();
     if (!isSemanticSearchEnabled(request)) {
       return null;
     }
     float[] queryEmbedding = embeddingService.generateEmbedding(queryText);
-    BoolQueryBuilder hybridQuery = QueryBuilders.boolQuery();
 
-    QueryBuilder knnQuery = buildKnnQuery(queryEmbedding);
-    hybridQuery.should(knnQuery).boost(0.7f);
+    // Build kNN query
+    Query knnQuery = buildKnnQuery(queryEmbedding);
 
-    QueryBuilder textQuery = buildTextQuery(queryText, request);
-    hybridQuery.should(textQuery).boost(0.3f);
+    // Build text query
+    Query textQuery = buildTextQuery(queryText, request);
 
-    FunctionScoreQueryBuilder.FilterFunctionBuilder[] functions =
-        new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
-          new FunctionScoreQueryBuilder.FilterFunctionBuilder(
-              ScoreFunctionBuilders.scriptFunction(buildRdfBoostScript()))
-        };
+    // Combine with bool query and function score
+    Query hybridQuery =
+        Query.of(
+            q ->
+                q.bool(
+                    b ->
+                        b.should(s -> s.constantScore(cs -> cs.filter(knnQuery).boost(0.7f)))
+                            .should(s -> s.constantScore(cs -> cs.filter(textQuery).boost(0.3f)))));
 
-    return QueryBuilders.functionScoreQuery(hybridQuery, functions)
-        .scoreMode(FunctionScoreQuery.ScoreMode.SUM)
-        .boostMode(os.org.opensearch.common.lucene.search.function.CombineFunction.MULTIPLY);
+    // Apply function score for RDF boosting
+    return Query.of(
+        q ->
+            q.functionScore(
+                fs ->
+                    fs.query(hybridQuery)
+                        .functions(f -> f.scriptScore(ss -> ss.script(buildRdfBoostScript())))
+                        .scoreMode(FunctionScoreMode.Sum)
+                        .boostMode(FunctionBoostMode.Multiply)));
   }
 
-  private QueryBuilder buildKnnQuery(float[] queryEmbedding) {
+  private Query buildKnnQuery(float[] queryEmbedding) {
     // OpenSearch k-NN plugin uses a different query structure
     // For now, we'll use a script score query as a fallback
-    return QueryBuilders.scriptScoreQuery(
-        QueryBuilders.matchAllQuery(),
-        new Script(
-            ScriptType.INLINE,
-            "painless",
-            "cosineSimilarity(params.query_vector, '" + KNN_FIELD + "') + 1.0",
-            Map.of("query_vector", queryEmbedding)));
+    Map<String, Object> params = new HashMap<>();
+    List<Double> vectorList = new ArrayList<>();
+    for (float v : queryEmbedding) {
+      vectorList.add((double) v);
+    }
+    params.put("query_vector", vectorList);
+
+    return Query.of(
+        q ->
+            q.scriptScore(
+                ss ->
+                    ss.query(mq -> mq.matchAll(m -> m))
+                        .script(
+                            Script.of(
+                                s ->
+                                    s.inline(
+                                        i ->
+                                            i.lang(ScriptLanguage.Painless.jsonValue())
+                                                .source(
+                                                    "cosineSimilarity(params.query_vector, '"
+                                                        + KNN_FIELD
+                                                        + "') + 1.0")
+                                                .params(convertToJsonDataMap(params)))))));
   }
 
-  private QueryBuilder buildTextQuery(String queryText, SearchRequest request) {
+  private Query buildTextQuery(String queryText, SearchRequest request) {
     List<String> fields = new ArrayList<>();
     fields.add("name^5");
     fields.add("displayName^4");
@@ -84,9 +110,14 @@ public class SemanticSearchQueryBuilder {
       fields.add("columns.description");
     }
 
-    return QueryBuilders.multiMatchQuery(queryText, fields.toArray(new String[0]))
-        .type(os.org.opensearch.index.query.MultiMatchQueryBuilder.Type.BEST_FIELDS)
-        .fuzziness("AUTO");
+    return Query.of(
+        q ->
+            q.multiMatch(
+                m ->
+                    m.query(queryText)
+                        .fields(fields)
+                        .type(TextQueryType.BestFields)
+                        .fuzziness("AUTO")));
   }
 
   private Script buildRdfBoostScript() {
@@ -113,10 +144,22 @@ public class SemanticSearchQueryBuilder {
         return boost;
         """;
 
-    return new Script(ScriptType.INLINE, "painless", scriptSource, Map.of());
+    return Script.of(
+        s ->
+            s.inline(
+                i ->
+                    i.lang(ScriptLanguage.Painless.jsonValue())
+                        .source(scriptSource)
+                        .params(Map.of())));
   }
 
   private boolean isSemanticSearchEnabled(SearchRequest request) {
     return request.getSemanticSearch() != null && request.getSemanticSearch();
+  }
+
+  private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
+    return JsonUtils.getMap(map).entrySet().stream()
+        .filter(entry -> entry.getValue() != null)
+        .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
   }
 }

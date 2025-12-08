@@ -14,11 +14,13 @@ Mixin class containing Table specific methods
 To be used by OpenMetadata class
 """
 import base64
+import json
 import traceback
 from typing import List, Optional, Type, TypeVar
 
 from pydantic import BaseModel, validate_call
 
+from metadata.generated.schema.api.data.bulkCreateTable import BulkCreateTable
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
@@ -36,6 +38,8 @@ from metadata.generated.schema.entity.data.table import (
     TableProfilerConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
+from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
+from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
@@ -152,6 +156,105 @@ class OMetaTableMixin:
                 logger.debug(traceback.format_exc())
                 logger.warning(
                     f"Error trying to parse sample data results from {table.fullyQualifiedName.root}: {exc}"
+                )
+
+        return None
+
+    def add_pipeline_observability(
+        self, table_id: Uuid, pipeline_observability: List[PipelineObservability]
+    ) -> Optional[Table]:
+        """
+        PUT pipeline observability data for a table (bulk method)
+
+        :param table_id: Table ID to update
+        :param pipeline_observability: Pipeline observability data to add
+        """
+        resp = None
+        try:
+            try:
+                data_list = [
+                    obs.model_dump(mode="json") for obs in pipeline_observability
+                ]
+                # Convert list to JSON string for requests.put()
+                data = json.dumps(data_list)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error serializing pipeline observability data for table {table_id.root}: {exc}"
+                )
+                return None
+
+            resp = self.client.put(
+                f"{self.get_suffix(Table)}/{table_id.root}/pipelineObservability",
+                data=data,
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PUT pipeline observability data for table {table_id.root}: {exc}"
+            )
+
+        if resp:
+            try:
+                return Table(**resp)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error trying to parse pipeline observability results for table {table_id.root}: {exc}"
+                )
+
+        return None
+
+    def add_single_pipeline_observability(
+        self, table_id: Uuid, pipeline_observability: PipelineObservability
+    ) -> Optional[Table]:
+        """
+        PUT single pipeline observability data for a table (individual method for append/update logic)
+
+        :param table_id: Table ID to update
+        :param pipeline_observability: Single pipeline observability data to add/update
+        """
+        resp = None
+        try:
+            if (
+                pipeline_observability.pipeline
+                and pipeline_observability.pipeline.fullyQualifiedName
+            ):
+                pipeline_fqn = pipeline_observability.pipeline.fullyQualifiedName
+
+                try:
+                    data_dict = pipeline_observability.model_dump(mode="json")
+                    # Convert dictionary to JSON string for requests.put()
+                    data = json.dumps(data_dict)
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error serializing single pipeline observability data for table {table_id.root}: {exc}"
+                    )
+                    return None
+
+                resp = self.client.put(
+                    f"{self.get_suffix(Table)}/{table_id.root}/pipelineObservability/{pipeline_fqn}",
+                    data=data,
+                )
+            else:
+                logger.warning(
+                    f"Pipeline FQN missing in observability data for table {table_id.root}"
+                )
+                return None
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PUT single pipeline observability data for table {table_id.root}: {exc}"
+            )
+
+        if resp:
+            try:
+                return Table(**resp)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error trying to parse single pipeline observability results for table {table_id.root}: {exc}"
                 )
 
         return None
@@ -335,3 +438,35 @@ class OMetaTableMixin:
             data=custom_metric.model_dump_json(),
         )
         return Table(**resp)
+
+    def bulk_create_or_update_tables(
+        self, bulk_request: BulkCreateTable, use_async: bool = False
+    ):
+        """Bulk create or update multiple tables in a single API call.
+
+        Args:
+            bulk_request (BulkCreateTable): Bulk create request containing list of tables
+            use_async (bool): Use backend async processing (default: False)
+
+        Returns:
+            BulkOperationResult: Result containing success/failure details
+        """
+
+        # Backend endpoint expects List<CreateTable> directly, not wrapped in BulkCreateTable
+        # Serialize the tables list to JSON
+        tables_json = json.dumps(
+            [
+                table.model_dump(mode="json", by_alias=True, exclude_none=True)
+                for table in bulk_request.tables
+            ]
+        )
+
+        # Build URL with async parameter if requested
+        url = f"{self.get_suffix(Table)}/bulk"
+        if use_async:
+            url += "?async=true"
+
+        resp = self.client.put(url, data=tables_json)
+
+        # Backend returns BulkOperationResult in both async and sync modes
+        return BulkOperationResult(**resp)

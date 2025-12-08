@@ -399,10 +399,11 @@ class UnitycatalogLineageSource(Source):
                         table_streams, table, databricks_table_fqn
                     )
 
+                    # Disabling downstream lineage for now as it causes slowness
                     # Process downstream lineage
-                    yield from self._handle_downstream_table(
-                        table_streams, table, databricks_table_fqn
-                    )
+                    # yield from self._handle_downstream_table(
+                    #     table_streams, table, databricks_table_fqn
+                    # )
 
     def test_connection(self) -> None:
         test_connection_common(

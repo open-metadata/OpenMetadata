@@ -276,6 +276,27 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
     return create(uriInfo, securityContext, directory);
   }
 
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateDirectorys",
+      summary = "Bulk create or update directories",
+      description = "Create or update multiple directories in a single operation.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Bulk operation results"),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateDirectory> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(

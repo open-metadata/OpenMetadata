@@ -271,7 +271,11 @@ describe('GlossaryTermsSection', () => {
       expect(
         screen.getByText('label.glossary-term-plural')
       ).toBeInTheDocument();
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.glossary-term-plural"}'
+        )
+      ).toBeInTheDocument();
 
       const editClickable = document.querySelector(
         '.glossary-terms-header .edit-icon'
@@ -289,7 +293,11 @@ describe('GlossaryTermsSection', () => {
 
       fireEvent.click(screen.getByTestId('tsf-cancel'));
 
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.glossary-term-plural"}'
+        )
+      ).toBeInTheDocument();
     });
   });
 

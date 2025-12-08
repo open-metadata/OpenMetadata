@@ -398,6 +398,10 @@ export interface PipelineServiceClientConfiguration {
      */
     openMetadataUrl?: string;
     /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
      * Client Secret of the Application.
      */
     clientSecret?: string;
@@ -405,7 +409,11 @@ export interface PipelineServiceClientConfiguration {
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
      */
-    signingSecret?:       string;
+    signingSecret?: string;
+    /**
+     * User Token
+     */
+    userToken?:           string;
     metricConfiguration?: MetricConfigurationDefinition[];
     /**
      * Configurations of allowed searchable fields for each entity type
@@ -460,6 +468,10 @@ export interface PipelineServiceClientConfiguration {
      * Used to set up the History CleanUp Settings.
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
+    /**
+     * Used to set up the History CleanUp Settings.
+     */
+    runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
     /**
      * Semantics rules defined in the data contract.
      */
@@ -1574,9 +1586,19 @@ export interface GlobalSettings {
  */
 export interface HistoryCleanUpConfiguration {
     /**
+     * Batch size used when cleaning up Flowable History data
+     */
+    batchSize?: number;
+    /**
      * Cleans the Workflow Task that were finished, after given number of days.
      */
     cleanAfterNumberOfDays?: number;
+    /**
+     * Cron expression used by Flowable's history cleaning job
+     * (setHistoryCleaningTimeCycleConfig). For example: '0 0 1 * * ?' runs daily at 01:00, '0 *
+     * * ? * *' runs every minute (testing only).
+     */
+    timeCycleConfig?: string;
 }
 
 /**
@@ -2083,6 +2105,16 @@ export interface TitleSection {
 export enum PipelineViewMode {
     Edge = "Edge",
     Node = "Node",
+}
+
+/**
+ * Used to set up the History CleanUp Settings.
+ */
+export interface RunTimeCleanUpConfiguration {
+    /**
+     * Batch size used when cleaning up Flowable Run Time data
+     */
+    batchSize?: number;
 }
 
 /**

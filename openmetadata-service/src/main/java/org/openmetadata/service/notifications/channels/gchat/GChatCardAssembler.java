@@ -190,6 +190,8 @@ final class GChatCardAssembler extends AbstractVisitor {
       } else if (c instanceof IndentedCodeBlock) {
         String code = ((IndentedCodeBlock) c).getLiteral();
         part = formatCodeBlock(code);
+      } else if (c instanceof BlockQuote) {
+        part = formatBlockQuoteForList((BlockQuote) c);
       } else {
         GChatCardAssembler tempVisitor = new GChatCardAssembler();
         part = tempVisitor.inline.renderInlineChildren(c).trim();
@@ -255,6 +257,36 @@ final class GChatCardAssembler extends AbstractVisitor {
   private String formatCodeBlock(String code) {
     String truncated = truncateContent(code == null ? "" : code);
     return "```\n" + escapeHtml(truncated) + "\n```";
+  }
+
+  private String formatBlockQuoteForList(BlockQuote blockQuote) {
+    StringBuilder quotedContent = new StringBuilder();
+
+    // Process each child of the blockquote
+    // GChat doesn't support blockquote formatting, so just render as plain text
+    for (Node child = blockQuote.getFirstChild(); child != null; child = child.getNext()) {
+      switch (child) {
+        case Paragraph paragraph -> {
+          String text = inline.renderInlineChildren(child).trim();
+          if (!text.isEmpty()) {
+            quotedContent.append(text).append("\n");
+          }
+        }
+        case BulletList bulletList -> {
+          StringBuilder listText = new StringBuilder();
+          appendList(listText, child, 0, null);
+          quotedContent.append(listText);
+        }
+        case OrderedList orderedList -> {
+          StringBuilder listText = new StringBuilder();
+          appendList(listText, child, 0, orderedList.getMarkerStartNumber());
+          quotedContent.append(listText);
+        }
+        default -> {}
+      }
+    }
+
+    return quotedContent.toString().trim();
   }
 
   private String safeText(String s) {

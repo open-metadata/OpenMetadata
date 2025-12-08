@@ -25,9 +25,18 @@ export const DataQualityStatCard: React.FC<DataQualityStatCardProps> = ({
     className={`data-quality-stat-card ${type}-card ${
       isActive ? 'active' : ''
     }`}
+    data-testid={`data-quality-stat-card-${type}`}
     type="button"
     onClick={onClick}>
-    <Typography.Text className={`stat-count ${type}`}>{count}</Typography.Text>
-    <Typography.Text className={`stat-label ${type}`}>{label}</Typography.Text>
+    <Typography.Text
+      className={`stat-count ${type}`}
+      data-testid={`data-quality-stat-card-count-${type}`}>
+      {count}
+    </Typography.Text>
+    <Typography.Text
+      className={`stat-label ${type}`}
+      data-testid={`data-quality-stat-card-label-${type}`}>
+      {label}
+    </Typography.Text>
   </button>
 );

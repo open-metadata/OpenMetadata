@@ -15,19 +15,16 @@ Validator for column value missing count to be equal test case
 
 from typing import List, Optional
 
-from sqlalchemy import Column, case, func
+from sqlalchemy import Column, func
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
-    DIMENSION_OTHERS_LABEL,
     DIMENSION_TOTAL_COUNT_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValuesMissingCount import (
     BaseColumnValuesMissingCountValidator,
 )
-from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSIONS
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
-    DIMENSION_GROUP_LABEL,
     SQAValidatorMixin,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
@@ -81,6 +78,7 @@ class ColumnValuesMissingCountValidator(
             missing_values = test_params.get(self.MISSING_VALUE_MATCH)
             expected_missing_count = test_params.get(self.MISSING_COUNT_VALUE, 0)
 
+            row_count_expr = Metrics.ROW_COUNT().fn()
             total_missing_expr = Metrics.NULL_MISSING_COUNT(column).fn()
 
             if missing_values:
@@ -93,48 +91,20 @@ class ColumnValuesMissingCountValidator(
 
             metric_expressions = {
                 self.TOTAL_MISSING_COUNT: total_missing_expr,
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.ROW_COUNT().fn(),
+                DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
+                DIMENSION_FAILED_COUNT_KEY: func.abs(
+                    total_missing_expr - expected_missing_count
+                ),
             }
 
-            def build_failed_count(cte):
-                """Build failed count - deviation IS the failed count
+            normalized_dimension = self._get_normalized_dimension_expression(
+                dimension_col
+            )
 
-                For initial CTE: deviation = abs(actual - expected)
-                """
-                return func.abs(
-                    getattr(cte.c, self.TOTAL_MISSING_COUNT) - expected_missing_count
-                )
-
-            def build_deviation_final(cte):
-                """Recalculate deviation for Others after aggregation
-
-                For top dimensions: keep original deviation via max()
-                For Others: recalculate from aggregated total_missing_count
-                """
-                return case(
-                    [
-                        (
-                            getattr(cte.c, DIMENSION_GROUP_LABEL)
-                            != DIMENSION_OTHERS_LABEL,
-                            func.max(getattr(cte.c, DIMENSION_FAILED_COUNT_KEY)),
-                        )
-                    ],
-                    else_=(
-                        func.abs(
-                            func.sum(getattr(cte.c, self.TOTAL_MISSING_COUNT))
-                            - expected_missing_count
-                        )
-                    ),
-                )
-
-            result_rows = self._execute_with_others_aggregation_statistical(
-                dimension_col,
-                metric_expressions,
-                build_failed_count,
-                final_metric_builders={
-                    DIMENSION_FAILED_COUNT_KEY: build_deviation_final
-                },
-                top_dimensions_count=DEFAULT_TOP_DIMENSIONS,
+            result_rows = self._run_dimensional_validation_query(
+                source=self.runner.dataset,
+                dimension_expr=normalized_dimension,
+                metric_expressions=metric_expressions,
             )
 
             for row in result_rows:

@@ -30,6 +30,7 @@ export enum FieldTypes {
   TEXT = 'text',
   TEXT_MUI = 'text_mui',
   PASSWORD = 'password',
+  PASSWORD_MUI = 'password_mui',
   FILTER_PATTERN = 'filter_pattern',
   SWITCH = 'switch',
   SELECT = 'select',

@@ -88,6 +88,17 @@ const mockOnChange = jest.fn();
 const mockOnNext = jest.fn();
 const mockOnPrev = jest.fn();
 
+const commonProps = {
+  onChange: mockOnChange,
+  onPrev: mockOnPrev,
+  onNext: mockOnNext,
+  buttonProps: {
+    nextLabel: 'Custom Next',
+    prevLabel: 'Custom Previous',
+    isNextVisible: true,
+  },
+};
+
 const mockInitialValues: Partial<DataContract> = {
   semantics: [
     {
@@ -107,13 +118,7 @@ describe('ContractSemanticFormTab', () => {
 
   describe('Basic Rendering', () => {
     it('should render the component with default props', () => {
-      render(
-        <ContractSemanticFormTab
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSemanticFormTab {...commonProps} />);
 
       expect(screen.getByText('Semantics')).toBeInTheDocument();
       expect(screen.getByText('Configure semantic rules')).toBeInTheDocument();
@@ -124,9 +129,7 @@ describe('ContractSemanticFormTab', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
 
@@ -135,15 +138,7 @@ describe('ContractSemanticFormTab', () => {
     });
 
     it('should render with custom labels', () => {
-      render(
-        <ContractSemanticFormTab
-          nextLabel="Custom Next"
-          prevLabel="Custom Previous"
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSemanticFormTab {...commonProps} />);
 
       expect(screen.getByText('Custom Next')).toBeInTheDocument();
       expect(screen.getByText('Custom Previous')).toBeInTheDocument();
@@ -152,13 +147,7 @@ describe('ContractSemanticFormTab', () => {
 
   describe('Semantic Rule Management', () => {
     it('should add new semantic rule when add button is clicked', async () => {
-      render(
-        <ContractSemanticFormTab
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSemanticFormTab {...commonProps} />);
 
       const addButton = screen.getByTestId('add-semantic-button');
 
@@ -174,9 +163,7 @@ describe('ContractSemanticFormTab', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
 
@@ -195,9 +182,7 @@ describe('ContractSemanticFormTab', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
 
@@ -216,13 +201,7 @@ describe('ContractSemanticFormTab', () => {
 
   describe('Form Validation and Saving', () => {
     it('should validate required fields when saving', async () => {
-      render(
-        <ContractSemanticFormTab
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSemanticFormTab {...commonProps} />);
 
       const addButton = screen.getByTestId('add-semantic-button');
 
@@ -244,9 +223,7 @@ describe('ContractSemanticFormTab', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
 
@@ -281,9 +258,7 @@ describe('ContractSemanticFormTab', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
 
@@ -312,9 +287,7 @@ describe('ContractSemanticFormTab', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
 
@@ -334,9 +307,7 @@ describe('ContractSemanticFormTab', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
 
@@ -349,9 +320,7 @@ describe('ContractSemanticFormTab', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
 
@@ -378,9 +347,7 @@ describe('ContractSemanticFormTab', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
 
@@ -406,43 +373,25 @@ describe('ContractSemanticFormTab', () => {
 
   describe('Navigation', () => {
     it('should display navigation buttons', () => {
-      render(
-        <ContractSemanticFormTab
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSemanticFormTab {...commonProps} />);
 
-      expect(screen.getByText('Previous')).toBeInTheDocument();
-      expect(screen.getByText('Next')).toBeInTheDocument();
+      expect(screen.getByText('Custom Previous')).toBeInTheDocument();
+      expect(screen.getByText('Custom Next')).toBeInTheDocument();
     });
 
     it('should call onNext when next button is clicked', () => {
-      render(
-        <ContractSemanticFormTab
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSemanticFormTab {...commonProps} />);
 
-      const nextButton = screen.getByText('Next');
+      const nextButton = screen.getByText('Custom Next');
       fireEvent.click(nextButton);
 
       expect(mockOnNext).toHaveBeenCalled();
     });
 
     it('should call onPrev when previous button is clicked', () => {
-      render(
-        <ContractSemanticFormTab
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSemanticFormTab {...commonProps} />);
 
-      const prevButton = screen.getByText('Previous');
+      const prevButton = screen.getByText('Custom Previous');
       fireEvent.click(prevButton);
 
       expect(mockOnPrev).toHaveBeenCalled();
@@ -454,9 +403,7 @@ describe('ContractSemanticFormTab', () => {
       render(
         <ContractSemanticFormTab
           initialValues={mockInitialValues}
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
+          {...commonProps}
         />
       );
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -471,13 +418,7 @@ describe('ContractSemanticFormTab', () => {
     it('should handle validation errors gracefully', async () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      render(
-        <ContractSemanticFormTab
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSemanticFormTab {...commonProps} />);
 
       const addButton = screen.getByTestId('add-semantic-button');
 
@@ -504,9 +445,7 @@ describe('ContractSemanticFormTab', () => {
         render(
           <ContractSemanticFormTab
             initialValues={{ semantics: [] }}
-            onChange={mockOnChange}
-            onNext={mockOnNext}
-            onPrev={mockOnPrev}
+            {...commonProps}
           />
         );
       }).not.toThrow();
@@ -515,19 +454,13 @@ describe('ContractSemanticFormTab', () => {
 
   describe('Accessibility', () => {
     it('should have proper button roles and attributes', () => {
-      render(
-        <ContractSemanticFormTab
-          onChange={mockOnChange}
-          onNext={mockOnNext}
-          onPrev={mockOnPrev}
-        />
-      );
+      render(<ContractSemanticFormTab {...commonProps} />);
 
       const addButton = screen.getByTestId('add-semantic-button');
 
       expect(addButton).toHaveAttribute('type', 'button');
 
-      const nextButton = screen.getByRole('button', { name: 'Next' });
+      const nextButton = screen.getByRole('button', { name: 'Custom Next' });
 
       expect(nextButton).toHaveAttribute('type', 'button');
     });

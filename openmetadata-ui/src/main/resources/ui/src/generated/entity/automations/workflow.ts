@@ -501,6 +501,9 @@ export interface OpenMetadataJWTClientConfig {
  *
  * SSL Configuration details.
  *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -595,13 +598,43 @@ export interface TestServiceConnectionRequest {
      */
     type?: ReverseIngestionType;
     /**
+     * Authentication type configured by admin in QueryRunnerConfig (e.g., Basic, ExternalOAuth,
+     * etc.). Used to determine which credential field to use from user config.
+     */
+    authType?: string;
+    /**
+     * Optional database/dataset to use for query execution (selected by user in QueryRunner
+     * Studio). Service-specific name (e.g., Snowflake database).
+     */
+    database?: string;
+    /**
+     * Optional database schema to use for query execution (selected by user in QueryRunner
+     * Studio). Service-specific name (e.g., Snowflake schema). Named 'databaseSchema' instead
+     * of 'schema' to avoid conflicts with Pydantic's BaseModel.schema() method.
+     */
+    databaseSchema?: string;
+    /**
      * Query to be executed.
      */
     query?: string;
     /**
+     * Optional role to use for query execution (selected by user in QueryRunner Studio).
+     * Service-specific (e.g., Snowflake role).
+     */
+    role?: string;
+    /**
      * Optional value to indicate if the query should be transpiled.
      */
     transpile?: boolean;
+    /**
+     * UUID of the user's QueryRunner config for this specific service (looked up by backend
+     * using userId + serviceName)
+     */
+    userConfigId?: string;
+    /**
+     * UUID of the user executing the query (extracted from JWT token in backend)
+     */
+    userId?: string;
     /**
      * Spark Engine Configuration.
      */
@@ -1266,8 +1299,6 @@ export interface ConfigObject {
      *
      * Password to connect to MicroStrategy.
      *
-     * Password to connect to Airbyte.
-     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -1380,8 +1411,6 @@ export interface ConfigObject {
      * Username to connect to MicroStrategy. This user should have privileges to read all the
      * metadata in MicroStrategy.
      *
-     * Username to connect to Airbyte.
-     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -1481,8 +1510,11 @@ export interface ConfigObject {
     configSource?: DeltaLakeConfigurationSource;
     /**
      * Authentication mode to connect to hive.
+     *
+     * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+     * (for Airbyte Cloud)
      */
-    auth?: AuthEnum;
+    auth?: Authentication | AuthEnum;
     /**
      * Authentication options to pass to Hive connector. These options are based on SQLAlchemy.
      *
@@ -1500,6 +1532,9 @@ export interface ConfigObject {
     /**
      * SSL Configuration details.
      *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     *
      * SSL Configuration for OpenMetadata Server
      */
     sslConfig?: SSLConfigObject;
@@ -1514,6 +1549,16 @@ export interface ConfigObject {
      * Authentication mode to connect to Impala.
      */
     authMechanism?: AuthMechanismEnum;
+    /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Use slow logs to extract lineage.
      */
@@ -2431,6 +2476,10 @@ export interface ConfigObject {
      */
     bucketNames?: string[];
     /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
+    /**
      * Regex to only fetch containers that matches the pattern.
      */
     containerFilterPattern?: FilterPattern;
@@ -2497,6 +2546,33 @@ export interface UsernamePasswordAuthentication {
      * KafkaConnect user to authenticate to the API.
      */
     username?: string;
+}
+
+/**
+ * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
+ * (for Airbyte Cloud)
+ *
+ * Username and password authentication
+ *
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
+ */
+export interface Authentication {
+    /**
+     * Password to connect to Airbyte.
+     */
+    password?: string;
+    /**
+     * Username to connect to Airbyte.
+     */
+    username?: string;
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
 }
 
 /**
@@ -2831,7 +2907,7 @@ export interface AuthenticationModeObject {
      *
      * Authentication from Connection String for Azure Synapse.
      */
-    authentication?: Authentication;
+    authentication?: AuthenticationEnum;
     /**
      * Connection Timeout from Connection String for AzureSQL.
      *
@@ -2858,7 +2934,7 @@ export interface AuthenticationModeObject {
  *
  * Authentication from Connection String for Azure Synapse.
  */
-export enum Authentication {
+export enum AuthenticationEnum {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
     ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
@@ -3690,6 +3766,9 @@ export enum ConnectionScheme {
  *
  * SSL Configuration details.
  *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
+ *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.
  *
@@ -3816,6 +3895,11 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
+     */
+    encrypt?: boolean;
+    /**
      * Host and port of the MSSQL service.
      */
     hostPort?: string;
@@ -3835,7 +3919,12 @@ export interface DatabaseConnectionClass {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     MssqlScheme;
+    scheme?: MssqlScheme;
+    /**
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
+     */
+    sslConfig?:                  ConsumerConfigSSLClass;
     supportsDatabase?:           boolean;
     supportsDataDiff?:           boolean;
     supportsDBTExtraction?:      boolean;
@@ -3848,6 +3937,11 @@ export interface DatabaseConnectionClass {
      * Regex to only include/exclude tables that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Service Type
      */
@@ -4158,6 +4252,10 @@ export interface S3Connection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Console EndPoint URL for S3-compatible services
+     */
+    consoleEndpointURL?: string;
+    /**
      * Regex to only fetch containers that matches the pattern.
      */
     containerFilterPattern?:     FilterPattern;
@@ -4357,6 +4455,9 @@ export enum SpaceType {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
  *
  * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
  * connection.

@@ -23,7 +23,6 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
-import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Directory } from '../../../generated/entity/data/directory';
 import { File } from '../../../generated/entity/data/file';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -133,7 +132,6 @@ export type DataAssetWithDomains =
   | GlossaryTerm;
 
 export type DataAssetsHeaderProps = {
-  dataContract?: DataContract;
   permissions: OperationPermission;
   openTaskCount?: number;
   allowSoftDelete?: boolean;

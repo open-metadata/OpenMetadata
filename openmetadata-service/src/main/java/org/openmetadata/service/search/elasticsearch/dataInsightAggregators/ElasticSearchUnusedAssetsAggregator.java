@@ -6,6 +6,7 @@ import es.co.elastic.clients.elasticsearch.core.search.TotalHits;
 import es.co.elastic.clients.json.JsonData;
 import java.util.List;
 import org.openmetadata.service.dataInsight.UnusedAssetsAggregator;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 
 public class ElasticSearchUnusedAssetsAggregator
     extends UnusedAssetsAggregator<List<Hit<JsonData>>, Hit<JsonData>, TotalHits> {
@@ -18,7 +19,7 @@ public class ElasticSearchUnusedAssetsAggregator
 
   @Override
   protected Object getDataFromSource(Hit<JsonData> hit) {
-    return hit.source().toJson().asJsonObject().get("data");
+    return EsUtils.jsonDataToMap(hit.source()).get("data");
   }
 
   @Override

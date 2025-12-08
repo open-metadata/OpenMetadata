@@ -43,6 +43,7 @@ import {
   getCustomizePagePath,
   getSettingPageEntityBreadCrumb,
 } from '../../utils/GlobalSettingsUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './custom-page-settings.less';
@@ -63,6 +64,7 @@ export const CustomPageSettings = () => {
     paging,
     handlePagingChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
@@ -94,8 +96,14 @@ export const CustomPageSettings = () => {
   };
 
   useEffect(() => {
-    fetchPersonas();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchPersonas({ [cursorType]: cursorValue });
+    } else {
+      fetchPersonas();
+    }
+  }, [pageSize, pagingCursor]);
 
   const handleCustomisePersona = (persona: Persona) => {
     if (persona.fullyQualifiedName) {
@@ -109,9 +117,13 @@ export const CustomPageSettings = () => {
     currentPage,
     cursorType,
   }) => {
-    handlePageChange(currentPage);
     if (cursorType) {
       fetchPersonas({ [cursorType]: paging[cursorType] });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
   };
 
@@ -162,7 +174,15 @@ export const CustomPageSettings = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={18}>
-          <PageHeader data={PAGE_HEADERS.CUSTOM_PAGE} />
+          <PageHeader
+            data={{
+              header: translateWithNestedKeys(
+                PAGE_HEADERS.CUSTOM_PAGE.header,
+                PAGE_HEADERS.CUSTOM_PAGE.headerParams
+              ),
+              subHeader: t(PAGE_HEADERS.CUSTOM_PAGE.subHeader),
+            }}
+          />
         </Col>
 
         {isLoading

@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +39,9 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
+import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -46,6 +49,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
@@ -55,6 +59,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mapper.EntityMapper;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
@@ -817,6 +822,93 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       return null;
     }
     return EntityUtil.getEntityReferences(entityType, fqns);
+  }
+
+  protected Response bulkCreateOrUpdateAsync(UriInfo uriInfo, List<T> entities, String userName) {
+    repository
+        .submitAsyncBulkOperation(uriInfo, entities, userName)
+        .thenAccept(
+            result -> {
+              LOG.info(
+                  "Async bulk operation completed for {} {}: {} succeeded, {} failed",
+                  entities.size(),
+                  entityType,
+                  result.getNumberOfRowsPassed(),
+                  result.getNumberOfRowsFailed());
+            });
+
+    BulkOperationResult result = new BulkOperationResult();
+    result.setStatus(ApiStatus.SUCCESS);
+    result.setNumberOfRowsProcessed(entities.size());
+    result.setNumberOfRowsPassed(0);
+    result.setNumberOfRowsFailed(0);
+
+    return Response.accepted().entity(result).build();
+  }
+
+  protected Response bulkCreateOrUpdateSync(UriInfo uriInfo, List<T> entities, String userName) {
+    BulkOperationResult result = repository.bulkCreateOrUpdateEntities(uriInfo, entities, userName);
+    return Response.ok(result).build();
+  }
+
+  protected <C extends CreateEntity> Response processBulkRequest(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<C> createRequests,
+      EntityMapper<T, C> mapper,
+      boolean async) {
+
+    List<T> validEntities = new ArrayList<>();
+    List<BulkResponse> failedResponses = new ArrayList<>();
+
+    for (C createRequest : createRequests) {
+      try {
+        T entity =
+            mapper.createToEntity(createRequest, securityContext.getUserPrincipal().getName());
+        repository.prepareInternal(entity, false);
+        repository.setFullyQualifiedName(entity);
+        validEntities.add(entity);
+      } catch (Exception e) {
+        BulkResponse failedResponse = new BulkResponse();
+        failedResponse.setRequest(createRequest);
+        failedResponse.setMessage(e.getMessage());
+        failedResponse.setStatus(400);
+        failedResponses.add(failedResponse);
+      }
+    }
+
+    if (validEntities.isEmpty()) {
+      BulkOperationResult result = new BulkOperationResult();
+      result.setStatus(ApiStatus.FAILURE);
+      result.setNumberOfRowsProcessed(createRequests.size());
+      result.setNumberOfRowsPassed(0);
+      result.setNumberOfRowsFailed(createRequests.size());
+      result.setFailedRequest(failedResponses);
+      return Response.ok(result).build();
+    }
+
+    String userName = securityContext.getUserPrincipal().getName();
+    Response response;
+    if (async) {
+      response = bulkCreateOrUpdateAsync(uriInfo, validEntities, userName);
+    } else {
+      BulkOperationResult result =
+          repository.bulkCreateOrUpdateEntities(uriInfo, validEntities, userName);
+
+      if (!failedResponses.isEmpty()) {
+        result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+        result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + failedResponses.size());
+        result.setNumberOfRowsProcessed(createRequests.size());
+        if (result.getFailedRequest() == null) {
+          result.setFailedRequest(failedResponses);
+        } else {
+          result.getFailedRequest().addAll(failedResponses);
+        }
+      }
+      response = Response.ok(result).build();
+    }
+
+    return response;
   }
 
   protected void addViewOperation(String fieldsParam, MetadataOperation operation) {
