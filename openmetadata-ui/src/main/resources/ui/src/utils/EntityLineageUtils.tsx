@@ -923,10 +923,7 @@ export const createEdgesAndEdgeMaps = (
                 sourceHandle: encodedFrom,
                 style: { strokeWidth: '2px' },
                 type: 'buttonedge',
-                markerEnd: {
-                  type: MarkerType.ArrowClosed,
-                  color: '',
-                },
+                markerEnd: { type: MarkerType.ArrowClosed },
                 data: {
                   edge,
                   isColumnLineage: true,

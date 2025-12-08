@@ -618,7 +618,7 @@
   z-index: 1; // Adding as column text and data type should be behind handles
 
   &.react-flow__handle-left {
-    left: -6px;
+    left: 0;
   }
 
   &.react-flow__handle-right {
@@ -661,22 +661,4 @@
 
 .react-flow__edge :hover {
   stroke: @primary-color;
-}
-
-.react-flow__container {
-  .react-flow__arrowhead:first-child {
-    polyline {
-      stroke: @primary-color;
-      fill: @primary-color;
-    }
-  }
-}
-
-.react-flow__container:has(.any-column-selected) {
-  .react-flow__arrowhead:first-child {
-    polyline {
-      stroke: @indigo-600;
-      fill: @indigo-600;
-    }
-  }
 }
