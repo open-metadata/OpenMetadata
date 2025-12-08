@@ -434,6 +434,7 @@ EXPECTED_JOB_DETAILS = DBTJob(
     job_type="other",
     schedule=DBTSchedule(cron="6 */12 * * 0,1,2,3,4,5,6"),
     project_id=70403103926818,
+    environment_id=70403103931988,
 )
 
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
@@ -490,6 +491,8 @@ MOCK_PIPELINE = Pipeline(
 EXPECTED_JOB_FILTERS = ["70403103922125", "70403103922126"]
 
 EXPECTED_PROJECT_FILTERS = ["70403103922127", "70403103922128"]
+
+EXPECTED_ENVIRONMENT_FILTERS = ["70403103931988", "70403103931989"]
 
 EXPECTED_PIPELINE_NAME = str(MOCK_JOB_RESULT["data"][0]["name"])
 
@@ -1479,7 +1482,7 @@ class DBTCloudUnitTest(TestCase):
             )
 
             # Mock _get_jobs to yield jobs for each project
-            def mock_get_jobs_impl(job_id=None, project_id=None):
+            def mock_get_jobs_impl(job_id=None, project_id=None, environment_id=None):
                 if project_id == "70403103922127":
                     yield job1
                 elif project_id == "70403103922128":
@@ -1487,9 +1490,11 @@ class DBTCloudUnitTest(TestCase):
 
             mock_get_jobs.side_effect = mock_get_jobs_impl
 
-            # Temporarily clear job_ids to test project filtering only
+            # Temporarily clear job_ids and environment_ids to test project filtering only
             original_job_ids = self.dbtcloud.client.job_ids
+            original_env_ids = self.dbtcloud.client.environment_ids
             self.dbtcloud.client.job_ids = None
+            self.dbtcloud.client.environment_ids = None
 
             try:
                 # Call get_jobs (client has project_ids set)
@@ -1500,6 +1505,7 @@ class DBTCloudUnitTest(TestCase):
                 self.assertEqual(len(jobs), 2)
             finally:
                 self.dbtcloud.client.job_ids = original_job_ids
+                self.dbtcloud.client.environment_ids = original_env_ids
 
     def test_get_runs_generator_with_limit(self):
         """
@@ -1662,3 +1668,178 @@ class DBTCloudUnitTest(TestCase):
             call_args = mock_get.call_args
             query_params = call_args[1]["data"]
             self.assertEqual(query_params["order_by"], "-created_at")
+
+    def test_get_jobs_url_construction_with_environment_id(self):
+        """
+        Test that _get_jobs constructs URL correctly with environment_id filter
+        """
+        with patch.object(self.dbtcloud.client.client, "get") as mock_get:
+            mock_get.return_value = MOCK_JOB_RESULT
+
+            # Consume the generator
+            list(self.dbtcloud.client._get_jobs(environment_id="70403103931988"))
+
+            # Verify the URL was constructed with environment_id query param
+            call_args = mock_get.call_args
+            called_path = call_args[0][0]
+            self.assertIn("?environment_id=70403103931988", called_path)
+
+    def test_get_jobs_url_construction_with_both_project_and_environment_id(self):
+        """
+        Test that _get_jobs constructs URL correctly with both project_id and environment_id
+        """
+        with patch.object(self.dbtcloud.client.client, "get") as mock_get:
+            mock_get.return_value = MOCK_JOB_RESULT
+
+            # Consume the generator
+            list(
+                self.dbtcloud.client._get_jobs(
+                    project_id="70403103922127", environment_id="70403103931988"
+                )
+            )
+
+            # Verify the URL was constructed with both query params
+            call_args = mock_get.call_args
+            called_path = call_args[0][0]
+            self.assertIn("project_id=70403103922127", called_path)
+            self.assertIn("environment_id=70403103931988", called_path)
+            self.assertIn("&", called_path)
+
+    def test_get_jobs_with_environment_ids_filter(self):
+        """
+        Test get_jobs filters by environment_ids correctly
+        """
+        with patch.object(self.dbtcloud.client, "_get_jobs") as mock_get_jobs:
+            # Create jobs with different environment IDs
+            job1 = DBTJob(
+                id=1,
+                name="Job 1",
+                project_id=70403103926818,
+                environment_id=70403103931988,
+                state=1,
+                job_type="other",
+                created_at="2024-05-27T10:42:10.111442+00:00",
+                updated_at="2024-05-27T10:42:10.111459+00:00",
+            )
+            job2 = DBTJob(
+                id=2,
+                name="Job 2",
+                project_id=70403103926818,
+                environment_id=70403103931989,
+                state=1,
+                job_type="other",
+                created_at="2024-05-27T10:42:10.111442+00:00",
+                updated_at="2024-05-27T10:42:10.111459+00:00",
+            )
+
+            # Mock _get_jobs to yield jobs for each environment
+            def mock_get_jobs_impl(job_id=None, project_id=None, environment_id=None):
+                if environment_id == "70403103931988":
+                    yield job1
+                elif environment_id == "70403103931989":
+                    yield job2
+
+            mock_get_jobs.side_effect = mock_get_jobs_impl
+
+            # Temporarily set only environment_ids (no job_ids or project_ids)
+            original_job_ids = self.dbtcloud.client.job_ids
+            original_project_ids = self.dbtcloud.client.project_ids
+            original_env_ids = self.dbtcloud.client.environment_ids
+            self.dbtcloud.client.job_ids = None
+            self.dbtcloud.client.project_ids = None
+            self.dbtcloud.client.environment_ids = EXPECTED_ENVIRONMENT_FILTERS
+
+            try:
+                # Call get_jobs (client has environment_ids set)
+                jobs = list(self.dbtcloud.client.get_jobs())
+
+                # Should have called _get_jobs for each environment_id
+                self.assertEqual(mock_get_jobs.call_count, 2)
+                self.assertEqual(len(jobs), 2)
+            finally:
+                self.dbtcloud.client.job_ids = original_job_ids
+                self.dbtcloud.client.project_ids = original_project_ids
+                self.dbtcloud.client.environment_ids = original_env_ids
+
+    def test_get_jobs_job_ids_takes_precedence(self):
+        """
+        Test that jobIds takes precedence over projectIds and environmentIds
+        """
+        with patch.object(self.dbtcloud.client, "_get_jobs") as mock_get_jobs:
+            job1 = DBTJob(
+                id=70403103922125,
+                name="Specific Job",
+                project_id=70403103926818,
+                environment_id=70403103931988,
+                state=1,
+                job_type="other",
+                created_at="2024-05-27T10:42:10.111442+00:00",
+                updated_at="2024-05-27T10:42:10.111459+00:00",
+            )
+
+            def mock_get_jobs_impl(job_id=None, project_id=None, environment_id=None):
+                if job_id == "70403103922125":
+                    yield job1
+
+            mock_get_jobs.side_effect = mock_get_jobs_impl
+
+            # Set all filters - job_ids should take precedence
+            original_env_ids = self.dbtcloud.client.environment_ids
+            self.dbtcloud.client.environment_ids = EXPECTED_ENVIRONMENT_FILTERS
+
+            try:
+                jobs = list(self.dbtcloud.client.get_jobs())
+
+                # Should only call _get_jobs with job_id, ignoring project/environment
+                for call in mock_get_jobs.call_args_list:
+                    _, kwargs = call
+                    # Verify job_id is passed and project_id/environment_id are not
+                    self.assertIsNotNone(kwargs.get("job_id"))
+                    self.assertIsNone(kwargs.get("project_id"))
+                    self.assertIsNone(kwargs.get("environment_id"))
+            finally:
+                self.dbtcloud.client.environment_ids = original_env_ids
+
+    def test_get_jobs_with_project_and_environment_ids(self):
+        """
+        Test get_jobs with both projectIds and environmentIds filters
+        """
+        with patch.object(self.dbtcloud.client, "_get_jobs") as mock_get_jobs:
+            job1 = DBTJob(
+                id=1,
+                name="Job P1E1",
+                project_id=70403103922127,
+                environment_id=70403103931988,
+                state=1,
+                job_type="other",
+                created_at="2024-05-27T10:42:10.111442+00:00",
+                updated_at="2024-05-27T10:42:10.111459+00:00",
+            )
+
+            def mock_get_jobs_impl(job_id=None, project_id=None, environment_id=None):
+                if project_id and environment_id:
+                    yield job1
+
+            mock_get_jobs.side_effect = mock_get_jobs_impl
+
+            # Clear job_ids and set both project and environment filters
+            original_job_ids = self.dbtcloud.client.job_ids
+            original_env_ids = self.dbtcloud.client.environment_ids
+            self.dbtcloud.client.job_ids = None
+            self.dbtcloud.client.environment_ids = ["70403103931988"]
+
+            try:
+                jobs = list(self.dbtcloud.client.get_jobs())
+
+                # Should call _get_jobs for each project_id x environment_id combination
+                # 2 project_ids x 1 environment_id = 2 calls
+                self.assertEqual(mock_get_jobs.call_count, 2)
+
+                # Verify both project_id and environment_id are passed
+                for call in mock_get_jobs.call_args_list:
+                    _, kwargs = call
+                    self.assertIsNotNone(kwargs.get("project_id"))
+                    self.assertIsNotNone(kwargs.get("environment_id"))
+            finally:
+                self.dbtcloud.client.job_ids = original_job_ids
+                self.dbtcloud.client.environment_ids = original_env_ids
