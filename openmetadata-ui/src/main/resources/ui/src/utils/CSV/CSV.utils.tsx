@@ -112,6 +112,10 @@ export const renderColumnDataEditor = (
 export const getColumnConfig = (
   column: string,
   entityType: EntityType,
+  multipleOwner: {
+    user: boolean;
+    team: boolean;
+  },
   editable = false
 ): Column<any> => {
   const colType = column.split('.').pop() ?? '';
@@ -123,7 +127,11 @@ export const getColumnConfig = (
     resizable: true,
     cellClass: () => `rdg-cell-${column.replace(/[^a-zA-Z0-9-_]/g, '')}`,
     editable,
-    renderEditCell: csvUtilsClassBase.getEditor(colType, entityType),
+    renderEditCell: csvUtilsClassBase.getEditor(
+      colType,
+      entityType,
+      multipleOwner
+    ),
     renderCell: (data: any) =>
       renderColumnDataEditor(colType, {
         value: data.row[column],
@@ -136,13 +144,18 @@ export const getColumnConfig = (
 export const getEntityColumnsAndDataSourceFromCSV = (
   csv: string[][],
   entityType: EntityType,
+  multipleOwner: {
+    user: boolean;
+    team: boolean;
+  },
   cellEditable: boolean
 ) => {
   const [cols, ...rows] = csv;
 
   const columns =
-    cols?.map((column) => getColumnConfig(column, entityType, cellEditable)) ??
-    [];
+    cols?.map((column) =>
+      getColumnConfig(column, entityType, multipleOwner, cellEditable)
+    ) ?? [];
 
   const dataSource =
     rows.map((row, idx) => {

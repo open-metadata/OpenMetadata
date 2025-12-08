@@ -46,6 +46,45 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
+jest.mock(
+  '../../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn().mockReturnValue([]),
+      getEntityRuleValidation: jest.fn().mockReturnValue({
+        canAddMultipleUserOwners: true,
+        canAddMultipleTeamOwner: true,
+        canAddMultipleDomains: true,
+        canAddMultipleDataProducts: true,
+        maxDomains: Infinity,
+        maxDataProducts: Infinity,
+        canAddMultipleGlossaryTerm: true,
+        requireDomainForDataProduct: false,
+      }),
+      rules: {},
+      isLoading: false,
+    })),
+  })
+);
+
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+      canAddMultipleDomains: true,
+      canAddMultipleDataProducts: true,
+      maxDomains: Infinity,
+      maxDataProducts: Infinity,
+      canAddMultipleGlossaryTerm: true,
+      requireDomainForDataProduct: false,
+    },
+    rules: [],
+    isLoading: false,
+  })),
+}));
+
 describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
     await act(async () => {

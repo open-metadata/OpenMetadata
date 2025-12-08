@@ -124,7 +124,60 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     await page.getByRole('listitem', { name: owner }).click();
   }
 
-  await page.getByTestId('selectable-list-update-btn').click();
+  await page
+    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
+    .getByTestId('selectable-list-update-btn')
+    .click();
+
+  await page.click(RDG_ACTIVE_CELL_SELECTOR);
+};
+
+export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
+  await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('Enter', { delay: 100 });
+
+  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
+
+  await expect(
+    page.locator('.ant-tabs-tab-active').getByText('Users')
+  ).toBeVisible();
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page
+    .locator("[data-testid='select-owner-tabs']")
+    .getByRole('tab', { name: 'Teams' })
+    .click();
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page.waitForSelector('[data-testid="owner-select-teams-search-bar"]', {
+    state: 'visible',
+  });
+
+  await page.click('[data-testid="owner-select-teams-search-bar"]');
+
+  for (const owner of owners) {
+    const searchOwner = page.waitForResponse(
+      'api/v1/search/query?q=*&index=team_search_index*'
+    );
+    await page.locator('[data-testid="owner-select-teams-search-bar"]').clear();
+    await page.fill('[data-testid="owner-select-teams-search-bar"]', owner);
+    await searchOwner;
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector(
+      '[data-testid="select-owner-tabs"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+  }
+
+  await page
+    .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
+    .getByTestId('selectable-list-update-btn')
+    .click();
 
   await page.click(RDG_ACTIVE_CELL_SELECTOR);
 };
@@ -589,6 +642,7 @@ export const fillRowDetails = async (
     displayName: string;
     description: string;
     owners: string[];
+    teamOwners?: string[];
     tag: string;
     glossary: {
       name: string;
@@ -639,6 +693,10 @@ export const fillRowDetails = async (
     .press('ArrowRight', { delay: 100 });
 
   await fillOwnerDetails(page, row.owners);
+
+  if (row.teamOwners && row.teamOwners.length > 0) {
+    await fillTeamOwnerDetails(page, row.teamOwners);
+  }
 
   await page
     .locator(RDG_ACTIVE_CELL_SELECTOR)

@@ -44,7 +44,10 @@ describe('CSVUtils', () => {
   describe('getColumnConfig', () => {
     it('should return the column configuration object', () => {
       const column = 'description';
-      const columnConfig = getColumnConfig(column, EntityType.GLOSSARY);
+      const columnConfig = getColumnConfig(column, EntityType.GLOSSARY, {
+        user: true,
+        team: false,
+      });
 
       expect(columnConfig).toBeDefined();
       expect(columnConfig.key).toBe(column);
@@ -60,6 +63,10 @@ describe('CSVUtils', () => {
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
         csv,
         EntityType.GLOSSARY,
+        {
+          user: true,
+          team: false,
+        },
         false
       );
 

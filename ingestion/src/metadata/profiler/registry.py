@@ -102,7 +102,7 @@ class TypeRegistry(Enum):
     def __init__(self, _type):
         if not issubclass(_type, TypeDecorator):
             raise TypeError(
-                "Only Metrics can be part of the Metric Registry,"
+                "Only TypeDecorator can be part of the Type Registry,"
                 + f" but found {type(_type)} instead."
             )
         self._type = _type
