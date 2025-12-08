@@ -38,7 +38,12 @@ export interface CreateTestDefinition {
     parameterDefinition?: TestCaseParameterDefinition[];
     provider?:            ProviderType;
     supportedDataTypes?:  DataType[];
-    testPlatforms:        TestPlatform[];
+    /**
+     * List of services that this test definition supports. When empty, it implies all services
+     * are supported.
+     */
+    supportedServices?: string[];
+    testPlatforms:      TestPlatform[];
 }
 
 /**
