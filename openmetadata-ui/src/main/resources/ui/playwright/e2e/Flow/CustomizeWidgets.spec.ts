@@ -227,14 +227,7 @@ test.describe('Widgets', () => {
         await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
         // Data Assets widget needs special handling for multiple search indexes
         const searchIndexes = [
-          SearchIndex.TABLE,
-          SearchIndex.TOPIC,
-          SearchIndex.DASHBOARD,
-          SearchIndex.PIPELINE,
-          SearchIndex.MLMODEL,
-          SearchIndex.CONTAINER,
-          SearchIndex.SEARCH_INDEX,
-          SearchIndex.API_ENDPOINT_INDEX,
+          SearchIndex.DATA_ASSET,
         ];
 
         await verifyWidgetEntityNavigation(page, {
