@@ -1590,6 +1590,7 @@
     "show-more": "顯示更多",
     "show-more-entity": "顯示更多 {{entity}}",
     "show-more-lowercase": "顯示更多",
+    "show-nested": "顯示嵌套",
     "show-or-hide-advanced-config": "{{showAdv}} 進階組態",
     "show-or-hide-column-plural": "顯示/隱藏欄位",
     "sign-in": "登入",

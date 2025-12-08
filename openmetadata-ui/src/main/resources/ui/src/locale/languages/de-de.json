@@ -1590,6 +1590,7 @@
     "show-more": "Mehr anzeigen",
     "show-more-entity": "Mehr {{entity}} anzeigen",
     "show-more-lowercase": "Mehr anzeigen",
+    "show-nested": "Verschachtelte anzeigen",
     "show-or-hide-advanced-config": "{{showAdv}} Erweiterte Konfiguration anzeigen/ausblenden",
     "show-or-hide-column-plural": "Spalten anzeigen/verbergen",
     "sign-in": "Anmelden",

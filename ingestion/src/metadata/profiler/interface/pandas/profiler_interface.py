@@ -37,7 +37,10 @@ from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.api.models import ThreadPoolMetrics
-from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.profiler.interface.profiler_interface import (
+    ProfilerInterface,
+    ProfilerProcessorStatus,
+)
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.metric_filter import MetricFilter
@@ -84,6 +87,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         self.client = self.sampler.client
         self.dataset = self.sampler.get_dataset()
+        self.status = ProfilerProcessorStatus()
         self.complex_df()
 
     def complex_df(self):
@@ -286,19 +290,26 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                     self.dataset,
                     column=metric_func.column,
                 )
+
+            if metric_func.column is not None:
+                column = metric_func.column.name
+                self.status.scanned(
+                    f"{metric_func.table.name.root}.{column}__{metric_func.metric_type.value}"
+                )
+            else:
+                self.status.scanned(
+                    f"{metric_func.table.name.root}__{metric_func.metric_type.value}"
+                )
+                column = None
+
+            return row, column, metric_func.metric_type.value
+
         except Exception as exc:
             name = f"{metric_func.column if metric_func.column is not None else metric_func.table}"
             error = f"{name} metric_type.value: {exc}"
             logger.error(error)
             self.status.failed_profiler(error, traceback.format_exc())
-            row = None
-        if metric_func.column is not None:
-            column = metric_func.column.name
-            self.status.scanned(f"{metric_func.table.name.root}.{column}")
-        else:
-            self.status.scanned(metric_func.table.name.root)
-            column = None
-        return row, column, metric_func.metric_type.value
+            return None, None, None
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict

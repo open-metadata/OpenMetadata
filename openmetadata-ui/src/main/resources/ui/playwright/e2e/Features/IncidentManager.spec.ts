@@ -29,6 +29,7 @@ import {
 import { addOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   acknowledgeTask,
+  addAssigneeFromPopoverWidget,
   assignIncident,
   triggerTestSuitePipelineAndWaitForSuccess,
   visitProfilerTab,
@@ -153,6 +154,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         page,
         testCaseName,
         user: assignee,
+        direct: true,
       });
     });
 
@@ -248,33 +250,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
         await clickOutside(page);
 
-        await page.click('[data-testid="assignee"] [data-testid="edit-owner"]');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        const searchUserResponse = page.waitForResponse(
-          '/api/v1/search/query?q=*'
-        );
-        await page.fill(
-          '[data-testid="owner-select-users-search-bar"]',
-          assignee2.displayName
-        );
-        await searchUserResponse;
-
-        const updateIncident = page.waitForResponse(
-          '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
-        );
-        await page.click(`.ant-popover [title="${assignee2.displayName}"]`);
-        await updateIncident;
-
-        await page.waitForSelector(
-          '[data-testid="assignee"] [data-testid="owner-link"]'
-        );
-
-        await expect(
-          page.locator(`[data-testid=${assignee2.displayName}]`)
-        ).toBeVisible();
+        await addAssigneeFromPopoverWidget({ page, user: assignee2 });
       }
     );
 

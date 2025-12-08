@@ -1590,6 +1590,7 @@
     "show-more": "نمایش بیشتر",
     "show-more-entity": "نمایش بیشتر {{entity}}",
     "show-more-lowercase": "نمایش بیشتر",
+    "show-nested": "نمایش تودرتو",
     "show-or-hide-advanced-config": "{{showAdv}} پیکربندی پیشرفته",
     "show-or-hide-column-plural": "Show / Hide Columns",
     "sign-in": "Sign In",

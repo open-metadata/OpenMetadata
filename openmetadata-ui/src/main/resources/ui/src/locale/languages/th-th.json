@@ -1590,6 +1590,7 @@
     "show-more": "แสดงเพิ่มเติม",
     "show-more-entity": "แสดงเพิ่มเติม {{entity}}",
     "show-more-lowercase": "แสดงเพิ่มเติม",
+    "show-nested": "แสดงแบบซ้อน",
     "show-or-hide-advanced-config": "{{showAdv}} การกำหนดค่าขั้นสูง",
     "show-or-hide-column-plural": "แสดง / ซ่อนคอลัมน์",
     "sign-in": "Sign In",

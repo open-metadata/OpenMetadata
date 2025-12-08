@@ -1590,6 +1590,7 @@
     "show-more": "Daha Fazla Göster",
     "show-more-entity": "Daha Fazla {{entity}} Göster",
     "show-more-lowercase": "Daha fazla göster",
+    "show-nested": "Yuvalanmışları Göster",
     "show-or-hide-advanced-config": "{{showAdv}} Gelişmiş Yapılandırma",
     "show-or-hide-column-plural": "Sütunları göster/gizle",
     "sign-in": "Giriş Yap",

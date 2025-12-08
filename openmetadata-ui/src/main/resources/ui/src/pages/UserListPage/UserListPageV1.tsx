@@ -328,7 +328,7 @@ const UserListPageV1 = () => {
                     ? t('label.restore-entity', {
                         entity: t('label.user'),
                       })
-                    : ADMIN_ONLY_ACTION
+                    : t(ADMIN_ONLY_ACTION)
                 }>
                 <Button
                   data-testid={`restore-user-btn-${record.name}`}
@@ -349,7 +349,7 @@ const UserListPageV1 = () => {
                   ? t('label.delete-entity', {
                       entity: t('label.user'),
                     })
-                  : ADMIN_ONLY_ACTION
+                  : t(ADMIN_ONLY_ACTION)
               }>
               <Button
                 disabled={!isAdminUser}
