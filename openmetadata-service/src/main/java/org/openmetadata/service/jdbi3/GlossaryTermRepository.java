@@ -714,9 +714,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public EntityRepository<GlossaryTerm>.EntityUpdater getUpdater(
       GlossaryTerm original, GlossaryTerm updated, Operation operation, ChangeSource changeSource) {
-    if (operation == Operation.PATCH || operation == Operation.PUT) {
-      checkDuplicateTermsForUpdate(original, updated);
-    }
     return new GlossaryTermUpdater(original, updated, operation);
   }
 
@@ -1371,6 +1368,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
+        checkDuplicateTermsForUpdate(original, updated);
         // Glossary term name changed - update the FQNs of the children terms to reflect this
         setFullyQualifiedName(updated);
         LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
