@@ -95,7 +95,9 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           t,
         });
 
-        if (!result.success) {
+        if (result.success && result.data === displayTags) {
+          completeEditing();
+        } else if (!result.success) {
           setIsLoading(false);
         }
       } catch (error) {

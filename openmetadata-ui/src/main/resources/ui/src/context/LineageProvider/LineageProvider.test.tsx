@@ -79,7 +79,7 @@ const DummyChildrenComponent = () => {
 
   const handleButtonClick = () => {
     // Trigger the loadChildNodesHandler method when the button is clicked
-    loadChildNodesHandler(nodeData, LineageDirection.Downstream);
+    loadChildNodesHandler(nodeData, LineageDirection.Downstream, 1);
   };
 
   useEffect(() => {
