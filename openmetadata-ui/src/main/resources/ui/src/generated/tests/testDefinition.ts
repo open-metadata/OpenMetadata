@@ -36,7 +36,12 @@ export interface TestDefinition {
      * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domains?:    EntityReference[];
+    domains?: EntityReference[];
+    /**
+     * When `true` indicates the test definition is available for creating test cases. System
+     * test definitions can only be disabled by users with appropriate permissions.
+     */
+    enabled?:    boolean;
     entityType?: EntityType;
     /**
      * FullyQualifiedName same as `name`.
