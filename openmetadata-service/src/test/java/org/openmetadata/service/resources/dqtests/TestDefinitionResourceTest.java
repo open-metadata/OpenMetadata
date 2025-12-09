@@ -318,7 +318,7 @@ public class TestDefinitionResourceTest
     Assertions.assertTrue(
         allDisabled, "All test definitions in enabled=false list should be disabled");
 
-    // Test 3: Default behavior (no enabled param) should use default enabled=true
+    // Test 3: Default behavior (no enabled param) should return all test definitions
     Map<String, String> defaultParams = Map.of("limit", "1000");
     ResultList<TestDefinition> defaultList = listEntities(defaultParams, ADMIN_AUTH_HEADERS);
     hasEnabled =
@@ -326,14 +326,7 @@ public class TestDefinitionResourceTest
     hasDisabled =
         defaultList.getData().stream().anyMatch(td -> td.getId().equals(disabledDef.getId()));
     Assertions.assertTrue(hasEnabled, "Default list should include enabled test definition");
-    Assertions.assertFalse(hasDisabled, "Default list should NOT include disabled test definition");
-
-    // Verify all definitions in default list are enabled (since default is enabled=true)
-    boolean allEnabledInDefault =
-        defaultList.getData().stream()
-            .allMatch(td -> td.getEnabled() == null || Boolean.TRUE.equals(td.getEnabled()));
-    Assertions.assertTrue(
-        allEnabledInDefault, "All test definitions in default list should be enabled");
+    Assertions.assertTrue(hasDisabled, "Default list should include disabled test definition");
 
     // Re-enable for cleanup using JSON Patch
     originalJson = JsonUtils.pojoToJson(disabledDef);

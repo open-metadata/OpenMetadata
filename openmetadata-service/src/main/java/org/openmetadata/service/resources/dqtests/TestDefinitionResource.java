@@ -151,11 +151,9 @@ public class TestDefinitionResource
           @QueryParam("supportedDataType")
           String supportedDataTypeParam,
       @Parameter(
-              description =
-                  "Filter by enabled status. Returns only enabled test definitions by default.",
+              description = "Filter by enabled status (true/false). If not specified, returns all test definitions.",
               schema = @Schema(type = "boolean"))
           @QueryParam("enabled")
-          @DefaultValue("true")
           Boolean enabledParam) {
     ListFilter filter = new ListFilter(include);
     if (entityType != null) {

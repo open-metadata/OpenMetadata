@@ -78,8 +78,9 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
 
 export type ListTestDefinitionsParams = ListParams & {
   entityType?: EntityType;
-  testPlatform: TestPlatform;
+  testPlatform?: TestPlatform;
   supportedDataType?: string;
+  enabled?: boolean;
 };
 
 export type ListTestCaseResultsParams = Omit<
@@ -274,6 +275,38 @@ export const getTestDefinitionById = async (
     {
       params,
     }
+  );
+
+  return response.data;
+};
+
+export const createTestDefinition = async (data: TestDefinition) => {
+  const response = await APIClient.post<TestDefinition>(
+    testDefinitionUrl,
+    data
+  );
+
+  return response.data;
+};
+
+export const updateTestDefinition = async (data: TestDefinition) => {
+  const response = await APIClient.put<TestDefinition>(testDefinitionUrl, data);
+
+  return response.data;
+};
+
+export const patchTestDefinition = async (id: string, patch: Operation[]) => {
+  const response = await APIClient.patch<TestDefinition>(
+    `${testDefinitionUrl}/${id}`,
+    patch
+  );
+
+  return response.data;
+};
+
+export const deleteTestDefinitionById = async (id: string) => {
+  const response = await APIClient.delete<TestDefinition>(
+    `${testDefinitionUrl}/${id}`
   );
 
   return response.data;

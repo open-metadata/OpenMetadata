@@ -6229,8 +6229,8 @@ public interface CollectionDAO {
 
       if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
-        mysqlCondition.append("AND enabled=" + enabledValue + " ");
-        psqlCondition.append("AND enabled=" + enabledValue + " ");
+        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
+        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
       }
 
       return listCount(
