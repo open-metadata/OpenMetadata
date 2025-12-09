@@ -236,6 +236,15 @@ class TagClassBase {
       href: '',
     } as Tag;
   }
+
+  public getRecognizerFeedbackComponent(
+    tagLabel: unknown,
+    entityLink: string,
+    onFeedbackSuccess?: () => void,
+    size?: 'small' | 'medium' | 'large'
+  ): React.ReactElement | null {
+    return null;
+  }
 }
 
 const tagClassBase = new TagClassBase();
