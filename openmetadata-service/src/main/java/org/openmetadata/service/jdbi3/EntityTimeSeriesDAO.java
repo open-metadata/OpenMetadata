@@ -148,22 +148,6 @@ public interface EntityTimeSeriesDAO {
           + "WHERE ranked.row_num = 1 LIMIT :limit OFFSET :offset")
   List<String> listWithOffset(
       @Define("table") String table,
-      @Define("cond") String cond,
-      @Define("partition") String partition,
-      @Bind("limit") int limit,
-      @Bind("offset") int offset,
-      @Bind("startTs") Long startTs,
-      @Bind("endTs") Long endTs);
-
-  @SqlQuery(
-      "SELECT json FROM "
-          + "(SELECT id, json, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
-          + "FROM <table> <cond> "
-          + "AND timestamp BETWEEN :startTs AND :endTs "
-          + "ORDER BY timestamp DESC) ranked "
-          + "WHERE ranked.row_num = 1 LIMIT :limit OFFSET :offset")
-  List<String> listWithOffset(
-      @Define("table") String table,
       @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Define("partition") String partition,
