@@ -624,7 +624,7 @@ export const getSearchIndexOverview = (
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? NO_DATA,
+      value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
         service?.name ?? '',
         ServiceCategory.SEARCH_SERVICES
@@ -1082,9 +1082,9 @@ const getApiCollectionOverview = (apiCollection: APICollection) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? NO_DATA,
+      value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.API_SERVICES
       ),
       isLink: true,
@@ -1130,7 +1130,7 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
       name: i18next.t('label.service'),
       value: service?.fullyQualifiedName ?? '',
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.API_SERVICES
       ),
       isLink: true,

@@ -54,6 +54,7 @@ export const PAGE_SIZE_LARGE = 50;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
+export const LINEAGE_CHILD_ITEMS_PER_PAGE = 5;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
 export const MAX_NAME_LENGTH = 256;
@@ -66,6 +67,13 @@ export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const ONE_HOUR_MS = 3600000; // 1 hour in milliseconds
+export const SCROLL_TRIGGER_THRESHOLD = 200;
+export const INITIAL_PAGING_STATE = {
+  offset: 0,
+  limit: PAGE_SIZE_BASE,
+  total: 0,
+};
+
 export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
 export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
