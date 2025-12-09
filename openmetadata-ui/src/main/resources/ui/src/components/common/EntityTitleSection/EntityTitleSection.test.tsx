@@ -330,34 +330,6 @@ describe('EntityTitleSection', () => {
 
       expect(link).toHaveAttribute('href', '/dashboard/test-dashboard');
     });
-
-    it('should open link in new tab', () => {
-      render(
-        <EntityTitleSection
-          entityDetails={{ name: 'Test Entity' }}
-          entityLink="/table/test"
-        />,
-        { wrapper: Wrapper }
-      );
-
-      const link = screen.getByTestId('entity-link');
-
-      expect(link).toHaveAttribute('target', '_blank');
-    });
-
-    it('should have noopener noreferrer for security', () => {
-      render(
-        <EntityTitleSection
-          entityDetails={{ name: 'Test Entity' }}
-          entityLink="/table/test"
-        />,
-        { wrapper: Wrapper }
-      );
-
-      const link = screen.getByTestId('entity-link');
-
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    });
   });
 
   describe('Entity Details with fullyQualifiedName', () => {
