@@ -1591,6 +1591,7 @@
     "show-more": "もっと見る",
     "show-more-entity": "{{entity}} をさらに表示",
     "show-more-lowercase": "さらに表示",
+    "show-nested": "ネストを表示",
     "show-or-hide-advanced-config": "{{showAdv}} 高度な設定",
     "show-or-hide-column-plural": "カラムの表示/非表示",
     "sign-in": "サインイン",
