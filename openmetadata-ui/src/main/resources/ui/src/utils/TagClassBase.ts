@@ -26,6 +26,7 @@ import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
 import { Tab } from '../generated/system/ui/uiCustomization';
+import { TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../rest/searchAPI';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
@@ -245,7 +246,8 @@ class TagClassBase {
   public getRecognizerTab = (
     _tagData: Tag,
     _activeTab: string,
-    _t: (key: string) => string
+    _t: (key: string) => string,
+    _count?: number
   ): {
     label: React.ReactElement;
     key: string;
@@ -253,6 +255,14 @@ class TagClassBase {
   } | null => {
     return null;
   };
+
+  public getRecognizerFeedbackComponent(
+    _tagLabel: TagLabel,
+    _entityFqn: string,
+    _children: React.ReactElement
+  ): React.ReactElement | null {
+    return null;
+  }
 }
 
 const tagClassBase = new TagClassBase();
