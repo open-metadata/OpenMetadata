@@ -35,6 +35,8 @@ export interface DeleteWebSocketEvent {
 
 // Store for WebSocket routes to send messages later
 let wsRoute: WebSocketRoute | null = null;
+let wsRouteResolve: (() => void) | null = null;
+let wsRoutePromise: Promise<void> | null = null;
 
 /**
  * Sets up WebSocket route interception for testing.
@@ -43,7 +45,12 @@ let wsRoute: WebSocketRoute | null = null;
  * @see https://playwright.dev/docs/api/class-websocketroute
  */
 export const setupWebSocketRoute = async (page: Page) => {
-  await page.routeWebSocket(/.*activity-feed.*/, (ws) => {
+  // Create a promise that resolves when WebSocket connection is established
+  wsRoutePromise = new Promise<void>((resolve) => {
+    wsRouteResolve = resolve;
+  });
+
+  await page.routeWebSocket(/.*push\/feed.*/, (ws) => {
     wsRoute = ws;
     // Connect to actual server and forward messages
     const server = ws.connectToServer();
@@ -51,7 +58,26 @@ export const setupWebSocketRoute = async (page: Page) => {
     ws.onMessage((message) => server.send(message));
     // Forward messages from server to page
     server.onMessage((message) => ws.send(message));
+    // Resolve the promise now that WebSocket is connected
+    wsRouteResolve?.();
   });
+};
+
+/**
+ * Waits for the WebSocket connection to be established.
+ * Call this after setupWebSocketRoute and after page navigation.
+ * @param timeout - Maximum time to wait in ms (default: 10000)
+ */
+export const waitForWebSocketConnection = async (timeout = 10000) => {
+  if (!wsRoutePromise) {
+    throw new Error('WebSocket route not set up. Call setupWebSocketRoute first.');
+  }
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('WebSocket connection timeout')), timeout);
+  });
+  
+  await Promise.race([wsRoutePromise, timeoutPromise]);
 };
 
 /**
@@ -63,7 +89,7 @@ const sendSocketIOMessage = (event: string, data: unknown) => {
     throw new Error('WebSocket route not set up. Call setupWebSocketRoute first.');
   }
   // Socket.io protocol: 42 = EVENT packet
-  const message = `42["${event}",${JSON.stringify(JSON.stringify(data))}]`;
+  const message = `42["${event}",${JSON.stringify(data)}]`;
   wsRoute.send(message);
 };
 
@@ -107,6 +133,8 @@ export const emitDeleteFailure = (
  */
 export const clearWebSocketRoute = () => {
   wsRoute = null;
+  wsRouteResolve = null;
+  wsRoutePromise = null;
 };
 
 /**

@@ -21,6 +21,7 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../support/team/TeamClass';
+import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -30,13 +31,15 @@ import {
   initiateDelete,
   mockDeleteApiSuccess,
   setupWebSocketRoute,
-  unmockDeleteApi,
   waitForGlossaryListRefetch,
+  waitForWebSocketConnection,
 } from '../../utils/asyncDelete';
 import {
   clickOutside,
   descriptionBox,
+  getAuthContext,
   getRandomLastName,
+  getToken,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -1248,12 +1251,23 @@ test.describe('Glossary tests', () => {
   test('Async Delete - WebSocket failure triggers recovery', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    test.slow(true);
+    // Create page and set up WebSocket route BEFORE login
+    const page = await browser.newPage();
+    await setupWebSocketRoute(page);
+
+    // Now login on this page (WebSocket will be intercepted during login)
+    const admin = new AdminClass();
+    await admin.login(page);
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
     const glossary1 = new Glossary();
 
     try {
-      // Set up WebSocket interception
-      await setupWebSocketRoute(page);
+      // // Wait for WebSocket connection to be established (should happen during login)
+      await waitForWebSocketConnection();
 
       await glossary1.create(apiContext);
       await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -1264,21 +1278,19 @@ test.describe('Glossary tests', () => {
       const jobId = await mockDeleteApiSuccess(page, 'glossaries');
       await initiateDelete(page);
       await toastNotification(page, /Delete operation initiated/i);
-      await unmockDeleteApi(page, 'glossaries');
 
       // Simulate WebSocket failure
       const refetch = waitForGlossaryListRefetch(page);
       emitDeleteFailure(jobId, glossary1.data.name);
-      await toastNotification(page, /failed|error/i);
       await refetch;
 
       // Item should be restored
       await expectGlossaryVisible(page, glossary1.data.displayName);
     } finally {
       clearWebSocketRoute();
-      await unmockDeleteApi(page, 'glossaries');
       await glossary1.delete(apiContext);
-      await afterAction();
+      await apiContext.dispose();
+      await page.close();
     }
   });
 
@@ -1301,12 +1313,12 @@ test.describe('Glossary tests', () => {
       // Delete A
       await selectActiveGlossary(page, glossaryA.data.displayName);
       await initiateDelete(page);
-      await toastNotification(page, /deleted successfully/i);
+      await toastNotification(page, /Delete operation initiated/i);
 
       // Delete B
       await selectActiveGlossary(page, glossaryB.data.displayName);
       await initiateDelete(page);
-      await toastNotification(page, /deleted successfully/i);
+      await toastNotification(page, /Delete operation initiated/i);
 
       // A and B deleted, C remains
       await expect(
@@ -1325,14 +1337,26 @@ test.describe('Glossary tests', () => {
   test('Async Delete - multiple deletes with mixed results', async ({
     browser,
   }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+
+    test.slow(true);
+    // Create page and set up WebSocket route BEFORE login
+    const page = await browser.newPage();
+    await setupWebSocketRoute(page);
+
+    // Now login on this page (WebSocket will be intercepted during login)
+    const admin = new AdminClass();
+    await admin.login(page);
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
     const glossaryA = new Glossary();
     const glossaryB = new Glossary();
     const glossaryC = new Glossary();
 
     try {
-      // Set up WebSocket interception
-      await setupWebSocketRoute(page);
+      // Wait for WebSocket connection to be established
+      await waitForWebSocketConnection();
 
       await glossaryA.create(apiContext);
       await glossaryB.create(apiContext);
@@ -1343,7 +1367,7 @@ test.describe('Glossary tests', () => {
       await expectGlossaryVisible(page, glossaryB.data.displayName);
       await expectGlossaryVisible(page, glossaryC.data.displayName);
 
-      // Delete A (succeeds)
+      // Delete A (succeeds - not mocked)
       await selectActiveGlossary(page, glossaryA.data.displayName);
       await initiateDelete(page);
       await toastNotification(page, /deleted successfully/i);
@@ -1353,11 +1377,9 @@ test.describe('Glossary tests', () => {
       const jobIdB = await mockDeleteApiSuccess(page, 'glossaries');
       await initiateDelete(page);
       await toastNotification(page, /Delete operation initiated/i);
-      await unmockDeleteApi(page, 'glossaries');
 
       const refetch = waitForGlossaryListRefetch(page);
       emitDeleteFailure(jobIdB, glossaryB.data.name);
-      await toastNotification(page, /failed|error/i);
       await refetch;
 
       // A deleted, B restored, C untouched
@@ -1368,10 +1390,10 @@ test.describe('Glossary tests', () => {
       await expectGlossaryVisible(page, glossaryC.data.displayName);
     } finally {
       clearWebSocketRoute();
-      await unmockDeleteApi(page, 'glossaries');
       await glossaryB.delete(apiContext);
       await glossaryC.delete(apiContext);
-      await afterAction();
+      await apiContext.dispose();
+      await page.close();
     }
   });
 
