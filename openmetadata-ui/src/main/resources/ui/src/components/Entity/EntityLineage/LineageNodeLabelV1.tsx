@@ -18,7 +18,7 @@ import { capitalize, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as FilterIcon1 } from '../../../assets/svg/ic-filter.svg';
+import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-filter.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
@@ -38,6 +38,7 @@ interface LineageNodeLabelProps {
   node: SourceType;
   isChildrenListExpanded?: boolean;
   toggleColumnsList?: () => void;
+  toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
 }
 
 interface LineageNodeLabelPropsExtended
@@ -172,6 +173,7 @@ const EntityFooter = ({
   isChildrenListExpanded,
   node,
   toggleColumnsList,
+  toggleOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelPropsExtended) => {
   const { children, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
@@ -196,8 +198,9 @@ const EntityFooter = ({
   const handleOnlyShowColumnsWithLineage = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
+      toggleOnlyShowColumnsWithLineageFilterActive?.();
     },
-    []
+    [toggleOnlyShowColumnsWithLineageFilterActive]
   );
 
   if (childrenCount === 0) {
@@ -217,15 +220,8 @@ const EntityFooter = ({
         {childrenInfoDropdownLabel}
       </Button>
       <TestSuiteSummaryContainer node={node} />
-      <IconButton>
-        <FilterIcon1
-          className="mapping-icon"
-          height={20}
-          width={20}
-          onClick={() => {
-            handleOnlyShowColumnsWithLineage;
-          }}
-        />
+      <IconButton onClick={handleOnlyShowColumnsWithLineage}>
+        <FilterIcon className="mapping-icon" height={20} width={20} />
       </IconButton>
     </div>
   );
@@ -235,6 +231,7 @@ const LineageNodeLabelV1 = ({
   node,
   isChildrenListExpanded,
   toggleColumnsList,
+  toggleOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelProps) => {
   return (
     <div className="custom-node-label-container m-0">
@@ -243,6 +240,9 @@ const LineageNodeLabelV1 = ({
         isChildrenListExpanded={isChildrenListExpanded}
         node={node}
         toggleColumnsList={toggleColumnsList}
+        toggleOnlyShowColumnsWithLineageFilterActive={
+          toggleOnlyShowColumnsWithLineageFilterActive
+        }
       />
     </div>
   );
