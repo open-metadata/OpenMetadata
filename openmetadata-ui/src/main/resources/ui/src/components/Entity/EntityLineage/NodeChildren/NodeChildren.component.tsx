@@ -218,6 +218,7 @@ const NodeChildren = ({
   node,
   isConnectable,
   isChildrenListExpanded,
+  isOnlyShowColumnsWithLineageFilterActive,
 }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
@@ -368,6 +369,14 @@ const NodeChildren = ({
       setIsLoading(false);
     }
   }, [node, showDataObservabilitySummary, summary]);
+
+  useEffect(() => {
+    console.log(
+      'isOnlyShowColumnsWithLineageFilterActive',
+      isOnlyShowColumnsWithLineageFilterActive
+    );
+  }, [isOnlyShowColumnsWithLineageFilterActive]);
+  console.log('Rendering Nodechildren');
 
   const renderRecord = useCallback(
     (record: Column) => {
