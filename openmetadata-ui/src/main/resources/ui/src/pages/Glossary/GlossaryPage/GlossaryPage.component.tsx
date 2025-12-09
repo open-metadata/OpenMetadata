@@ -333,6 +333,7 @@ const GlossaryPage = () => {
           deleteType: DeleteType.HARD_DELETE,
           prepareType: true,
           isRecursiveDelete: true,
+          onDeleteFailure: fetchGlossaryList,
         });
 
         // check updated glossary list after deletion
@@ -353,7 +354,7 @@ const GlossaryPage = () => {
         );
       }
     },
-    [glossaries, activeGlossary]
+    [glossaries, activeGlossary, fetchGlossaryList]
   );
 
   const handleGlossaryTermUpdate = useCallback(
@@ -398,6 +399,7 @@ const GlossaryPage = () => {
           deleteType: DeleteType.HARD_DELETE,
           prepareType: true,
           isRecursiveDelete: true,
+          onDeleteFailure: fetchGlossaryList,
         });
 
         let fqn;
@@ -418,7 +420,7 @@ const GlossaryPage = () => {
         );
       }
     },
-    [glossaryFqn, activeGlossary]
+    [glossaryFqn, activeGlossary, fetchGlossaryList]
   );
 
   const handleAssetClick = useCallback(
