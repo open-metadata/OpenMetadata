@@ -597,7 +597,7 @@ const TagsPage = () => {
     width: 670,
     closeOnEscape: false,
     header: {
-      sx: DRAWER_HEADER_STYLING,
+      sx: { ...DRAWER_HEADER_STYLING, py: 5 },
     },
     onCancel: () => {
       tagForm.resetFields();
