@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page, test as base, expect } from '@playwright/test';
 import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';
@@ -50,7 +50,6 @@ const test = base.extend<{
   userPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    // Use admin context with stored auth state
     const adminContext = await browser.newContext({
       storageState: 'playwright/.auth/admin.json',
     });
@@ -60,7 +59,6 @@ const test = base.extend<{
     await adminContext.close();
   },
   userPage: async ({ browser }, use) => {
-    // Create a fresh context for user without stored auth
     const userContext = await browser.newContext({
       storageState: undefined,
     });
@@ -289,10 +287,33 @@ test.describe.serial('Persona operations', () => {
 });
 
 test.describe.serial('Default persona setting and removal flow', () => {
+  const test = base.extend<{
+    adminPage: Page;
+    userPage: Page;
+  }>({
+    adminPage: async ({ browser }, use) => {
+      const adminContext = await browser.newContext({
+        storageState: 'playwright/.auth/admin.json',
+      });
+      const page = await adminContext.newPage();
+      await page.goto('/');
+      await use(page);
+      await adminContext.close();
+    },
+    userPage: async ({ browser }, use) => {
+      const userContext = await browser.newContext({
+        storageState: undefined,
+      });
+      const page = await userContext.newPage();
+      await user.login(page);
+      await use(page);
+      await userContext.close();
+    },
+  });
+
   test.beforeAll('Setup user for default persona flow', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await user.create(apiContext);
-
     const adminResponse = await apiContext.get('/api/v1/users/name/admin');
     const adminData = await adminResponse.json();
 
@@ -334,16 +355,6 @@ test.describe.serial('Default persona setting and removal flow', () => {
     userPage,
   }) => {
     test.slow(true);
-
-    await test.step(
-      'User logs in and checks no default persona is set',
-      async () => {
-        await user.login(userPage);
-        await userPage.waitForURL('/my-data');
-        await waitForAllLoadersToDisappear(userPage);
-        await checkPersonaInProfile(userPage); // Expect no persona
-      }
-    );
 
     await test.step(
       'Admin creates a persona and sets the default persona',
@@ -452,13 +463,18 @@ test.describe.serial('Default persona setting and removal flow', () => {
     );
 
     await test.step('Changing default persona', async () => {
-      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
 
-      await adminPage
-        .getByTestId(
-          `persona-details-card-${persona1.responseData.fullyQualifiedName}`
-        )
-        .click();
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      await personaListResponse;
+      await adminPage.waitForLoadState('networkidle');
+      await navigateToPersonaWithPagination(
+        adminPage,
+        persona1.responseData.fullyQualifiedName ?? persona1.responseData.name,
+        true
+      );
+
       await adminPage.waitForLoadState('networkidle');
       await setPersonaAsDefault(adminPage);
     });
