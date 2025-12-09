@@ -56,7 +56,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
   const getTagsElement = useCallback(
     (tag: EntityTags) => {
-      if (tag.labelType === LabelType.Generated && entityFqn && entityType) {
+      if (tag.labelType === LabelType.Automated && entityFqn && entityType) {
         const entityLink = `<#E::${entityType.toLowerCase()}::${entityFqn}>`;
         const feedbackComponent = tagClassBase.getRecognizerFeedbackComponent(
           tag,
