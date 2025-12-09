@@ -61,13 +61,14 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
 
   useEffect(() => {
     if (initialValues) {
-      const initialSqlExpression = (initialValues as any).sqlExpression || '';
+      const initialSqlExpression = (initialValues as TestDefinition & { sqlExpression?: string }).sqlExpression || '';
       setSqlExpression(initialSqlExpression);
       form.setFieldsValue({
         name: initialValues.name,
         displayName: initialValues.displayName,
         description: initialValues.description,
         entityType: initialValues.entityType,
+        testPlatforms: initialValues.testPlatforms || [TestPlatform.OpenMetadata],
         dataQualityDimension: initialValues.dataQualityDimension,
         supportedDataTypes: initialValues.supportedDataTypes,
         parameterDefinition: initialValues.parameterDefinition,
@@ -86,14 +87,14 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
       const values = await form.validateFields();
       setIsSubmitting(true);
 
-      const payload: any = {
+      const payload: Partial<TestDefinition> & { sqlExpression?: string } = {
         ...initialValues,
         name: values.name,
         displayName: values.displayName,
         description: values.description,
         sqlExpression: sqlExpression,
         entityType: values.entityType,
-        testPlatforms: [TestPlatform.OpenMetadata],
+        testPlatforms: values.testPlatforms,
         dataQualityDimension: values.dataQualityDimension,
         supportedDataTypes: values.supportedDataTypes,
         parameterDefinition: values.parameterDefinition,
@@ -207,6 +208,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
             },
           ]}>
           <Select
+            id="entityType"
             disabled={isEditMode}
             options={Object.values(EntityType).map((type) => ({
               label: type,
@@ -214,6 +216,30 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
             }))}
             placeholder={t('label.select-field', {
               field: t('label.entity-type'),
+            })}
+          />
+        </Form.Item>
+
+        <Form.Item
+          label={t('label.test-platform')}
+          name="testPlatforms"
+          rules={[
+            {
+              required: true,
+              message: t('message.field-text-is-required', {
+                fieldText: t('label.test-platform'),
+              }),
+            },
+          ]}>
+          <Select
+            id="testPlatforms"
+            mode="multiple"
+            options={Object.values(TestPlatform).map((platform) => ({
+              label: platform,
+              value: platform,
+            }))}
+            placeholder={t('label.select-field', {
+              field: t('label.test-platform'),
             })}
           />
         </Form.Item>

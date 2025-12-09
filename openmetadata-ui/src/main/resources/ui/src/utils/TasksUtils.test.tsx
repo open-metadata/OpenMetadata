@@ -39,7 +39,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       mockTableData
     );
 
-    expect(entityName).toEqual('data_test_id');
+    expect(entityName).toBe('data_test_id');
   });
 
   it('function getEntityTableName should return name if it contains dot in it name', () => {
@@ -49,7 +49,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       mockTableData
     );
 
-    expect(entityName).toEqual('data.test_id');
+    expect(entityName).toBe('data.test_id');
   });
 
   it('function getEntityTableName should return name if entity type not found', () => {
@@ -59,7 +59,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       mockTableData
     );
 
-    expect(entityName).toEqual('cyber_test');
+    expect(entityName).toBe('cyber_test');
   });
 
   it('function getEntityTableName should return entity display name for all entities', () => {
@@ -69,7 +69,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       mockTableData
     );
 
-    expect(entityTableName).toEqual('Shop Id Customer');
+    expect(entityTableName).toBe('Shop Id Customer');
   });
 });
 
@@ -91,7 +91,7 @@ describe('Tests for getTaskMessage', () => {
     // entity request task message
     const requestTagsEntityMessage = getTaskMessage(taskTagMessage);
 
-    expect(requestTagsEntityMessage).toEqual(
+    expect(requestTagsEntityMessage).toBe(
       'Request Tag for table raw_product_catalog '
     );
 
@@ -102,7 +102,7 @@ describe('Tests for getTaskMessage', () => {
       field: 'columns',
     });
 
-    expect(requestTagsEntityColumnMessage).toEqual(
+    expect(requestTagsEntityColumnMessage).toBe(
       'Request Tag for table raw_product_catalog columns/order_id'
     );
 
@@ -112,7 +112,7 @@ describe('Tests for getTaskMessage', () => {
       startMessage: 'Update Tag',
     });
 
-    expect(updateTagsEntityMessage).toEqual(
+    expect(updateTagsEntityMessage).toBe(
       'Update Tag for table raw_product_catalog '
     );
 
@@ -124,7 +124,7 @@ describe('Tests for getTaskMessage', () => {
       startMessage: 'Update Tag',
     });
 
-    expect(updateTagsEntityColumnMessage).toEqual(
+    expect(updateTagsEntityColumnMessage).toBe(
       'Update Tag for table raw_product_catalog columns/order_id'
     );
   });
@@ -135,7 +135,7 @@ describe('Tests for getTaskMessage', () => {
       taskDescriptionMessage
     );
 
-    expect(requestDescriptionEntityMessage).toEqual(
+    expect(requestDescriptionEntityMessage).toBe(
       'Request Description for table raw_product_catalog '
     );
 
@@ -146,7 +146,7 @@ describe('Tests for getTaskMessage', () => {
       field: 'columns',
     });
 
-    expect(requestDescriptionEntityColumnMessage).toEqual(
+    expect(requestDescriptionEntityColumnMessage).toBe(
       'Request Description for table raw_product_catalog columns/order_id'
     );
 
@@ -156,7 +156,7 @@ describe('Tests for getTaskMessage', () => {
       startMessage: 'Update Description',
     });
 
-    expect(updateDescriptionEntityMessage).toEqual(
+    expect(updateDescriptionEntityMessage).toBe(
       'Update Description for table raw_product_catalog '
     );
 
@@ -168,7 +168,7 @@ describe('Tests for getTaskMessage', () => {
       startMessage: 'Update Description',
     });
 
-    expect(updateDescriptionEntityColumnMessage).toEqual(
+    expect(updateDescriptionEntityColumnMessage).toBe(
       'Update Description for table raw_product_catalog columns/order_id'
     );
   });
@@ -314,7 +314,7 @@ describe('Tests for getTaskEntityFQN', () => {
       'sample_data.ecommerce_db.shopify."dim.product".address_id'
     );
 
-    expect(response).toEqual('sample_data.ecommerce_db.shopify."dim.product"');
+    expect(response).toBe('sample_data.ecommerce_db.shopify."dim.product"');
   });
 
   it('should return fqn as it is if entity type is not table', async () => {

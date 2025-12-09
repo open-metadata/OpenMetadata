@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { ProviderType } from '../../../generated/entity/bot';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -211,22 +212,30 @@ const TestDefinitionList = () => {
         key: 'actions',
         width: 120,
         fixed: 'right',
-        render: (_, record: TestDefinition) => (
-          <Space size="small">
-            <Button
-              data-testid={`edit-test-definition-${record.name}`}
-              icon={<IconEdit height={16} width={16} />}
-              type="text"
-              onClick={() => handleEdit(record)}
-            />
-            <Button
-              data-testid={`delete-test-definition-${record.name}`}
-              icon={<IconDelete height={16} width={16} />}
-              type="text"
-              onClick={() => handleDeleteClick(record)}
-            />
-          </Space>
-        ),
+        render: (_, record: TestDefinition) => {
+          const isSystemProvider = record.provider === ProviderType.System;
+
+          return (
+            <Space size="small">
+              {!isSystemProvider && (
+                <>
+                  <Button
+                    data-testid={`edit-test-definition-${record.name}`}
+                    icon={<IconEdit height={16} width={16} />}
+                    type="text"
+                    onClick={() => handleEdit(record)}
+                  />
+                  <Button
+                    data-testid={`delete-test-definition-${record.name}`}
+                    icon={<IconDelete height={16} width={16} />}
+                    type="text"
+                    onClick={() => handleDeleteClick(record)}
+                  />
+                </>
+              )}
+            </Space>
+          );
+        },
       },
     ],
     [t]

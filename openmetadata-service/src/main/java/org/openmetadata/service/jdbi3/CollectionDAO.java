@@ -6290,7 +6290,7 @@ public interface CollectionDAO {
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
           && enabled == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
@@ -6330,7 +6330,7 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' IS NULL "
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
- 
+
       if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
         mysqlCondition.append("AND enabled=" + enabledValue + " ");
@@ -6359,7 +6359,7 @@ public interface CollectionDAO {
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
           && enabled == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
@@ -6400,7 +6400,7 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
 
-	  if (enabled != null) {
+      if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
         mysqlCondition.append("AND enabled=" + enabledValue + " ");
         psqlCondition.append("AND enabled=" + enabledValue + " ");
@@ -6428,7 +6428,7 @@ public interface CollectionDAO {
       if (entityType == null
           && testPlatform == null
           && supportedDataType == null
-          && supportedService == null) {
+          && supportedService == null
           && enabled == null) {
         return EntityDAO.super.listCount(filter);
       }
@@ -6469,7 +6469,7 @@ public interface CollectionDAO {
                 + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
       }
 
-	  if (enabled != null) {
+      if (enabled != null) {
         String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
         mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
         psqlCondition.append("AND enabled=").append(enabledValue).append(" ");

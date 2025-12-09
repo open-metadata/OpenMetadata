@@ -185,8 +185,8 @@ describe('TableProfilerChart component test', () => {
     expect(mockGetSystemProfileList.mock.instances).toHaveLength(1);
     expect(mockGetTableProfilesList.mock.instances).toHaveLength(1);
     // API should be call with FQN value
-    expect(mockGetSystemProfileList.mock.calls[0][0]).toEqual('testFQN');
-    expect(mockGetTableProfilesList.mock.calls[0][0]).toEqual('testFQN');
+    expect(mockGetSystemProfileList.mock.calls[0][0]).toBe('testFQN');
+    expect(mockGetTableProfilesList.mock.calls[0][0]).toBe('testFQN');
     // API should be call with proper Param value
     expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({
       endTs: MOCK_END_TS,

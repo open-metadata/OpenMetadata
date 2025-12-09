@@ -569,9 +569,9 @@ describe('getAlertEventsFilterLabels', () => {
       AlertRecentEventFilters.FAILED
     );
 
-    expect(allLabel).toStrictEqual('label.all');
-    expect(successLabel).toStrictEqual('label.successful');
-    expect(failedLabel).toStrictEqual('label.failed');
+    expect(allLabel).toBe('label.all');
+    expect(successLabel).toBe('label.successful');
+    expect(failedLabel).toBe('label.failed');
   });
 
   it('should return empty string for unknown filter', () => {
@@ -579,7 +579,7 @@ describe('getAlertEventsFilterLabels', () => {
       'unknown' as AlertRecentEventFilters
     );
 
-    expect(unknownLabel).toStrictEqual('');
+    expect(unknownLabel).toBe('');
   });
 });
 

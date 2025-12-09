@@ -419,4 +419,86 @@ public class TestDefinitionResourceTest
         FORBIDDEN,
         permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
   }
+
+  @Test
+  void test_systemTestDefinitionCannotModifyEntityType(TestInfo test) throws Exception {
+    // Get a system test definition
+    TestDefinition systemDef = getEntityByName("columnValuesToBeNotNull", "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        org.openmetadata.schema.type.ProviderType.SYSTEM,
+        systemDef.getProvider(),
+        "Should be a system test definition");
+
+    // Try to modify entity type using JSON Patch - should fail
+    String originalJson = JsonUtils.pojoToJson(systemDef);
+    systemDef.setEntityType(TestDefinitionEntityType.TABLE);
+    String updatedJson = JsonUtils.pojoToJson(systemDef);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+    assertResponse(
+        () -> patchEntity(systemDef.getId(), patch, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "System test definitions cannot have their entity type modified");
+  }
+
+  @Test
+  void test_systemTestDefinitionCannotBeDeleted(TestInfo test) throws HttpResponseException {
+    // Get a system test definition
+    TestDefinition systemDef = getEntityByName("columnValuesToBeNotNull", "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        org.openmetadata.schema.type.ProviderType.SYSTEM,
+        systemDef.getProvider(),
+        "Should be a system test definition");
+
+    // Try to delete the system test definition - should fail
+    assertResponse(
+        () -> deleteEntity(systemDef.getId(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "System entity [columnValuesToBeNotNull] of type testDefinition can not be deleted.");
+  }
+
+  @Test
+  void test_userTestDefinitionCanBeModified(TestInfo test) throws Exception {
+    // Create a user test definition
+    TestDefinition userDef = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        org.openmetadata.schema.type.ProviderType.USER,
+        userDef.getProvider(),
+        "Should be a user test definition");
+
+    // Modify entity type using JSON Patch - should succeed
+    String originalJson = JsonUtils.pojoToJson(userDef);
+    userDef.setEntityType(TestDefinitionEntityType.TABLE);
+    String updatedJson = JsonUtils.pojoToJson(userDef);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+    TestDefinition modified = patchEntity(userDef.getId(), patch, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        TestDefinitionEntityType.TABLE,
+        modified.getEntityType(),
+        "User test definition entity type should be modifiable");
+  }
+
+  @Test
+  void test_userTestDefinitionCanBeDeleted(TestInfo test) throws HttpResponseException {
+    // Create a user test definition
+    TestDefinition userDef = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        org.openmetadata.schema.type.ProviderType.USER,
+        userDef.getProvider(),
+        "Should be a user test definition");
+
+    // Delete the user test definition - should succeed
+    deleteEntity(userDef.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify it's deleted
+    assertResponseContains(
+        () -> getEntity(userDef.getId(), ADMIN_AUTH_HEADERS),
+        jakarta.ws.rs.core.Response.Status.NOT_FOUND,
+        "not found");
+  }
 }
