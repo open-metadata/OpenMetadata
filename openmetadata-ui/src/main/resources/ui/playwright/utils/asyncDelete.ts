@@ -11,7 +11,18 @@
  *  limitations under the License.
  */
 
-import { expect, Page, WebSocketRoute } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+import {
+  cleanupWebSocketMock,
+  getWebSocketMock,
+  setupWebSocketMock,
+} from './websocket';
+
+// Re-export WebSocket utilities for convenience
+export {
+  cleanupWebSocketMock as clearMockedWebSocket,
+  setupWebSocketMock as setupMockedWebSocket,
+};
 
 /**
  * Entity types for async delete API routes
@@ -33,71 +44,11 @@ export interface DeleteWebSocketEvent {
   error?: string | null;
 }
 
-// Store for WebSocket routes to send messages later
-let wsRoute: WebSocketRoute | null = null;
-let wsRouteResolve: (() => void) | null = null;
-let wsRoutePromise: Promise<void> | null = null;
-
-/**
- * Sets up WebSocket route interception for testing.
- * Call this before navigating to the page.
- * Uses Playwright's native routeWebSocket API.
- * @see https://playwright.dev/docs/api/class-websocketroute
- */
-export const setupWebSocketRoute = async (page: Page) => {
-  // Create a promise that resolves when WebSocket connection is established
-  wsRoutePromise = new Promise<void>((resolve) => {
-    wsRouteResolve = resolve;
-  });
-
-  await page.routeWebSocket(/.*push\/feed.*/, (ws) => {
-    wsRoute = ws;
-    // Connect to actual server and forward messages
-    const server = ws.connectToServer();
-    // Forward messages from page to server
-    ws.onMessage((message) => server.send(message));
-    // Forward messages from server to page
-    server.onMessage((message) => ws.send(message));
-    // Resolve the promise now that WebSocket is connected
-    wsRouteResolve?.();
-  });
-};
-
-/**
- * Waits for the WebSocket connection to be established.
- * Call this after setupWebSocketRoute and after page navigation.
- * @param timeout - Maximum time to wait in ms (default: 10000)
- */
-export const waitForWebSocketConnection = async (timeout = 10000) => {
-  if (!wsRoutePromise) {
-    throw new Error('WebSocket route not set up. Call setupWebSocketRoute first.');
-  }
-  
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('WebSocket connection timeout')), timeout);
-  });
-  
-  await Promise.race([wsRoutePromise, timeoutPromise]);
-};
-
-/**
- * Sends a Socket.io formatted message to the page via WebSocket.
- * Socket.io message format: "42[\"event\",data]"
- */
-const sendSocketIOMessage = (event: string, data: unknown) => {
-  if (!wsRoute) {
-    throw new Error('WebSocket route not set up. Call setupWebSocketRoute first.');
-  }
-  // Socket.io protocol: 42 = EVENT packet
-  const message = `42["${event}",${JSON.stringify(data)}]`;
-  wsRoute.send(message);
-};
-
 /**
  * Emits a delete entity WebSocket event.
  */
 export const emitDeleteWebSocketEvent = (event: DeleteWebSocketEvent) => {
-  sendSocketIOMessage('deleteEntityChannel', event);
+  getWebSocketMock().emit('deleteEntityChannel', event);
 };
 
 /**
@@ -129,61 +80,7 @@ export const emitDeleteFailure = (
 };
 
 /**
- * Clears the WebSocket route reference.
- */
-export const clearWebSocketRoute = () => {
-  wsRoute = null;
-  wsRouteResolve = null;
-  wsRoutePromise = null;
-};
-
-/**
- * Mock response options for async delete API
- */
-export interface MockDeleteApiOptions {
-  status: number;
-  message: string;
-  jobId?: string;
-  hardDelete?: boolean;
-  recursive?: boolean;
-}
-
-/**
- * Mocks the async delete API to return an error response.
- * Use this to test delete failure scenarios.
- *
- * @param page - Playwright page
- * @param entityType - The entity type ('glossaries' or 'glossaryTerms')
- * @param status - HTTP status code (e.g., 400, 500)
- * @param message - Error message to return
- */
-export const mockDeleteApiError = async (
-  page: Page,
-  entityType: AsyncDeleteEntityType,
-  status: number,
-  message: string
-) => {
-  await page.route(`**/api/v1/${entityType}/async/**`, async (route) => {
-    await route.fulfill({
-      status,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        code: status,
-        message,
-      }),
-    });
-  });
-};
-
-/**
  * Mocks the async delete API to return a success response with jobId.
- * The backend won't actually delete since we're mocking.
- * Use this to test optimistic deletion and recovery flows.
- *
- * @param page - Playwright page
- * @param entityType - The entity type ('glossaries' or 'glossaryTerms')
- * @param jobId - Optional job ID (defaults to timestamp-based ID)
- * @returns The jobId used in the mock
  */
 export const mockDeleteApiSuccess = async (
   page: Page,
@@ -210,9 +107,6 @@ export const mockDeleteApiSuccess = async (
 
 /**
  * Removes the async delete API mock.
- *
- * @param page - Playwright page
- * @param entityType - The entity type ('glossaries' or 'glossaryTerms')
  */
 export const unmockDeleteApi = async (
   page: Page,
@@ -223,9 +117,6 @@ export const unmockDeleteApi = async (
 
 /**
  * Opens the delete confirmation modal via the manage button.
- * Does NOT click confirm - use confirmDelete() for that.
- *
- * @param page - Playwright page
  */
 export const openDeleteModal = async (page: Page) => {
   await page.click('[data-testid="manage-button"]');
@@ -235,9 +126,6 @@ export const openDeleteModal = async (page: Page) => {
 
 /**
  * Fills the DELETE confirmation and clicks confirm button.
- * Should be called after openDeleteModal().
- *
- * @param page - Playwright page
  */
 export const confirmDelete = async (page: Page) => {
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
@@ -246,9 +134,6 @@ export const confirmDelete = async (page: Page) => {
 
 /**
  * Opens delete modal and confirms deletion in one step.
- * Combines openDeleteModal() and confirmDelete().
- *
- * @param page - Playwright page
  */
 export const initiateDelete = async (page: Page) => {
   await openDeleteModal(page);
@@ -257,10 +142,6 @@ export const initiateDelete = async (page: Page) => {
 
 /**
  * Waits for a response from the glossaries list API.
- * Useful for verifying refetch after delete failure recovery.
- *
- * @param page - Playwright page
- * @returns Promise that resolves when the API responds
  */
 export const waitForGlossaryListRefetch = (page: Page) => {
   return page.waitForResponse(
@@ -271,25 +152,7 @@ export const waitForGlossaryListRefetch = (page: Page) => {
 };
 
 /**
- * Waits for a response from the glossary terms API.
- * Useful for verifying refetch after delete failure recovery.
- *
- * @param page - Playwright page
- * @returns Promise that resolves when the API responds
- */
-export const waitForGlossaryTermsRefetch = (page: Page) => {
-  return page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/glossaryTerms') &&
-      response.status() === 200
-  );
-};
-
-/**
  * Verifies that a glossary is visible in the sidebar menu.
- *
- * @param page - Playwright page
- * @param displayName - The display name of the glossary
  */
 export const expectGlossaryVisible = async (
   page: Page,
@@ -302,9 +165,6 @@ export const expectGlossaryVisible = async (
 
 /**
  * Verifies that a glossary is NOT visible in the sidebar menu.
- *
- * @param page - Playwright page
- * @param displayName - The display name of the glossary
  */
 export const expectGlossaryNotVisible = async (
   page: Page,
@@ -312,35 +172,5 @@ export const expectGlossaryNotVisible = async (
 ) => {
   await expect(
     page.getByRole('menuitem', { name: displayName })
-  ).not.toBeVisible();
-};
-
-/**
- * Verifies that a glossary term is visible in the table.
- *
- * @param page - Playwright page
- * @param displayName - The display name of the glossary term
- */
-export const expectGlossaryTermVisible = async (
-  page: Page,
-  displayName: string
-) => {
-  await expect(
-    page.getByRole('cell', { name: displayName })
-  ).toBeVisible();
-};
-
-/**
- * Verifies that a glossary term is NOT visible in the table.
- *
- * @param page - Playwright page
- * @param displayName - The display name of the glossary term
- */
-export const expectGlossaryTermNotVisible = async (
-  page: Page,
-  displayName: string
-) => {
-  await expect(
-    page.getByRole('cell', { name: displayName })
   ).not.toBeVisible();
 };
