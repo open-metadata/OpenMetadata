@@ -159,9 +159,13 @@ export const CustomEdge = ({
       targetHandle,
     });
 
+    const allColumnsInCurrentPages = Object.values(
+      columnsInCurrentPages
+    ).flat();
+
     return (
-      columnsInCurrentPages.includes(decodedHandles.sourceHandle ?? '') &&
-      columnsInCurrentPages.includes(decodedHandles.targetHandle ?? '')
+      allColumnsInCurrentPages.includes(decodedHandles.sourceHandle ?? '') &&
+      allColumnsInCurrentPages.includes(decodedHandles.targetHandle ?? '')
     );
   }, [columnsInCurrentPages, sourceHandle, targetHandle]);
 

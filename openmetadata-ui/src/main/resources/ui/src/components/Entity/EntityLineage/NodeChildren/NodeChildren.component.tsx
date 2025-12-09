@@ -137,14 +137,11 @@ const CustomPaginatedList = ({
 
   useEffect(() => {
     setColumnsInCurrentPages((prev) => {
-      const filtered = prev.filter(
-        (item) => !itemsOfPreviousPage.includes(item)
-      );
-
-      const updated = new Set(filtered);
-      itemsOfCurrentPage.forEach((item) => updated.add(item));
-
-      return Array.from(updated);
+      const updated = { ...prev };
+      if (nodeId) {
+        updated[nodeId] = itemsOfCurrentPage;
+      }
+      return updated;
     });
   }, [itemsOfPreviousPage, itemsOfCurrentPage, setColumnsInCurrentPages]);
 
