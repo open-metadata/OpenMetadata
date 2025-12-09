@@ -55,6 +55,7 @@ export enum FieldTypes {
   COVER_IMAGE_UPLOAD_MUI = 'cover_image_upload_mui',
   CRON_EDITOR = 'cron_editor',
   TREE_ASYNC_SELECT_LIST = 'tree_async_select_list',
+  CHIP_SELECT = 'chip_select',
 }
 
 export enum HelperTextType {

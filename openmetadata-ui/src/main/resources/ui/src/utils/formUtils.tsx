@@ -34,6 +34,8 @@ import { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
+import ChipSelect from '../components/common/ChipSelect/ChipSelect';
+import { ChipSelectProps } from '../components/common/ChipSelect/ChipSelect.interface';
 import { MUIColorPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import { MUICoverImageUpload } from '../components/common/CoverImageUpload';
@@ -443,6 +445,17 @@ export const getField = (field: FieldProp) => {
           <MUICoverImageUpload
             {...(props as Record<string, unknown>)}
             label={muiLabel as string}
+          />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.CHIP_SELECT: {
+      return (
+        <Form.Item {...formProps}>
+          <ChipSelect
+            {...(props as unknown as ChipSelectProps)}
+            label={label as string}
           />
         </Form.Item>
       );
