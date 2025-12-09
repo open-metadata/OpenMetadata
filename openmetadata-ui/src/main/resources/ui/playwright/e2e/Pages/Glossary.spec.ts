@@ -1235,9 +1235,8 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary1.data.displayName);
       await expectGlossaryVisible(page, glossary1.data.displayName);
 
-      await deleteGlossaryOrGlossaryTerm(page, glossary1.data.name);
+      await initiateDelete(page);
 
-      await toastNotification(page, /deleted successfully/i);
       await expect(
         page.getByRole('menuitem', { name: glossary1.data.displayName })
       ).not.toBeVisible();
@@ -1301,12 +1300,12 @@ test.describe('Glossary tests', () => {
 
       // Delete A
       await selectActiveGlossary(page, glossaryA.data.displayName);
-      await deleteGlossaryOrGlossaryTerm(page, glossaryA.data.name);
+      await initiateDelete(page);
       await toastNotification(page, /deleted successfully/i);
 
       // Delete B
       await selectActiveGlossary(page, glossaryB.data.displayName);
-      await deleteGlossaryOrGlossaryTerm(page, glossaryB.data.name);
+      await initiateDelete(page);
       await toastNotification(page, /deleted successfully/i);
 
       // A and B deleted, C remains
@@ -1346,7 +1345,7 @@ test.describe('Glossary tests', () => {
 
       // Delete A (succeeds)
       await selectActiveGlossary(page, glossaryA.data.displayName);
-      await deleteGlossaryOrGlossaryTerm(page, glossaryA.data.name);
+      await initiateDelete(page);
       await toastNotification(page, /deleted successfully/i);
 
       // Delete B (fails via WebSocket)
