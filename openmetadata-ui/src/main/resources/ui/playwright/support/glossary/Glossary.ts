@@ -43,7 +43,7 @@ export class Glossary extends EntityClass {
       terms: [],
       owners: [],
       // eslint-disable-next-line no-useless-escape
-      fullyQualifiedName: `\"PW%${randomId}.${randomName}\"`,
+      fullyQualifiedName: `\"PW%'${randomId}.${randomName}\"`,
     };
   }
 
