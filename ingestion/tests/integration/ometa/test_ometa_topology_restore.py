@@ -104,6 +104,7 @@ class TopologyRestoreTest(TestCase):
             Column(
                 name="name",
                 dataType=DataType.VARCHAR,
+                dataLength=255,
                 description=Markdown("Name field"),
             ),
         ]
@@ -223,7 +224,7 @@ class TopologyRestoreTest(TestCase):
 
     def test_restore_already_active_entity(self):
         """
-        Test that restoring an already active entity works without error
+        Test that restoring an already active entity returns None
         """
         table_id = str(self.table_entity.id.root)
 
@@ -237,6 +238,5 @@ class TopologyRestoreTest(TestCase):
         # Try to restore an already active entity
         restored_table = self.metadata.restore(entity=Table, entity_id=table_id)
 
-        # Should still succeed
-        self.assertIsNotNone(restored_table)
-        self.assertFalse(restored_table.deleted)
+        # Should return None when entity is already active
+        self.assertIsNone(restored_table)
