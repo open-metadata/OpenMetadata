@@ -6081,9 +6081,13 @@ public interface CollectionDAO {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
-      if (entityType == null && testPlatform == null && supportedDataType == null) {
+      if (entityType == null
+          && testPlatform == null
+          && supportedDataType == null
+          && enabled == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
@@ -6111,6 +6115,14 @@ public interface CollectionDAO {
         psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
       }
 
+      if (enabled != null) {
+        // Use SQL boolean keywords TRUE/FALSE for TINYINT(1) column (same pattern as deleted
+        // column)
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=" + enabledValue + " ");
+        psqlCondition.append("AND enabled=" + enabledValue + " ");
+      }
+
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
@@ -6126,9 +6138,13 @@ public interface CollectionDAO {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
-      if (entityType == null && testPlatform == null && supportedDataType == null) {
+      if (entityType == null
+          && testPlatform == null
+          && supportedDataType == null
+          && enabled == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
@@ -6156,6 +6172,12 @@ public interface CollectionDAO {
         psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
       }
 
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=" + enabledValue + " ");
+        psqlCondition.append("AND enabled=" + enabledValue + " ");
+      }
+
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
@@ -6171,9 +6193,13 @@ public interface CollectionDAO {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
+      String enabled = filter.getQueryParam("enabled");
       String condition = filter.getCondition();
 
-      if (entityType == null && testPlatform == null && supportedDataType == null) {
+      if (entityType == null
+          && testPlatform == null
+          && supportedDataType == null
+          && enabled == null) {
         return EntityDAO.super.listCount(filter);
       }
 
@@ -6200,6 +6226,13 @@ public interface CollectionDAO {
             "AND json_extract(json, '$.supportedDataTypes') LIKE :supportedDataTypeLike ");
         psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
       }
+
+      if (enabled != null) {
+        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
+        mysqlCondition.append("AND enabled=" + enabledValue + " ");
+        psqlCondition.append("AND enabled=" + enabledValue + " ");
+      }
+
       return listCount(
           getTableName(),
           filter.getQueryParams(),

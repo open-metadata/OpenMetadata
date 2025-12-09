@@ -149,7 +149,14 @@ public class TestDefinitionResource
               description = "Filter tests definition by supported data type",
               schema = @Schema(implementation = ColumnDataType.class))
           @QueryParam("supportedDataType")
-          String supportedDataTypeParam) {
+          String supportedDataTypeParam,
+      @Parameter(
+              description =
+                  "Filter by enabled status. Returns only enabled test definitions by default.",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("enabled")
+          @DefaultValue("true")
+          Boolean enabledParam) {
     ListFilter filter = new ListFilter(include);
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
@@ -159,6 +166,9 @@ public class TestDefinitionResource
     }
     if (supportedDataTypeParam != null) {
       filter.addQueryParam("supportedDataType", supportedDataTypeParam);
+    }
+    if (enabledParam != null) {
+      filter.addQueryParam("enabled", String.valueOf(enabledParam));
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);

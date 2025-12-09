@@ -5575,11 +5575,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(testCase.getId(), retrieved.getId());
 
     // Should be able to update the existing test case
+    String oldDescription = testCase.getDescription();
     String updatedDescription = "Updated description for existing test case";
     String json = JsonUtils.pojoToJson(testCase);
     testCase.setDescription(updatedDescription);
     ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
-    fieldUpdated(change, "description", json, updatedDescription);
+    fieldUpdated(change, "description", oldDescription, updatedDescription);
     patchEntityAndCheck(testCase, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Re-enable the test definition for cleanup using JSON Patch
