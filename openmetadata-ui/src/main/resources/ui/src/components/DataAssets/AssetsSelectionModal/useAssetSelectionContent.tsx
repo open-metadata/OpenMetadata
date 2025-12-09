@@ -18,37 +18,21 @@ import {
 import { CheckCircleOutline, ErrorOutline } from '@mui/icons-material';
 import {
   Box,
-  Button as MuiButton,
+  Button,
   CircularProgress,
+  Button as MuiButton,
   Divider as MuiDivider,
   Typography as MuiTypography,
 } from '@mui/material';
-import {
-  Alert,
-  Button,
-  Checkbox,
-  Divider,
-  Dropdown,
-  List,
-  Space,
-  Typography,
-} from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { EntityDetailUnion } from 'Models';
+import { Alert, Checkbox, Divider, List, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { EntityDetailUnion } from 'Models';
 import { useSnackbar } from 'notistack';
 import VirtualList from 'rc-virtual-list';
-import {
-  UIEventHandler,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import {
   ES_UPDATE_DELAY,
   PAGE_SIZE_MEDIUM,
@@ -86,14 +70,8 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../utils/ExploreUtils';
-import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Banner from '../../common/Banner/Banner';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../common/Loader/Loader';
-import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
-import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
 import {
   CSVExportJob,
   CSVExportResponse,
@@ -102,6 +80,11 @@ import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import Banner from '../../common/Banner/Banner';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
 import './asset-selection-model.style.less';
 
 export interface AssetSelectionContentProps {
@@ -147,27 +130,11 @@ export const useAssetSelectionContent = ({
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
   const [assetJobResponse, setAssetJobResponse] = useState<CSVExportResponse>();
   const [aggregations, setAggregations] = useState<Aggregations>();
-  const [selectedQuickFilters, setSelectedQuickFilters] = useState<
-    ExploreQuickFilterField[]
-  >([]);
   const [quickFilterQuery, setQuickFilterQuery] =
     useState<QueryFilterInterface>();
-  const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
 
   const { socket } = useWebSocketConnector();
-
-  const handleMenuClick = ({ key }: { key: string }) => {
-    setSelectedFilter((prevSelected) => [...prevSelected, key]);
-  };
-
-  const filterMenu: ItemType[] = useMemo(() => {
-    return filters.map((filter) => ({
-      key: filter.key,
-      label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
-      onClick: handleMenuClick,
-    }));
-  }, [filters]);
 
   const fetchEntities = useCallback(
     async ({
@@ -202,7 +169,7 @@ export const useAssetSelectionContent = ({
         setIsLoading(false);
       }
     },
-    [setActiveFilter]
+    [setActiveFilter, items.length]
   );
 
   const fetchCurrentEntity = useCallback(async () => {
@@ -306,7 +273,7 @@ export const useAssetSelectionContent = ({
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     try {
       setIsSaveLoading(true);
       setFailedStatus(undefined);
@@ -382,34 +349,18 @@ export const useAssetSelectionContent = ({
     } finally {
       setIsSaveLoading(false);
     }
-  };
+  }, [
+    activeEntity,
+    selectedItems,
+    onSave,
+    onCancel,
+    enqueueSnackbar,
+    closeSnackbar,
+  ]);
 
   const onSaveAction = useCallback(() => {
     handleSave();
-  }, [type, handleSave]);
-
-  useEffect(() => {
-    const updatedQuickFilters = filters
-      .filter((filter) => selectedFilter.includes(filter.key))
-      .map((selectedFilterItem) => {
-        const originalFilterItem = selectedQuickFilters?.find(
-          (filter) => filter.key === selectedFilterItem.key
-        );
-
-        return originalFilterItem || selectedFilterItem;
-      });
-
-    const newItems = updatedQuickFilters.filter(
-      (item) =>
-        !selectedQuickFilters.some(
-          (existingItem) => item.key === existingItem.key
-        )
-    );
-
-    if (newItems.length > 0) {
-      setSelectedQuickFilters((prevSelected) => [...prevSelected, ...newItems]);
-    }
-  }, [selectedFilter, selectedQuickFilters, filters]);
+  }, [handleSave]);
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
@@ -495,7 +446,7 @@ export const useAssetSelectionContent = ({
 
   const handleQuickFiltersValueSelect = useCallback(
     (field: ExploreQuickFilterField) => {
-      setSelectedQuickFilters((pre) => {
+      setFilters((pre) => {
         const data = pre.map((preField) => {
           if (preField.key === field.key) {
             return field;
@@ -509,27 +460,24 @@ export const useAssetSelectionContent = ({
         return data;
       });
     },
-    [setSelectedQuickFilters]
+    [setFilters]
   );
 
   const clearFilters = useCallback(() => {
-    setQuickFilterQuery(undefined);
-    setSelectedQuickFilters((pre) => {
-      const data = pre.map((preField) => {
-        return { ...preField, value: [] };
-      });
-
-      handleQuickFiltersChange(data);
-
-      return data;
+    const clearedData = filters.map((preField) => {
+      return { ...preField, value: [] };
     });
-  }, [setQuickFilterQuery, handleQuickFiltersChange, setSelectedQuickFilters]);
+
+    setFilters(clearedData);
+    setQuickFilterQuery(undefined);
+  }, [filters, setQuickFilterQuery, setFilters]);
 
   useEffect(() => {
     if (socket) {
       socket.on(SOCKET_EVENTS.BULK_ASSETS_CHANNEL, (newActivity) => {
         if (newActivity) {
           const activity = JSON.parse(newActivity);
+          console.log('activity', activity);
           if (activity.status === 'COMPLETED') {
             setAssetJobResponse(undefined);
             if (activity.result.status === 'success') {
@@ -576,10 +524,10 @@ export const useAssetSelectionContent = ({
           {t('label.cancel')}
         </Button>
         <Button
+          variant="contained"
           data-testid="save-btn"
           disabled={!selectedItems?.size || isLoading}
           loading={isSaveLoading || !isUndefined(assetJobResponse)}
-          type="primary"
           onClick={onSaveAction}>
           {t('label.save')}
         </Button>
@@ -658,14 +606,6 @@ export const useAssetSelectionContent = ({
       )}
 
       <div className="d-flex items-center gap-3">
-        <Dropdown
-          menu={{
-            items: filterMenu,
-            selectedKeys: selectedFilter,
-          }}
-          trigger={['click']}>
-          <Button className="flex-center" icon={<FilterIcon height={16} />} />
-        </Dropdown>
         <div className="flex-1">
           <Searchbar
             removeMargin
@@ -679,28 +619,24 @@ export const useAssetSelectionContent = ({
         </div>
       </div>
 
-      {selectedQuickFilters && selectedQuickFilters.length > 0 && (
-        <div className="d-flex items-center">
-          <div className="d-flex justify-between flex-1">
-            <ExploreQuickFilters
-              aggregations={aggregations}
-              fields={selectedQuickFilters}
-              index={SearchIndex.ALL}
-              showDeleted={false}
-              onFieldValueSelect={handleQuickFiltersValueSelect}
-            />
-            {quickFilterQuery && (
-              <Typography.Text
-                className="p-r-xss text-primary self-center cursor-pointer"
-                onClick={clearFilters}>
-                {t('label.clear-entity', {
-                  entity: '',
-                })}
-              </Typography.Text>
-            )}
-          </div>
-        </div>
-      )}
+      <div className="asset-filters-wrapper">
+        <ExploreQuickFilters
+          aggregations={aggregations}
+          fields={filters}
+          index={SearchIndex.ALL}
+          showDeleted={false}
+          onFieldValueSelect={handleQuickFiltersValueSelect}
+        />
+        {quickFilterQuery && (
+          <Typography.Text
+            className="text-primary cursor-pointer"
+            onClick={clearFilters}>
+            {t('label.clear-entity', {
+              entity: '',
+            })}
+          </Typography.Text>
+        )}
+      </div>
 
       {failedStatus?.failedRequest && failedStatus.failedRequest.length > 0 && (
         <Alert
@@ -791,6 +727,11 @@ export const useAssetSelectionContent = ({
               }}
             </VirtualList>
           </List>
+          {isLoading && items.length < totalCount && (
+            <div className="d-flex justify-center p-y-sm">
+              <Loader size="small" />
+            </div>
+          )}
         </div>
       )}
 
