@@ -376,6 +376,8 @@ export interface RequestConnection {
  *
  * Snowplow Pipeline Connection Config
  *
+ * MuleSoft Anypoint Platform Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -609,6 +611,9 @@ export interface ConfigObject {
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
+     *
+     * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
+     * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
      * bolt://localhost:7687.
@@ -1127,6 +1132,9 @@ export interface ConfigObject {
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
      *
      * Snowplow BDP Organization ID
+     *
+     * Anypoint Platform Organization ID. If not provided, the connector will use the user's
+     * default organization.
      */
     organizationId?: string;
     /**
@@ -1561,8 +1569,10 @@ export interface ConfigObject {
     spaceTypes?: SpaceType[];
     /**
      * ThoughtSpot authentication configuration
+     *
+     * Choose between Connected App (OAuth 2.0) or Basic Authentication.
      */
-    authentication?: Authenticationation;
+    authentication?: Ation;
     /**
      * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
      * only.
@@ -1656,6 +1666,8 @@ export interface ConfigObject {
     numberOfStatus?: number;
     /**
      * Regex exclude pipelines.
+     *
+     * Regex to filter MuleSoft applications by name.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -1791,6 +1803,11 @@ export interface ConfigObject {
      * Snowplow deployment type (BDP for managed or Community for self-hosted)
      */
     deployment?: SnowplowDeployment;
+    /**
+     * Anypoint Platform Environment ID. If not provided, the connector will discover all
+     * accessible environments.
+     */
+    environmentId?: string;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -2093,6 +2110,8 @@ export interface UsernamePasswordAuthentication {
  * Regex exclude pipelines.
  *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to filter MuleSoft applications by name.
  *
  * Regex to only fetch MlModels with names matching the pattern.
  *
@@ -2477,20 +2496,56 @@ export enum NoConfigAuthenticationTypes {
  * Basic Auth Credentials
  *
  * API Access Token Auth Credentials
+ *
+ * Choose between Connected App (OAuth 2.0) or Basic Authentication.
+ *
+ * Authentication method for MuleSoft Anypoint Platform.
+ *
+ * OAuth 2.0 client credentials authentication using Connected App.
+ *
+ * Username and password authentication for Anypoint Platform.
  */
-export interface Authenticationation {
+export interface Ation {
     /**
      * Password to access the service.
+     *
+     * Anypoint Platform password.
      */
     password?: string;
     /**
      * Username to access the service.
+     *
+     * Anypoint Platform username.
      */
     username?: string;
     /**
      * Access Token for the API
      */
     accessToken?: string;
+    /**
+     * Authentication type (ConnectedApp).
+     *
+     * Authentication type (Basic).
+     */
+    authType?: AuthTypeEnum;
+    /**
+     * Connected App Client ID from Anypoint Platform.
+     */
+    clientId?: string;
+    /**
+     * Connected App Client Secret from Anypoint Platform.
+     */
+    clientSecret?: string;
+}
+
+/**
+ * Authentication type (ConnectedApp).
+ *
+ * Authentication type (Basic).
+ */
+export enum AuthTypeEnum {
+    Basic = "Basic",
+    ConnectedApp = "ConnectedApp",
 }
 
 export interface AuthenticationModeObject {
@@ -4396,6 +4451,7 @@ export enum ConfigType {
     Mode = "Mode",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
+    Mulesoft = "Mulesoft",
     Mysql = "Mysql",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",

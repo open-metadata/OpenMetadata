@@ -224,6 +224,8 @@ export interface PipelineConnection {
  * Stitch Connection
  *
  * Snowplow Pipeline Connection Config
+ *
+ * MuleSoft Anypoint Platform Connection Config
  */
 export interface ConfigObject {
     /**
@@ -246,6 +248,9 @@ export interface ConfigObject {
      * KafkaConnect Service Management/UI URI.
      *
      * Host and port of the Stitch API host
+     *
+     * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
+     * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
      */
     hostPort?: string;
     /**
@@ -254,6 +259,8 @@ export interface ConfigObject {
     numberOfStatus?: number;
     /**
      * Regex exclude pipelines.
+     *
+     * Regex to filter MuleSoft applications by name.
      */
     pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
@@ -473,8 +480,20 @@ export interface ConfigObject {
     deployment?: SnowplowDeployment;
     /**
      * Snowplow BDP Organization ID
+     *
+     * Anypoint Platform Organization ID. If not provided, the connector will use the user's
+     * default organization.
      */
     organizationId?: string;
+    /**
+     * Choose between Connected App (OAuth 2.0) or Basic Authentication.
+     */
+    authentication?: MulesoftAuthentication;
+    /**
+     * Anypoint Platform Environment ID. If not provided, the connector will discover all
+     * accessible environments.
+     */
+    environmentId?: string;
     [property: string]: any;
 }
 
@@ -519,6 +538,50 @@ export interface Authentication {
      * Client Secret for the application registered in Airbyte.
      */
     clientSecret?: string;
+}
+
+/**
+ * Choose between Connected App (OAuth 2.0) or Basic Authentication.
+ *
+ * Authentication method for MuleSoft Anypoint Platform.
+ *
+ * OAuth 2.0 client credentials authentication using Connected App.
+ *
+ * Username and password authentication for Anypoint Platform.
+ */
+export interface MulesoftAuthentication {
+    /**
+     * Authentication type (ConnectedApp).
+     *
+     * Authentication type (Basic).
+     */
+    authType?: AuthenticationType;
+    /**
+     * Connected App Client ID from Anypoint Platform.
+     */
+    clientId?: string;
+    /**
+     * Connected App Client Secret from Anypoint Platform.
+     */
+    clientSecret?: string;
+    /**
+     * Anypoint Platform password.
+     */
+    password?: string;
+    /**
+     * Anypoint Platform username.
+     */
+    username?: string;
+}
+
+/**
+ * Authentication type (ConnectedApp).
+ *
+ * Authentication type (Basic).
+ */
+export enum AuthenticationType {
+    Basic = "Basic",
+    ConnectedApp = "ConnectedApp",
 }
 
 /**
@@ -766,6 +829,8 @@ export interface AuthConfigurationType {
  * Regex to only include/exclude tables that matches the pattern.
  *
  * Regex to only fetch containers that matches the pattern.
+ *
+ * Regex to filter MuleSoft applications by name.
  */
 export interface FilterPattern {
     /**
@@ -1170,6 +1235,7 @@ export enum PipelineServiceType {
     KafkaConnect = "KafkaConnect",
     KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
+    Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
     Snowplow = "Snowplow",
