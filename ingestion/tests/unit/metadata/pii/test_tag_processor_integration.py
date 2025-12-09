@@ -567,3 +567,141 @@ class TestTagProcessorMultiClassification:
         assert (
             len(tag_labels) == 0
         ), f"Should not re-suggest existing tags, got {len(tag_labels)}: {[l.tagFQN for l in tag_labels]}"
+
+    def test_idempotent_mutually_exclusive_tags(
+        self,
+        metadata: Mock,
+        workflow_config,
+        sample_email_password_data,
+    ):
+        """
+        Test that ensures idempotency across runs with mutually exclusive classifications.
+        """
+        # Create mutually exclusive classification with Date and Birthday tags
+        classification = ClassificationFactory.create(
+            fqn="General",
+            mutuallyExclusive=True,
+            autoClassificationConfig__enabled=True,
+            autoClassificationConfig__conflictResolution=ConflictResolution.highest_confidence,
+            autoClassificationConfig__minimumConfidence=0.7,
+            autoClassificationConfig__requireExplicitMatch=True,
+            description="General classifications",
+        )
+
+        # Date recognizers
+        date_recognizer = RecognizerFactory.create(
+            name="date_recognizer",
+            recognizerConfig=PredefinedRecognizerFactory.create(
+                name=Name.DateRecognizer,
+            ),
+        )
+
+        # Create Date tag
+        date_tag = TagFactory.create(
+            tag_name="Date",
+            tag_classification=classification,
+            autoClassificationEnabled=True,
+            autoClassificationPriority=90,
+            recognizers=[date_recognizer],
+            description="Date field",
+        )
+
+        # Create Birthday tag
+        birthday_tag = TagFactory.create(
+            tag_name="Birthday",
+            tag_classification=classification,
+            autoClassificationEnabled=True,
+            autoClassificationPriority=85,
+            recognizers=[
+                date_recognizer,
+            ],
+            description="Birthday field",
+        )
+
+        classification_manager = FakeClassificationManager(
+            (classification, [date_tag, birthday_tag]),
+        )
+
+        # Create column with name that matches both patterns
+        column = ColumnFactory.create(
+            column_name="birth_date",
+            dataType=DataType.VARCHAR,
+            tags=[],
+        )
+
+        # FIRST RUN: Both tags score above threshold
+        first_run_scores = [
+            ScoredTag(
+                tag=date_tag,
+                score=0.9,
+                reason="Date pattern matched column name",
+            ),
+            ScoredTag(
+                tag=birthday_tag,
+                score=0.8,
+                reason="Birthday pattern matched column name",
+            ),
+        ]
+
+        processor_first_run = TagProcessor(
+            config=workflow_config,
+            metadata=metadata,
+            classification_manager=classification_manager,
+            score_tags_for_column=FakeScoreTagsForColumn(first_run_scores),
+            max_tags_per_column=10,
+        )
+
+        # First run: Should apply only Date (highest score)
+        first_run_labels = processor_first_run.create_column_tag_labels(
+            column=column, sample_data=sample_email_password_data
+        )
+
+        assert len(first_run_labels) == 1, (
+            f"First run should return 1 tag (Date), got {len(first_run_labels)}: "
+            f"{[l.tagFQN for l in first_run_labels]}"
+        )
+        assert first_run_labels[0].tagFQN.root == "General.Date"
+
+        # Simulate column now having Date tag applied
+        column_with_date = ColumnFactory.create(
+            column_name="birth_date",
+            dataType=DataType.VARCHAR,
+            tags=[
+                TagLabelFactory.create(
+                    parent="General",
+                    name="Date",
+                )
+            ],
+        )
+
+        # SECOND RUN: Only Birthday scores (Date is filtered out)
+        second_run_scores = [
+            ScoredTag(
+                tag=birthday_tag,
+                score=0.8,
+                reason="Birthday pattern matched column name",
+            ),
+            # Date is not in scored tags because it's already applied
+        ]
+
+        processor_second_run = TagProcessor(
+            config=workflow_config,
+            metadata=metadata,
+            classification_manager=classification_manager,
+            score_tags_for_column=FakeScoreTagsForColumn(second_run_scores),
+            max_tags_per_column=10,
+        )
+
+        # Second run: Should return empty list (mutually exclusive classification
+        # already has a tag)
+        second_run_labels = processor_second_run.create_column_tag_labels(
+            column=column_with_date, sample_data=sample_email_password_data
+        )
+
+        # Expected: 0 tags (Date already applied from mutually exclusive classification)
+        # Actual: 1 tag (Birthday gets suggested, violating mutual exclusivity)
+        assert len(second_run_labels) == 0, (
+            f"Second run should return 0 tags (mutually exclusive "
+            f"classification already has Date tag applied), but got {len(second_run_labels)}: "
+            f"{[l.tagFQN for l in second_run_labels]}"
+        )
