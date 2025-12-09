@@ -500,6 +500,10 @@ export const getEntityIcon = (
   return Icon ? <Icon className={className} style={style} /> : null;
 };
 
+export const getEntityTypeIcon = (entityType?: string) => {
+  return searchClassBase.getEntityIcon(entityType ?? '');
+};
+
 export const getServiceIcon = (source: SourceType) => {
   const isDataAsset = NON_SERVICE_TYPE_ASSETS.includes(
     source.entityType as EntityType
@@ -781,6 +785,7 @@ export const getTableDetailPageBaseTabs = ({
   getEntityFeedCount,
   handleFeedCount,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
@@ -1035,9 +1040,7 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
-          isActive={activeTab === EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
       ),
@@ -1060,7 +1063,7 @@ export const getTableDetailPageBaseTabs = ({
         <CustomPropertyTable<EntityType.TABLE>
           entityType={EntityType.TABLE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

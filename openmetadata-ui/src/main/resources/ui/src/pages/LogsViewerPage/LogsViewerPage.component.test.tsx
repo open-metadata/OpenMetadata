@@ -121,7 +121,12 @@ jest.mock(
 jest.mock('@mui/system/useThemeWithoutDefault', () => ({
   __esModule: true,
   default: () => ({
-    palette: { mode: 'light' },
+    palette: {
+      mode: 'light',
+      grey: {
+        500: '#9E9E9E',
+      },
+    },
     spacing: (value: number) => `${value * 8}px`,
   }),
 }));
@@ -135,6 +140,8 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => ({
     () => Date.now() - 7 * 24 * 60 * 60 * 1000
   ),
   getCurrentMillis: jest.fn(() => Date.now()),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 jest.mock('../../rest/applicationAPI', () => ({

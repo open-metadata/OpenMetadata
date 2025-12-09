@@ -12,8 +12,7 @@
 Preprocessing functions for the classification tasks.
 """
 import datetime
-import json
-from typing import Any, List, Mapping, Optional, Sequence
+from typing import Any, List, Mapping, Optional, Sequence, Union, cast
 
 from metadata.utils.logger import pii_logger
 
@@ -21,7 +20,7 @@ logger = pii_logger()
 
 
 # pylint: disable=too-many-return-statements
-def convert_to_str(value: Any) -> Optional[str]:
+def convert_to_str(value: Any) -> Optional[Union[List[str], str]]:
     """
     Convert the given value to a string. This is a conversion
     tailored to our use case, not a generic one.
@@ -32,14 +31,18 @@ def convert_to_str(value: Any) -> Optional[str]:
         # Values we want to convert to string out of the box
         return str(value)
     if isinstance(value, bytes):
-        return value.decode("utf-8", errors="ignore")
+        # Don't classify binary columns, which might contain misleading or outright invalid strings
+        return None
     if isinstance(value, (Sequence, Mapping)):
-        try:
-            return json.dumps(value, default=str)
-        except (TypeError, ValueError, OverflowError) as e:
-            # If the value cannot be serialized to JSON, return None
-            logger.warning(f"Failed to convert value to JSON: {e}")
-            return None
+        if isinstance(value, Mapping):
+            value = list(value.values())
+        converted = [convert_to_str(el) for el in cast(List[Any], value)]
+        return [
+            item
+            for sublist in converted
+            for item in (sublist if isinstance(sublist, list) else [sublist])
+            if item is not None
+        ]
     if value is None:
         # We want to skip None values, not convert them to "None"
         return None
@@ -53,10 +56,13 @@ def preprocess_values(values: Sequence[Any]) -> List[str]:
         if converted_value is None:
             # Skip None values
             continue
+
+        if not isinstance(converted_value, list):
+            converted_value = [converted_value]
+
         # skip empty strings
-        if not converted_value.strip():
-            continue
+        converted_value = [el.strip() for el in converted_value if el.strip()]
         # Add the converted value as is, without any further processing
-        result.append(converted_value)
+        result.extend(converted_value)
 
     return result

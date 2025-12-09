@@ -78,6 +78,8 @@ export const DomainLabelV2 = <
             ...entityDetailsResponse,
             domains: Array.isArray(selectedDomain)
               ? selectedDomain
+              : isEmpty(selectedDomain)
+              ? []
               : [selectedDomain],
           });
 

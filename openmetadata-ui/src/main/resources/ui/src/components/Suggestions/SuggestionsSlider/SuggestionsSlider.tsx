@@ -13,8 +13,10 @@
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Space, Typography } from 'antd';
 
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ExitIcon } from '../../../assets/svg/ic-exit.svg';
+import { SuggestionType } from '../../../generated/api/feed/createSuggestion';
 import AvatarCarousel from '../../common/AvatarCarousel/AvatarCarousel';
 import { useSuggestionsContext } from '../SuggestionsProvider/SuggestionsProvider';
 import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.interface';
@@ -22,6 +24,7 @@ import { SuggestionAction } from '../SuggestionsProvider/SuggestionsProvider.int
 const SuggestionsSlider = () => {
   const {
     loading,
+    dataSuggestionType,
     suggestionPendingCount,
     fetchSuggestions,
     selectedUserSuggestions,
@@ -32,10 +35,23 @@ const SuggestionsSlider = () => {
   } = useSuggestionsContext();
   const { t } = useTranslation();
 
+  const suggestionLabel = useMemo(() => {
+    switch (dataSuggestionType) {
+      case SuggestionType.SuggestDescription:
+        return t('label.suggested-description-plural');
+
+      case SuggestionType.SuggestTagLabel:
+        return t('label.suggested-tag-plural');
+
+      default:
+        return t('label.suggested-description-tag-plural');
+    }
+  }, [dataSuggestionType]);
+
   return (
     <div className="d-flex items-center gap-2 m-r-md">
       <Typography.Text className="right-panel-label">
-        {t('label.suggested-description-plural')}
+        {suggestionLabel}
       </Typography.Text>
       <AvatarCarousel />
       {suggestionPendingCount > 0 && (

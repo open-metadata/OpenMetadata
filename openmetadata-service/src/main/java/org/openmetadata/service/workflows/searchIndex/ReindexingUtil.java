@@ -18,6 +18,7 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -38,8 +39,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import os.org.opensearch.action.bulk.BulkItemResponse;
-import os.org.opensearch.action.bulk.BulkResponse;
 
 @Slf4j
 public class ReindexingUtil {
@@ -98,28 +97,30 @@ public class ReindexingUtil {
     return initialStats;
   }
 
-  public static List<EntityError> getErrorsFromBulkResponse(BulkResponse response) {
+  public static List<EntityError> getErrorsFromBulkResponse(
+      es.co.elastic.clients.elasticsearch.core.BulkResponse response) {
     List<EntityError> entityErrors = new ArrayList<>();
-    for (BulkItemResponse bulkItemResponse : response) {
-      if (bulkItemResponse.isFailed()) {
+    for (BulkResponseItem bulkItemResponse : response.items()) {
+      if (bulkItemResponse.error() != null) {
         entityErrors.add(
             new EntityError()
-                .withMessage(bulkItemResponse.getFailureMessage())
-                .withEntity(bulkItemResponse.getItemId()));
+                .withMessage(bulkItemResponse.error().reason())
+                .withEntity(bulkItemResponse.id()));
       }
     }
     return entityErrors;
   }
 
   public static List<EntityError> getErrorsFromBulkResponse(
-      es.org.elasticsearch.action.bulk.BulkResponse response) {
+      os.org.opensearch.client.opensearch.core.BulkResponse response) {
     List<EntityError> entityErrors = new ArrayList<>();
-    for (es.org.elasticsearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
-      if (bulkItemResponse.isFailed()) {
+    for (os.org.opensearch.client.opensearch.core.bulk.BulkResponseItem bulkItemResponse :
+        response.items()) {
+      if (bulkItemResponse.error() != null) {
         entityErrors.add(
             new EntityError()
-                .withMessage(bulkItemResponse.getFailureMessage())
-                .withEntity(bulkItemResponse.getItemId()));
+                .withMessage(bulkItemResponse.error().reason())
+                .withEntity(bulkItemResponse.id()));
       }
     }
     return entityErrors;

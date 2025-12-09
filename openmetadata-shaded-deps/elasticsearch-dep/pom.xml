@@ -16,19 +16,8 @@
              https://issues.apache.org/jira/browse/MSHADE-206 which makes it so
              the dependency reduced pom is not reflected in a multi-module build
              correctly. -->
-        <dependency>
-            <groupId>org.elasticsearch.client</groupId>
-            <artifactId>elasticsearch-rest-high-level-client</artifactId>
-            <optional>true</optional>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.yaml</groupId>
-                    <artifactId>snakeyaml</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
 
-        <!-- New Elasticsearch Java API Client -->
+        <!-- Elasticsearch Java API Client -->
         <dependency>
             <groupId>co.elastic.clients</groupId>
             <artifactId>elasticsearch-java</artifactId>

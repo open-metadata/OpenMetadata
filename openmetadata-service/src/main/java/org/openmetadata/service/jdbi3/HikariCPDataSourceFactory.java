@@ -21,11 +21,19 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.db.ManagedDataSource;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.io.PrintWriter;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.Logger;
+import javax.sql.DataSource;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.util.jdbi.AwsRdsDatabaseAuthenticationProvider;
 
 @Slf4j
 @Getter
@@ -71,15 +79,22 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
   @JsonProperty private String poolName = "openmetadata-hikari-pool";
 
   @JsonIgnore private HikariDataSource hikariDataSource;
+  @JsonIgnore private boolean isAwsRdsIamAuth = false;
+  @JsonIgnore private AwsRdsDatabaseAuthenticationProvider awsRdsAuthProvider;
 
   @Override
   public ManagedDataSource build(MetricRegistry metricRegistry, String name) {
+    // Initialize AWS RDS IAM authentication if configured
+    initializeAwsRdsIamAuth();
+
     HikariConfig config = buildHikariConfig(name);
 
     if (metricRegistry != null) {
       config.setMetricRegistry(metricRegistry);
     }
 
+    LOG.debug(
+        "Creating standard ManagedHikariDataSource (custom DataSource handling done in config)");
     ManagedHikariDataSource managedDataSource = new ManagedHikariDataSource(config, name);
     this.hikariDataSource = managedDataSource;
     return managedDataSource;
@@ -94,14 +109,6 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
 
     config.setJdbcUrl(getUrl());
     config.setDriverClassName(getDriverClass());
-
-    if (getUser() != null) {
-      config.setUsername(getUser());
-    }
-
-    if (getPassword() != null) {
-      config.setPassword(getPassword());
-    }
 
     config.setPoolName(poolNameToUse);
     config.setMinimumIdle(minimumIdle);
@@ -167,15 +174,7 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
               }
             });
 
-    String driverClassName = getDriverClass();
-    if (driverClassName != null) {
-      if (driverClassName.contains("postgresql")) {
-        configurePostgreSQL(config);
-      } else if (driverClassName.contains("mysql") || driverClassName.contains("mariadb")) {
-        configureMySQL(config);
-      }
-    }
-
+    // Build data source properties first (needed for both standard and IAM auth)
     Properties dataSourceProperties = new Properties();
     if (getProperties() != null) {
       dataSourceProperties.putAll(getProperties());
@@ -188,16 +187,66 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
           "prepStmtCacheSqlLimit", String.valueOf(prepStmtCacheSqlLimit));
     }
 
-    if (!dataSourceProperties.isEmpty()) {
-      config.setDataSourceProperties(dataSourceProperties);
+    // Apply database-specific configurations
+    String driverClassName = getDriverClass();
+    if (driverClassName != null) {
+      if (driverClassName.contains("postgresql")) {
+        configurePostgreSQLProperties(dataSourceProperties);
+      } else if (driverClassName.contains("mysql") || driverClassName.contains("mariadb")) {
+        configureMySQLProperties(dataSourceProperties);
+      }
+    }
+
+    // Configure authentication
+    if (isAwsRdsIamAuth) {
+      // For AWS RDS IAM, use custom DataSource that generates fresh tokens per connection
+      LOG.debug("Setting custom AwsRdsIamAwareDataSource for dynamic token generation");
+      config.setDataSource(
+          new AwsRdsIamAwareDataSource(
+              getUrl(), getUser(), awsRdsAuthProvider, dataSourceProperties));
+    } else {
+      // For standard authentication, set username/password directly
+      if (getUser() != null) {
+        config.setUsername(getUser());
+      }
+      String password = getPassword();
+      if (password != null) {
+        config.setPassword(password);
+      }
+      if (!dataSourceProperties.isEmpty()) {
+        config.setDataSourceProperties(dataSourceProperties);
+      }
     }
 
     return config;
   }
 
-  private void configurePostgreSQL(HikariConfig config) {
-    Properties props = config.getDataSourceProperties();
+  private void initializeAwsRdsIamAuth() {
+    // AWS RDS IAM is detected when URL contains both required parameters:
+    // - awsRegion: required for IAM token generation
+    // - allowPublicKeyRetrieval: required for MySQL IAM auth
+    // Note: A dummy password may still be configured per documentation
+    String url = getUrl();
+    boolean hasAwsRegion = url != null && url.contains("awsRegion");
+    boolean hasAllowPublicKeyRetrieval = url != null && url.contains("allowPublicKeyRetrieval");
 
+    this.isAwsRdsIamAuth = hasAwsRegion && hasAllowPublicKeyRetrieval;
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(
+          "IAM detection: hasAwsRegion={}, hasAllowPublicKeyRetrieval={}, isAwsRdsIamAuth={}",
+          hasAwsRegion,
+          hasAllowPublicKeyRetrieval,
+          isAwsRdsIamAuth);
+    }
+
+    if (isAwsRdsIamAuth) {
+      this.awsRdsAuthProvider = new AwsRdsDatabaseAuthenticationProvider();
+      LOG.info("AWS RDS IAM authentication enabled - tokens will be generated per connection");
+    }
+  }
+
+  private void configurePostgreSQLProperties(Properties props) {
     props.putIfAbsent("reWriteBatchedInserts", "true");
     props.putIfAbsent("prepareThreshold", "0");
     props.putIfAbsent("preparedStatementCacheQueries", "256");
@@ -232,12 +281,18 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
       if (properties.containsKey("targetServerType")) {
         props.put("targetServerType", properties.get("targetServerType"));
       }
+      if (properties.containsKey("postgresqlConnectTimeout")) {
+        props.put("connectTimeout", properties.get("postgresqlConnectTimeout"));
+        props.remove("postgresqlConnectTimeout");
+      }
+      if (properties.containsKey("postgresqlSocketTimeout")) {
+        props.put("socketTimeout", properties.get("postgresqlSocketTimeout"));
+        props.remove("postgresqlSocketTimeout");
+      }
     }
   }
 
-  private void configureMySQL(HikariConfig config) {
-    Properties props = config.getDataSourceProperties();
-
+  private void configureMySQLProperties(Properties props) {
     props.putIfAbsent("cachePrepStmts", "true");
     props.putIfAbsent("prepStmtCacheSize", "250");
     props.putIfAbsent("prepStmtCacheSqlLimit", "2048");
@@ -259,8 +314,18 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     props.putIfAbsent("socketTimeout", "0");
 
     Map<String, String> properties = getProperties();
-    if (properties != null && properties.containsKey("rewriteBatchedStatements")) {
-      props.put("rewriteBatchedStatements", properties.get("rewriteBatchedStatements"));
+    if (properties != null) {
+      if (properties.containsKey("rewriteBatchedStatements")) {
+        props.put("rewriteBatchedStatements", properties.get("rewriteBatchedStatements"));
+      }
+      if (properties.containsKey("mysqlConnectTimeout")) {
+        props.put("connectTimeout", properties.get("mysqlConnectTimeout"));
+        props.remove("mysqlConnectTimeout");
+      }
+      if (properties.containsKey("mysqlSocketTimeout")) {
+        props.put("socketTimeout", properties.get("mysqlSocketTimeout"));
+        props.remove("mysqlSocketTimeout");
+      }
     }
   }
 
@@ -284,6 +349,82 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
       if (!this.isClosed()) {
         this.close();
       }
+    }
+  }
+
+  private static class AwsRdsIamAwareDataSource implements DataSource {
+    private final String jdbcUrl;
+    private final String username;
+    private final AwsRdsDatabaseAuthenticationProvider authProvider;
+    private final Properties connectionProperties;
+
+    public AwsRdsIamAwareDataSource(
+        String jdbcUrl,
+        String username,
+        AwsRdsDatabaseAuthenticationProvider authProvider,
+        Properties connectionProperties) {
+      this.jdbcUrl = jdbcUrl;
+      this.username = username;
+      this.authProvider = authProvider;
+      this.connectionProperties =
+          connectionProperties != null ? connectionProperties : new Properties();
+    }
+
+    @Override
+    public Connection getConnection() throws SQLException {
+      try {
+        String freshToken = authProvider.authenticate(jdbcUrl, username, null);
+        LOG.debug("Generated fresh AWS RDS IAM token for new connection");
+
+        // Build connection properties with fresh token
+        Properties props = new Properties();
+        props.putAll(connectionProperties);
+        props.setProperty("user", username);
+        props.setProperty("password", freshToken);
+
+        return DriverManager.getConnection(jdbcUrl, props);
+      } catch (Exception e) {
+        LOG.error("Failed to generate AWS RDS IAM token: {}", e.getMessage(), e);
+        throw new SQLException("Failed to authenticate with AWS RDS IAM", e);
+      }
+    }
+
+    @Override
+    public Connection getConnection(String username, String password) throws SQLException {
+      // Ignore provided credentials and use IAM token
+      return getConnection();
+    }
+
+    // Required DataSource interface methods (minimal implementation)
+    @Override
+    public PrintWriter getLogWriter() throws SQLException {
+      return null;
+    }
+
+    @Override
+    public void setLogWriter(PrintWriter out) throws SQLException {}
+
+    @Override
+    public int getLoginTimeout() throws SQLException {
+      return 0;
+    }
+
+    @Override
+    public void setLoginTimeout(int seconds) throws SQLException {}
+
+    @Override
+    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+      throw new SQLFeatureNotSupportedException();
+    }
+
+    @Override
+    public <T> T unwrap(Class<T> iface) throws SQLException {
+      throw new SQLException("Cannot unwrap to " + iface.getName());
+    }
+
+    @Override
+    public boolean isWrapperFor(Class<?> iface) throws SQLException {
+      return false;
     }
   }
 }

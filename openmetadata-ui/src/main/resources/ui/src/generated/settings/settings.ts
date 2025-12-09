@@ -41,6 +41,7 @@ export enum SettingType {
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
     LoginConfiguration = "loginConfiguration",
+    OpenLineageSettings = "openLineageSettings",
     OpenMetadataBaseURLConfiguration = "openMetadataBaseUrlConfiguration",
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
@@ -94,6 +95,9 @@ export enum SettingType {
  * This schema defines the Workflow Settings.
  *
  * Complete security configuration including authentication and authorization
+ *
+ * Settings for OpenLineage HTTP API integration. Configure how OpenMetadata receives and
+ * processes lineage events from external systems like Spark, Airflow, and Flink.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -119,6 +123,8 @@ export interface PipelineServiceClientConfiguration {
      * can set this value to false to not check the Pipeline Service Client component health.
      *
      * Is Task Notification Enabled?
+     *
+     * Enable or disable the OpenLineage HTTP API endpoint.
      */
     enabled?: boolean;
     /**
@@ -398,6 +404,10 @@ export interface PipelineServiceClientConfiguration {
      */
     openMetadataUrl?: string;
     /**
+     * Bot Token
+     */
+    botToken?: string;
+    /**
      * Client Secret of the Application.
      */
     clientSecret?: string;
@@ -405,7 +415,11 @@ export interface PipelineServiceClientConfiguration {
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
      */
-    signingSecret?:       string;
+    signingSecret?: string;
+    /**
+     * User Token
+     */
+    userToken?:           string;
     metricConfiguration?: MetricConfigurationDefinition[];
     /**
      * Configurations of allowed searchable fields for each entity type
@@ -461,6 +475,10 @@ export interface PipelineServiceClientConfiguration {
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
     /**
+     * Used to set up the History CleanUp Settings.
+     */
+    runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
+    /**
      * Semantics rules defined in the data contract.
      */
     entitySemantics?: SemanticsRule[];
@@ -472,6 +490,27 @@ export interface PipelineServiceClientConfiguration {
      * Authorization configuration
      */
     authorizerConfiguration?: AuthorizerConfiguration;
+    /**
+     * Automatically create Table and Pipeline entities when they are referenced in OpenLineage
+     * events but don't exist in OpenMetadata.
+     */
+    autoCreateEntities?: boolean;
+    /**
+     * Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage
+     * jobs. This service must exist in OpenMetadata.
+     */
+    defaultPipelineService?: string;
+    /**
+     * List of OpenLineage event types to process. Only events matching these types will create
+     * lineage. Default is to only process COMPLETE events.
+     */
+    eventTypeFilter?: EventTypeFilter[];
+    /**
+     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names. Used to
+     * resolve dataset references to existing tables. Example: 'postgresql://prod-db:5432' ->
+     * 'prod-postgres'
+     */
+    namespaceToServiceMapping?: { [key: string]: string };
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -1505,6 +1544,15 @@ export enum ProviderType {
     User = "user",
 }
 
+export enum EventTypeFilter {
+    Abort = "ABORT",
+    Complete = "COMPLETE",
+    Fail = "FAIL",
+    Other = "OTHER",
+    Running = "RUNNING",
+    Start = "START",
+}
+
 /**
  * Used to set up the Workflow Executor Settings.
  */
@@ -1574,9 +1622,19 @@ export interface GlobalSettings {
  */
 export interface HistoryCleanUpConfiguration {
     /**
+     * Batch size used when cleaning up Flowable History data
+     */
+    batchSize?: number;
+    /**
      * Cleans the Workflow Task that were finished, after given number of days.
      */
     cleanAfterNumberOfDays?: number;
+    /**
+     * Cron expression used by Flowable's history cleaning job
+     * (setHistoryCleaningTimeCycleConfig). For example: '0 0 1 * * ?' runs daily at 01:00, '0 *
+     * * ? * *' runs every minute (testing only).
+     */
+    timeCycleConfig?: string;
 }
 
 /**
@@ -2083,6 +2141,16 @@ export interface TitleSection {
 export enum PipelineViewMode {
     Edge = "Edge",
     Node = "Node",
+}
+
+/**
+ * Used to set up the History CleanUp Settings.
+ */
+export interface RunTimeCleanUpConfiguration {
+    /**
+     * Batch size used when cleaning up Flowable Run Time data
+     */
+    batchSize?: number;
 }
 
 /**

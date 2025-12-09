@@ -25,7 +25,6 @@ from metadata.data_quality.validations.base_test_handler import (
 from metadata.data_quality.validations.column.base.columnValuesToMatchRegex import (
     BaseColumnValuesToMatchRegexValidator,
 )
-from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSIONS
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -128,8 +127,14 @@ class ColumnValuesToMatchRegexValidator(
                 - metric_expressions[Metrics.REGEX_COUNT.name]
             )
 
-            result_rows = self._execute_with_others_aggregation(
-                dimension_col, metric_expressions, DEFAULT_TOP_DIMENSIONS
+            normalized_dimension = self._get_normalized_dimension_expression(
+                dimension_col
+            )
+
+            result_rows = self._run_dimensional_validation_query(
+                source=self.runner.dataset,
+                dimension_expr=normalized_dimension,
+                metric_expressions=metric_expressions,
             )
 
             for row in result_rows:

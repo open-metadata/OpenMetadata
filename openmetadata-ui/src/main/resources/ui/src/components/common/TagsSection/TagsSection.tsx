@@ -88,7 +88,9 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
         t,
       });
 
-      if (!result.success) {
+      if (result.success && result.data === displayTags) {
+        completeEditing();
+      } else if (!result.success) {
         setIsLoading(false);
       }
     },
@@ -170,7 +172,11 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     }
 
     return (
-      <span className="no-data-placeholder">{t('label.no-data-found')}</span>
+      <span className="no-data-placeholder">
+        {t('label.no-entity-assigned', {
+          entity: t('label.tag-plural'),
+        })}
+      </span>
     );
   }, [isLoading, isEditing, loadingState, editingState, t]);
 
@@ -219,8 +225,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     return tagsDisplay;
   }, [isLoading, isEditing, loadingState, editingState, tagsDisplay]);
 
-  const canShowEditButton =
-    showEditButton && hasPermission && !isEditing && !isLoading;
+  const canShowEditButton = showEditButton && hasPermission && !isLoading;
 
   if (!nonTierTags.length) {
     return (

@@ -16,29 +16,19 @@ import CommonEntitySummaryInfoV1 from './CommonEntitySummaryInfoV1';
 import { OverviewSectionProps } from './OverviewSection.interface';
 import './OverviewSection.less';
 
+const EXCLUDED_ITEMS = ['Owners', 'Tier'];
+
 const OverviewSection: React.FC<OverviewSectionProps> = ({
   onEdit,
   showEditButton = false,
   entityInfoV1,
   componentType = '',
   isDomainVisible = false,
+  onLinkClick,
 }) => {
   const { t } = useTranslation();
 
-  // Compute visible rows when using entityInfoV1
-  const visibleEntityInfo = entityInfoV1
-    ? entityInfoV1.filter((info) => {
-        const isDomain =
-          isDomainVisible && info.name === t('label.domain-plural');
-
-        return (info.visible || []).includes(componentType) || isDomain;
-      })
-    : [];
-
-  // Hide the entire section (including title) when there's no content
-  const hasContent = entityInfoV1 && visibleEntityInfo.length > 0;
-
-  if (!hasContent) {
+  if (!entityInfoV1 || entityInfoV1.length === 0) {
     return null;
   }
 
@@ -47,13 +37,13 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
       showEditButton={showEditButton}
       title={t('label.overview')}
       onEdit={onEdit}>
-      {entityInfoV1 && (
-        <CommonEntitySummaryInfoV1
-          componentType={componentType}
-          entityInfo={entityInfoV1}
-          isDomainVisible={isDomainVisible}
-        />
-      )}
+      <CommonEntitySummaryInfoV1
+        componentType={componentType}
+        entityInfo={entityInfoV1}
+        excludedItems={EXCLUDED_ITEMS}
+        isDomainVisible={isDomainVisible}
+        onLinkClick={onLinkClick}
+      />
     </SectionWithEdit>
   );
 };

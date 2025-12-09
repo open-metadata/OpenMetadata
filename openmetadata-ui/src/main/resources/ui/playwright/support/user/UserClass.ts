@@ -194,7 +194,11 @@ export class UserClass {
   }
 
   getUserName() {
-    return `${this.data.firstName}${this.data.lastName}`;
+    return this.responseData.name;
+  }
+
+  getUserDisplayName() {
+    return this.responseData.displayName;
   }
 
   async login(
@@ -245,5 +249,8 @@ export class UserClass {
     await page.getByTestId('confirm-logout').click();
 
     await waitLogout;
+
+    // Confirm the signin redirection to ensure the token is cleared
+    await page.waitForURL('**/signin');
   }
 }

@@ -275,7 +275,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Verify Owner Add Delete', async ({ adminPage }) => {
     await tag1.visitPage(adminPage);
-    const OWNER1 = user1.getUserName();
+    const OWNER1 = user1.getUserDisplayName();
 
     await addMultiOwner({
       page: adminPage,
@@ -432,11 +432,39 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
   const tag = new TagClass({
     classification: classification.data.name,
   });
+  const id = uuid();
+  const policy = new PolicyClass();
+  const role = new RolesClass();
+  let limitedAccessTeam: TeamClass | null = null;
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await classification.create(apiContext);
     await tag.create(apiContext);
+    await policy.create(apiContext, LIMITED_USER_RULES);
+    await role.create(apiContext, [policy.responseData.name]);
+
+    limitedAccessTeam = new TeamClass({
+      name: `PW%limited_user_access_team-${id}`,
+      displayName: `PW Limited User Access Team ${id}`,
+      description: 'playwright data steward team description',
+      teamType: 'Group',
+      users: [limitedAccessUser.responseData.id],
+      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+    });
+    await limitedAccessTeam.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    await tag.delete(apiContext);
+    await policy.delete(apiContext);
+    await role.delete(apiContext);
+    if (limitedAccessTeam) {
+      await limitedAccessTeam.delete(apiContext);
+    }
     await afterAction();
   });
 
@@ -444,29 +472,11 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
     adminPage,
     limitedAccessPage,
   }) => {
-    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const { afterAction } = await getApiContext(adminPage);
     const { assets, otherAsset, assetCleanup } = await setupAssetsForTag(
       adminPage
     );
-    const id = uuid();
-    const policy = new PolicyClass();
-    const role = new RolesClass();
-    let limitedAccessTeam: TeamClass | null = null;
-
     try {
-      await policy.create(apiContext, LIMITED_USER_RULES);
-      await role.create(apiContext, [policy.responseData.name]);
-
-      limitedAccessTeam = new TeamClass({
-        name: `PW%limited_user_access_team-${id}`,
-        displayName: `PW Limited User Access Team ${id}`,
-        description: 'playwright data steward team description',
-        teamType: 'Group',
-        users: [limitedAccessUser.responseData.id],
-        defaultRoles: role.responseData.id ? [role.responseData.id] : [],
-      });
-      await limitedAccessTeam.create(apiContext);
-
       await redirectToHomePage(limitedAccessPage);
 
       await test.step('Add Asset ', async () => {
@@ -477,12 +487,6 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
         await removeAssetsFromTag(limitedAccessPage, assets, tag);
       });
     } finally {
-      await tag.delete(apiContext);
-      await policy.delete(apiContext);
-      await role.delete(apiContext);
-      if (limitedAccessTeam) {
-        await limitedAccessTeam.delete(apiContext);
-      }
       await assetCleanup();
       await afterAction();
     }

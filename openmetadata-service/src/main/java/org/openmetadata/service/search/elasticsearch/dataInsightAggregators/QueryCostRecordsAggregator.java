@@ -11,8 +11,6 @@ import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.util.NamedValue;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonValue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,31 +22,9 @@ import org.openmetadata.schema.entity.data.QueryDetails;
 import org.openmetadata.schema.entity.data.QueryGroup;
 import org.openmetadata.schema.entity.data.QueryHolder;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 
 public class QueryCostRecordsAggregator {
-
-  private static Map<String, Object> jsonObjectToMap(JsonObject jsonObject) {
-    Map<String, Object> map = new HashMap<>();
-    for (String key : jsonObject.keySet()) {
-      JsonValue value = jsonObject.get(key);
-      if (value.getValueType() == JsonValue.ValueType.OBJECT) {
-        map.put(key, jsonObjectToMap(value.asJsonObject()));
-      } else if (value.getValueType() == JsonValue.ValueType.ARRAY) {
-        map.put(key, value.asJsonArray());
-      } else if (value.getValueType() == JsonValue.ValueType.STRING) {
-        map.put(key, jsonObject.getString(key));
-      } else if (value.getValueType() == JsonValue.ValueType.NUMBER) {
-        map.put(key, jsonObject.getJsonNumber(key).numberValue());
-      } else if (value.getValueType() == JsonValue.ValueType.TRUE) {
-        map.put(key, Boolean.TRUE);
-      } else if (value.getValueType() == JsonValue.ValueType.FALSE) {
-        map.put(key, Boolean.FALSE);
-      } else if (value.getValueType() == JsonValue.ValueType.NULL) {
-        map.put(key, null);
-      }
-    }
-    return map;
-  }
 
   public static SearchRequest getQueryCostRecords(String serviceName) {
     Map<String, Aggregation> aggregations = new HashMap<>();
@@ -199,7 +175,7 @@ public class QueryCostRecordsAggregator {
         if (!hits.isEmpty()) {
           Hit<JsonData> hit = hits.get(0);
           if (hit.source() != null) {
-            Map<String, Object> detailsMap = jsonObjectToMap(hit.source().toJson().asJsonObject());
+            Map<String, Object> detailsMap = EsUtils.jsonDataToMap(hit.source());
 
             if (detailsMap.containsKey("query")) {
               QueryHolder query = new QueryHolder();

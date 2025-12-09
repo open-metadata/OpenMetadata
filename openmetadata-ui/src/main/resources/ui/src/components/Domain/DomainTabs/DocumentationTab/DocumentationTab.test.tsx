@@ -46,6 +46,7 @@ jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
     permissions: {
       ViewAll: true,
       EditAll: true,
+      ViewCustomFields: true,
     },
   }),
 }));
@@ -153,5 +154,113 @@ describe('DocumentationTab', () => {
       }),
       expect.any(Object)
     );
+  });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    const mockCustomPropertyTable = jest.requireMock(
+      '../../../common/CustomPropertyTable/CustomPropertyTable'
+    ).CustomPropertyTable;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should pass hasPermission=true to CustomPropertyTable when ViewCustomFields is true', () => {
+      const { useGenericContext } = jest.requireMock(
+        '../../../Customization/GenericProvider/GenericProvider'
+      );
+      useGenericContext.mockReturnValue({
+        data: MOCK_DOMAIN,
+        onUpdate: mockOnUpdate,
+        permissions: {
+          ViewAll: true,
+          EditAll: true,
+          ViewCustomFields: true,
+        },
+      });
+
+      render(<DocumentationTab type={DocumentationEntity.DATA_PRODUCT} />, {
+        wrapper: MemoryRouter,
+      });
+
+      expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: true,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass hasPermission=false to CustomPropertyTable when ViewCustomFields is false', () => {
+      const { useGenericContext } = jest.requireMock(
+        '../../../Customization/GenericProvider/GenericProvider'
+      );
+      useGenericContext.mockReturnValue({
+        data: MOCK_DOMAIN,
+        onUpdate: mockOnUpdate,
+        permissions: {
+          ViewAll: true,
+          EditAll: true,
+          ViewCustomFields: false,
+        },
+      });
+
+      render(<DocumentationTab type={DocumentationEntity.DATA_PRODUCT} />, {
+        wrapper: MemoryRouter,
+      });
+
+      expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: false,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should pass hasPermission=false when ViewCustomFields is undefined', () => {
+      const { useGenericContext } = jest.requireMock(
+        '../../../Customization/GenericProvider/GenericProvider'
+      );
+      useGenericContext.mockReturnValue({
+        data: MOCK_DOMAIN,
+        onUpdate: mockOnUpdate,
+        permissions: {
+          ViewBasic: true,
+          EditAll: true,
+        },
+      });
+
+      render(<DocumentationTab type={DocumentationEntity.DATA_PRODUCT} />, {
+        wrapper: MemoryRouter,
+      });
+
+      expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: false,
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should not render CustomPropertyTable for DOMAIN type regardless of ViewCustomFields', () => {
+      const { useGenericContext } = jest.requireMock(
+        '../../../Customization/GenericProvider/GenericProvider'
+      );
+      useGenericContext.mockReturnValue({
+        data: MOCK_DOMAIN,
+        onUpdate: mockOnUpdate,
+        permissions: {
+          ViewAll: true,
+          EditAll: true,
+          ViewCustomFields: true,
+        },
+      });
+
+      render(<DocumentationTab type={DocumentationEntity.DOMAIN} />, {
+        wrapper: MemoryRouter,
+      });
+
+      expect(mockCustomPropertyTable).not.toHaveBeenCalled();
+    });
   });
 });
