@@ -1591,6 +1591,7 @@
     "show-more": "Afficher Plus",
     "show-more-entity": "Afficher Plus de {{entity}}",
     "show-more-lowercase": "Voir plus",
+    "show-nested": "Afficher imbriqué",
     "show-or-hide-advanced-config": "{{showAdv}} Configuration Avancée",
     "show-or-hide-column-plural": "Afficher / Masquer les colonnes",
     "sign-in": "Se Connecter",
