@@ -21,7 +21,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
-import { TagSource } from '../../../generated/type/tagLabel';
+import { LabelType, TagSource } from '../../../generated/type/tagLabel';
+import tagClassBase from '../../../utils/TagClassBase';
 import {
   getTagName,
   getTagRedirectLink,
@@ -39,6 +40,8 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   displayType = DisplayType.POPOVER,
   showNoDataPlaceholder = true,
   newLook = false,
+  entityFqn,
+  entityType,
 }: TagsViewerProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -53,6 +56,18 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
   const getTagsElement = useCallback(
     (tag: EntityTags) => {
+      if (tag.labelType === LabelType.Generated && entityFqn && entityType) {
+        const entityLink = `<#E::${entityType.toLowerCase()}::${entityFqn}>`;
+        const feedbackComponent = tagClassBase.getRecognizerFeedbackComponent(
+          tag,
+          entityLink
+        );
+
+        if (feedbackComponent) {
+          return feedbackComponent;
+        }
+      }
+
       if (muiTags) {
         const tagName = getTagName(tag, true);
         const redirectLink = getTagRedirectLink(tag);
@@ -107,7 +122,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         />
       );
     },
-    [muiTags, newLook]
+    [muiTags, newLook, entityFqn, entityType]
   );
 
   // sort tags by source so that "Glossary" tags always comes first
