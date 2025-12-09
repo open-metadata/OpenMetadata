@@ -1,13 +1,20 @@
 package org.openmetadata.service.resources.dqtests;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +29,9 @@ import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -180,5 +189,162 @@ public class TestDefinitionResourceTest
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void test_enableDisableTestDefinition(TestInfo test) throws Exception {
+    // Create a test definition
+    TestDefinition testDef = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    assertEquals(true, testDef.getEnabled(), "Test definition should be enabled by default");
+
+    // Disable it using JSON Patch
+    String originalJson = JsonUtils.pojoToJson(testDef);
+    testDef.setEnabled(false);
+    String updatedJson = JsonUtils.pojoToJson(testDef);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+    TestDefinition disabled = patchEntity(testDef.getId(), patch, ADMIN_AUTH_HEADERS);
+    assertEquals(false, disabled.getEnabled(), "Test definition should be disabled");
+
+    // Verify disabled state persists
+    TestDefinition retrieved = getEntity(testDef.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(false, retrieved.getEnabled(), "Test definition should remain disabled");
+
+    // Enable it back using JSON Patch
+    originalJson = JsonUtils.pojoToJson(retrieved);
+    retrieved.setEnabled(true);
+    updatedJson = JsonUtils.pojoToJson(retrieved);
+
+    patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+    TestDefinition enabled = patchEntity(retrieved.getId(), patch, ADMIN_AUTH_HEADERS);
+    assertEquals(true, enabled.getEnabled(), "Test definition should be enabled");
+
+    // Verify enabled state persists
+    retrieved = getEntity(testDef.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(true, retrieved.getEnabled(), "Test definition should remain enabled");
+  }
+
+  @Test
+  void test_defaultEnabledTrue(TestInfo test) throws HttpResponseException {
+    // Create test definition without specifying enabled field
+    TestDefinition testDef = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    assertEquals(true, testDef.getEnabled(), "Test definition should default to enabled=true");
+
+    // Verify via GET as well
+    TestDefinition retrieved = getEntity(testDef.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(true, retrieved.getEnabled(), "Retrieved test definition should be enabled");
+  }
+
+  @Test
+  void test_systemTestDefinitionCanBeDisabled(TestInfo test) throws Exception {
+    // Get a system test definition
+    TestDefinition systemDef = getEntityByName("columnValuesToBeNotNull", "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        true, systemDef.getEnabled(), "System test definition should be enabled by default");
+
+    // Disable system test definition using JSON Patch
+    String originalJson = JsonUtils.pojoToJson(systemDef);
+    systemDef.setEnabled(false);
+    String updatedJson = JsonUtils.pojoToJson(systemDef);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+    TestDefinition disabled = patchEntity(systemDef.getId(), patch, ADMIN_AUTH_HEADERS);
+    assertEquals(false, disabled.getEnabled(), "System test definition should be disableable");
+
+    // Re-enable for cleanup using JSON Patch
+    originalJson = JsonUtils.pojoToJson(disabled);
+    disabled.setEnabled(true);
+    updatedJson = JsonUtils.pojoToJson(disabled);
+
+    patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+    patchEntity(disabled.getId(), patch, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_disabledTestDefinitionNotInDefaultList(TestInfo test) throws Exception {
+    // Create and disable a test definition
+    TestDefinition testDef = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Disable using JSON Patch
+    String originalJson = JsonUtils.pojoToJson(testDef);
+    testDef.setEnabled(false);
+    String updatedJson = JsonUtils.pojoToJson(testDef);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+    TestDefinition disabled = patchEntity(testDef.getId(), patch, ADMIN_AUTH_HEADERS);
+    assertEquals(false, disabled.getEnabled(), "Test definition should be disabled after patch");
+
+    // Verify disabled test definition can still be retrieved by ID
+    TestDefinition retrieved = getEntity(testDef.getId(), ADMIN_AUTH_HEADERS);
+    Assertions.assertNotNull(retrieved, "Disabled test definition should still be retrievable");
+    assertEquals(false, retrieved.getEnabled(), "Retrieved test definition should be disabled");
+
+    // List all test definitions with high limit - disabled one should still appear
+    Map<String, String> params = Map.of("limit", "1000");
+    ResultList<TestDefinition> allDefinitions = listEntities(params, ADMIN_AUTH_HEADERS);
+    TestDefinition found =
+        allDefinitions.getData().stream()
+            .filter(td -> td.getId().equals(testDef.getId()))
+            .findFirst()
+            .orElse(null);
+    Assertions.assertNotNull(found, "Disabled test definition should appear in list");
+    assertEquals(false, found.getEnabled(), "Test definition should be disabled in list");
+
+    // Re-enable for cleanup using JSON Patch
+    originalJson = JsonUtils.pojoToJson(retrieved);
+    retrieved.setEnabled(true);
+    updatedJson = JsonUtils.pojoToJson(retrieved);
+
+    patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+    patchEntity(retrieved.getId(), patch, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_createTestDefinition_asNonAdmin_403() {
+    // Non-admin user without CREATE permission should not be able to create test definition
+    CreateTestDefinition create = createRequest("unauthorizedTestDef");
+    assertResponse(
+        () -> createEntity(create, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.CREATE)));
+  }
+
+  @Test
+  void test_patchTestDefinition_asNonAdmin_403(TestInfo test) throws Exception {
+    // Create a test definition as admin
+    TestDefinition testDef = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Try to patch (enable/disable) as non-admin user
+    String originalJson = JsonUtils.pojoToJson(testDef);
+    testDef.setEnabled(false);
+    String updatedJson = JsonUtils.pojoToJson(testDef);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+    // Non-admin user without EDIT_ALL permission should not be able to patch
+    assertResponse(
+        () -> patchEntity(testDef.getId(), patch, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.EDIT_ALL)));
+  }
+
+  @Test
+  void test_deleteTestDefinition_asNonAdmin_403(TestInfo test) throws HttpResponseException {
+    // Create a test definition as admin
+    TestDefinition testDef = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Non-admin user without DELETE permission should not be able to delete
+    assertResponse(
+        () -> deleteEntity(testDef.getId(), TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        permissionNotAllowed(TEST_USER_NAME, List.of(MetadataOperation.DELETE)));
   }
 }

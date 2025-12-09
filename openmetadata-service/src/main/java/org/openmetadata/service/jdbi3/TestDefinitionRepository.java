@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestDefinition;
@@ -10,6 +11,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestDefinitionResource;
 import org.openmetadata.service.util.EntityUtil;
 
+@Slf4j
 public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
   public TestDefinitionRepository() {
     super(
@@ -36,6 +38,10 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
     // validate test platforms
     if (CommonUtil.nullOrEmpty(entity.getTestPlatforms())) {
       throw new IllegalArgumentException("testPlatforms must not be empty");
+    }
+    // Set enabled to true by default if not specified
+    if (entity.getEnabled() == null) {
+      entity.setEnabled(true);
     }
   }
 
@@ -74,6 +80,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
           "parameterDefinition",
           original.getParameterDefinition(),
           updated.getParameterDefinition());
+      recordChange("enabled", original.getEnabled(), updated.getEnabled());
     }
   }
 }

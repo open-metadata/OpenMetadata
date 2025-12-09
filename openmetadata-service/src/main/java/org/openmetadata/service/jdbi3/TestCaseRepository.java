@@ -467,6 +467,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         Entity.getEntity(test.getTestDefinition(), "", Include.NON_DELETED);
     test.setTestDefinition(testDefinition.getEntityReference());
 
+    // Validate that the test definition is enabled
+    if (Boolean.FALSE.equals(testDefinition.getEnabled())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Test definition '%s' is disabled and cannot be used to create test cases",
+              testDefinition.getName()));
+    }
+
     validateTestParameters(
         test.getParameterValues(),
         testDefinition.getParameterDefinition(),

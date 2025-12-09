@@ -215,6 +215,11 @@
       "description": "When `true` indicates the test case supports dynamic assertions.",
       "type": "boolean",
       "default": false
+    },
+    "enabled": {
+      "description": "When `true` indicates the test definition is available for creating test cases. System test definitions can only be disabled by users with appropriate permissions.",
+      "type": "boolean",
+      "default": true
     }
   },
   "required": ["name", "description", "testPlatforms"],

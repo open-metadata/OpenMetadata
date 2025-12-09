@@ -59,6 +59,7 @@ import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
@@ -5503,5 +5504,144 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         mapper.convertValue(newestStatus.getTestCaseResolutionStatusDetails(), Assigned.class);
     assertNull(
         retrievedAssignedDetails.getAssignee(), "User should no longer be assigned after deletion");
+  }
+
+  @Test
+  void test_createTestCaseWithDisabledDefinition_400(TestInfo test) throws Exception {
+    // Get the test definition
+    TestDefinition testDefinition = TEST_DEFINITION1;
+
+    // Disable the test definition using JSON Patch
+    String originalJson = JsonUtils.pojoToJson(testDefinition);
+    testDefinition.setEnabled(false);
+    String updatedJson = JsonUtils.pojoToJson(testDefinition);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+    WebTarget target =
+        getResource("dataQuality/testDefinitions").path(testDefinition.getId().toString());
+    TestUtils.patch(target, patch, TestDefinition.class, ADMIN_AUTH_HEADERS);
+
+    // Try to create a test case with the disabled definition
+    CreateTestCase create = createRequest(getEntityName(test));
+    create.setEntityLink(TABLE_LINK);
+    create.setTestDefinition(testDefinition.getFullyQualifiedName());
+
+    assertResponse(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Test definition '"
+            + testDefinition.getName()
+            + "' is disabled and cannot be used to create test cases");
+
+    // Re-enable the test definition for cleanup using JSON Patch
+    TestDefinition disabled =
+        Entity.getEntity(Entity.TEST_DEFINITION, testDefinition.getId(), "", null);
+    originalJson = JsonUtils.pojoToJson(disabled);
+    disabled.setEnabled(true);
+    updatedJson = JsonUtils.pojoToJson(disabled);
+
+    patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+    TestUtils.patch(target, patch, TestDefinition.class, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_existingTestCasesContinueToWork(TestInfo test) throws Exception {
+    // Create a test case with an enabled definition (use table-level test)
+    CreateTestCase create = createRequest(getEntityName(test));
+    create.setEntityLink(TABLE_LINK);
+    create.setTestDefinition(TEST_DEFINITION5.getFullyQualifiedName());
+    create.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(testCase);
+
+    // Disable the test definition using JSON Patch
+    String originalJson = JsonUtils.pojoToJson(TEST_DEFINITION5);
+    TEST_DEFINITION5.setEnabled(false);
+    String updatedJson = JsonUtils.pojoToJson(TEST_DEFINITION5);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+    WebTarget target =
+        getResource("dataQuality/testDefinitions").path(TEST_DEFINITION5.getId().toString());
+    TestUtils.patch(target, patch, TestDefinition.class, ADMIN_AUTH_HEADERS);
+
+    // Existing test case should still be retrievable
+    TestCase retrieved = getEntity(testCase.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(retrieved);
+    assertEquals(testCase.getId(), retrieved.getId());
+
+    // Should be able to update the existing test case
+    String updatedDescription = "Updated description for existing test case";
+    String json = JsonUtils.pojoToJson(testCase);
+    testCase.setDescription(updatedDescription);
+    ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldUpdated(change, "description", json, updatedDescription);
+    patchEntityAndCheck(testCase, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Re-enable the test definition for cleanup using JSON Patch
+    TestDefinition disabled =
+        Entity.getEntity(Entity.TEST_DEFINITION, TEST_DEFINITION5.getId(), "", null);
+    originalJson = JsonUtils.pojoToJson(disabled);
+    disabled.setEnabled(true);
+    updatedJson = JsonUtils.pojoToJson(disabled);
+
+    patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+    TestUtils.patch(target, patch, TestDefinition.class, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_cannotCreateNewTestCaseWhenDefinitionDisabled(TestInfo test) throws Exception {
+    // Create a test case with an enabled definition (use table-level test)
+    CreateTestCase create1 = createRequest(getEntityName(test) + "_1");
+    create1.setEntityLink(TABLE_LINK);
+    create1.setTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    create1.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("minValue").withValue("10"),
+            new TestCaseParameterValue().withName("maxValue").withValue("100")));
+    TestCase testCase1 = createEntity(create1, ADMIN_AUTH_HEADERS);
+    assertNotNull(testCase1);
+
+    // Disable the test definition using JSON Patch
+    String originalJson = JsonUtils.pojoToJson(TEST_DEFINITION4);
+    TEST_DEFINITION4.setEnabled(false);
+    String updatedJson = JsonUtils.pojoToJson(TEST_DEFINITION4);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+
+    WebTarget target =
+        getResource("dataQuality/testDefinitions").path(TEST_DEFINITION4.getId().toString());
+    TestUtils.patch(target, patch, TestDefinition.class, ADMIN_AUTH_HEADERS);
+
+    // Try to create another test case with the disabled definition - should fail
+    CreateTestCase create2 = createRequest(getEntityName(test) + "_2");
+    create2.setEntityLink(TABLE_LINK);
+    create2.setTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    create2.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("minValue").withValue("10"),
+            new TestCaseParameterValue().withName("maxValue").withValue("100")));
+
+    assertResponse(
+        () -> createEntity(create2, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Test definition '"
+            + TEST_DEFINITION4.getName()
+            + "' is disabled and cannot be used to create test cases");
+
+    // Re-enable the test definition for cleanup using JSON Patch
+    TestDefinition disabled =
+        Entity.getEntity(Entity.TEST_DEFINITION, TEST_DEFINITION4.getId(), "", null);
+    originalJson = JsonUtils.pojoToJson(disabled);
+    disabled.setEnabled(true);
+    updatedJson = JsonUtils.pojoToJson(disabled);
+
+    patch = JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+    TestUtils.patch(target, patch, TestDefinition.class, ADMIN_AUTH_HEADERS);
   }
 }
