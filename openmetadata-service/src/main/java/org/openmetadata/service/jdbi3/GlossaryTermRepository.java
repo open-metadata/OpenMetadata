@@ -1397,7 +1397,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 updated.getFullyQualifiedName());
 
         updateEntityLinks(original, updated);
-        //        updateAssetIndexes(original, updated);
       }
     }
 
