@@ -23,8 +23,8 @@
     },
     "credits": {
       "description": "Collate platform credits",
-      "type": "integer",
-      "default": 100
+      "existingJavaType": "java.math.BigDecimal",
+      "default": 1000
     },
     "billingCycleStart": {
       "title": "Cycle Start",
