@@ -23,11 +23,11 @@ on:
       - reopened
       - ready_for_review
     paths-ignore:
-      - '.github/**'
-      - 'openmetadata-dist/**'
-      - 'docker/**'
-      - '!docker/development/docker-compose.yml'
-      - '!docker/development/docker-compose-postgres.yml'
+      - ".github/**"
+      - "openmetadata-dist/**"
+      - "docker/**"
+      - "!docker/development/docker-compose.yml"
+      - "!docker/development/docker-compose-postgres.yml"
 
 permissions:
   contents: read
@@ -93,13 +93,16 @@ jobs:
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
-          args: "-d postgresql"
+          # Pass different args depending on the shardIndex:
+          # - shard 1: run with ingestion setup
+          # - other shards: skip ingestion setup
+          args: ${{ matrix.shardIndex == 1 && '-d postgresql' || '-d postgresql -i false' }}
           ingestion_dependency: "all"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
