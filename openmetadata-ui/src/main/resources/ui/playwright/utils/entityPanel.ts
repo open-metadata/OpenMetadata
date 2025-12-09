@@ -69,6 +69,9 @@ export const editTags = async (
 
   if (clearExisting) {
     const clearAllButton = page.locator('[data-testid="clear-all-button"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
     if (await clearAllButton.isVisible()) {
       await clearAllButton.click();
       const updateButton = page.getByRole('button', {
@@ -95,7 +98,9 @@ export const editTags = async (
     .scrollIntoViewIfNeeded();
 
   const searchTagResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${tagName}*index=tag_search_index*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      tagName
+    )}*index=tag_search_index*`
   );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
@@ -303,7 +308,9 @@ export const verifyDeletedEntityNotVisible = async (
     `[data-testid="${searchBarTestId}"]`
   );
   const searchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${entityName}*index=${searchIndexMap[searchIndexType]}*`
+    `/api/v1/search/query?q=*${encodeURIComponent(entityName)}*index=${
+      searchIndexMap[searchIndexType]
+    }*`
   );
   await searchBar.fill(entityName);
   await searchResponse;
