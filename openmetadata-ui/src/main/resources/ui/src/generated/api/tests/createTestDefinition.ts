@@ -14,6 +14,7 @@
  * Schema corresponding to a Test Definition
  */
 export interface CreateTestDefinition {
+    dataQualityDimension?: DataQualityDimensions;
     /**
      * Description of the testcase.
      */
@@ -37,13 +38,32 @@ export interface CreateTestDefinition {
     owners?:              EntityReference[];
     parameterDefinition?: TestCaseParameterDefinition[];
     provider?:            ProviderType;
-    supportedDataTypes?:  DataType[];
+    /**
+     * SQL expression template for custom SQL-based test definitions. Supports substitution
+     * variables: {table} and {column} for runtime entity references, and {{paramName}} for
+     * user-defined parameters.
+     */
+    sqlExpression?:      string;
+    supportedDataTypes?: DataType[];
     /**
      * List of services that this test definition supports. When empty, it implies all services
      * are supported.
      */
     supportedServices?: string[];
     testPlatforms:      TestPlatform[];
+}
+
+/**
+ * This enum defines the dimension a test case belongs to.
+ */
+export enum DataQualityDimensions {
+    Accuracy = "Accuracy",
+    Completeness = "Completeness",
+    Consistency = "Consistency",
+    Integrity = "Integrity",
+    SQL = "SQL",
+    Uniqueness = "Uniqueness",
+    Validity = "Validity",
 }
 
 /**

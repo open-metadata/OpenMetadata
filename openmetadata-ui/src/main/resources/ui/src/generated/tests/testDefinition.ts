@@ -69,7 +69,15 @@ export interface TestDefinition {
     owners?:              EntityReference[];
     parameterDefinition?: TestCaseParameterDefinition[];
     provider?:            ProviderType;
-    supportedDataTypes?:  DataType[];
+    /**
+     * SQL expression template for custom SQL-based test definitions. Supports substitution
+     * variables: {table} and {column} for runtime entity references, and {{paramName}} for
+     * user-defined parameters. This field is only applicable for test definitions with
+     * testPlatforms set to 'OpenMetadata' and is used to execute custom SQL queries for data
+     * quality validation.
+     */
+    sqlExpression?:      string;
+    supportedDataTypes?: DataType[];
     /**
      * List of services that this test definition supports. When empty, it implies all services
      * are supported.
