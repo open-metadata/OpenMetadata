@@ -39,6 +39,7 @@ interface LineageNodeLabelProps {
   isChildrenListExpanded?: boolean;
   toggleColumnsList?: () => void;
   toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
+  isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
 
 interface LineageNodeLabelPropsExtended
@@ -174,6 +175,7 @@ const EntityFooter = ({
   node,
   toggleColumnsList,
   toggleOnlyShowColumnsWithLineageFilterActive,
+  isOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelPropsExtended) => {
   const { children, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
@@ -220,7 +222,12 @@ const EntityFooter = ({
         {childrenInfoDropdownLabel}
       </Button>
       <TestSuiteSummaryContainer node={node} />
-      <IconButton onClick={handleOnlyShowColumnsWithLineage}>
+      <IconButton
+        className={classNames(
+          'only-show-columns-with-lineage-filter-button',
+          isOnlyShowColumnsWithLineageFilterActive && 'active'
+        )}
+        onClick={handleOnlyShowColumnsWithLineage}>
         <FilterIcon className="mapping-icon" height={20} width={20} />
       </IconButton>
     </div>
@@ -232,12 +239,16 @@ const LineageNodeLabelV1 = ({
   isChildrenListExpanded,
   toggleColumnsList,
   toggleOnlyShowColumnsWithLineageFilterActive,
+  isOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelProps) => {
   return (
     <div className="custom-node-label-container m-0">
       <EntityLabel node={node} />
       <EntityFooter
         isChildrenListExpanded={isChildrenListExpanded}
+        isOnlyShowColumnsWithLineageFilterActive={
+          isOnlyShowColumnsWithLineageFilterActive
+        }
         node={node}
         toggleColumnsList={toggleColumnsList}
         toggleOnlyShowColumnsWithLineageFilterActive={

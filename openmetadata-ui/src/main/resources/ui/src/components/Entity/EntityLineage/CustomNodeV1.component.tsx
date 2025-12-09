@@ -240,6 +240,9 @@ const CustomNodeV1 = (props: NodeProps) => {
       <>
         <LineageNodeLabelV1
           isChildrenListExpanded={isChildrenListExpanded}
+          isOnlyShowColumnsWithLineageFilterActive={
+            isOnlyShowColumnsWithLineageFilterActive
+          }
           node={node}
           toggleColumnsList={toggleColumnsList}
           toggleOnlyShowColumnsWithLineageFilterActive={
@@ -263,6 +266,7 @@ const CustomNodeV1 = (props: NodeProps) => {
     toggleOnlyShowColumnsWithLineageFilterActive,
     removeNodeHandler,
     props,
+    isOnlyShowColumnsWithLineageFilterActive,
   ]);
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(

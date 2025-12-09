@@ -370,13 +370,7 @@ const NodeChildren = ({
     }
   }, [node, showDataObservabilitySummary, summary]);
 
-  useEffect(() => {
-    console.log(
-      'isOnlyShowColumnsWithLineageFilterActive',
-      isOnlyShowColumnsWithLineageFilterActive
-    );
-  }, [isOnlyShowColumnsWithLineageFilterActive]);
-  console.log('Rendering Nodechildren');
+  useEffect(() => {}, [isOnlyShowColumnsWithLineageFilterActive]);
 
   const renderRecord = useCallback(
     (record: Column) => {
