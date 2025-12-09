@@ -232,13 +232,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [isPlatformLineage, setIsPlatformLineage] = useState(false);
   const [dqHighlightedEdges, setDqHighlightedEdges] = useState<Set<string>>();
   const [isCreatingEdge, setIsCreatingEdge] = useState<boolean>(false);
-  const [columnsInCurrentPages, setColumnsInCurrentPages] = useState<string[]>(
-    []
-  );
-
-  const updateColumnsInCurrentPage = (columns: string[]) => {
-    setColumnsInCurrentPages(columns);
-  };
+  const [columnsInCurrentPages, setColumnsInCurrentPages] = useState<
+    Record<string, string[]>
+  >({});
 
   // Add state for entityFqn that can be updated independently of URL params
   const [entityFqn, setEntityFqn] = useState<string>(decodedFqn);
@@ -1815,7 +1811,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       dqHighlightedEdges,
       useUpdateNodeInternals,
       columnsInCurrentPages,
-      updateColumnsInCurrentPage,
       setColumnsInCurrentPages,
     };
   }, [
@@ -1878,7 +1873,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     dqHighlightedEdges,
     useUpdateNodeInternals,
     columnsInCurrentPages,
-    updateColumnsInCurrentPage,
     setColumnsInCurrentPages,
   ]);
 
