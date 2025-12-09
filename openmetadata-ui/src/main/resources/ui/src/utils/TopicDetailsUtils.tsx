@@ -100,7 +100,6 @@ export const getTopicDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, i18n.t('label.contract'))}
         />

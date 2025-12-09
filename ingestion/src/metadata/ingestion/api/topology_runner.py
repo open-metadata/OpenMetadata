@@ -16,7 +16,6 @@ import math
 import time
 import traceback
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 from functools import singledispatchmethod
 from typing import Any, Generic, Iterable, List, Type, TypeVar
 
@@ -41,6 +40,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.execution_time_tracker import ExecutionTimeTrackerContextMap
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.source_hash import generate_source_hash
@@ -93,38 +93,37 @@ class TopologyRunnerMixin(Generic[C]):
             return
         else:
             chunksize = int(math.ceil(node_entities_length / threads))
-            chunks = [
+            chunks: list[list[Entity]] = [
                 node_entities[i : i + chunksize]
                 for i in range(0, node_entities_length, chunksize)
             ]
 
-            thread_pool = ThreadPoolExecutor(max_workers=threads)
+            with CustomThreadPoolExecutor(max_workers=threads) as pool:
+                futures = [
+                    pool.submit(
+                        self._multithread_process_entity,
+                        node,
+                        chunk,
+                        child_nodes,
+                        self.context.get_current_thread_id(),
+                    )
+                    for chunk in chunks
+                ]
 
-            futures = [
-                thread_pool.submit(
-                    self._multithread_process_entity,
-                    node,
-                    chunk,
-                    child_nodes,
-                    self.context.get_current_thread_id(),
-                )
-                for chunk in chunks
-            ]
+                while True:
+                    if self.queue.has_tasks():
+                        yield from self.queue.process()
 
-            while True:
-                if self.queue.has_tasks():
-                    yield from self.queue.process()
+                    else:
+                        if not futures:
+                            break
 
-                else:
-                    if not futures:
-                        break
+                        for i, future in enumerate(futures):
+                            if future.done():
+                                future.result()
+                                futures.pop(i)
 
-                    for i, future in enumerate(futures):
-                        if future.done():
-                            future.result()
-                            futures.pop(i)
-
-                time.sleep(0.01)
+                    time.sleep(0.01)
 
     def _process_node(self, node: TopologyNode) -> Iterable[Entity]:
         """Processing of a Node in a single thread."""

@@ -646,7 +646,7 @@ test('Verify system classification term counts', async ({ page }) => {
 
 test('Verify Owner Add Delete', async ({ page }) => {
   await classification1.visitPage(page);
-  const OWNER1 = user1.getUserName();
+  const OWNER1 = user1.getUserDisplayName();
 
   await addMultiOwner({
     page,

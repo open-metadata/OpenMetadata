@@ -46,6 +46,7 @@
     .stat-count {
       font-size: 13px;
       font-weight: 600;
+      color: @grey-600;
       display: block;
     }
 
@@ -53,55 +54,87 @@
       font-size: 13px;
       font-weight: 400;
       display: block;
+      color: @grey-600;
     }
 
     &.success-card {
-      .stat-count.success {
-        color: @green-10;
-        font-weight: 600;
-      }
+      &:hover {
+        .stat-count.success {
+          color: @green-10;
+          font-weight: 600;
+        }
 
-      .stat-label.success {
-        color: @green-10;
+        .stat-label.success {
+          color: @green-10;
+        }
       }
-
       &.active {
         background-color: @green-9;
         border-radius: 6px;
+        .stat-count.success {
+          color: @green-10;
+          font-weight: 600;
+        }
+
+        .stat-label.success {
+          color: @green-10;
+        }
       }
     }
 
     &.aborted-card {
-      .stat-count.aborted {
-        color: @yellow-11;
-        font-weight: 600;
-      }
+      &:hover {
+        .stat-count.aborted {
+          color: @yellow-11;
+          font-weight: 600;
+        }
 
-      .stat-label.aborted {
-        color: @yellow-11;
+        .stat-label.aborted {
+          color: @yellow-11;
+        }
       }
-
       &.active {
         background-color: @yellow-10;
         border-radius: 6px;
+        .stat-count.aborted {
+          color: @yellow-11;
+          font-weight: 600;
+        }
+
+        .stat-label.aborted {
+          color: @yellow-11;
+        }
       }
     }
 
     &.failed-card {
-      .stat-count.failed {
-        color: @red-10;
-        font-weight: 600;
-      }
+      &:hover {
+        .stat-count.failed {
+          color: @red-10;
+          font-weight: 600;
+        }
 
-      .stat-label.failed {
-        color: @red-10;
+        .stat-label.failed {
+          color: @red-10;
+        }
       }
-
       &.active {
         background-color: @red-9;
         border-radius: 6px;
+        .stat-count.failed {
+          color: @red-10;
+          font-weight: 600;
+        }
+
+        .stat-label.failed {
+          color: @red-10;
+        }
       }
     }
+  }
+  .no-data-placeholder {
+    color: @grey-500;
+    font-size: 12px !important;
   }
 }
 .tab-header-container {
@@ -114,8 +147,8 @@
   }
 }
 .data-quality-tab-count {
-  background-color: #f8f9fc;
-  border: 1px solid #eaecf5;
+  background-color: @grey-9;
+  border: 1px solid @grey-15;
   padding: 0px 5px;
   border-radius: 4px;
   font-size: 10px;
@@ -126,10 +159,7 @@
     color: @white !important;
   }
 }
-.vertical-divider {
-  margin-top: 12px !important;
-  margin-bottom: 12px !important;
-}
+
 .data-quality-badge {
   border-radius: 6px;
   padding: 0px;
@@ -172,7 +202,7 @@
       height: 12px;
       overflow: hidden;
       background-color: @light-border-color;
-
+      border-radius: 2px;
       .progress-segment {
         height: 100%;
         transition: width 0.3s ease;

@@ -1,7 +1,6 @@
 package org.openmetadata.service.search.opensearch;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonParser;
 import java.io.IOException;
 import java.io.StringReader;
@@ -13,7 +12,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.HealthStatus;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.mapping.TypeMapping;
+import os.org.opensearch.client.opensearch.cluster.HealthRequest;
+import os.org.opensearch.client.opensearch.cluster.HealthResponse;
 import os.org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import os.org.opensearch.client.opensearch.indices.CreateIndexResponse;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexRequest;
@@ -151,7 +154,7 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
   private IndexSettings parseIndexSettings(JsonNode settingsNode) {
     // Transform Elasticsearch stemmer configuration to OpenSearch format
-    JsonNode transformedSettings = transformStemmerForOpenSearch(settingsNode);
+    JsonNode transformedSettings = OsUtils.transformStemmerForOpenSearch(settingsNode);
 
     JsonParser parser =
         client
@@ -160,51 +163,6 @@ public class OpenSearchIndexManager implements IndexManagementClient {
             .jsonProvider()
             .createParser(new StringReader(transformedSettings.toString()));
     return IndexSettings._DESERIALIZER.deserialize(parser, client._transport().jsonpMapper());
-  }
-
-  private JsonNode transformStemmerForOpenSearch(JsonNode settingsNode) {
-    try {
-      // Clone the settings to avoid modifying the original
-      ObjectNode transformedNode = (ObjectNode) JsonUtils.readTree(settingsNode.toString());
-
-      // Navigate to the filters section if it exists
-      JsonNode analysisNode = transformedNode.path("analysis");
-      if (!analysisNode.isMissingNode() && analysisNode.isObject()) {
-        ObjectNode analysisObj = (ObjectNode) analysisNode;
-
-        JsonNode filtersNode = analysisObj.path("filter");
-        if (!filtersNode.isMissingNode() && filtersNode.isObject()) {
-          ObjectNode filtersObj = (ObjectNode) filtersNode;
-
-          // Transform stemmer configuration from Elasticsearch to OpenSearch format
-          JsonNode omStemmerNode = filtersObj.path("om_stemmer");
-          if (!omStemmerNode.isMissingNode() && omStemmerNode.has("type")) {
-            String type = omStemmerNode.get("type").asText();
-            if ("stemmer".equals(type) && omStemmerNode.has("name")) {
-              String name = omStemmerNode.get("name").asText();
-              // OpenSearch uses "language" instead of "name" for stemmer configuration
-              ObjectNode newStemmerNode = JsonUtils.getObjectMapper().createObjectNode();
-              newStemmerNode.put("type", "stemmer");
-              newStemmerNode.put("language", name);
-
-              // Replace the om_stemmer configuration
-              filtersObj.set("om_stemmer", newStemmerNode);
-            }
-          } else {
-            LOG.debug("No om_stemmer filter found in settings");
-          }
-        } else {
-          LOG.debug("No filter section found in analysis settings");
-        }
-      } else {
-        LOG.debug("No analysis section found in settings");
-      }
-
-      return transformedNode;
-    } catch (Exception e) {
-      LOG.warn("Failed to transform stemmer settings for OpenSearch, using original settings", e);
-      return settingsNode;
-    }
   }
 
   @Override
@@ -308,16 +266,20 @@ public class OpenSearchIndexManager implements IndexManagementClient {
     if (aliases == null || aliases.isEmpty()) {
       return;
     }
+    Set<String> allEntityIndices = listIndicesByPrefix(indexName);
     try {
       UpdateAliasesRequest request =
           UpdateAliasesRequest.of(
               updateBuilder -> {
-                for (String alias : aliases) {
-                  updateBuilder.actions(
-                      actionBuilder ->
-                          actionBuilder.add(
-                              addBuilder -> addBuilder.index(indexName).alias(alias)));
-                }
+                allEntityIndices.forEach(
+                    actualIndexName -> {
+                      for (String alias : aliases) {
+                        updateBuilder.actions(
+                            actionBuilder ->
+                                actionBuilder.add(
+                                    addBuilder -> addBuilder.index(actualIndexName).alias(alias)));
+                      }
+                    });
                 return updateBuilder;
               });
 
@@ -400,12 +362,30 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       return indices;
     }
     try {
+      boolean isAliasExist = client.indices().existsAlias(b -> b.name(aliasName)).value();
+      if (!isAliasExist) {
+        LOG.warn("Alias '{}' does not exist. Returning empty index set.", aliasName);
+        return indices;
+      }
+
       GetAliasRequest request = GetAliasRequest.of(g -> g.name(aliasName));
       GetAliasResponse response = client.indices().getAlias(request);
 
       indices.addAll(response.result().keySet());
 
       LOG.info("Retrieved indices for alias {}: {}", aliasName, indices);
+    } catch (OpenSearchException osEx) {
+      if (osEx.status() == 404) {
+        LOG.warn("Alias '{}' not found (404). Returning empty set.", aliasName);
+        return indices;
+      }
+
+      // Other errors should not be masked
+      LOG.error(
+          "Unexpected OpensearchException while getting alias {}: {}",
+          aliasName,
+          osEx.getMessage(),
+          osEx);
     } catch (Exception e) {
       LOG.error("Failed to get indices for alias {} due to", aliasName, e);
     }
@@ -431,5 +411,45 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       LOG.error("Failed to list indices by prefix {} due to", prefix, e);
     }
     return indices;
+  }
+
+  @Override
+  public boolean waitForIndexReady(String indexName, int timeoutSeconds) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot wait for index.");
+      return false;
+    }
+
+    LOG.info("Waiting for index '{}' to become ready (timeout: {}s)", indexName, timeoutSeconds);
+
+    try {
+      HealthRequest healthRequest =
+          HealthRequest.of(
+              h ->
+                  h.index(indexName)
+                      .waitForStatus(HealthStatus.Yellow)
+                      .timeout(t -> t.time(timeoutSeconds + "s")));
+
+      HealthResponse healthResponse = client.cluster().health(healthRequest);
+
+      boolean isReady =
+          healthResponse.status() == HealthStatus.Green
+              || healthResponse.status() == HealthStatus.Yellow;
+
+      if (isReady) {
+        LOG.info("Index '{}' is ready with status: {}", indexName, healthResponse.status());
+      } else {
+        LOG.warn(
+            "Index '{}' not ready after {}s, status: {}",
+            indexName,
+            timeoutSeconds,
+            healthResponse.status());
+      }
+
+      return isReady;
+    } catch (Exception e) {
+      LOG.error("Failed to wait for index '{}' readiness: {}", indexName, e.getMessage(), e);
+      return false;
+    }
   }
 }

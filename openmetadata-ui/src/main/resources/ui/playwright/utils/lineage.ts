@@ -95,17 +95,10 @@ export const activateColumnLayer = async (page: Page) => {
 };
 
 export const editLineageClick = async (page: Page) => {
-  await page.getByTestId('lineage-config').click();
+  await expect(page.getByTestId('edit-lineage')).toBeVisible();
 
-  await expect(
-    page.getByRole('menuitem', { name: 'Edit Lineage' })
-  ).toBeVisible({
-    timeout: 10000,
-  });
-
-  await page.getByRole('menuitem', { name: 'Edit Lineage' }).click();
+  await page.getByTestId('edit-lineage').click();
   await page.waitForTimeout(1); // wait for the edit mode to activate
-  await clickOutside(page);
 };
 
 export const editLineage = async (page: Page) => {
@@ -163,12 +156,13 @@ export const dragAndDropNode = async (
   originSelector: string,
   destinationSelector: string
 ) => {
+  await page.waitForTimeout(1000);
   const destinationElement = await page.waitForSelector(destinationSelector);
   await page.hover(originSelector);
   await page.mouse.down();
   const box = (await destinationElement.boundingBox()) as DOMRect;
   const x = box.x + 250;
-  const y = box.y + box.height / 2;
+  const y = box.y + box.height / 2 + 100;
   await page.mouse.move(x, y, { steps: 20 });
   await page.mouse.up();
 };
@@ -239,13 +233,13 @@ export const connectEdgeBetweenNodes = async (
 
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
-  const name = get(node, 'entityResponseData.name');
+  const name = get(node, 'entityResponseData.displayName');
   const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
 
   await expect(lineageNode).toBeVisible();
 
   const entityHeaderName = lineageNode.locator(
-    '[data-testid="entity-header-name"]'
+    '[data-testid="entity-header-display-name"]'
   );
 
   await expect(entityHeaderName).toHaveText(name);
@@ -391,10 +385,20 @@ const verifyPipelineDataInDrawer = async (
     .filter({ hasText: pipelineName });
 
   if (bVisitPipelinePageFromDrawer) {
-    await page.locator('.edge-info-drawer [data-testid="Edge"] a').click();
-    await page.click('[data-testid="lineage"]');
+    await expect(page.getByTestId('edge-header-title')).toHaveText(
+      'Edge Information'
+    );
+    await expect(
+      page.locator('.overview-section').getByTestId('Source-value')
+    ).toHaveText(fromNode.entity.displayName);
+    await expect(
+      page.locator('.overview-section').getByTestId('Target-value')
+    ).toHaveText(toNode.entity.displayName);
+    await expect(
+      page.locator('.overview-section').getByTestId('Edge-value')
+    ).toHaveText(pipelineName);
+
     await fromNode.visitEntityPage(page);
-    await page.click('[data-testid="lineage"]');
   } else {
     await page.click('.edge-info-drawer .ant-drawer-header .anticon-close');
   }
@@ -470,6 +474,8 @@ export const addColumnLineage = async (
     true
   );
   await lineageRes;
+
+  await page.getByTestId(`column-${toColumnNode}`).click();
 
   if (exitEditMode) {
     await editLineageClick(page);
@@ -750,8 +756,8 @@ export const verifyColumnLineageInCSV = async (
 };
 
 export const verifyLineageConfig = async (page: Page) => {
-  await page.click('[data-testid="lineage-config"]');
-  await page.getByRole('menuitem', { name: 'Node Depth' }).click();
+  await page.getByTestId('lineage-config').click();
+
   await page.waitForSelector('.ant-modal-content', {
     state: 'visible',
   });

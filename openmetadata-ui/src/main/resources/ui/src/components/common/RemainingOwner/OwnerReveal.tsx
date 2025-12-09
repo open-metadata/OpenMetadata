@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Typography } from 'antd';
-import React from 'react';
+import { Box, MenuItem, Typography, useTheme } from '@mui/material';
+import { Button } from 'antd';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
+import { StyledMenu } from '../../LineageTable/LineageTable.styled';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerRevealProps } from './OwnerReveal.interface';
@@ -31,20 +33,29 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
   avatarSize = 32,
 }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const remainingCountLabel = `+${remainingCount}`;
 
-  // Calculate font size based on avatar size
   const fontSize = Math.max(8, Math.floor(avatarSize * 0.4)); // Reduced to 40% of avatar size
 
-  const handleShowMoreToggle = () => {
+  const handleShowMoreToggle = (event: React.MouseEvent<HTMLElement>) => {
     if (isCompactView) {
       setShowAllOwners((prev) => !prev);
+    } else {
+      setAnchorEl(event.currentTarget);
+      setIsDropdownOpen(true);
     }
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+    setIsDropdownOpen(false);
   };
 
   if (isCompactView) {
     return (
-      <div className="relative">
+      <Box sx={{ position: 'relative' }}>
         <Button
           className={`${
             !showAllOwners ? 'more-owners-button' : ''
@@ -59,60 +70,82 @@ export const OwnerReveal: React.FC<OwnerRevealProps> = ({
           onClick={handleShowMoreToggle}>
           {showAllOwners ? t('label.less') : remainingCountLabel}
         </Button>
-      </div>
+      </Box>
     );
   }
 
   return (
-    <div className="relative">
-      <Dropdown
-        menu={{
-          items: owners.map((owner) => ({
-            key: owner.id,
-            label: (
-              <UserPopOverCard userName={owner.name ?? ''}>
-                <Link
-                  className="d-flex no-underline items-center gap-2 relative"
-                  data-testid="owner-link"
-                  to={getOwnerPath(owner)}>
-                  <ProfilePicture
-                    displayName={getEntityName(owner)}
-                    key="profile-picture"
-                    name={owner.name ?? ''}
-                    type="circle"
-                    width={avatarSize.toString()}
-                  />
-
-                  <Typography.Text
-                    className="w-36"
-                    ellipsis={{ tooltip: true }}>
-                    {getEntityName(owner)}{' '}
-                  </Typography.Text>
-                </Link>
-              </UserPopOverCard>
-            ),
-          })),
-          className: 'owner-dropdown-container',
+    <Box sx={{ position: 'relative' }}>
+      <Button
+        className={`${
+          !showAllOwners
+            ? 'more-owners-button d-flex items-center flex-center d-flex flex-center'
+            : ''
+        } text-sm font-medium h-auto`}
+        size="small"
+        style={{
+          width: `${avatarSize}px`,
+          height: `${avatarSize}px`,
+          fontSize: `${fontSize}px`,
         }}
+        type="link"
+        onClick={handleShowMoreToggle}>
+        {showAllOwners ? t('label.less') : remainingCountLabel}
+      </Button>
+
+      <StyledMenu
+        anchorEl={anchorEl}
+        id="owner-reveal-menu"
         open={isDropdownOpen}
-        onOpenChange={setIsDropdownOpen}>
-        <Button
-          className={`${
-            !showAllOwners
-              ? 'more-owners-button d-flex items-center flex-center d-flex flex-center'
-              : ''
-          } text-sm font-medium h-auto`}
-          size="small"
-          style={{
-            width: `${avatarSize}px`,
-            height: `${avatarSize}px`,
-            fontSize: `${fontSize}px`,
-          }}
-          type="link"
-          onClick={handleShowMoreToggle}>
-          {showAllOwners ? t('label.less') : remainingCountLabel}
-        </Button>
-      </Dropdown>
-    </div>
+        slotProps={{
+          paper: {
+            sx: {
+              marginTop: '0',
+            },
+          },
+        }}
+        sx={{
+          zIndex: 9999,
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        onClose={handleClose}>
+        {owners.map((owner) => (
+          <MenuItem
+            key={owner.id}
+            sx={{
+              padding: '8px 16px',
+              textDecoration: 'none',
+            }}
+            onClick={handleClose}>
+            <UserPopOverCard userName={owner.name ?? ''}>
+              <Link
+                className="d-flex no-underline items-center gap-2 relative"
+                data-testid="owner-link"
+                to={getOwnerPath(owner)}>
+                <ProfilePicture
+                  displayName={getEntityName(owner)}
+                  name={owner.name ?? ''}
+                  type="circle"
+                  width={avatarSize.toString()}
+                />
+
+                <Typography
+                  noWrap
+                  sx={{
+                    width: '9rem',
+                    color: theme.palette.allShades.gray[900],
+                  }}
+                  variant="body2">
+                  {getEntityName(owner)}
+                </Typography>
+              </Link>
+            </UserPopOverCard>
+          </MenuItem>
+        ))}
+      </StyledMenu>
+    </Box>
   );
 };

@@ -32,7 +32,9 @@ import {
 } from '../generated/tests/testDefinition';
 import {
   getCurrentMillis,
+  getEndOfDayInMillis,
   getEpochMillisForPastDays,
+  getStartOfDayInMillis,
 } from '../utils/date-time/DateTimeUtils';
 import { t } from '../utils/i18next/LocalUtil';
 import { BLUE_50, BLUE_500, BLUE_800, YELLOW_3 } from './Color.constants';
@@ -67,51 +69,59 @@ export const PROFILER_CHART_DATA_SIZE = 500;
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
     days: 1,
-    title: t('label.yesterday'),
+    title: 'label.yesterday',
   },
   last3days: {
     days: 3,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 3,
-    }),
+    },
   },
   last7days: {
     days: 7,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 7,
-    }),
+    },
   },
   last14days: {
     days: 14,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 14,
-    }),
+    },
   },
   last30days: {
     days: 30,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 30,
-    }),
+    },
   },
   last60days: {
     days: 60,
-    title: t('label.last-number-of-days', {
+    title: 'label.last-number-of-days',
+    titleData: {
       numberOfDays: 60,
-    }),
+    },
   },
 };
 
 export const DEFAULT_SELECTED_RANGE = {
   key: 'last7days',
-  title: t('label.last-number-of-days', {
+  title: 'label.last-number-of-days',
+  titleData: {
     numberOfDays: 7,
-  }),
+  },
   days: 7,
 };
 
 export const DEFAULT_RANGE_DATA = {
-  startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
-  endTs: getCurrentMillis(),
+  startTs: getStartOfDayInMillis(
+    getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days)
+  ),
+  endTs: getEndOfDayInMillis(getCurrentMillis()),
 };
 
 export const COLORS = ['#7147E8', '#B02AAC', '#B02AAC', '#1890FF', '#008376'];
@@ -294,12 +304,11 @@ export const INITIAL_DATA_ASSETS_COVERAGE_STATES = {
 
 export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
   {
-    name: t('label.configure-entity', {
-      entity: t('label.test-case-lowercase'),
-    }),
+    name: 'label.configure-entity',
+    nameData: { entity: 'label.test-case-lowercase' },
     step: 1,
   },
-  { name: t('label.success'), step: 2 },
+  { name: 'label.success', step: 2 },
 ];
 
 export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [

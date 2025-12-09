@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
@@ -56,11 +57,19 @@ import org.openmetadata.schema.api.events.NotificationTemplateRenderResponse;
 import org.openmetadata.schema.api.events.NotificationTemplateSendRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -68,12 +77,16 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.policies.PolicyResourceTest;
+import org.openmetadata.service.resources.teams.RoleResourceTest;
+import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class NotificationTemplateResourceTest
     extends EntityResourceTest<NotificationTemplate, CreateNotificationTemplate> {
+  private User userWithBasicUserPermission;
 
   public NotificationTemplateResourceTest() {
     super(
@@ -88,7 +101,7 @@ public class NotificationTemplateResourceTest
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
-    // Initial setup - seed data will be refreshed before each test
+    userWithBasicUserPermission = createUserWithEditUserNotificationTemplatePermission();
   }
 
   private void ensureCleanSystemTemplates() throws IOException {
@@ -96,7 +109,7 @@ public class NotificationTemplateResourceTest
     NotificationTemplateRepository repository =
         (NotificationTemplateRepository) Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE);
 
-    // List all system templates and delete them directly via DAO
+    // List all system templates and delete them
     Map<String, String> params = new HashMap<>();
     params.put("provider", "system");
     params.put("limit", "1000");
@@ -109,14 +122,14 @@ public class NotificationTemplateResourceTest
             .map(NotificationTemplate::getName)
             .collect(Collectors.toList()));
 
-    // Delete system templates directly through DAO to bypass all restrictions
+    // Hard delete system templates directly using DAO to bypass repository validation
     for (NotificationTemplate template : systemTemplates.getData()) {
       try {
-        // Use DAO directly to bypass all system template deletion restrictions
+        // Use DAO directly to bypass checkSystemEntityDeletion validation
         repository.getDao().delete(template.getId());
-        LOG.debug("Deleted system template via DAO: {}", template.getName());
+        LOG.debug("Hard deleted system template: {}", template.getName());
       } catch (Exception e) {
-        LOG.warn("Failed to delete system template: {}", template.getName(), e);
+        LOG.warn("Failed to hard delete system template: {}", template.getName(), e);
       }
     }
 
@@ -1295,5 +1308,225 @@ public class NotificationTemplateResourceTest
     assertNull(afterDelete.getNotificationTemplate(), "Template reference should be null");
 
     subscriptionTest.deleteEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_patchSystemTemplate_requiresSpecialPermission_403() throws IOException {
+    ensureCleanSystemTemplates();
+    Map<String, String> userAuthHeaders =
+        SecurityUtil.authHeaders(userWithBasicUserPermission.getEmail());
+
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    String newBody = "<div>Modified by test user: {{entity.name}}</div>";
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody));
+
+    assertResponse(
+        () -> patchEntity(systemTemplate.getId(), JsonUtils.readTree(json), userAuthHeaders),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='userwitheditusernotificationtemplate'} operations [EditAll] not allowed");
+  }
+
+  @Test
+  void test_patchSystemTemplateByFQN_requiresSpecialPermission_403() throws IOException {
+    ensureCleanSystemTemplates();
+
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    String newBody = "<div>Modified by test user: {{entity.name}}</div>";
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody));
+
+    assertResponse(
+        () ->
+            patchEntityUsingFqn(
+                systemTemplate.getFullyQualifiedName(),
+                JsonUtils.readTree(json),
+                TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} operations [EditAll] not allowed");
+  }
+
+  @Test
+  void test_putSystemTemplate_requiresSpecialPermission_403() throws IOException {
+    ensureCleanSystemTemplates();
+
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    CreateNotificationTemplate updateRequest =
+        new CreateNotificationTemplate()
+            .withName(systemTemplate.getName())
+            .withDisplayName(systemTemplate.getDisplayName())
+            .withDescription("Updated description")
+            .withTemplateSubject(systemTemplate.getTemplateSubject())
+            .withTemplateBody("<div>Updated by test user: {{entity.name}}</div>");
+
+    // TEST_AUTH_HEADERS has DataConsumer role which lacks EditAll and
+    // EditSystemNotificationTemplate
+    assertResponse(
+        () -> updateEntity(updateRequest, OK, USER_WITH_CREATE_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='testwithcreateuserpermission'} operations [EditAll] not allowed");
+  }
+
+  @Test
+  void test_patchSystemTemplate_adminCanEdit_200() throws IOException {
+    ensureCleanSystemTemplates();
+
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    String newBody = "<div>Modified by admin: {{entity.name}}</div>";
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody));
+
+    NotificationTemplate updated =
+        patchEntity(systemTemplate.getId(), JsonUtils.readTree(json), ADMIN_AUTH_HEADERS);
+
+    assertEquals(newBody, updated.getTemplateBody());
+    assertEquals(ProviderType.SYSTEM, updated.getProvider());
+    assertTrue(
+        updated.getIsModifiedFromDefault(), "Template should be marked as modified after edit");
+  }
+
+  @Test
+  void test_putSystemTemplate_adminCanEdit_200() throws IOException {
+    ensureCleanSystemTemplates();
+
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    String newBody = "<div>Updated by admin via PUT: {{entity.name}}</div>";
+    String newDescription = "Updated description via PUT";
+
+    CreateNotificationTemplate updateRequest =
+        new CreateNotificationTemplate()
+            .withName(systemTemplate.getName())
+            .withDisplayName(systemTemplate.getDisplayName())
+            .withDescription(newDescription)
+            .withTemplateSubject(systemTemplate.getTemplateSubject())
+            .withTemplateBody(newBody);
+
+    NotificationTemplate updated = updateEntity(updateRequest, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(newBody, updated.getTemplateBody());
+    assertEquals(newDescription, updated.getDescription());
+    assertEquals(ProviderType.SYSTEM, updated.getProvider());
+    assertTrue(
+        updated.getIsModifiedFromDefault(), "Template should be marked as modified after edit");
+  }
+
+  @Test
+  void test_patchUserTemplate_noSpecialPermissionRequired_200(TestInfo test) throws IOException {
+    CreateNotificationTemplate create = createRequest(getEntityName(test));
+    NotificationTemplate userTemplate = createEntity(create, ADMIN_AUTH_HEADERS);
+    assertEquals(ProviderType.USER, userTemplate.getProvider());
+
+    String newBody = "<div>Test user can edit USER templates: {{entity.name}}</div>";
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody));
+
+    NotificationTemplate updated =
+        patchEntity(userTemplate.getId(), JsonUtils.readTree(json), ADMIN_AUTH_HEADERS);
+
+    assertEquals(newBody, updated.getTemplateBody());
+    assertEquals(ProviderType.USER, updated.getProvider());
+  }
+
+  @Test
+  void test_userWithEditUserNotificationTemplatePermission_canEditUserTemplates()
+      throws IOException {
+    // Create a policy with ONLY EDIT_USER_NOTIFICATION_TEMPLATE permission
+    ensureCleanSystemTemplates();
+
+    Map<String, String> userAuthHeaders =
+        SecurityUtil.authHeaders(userWithBasicUserPermission.getEmail());
+
+    // Test 1: User CAN edit USER templates
+    CreateNotificationTemplate createUserTemplate = createRequest("user-template-test");
+    NotificationTemplate userTemplate = createEntity(createUserTemplate, ADMIN_AUTH_HEADERS);
+    assertEquals(ProviderType.USER, userTemplate.getProvider());
+
+    String newUserBody = "<div>Edited by user with EDIT_USER_NOTIFICATION_TEMPLATE</div>";
+    String userJson =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newUserBody));
+
+    NotificationTemplate updatedUserTemplate =
+        patchEntity(userTemplate.getId(), JsonUtils.readTree(userJson), userAuthHeaders);
+    assertEquals(newUserBody, updatedUserTemplate.getTemplateBody());
+
+    // Test 2: User CANNOT edit SYSTEM templates
+    ensureCleanSystemTemplates();
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    String newSystemBody = "<div>Attempting to edit SYSTEM template</div>";
+    String systemJson =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newSystemBody));
+
+    assertResponse(
+        () -> patchEntity(systemTemplate.getId(), JsonUtils.readTree(systemJson), userAuthHeaders),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='userwitheditusernotificationtemplate'} operations [EditAll] not allowed");
+  }
+
+  private static User createUserWithEditUserNotificationTemplatePermission()
+      throws HttpResponseException {
+    CreatePolicy createPolicy =
+        new CreatePolicy()
+            .withName("EditUserNotificationTemplateOnlyPolicy")
+            .withDisplayName("Edit User Notification Template Only Policy")
+            .withDescription("Policy with only EditUserNotificationTemplate permission")
+            .withRules(
+                List.of(
+                    new Rule()
+                        .withName("EditUserNotificationTemplateRule")
+                        .withResources(List.of("notificationTemplate"))
+                        .withOperations(List.of(MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE))
+                        .withEffect(Rule.Effect.ALLOW)));
+
+    Policy policy = new PolicyResourceTest().createEntity(createPolicy, ADMIN_AUTH_HEADERS);
+
+    // Create a role with this policy (no inherited permissions)
+    CreateRole createRole =
+        new CreateRole()
+            .withName("EditUserNotificationTemplateRole")
+            .withDisplayName("Edit User Notification Template Role")
+            .withDescription("Role with only EditUserNotificationTemplate permission")
+            .withPolicies(List.of(policy.getFullyQualifiedName()));
+
+    Role role = new RoleResourceTest().createEntity(createRole, ADMIN_AUTH_HEADERS);
+
+    // Create a user with this role (no inherited permissions)
+    CreateUser createUser =
+        new CreateUser()
+            .withName("userWithEditUserNotificationTemplate")
+            .withEmail("userWithEditUserNotificationTemplate@open-metadata.org")
+            .withRoles(List.of(role.getId()))
+            .withIsBot(false);
+
+    return new UserResourceTest().createEntity(createUser, ADMIN_AUTH_HEADERS);
   }
 }

@@ -113,6 +113,7 @@ import { DataInsightTabs } from '../interface/data-insight.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import {
+  formatNumberWithComma,
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
@@ -284,7 +285,14 @@ const getCommonOverview = (
       ? [
           {
             name: i18next.t('label.owner-plural'),
-            value: <OwnerLabel hasPermission={false} owners={owners} />,
+            value: (
+              <OwnerLabel
+                hasPermission={false}
+                isCompactView={false}
+                owners={owners}
+                showLabel={false}
+              />
+            ),
             visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
           },
         ]
@@ -402,7 +410,9 @@ const getTableOverview = (
     {
       name: i18next.t('label.row-plural'),
       value:
-        !isUndefined(profile) && profile?.rowCount ? profile.rowCount : NO_DATA,
+        !isUndefined(profile) && profile?.rowCount
+          ? formatNumberWithComma(profile.rowCount)
+          : NO_DATA,
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -1072,9 +1082,9 @@ const getApiCollectionOverview = (apiCollection: APICollection) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? NO_DATA,
+      value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.API_SERVICES
       ),
       isLink: true,
@@ -1118,9 +1128,9 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? '',
+      value: service?.fullyQualifiedName ?? '',
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.API_SERVICES
       ),
       isLink: true,
@@ -2392,7 +2402,7 @@ export const getEntityBreadcrumbs = (
           url:
             (entity as EventSubscription).alertType === AlertType.Observability
               ? ROUTES.OBSERVABILITY_ALERTS
-              : ROUTES.NOTIFICATION_ALERTS,
+              : ROUTES.NOTIFICATION_ALERT_LIST,
         },
         {
           name: entity.name,

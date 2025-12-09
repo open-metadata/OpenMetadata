@@ -42,6 +42,7 @@ export interface PipelineDetailPageTabProps {
   pipelineDetails: Pipeline;
   pipelineFQN: string;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   deleted: boolean;

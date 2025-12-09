@@ -15,8 +15,8 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
 import {
-  assignDomain,
-  removeDomain,
+  assignSingleSelectDomain,
+  removeSingleSelectDomain,
   uuid,
   verifyDomainLinkInCard,
 } from '../../utils/common';
@@ -361,10 +361,10 @@ export class DatabaseClass extends EntityClass {
     domain1: Domain['responseData'],
     domain2: Domain['responseData']
   ) {
-    await assignDomain(page, domain1);
+    await assignSingleSelectDomain(page, domain1);
     await this.verifyDomainPropagation(page, domain1);
-    await removeDomain(page, domain1);
-    await assignDomain(page, domain2);
-    await removeDomain(page, domain2);
+    await removeSingleSelectDomain(page, domain1);
+    await assignSingleSelectDomain(page, domain2);
+    await removeSingleSelectDomain(page, domain2);
   }
 }

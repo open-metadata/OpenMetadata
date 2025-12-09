@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.datamodels;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -27,6 +28,7 @@ import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -42,6 +44,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
@@ -55,10 +58,12 @@ import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.DashboardService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -490,5 +495,155 @@ public class DashboardDataModelResourceTest
 
     // Cleanup: Hard delete the test entity to avoid affecting other tests
     deleteEntity(dataModel.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    // Critical test: Verify that bulk updates preserve user-made changes
+    // and only update the fields sent in the bulk request (incremental updates)
+
+    // Step 1: Bot creates initial dashboarddatamodel (using regular create, not bulk)
+    CreateDashboardDataModel botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    DashboardDataModel entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", entity.getDescription());
+    assertEquals(1, entity.getTags().size());
+
+    // Step 2: User edits description and adds tag
+    String originalJson = JsonUtils.pojoToJson(entity);
+    String userDescription = "User-edited description - should be preserved";
+    entity.setDescription(userDescription);
+    entity.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    DashboardDataModel userEditedEntity =
+        patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedEntity.getDescription());
+    assertEquals(2, userEditedEntity.getTags().size());
+
+    // Step 3: Bot sends bulk update with new tag and different description
+    // Bot's description should be IGNORED (bot protection)
+    // Bot's tag should be MERGED (added to existing)
+    CreateDashboardDataModel botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify user edits were preserved
+    DashboardDataModel verifyEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    // Description should still be user's (bot protection)
+    assertEquals(
+        userDescription,
+        verifyEntity.getDescription(),
+        "Bot should NOT be able to overwrite user-edited description");
+
+    // Tags should be merged (original 2 + new 1 from bot)
+    assertEquals(3, verifyEntity.getTags().size(), "Tags should be merged, not replaced");
+
+    List<String> tagFqns =
+        verifyEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+    assertTrue(tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    // Test that bulk updates MERGE tags (add new, keep existing)
+    // NOT replace tags completely
+
+    // Step 1: Create dashboarddatamodel with initial tags
+    CreateDashboardDataModel createRequest =
+        createRequest(test.getDisplayName())
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    DashboardDataModel entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+
+    // Step 2: Send bulk update with additional tag (not replacing existing)
+    CreateDashboardDataModel updateRequest =
+        createRequest(test.getDisplayName()).withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(updateRequest), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify tags were merged (original 2 + new 1 = 3 total)
+    DashboardDataModel updatedEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        3, updatedEntity.getTags().size(), "Tags should be merged: 2 original + 1 new = 3 total");
+
+    List<String> tagFqns =
+        updatedEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+
+    assertTrue(
+        tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()),
+        "Original tag USER_ADDRESS should still exist");
+    assertTrue(
+        tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()),
+        "Original tag PERSONAL_DATA should still exist");
+    assertTrue(
+        tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+        "New tag PII_SENSITIVE should be added");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    // Test that while bots cannot overwrite user descriptions,
+    // admins CAN update descriptions via bulk
+
+    // Step 1: User creates dashboarddatamodel
+    CreateDashboardDataModel createRequest =
+        createRequest(test.getDisplayName()).withDescription("User-created description");
+
+    DashboardDataModel entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals("User-created description", entity.getDescription());
+
+    // Step 2: Admin updates description via bulk
+    String adminDescription = "Admin-updated description via bulk";
+    CreateDashboardDataModel adminUpdate =
+        createRequest(test.getDisplayName()).withDescription(adminDescription);
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify admin's description was applied
+    DashboardDataModel updatedEntity = getEntity(entity.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        adminDescription,
+        updatedEntity.getDescription(),
+        "Admin should be able to update description via bulk");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

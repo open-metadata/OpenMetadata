@@ -36,6 +36,7 @@ import {
   assignGlossaryTerm,
   assignTag,
   updateDescription,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
   addAssetToGlossaryTerm,
@@ -270,7 +271,7 @@ test.describe('Glossary tests', () => {
         // Update Owners
         await addMultiOwner({
           page,
-          ownerNames: [user3.getUserName()],
+          ownerNames: [user3.getUserDisplayName()],
           activatorBtnDataTestId: 'add-owner',
           resultTestId: 'glossary-right-panel-owner-link',
           endpoint: EntityTypeEndpoint.Glossary,
@@ -281,7 +282,7 @@ test.describe('Glossary tests', () => {
         // Update Reviewer
         await addMultiOwner({
           page,
-          ownerNames: [user3.getUserName()],
+          ownerNames: [user3.getUserDisplayName()],
           activatorBtnDataTestId: 'Add',
           resultTestId: 'glossary-reviewer-name',
           endpoint: EntityTypeEndpoint.Glossary,
@@ -506,7 +507,7 @@ test.describe('Glossary tests', () => {
         await goToAssetsTab(page, glossaryTerm3.data.displayName);
 
         await page.waitForSelector(
-          'text=Adding a new Asset is easy, just give it a spin!'
+          "text=Looks like you haven't added any data assets yet."
         );
 
         await dashboardEntity.visitEntityPage(page);
@@ -1785,6 +1786,105 @@ test.describe('Glossary tests', () => {
     } finally {
       await afterAction();
       await afterActionUser1();
+    }
+  });
+
+  test('Create glossary, change language to Dutch, and delete glossary', async ({
+    browser,
+  }) => {
+    test.slow(true);
+
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary = new Glossary();
+
+    try {
+      await test.step('Create Glossary via API', async () => {
+        await glossary.create(apiContext);
+      });
+
+      await test.step('Navigate to Glossary page', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+        await selectActiveGlossary(page, glossary.data.displayName);
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+          glossary.data.displayName
+        );
+      });
+
+      await test.step('Change application language to German', async () => {
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+        const languageDropdown = page
+          .locator('.nav-bar-side-items button.ant-dropdown-trigger')
+          .filter({ hasText: 'EN' })
+          .first();
+        await languageDropdown.click();
+
+        const germanOption = page.getByRole('menuitem', {
+          name: 'Deutsch - DE',
+        });
+        await germanOption.click();
+
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+      });
+
+      await test.step(
+        'Open delete modal and verify delete confirmation',
+        async () => {
+          await sidebarClick(page, SidebarItem.GLOSSARY);
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+          await selectActiveGlossary(page, glossary.data.displayName);
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          await page.getByTestId('manage-button').click();
+          await page.getByTestId('delete-button').click();
+
+          await expect(page.locator('[role="dialog"]')).toBeVisible();
+          await expect(page.getByTestId('modal-header')).toContainText(
+            glossary.data.name
+          );
+
+          await expect(page.getByTestId('body-text')).toContainText('DELETE');
+
+          const confirmationInput = page.getByTestId('confirmation-text-input');
+
+          await expect(confirmationInput).toBeVisible();
+
+          await confirmationInput.fill('DELETE');
+
+          await page.getByTestId('confirm-button').click();
+
+          await toastNotification(
+            page,
+            new RegExp(`.*${glossary.data.name}.*`)
+          );
+        }
+      );
+
+      await test.step('Change language back to English', async () => {
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+        const languageDropdown = page
+          .locator('.nav-bar-side-items button.ant-dropdown-trigger')
+          .filter({ hasText: 'DE' })
+          .first();
+        await languageDropdown.click();
+
+        const englishOption = page.getByRole('menuitem', {
+          name: 'English - EN',
+        });
+        await englishOption.click();
+      });
+    } finally {
+      await afterAction();
     }
   });
 

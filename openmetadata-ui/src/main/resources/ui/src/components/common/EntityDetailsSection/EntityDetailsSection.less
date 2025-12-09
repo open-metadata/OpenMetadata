@@ -10,8 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import '../../../styles/variables.less';
 
 .entity-details-section {
+  .no-data-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+
+    .no-data-text {
+      color: #8c8c8c;
+      font-size: 13px;
+    }
+  }
   .schema-field-cards-container {
     .no-data-container {
       display: flex;
@@ -27,5 +39,23 @@
         font-size: 14px;
       }
     }
+
+    .nested-field-card-wrapper {
+      border-bottom: 0.6px solid @grey-15;
+      .field-card-no-border {
+        .field-card {
+          border-bottom: none;
+          padding-bottom: 0;
+        }
+      }
+    }
   }
+}
+.no-data-placeholder {
+  color: @grey-500 !important;
+  font-size: 12px !important;
+}
+.searchbar-container {
+  margin-bottom: 0 !important;
+  margin-top: 8px;
 }

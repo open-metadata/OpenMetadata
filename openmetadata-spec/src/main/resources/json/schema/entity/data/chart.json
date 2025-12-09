@@ -208,8 +208,7 @@
     },
     "entityStatus": {
       "description": "Status of the Chart.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "service"],

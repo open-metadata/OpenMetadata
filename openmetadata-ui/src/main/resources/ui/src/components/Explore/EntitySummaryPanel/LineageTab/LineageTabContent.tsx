@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@mui/material';
 import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
@@ -24,13 +25,17 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/CommonUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageUtils';
-import { getEntityLinkFromType } from '../../../../utils/EntityUtils';
+import {
+  getEntityLinkFromType,
+  getEntityName,
+} from '../../../../utils/EntityUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import { getTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { NoOwnerFound } from '../../../common/NoOwner/NoOwnerFound';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
 import './LineageTabContent.less';
@@ -42,6 +47,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
   onFilterChange,
 }) => {
   const { t } = useTranslation();
+  const [searchText, setSearchText] = useState<string>('');
 
   const { upstreamNodes, downstreamNodes, upstreamCount, downstreamCount } =
     useMemo(() => {
@@ -122,6 +128,23 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
     return items;
   }, [filter, upstreamNodes, downstreamNodes, lineageData, entityFqn]);
 
+  const filteredLineageItems = useMemo(() => {
+    if (!searchText) {
+      return lineageItems;
+    }
+
+    const searchLower = searchText.toLowerCase();
+
+    return lineageItems.filter((item) => {
+      const entityName = getEntityName(item.entity)?.toLowerCase() || '';
+      const entityFqn = item.entity.fullyQualifiedName?.toLowerCase() || '';
+
+      return (
+        entityName.includes(searchLower) || entityFqn.includes(searchLower)
+      );
+    });
+  }, [lineageItems, searchText]);
+
   return (
     <div className="lineage-tab-content">
       <div className="lineage-filter-buttons">
@@ -129,9 +152,16 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           className={`lineage-filter-button ${
             filter === 'upstream' ? 'active' : ''
           }`}
+          data-testid={`upstream-button-${
+            filter === 'upstream' ? 'active' : ''
+          }`}
           size="small"
           onClick={() => onFilterChange('upstream')}>
-          {t('label.upstream')}
+          <span
+            className="lineage-filter-button-text"
+            data-testid="upstream-button-text">
+            {t('label.upstream')}
+          </span>
           <span
             className={`lineage-filter-button-count ${
               filter === 'upstream' ? 'active' : ''
@@ -143,9 +173,16 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           className={`lineage-filter-button ${
             filter === 'downstream' ? 'active' : ''
           }`}
+          data-testid={`downstream-button-${
+            filter === 'downstream' ? 'active' : ''
+          }`}
           size="small"
           onClick={() => onFilterChange('downstream')}>
-          {t('label.downstream')}
+          <span
+            className="lineage-filter-button-text"
+            data-testid="downstream-button-text">
+            {t('label.downstream')}
+          </span>
           <span
             className={`lineage-filter-button-count ${
               filter === 'downstream' ? 'active' : ''
@@ -154,11 +191,19 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           </span>
         </Button>
       </div>
-
+      <SearchBarComponent
+        containerClassName="searchbar-container"
+        placeholder={t('label.search-for-type', {
+          type: t('label.entity-plural'),
+        })}
+        searchValue={searchText}
+        typingInterval={350}
+        onSearch={setSearchText}
+      />
       {/* Lineage Items */}
       <div className="lineage-items-list">
-        {lineageItems.length > 0 ? (
-          lineageItems.map((item) => (
+        {filteredLineageItems.length > 0 ? (
+          filteredLineageItems.map((item) => (
             <Link
               className="lineage-item-link"
               key={
@@ -188,20 +233,37 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                     </div>
                     <div className="item-path-container">
                       {item.path &&
-                        getTruncatedPath(item.path, 'breadcrumb-container')}
+                        getTruncatedPath(
+                          item.path,
+                          'condensed-breadcrumb-container'
+                        )}
                     </div>
                   </div>
                   <div className="lineage-item-direction">
                     {item.direction === 'upstream' ? (
-                      <UpstreamIcon />
+                      <Tooltip
+                        arrow
+                        placement="top"
+                        title={t('label.upstream')}>
+                        <span>
+                          <UpstreamIcon height={18} width={18} />
+                        </span>
+                      </Tooltip>
                     ) : (
-                      <DownstreamIcon />
+                      <Tooltip
+                        arrow
+                        placement="top"
+                        title={t('label.downstream')}>
+                        <span>
+                          <DownstreamIcon height={18} width={18} />
+                        </span>
+                      </Tooltip>
                     )}
                   </div>
                 </div>
                 <div className="lineage-card-content">
                   <Typography.Text className="item-name-text">
-                    {item.entity.displayName || item.entity.name}
+                    {getEntityName(item.entity)}
                   </Typography.Text>
                   <div className="d-flex align-items-center gap-1 lineage-info-container">
                     {item.entity.entityType && (
@@ -225,9 +287,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                     </span>
                     {item.entity.owners && item.entity.owners.length > 0 ? (
                       <OwnerLabel
-                        isCompactView
                         avatarSize={16}
                         className="item-owner-label-text"
+                        isCompactView={false}
                         owners={item.entity.owners}
                         showLabel={false}
                       />
@@ -247,13 +309,13 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             </Link>
           ))
         ) : (
-          <div className="lineage-items-list empty-state">
+          <div>
             <ErrorPlaceHolderNew
-              className="text-grey-14"
+              className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography.Paragraph className="text-center text-grey-muted m-t-sm">
-                {t('label.no-data-found')}
+              <Typography.Paragraph className="text-center  no-data-placeholder">
+                {t('label.lineage-not-found')}
               </Typography.Paragraph>
             </ErrorPlaceHolderNew>
           </div>

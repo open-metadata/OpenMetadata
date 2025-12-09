@@ -14,23 +14,33 @@ import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
+import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
-import { INITIAL_PAGING_VALUE } from '../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
+  PAGE_SIZE,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
+import { useTableFilters } from '../../hooks/useTableFilters';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { searchQuery } from '../../rest/searchAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
+import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getColumnSorter, highlightSearchText } from '../../utils/EntityUtils';
+import { stringToHTML } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const StoredProcedureTab = () => {
@@ -49,7 +59,54 @@ const StoredProcedureTab = () => {
   const [storedProcedure, setStoredProcedure] = useState<ServicePageData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
-  const [showDeleted, setShowDeleted] = useState(false);
+
+  const { filters: tableFilters, setFilters } = useTableFilters(
+    INITIAL_TABLE_FILTERS
+  );
+  const { showDeletedTables: showDeletedStoredProcedures } = tableFilters;
+
+  const searchValue = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData.schema as string | undefined;
+  }, [location.search]);
+
+  const searchStoredProcedure = useCallback(
+    async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
+      setIsLoading(true);
+      handlePageChange(pageNumber, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+      try {
+        const response = await searchQuery({
+          query: '',
+          pageNumber,
+          pageSize: PAGE_SIZE,
+          queryFilter: buildSchemaQueryFilter(
+            'databaseSchema.fullyQualifiedName.keyword',
+            decodedDatabaseSchemaFQN,
+            searchValue
+          ),
+          searchIndex: SearchIndex.STORED_PROCEDURE,
+          includeDeleted: showDeletedStoredProcedures,
+          trackTotalHits: true,
+        });
+        const data = response.hits.hits.map((schema) => schema._source);
+        const total = response.hits.total.value;
+        setStoredProcedure(data);
+        handlePagingChange({ total });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [decodedDatabaseSchemaFQN, showDeletedStoredProcedures, handlePagingChange]
+  );
 
   const fetchStoreProcedureDetails = useCallback(
     async (params?: Partial<Paging>) => {
@@ -57,7 +114,9 @@ const StoredProcedureTab = () => {
         setIsLoading(true);
         const { data, paging } = await getStoredProceduresList({
           databaseSchema: decodedDatabaseSchemaFQN,
-          include: showDeleted ? Include.Deleted : Include.NonDeleted,
+          include: showDeletedStoredProcedures
+            ? Include.Deleted
+            : Include.NonDeleted,
           ...params,
           limit: pageSize,
         });
@@ -69,23 +128,19 @@ const StoredProcedureTab = () => {
         setIsLoading(false);
       }
     },
-    [decodedDatabaseSchemaFQN, pageSize, showDeleted, handlePagingChange]
-  );
-
-  const handleShowDeleted = useCallback(
-    (value: boolean) => {
-      setShowDeleted(value);
-      handlePageChange(INITIAL_PAGING_VALUE, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
-    },
-    [handlePageChange, pageSize]
+    [
+      decodedDatabaseSchemaFQN,
+      pageSize,
+      showDeletedStoredProcedures,
+      handlePagingChange,
+    ]
   );
 
   const storedProcedurePagingHandler = useCallback(
     async ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
+      if (searchValue) {
+        searchStoredProcedure(searchValue, currentPage);
+      } else if (cursorType) {
         const pagingString = {
           [cursorType]: paging[cursorType],
         };
@@ -101,6 +156,14 @@ const StoredProcedureTab = () => {
     [paging, handlePageChange, fetchStoreProcedureDetails]
   );
 
+  const handleShowDeletedStoredProcedures = (value: boolean) => {
+    setFilters({ showDeletedTables: value });
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
+  };
+
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
     () => [
       {
@@ -108,17 +171,20 @@ const StoredProcedureTab = () => {
         dataIndex: 'name',
         key: 'name',
         width: 350,
+        sorter: getColumnSorter<ServicePageData, 'name'>('name'),
         render: (_, record) => (
-          <div className="d-inline-flex w-max-90">
-            <Link
-              className="break-word"
-              to={entityUtilClassBase.getEntityLink(
-                EntityType.STORED_PROCEDURE,
-                record.fullyQualifiedName ?? ''
-              )}>
-              {getEntityName(record)}
-            </Link>
-          </div>
+          <DisplayName
+            displayName={stringToHTML(
+              highlightSearchText(record.displayName, searchValue)
+            )}
+            id={record.id ?? ''}
+            key={record.id}
+            link={entityUtilClassBase.getEntityLink(
+              EntityType.STORED_PROCEDURE,
+              record.fullyQualifiedName ?? ''
+            )}
+            name={stringToHTML(highlightSearchText(record.name, searchValue))}
+          />
         ),
       },
       {
@@ -135,7 +201,19 @@ const StoredProcedureTab = () => {
           ),
       },
     ],
-    []
+    [searchValue]
+  );
+
+  const onStoredProcedureSearch = useCallback(
+    (value: string) => {
+      setFilters({ schema: isEmpty(value) ? undefined : value });
+      if (value) {
+        searchStoredProcedure(value);
+      } else {
+        fetchStoreProcedureDetails();
+      }
+    },
+    [setFilters, searchStoredProcedure, fetchStoreProcedureDetails]
   );
 
   useEffect(() => {
@@ -146,7 +224,7 @@ const StoredProcedureTab = () => {
     } else {
       fetchStoreProcedureDetails();
     }
-  }, [showDeleted, pageSize, pagingCursor]);
+  }, [showDeletedStoredProcedures, pageSize, pagingCursor]);
 
   const paginationProps = useMemo(
     () => ({
@@ -155,6 +233,7 @@ const StoredProcedureTab = () => {
       showPagination,
       pageSize,
       paging,
+      isNumberBased: Boolean(searchValue),
       pagingHandler: storedProcedurePagingHandler,
       onShowSizeChange: handlePageSizeChange,
     }),
@@ -169,6 +248,17 @@ const StoredProcedureTab = () => {
     ]
   );
 
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-for-type', {
+        type: t('label.stored-procedure'),
+      }),
+      typingInterval: 500,
+      onSearch: onStoredProcedureSearch,
+    }),
+    [onStoredProcedureSearch]
+  );
+
   return (
     <Table
       columns={tableColumn}
@@ -179,9 +269,9 @@ const StoredProcedureTab = () => {
       extraTableFilters={
         <span>
           <Switch
-            checked={showDeleted}
+            checked={showDeletedStoredProcedures}
             data-testid="show-deleted-stored-procedure"
-            onClick={handleShowDeleted}
+            onClick={handleShowDeletedStoredProcedures}
           />
           <Typography.Text className="m-l-xs">
             {t('label.deleted')}
@@ -194,6 +284,7 @@ const StoredProcedureTab = () => {
       }}
       pagination={false}
       rowKey="id"
+      searchProps={searchProps}
       size="small"
     />
   );

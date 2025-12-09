@@ -35,6 +35,7 @@ export interface ChartDetailsTabsProps {
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   handleFeedCount: (data: FeedCounts) => void;
   feedCount: FeedCounts;
   activeTab: EntityTabs;
