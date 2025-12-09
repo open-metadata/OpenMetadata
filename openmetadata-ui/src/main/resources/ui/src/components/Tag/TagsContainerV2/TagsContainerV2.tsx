@@ -234,6 +234,8 @@ const TagsContainerV2 = ({
         <Col span={24}>
           <TagsViewer
             displayType={displayType}
+            entityFqn={entityFqn}
+            entityType={entityType}
             newLook={tagNewLook}
             showNoDataPlaceholder={showNoDataPlaceholder}
             sizeCap={sizeCap}
@@ -242,7 +244,14 @@ const TagsContainerV2 = ({
           />
         </Col>
       ),
-    [displayType, showNoDataPlaceholder, tags?.[tagType], layoutType]
+    [
+      displayType,
+      showNoDataPlaceholder,
+      tags?.[tagType],
+      layoutType,
+      entityFqn,
+      entityType,
+    ]
   );
 
   const tagsSelectContainer = useMemo(() => {
@@ -394,6 +403,8 @@ const TagsContainerV2 = ({
         ) : null}
         <TagsViewer
           displayType={displayType}
+          entityFqn={entityFqn}
+          entityType={entityType}
           newLook={newLook}
           showNoDataPlaceholder={showNoDataPlaceholder}
           sizeCap={sizeCap}

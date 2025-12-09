@@ -57,6 +57,7 @@ export enum FieldTypes {
   CRON_EDITOR = 'cron_editor',
   TREE_ASYNC_SELECT_LIST = 'tree_async_select_list',
   AUTOCOMPLETE_MUI = 'autocomplete_mui',
+  CHIP_SELECT = 'chip_select',
 }
 
 export enum HelperTextType {

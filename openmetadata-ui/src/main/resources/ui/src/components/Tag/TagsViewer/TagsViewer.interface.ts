@@ -12,6 +12,7 @@
  */
 
 import { EntityTags } from 'Models';
+import { EntityType } from '../../../enums/entity.enum';
 import { TagSource } from '../../../generated/type/tagLabel';
 
 export interface TagsViewerProps {
@@ -21,6 +22,8 @@ export interface TagsViewerProps {
   showNoDataPlaceholder?: boolean;
   tagType?: TagSource;
   newLook?: boolean;
+  entityFqn?: string;
+  entityType?: EntityType;
 }
 
 export enum DisplayType {
