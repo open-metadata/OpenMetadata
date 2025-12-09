@@ -378,6 +378,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   }
 
   private String getDataQualityDimensionCondition(String dataQualityDimension, String field) {
+    if ("NoDimension".equals(dataQualityDimension)) {
+      return String.format("{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"%s\"}}]}}", field);
+    }
     return String.format("{\"term\": {\"%s\": \"%s\"}}", field, dataQualityDimension);
   }
 

@@ -32,4 +32,44 @@ public class SearchListFilterTest {
         "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\",\"field3\",\"field4\"],\n\"include\": [\"field1\",\"field2\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"testCaseResult.testCaseStatus\": \"failed\"}}]}}}";
     assertEquals(expected, actual);
   }
+
+  @Test
+  void testDataQualityDimensionCondition() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("dataQualityDimension", "Accuracy");
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"dataQualityDimension\": \"Accuracy\"}}]}}}";
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testDataQualityDimensionNoDimensionCondition() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("dataQualityDimension", "NoDimension");
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"dataQualityDimension\"}}]}}]}}}";
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testDataQualityDimensionConditionForTestCaseResult() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("dataQualityDimension", "Completeness");
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE_RESULT);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"testDefinition.dataQualityDimension\": \"Completeness\"}}]}}}";
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testDataQualityDimensionNoDimensionConditionForTestCaseResult() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("dataQualityDimension", "NoDimension");
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE_RESULT);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"testDefinition.dataQualityDimension\"}}]}}]}}}";
+    assertEquals(expected, actual);
+  }
 }
