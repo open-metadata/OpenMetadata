@@ -37,6 +37,8 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flipkart.zjsonpatch.JsonDiff;
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
@@ -74,6 +76,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.tags.TagResource.TagList;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils.UpdateType;
@@ -1280,5 +1283,44 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
 
     ResultList<EntityReference> page2 = getAssets(tag.getId(), 2, 2, ADMIN_AUTH_HEADERS);
     assertFalse(page2.getData().isEmpty());
+  }
+
+  @Test
+  void test_getAllTagsWithAssetsCount(TestInfo test) throws IOException {
+    Classification classification = createClassification(getEntityName(test) + "_Classification");
+    Tag tag1 = createTag(getEntityName(test, 1), classification.getName(), null);
+    Tag tag2 = createTag(getEntityName(test, 2), classification.getName(), null);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table1 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 3))
+                .withTags(List.of(new TagLabel().withTagFQN(tag1.getFullyQualifiedName()))),
+            ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 4))
+                .withTags(List.of(new TagLabel().withTagFQN(tag1.getFullyQualifiedName()))),
+            ADMIN_AUTH_HEADERS);
+    Table table3 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 5))
+                .withTags(List.of(new TagLabel().withTagFQN(tag2.getFullyQualifiedName()))),
+            ADMIN_AUTH_HEADERS);
+
+    Map<String, Integer> assetsCount = getAllTagsWithAssetsCount();
+
+    assertNotNull(assetsCount);
+    assertEquals(2, assetsCount.get(tag1.getFullyQualifiedName()), "Tag 1 should have 2 assets");
+    assertEquals(1, assetsCount.get(tag2.getFullyQualifiedName()), "Tag 2 should have 1 asset");
+  }
+
+  private Map<String, Integer> getAllTagsWithAssetsCount() throws HttpResponseException {
+    WebTarget target = getResource("tags/assets/counts");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
 }

@@ -34,6 +34,7 @@ import {
   getQuickFilterWithDeletedFlag,
 } from '../../utils/ExplorePage/ExplorePageUtils';
 import { getAggregationOptions } from '../../utils/ExploreUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -211,7 +212,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             index={index as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}
             key={field.key}
-            label={field.label}
+            label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
             options={options ?? []}
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}

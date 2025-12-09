@@ -2,6 +2,8 @@ package org.openmetadata.service.search.elasticsearch;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch.cluster.HealthRequest;
+import es.co.elastic.clients.elasticsearch.cluster.HealthResponse;
 import es.co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
@@ -191,14 +193,22 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     if (aliases == null || aliases.isEmpty()) {
       return;
     }
+    Set<String> allEntityIndices = listIndicesByPrefix(indexName);
+
     try {
       UpdateAliasesRequest request =
           UpdateAliasesRequest.of(
-              u -> {
-                for (String alias : aliases) {
-                  u.actions(a -> a.add(add -> add.index(indexName).alias(alias)));
-                }
-                return u;
+              updateBuilder -> {
+                allEntityIndices.forEach(
+                    actualIndexName -> {
+                      for (String alias : aliases) {
+                        updateBuilder.actions(
+                            actionBuilder ->
+                                actionBuilder.add(
+                                    addBuilder -> addBuilder.index(actualIndexName).alias(alias)));
+                      }
+                    });
+                return updateBuilder;
               });
 
       UpdateAliasesResponse response = client.indices().updateAliases(request);
@@ -327,5 +337,46 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       LOG.error("Failed to list indices by prefix {} due to", prefix, e);
     }
     return indices;
+  }
+
+  @Override
+  public boolean waitForIndexReady(String indexName, int timeoutSeconds) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot wait for index.");
+      return false;
+    }
+
+    LOG.info("Waiting for index '{}' to become ready (timeout: {}s)", indexName, timeoutSeconds);
+
+    try {
+      HealthRequest healthRequest =
+          HealthRequest.of(
+              h ->
+                  h.index(indexName)
+                      .waitForStatus(es.co.elastic.clients.elasticsearch._types.HealthStatus.Yellow)
+                      .timeout(t -> t.time(timeoutSeconds + "s")));
+
+      HealthResponse healthResponse = client.cluster().health(healthRequest);
+
+      boolean isReady =
+          healthResponse.status() == es.co.elastic.clients.elasticsearch._types.HealthStatus.Green
+              || healthResponse.status()
+                  == es.co.elastic.clients.elasticsearch._types.HealthStatus.Yellow;
+
+      if (isReady) {
+        LOG.info("Index '{}' is ready with status: {}", indexName, healthResponse.status());
+      } else {
+        LOG.warn(
+            "Index '{}' not ready after {}s, status: {}",
+            indexName,
+            timeoutSeconds,
+            healthResponse.status());
+      }
+
+      return isReady;
+    } catch (Exception e) {
+      LOG.error("Failed to wait for index '{}' readiness: {}", indexName, e.getMessage(), e);
+      return false;
+    }
   }
 }

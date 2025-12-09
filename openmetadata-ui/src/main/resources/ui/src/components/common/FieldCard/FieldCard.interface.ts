@@ -10,18 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TableConstraint } from '../../../generated/entity/data/table';
+import {
+  Column,
+  Table as TableEntity,
+  TableConstraint,
+} from '../../../generated/entity/data/table';
+import { TagLabel } from '../../../generated/type/tagLabel';
 
 export interface FieldCardProps {
   fieldName: string;
   dataType: string;
   description?: string;
-  tags?: Array<{
-    tagFQN: string;
-    source: string;
-    labelType: string;
-    state: string;
-  }>;
+  tags?: TagLabel[];
   glossaryTerms?: Array<{
     name: string;
     displayName: string;
@@ -30,4 +30,12 @@ export interface FieldCardProps {
   columnConstraint?: string;
   tableConstraints?: TableConstraint[];
   isHighlighted?: boolean;
+}
+export interface NestedFieldCardProps {
+  column: Column;
+  highlights?: Record<string, string[]>;
+  tableConstraints?: TableEntity['tableConstraints'];
+  level?: number;
+  expandedRowKeys: string[];
+  onToggleExpand: (key: string) => void;
 }

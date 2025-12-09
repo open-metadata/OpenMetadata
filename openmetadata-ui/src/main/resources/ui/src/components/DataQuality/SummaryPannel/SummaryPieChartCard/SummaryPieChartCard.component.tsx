@@ -106,7 +106,7 @@ const SummaryPieChartCard = ({
               textAnchor="middle"
               x="50%"
               y="50%">
-              {`${percentage}%`}
+              {percentage}
             </text>
           </PieChart>
         </div>

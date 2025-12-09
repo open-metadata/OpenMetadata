@@ -665,4 +665,23 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           int offset) {
     return Response.ok(repository.getDomainAssetsByName(fqn, limit, offset)).build();
   }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllDomainsWithAssetsCount",
+      summary = "Get all domains with their asset counts",
+      description =
+          "Get a map of domain fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of domain FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllDomainsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllDomainsWithAssetsCount();
+    return Response.ok(result).build();
+  }
 }

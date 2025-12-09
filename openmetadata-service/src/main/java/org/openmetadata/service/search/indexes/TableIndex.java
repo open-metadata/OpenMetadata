@@ -23,7 +23,6 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
           "tableProfile",
           "joins",
           "changeDescription",
-          "votes",
           "schemaDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel",
           "testSuite.changeDescription");
 

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
+import { Typography } from '@mui/material';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { useMemo } from 'react';
@@ -29,6 +30,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
   componentType,
   isDomainVisible = false,
   excludedItems = [],
+  onLinkClick,
 }) => {
   const { t } = useTranslation();
 
@@ -40,7 +42,15 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
       const isDomain =
         isDomainVisible && info.name === t('label.domain-plural');
-      const isVisibleInComponent = (info.visible ?? []).includes(componentType);
+
+      // If componentType is empty and item has no visible field, show it
+      // Otherwise, check if componentType is included in visible array
+      const hasVisibleField =
+        info.visible !== undefined && info.visible.length > 0;
+      const isVisibleInComponent =
+        componentType === '' && !hasVisibleField
+          ? true
+          : (info.visible ?? []).includes(componentType);
 
       return isVisibleInComponent || isDomain;
     });
@@ -66,7 +76,10 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
     }
 
     return (
-      <Link className="summary-item-link" to={info.linkProps ?? info.url ?? ''}>
+      <Link
+        className="summary-item-link"
+        to={info.linkProps ?? info.url ?? ''}
+        onClick={onLinkClick}>
         {info.value}
       </Link>
     );
@@ -74,20 +87,30 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
 
   return (
     <div className="overview-section">
-      {visibleEntityInfo.map((info) => (
-        <div className="overview-row" key={info.name}>
-          <span
-            className={classNames('overview-label')}
-            data-testid={`${info.name}-label`}>
-            {info.name}
-          </span>
-          <span
-            className={classNames('overview-value text-grey-body')}
-            data-testid={`${info.name}-value`}>
-            {renderInfoValue(info)}
-          </span>
+      {visibleEntityInfo.length === 0 ? (
+        <div className="overview-row">
+          <Typography
+            className="no-data-placeholder"
+            data-testid="no-data-placeholder">
+            {t('label.no-overview-available')}
+          </Typography>
         </div>
-      ))}
+      ) : (
+        visibleEntityInfo.map((info) => (
+          <div className="overview-row" key={info.name}>
+            <span
+              className={classNames('overview-label')}
+              data-testid={`${info.name}-label`}>
+              {info.name}
+            </span>
+            <span
+              className={classNames('overview-value text-grey-body')}
+              data-testid={`${info.name}-value`}>
+              {renderInfoValue(info)}
+            </span>
+          </div>
+        ))
+      )}
     </div>
   );
 };

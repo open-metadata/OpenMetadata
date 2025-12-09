@@ -1,6 +1,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
+import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -27,6 +30,7 @@ import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,8 +43,12 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
@@ -62,6 +70,7 @@ import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -75,6 +84,10 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TestCaseParameterValidationRuleType;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -186,11 +199,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     // Create a map of test case ID to test definition reference
     Map<UUID, EntityReference> testDefinitionMap = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : testDefinitionRecords) {
-      UUID testCaseId = UUID.fromString(record.getToId());
+    for (CollectionDAO.EntityRelationshipObject testRecord : testDefinitionRecords) {
+      UUID testCaseId = UUID.fromString(testRecord.getToId());
       EntityReference testDefRef =
           Entity.getEntityReferenceById(
-              TEST_DEFINITION, UUID.fromString(record.getFromId()), Include.ALL);
+              TEST_DEFINITION, UUID.fromString(testRecord.getFromId()), Include.ALL);
       testDefinitionMap.put(testCaseId, testDefRef);
     }
 
@@ -214,11 +227,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     // Create a map of test case ID to test suite references (can have multiple)
     Map<UUID, List<EntityReference>> testCaseToTestSuites = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : testSuiteRecords) {
-      UUID testCaseId = UUID.fromString(record.getToId());
+    for (CollectionDAO.EntityRelationshipObject testSuite : testSuiteRecords) {
+      UUID testCaseId = UUID.fromString(testSuite.getToId());
       EntityReference testSuiteRef =
           Entity.getEntityReferenceById(
-              TEST_SUITE, UUID.fromString(record.getFromId()), Include.ALL);
+              TEST_SUITE, UUID.fromString(testSuite.getFromId()), Include.ALL);
       testCaseToTestSuites.computeIfAbsent(testCaseId, k -> new ArrayList<>()).add(testSuiteRef);
     }
 
@@ -236,7 +249,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         }
         // If no basic test suite found, use the first one
         if (testCase.getTestSuite() == null) {
-          testCase.setTestSuite(testSuiteRefs.get(0));
+          testCase.setTestSuite(testSuiteRefs.getFirst());
         }
       }
     }
@@ -1402,6 +1415,334 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       if (!isReviewer) {
         throw new AuthorizationException(notReviewer(updatedBy));
       }
+    }
+  }
+
+  @Override
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    List<TestCase> testCases = getTestCasesForExport(name, recursive);
+    return new TestCaseCsv(user).exportCsv(testCases);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return new TestCaseCsv(user).importCsv(csv, dryRun);
+  }
+
+  private List<TestCase> getTestCasesForExport(String name, boolean recursive) {
+    // The name parameter can be:
+    // 1. A table FQN - export test cases for that table
+    // 2. A test suite FQN - export test cases in that test suite
+    // 3. "*" - export all test cases (platform-wide)
+
+    if ("*".equals(name)) {
+      // Platform-wide export
+      return listAll(new Fields(allowedFields, "testDefinition,testSuite"), new ListFilter());
+    }
+
+    // Try to determine if name is a table or test suite
+    try {
+      // Try as table first
+      Table table = Entity.getEntityByName(TABLE, name, "", Include.NON_DELETED);
+      return getTestCasesForTable(table.getFullyQualifiedName());
+    } catch (EntityNotFoundException e) {
+      // Not a table, try as test suite
+      try {
+        TestSuite testSuite = Entity.getEntityByName(TEST_SUITE, name, "", Include.NON_DELETED);
+        return getTestCasesForTestSuite(testSuite.getId());
+      } catch (EntityNotFoundException ex) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Entity '%s' not found. Please provide a valid table FQN, test suite FQN, or '*' for platform-wide export.",
+                name));
+      }
+    }
+  }
+
+  private List<TestCase> getTestCasesForTable(String tableFqn) {
+    // Get table-level test cases using database filter
+    ListFilter filter = new ListFilter(ALL);
+    filter.addQueryParam("entityFQN", tableFqn);
+    filter.addQueryParam("includeAllTests", "true");
+    List<TestCase> testCases =
+        new ArrayList<>(listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter));
+
+    return testCases;
+  }
+
+  private List<TestCase> getTestCasesForTestSuite(UUID testSuiteId) {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("testSuiteId", testSuiteId.toString());
+    return listAll(new Fields(allowedFields, "testDefinition,testSuite"), filter);
+  }
+
+  public static class TestCaseCsv extends EntityCsv<TestCase> {
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(TEST_CASE, false);
+    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+
+    TestCaseCsv(String user) {
+      super(TEST_CASE, HEADERS, user);
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      // Process each test case record using getNextRecord to increment recordIndex
+      while (recordIndex < csvRecords.size()) {
+        CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+        if (csvRecord == null) {
+          return; // Error has already been logged by getNextRecord
+        }
+
+        try {
+          // Parse CSV record
+          String name = csvRecord.get(0);
+          String displayName = nullOrEmpty(csvRecord.get(1)) ? null : csvRecord.get(1);
+          String description = nullOrEmpty(csvRecord.get(2)) ? null : csvRecord.get(2);
+          String testDefinitionFqn = csvRecord.get(3);
+          String entityFQN = csvRecord.get(4);
+          String testSuiteFqn = nullOrEmpty(csvRecord.get(5)) ? null : csvRecord.get(5);
+          String parameterValuesStr = nullOrEmpty(csvRecord.get(6)) ? null : csvRecord.get(6);
+          String computePassedFailedRowCountStr =
+              nullOrEmpty(csvRecord.get(7)) ? null : csvRecord.get(7);
+          String useDynamicAssertionStr = nullOrEmpty(csvRecord.get(8)) ? null : csvRecord.get(8);
+          String inspectionQuery = nullOrEmpty(csvRecord.get(9)) ? null : csvRecord.get(9);
+
+          // Convert entityFQN to EntityLink
+          String entityLink = convertFQNToEntityLink(entityFQN);
+
+          // Get test definition
+          TestDefinition testDefinition =
+              Entity.getEntityByName(TEST_DEFINITION, testDefinitionFqn, "", Include.NON_DELETED);
+
+          // Parse parameter values
+          List<TestCaseParameterValue> parameterValues = parseParameterValues(parameterValuesStr);
+
+          // Create test case
+          TestCase testCase = new TestCase();
+          testCase.withName(name);
+          testCase.withDisplayName(displayName);
+          testCase.withDescription(description);
+          testCase.withTestDefinition(testDefinition.getEntityReference());
+          testCase.withEntityLink(entityLink);
+          testCase.withParameterValues(parameterValues);
+
+          if (computePassedFailedRowCountStr != null) {
+            testCase.withComputePassedFailedRowCount(
+                Boolean.parseBoolean(computePassedFailedRowCountStr));
+          }
+          if (useDynamicAssertionStr != null) {
+            testCase.withUseDynamicAssertion(Boolean.parseBoolean(useDynamicAssertionStr));
+          }
+          if (inspectionQuery != null) {
+            testCase.withInspectionQuery(inspectionQuery);
+          }
+
+          // Parse and set tags and glossary terms
+          List<TagLabel> tagLabels =
+              getTagLabels(
+                  printer,
+                  csvRecord,
+                  List.of(
+                      Pair.of(10, TagLabel.TagSource.CLASSIFICATION),
+                      Pair.of(11, TagLabel.TagSource.GLOSSARY)));
+          testCase.withTags(tagLabels);
+
+          // Get repository instance first
+          TestCaseRepository repository =
+              (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+
+          // Get test suite if provided, otherwise get or create default test suite
+          if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
+            try {
+              TestSuite testSuite =
+                  Entity.getEntityByName(TEST_SUITE, testSuiteFqn, "", Include.NON_DELETED);
+              testCase.withTestSuite(testSuite.getEntityReference());
+            } catch (EntityNotFoundException e) {
+              importFailure(
+                  printer, String.format("Test suite '%s' not found", testSuiteFqn), csvRecord);
+              importResult.withStatus(ApiStatus.ABORTED);
+              continue;
+            }
+          } else {
+            // No test suite provided - get or create the default basic test suite
+            EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
+            testCase.withTestSuite(testSuite);
+          }
+
+          // Compute and set FQN manually (same logic as setFullyQualifiedName)
+          EntityLink parsedLink = EntityLink.parse(entityLink);
+          String testCaseFqn =
+              FullyQualifiedName.add(
+                  parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
+          testCase.setFullyQualifiedName(testCaseFqn);
+          testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
+
+          // Set required fields for new entities - createOrUpdateForImport doesn't call
+          // prepareInternal which would normally set these
+          if (testCase.getId() == null) {
+            testCase.setId(UUID.randomUUID());
+          }
+          if (testCase.getUpdatedAt() == null) {
+            testCase.setUpdatedAt(System.currentTimeMillis());
+          }
+          if (testCase.getUpdatedBy() == null) {
+            testCase.setUpdatedBy(importedBy);
+          }
+
+          if (!importResult.getDryRun()) {
+            // Use createOrUpdateForImport which handles both create and update
+            RestUtil.PutResponse<TestCase> response =
+                repository.createOrUpdateForImport(null, testCase, importedBy);
+            if (response.getStatus() == Response.Status.CREATED) {
+              importSuccess(printer, csvRecord, ENTITY_CREATED);
+            } else {
+              importSuccess(printer, csvRecord, ENTITY_UPDATED);
+            }
+          } else {
+            // Dry run - just validate
+            repository.prepareInternal(testCase, true);
+            importSuccess(printer, csvRecord, ENTITY_CREATED);
+          }
+
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          importResult.withStatus(ApiStatus.FAILURE);
+        }
+      }
+    }
+
+    @Override
+    protected void addRecord(CsvFile csvFile, TestCase testCase) {
+      // Headers: name, displayName, description, testDefinition, entityFQN, testSuite,
+      // parameterValues, computePassedFailedRowCount, useDynamicAssertion, inspectionQuery,
+      // tags, glossaryTerms
+      List<String> recordList = new ArrayList<>();
+
+      // Basic fields
+      addField(recordList, testCase.getName());
+      addField(recordList, testCase.getDisplayName());
+      addField(recordList, testCase.getDescription());
+
+      // Test definition
+      addField(
+          recordList,
+          testCase.getTestDefinition() != null
+              ? testCase.getTestDefinition().getFullyQualifiedName()
+              : "");
+
+      // Use entityFQN if available, otherwise convert EntityLink to FQN
+      String entityFQN =
+          testCase.getEntityFQN() != null
+              ? testCase.getEntityFQN()
+              : convertEntityLinkToFQN(testCase.getEntityLink());
+      addField(recordList, entityFQN);
+
+      // Test suite
+      addField(
+          recordList,
+          testCase.getTestSuite() != null ? testCase.getTestSuite().getFullyQualifiedName() : "");
+
+      // Parameter values - serialize as JSON objects separated by ';'
+      String parameterValuesStr = serializeParameterValues(testCase.getParameterValues());
+      addField(recordList, parameterValuesStr);
+
+      // Boolean flags
+      addField(
+          recordList,
+          testCase.getComputePassedFailedRowCount() != null
+              ? testCase.getComputePassedFailedRowCount().toString()
+              : "");
+      addField(
+          recordList,
+          testCase.getUseDynamicAssertion() != null
+              ? testCase.getUseDynamicAssertion().toString()
+              : "");
+
+      // Inspection query
+      addField(recordList, testCase.getInspectionQuery());
+
+      // Tags and glossary terms
+      addTagLabels(recordList, testCase.getTags());
+      addGlossaryTerms(recordList, testCase.getTags());
+
+      // Add record to CSV
+      addRecord(csvFile, recordList);
+    }
+
+    private String convertEntityLinkToFQN(String entityLink) {
+      // Convert EntityLink format to simple FQN
+      // <#E::table::service.database.schema.table> -> service.database.schema.table
+      // <#E::table::service.database.schema.table::columns::column> ->
+      // service.database.schema.table.column
+      if (entityLink == null) {
+        return "";
+      }
+
+      EntityLink link = EntityLink.parse(entityLink);
+      String fqn = link.getEntityFQN();
+
+      if (link.getFieldName() != null && link.getFieldName().equals("columns")) {
+        // Column test case - use FQN utility to properly handle quoting
+        fqn = FullyQualifiedName.add(fqn, link.getArrayFieldName());
+      }
+
+      return fqn;
+    }
+
+    private String convertFQNToEntityLink(String fqn) {
+      // Convert simple FQN to EntityLink format
+      // service.database.schema.table -> <#E::table::service.database.schema.table>
+      // service.database.schema.table.column ->
+      // <#E::table::service.database.schema.table::columns::column>
+
+      // First, try to find if this is a table or column
+      try {
+        // Try as table first
+        Table table = Entity.getEntityByName(TABLE, fqn, "", Include.NON_DELETED);
+        return String.format("<#E::table::%s>", table.getFullyQualifiedName());
+      } catch (EntityNotFoundException e) {
+        // Not a table, try as column
+        // Parse FQN to extract table FQN and column name using FQN parser
+        String tableFqn = FullyQualifiedName.getTableFQN(fqn);
+        String columnName = FullyQualifiedName.getColumnName(fqn);
+
+        // Validate that the table and column exist
+        Table table = Entity.getEntityByName(TABLE, tableFqn, "columns", Include.NON_DELETED);
+        validateColumn(table, columnName, Boolean.FALSE);
+
+        return String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), columnName);
+      }
+    }
+
+    private String serializeParameterValues(List<TestCaseParameterValue> parameterValues) {
+      if (nullOrEmpty(parameterValues)) {
+        return "";
+      }
+
+      return parameterValues.stream()
+          .map(pv -> JsonUtils.pojoToJson(pv))
+          .collect(Collectors.joining(";"));
+    }
+
+    private List<TestCaseParameterValue> parseParameterValues(String parameterValuesStr) {
+      if (nullOrEmpty(parameterValuesStr)) {
+        return new ArrayList<>();
+      }
+
+      String[] parts = parameterValuesStr.split(";");
+      List<TestCaseParameterValue> parameterValues = new ArrayList<>();
+
+      for (String part : parts) {
+        if (!nullOrEmpty(part.trim())) {
+          TestCaseParameterValue pv =
+              JsonUtils.readValue(part.trim(), TestCaseParameterValue.class);
+          parameterValues.add(pv);
+        }
+      }
+
+      return parameterValues;
     }
   }
 }

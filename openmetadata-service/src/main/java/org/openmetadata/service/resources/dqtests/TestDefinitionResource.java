@@ -151,8 +151,14 @@ public class TestDefinitionResource
           @QueryParam("supportedDataType")
           String supportedDataTypeParam,
       @Parameter(
+              description =
+                  "Filter test definitions by supported service. Returns test definitions that either "
+                      + "have an empty supportedServices list (supporting all services) or include the specified service.")
+          @QueryParam("supportedService")
+          String supportedServiceParam,
+      @Parameter(
               description = "Filter by enabled status (true/false). If not specified, returns all test definitions.",
-              schema = @Schema(type = "boolean"))
+               schema = @Schema(type = "boolean"))
           @QueryParam("enabled")
           Boolean enabledParam) {
     ListFilter filter = new ListFilter(include);
@@ -165,6 +171,8 @@ public class TestDefinitionResource
     if (supportedDataTypeParam != null) {
       filter.addQueryParam("supportedDataType", supportedDataTypeParam);
     }
+    if (supportedServiceParam != null) {
+      filter.addQueryParam("supportedService", supportedServiceParam);
     if (enabledParam != null) {
       filter.addQueryParam("enabled", String.valueOf(enabledParam));
     }

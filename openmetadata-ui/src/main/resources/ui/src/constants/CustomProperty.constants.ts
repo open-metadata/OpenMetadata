@@ -163,6 +163,10 @@ export const SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING = {
   'HH:mm:ss': 'HH:mm:ss',
 };
 
+export const SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING = {
+  yyyyDDD: 'yyyyo',
+};
+
 export const DEFAULT_TIME_FORMAT = 'HH:mm:ss';
 export const DEFAULT_DATE_FORMAT = 'yyyy-MM-dd';
 export const DEFAULT_DATE_TIME_FORMAT = 'yyyy-MM-dd HH:mm:ss';

@@ -61,6 +61,7 @@ const OwnerUserList = ({
   return (
     <Box
       sx={{
+        width: '100%',
         display: 'flex',
         alignItems: 'center',
       }}>
@@ -84,6 +85,7 @@ const OwnerUserList = ({
           alignItems: 'center',
           position: 'relative',
           marginLeft: '4px',
+          width: '100%',
           marginRight: isCompactView ? '8px' : '0',
           flexDirection: isCompactView ? 'inherit' : 'row-reverse',
           gap: isCompactView ? '8px' : '0',

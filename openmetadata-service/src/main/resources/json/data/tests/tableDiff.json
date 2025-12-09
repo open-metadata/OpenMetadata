@@ -61,5 +61,18 @@
   "provider": "system",
   "enabled": true,
   "dataQualityDimension": "Consistency"
+  "dataQualityDimension": "Consistency",
+  "supportedServices": [
+    "Snowflake",
+    "BigQuery",
+    "Athena",
+    "Redshift",
+    "Postgres",
+    "MySQL",
+    "Mssql",
+    "Oracle",
+    "Trino",
+    "SapHana"
+  ]
 }
   

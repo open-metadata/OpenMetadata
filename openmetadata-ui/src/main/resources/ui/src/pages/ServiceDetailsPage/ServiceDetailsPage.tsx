@@ -475,7 +475,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
       try {
         setIsCollateAgentLoading(true);
         const { data, paging: pagingRes } = await getApplicationList({
-          agentType: AgentType.CollateAI,
+          agentType: [
+            AgentType.CollateAI,
+            AgentType.CollateAIQualityAgent,
+            AgentType.CollateAITierAgent,
+          ],
           ...paging,
         });
 

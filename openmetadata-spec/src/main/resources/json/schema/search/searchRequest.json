@@ -109,6 +109,11 @@
       "description": "Enable semantic search using embeddings and RDF context. When true, combines vector similarity with traditional BM25 scoring.",
       "type": "boolean",
       "default": false
+    },
+    "includeAggregations": {
+      "description": "Include aggregations in the search response. Defaults to true. Set to false to skip aggregations for faster response times when only search results are needed.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

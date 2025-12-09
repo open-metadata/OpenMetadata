@@ -10,12 +10,65 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { act } from 'react-test-renderer';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import { ModelType } from '../../../generated/entity/data/table';
 import { LineageLayer } from '../../../generated/settings/settings';
 import CustomNodeV1Component from './CustomNodeV1.component';
+
+interface PaginationAssertionParams {
+  columnsContainer: HTMLElement;
+  expectedPageText: string;
+  expectedColumns: string[];
+  direction: 'next' | 'prev';
+  shouldBeDisabled?: 'prev' | 'next';
+}
+
+const getInsidePageColumns = (columnsContainer: HTMLElement): string[] => {
+  const insidePageContainer = columnsContainer.querySelector(
+    '.inside-current-page-items'
+  );
+
+  return insidePageContainer
+    ? Array.from(
+        insidePageContainer.querySelectorAll('.inside-current-page-item')
+      ).map((el) => el.textContent?.trim() ?? '')
+    : [];
+};
+
+const assertPaginationState = ({
+  columnsContainer,
+  expectedPageText,
+  expectedColumns,
+  direction,
+  shouldBeDisabled,
+}: PaginationAssertionParams): void => {
+  const prevButton = within(columnsContainer).getByTestId('prev-btn');
+  const nextButton = within(columnsContainer).getByTestId('next-btn');
+  const button = direction === 'next' ? nextButton : prevButton;
+
+  expect(screen.getByText(expectedPageText)).toBeInTheDocument();
+
+  const visibleColumns = getInsidePageColumns(columnsContainer);
+
+  expect(visibleColumns).toEqual(expectedColumns);
+
+  if (shouldBeDisabled === 'prev') {
+    expect(prevButton).toBeDisabled();
+    expect(nextButton).not.toBeDisabled();
+  } else if (shouldBeDisabled === 'next') {
+    expect(prevButton).not.toBeDisabled();
+    expect(nextButton).toBeDisabled();
+  } else {
+    expect(prevButton).not.toBeDisabled();
+    expect(nextButton).not.toBeDisabled();
+  }
+
+  act(() => {
+    fireEvent.click(button);
+  });
+};
 
 const mockNodeDataProps = {
   id: 'node1',
@@ -26,11 +79,10 @@ const mockNodeDataProps = {
       type: 'table',
       entityType: 'table',
       id: 'khjahjfja',
-      columns: [
-        { fullyQualifiedName: 'col1', name: 'col1' },
-        { fullyQualifiedName: 'col2', name: 'col2' },
-        { fullyQualifiedName: 'col3', name: 'col3' },
-      ],
+      columns: [...Array(12)].map((_, i) => ({
+        fullyQualifiedName: `col${i}`,
+        name: `col${i}`,
+      })),
       testSuite: {
         deleted: false,
         description: 'This is an executable test suite linked to an entity',
@@ -60,11 +112,10 @@ const mockNodeDataProps2 = {
       type: 'table',
       entityType: 'table',
       id: 'khjahjfja',
-      columns: [
-        { fullyQualifiedName: 'col1', name: 'col1' },
-        { fullyQualifiedName: 'col2', name: 'col2' },
-        { fullyQualifiedName: 'col3', name: 'col3' },
-      ],
+      columns: [...Array(3)].map((_, i) => ({
+        fullyQualifiedName: `col${i}`,
+        name: `col${i}`,
+      })),
       dataModel: {
         modelType: ModelType.Dbt,
       },
@@ -80,13 +131,24 @@ const mockNodeDataProps2 = {
 
 const onMockColumnClick = jest.fn();
 const loadChildNodesHandlerMock = jest.fn();
+const updateNodeInternalsMock = jest.fn();
+const useUpdateNodeInternalsMock = jest.fn(() => updateNodeInternalsMock);
+let columnsInCurrentPages: string[] = [];
+const setColumnsInCurrentPagesMock = jest.fn((updater) => {
+  if (typeof updater === 'function') {
+    columnsInCurrentPages = updater(columnsInCurrentPages);
+  } else {
+    columnsInCurrentPages = updater;
+  }
+});
 let isColumnLayerActive = false;
 let isDataObservabilityLayerActive = false;
+let tracedColumns: string[] = [];
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     tracedNodes: [],
-    tracedColumns: [],
+    tracedColumns,
     pipelineStatus: {},
     nodes: [
       {
@@ -99,7 +161,6 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
       upstreamEdges: [],
       downstreamEdges: [],
     },
-    columnsHavingLineage: [],
     activeLayer: [
       ...(isColumnLayerActive ? [LineageLayer.ColumnLevelLineage] : []),
       ...(isDataObservabilityLayerActive
@@ -110,6 +171,8 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     fetchPipelineStatus: jest.fn(),
     onColumnClick: onMockColumnClick,
     loadChildNodesHandler: loadChildNodesHandlerMock,
+    useUpdateNodeInternals: useUpdateNodeInternalsMock,
+    setColumnsInCurrentPages: setColumnsInCurrentPagesMock,
   })),
 }));
 
@@ -123,10 +186,24 @@ jest.mock('../../../rest/testAPI', () => ({
   ),
 }));
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      if (key === 'label.slash-symbol') {
+        return '/';
+      }
+
+      return key;
+    },
+  }),
+}));
+
 describe('CustomNodeV1', () => {
   beforeEach(() => {
     isColumnLayerActive = false;
     isDataObservabilityLayerActive = false;
+    tracedColumns = [];
+    jest.clearAllMocks();
   });
 
   it('renders node correctly', () => {
@@ -158,9 +235,6 @@ describe('CustomNodeV1', () => {
         <CustomNodeV1Component {...mockNodeDataProps} />
       </ReactFlowProvider>
     );
-
-    screen.debug(undefined, Infinity);
-    screen.logTestingPlaygroundURL();
 
     expect(
       screen.getByTestId('children-info-dropdown-btn')
@@ -251,7 +325,6 @@ describe('CustomNodeV1', () => {
         <CustomNodeV1Component {...mockNodeDataPropsNoChildren} />
       </ReactFlowProvider>
     );
-    screen.debug(undefined, Infinity);
 
     expect(screen.queryByTestId('column-container')).not.toBeInTheDocument();
   });
@@ -341,10 +414,111 @@ describe('CustomNodeV1', () => {
       jest.runAllTimers(); // or jest.advanceTimersByTime(1000);
     });
 
-    screen.debug(undefined, Infinity);
-
     expect(screen.getByTestId('test-passed')).toBeInTheDocument();
     expect(screen.getByTestId('test-aborted')).toBeInTheDocument();
     expect(screen.getByTestId('test-failed')).toBeInTheDocument();
+  });
+
+  describe('CustomNodeV1 Column Pagination', () => {
+    it('should have pagination in columns', () => {
+      isColumnLayerActive = true;
+
+      render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      const columnsContainer = screen.getByTestId('column-container');
+
+      expect(columnsContainer).toBeInTheDocument();
+
+      assertPaginationState({
+        columnsContainer,
+        expectedPageText: '1 / 3',
+        expectedColumns: ['col0', 'col1', 'col2', 'col3', 'col4'],
+        direction: 'next',
+        shouldBeDisabled: 'prev',
+      });
+
+      assertPaginationState({
+        columnsContainer,
+        expectedPageText: '2 / 3',
+        expectedColumns: ['col5', 'col6', 'col7', 'col8', 'col9'],
+        direction: 'next',
+      });
+
+      assertPaginationState({
+        columnsContainer,
+        expectedPageText: '3 / 3',
+        expectedColumns: ['col10', 'col11'],
+        direction: 'prev',
+        shouldBeDisabled: 'next',
+      });
+
+      assertPaginationState({
+        columnsContainer,
+        expectedPageText: '2 / 3',
+        expectedColumns: ['col5', 'col6', 'col7', 'col8', 'col9'],
+        direction: 'prev',
+      });
+
+      assertPaginationState({
+        columnsContainer,
+        expectedPageText: '1 / 3',
+        expectedColumns: ['col0', 'col1', 'col2', 'col3', 'col4'],
+        direction: 'next',
+        shouldBeDisabled: 'prev',
+      });
+    });
+
+    it('should select a column when it is clicked', () => {
+      isColumnLayerActive = true;
+
+      render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      const column = screen.getByTestId('column-col0');
+
+      fireEvent.click(column);
+
+      expect(onMockColumnClick).toHaveBeenCalledWith('col0');
+    });
+
+    it('should keep the traced column visible when page changes', () => {
+      isColumnLayerActive = true;
+
+      const { rerender } = render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      expect(screen.getByText('1 / 3')).toBeVisible();
+      expect(screen.getByTestId('column-col3')).not.toHaveClass(
+        'custom-node-header-column-tracing'
+      );
+
+      tracedColumns = ['col3'];
+
+      rerender(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      const nextButton = screen.getByTestId('next-btn');
+      act(() => {
+        fireEvent.click(nextButton);
+      });
+
+      expect(screen.getByText('2 / 3')).toBeVisible();
+      expect(screen.getByTestId('column-col3')).toHaveClass(
+        'custom-node-header-column-tracing'
+      );
+    });
   });
 });
