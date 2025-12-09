@@ -86,7 +86,6 @@ export const EntityTitleSection = ({
             <Link
               data-testid={testId}
               href={linkHref}
-              rel="noopener noreferrer"
               sx={{
                 flex: 1,
                 minWidth: 0,
@@ -103,7 +102,6 @@ export const EntityTitleSection = ({
                   color: theme.palette.allShades.blue[700],
                 },
               }}
-              target="_blank"
               underline="hover">
               {stringToHTML(entityName)}
             </Link>
