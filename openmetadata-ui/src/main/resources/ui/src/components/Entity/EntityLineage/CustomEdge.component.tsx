@@ -153,6 +153,8 @@ export const CustomEdge = ({
     );
   }, [isColumnLineage, tracedColumns, sourceHandle, targetHandle]);
 
+  console.log('columnsInCurrentPages', columnsInCurrentPages);
+
   const areBothColumnHandlesPresentInCurrentPage = useMemo(() => {
     const decodedHandles = getColumnSourceTargetHandles({
       sourceHandle,

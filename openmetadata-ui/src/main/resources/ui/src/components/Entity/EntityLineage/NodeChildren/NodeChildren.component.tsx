@@ -52,6 +52,7 @@ interface CustomPaginatedListProps {
   nodeId?: string;
   page: number;
   setPage: React.Dispatch<React.SetStateAction<number>>;
+  isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
 
 const CustomPaginatedList = ({
@@ -60,7 +61,10 @@ const CustomPaginatedList = ({
   nodeId,
   page,
   setPage,
+  isOnlyShowColumnsWithLineageFilterActive,
 }: CustomPaginatedListProps) => {
+  // console.log('rendering CustomPaginatedList');
+  const { columnsInCurrentPages } = useLineageProvider();
   const [itemsOfPreviousPage, setItemsOfPreviousPage] = useState<string[]>([]);
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
@@ -90,11 +94,15 @@ const CustomPaginatedList = ({
     []
   );
 
+  const currentNodeAllPagesItems = filteredColumns.flatMap((item) =>
+    getAllNestedChildrenInFlatArray(item)
+  );
+
   const {
     totalPages,
     insideCurrentPageItems,
     outsideCurrentPageItems,
-    itemsOfCurrentPage,
+    currentNodeCurrentPageItems,
   } = useMemo(() => {
     const totalPages = Math.ceil(items.length / LINEAGE_CHILD_ITEMS_PER_PAGE);
     const startIdx = (page - 1) * LINEAGE_CHILD_ITEMS_PER_PAGE;
@@ -122,7 +130,7 @@ const CustomPaginatedList = ({
       }
     });
 
-    const itemsOfCurrentPage = filteredColumns
+    const currentNodeCurrentPageItems = filteredColumns
       .slice(startIdx, endIdx)
       .filter(Boolean)
       .flatMap((item) => getAllNestedChildrenInFlatArray(item));
@@ -131,7 +139,7 @@ const CustomPaginatedList = ({
       totalPages,
       insideCurrentPageItems,
       outsideCurrentPageItems,
-      itemsOfCurrentPage,
+      currentNodeCurrentPageItems,
     };
   }, [items, page, filteredColumns, getAllNestedChildrenInFlatArray]);
 
@@ -139,21 +147,27 @@ const CustomPaginatedList = ({
     setColumnsInCurrentPages((prev) => {
       const updated = { ...prev };
       if (nodeId) {
-        updated[nodeId] = itemsOfCurrentPage;
+        updated[nodeId] = isOnlyShowColumnsWithLineageFilterActive
+          ? currentNodeAllPagesItems
+          : currentNodeCurrentPageItems;
       }
       return updated;
     });
-  }, [itemsOfPreviousPage, itemsOfCurrentPage, setColumnsInCurrentPages]);
+  }, [
+    itemsOfPreviousPage,
+    currentNodeCurrentPageItems,
+    setColumnsInCurrentPages,
+  ]);
 
   const handlePageChange = useCallback(
     (newPage: number) => {
-      setItemsOfPreviousPage(itemsOfCurrentPage);
+      setItemsOfPreviousPage(currentNodeCurrentPageItems);
       setPage(newPage);
       if (nodeId) {
         updateNodeInternals(nodeId);
       }
     },
-    [itemsOfCurrentPage, nodeId, updateNodeInternals]
+    [currentNodeCurrentPageItems, nodeId, updateNodeInternals]
   );
 
   const handlePrev = useCallback(
@@ -172,6 +186,10 @@ const CustomPaginatedList = ({
     [page, totalPages, handlePageChange]
   );
 
+  if (isOnlyShowColumnsWithLineageFilterActive) {
+    return items;
+  }
+
   return (
     <>
       <Stack className="inside-current-page-items" spacing={1}>
@@ -181,32 +199,34 @@ const CustomPaginatedList = ({
         {outsideCurrentPageItems}
       </Stack>
 
-      <Stack
-        alignItems="center"
-        direction="row"
-        justifyContent="center"
-        mt={2}
-        spacing={1}>
-        <IconButton
-          data-testid="prev-btn"
-          disabled={page === 1}
-          size="small"
-          onClick={handlePrev}>
-          <ChevronLeftIcon />
-        </IconButton>
+      {!isOnlyShowColumnsWithLineageFilterActive && (
+        <Stack
+          alignItems="center"
+          direction="row"
+          justifyContent="center"
+          mt={2}
+          spacing={1}>
+          <IconButton
+            data-testid="prev-btn"
+            disabled={page === 1}
+            size="small"
+            onClick={handlePrev}>
+            <ChevronLeftIcon />
+          </IconButton>
 
-        <Typography variant="body2">
-          {page} {t('label.slash-symbol')} {totalPages}
-        </Typography>
+          <Typography variant="body2">
+            {page} {t('label.slash-symbol')} {totalPages}
+          </Typography>
 
-        <IconButton
-          data-testid="next-btn"
-          disabled={page === totalPages}
-          size="small"
-          onClick={handleNext}>
-          <ChevronRightIcon />
-        </IconButton>
-      </Stack>
+          <IconButton
+            data-testid="next-btn"
+            disabled={page === totalPages}
+            size="small"
+            onClick={handleNext}>
+            <ChevronRightIcon />
+          </IconButton>
+        </Stack>
+      )}
     </>
   );
 };
@@ -331,10 +351,10 @@ const NodeChildren = ({
   );
 
   useEffect(() => {
-    if (!isEmpty(children)) {
+    if (!isEmpty(children) && !isOnlyShowColumnsWithLineageFilterActive) {
       setFilteredColumns(children);
     }
-  }, [children]);
+  }, [children, isOnlyShowColumnsWithLineageFilterActive]);
 
   useEffect(() => {
     setShowAllColumns(expandAllColumns);
@@ -367,7 +387,14 @@ const NodeChildren = ({
     }
   }, [node, showDataObservabilitySummary, summary]);
 
-  useEffect(() => {}, [isOnlyShowColumnsWithLineageFilterActive]);
+  useEffect(() => {
+    if (isOnlyShowColumnsWithLineageFilterActive) {
+      const columnsHavingLineageInThisNode = filteredColumns.filter((item) =>
+        columnsHavingLineage.includes(item.fullyQualifiedName ?? '')
+      );
+      setFilteredColumns(columnsHavingLineageInThisNode);
+    }
+  }, [isOnlyShowColumnsWithLineageFilterActive, columnsHavingLineage]);
 
   const renderRecord = useCallback(
     (record: Column) => {
@@ -541,6 +568,9 @@ const NodeChildren = ({
                     nodeId={node.id}
                     page={page}
                     setPage={setPage}
+                    isOnlyShowColumnsWithLineageFilterActive={
+                      isOnlyShowColumnsWithLineageFilterActive
+                    }
                   />
                 </div>
               </section>
