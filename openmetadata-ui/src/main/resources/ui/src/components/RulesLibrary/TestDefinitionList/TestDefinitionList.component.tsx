@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Switch, Table, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Modal,
+  Row,
+  Space,
+  Switch,
+  Table,
+  Typography,
+} from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -19,6 +29,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
+import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import {
   deleteTestDefinitionById,
@@ -48,35 +59,34 @@ const TestDefinitionList = () => {
     TestDefinition | undefined
   >();
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [definitionToDelete, setDefinitionToDelete] = useState<
+    TestDefinition | undefined
+  >();
 
-  const fetchTestDefinitions = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const params: Record<string, unknown> = {
-        limit: pageSize,
-      };
-
-      // Only add cursor parameters if they have values
-      if (paging.before) {
-        params.before = paging.before;
+  const fetchTestDefinitions = useCallback(
+    async (pagingOffset?: Partial<Paging>) => {
+      setIsLoading(true);
+      try {
+        const { data, paging: responsePaging } = await getListTestDefinitions({
+          after: pagingOffset?.after,
+          before: pagingOffset?.before,
+          limit: pageSize,
+        });
+        setTestDefinitions(data);
+        handlePagingChange(responsePaging);
+      } catch (error) {
+        showErrorToast(error as Error);
+      } finally {
+        setIsLoading(false);
       }
-      if (paging.after) {
-        params.after = paging.after;
-      }
-
-      const response = await getListTestDefinitions(params);
-      setTestDefinitions(response.data);
-      handlePagingChange(response.paging);
-    } catch (error) {
-      showErrorToast(error as Error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [pageSize, paging.before, paging.after, handlePagingChange]);
+    },
+    [pageSize, handlePagingChange]
+  );
 
   useEffect(() => {
     fetchTestDefinitions();
-  }, [fetchTestDefinitions]);
+  }, []);
 
   const handleEnableToggle = async (
     record: TestDefinition,
@@ -104,18 +114,34 @@ const TestDefinitionList = () => {
     setIsFormVisible(true);
   };
 
-  const handleDelete = async (record: TestDefinition) => {
+  const handleDeleteClick = (record: TestDefinition) => {
+    setDefinitionToDelete(record);
+    setIsDeleteModalVisible(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!definitionToDelete) {
+      return;
+    }
+
     try {
-      await deleteTestDefinitionById(record.id ?? '');
+      await deleteTestDefinitionById(definitionToDelete.id ?? '');
       showSuccessToast(
         t('message.entity-deleted-success', {
           entity: t('label.test-definition'),
         })
       );
+      setIsDeleteModalVisible(false);
+      setDefinitionToDelete(undefined);
       fetchTestDefinitions();
     } catch (error) {
       showErrorToast(error as Error);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setIsDeleteModalVisible(false);
+    setDefinitionToDelete(undefined);
   };
 
   const handleFormSuccess = () => {
@@ -188,16 +214,16 @@ const TestDefinitionList = () => {
         render: (_, record: TestDefinition) => (
           <Space size="small">
             <Button
-              data-testid={`edit-${record.name}`}
+              data-testid={`edit-test-definition-${record.name}`}
               icon={<IconEdit height={16} width={16} />}
               type="text"
               onClick={() => handleEdit(record)}
             />
             <Button
-              data-testid={`delete-${record.name}`}
+              data-testid={`delete-test-definition-${record.name}`}
               icon={<IconDelete height={16} width={16} />}
               type="text"
-              onClick={() => handleDelete(record)}
+              onClick={() => handleDeleteClick(record)}
             />
           </Space>
         ),
@@ -211,9 +237,16 @@ const TestDefinitionList = () => {
     currentPage,
   }: PagingHandlerParams) => {
     if (cursorType) {
-      handlePagingChange({ [cursorType]: paging[cursorType] });
+      fetchTestDefinitions({
+        [cursorType]: paging[cursorType],
+        total: paging.total,
+      } as Paging);
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
-    handlePageChange(currentPage);
   };
 
   if (isLoading) {
@@ -236,7 +269,7 @@ const TestDefinitionList = () => {
               </Col>
               <Col>
                 <Button
-                  data-testid="add-test-definition"
+                  data-testid="add-test-definition-button"
                   type="primary"
                   onClick={() => setIsFormVisible(true)}>
                   {t('label.add-entity', {
@@ -253,6 +286,7 @@ const TestDefinitionList = () => {
               <Table
                 bordered
                 columns={columns}
+                data-testid="test-definition-table"
                 dataSource={testDefinitions}
                 loading={isLoading}
                 pagination={false}
@@ -282,6 +316,22 @@ const TestDefinitionList = () => {
           onSuccess={handleFormSuccess}
         />
       )}
+
+      <Modal
+        cancelText={t('label.cancel')}
+        okText={t('label.delete')}
+        open={isDeleteModalVisible}
+        title={t('label.delete-entity', {
+          entity: t('label.test-definition'),
+        })}
+        onCancel={handleDeleteCancel}
+        onOk={handleDeleteConfirm}>
+        <Typography.Text>
+          {t('message.are-you-sure-delete', {
+            name: definitionToDelete?.displayName || definitionToDelete?.name,
+          })}
+        </Typography.Text>
+      </Modal>
     </>
   );
 };

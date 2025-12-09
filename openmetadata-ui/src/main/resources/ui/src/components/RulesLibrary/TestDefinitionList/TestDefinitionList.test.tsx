@@ -104,8 +104,12 @@ describe('TestDefinitionList Component', () => {
       expect(screen.getByTestId('test-definition-table')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('columnValuesToBeNotNull')).toBeInTheDocument();
-    expect(screen.getByText('tableRowCountToBeBetween')).toBeInTheDocument();
+    expect(
+      screen.getByText('Column Values To Be Not Null')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Table Row Count To Be Between')
+    ).toBeInTheDocument();
   });
 
   it('should render all table columns', async () => {
@@ -129,8 +133,9 @@ describe('TestDefinitionList Component', () => {
 
     await waitFor(() => {
       expect(getListTestDefinitions).toHaveBeenCalledWith({
+        after: undefined,
+        before: undefined,
         limit: 15,
-        offset: 0,
       });
     });
   });
