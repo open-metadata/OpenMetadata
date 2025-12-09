@@ -1109,7 +1109,7 @@ test.describe('Domains', () => {
           // Add custom property value
           await page
             .getByTestId(`custom-property-${propertyName}-card`)
-            .locator('svg')
+            .getByTestId('edit-icon')
             .click();
 
           await page.getByTestId('value-input').fill(customPropertyValue);
