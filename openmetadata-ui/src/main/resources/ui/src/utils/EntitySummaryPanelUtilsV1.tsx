@@ -50,6 +50,7 @@ import {
 } from '../rest/tableAPI';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+
 import { pruneEmptyChildren } from './TableUtils';
 const { Text } = AntTypography;
 
@@ -270,11 +271,7 @@ const SchemaFieldCardsV1: React.FC<{
         };
 
         let data: Column[] = [];
-        let paging = {
-          offset: 0,
-          total: 0,
-          limit: PAGE_SIZE_LARGE,
-        };
+        let paging;
 
         if (entityType === EntityType.TABLE) {
           if (search) {
