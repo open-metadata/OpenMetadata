@@ -763,7 +763,13 @@ test.describe('Glossary tests', () => {
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, glossary1.data.displayName);
-        await goToAssetsTab(page, glossaryTerm1.data.displayName);
+        await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+        const queryRes1 = page.waitForResponse(
+          '/api/v1/search/query?q=*&index=all&from=0&*'
+        );
+        await page.getByTestId('assets').click();
+        await queryRes1;
         await addAssetToGlossaryTerm(page, assetsToBeAddedViaUI, true);
         await renameGlossaryTerm(page, glossaryTerm1, newName);
 
