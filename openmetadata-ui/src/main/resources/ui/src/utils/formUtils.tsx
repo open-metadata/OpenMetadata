@@ -372,13 +372,11 @@ export const getField = (field: FieldProp) => {
       break;
 
     case FieldTypes.USER_TEAM_SELECT_INPUT:
-      {
-        fieldElement = (
-          <UserTeamSelectableListSearchInput
-            {...(props as unknown as UserSelectDropdownProps)}
-          />
-        );
-      }
+      fieldElement = (
+        <UserTeamSelectableListSearchInput
+          {...(props as unknown as UserSelectDropdownProps)}
+        />
+      );
 
       break;
 

@@ -12,7 +12,7 @@
  */
 
 import { EntityTags } from 'Models';
-import { EntityType } from '../../../generated/tests/testDefinition';
+import { EntityType } from '../../../enums/entity.enum';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { DisplayType, LayoutType } from '../TagsViewer/TagsViewer.interface';
 

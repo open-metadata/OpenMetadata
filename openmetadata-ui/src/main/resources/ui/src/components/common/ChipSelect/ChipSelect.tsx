@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Chip, FormHelperText, Typography, useTheme } from '@mui/material';
+import { Box, Chip, FormHelperText, Typography } from '@mui/material';
 import { Check } from '@untitledui/icons';
 import { FC } from 'react';
 import { ChipSelectProps } from './ChipSelect.interface';
@@ -27,7 +27,6 @@ const ChipSelect: FC<ChipSelectProps> = ({
   disabled = false,
   'data-testid': dataTestId,
 }) => {
-  const theme = useTheme();
   const handleChipClick = (optionValue: string) => {
     if (!disabled) {
       onChange(optionValue);
