@@ -390,7 +390,7 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   // Change page size to 25
   await page.locator('.ant-pagination-options-size-changer').click();
   const pageSizeResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=query_search_index&from=0&size=25&query_filter=**'
+    '/api/v1/search/query?q=*&index=query_search_index&from=0&size=25&deleted=false&query_filter=**'
   );
   await page.getByTitle('25 / Page').click();
   await pageSizeResponse;

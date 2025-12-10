@@ -22,6 +22,9 @@ from sqlalchemy.orm import Session
 
 from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_QUERY_LOG_QUERY,
 )
@@ -124,10 +127,13 @@ class SnowflakeQueryLogEntry(BaseModel):
     rows_deleted: Optional[int] = None
 
     @staticmethod
-    def get_for_table(session: Session, tablename: str):
+    def get_for_table(
+        session: Session, tablename: str, service_connection_config: SnowflakeConnection
+    ):
         rows = session.execute(
             text(
                 SNOWFLAKE_QUERY_LOG_QUERY.format(
+                    account_usage_schema=service_connection_config.accountUsageSchema,
                     tablename=tablename,  # type: ignore
                     insert=DatabaseDMLOperations.INSERT.value,
                     update=DatabaseDMLOperations.UPDATE.value,

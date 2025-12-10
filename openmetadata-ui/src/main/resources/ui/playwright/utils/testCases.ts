@@ -39,3 +39,40 @@ export const visitDataQualityTab = async (page: Page, table: TableClass) => {
   await page.getByRole('tab', { name: 'Data Quality' }).click();
   await testCaseResponse;
 };
+
+export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
+  page: Page,
+  table: TableClass,
+  testCaseName: string
+) => {
+  await page
+    .getByRole('link', {
+      name: testCaseName,
+    })
+    .click();
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('breadcrumb-link').nth(0)).toHaveText(
+    `${table.entityResponseData.service.displayName}/`
+  );
+  await expect(page.getByTestId('breadcrumb-link').nth(1)).toHaveText(
+    `${table.entityResponseData?.['database'].displayName}/`
+  );
+  await expect(page.getByTestId('breadcrumb-link').nth(2)).toHaveText(
+    `${table.entityResponseData?.['databaseSchema'].displayName}/`
+  );
+  await expect(page.getByTestId('breadcrumb-link').nth(3)).toHaveText(
+    `${table.entityResponseData?.displayName}/`
+  );
+
+  await page.getByTestId('breadcrumb-link').nth(3).click();
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+};

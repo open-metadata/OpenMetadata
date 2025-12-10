@@ -36,6 +36,10 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
     CreateLogicalTestCases,
 )
+from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestDefinition import (
+    CreateTestDefinitionRequest,
+)
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.classification.tag import Tag
@@ -204,6 +208,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateTeamRequest,
                     CreateContainerRequest,
                     CreatePipelineRequest,
+                    CreateTestCaseRequest,
+                    CreateTestSuiteRequest,
+                    CreateTestDefinitionRequest,
                 ),
             )
         ):
@@ -282,16 +289,14 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             return Either(right=result, left=None)
 
         self.status.scanned_all(result.successRequest)
-        self.status.failed(
-            [
+        for err in result.failedRequest:
+            self.status.failed(
                 StackTraceError(
                     name="Entity Buffer",
                     error=f"Failed to flush entities to bulk API: {err}",
                     stackTrace=None,
                 )
-                for err in result.failedRequest
-            ]
-        )
+            )
         return Either(
             right=None,
             left=StackTraceError(

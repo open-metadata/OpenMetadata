@@ -43,6 +43,8 @@ export interface TeamDetailsProp {
     parentTeam?: string,
     updateChildNode?: boolean
   ) => void;
+
+  isTeamBasicDataLoading: boolean;
 }
 
 export interface AddAttribute {

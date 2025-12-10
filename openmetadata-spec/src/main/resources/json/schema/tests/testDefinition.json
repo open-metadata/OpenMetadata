@@ -215,6 +215,14 @@
       "description": "When `true` indicates the test case supports dynamic assertions.",
       "type": "boolean",
       "default": false
+    },
+    "supportedServices": {
+      "description": "List of services that this test definition supports. When empty, it implies all services are supported.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
     }
   },
   "required": ["name", "description", "testPlatforms"],

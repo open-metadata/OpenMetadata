@@ -16,6 +16,7 @@ import { ProfilerProgressWidgetProps } from '../TableProfiler.interface';
 import ProfilerProgressWidget from './ProfilerProgressWidget';
 
 jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
   Progress: jest
     .fn()
     .mockImplementation(() => (

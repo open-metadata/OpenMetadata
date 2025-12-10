@@ -199,7 +199,7 @@ const TotalDataAssetsWidget = ({
     return (
       <WidgetEmptyState
         actionButtonLink={ROUTES.EXPLORE}
-        actionButtonText={t('label.browse-assets')}
+        actionButtonText={t('label.explore-assets')}
         description={t('message.no-data-for-total-assets')}
         icon={
           <TotalDataAssetsEmptyIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
@@ -334,6 +334,15 @@ const TotalDataAssetsWidget = ({
     }
   }, [graphData]);
 
+  const translatedSortOptions = useMemo(
+    () =>
+      DATA_ASSETS_SORT_BY_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -344,7 +353,7 @@ const TotalDataAssetsWidget = ({
         icon={<TotalAssetsWidgetIcon height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}
-        sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.data-insight-total-entity-summary')}
         widgetKey={widgetKey}
         onSortChange={(key) => setSelectedSortBy(key)}
@@ -361,6 +370,7 @@ const TotalDataAssetsWidget = ({
       widgetKey,
       widgetData?.w,
       setSelectedSortBy,
+      translatedSortOptions,
     ]
   );
 

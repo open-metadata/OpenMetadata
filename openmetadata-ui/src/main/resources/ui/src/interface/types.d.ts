@@ -198,6 +198,7 @@ declare module 'Models' {
 
   export type StepperStepType = {
     name: string;
+    nameData?: Record<string, string | number | boolean>;
     step: number;
   };
 
@@ -261,7 +262,14 @@ declare module 'Models' {
     | Mlmodel
     | Container;
 
-  export type DateFilterType = Record<string, { days: number; title: string }>;
+  export type DateFilterType = Record<
+    string,
+    {
+      days: number;
+      title: string;
+      titleData?: Record<string, string | number | boolean>;
+    }
+  >;
 
   export type TagFilterOptions = {
     text: string;

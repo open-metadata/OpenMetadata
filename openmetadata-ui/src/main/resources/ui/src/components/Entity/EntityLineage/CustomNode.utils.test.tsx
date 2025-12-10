@@ -16,8 +16,8 @@ import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
 import {
+  ColumnContent,
   getCollapseHandle,
-  getColumnContent,
   getColumnHandle,
   getExpandHandle,
 } from './CustomNode.utils';
@@ -41,6 +41,19 @@ jest.mock('./TestSuiteSummaryWidget/TestSuiteSummaryWidget.component', () => ({
         <div data-testid="test-suite-summary" />
       )
     ),
+}));
+
+const mockOnColumnClick = jest.fn();
+const mockOnColumnMouseEnter = jest.fn();
+const mockOnColumnMouseLeave = jest.fn();
+
+jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
+  useLineageProvider: jest.fn(() => ({
+    onColumnClick: mockOnColumnClick,
+    onColumnMouseEnter: mockOnColumnMouseEnter,
+    onColumnMouseLeave: mockOnColumnMouseLeave,
+    selectedColumn: '',
+  })),
 }));
 
 describe('Custom Node Utils', () => {
@@ -69,21 +82,21 @@ describe('Custom Node Utils', () => {
 
   describe('getExpandHandle', () => {
     it('renders a Button component', () => {
-      const { getByRole } = render(
+      const { getByTestId } = render(
         getExpandHandle(LineageDirection.Downstream, jest.fn())
       );
 
-      expect(getByRole('button')).toBeInTheDocument();
-      expect(getByRole('button')).toHaveClass('lineage-expand-icon');
+      expect(getByTestId('plus-icon')).toBeInTheDocument();
+      expect(getByTestId('plus-icon')).toHaveClass('lineage-expand-icon');
     });
 
     it('calls the onClickHandler when clicked', () => {
       const onClickHandler = jest.fn();
-      const { getByRole } = render(
+      const { getByTestId } = render(
         getExpandHandle(LineageDirection.Downstream, onClickHandler)
       );
 
-      fireEvent.click(getByRole('button'));
+      fireEvent.click(getByTestId('plus-icon'));
 
       expect(onClickHandler).toHaveBeenCalled();
     });
@@ -120,14 +133,13 @@ describe('Custom Node Utils', () => {
     });
   });
 
-  describe('getColumnContent', () => {
+  describe('ColumnContent', () => {
     const mockColumn = {
       fullyQualifiedName: 'test.column',
       dataType: 'string',
       name: 'test column',
       constraint: 'NOT NULL',
     } as unknown as Column;
-    const mockOnColumnClick = jest.fn();
 
     beforeEach(() => {
       jest.clearAllMocks();
@@ -136,14 +148,13 @@ describe('Custom Node Utils', () => {
     it('should render basic column content', () => {
       const { getByTestId, getByText } = render(
         <ReactFlowProvider>
-          {getColumnContent(
-            mockColumn,
-            false,
-            true,
-            mockOnColumnClick,
-            false,
-            false
-          )}
+          <ColumnContent
+            isConnectable
+            column={mockColumn}
+            isColumnTraced={false}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+          />
         </ReactFlowProvider>
       );
 
@@ -155,14 +166,13 @@ describe('Custom Node Utils', () => {
     it('should apply tracing class when isColumnTraced is true', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
-          {getColumnContent(
-            mockColumn,
-            true,
-            true,
-            mockOnColumnClick,
-            false,
-            false
-          )}
+          <ColumnContent
+            isColumnTraced
+            isConnectable
+            column={mockColumn}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+          />
         </ReactFlowProvider>
       );
 
@@ -181,15 +191,14 @@ describe('Custom Node Utils', () => {
 
       const { getAllByTestId } = render(
         <ReactFlowProvider>
-          {getColumnContent(
-            mockColumn,
-            false,
-            true,
-            mockOnColumnClick,
-            true,
-            true,
-            mockSummary
-          )}
+          <ColumnContent
+            isConnectable
+            isLoading
+            showDataObservabilitySummary
+            column={mockColumn}
+            isColumnTraced={false}
+            summary={mockSummary}
+          />
         </ReactFlowProvider>
       );
 
@@ -206,15 +215,14 @@ describe('Custom Node Utils', () => {
 
       const { getByTestId } = render(
         <ReactFlowProvider>
-          {getColumnContent(
-            mockColumn,
-            false,
-            true,
-            mockOnColumnClick,
-            true,
-            false,
-            mockSummary
-          )}
+          <ColumnContent
+            isConnectable
+            showDataObservabilitySummary
+            column={mockColumn}
+            isColumnTraced={false}
+            isLoading={false}
+            summary={mockSummary}
+          />
         </ReactFlowProvider>
       );
 
@@ -224,14 +232,13 @@ describe('Custom Node Utils', () => {
     it('should call onColumnClick when clicked', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
-          {getColumnContent(
-            mockColumn,
-            false,
-            true,
-            mockOnColumnClick,
-            false,
-            false
-          )}
+          <ColumnContent
+            isConnectable
+            column={mockColumn}
+            isColumnTraced={false}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+          />
         </ReactFlowProvider>
       );
 

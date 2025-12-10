@@ -206,3 +206,11 @@ export const removeFollower = async (domainID: string, userId: string) => {
 
   return response.data;
 };
+
+export const getAllDomainsWithAssetsCount = async () => {
+  const response = await APIClient.get<Record<string, number>>(
+    `${BASE_URL}/assets/counts`
+  );
+
+  return response.data;
+};

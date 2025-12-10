@@ -14,9 +14,10 @@
 package org.openmetadata.service.apps.bundles.changeEvent.email;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForAlert;
 
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -34,6 +35,9 @@ import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
 import org.openmetadata.service.notifications.channels.email.EmailMessage;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
@@ -68,10 +72,20 @@ public class EmailPublisher implements Destination<ChangeEvent> {
           messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
       EmailMessage emailMessage = (EmailMessage) message;
 
-      // Get receivers
-      Set<String> receivers = getTargetsForAlert(emailAlertConfig, subscriptionDestination, event);
+      // Resolve recipients using new RecipientResolver framework
+      RecipientResolver recipientResolver = new RecipientResolver();
+      Set<Recipient> recipients =
+          recipientResolver.resolveRecipients(event, subscriptionDestination, emailAlertConfig);
 
-      // Send using new helper method
+      // Convert type-agnostic Recipient objects to email addresses
+      Set<String> receivers =
+          recipients.stream()
+              .filter(r -> r instanceof EmailRecipient)
+              .map(r -> ((EmailRecipient) r).getEmail())
+              .filter(Objects::nonNull)
+              .collect(Collectors.toSet());
+
+      // Send email to each recipient
       for (String receiver : receivers) {
         EmailUtil.sendNotificationEmail(
             receiver, emailMessage.getSubject(), emailMessage.getHtmlContent());

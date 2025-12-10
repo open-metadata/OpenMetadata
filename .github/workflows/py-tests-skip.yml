@@ -26,6 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        py-version: ['3.10', '3.11', '3.12']
+        py-version: ['3.10', '3.11'] # , '3.12']
     steps:
       - run: 'echo "Step is not required"'

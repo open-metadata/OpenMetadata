@@ -131,21 +131,28 @@ const CustomPropertiesSection = ({
         className="entity-summary-panel-tab-content"
         data-testid="no-data-placeholder">
         <div className="p-x-md p-t-md text-justify no-data-placeholder">
-          <Transi18next
-            i18nKey="message.no-custom-properties-entity"
-            renderElement={
-              <a
-                href={CUSTOM_PROPERTIES_DOCS}
-                rel="noreferrer"
-                target="_blank"
-                title="Custom properties documentation"
+          <ErrorPlaceHolderNew
+            className="text-grey-14"
+            icon={<AddPlaceHolderIcon height={100} width={100} />}
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <div className="p-t-md text-justify no-data-placeholder">
+              <Transi18next
+                i18nKey="message.no-custom-properties-entity"
+                renderElement={
+                  <a
+                    href={CUSTOM_PROPERTIES_DOCS}
+                    rel="noreferrer"
+                    target="_blank"
+                    title="Custom properties documentation"
+                  />
+                }
+                values={{
+                  docs: t('label.doc-plural-lowercase'),
+                  entity: startCase(entityType),
+                }}
               />
-            }
-            values={{
-              docs: t('label.doc-plural-lowercase'),
-              entity: startCase(entityType),
-            }}
-          />
+            </div>
+          </ErrorPlaceHolderNew>
         </div>
       </div>
     );

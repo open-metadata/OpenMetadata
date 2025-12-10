@@ -216,13 +216,14 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   const dataProductsDisplay = useMemo(
     () => (
       <div className="data-products-display">
-        <div className="data-products-list">
+        <div className="data-products-list" data-testid="data-products-list">
           {(showAllDataProducts
             ? displayDataProducts
             : displayDataProducts.slice(0, maxVisibleDataProducts)
           ).map((dataProduct) => (
             <div
               className="data-product-item"
+              data-testid="data-product-item"
               key={dataProduct.id || dataProduct.fullyQualifiedName}>
               <div className="data-product-card-bar">
                 <div className="data-product-card-content">

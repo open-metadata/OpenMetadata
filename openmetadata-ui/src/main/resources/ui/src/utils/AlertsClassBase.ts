@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { NotificationTemplate } from '../generated/entity/events/notificationTemplate';
 import { User } from '../generated/entity/teams/user';
@@ -46,6 +47,7 @@ export interface AddAlertFormWidgetProps {
   templates?: NotificationTemplate[];
   loading?: boolean;
   isViewMode?: boolean;
+  templateResourcePermission?: OperationPermission;
 }
 
 class AlertsClassBase {

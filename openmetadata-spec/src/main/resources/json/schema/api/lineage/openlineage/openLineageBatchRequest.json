@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/openlineage/openLineageBatchRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OpenLineageBatchRequest",
+  "description": "Request containing multiple OpenLineage events for batch processing.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.lineage.openlineage.OpenLineageBatchRequest",
+  "properties": {
+    "events": {
+      "description": "List of OpenLineage events to process.",
+      "type": "array",
+      "items": {
+        "$ref": "openLineageRunEvent.json"
+      },
+      "minItems": 1
+    }
+  },
+  "required": ["events"],
+  "additionalProperties": false
+}

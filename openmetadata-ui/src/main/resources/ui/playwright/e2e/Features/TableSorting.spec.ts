@@ -140,7 +140,7 @@ test.describe('Table Sorting', () => {
     page,
   }) => {
     await page.goto('/settings/services/dataObservability?tab=pipelines');
-    await testTableSorting(page, 'Name');
+    await testTableSorting(page, 'Name', 1);
   });
 
   test.describe('Data Models Table', () => {

@@ -62,7 +62,11 @@ class CSVUtilsClassBase {
 
   public getEditor(
     column: string,
-    entityType: EntityType
+    entityType: EntityType,
+    multipleOwner: {
+      user: boolean;
+      team: boolean;
+    }
   ): ((props: RenderEditCellProps<any, any>) => ReactNode) | undefined {
     switch (column) {
       case 'owner':
@@ -99,7 +103,7 @@ class CSVUtilsClassBase {
           return (
             <UserTeamSelectableList
               hasPermission
-              multiple={{ user: true, team: false }}
+              multiple={multipleOwner}
               owner={ownerEntityRef}
               popoverProps={{
                 open: true,
@@ -450,6 +454,11 @@ class CSVUtilsClassBase {
           const handleChange = (typeValue: string) => {
             onRowChange({ ...row, [column.key]: typeValue });
           };
+          const translatedEntityTypeOptions = () =>
+            ENTITY_TYPE_OPTIONS.map((opt) => ({
+              ...opt,
+              label: t(opt.label),
+            }));
 
           return (
             <KeyDownStopPropagationWrapper>
@@ -460,7 +469,7 @@ class CSVUtilsClassBase {
                   autoFocus
                   open
                   data-testid="entity-type-select"
-                  options={ENTITY_TYPE_OPTIONS}
+                  options={translatedEntityTypeOptions()}
                   size="small"
                   style={{ width: '155px' }}
                   value={value}

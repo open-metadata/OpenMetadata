@@ -13,6 +13,7 @@
 
 import { BarProps } from 'recharts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 
 export const CONTRACT_DATE_TIME_FORMAT = 'MM/dd/yyyy, h:mma';
 
@@ -46,6 +47,11 @@ export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [
   EntityReferenceFields.SERVICE,
   EntityReferenceFields.DISPLAY_NAME,
   EntityReferenceFields.DELETED,
+];
+
+export const SUPPORTED_ROW_FILTER_ENTITIES = [
+  EntityType.TABLE,
+  EntityType.DASHBOARD_DATA_MODEL,
 ];
 
 export const SEMANTIC_TAG_OPERATORS = ['array_contains', 'array_not_contains'];

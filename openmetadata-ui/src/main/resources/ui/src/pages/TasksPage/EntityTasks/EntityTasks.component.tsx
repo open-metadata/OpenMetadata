@@ -87,8 +87,8 @@ const EntityTasks = ({
         overlayClassName="ant-popover-request-description"
         title={
           hasData
-            ? ENTITY_TASKS_TOOLTIP[entityTaskType].update
-            : ENTITY_TASKS_TOOLTIP[entityTaskType].request
+            ? t(ENTITY_TASKS_TOOLTIP[entityTaskType].update)
+            : t(ENTITY_TASKS_TOOLTIP[entityTaskType].request)
         }>
         <IconRequest
           className="table-action-icon hover-cell-icon"

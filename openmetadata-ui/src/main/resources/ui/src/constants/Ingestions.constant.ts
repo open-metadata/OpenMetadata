@@ -11,20 +11,16 @@
  *  limitations under the License.
  */
 
-import i18next from 'i18next';
 import { StepperStepType } from 'Models';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
-const { t } = i18next;
-
 export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
   {
-    name: t('label.configure-entity', {
-      entity: t('label.ingestion'),
-    }),
+    name: 'label.configure-entity',
+    nameData: { entity: 'label.ingestion' },
     step: 1,
   },
-  { name: t('label.schedule-interval'), step: 2 },
+  { name: 'label.schedule-interval', step: 2 },
 ];
 
 export const INGESTION_ACTION_TYPE = {

@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import { Fragment, useCallback, useState } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
@@ -112,8 +113,6 @@ const ExpandHandle = ({
         aria-label="expand"
         className="lineage-expand-icon"
         data-testid="plus-icon"
-        role="button"
-        tabIndex={0}
         onClick={handleLineageExpandIconClick}
       />
       {showExpandAll && (
@@ -193,16 +192,54 @@ const getColumnNameContent = (column: Column, isLoading: boolean) => {
   );
 };
 
-export const getColumnContent = (
-  column: Column,
-  isColumnTraced: boolean,
-  isConnectable: boolean,
-  onColumnClick: (column: string) => void,
-  showDataObservabilitySummary: boolean,
-  isLoading: boolean,
-  summary?: ColumnTestSummaryDefinition
-) => {
+interface ColumnContentProps {
+  column: Column;
+  isColumnTraced: boolean;
+  isConnectable: boolean;
+  showDataObservabilitySummary: boolean;
+  isLoading: boolean;
+  summary?: ColumnTestSummaryDefinition;
+}
+
+export const ColumnContent = ({
+  column,
+  isColumnTraced,
+  isConnectable,
+  showDataObservabilitySummary,
+  isLoading,
+  summary,
+}: ColumnContentProps) => {
+  const {
+    onColumnClick,
+    onColumnMouseEnter,
+    onColumnMouseLeave,
+    selectedColumn,
+  } = useLineageProvider();
+
   const { fullyQualifiedName } = column;
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onColumnClick(fullyQualifiedName ?? '');
+    },
+    [fullyQualifiedName, onColumnClick]
+  );
+
+  const handleMouseEnter = useCallback(() => {
+    if (selectedColumn) {
+      return;
+    }
+    onColumnMouseEnter(fullyQualifiedName ?? '');
+  }, [selectedColumn, fullyQualifiedName, onColumnMouseEnter]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (selectedColumn) {
+      return;
+    }
+    onColumnMouseLeave();
+  }, [selectedColumn, onColumnMouseLeave]);
+
   const columnNameContentRender = getColumnNameContent(column, isLoading);
 
   return (
@@ -213,10 +250,10 @@ export const getColumnContent = (
       )}
       data-testid={`column-${fullyQualifiedName}`}
       key={fullyQualifiedName}
-      onClick={(e) => {
-        e.stopPropagation();
-        onColumnClick(fullyQualifiedName ?? '');
-      }}>
+      onClick={handleClick}
+      onMouseDown={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}>
       {getColumnHandle(
         EntityLineageNodeType.DEFAULT,
         isConnectable,

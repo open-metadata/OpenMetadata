@@ -14,6 +14,7 @@
 import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -83,6 +84,7 @@ import {
   pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -332,14 +334,19 @@ const SchemaTable = () => {
 
   const handleEditColumnChange = async (columnDescription: string) => {
     if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
-      await updateColumnDetails(
-        editColumn.fullyQualifiedName,
-        {
-          description: columnDescription,
-        },
-        'description'
-      );
-      setEditColumn(undefined);
+      try {
+        await updateColumnDetails(
+          editColumn.fullyQualifiedName,
+          {
+            description: columnDescription,
+          },
+          'description'
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setEditColumn(undefined);
+      }
     } else {
       setEditColumn(undefined);
     }
@@ -350,13 +357,17 @@ const SchemaTable = () => {
     editColumnTag: Column
   ) => {
     if (selectedTags && editColumnTag.fullyQualifiedName) {
-      await updateColumnDetails(
-        editColumnTag.fullyQualifiedName,
-        {
-          tags: selectedTags,
-        },
-        'tags'
-      );
+      try {
+        await updateColumnDetails(
+          editColumnTag.fullyQualifiedName,
+          {
+            tags: selectedTags,
+          },
+          'tags'
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
     }
   };
 
@@ -440,20 +451,24 @@ const SchemaTable = () => {
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
     ) {
-      await updateColumnDetails(
-        editColumnDisplayName.fullyQualifiedName,
-        {
-          displayName: displayName,
-          ...(isEmpty(constraint)
-            ? {
-                removeConstraint: true,
-              }
-            : { constraint }),
-        },
-        'displayName'
-      );
-
-      setEditColumnDisplayName(undefined);
+      try {
+        await updateColumnDetails(
+          editColumnDisplayName.fullyQualifiedName,
+          {
+            displayName: displayName,
+            ...(isEmpty(constraint)
+              ? {
+                  removeConstraint: true,
+                }
+              : { constraint }),
+          },
+          'displayName'
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setEditColumnDisplayName(undefined);
+      }
     } else {
       setEditColumnDisplayName(undefined);
     }
@@ -625,6 +640,15 @@ const SchemaTable = () => {
     ]
   );
 
+  const constraintOptionsTranslated = useMemo(
+    () =>
+      COLUMN_CONSTRAINT_TYPE_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const additionalFieldsInEntityNameModal = (
     <Form.Item
       label={t('label.entity-type-plural', {
@@ -634,7 +658,7 @@ const SchemaTable = () => {
       <Select
         allowClear
         data-testid="constraint-type-select"
-        options={COLUMN_CONSTRAINT_TYPE_OPTIONS}
+        options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
             entity: t('label.constraint'),

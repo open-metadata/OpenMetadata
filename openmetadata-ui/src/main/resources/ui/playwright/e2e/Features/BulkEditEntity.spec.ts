@@ -157,7 +157,9 @@ test.describe('Bulk Edit Entity', () => {
           sourceUrl: undefined,
         },
         page,
-        customPropertyRecord
+        customPropertyRecord,
+        undefined,
+        true
       );
 
       await page.getByRole('button', { name: 'Next' }).click();
@@ -291,7 +293,9 @@ test.describe('Bulk Edit Entity', () => {
           domains: domain1.responseData,
         },
         page,
-        customPropertyRecord
+        customPropertyRecord,
+        undefined,
+        true
       );
 
       await page.getByRole('button', { name: 'Next' }).click();
@@ -431,7 +435,9 @@ test.describe('Bulk Edit Entity', () => {
           domains: domain1.responseData,
         },
         page,
-        customPropertyRecord
+        customPropertyRecord,
+        undefined,
+        true
       );
 
       await page.getByRole('button', { name: 'Next' }).click();
@@ -638,7 +644,9 @@ test.describe('Bulk Edit Entity', () => {
             name: glossaryTerm.data.name,
           },
         },
-        page
+        page,
+        undefined,
+        true
       );
 
       await page.getByRole('button', { name: 'Next' }).click();

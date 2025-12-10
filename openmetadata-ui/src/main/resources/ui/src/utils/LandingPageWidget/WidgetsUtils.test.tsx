@@ -21,8 +21,16 @@ import { getFeedFilterWidgets, getVisiblePopupContainer } from './WidgetsUtils';
 
 describe('Widgets Utils', () => {
   describe('getFeedFilterWidgets', () => {
-    it('should return list for Feed Filters', () => {
+    it('should return translated list for Feed Filters', () => {
       const response = getFeedFilterWidgets(ActivityFeedTabs.ALL);
+
+      const translatedActivityFilters = ACTIVITY_FEED_FILTER_LIST.map(
+        (filter) => ({
+          ...filter,
+          title: i18n.t(filter.title),
+          description: i18n.t(filter.description),
+        })
+      );
 
       expect(response).toEqual([
         {
@@ -30,12 +38,20 @@ describe('Widgets Utils', () => {
           key: FeedFilter.OWNER_OR_FOLLOWS,
           description: i18n.t('message.feed-filter-all'),
         },
-        ...ACTIVITY_FEED_FILTER_LIST,
+        ...translatedActivityFilters,
       ]);
     });
 
-    it('should return list for Feed Filters for Admin', () => {
+    it('should return translated list for Feed Filters for Admin', () => {
       const response = getFeedFilterWidgets(ActivityFeedTabs.ALL, true);
+
+      const translatedActivityFilters = ACTIVITY_FEED_FILTER_LIST.map(
+        (filter) => ({
+          ...filter,
+          title: i18n.t(filter.title),
+          description: i18n.t(filter.description),
+        })
+      );
 
       expect(response).toEqual([
         {
@@ -43,14 +59,20 @@ describe('Widgets Utils', () => {
           key: FeedFilter.ALL,
           description: i18n.t('message.feed-filter-all'),
         },
-        ...ACTIVITY_FEED_FILTER_LIST,
+        ...translatedActivityFilters,
       ]);
     });
 
-    it('should return list for Task Filters', () => {
+    it('should return translated list for Task Filters', () => {
       const response = getFeedFilterWidgets(ActivityFeedTabs.TASKS);
 
-      expect(response).toEqual(TASK_FEED_FILTER_LIST);
+      const translatedTaskFilters = TASK_FEED_FILTER_LIST.map((filter) => ({
+        ...filter,
+        title: i18n.t(filter.title),
+        description: i18n.t(filter.description),
+      }));
+
+      expect(response).toEqual(translatedTaskFilters);
     });
   });
 

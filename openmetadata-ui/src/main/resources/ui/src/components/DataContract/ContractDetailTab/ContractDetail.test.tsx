@@ -40,7 +40,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => {
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return function MockErrorPlaceHolder({ type, children }: any) {
     return (
       <div data-testid="error-placeholder" data-type={type}>

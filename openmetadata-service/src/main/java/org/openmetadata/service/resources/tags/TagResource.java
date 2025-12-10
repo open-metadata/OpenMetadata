@@ -766,4 +766,23 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
 
     return feedbackRepository.getPendingFeedback();
   }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllTagsWithAssetsCount",
+      summary = "Get all tags with their asset counts",
+      description =
+          "Get a map of tag fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of tag FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllTagsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllTagsWithAssetsCount();
+    return Response.ok(result).build();
+  }
 }

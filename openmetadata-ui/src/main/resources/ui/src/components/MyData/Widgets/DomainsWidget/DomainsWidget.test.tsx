@@ -22,6 +22,7 @@ import {
   Domain,
   DomainType,
 } from '../../../../generated/entity/domains/domain';
+import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import DomainsWidget from './DomainsWidget';
 
@@ -47,6 +48,7 @@ const mockDomains: Domain[] = [
     id: '1',
     name: 'clients',
     displayName: 'Clients',
+    fullyQualifiedName: 'clients',
     assets: [{ id: 'a1', type: 'table' }],
     style: { color: '#4F8CFF', iconURL: 'icon1.svg' },
     domainType: DomainType.Aggregate,
@@ -56,6 +58,7 @@ const mockDomains: Domain[] = [
     id: '2',
     name: 'marketing',
     displayName: 'Marketing',
+    fullyQualifiedName: 'marketing',
     assets: [
       { id: 'a2', type: 'table' },
       { id: 'a3', type: 'table' },
@@ -83,6 +86,10 @@ jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
+jest.mock('../../../../rest/domainAPI', () => ({
+  getAllDomainsWithAssetsCount: jest.fn(),
+}));
+
 jest.mock('../../../../constants/Widgets.constant', () => ({
   getSortField: jest.fn(),
   getSortOrder: jest.fn(),
@@ -94,6 +101,10 @@ jest.mock('../../../../utils/DomainUtils', () => ({
 }));
 
 const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
+const mockGetAllDomainsWithAssetsCount =
+  getAllDomainsWithAssetsCount as jest.MockedFunction<
+    typeof getAllDomainsWithAssetsCount
+  >;
 
 const mockGetSortField = getSortField as jest.MockedFunction<
   typeof getSortField
@@ -116,6 +127,10 @@ describe('DomainsWidget', () => {
     mockGetSortOrder.mockReturnValue('desc');
     mockApplySortToData.mockImplementation((data) => data);
     mockSearchQuery.mockResolvedValue(mockSearchResponse);
+    mockGetAllDomainsWithAssetsCount.mockResolvedValue({
+      clients: 1,
+      marketing: 2,
+    });
   });
 
   const renderDomainsWidget = (props = {}) => {
@@ -379,6 +394,9 @@ describe('DomainsWidget', () => {
         total: { value: 1 },
       },
       aggregations: {},
+    });
+    mockGetAllDomainsWithAssetsCount.mockResolvedValue({
+      clients: 0,
     });
 
     renderDomainsWidget();

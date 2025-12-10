@@ -85,7 +85,7 @@ const QueryCardExtraOption = ({
         ),
         disabled: !(EditAll || EditQueries),
         onClick: () => onEditClick(true),
-        title: EditAll || EditQueries ? undefined : NO_PERMISSION_FOR_ACTION,
+        title: EditAll || EditQueries ? undefined : t(NO_PERMISSION_FOR_ACTION),
       },
       {
         key: 'delete-query',
@@ -93,7 +93,7 @@ const QueryCardExtraOption = ({
         icon: <DeleteIcon height={16} opacity={Delete ? 1 : 0.5} width={16} />,
         disabled: !Delete,
         onClick: () => setShowDeleteModal(true),
-        title: Delete ? undefined : NO_PERMISSION_FOR_ACTION,
+        title: Delete ? undefined : t(NO_PERMISSION_FOR_ACTION),
       },
     ];
 

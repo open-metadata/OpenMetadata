@@ -31,6 +31,7 @@ import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -251,6 +252,36 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       String dataProductName, int limit, int offset) {
     DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
     return getDataProductAssets(dataProduct.getId(), limit, offset);
+  }
+
+  public Map<String, Integer> getAllDataProductsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for data product asset counts");
+      return new HashMap<>();
+    }
+
+    List<DataProduct> allDataProducts =
+        listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> dataProductAssetCounts = new LinkedHashMap<>();
+
+    for (DataProduct dataProduct : allDataProducts) {
+      InheritedFieldQuery query =
+          InheritedFieldQuery.forDataProduct(dataProduct.getFullyQualifiedName(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for data product {} asset count. Returning 0.",
+                    dataProduct.getFullyQualifiedName());
+                return 0;
+              });
+
+      dataProductAssetCounts.put(dataProduct.getFullyQualifiedName(), count);
+    }
+
+    return dataProductAssetCounts;
   }
 
   @Transaction

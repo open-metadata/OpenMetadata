@@ -43,6 +43,7 @@ import {
   getCustomizePagePath,
   getSettingPageEntityBreadCrumb,
 } from '../../utils/GlobalSettingsUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './custom-page-settings.less';
@@ -173,7 +174,15 @@ export const CustomPageSettings = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
         <Col span={18}>
-          <PageHeader data={PAGE_HEADERS.CUSTOM_PAGE} />
+          <PageHeader
+            data={{
+              header: translateWithNestedKeys(
+                PAGE_HEADERS.CUSTOM_PAGE.header,
+                PAGE_HEADERS.CUSTOM_PAGE.headerParams
+              ),
+              subHeader: t(PAGE_HEADERS.CUSTOM_PAGE.subHeader),
+            }}
+          />
         </Col>
 
         {isLoading

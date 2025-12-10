@@ -80,6 +80,7 @@ test.describe('Profiler Configuration Page', () => {
       );
       await profilerConfigurationRes;
       await adminPage.click('#metricConfiguration_0_dataType');
+      await adminPage.fill('#metricConfiguration_0_dataType', 'AGG_STATE');
       await adminPage.click(`[title="AGG_STATE"]`);
       await adminPage.click('#metricConfiguration_0_metrics');
       await adminPage.fill('#metricConfiguration_0_metrics', 'All');
@@ -93,6 +94,10 @@ test.describe('Profiler Configuration Page', () => {
         adminPage.locator(`[title="AGG_STATE"]:has(:visible)`)
       ).toHaveClass(/ant-select-item-option-disabled/);
 
+      await adminPage.fill(
+        '#metricConfiguration_1_dataType',
+        'AGGREGATEFUNCTION'
+      );
       await adminPage.click(`[title="AGGREGATEFUNCTION"]:has(:visible)`);
 
       await adminPage.click('#metricConfiguration_1_metrics');

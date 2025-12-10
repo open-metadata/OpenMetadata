@@ -53,6 +53,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -3457,5 +3458,48 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       // Clean up: Re-suspend the workflow to not affect other tests
       WorkflowHandler.getInstance().suspendWorkflow("GlossaryTermApprovalWorkflow");
     }
+  }
+
+  @Test
+  void test_getAllGlossaryTermsWithAssetsCount(TestInfo test) throws IOException {
+    Glossary glossary = createGlossary(test, null, emptyList());
+    CreateGlossaryTerm createTerm1 = createRequest(getEntityName(test, 1), "", "", null);
+    createTerm1.setGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term1 = createEntity(createTerm1, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm2 = createRequest(getEntityName(test, 2), "", "", null);
+    createTerm2.setGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term2 = createEntity(createTerm2, ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    TagLabel termLabel1 = EntityUtil.toTagLabel(term1);
+    TagLabel termLabel2 = EntityUtil.toTagLabel(term2);
+
+    Table table1 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test, 3)).withTags(List.of(termLabel1)),
+            ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test, 4)).withTags(List.of(termLabel1)),
+            ADMIN_AUTH_HEADERS);
+    Table table3 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test, 5)).withTags(List.of(termLabel2)),
+            ADMIN_AUTH_HEADERS);
+
+    Map<String, Integer> assetsCount = getAllGlossaryTermsWithAssetsCount();
+
+    assertNotNull(assetsCount);
+    assertEquals(
+        2, assetsCount.get(term1.getFullyQualifiedName()), "Glossary term 1 should have 2 assets");
+    assertEquals(
+        1, assetsCount.get(term2.getFullyQualifiedName()), "Glossary term 2 should have 1 asset");
+  }
+
+  private Map<String, Integer> getAllGlossaryTermsWithAssetsCount() throws HttpResponseException {
+    WebTarget target = getResource("glossaryTerms/assets/counts");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
 }

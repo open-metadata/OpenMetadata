@@ -38,6 +38,7 @@ import { Type } from '../../generated/entity/type';
 import { getTypeByFQN, updateType } from '../../rest/metadataTypeAPI';
 import { getCustomPropertyPageHeaderFromEntity } from '../../utils/CustomProperty.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getAddCustomPropertyPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -136,10 +137,17 @@ const CustomEntityDetailV1 = () => {
     [selectedEntityTypeDetail]
   );
 
-  const customPageHeader = useMemo(
-    () => getCustomPropertyPageHeaderFromEntity(tabAttributePath),
-    [tabAttributePath]
-  );
+  const customPageHeader = useMemo(() => {
+    const pageHeader = getCustomPropertyPageHeaderFromEntity(tabAttributePath);
+
+    return {
+      header: t(pageHeader.header),
+      subHeader: translateWithNestedKeys(
+        pageHeader.subHeader,
+        pageHeader.subHeaderParams
+      ),
+    };
+  }, [tabAttributePath, t]);
 
   useEffect(() => {
     if (!isUndefined(tab)) {

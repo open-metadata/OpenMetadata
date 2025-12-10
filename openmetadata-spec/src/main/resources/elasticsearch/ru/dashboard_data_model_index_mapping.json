@@ -218,6 +218,9 @@
       "href": {
         "type": "text"
       },
+      "sourceUrl": {
+        "type": "keyword"
+      },
       "entityType": {
         "type": "keyword",
         "fields": {

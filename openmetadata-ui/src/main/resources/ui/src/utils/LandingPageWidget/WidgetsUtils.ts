@@ -22,16 +22,28 @@ export const getFeedFilterWidgets = (
   tab: ActivityFeedTabs,
   isAdmin?: boolean
 ) => {
-  return tab === ActivityFeedTabs.TASKS
-    ? TASK_FEED_FILTER_LIST
-    : [
-        {
-          title: i18n.t('label.all'),
-          key: isAdmin ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS,
-          description: i18n.t('message.feed-filter-all'),
-        },
-        ...ACTIVITY_FEED_FILTER_LIST,
-      ];
+  if (tab === ActivityFeedTabs.TASKS) {
+    return TASK_FEED_FILTER_LIST.map((filter) => ({
+      ...filter,
+      title: i18n.t(filter.title),
+      description: i18n.t(filter.description),
+    }));
+  }
+
+  const translatedActivityFilters = ACTIVITY_FEED_FILTER_LIST.map((filter) => ({
+    ...filter,
+    title: i18n.t(filter.title),
+    description: i18n.t(filter.description),
+  }));
+
+  return [
+    {
+      title: i18n.t('label.all'),
+      key: isAdmin ? FeedFilter.ALL : FeedFilter.OWNER_OR_FOLLOWS,
+      description: i18n.t('message.feed-filter-all'),
+    },
+    ...translatedActivityFilters,
+  ];
 };
 
 /**

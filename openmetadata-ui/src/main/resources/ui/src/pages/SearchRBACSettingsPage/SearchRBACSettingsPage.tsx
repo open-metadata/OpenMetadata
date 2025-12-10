@@ -103,7 +103,13 @@ const SearchRBACSettingsPage = () => {
         <Col span={24}>
           <Row align="middle" justify="space-between">
             <Col>
-              <PageHeader isBeta data={PAGE_HEADERS.SEARCH_RBAC} />
+              <PageHeader
+                isBeta
+                data={{
+                  header: t(PAGE_HEADERS.SEARCH_RBAC.header),
+                  subHeader: t(PAGE_HEADERS.SEARCH_RBAC.subHeader),
+                }}
+              />
             </Col>
           </Row>
         </Col>

@@ -265,6 +265,14 @@ jest.mock('../../../utils/EntityUtils', () => ({
   highlightSearchText: jest.fn().mockImplementation((value) => value),
 }));
 
+jest.mock('../../../constants/Table.constants', () => ({
+  COLUMN_CONSTRAINT_TYPE_OPTIONS: [
+    { label: 'label.primary-key', value: 'PRIMARY_KEY' },
+    { label: 'label.foreign-key', value: 'FOREIGN_KEY' },
+    { label: 'label.unique', value: 'UNIQUE' },
+  ],
+}));
+
 describe('Test EntityTable Component', () => {
   it('Initially, Table should load', async () => {
     await act(async () => {

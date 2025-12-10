@@ -17,10 +17,10 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDomain,
+  assignSingleSelectDomain,
   descriptionBox,
   redirectToHomePage,
-  removeDomain,
+  removeSingleSelectDomain,
   toastNotification,
   uuid,
 } from '../../utils/common';
@@ -42,16 +42,6 @@ test.beforeAll(async ({ browser }) => {
   await table.createTestCase(apiContext);
   await domain1.create(apiContext);
   await domain2.create(apiContext);
-  await afterAction();
-});
-
-test.afterAll(async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await table.delete(apiContext);
-  await user1.delete(apiContext);
-  await user2.delete(apiContext);
-  await domain1.delete(apiContext);
-  await domain2.delete(apiContext);
   await afterAction();
 });
 
@@ -109,10 +99,9 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
   });
 
   await test.step('Domain Add, Update and Remove', async () => {
-    await assignDomain(page, domain1.responseData);
-    // TODO: Add domain update
-    // await updateDomain(page, domain2.responseData);
-    await removeDomain(page, domain1.responseData, false);
+    await assignSingleSelectDomain(page, domain1.responseData);
+    await assignSingleSelectDomain(page, domain2.responseData);
+    await removeSingleSelectDomain(page, domain2.responseData, false);
   });
 
   await test.step(

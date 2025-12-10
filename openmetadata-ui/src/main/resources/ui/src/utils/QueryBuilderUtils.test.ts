@@ -206,7 +206,7 @@ describe('addEntityTypeFilter', () => {
         must: [
           {
             term: {
-              entityType: EntityType.TABLE,
+              'entityType.keyword': EntityType.TABLE,
             },
           },
         ],
@@ -279,7 +279,7 @@ describe('getEntityTypeAggregationFilter', () => {
     // Assert the entity type filter is added correctly
     expect(mustBlockArray[1]).toEqual({
       term: {
-        entityType: EntityType.TABLE,
+        'entityType.keyword': EntityType.TABLE,
       },
     });
   });

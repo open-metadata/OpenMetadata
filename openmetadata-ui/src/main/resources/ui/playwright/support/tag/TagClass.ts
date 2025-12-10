@@ -96,4 +96,8 @@ export class TagClass {
 
     return await response.json();
   }
+
+  getTagDisplayName() {
+    return this.responseData.displayName;
+  }
 }

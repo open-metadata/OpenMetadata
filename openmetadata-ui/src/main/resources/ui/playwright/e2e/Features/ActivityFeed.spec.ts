@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -383,6 +384,7 @@ test.describe('FeedWidget on landing page', () => {
 test.describe('Mention notifications in Notification Box', () => {
   const adminUser = new UserClass();
   const user1 = new UserClass();
+  const entity = EntityDataClass.table1;
 
   const test = base.extend<{
     adminPage: Page;
@@ -408,20 +410,7 @@ test.describe('Mention notifications in Notification Box', () => {
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
     await user1.create(apiContext);
-    await entity.create(apiContext);
     await afterAction();
-  });
-
-  test.afterAll('Cleanup users and entities', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      await entity.delete(apiContext);
-      await user1.delete(apiContext);
-      await adminUser.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
   });
 
   test('Mention notification shows correct user details in Notification box', async ({
@@ -434,17 +423,19 @@ test.describe('Mention notifications in Notification Box', () => {
       'Admin user creates a conversation on an entity',
       async () => {
         await entity.visitEntityPage(adminPage);
-        // Added a safty check on waiting for activity feed count to avoid missing feed
+        // Added a safety check on waiting for activity feed count to avoid missing feed
         // Poll the activity feed tab count from the page until it's a valid non-negative number
         let count = NaN;
-        const maxRetries = 10;
-        for (let i = 0; i < maxRetries && (isNaN(count) || count < 0); i++) {
+        const maxRetries = 30;
+        for (let i = 0; i < maxRetries && (isNaN(count) || count <= 0); i++) {
           const countText = await adminPage
             .getByRole('tab', { name: 'Activity Feeds & Tasks' })
             .getByTestId('count')
             .textContent();
           count = Number(countText ?? '0');
           if (isNaN(count) || count <= 0) {
+            // wait for 2s before querying again
+            await adminPage.waitForTimeout(2000);
             await adminPage.reload();
             await adminPage.waitForLoadState('networkidle');
             await waitForAllLoadersToDisappear(adminPage);

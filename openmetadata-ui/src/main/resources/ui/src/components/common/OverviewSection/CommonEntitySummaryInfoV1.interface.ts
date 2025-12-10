@@ -28,4 +28,5 @@ export interface CommonEntitySummaryInfoV1Props {
   componentType: string;
   isDomainVisible?: boolean;
   excludedItems?: string[];
+  onLinkClick?: () => void;
 }

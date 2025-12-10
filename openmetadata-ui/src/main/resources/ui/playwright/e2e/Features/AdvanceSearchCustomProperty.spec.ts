@@ -77,7 +77,7 @@ test.describe('Advanced Search Custom Property', () => {
 
       await page
         .getByTestId(`custom-property-${durationPropertyName}-card`)
-        .locator('svg')
+        .getByTestId('edit-icon')
         .click(); // Add Custom Property Value
 
       await page.getByTestId('duration-input').fill(durationPropertyValue);

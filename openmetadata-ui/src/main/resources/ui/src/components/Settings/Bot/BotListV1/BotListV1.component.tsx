@@ -299,7 +299,12 @@ const BotListV1 = ({
       </Col>
 
       <Col span={12}>
-        <PageHeader data={PAGE_HEADERS.BOTS} />
+        <PageHeader
+          data={{
+            header: t(PAGE_HEADERS.BOTS.header),
+            subHeader: t(PAGE_HEADERS.BOTS.subHeader),
+          }}
+        />
       </Col>
 
       <Col span={12}>

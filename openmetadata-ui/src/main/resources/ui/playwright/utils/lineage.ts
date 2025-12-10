@@ -162,7 +162,7 @@ export const dragAndDropNode = async (
   await page.mouse.down();
   const box = (await destinationElement.boundingBox()) as DOMRect;
   const x = box.x + 250;
-  const y = box.y + box.height / 2;
+  const y = box.y + box.height / 2 + 100;
   await page.mouse.move(x, y, { steps: 20 });
   await page.mouse.up();
 };
@@ -385,10 +385,20 @@ const verifyPipelineDataInDrawer = async (
     .filter({ hasText: pipelineName });
 
   if (bVisitPipelinePageFromDrawer) {
-    await page.locator('.edge-info-drawer [data-testid="Edge"] a').click();
-    await page.click('[data-testid="lineage"]');
+    await expect(page.getByTestId('edge-header-title')).toHaveText(
+      'Edge Information'
+    );
+    await expect(
+      page.locator('.overview-section').getByTestId('Source-value')
+    ).toHaveText(fromNode.entity.displayName);
+    await expect(
+      page.locator('.overview-section').getByTestId('Target-value')
+    ).toHaveText(toNode.entity.displayName);
+    await expect(
+      page.locator('.overview-section').getByTestId('Edge-value')
+    ).toHaveText(pipelineName);
+
     await fromNode.visitEntityPage(page);
-    await page.click('[data-testid="lineage"]');
   } else {
     await page.click('.edge-info-drawer .ant-drawer-header .anticon-close');
   }
@@ -464,6 +474,8 @@ export const addColumnLineage = async (
     true
   );
   await lineageRes;
+
+  await page.getByTestId(`column-${toColumnNode}`).click();
 
   if (exitEditMode) {
     await editLineageClick(page);

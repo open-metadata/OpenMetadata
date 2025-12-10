@@ -16,6 +16,7 @@ import { Col, Row, Typography } from 'antd';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { HELP_ITEMS_ENUM, SupportItem } from '../constants/Navbar.constants';
+import { t } from './i18next/LocalUtil';
 import navbarUtilClassBase from './NavbarUtilClassBase';
 
 const getHelpDropdownLabelContentRenderer = (
@@ -33,7 +34,7 @@ const getHelpDropdownLabelContentRenderer = (
       </Col>
       <Col className="flex items-center" span={20}>
         <Typography.Text className="text-base-color">
-          {item.label}{' '}
+          {t(item.label)}{' '}
           {item.key === HELP_ITEMS_ENUM.VERSION && (version ?? '?')}
         </Typography.Text>
 

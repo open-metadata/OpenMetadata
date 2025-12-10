@@ -17,7 +17,10 @@ import { useMemo } from 'react';
 import './ingestion-stepper.style.less';
 
 type Props = {
-  steps: Array<{ name: string; step: number }>;
+  steps: Array<{
+    name: string;
+    step: number;
+  }>;
   activeStep: number;
   excludeSteps?: Array<number>;
   className?: string;

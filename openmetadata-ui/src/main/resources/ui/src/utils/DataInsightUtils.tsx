@@ -68,7 +68,7 @@ import { entityChartColor } from '../utils/CommonUtils';
 import { axisTickFormatter } from './ChartUtils';
 import { pluralize } from './CommonUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
-import { t } from './i18next/LocalUtil';
+import { t, translateWithNestedKeys } from './i18next/LocalUtil';
 
 export const renderLegend = (
   legendData: LegendProps,
@@ -369,16 +369,26 @@ export const getEntitiesChartSummary = (
   chartResults?: Record<SystemChartType, DataInsightCustomChartResult>
 ) => {
   const updatedSummaryList = ENTITIES_SUMMARY_LIST.map((summary) => {
-    const chartData = get(chartResults, summary.type);
+    const chartData = get(chartResults, summary.type) as
+      | DataInsightCustomChartResult
+      | undefined;
 
     const count = round(first(chartData?.results)?.count ?? 0, 2);
+    const translatedLabel = translateWithNestedKeys(
+      summary.label,
+      summary.labelData
+    );
 
     return chartData
       ? {
           ...summary,
           latest: count,
+          label: translatedLabel,
         }
-      : summary;
+      : {
+          ...summary,
+          label: translatedLabel,
+        };
   });
 
   return updatedSummaryList;
@@ -413,6 +423,7 @@ export const getWebChartSummary = (
     updatedSummary.push({
       ...summary,
       latest: latest,
+      label: t(summary.label),
     });
   }
 

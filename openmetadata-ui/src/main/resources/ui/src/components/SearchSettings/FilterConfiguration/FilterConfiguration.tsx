@@ -95,7 +95,7 @@ const FilterConfiguration = () => {
           <div
             className="bg-white flex items-center justify-center gap-3 p-y-xss p-x-sm filter-value"
             key={value.key}>
-            {value.label}
+            {t(value.label)}
             <Icon
               className="text-grey-muted text-xss cursor-pointer"
               component={CloseIcon}
