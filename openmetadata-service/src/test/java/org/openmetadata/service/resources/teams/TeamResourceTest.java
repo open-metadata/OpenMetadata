@@ -637,6 +637,38 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
+  void test_listTeamsWithParentTeamAndIncludeParameter() throws IOException {
+    Team parentTeam =
+        createWithParents("parent-legal-test", DEPARTMENT, ORG_TEAM.getEntityReference());
+    Team childTeam1 =
+        createWithParents("child-legal-active", GROUP, parentTeam.getEntityReference());
+    Team childTeam2 =
+        createWithParents("child-legal-deleted", GROUP, parentTeam.getEntityReference());
+
+    deleteAndCheckEntity(childTeam2, true, false, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("parentTeam", parentTeam.getName());
+
+    queryParams.put("include", Include.ALL.value());
+    ResultList<Team> allTeams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, allTeams.getData().size(), "Should return both deleted and non-deleted teams");
+    assertEquals(2, allTeams.getPaging().getTotal());
+
+    queryParams.put("include", Include.NON_DELETED.value());
+    ResultList<Team> nonDeletedTeams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, nonDeletedTeams.getData().size(), "Should return only non-deleted team");
+    assertEquals(1, nonDeletedTeams.getPaging().getTotal());
+    assertEquals(childTeam1.getId(), nonDeletedTeams.getData().getFirst().getId());
+
+    queryParams.put("include", Include.DELETED.value());
+    ResultList<Team> deletedTeams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, deletedTeams.getData().size(), "Should return only deleted team");
+    assertEquals(1, deletedTeams.getPaging().getTotal());
+    assertEquals(childTeam2.getId(), deletedTeams.getData().getFirst().getId());
+  }
+
+  @Test
   void put_patch_hierarchicalTeams() throws IOException {
     // Create hierarchy of business unit, division, and department under organization:
     // Organization -- has children --> [ bu1, bu2]

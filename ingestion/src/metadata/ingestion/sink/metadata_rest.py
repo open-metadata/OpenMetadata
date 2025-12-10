@@ -37,6 +37,9 @@ from metadata.generated.schema.api.tests.createLogicalTestCases import (
     CreateLogicalTestCases,
 )
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
+from metadata.generated.schema.api.tests.createTestDefinition import (
+    CreateTestDefinitionRequest,
+)
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.dataInsight.kpi.basic import KpiResult
 from metadata.generated.schema.entity.classification.tag import Tag
@@ -206,6 +209,8 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateContainerRequest,
                     CreatePipelineRequest,
                     CreateTestCaseRequest,
+                    CreateTestSuiteRequest,
+                    CreateTestDefinitionRequest,
                 ),
             )
         ):

@@ -13,8 +13,6 @@
 Source connection handler
 """
 from functools import partial
-
-# from functools import partial
 from typing import Optional
 
 from pydantic import BaseModel
@@ -40,7 +38,15 @@ def get_connection(connection: MongoDBConnection):
     Create connection
     """
     mongo_url = get_connection_url_common(connection)
-    return MongoClient(mongo_url)
+
+    args = {}
+
+    # Check for extended timeout configuration in connectionArguments
+    # serverSelectionTimeoutMS, connectTimeoutMS, socketTimeoutMS
+    if connection.connectionOptions and connection.connectionOptions.root:
+        args = connection.connectionOptions.root
+
+    return MongoClient(mongo_url, **args)
 
 
 def test_connection(

@@ -1,7 +1,9 @@
 package org.openmetadata.service.apps;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.type.Include;
@@ -12,7 +14,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 @Slf4j
 public class ApplicationContext {
   private static ApplicationContext instance;
-  private final HashMap<String, AbstractNativeApplication> apps;
+  private final Map<String, AbstractNativeApplication> apps;
 
   private ApplicationContext() {
     this.apps = new HashMap<>();
@@ -76,5 +78,9 @@ public class ApplicationContext {
   public AbstractNativeApplication getAppIfExists(String name) {
     AbstractNativeApplication app = this.apps.get(name);
     return app;
+  }
+
+  public Collection<AbstractNativeApplication> getAllApps() {
+    return this.apps.values();
   }
 }

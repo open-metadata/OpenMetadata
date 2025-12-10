@@ -26,10 +26,8 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.getEntities;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -72,7 +70,6 @@ import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
-import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.tests.CustomMetric;
@@ -169,7 +166,6 @@ public class TableRepository extends EntityRepository<Table> {
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
     fieldFetchers.put("testSuite", this::fetchAndSetTestSuites);
-    fieldFetchers.put("queries", this::fetchAndSetQueries);
     fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndSetTableProfilerConfigs);
     fieldFetchers.put("joins", this::fetchAndSetJoins);
     fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
@@ -248,13 +244,6 @@ public class TableRepository extends EntityRepository<Table> {
       return;
     }
     setFieldFromMap(true, tables, batchFetchTestSuites(tables), Table::setTestSuite);
-  }
-
-  private void fetchAndSetQueries(List<Table> tables, Fields fields) {
-    if (!fields.contains("queries") || tables == null || tables.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, tables, batchFetchQueries(tables), Table::setQueries);
   }
 
   private void fetchAndSetTableProfilerConfigs(List<Table> tables, Fields fields) {
@@ -2391,40 +2380,6 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     return testSuiteMap;
-  }
-
-  private Map<UUID, List<String>> batchFetchQueries(List<Table> tables) {
-    Map<UUID, List<String>> queriesMap = new HashMap<>();
-    if (tables == null || tables.isEmpty()) {
-      return queriesMap;
-    }
-
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(entityListToStrings(tables), Relationship.MENTIONED_IN.ordinal(), QUERY);
-
-    Map<UUID, List<EntityReference>> queryRefsMap = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject relRecord : records) {
-      UUID tableId = UUID.fromString(relRecord.getFromId());
-      EntityReference queryRef =
-          getEntityReferenceById(QUERY, UUID.fromString(relRecord.getToId()), NON_DELETED);
-      queryRefsMap.computeIfAbsent(tableId, k -> new ArrayList<>()).add(queryRef);
-    }
-
-    for (UUID tableId : queryRefsMap.keySet()) {
-      List<Query> queriesEntity = getEntities(queryRefsMap.get(tableId), "id", ALL);
-      List<String> queries = queriesEntity.stream().map(Query::getQuery).toList();
-      queriesMap.put(tableId, queries);
-    }
-
-    for (Table table : tables) {
-      if (!queriesMap.containsKey(table.getId())) {
-        queriesMap.put(table.getId(), List.of());
-      }
-    }
-
-    return queriesMap;
   }
 
   private Map<UUID, TableJoins> batchFetchJoins(List<Table> tables) {
