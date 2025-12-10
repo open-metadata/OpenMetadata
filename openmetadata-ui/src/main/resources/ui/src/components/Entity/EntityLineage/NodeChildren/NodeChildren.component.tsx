@@ -93,9 +93,7 @@ const CustomPaginatedList = ({
 
   const currentNodeAllPagesItems = useMemo(
     () =>
-      filteredColumns.flatMap((item) =>
-        getAllNestedChildrenInFlatArray(item)
-      ),
+      filteredColumns.flatMap((item) => getAllNestedChildrenInFlatArray(item)),
     [filteredColumns, getAllNestedChildrenInFlatArray]
   );
 
@@ -154,7 +152,7 @@ const CustomPaginatedList = ({
       }
       return updated;
     });
-  }, [currentNodeCurrentPageItems, setColumnsInCurrentPages]);
+  }, [isOnlyShowColumnsWithLineageFilterActive, page]);
 
   const handlePageChange = useCallback(
     (newPage: number) => {

@@ -944,6 +944,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       });
 
       setNewAddedNode({} as Node);
+
+      setColumnsInCurrentPages((prev) => {
+        const updated = { ...prev };
+        delete updated[node.id];
+
+        return updated;
+      });
     },
     [nodes, entityLineage]
   );
