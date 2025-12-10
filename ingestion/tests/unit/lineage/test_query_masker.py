@@ -17,49 +17,9 @@ Since all parsers now use SqlParse for masking, they should produce identical ou
 """
 from unittest import TestCase
 
-from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
-from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyzer
-from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
-from collate_sqllineage.runner import LineageRunner
-
-from metadata.ingestion.lineage.masker import mask_query, masked_query_cache
+from ingestion.tests.unit.lineage.queries.helpers import assert_masked_query
+from metadata.ingestion.lineage.masker import masked_query_cache
 from metadata.ingestion.lineage.models import Dialect
-
-PARSER_MAP = {
-    "SqlGlot": SqlGlotLineageAnalyzer,
-    "SqlFluff": SqlFluffLineageAnalyzer,
-    "SqlParse": SqlParseLineageAnalyzer,
-}
-
-
-def assert_masked_query(test_case: dict, test_instance: TestCase, parser_name: str):
-    """
-    Helper function to test query masking with a specific parser and assert the result.
-
-    Args:
-        test_case: Dictionary with 'query', 'expected', and 'dialect'
-        test_instance: TestCase instance for assertions
-        parser_name: Name of the parser ('SqlGlot', 'SqlFluff', or 'SqlParse')
-    """
-    query = test_case["query"]
-    expected = test_case["expected"]
-    dialect = test_case["dialect"]
-
-    analyzer_class = PARSER_MAP[parser_name]
-
-    # clear cache before each test
-    masked_query_cache.clear()
-
-    parser = LineageRunner(query, dialect=dialect, analyzer=analyzer_class)
-    len(parser.source_tables)  # Force parsing
-
-    masked_query = mask_query(query, dialect=dialect, parser=parser)
-
-    test_instance.assertEqual(
-        masked_query,
-        expected,
-        f"{parser_name} masking failed for query: {query}",
-    )
 
 
 class TestQueryMasker(TestCase):
@@ -130,9 +90,24 @@ class TestQueryMasker(TestCase):
 
         for test_case in query_test_cases:
             # Test with all three parsers
-            assert_masked_query(test_case, self, "SqlGlot")
-            assert_masked_query(test_case, self, "SqlFluff")
-            assert_masked_query(test_case, self, "SqlParse")
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlGlot",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlFluff",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlParse",
+            )
 
     def test_invalid_dialect_exception(self):
         """
@@ -150,13 +125,28 @@ class TestQueryMasker(TestCase):
 
             # ValueError: Unknown dialect 'random_invalid_dialect'.
             with self.assertRaises(ValueError):
-                assert_masked_query(test_case, self, "SqlGlot")
+                assert_masked_query(
+                    test_case["query"],
+                    test_case["expected"],
+                    test_case["dialect"],
+                    "SqlGlot",
+                )
 
             # KeyError: 'Unknown dialect'
             with self.assertRaises(KeyError):
-                assert_masked_query(test_case, self, "SqlFluff")
+                assert_masked_query(
+                    test_case["query"],
+                    test_case["expected"],
+                    test_case["dialect"],
+                    "SqlFluff",
+                )
 
-            assert_masked_query(test_case, self, "SqlParse")
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlParse",
+            )
 
     def test_escaped_quotes_in_strings(self):
         """
@@ -171,9 +161,24 @@ class TestQueryMasker(TestCase):
         ]
 
         for test_case in query_test_cases:
-            assert_masked_query(test_case, self, "SqlGlot")
-            assert_masked_query(test_case, self, "SqlFluff")
-            assert_masked_query(test_case, self, "SqlParse")
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlGlot",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlFluff",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlParse",
+            )
 
     def test_different_numeric_types(self):
         """
@@ -188,9 +193,24 @@ class TestQueryMasker(TestCase):
         ]
 
         for test_case in query_test_cases:
-            assert_masked_query(test_case, self, "SqlGlot")
-            assert_masked_query(test_case, self, "SqlFluff")
-            assert_masked_query(test_case, self, "SqlParse")
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlGlot",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlFluff",
+            )
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlParse",
+            )
 
     def test_masking_cache(self):
         """
@@ -208,7 +228,12 @@ class TestQueryMasker(TestCase):
 
             # compute and cache
             masked_query_cache.clear()
-            assert_masked_query(test_case, self, "SqlGlot")
+            assert_masked_query(
+                test_case["query"],
+                test_case["expected"],
+                test_case["dialect"],
+                "SqlGlot",
+            )
 
             # verify cache entry
             cache_key = (test_case["query"], test_case["dialect"])
