@@ -104,7 +104,7 @@ test.beforeEach(async ({ page }) => {
 test('Classification Page', async ({ page }) => {
   test.slow();
 
-  await test.step.skip('Should render basic elements on page', async () => {
+  await test.step('Should render basic elements on page', async () => {
     const getTags = page.waitForResponse('/api/v1/tags*');
     await sidebarClick(page, SidebarItem.TAGS);
     await getTags;
@@ -128,7 +128,7 @@ test('Classification Page', async ({ page }) => {
     expect(headers).toEqual(['Tag', 'Display Name', 'Description', 'Actions']);
   });
 
-  await test.step.skip('Disabled system tags should not render', async () => {
+  await test.step('Disabled system tags should not render', async () => {
     const classificationResponse = page.waitForResponse(
       `/api/v1/tags?*parent=${classification.responseData.name}*`
     );
