@@ -556,17 +556,12 @@ export const getField = (field: FieldProp) => {
   );
 
   if (type === FieldTypes.SWITCH && newLook) {
-    const labelClass =
-      typeof props.labelClassName === 'string' ? `${props.labelClassName}` : '';
-
     return (
-      <div className="d-flex gap-2 form-switch-container items-center">
+      <div className="d-flex gap-2 form-switch-container">
         <Form.Item className="m-b-0" {...formProps}>
           <Switch />
         </Form.Item>
-        <Typography.Text className={`font-medium ${labelClass}`}>
-          {labelValue}
-        </Typography.Text>
+        <Typography.Text className="font-medium">{labelValue}</Typography.Text>
       </div>
     );
   }
