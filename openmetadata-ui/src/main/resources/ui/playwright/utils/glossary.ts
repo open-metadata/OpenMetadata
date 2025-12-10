@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
@@ -45,7 +45,7 @@ import {
 } from './common';
 import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
-import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
+import { TASK_OPEN_FETCH_LINK, TaskDetails } from './task';
 
 type TaskEntity = {
   entityRef: {
@@ -762,6 +762,9 @@ export const checkAssetsCount = async (page: Page, assetsCount: number) => {
   await expect(
     page.locator('[data-testid="assets"] [data-testid="filter-count"]')
   ).toHaveText(assetsCount.toString());
+  if (assetsCount > 0) {
+    await expect(page.getByTestId('pagination')).toBeVisible();
+  }
 };
 
 export const addAssetToGlossaryTerm = async (
@@ -782,6 +785,17 @@ export const addAssetToGlossaryTerm = async (
   await expect(
     page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
   ).toContainText('Add Assets');
+
+  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+
+  await expect(
+    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+  ).toBeVisible();
+
+  const filterButton = page.locator(
+    '[data-testid="asset-selection-modal"] .feed-filter-icon'
+  );
+  await expect(filterButton).not.toBeVisible();
 
   for (const asset of assets) {
     const entityFqn = get(asset, 'entityResponseData.fullyQualifiedName');
@@ -810,6 +824,168 @@ export const addAssetToGlossaryTerm = async (
 
   await page.click('[data-testid="save-btn"]');
   await checkAssetsCount(page, assets.length);
+};
+
+const testFilterWithSpecificOption = async (
+  page: Page,
+  filterWrapper: Locator,
+  filterName: string,
+  optionTestId: string,
+  expectedQueryFilterValue: string
+) => {
+  const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
+  await filter.click();
+
+  await page.waitForSelector('[data-testid="drop-down-menu"]');
+
+  await page.locator(`[data-testid="${optionTestId}"]`).click();
+
+  await page.getByTestId('update-btn').click();
+
+  const filterResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    const queryParams = new URLSearchParams(url.search);
+    const queryFilter = queryParams.get('query_filter');
+
+    return (
+      response.url().includes('/api/v1/search/query') &&
+      queryFilter !== null &&
+      queryFilter !== '' &&
+      queryFilter.includes(expectedQueryFilterValue)
+    );
+  });
+
+  await filterResponse;
+
+  await expect(
+    page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
+  ).toBeVisible();
+
+  await page
+    .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
+    .click();
+
+  await page.waitForResponse('/api/v1/search/query*');
+};
+
+const testFilterWithFirstOption = async (
+  page: Page,
+  filterWrapper: Locator,
+  filterName: string
+) => {
+  const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
+  await filter.click();
+
+  await page.waitForSelector('[data-testid="drop-down-menu"]');
+
+  const options = page.locator(
+    '[data-testid="drop-down-menu"] .ant-tree-treenode'
+  );
+  const firstOption = options.first();
+
+  if ((await firstOption.count()) > 0) {
+    await firstOption.click();
+    await page.getByTestId('update-btn').click();
+
+    const filterResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      const queryParams = new URLSearchParams(url.search);
+      const queryFilter = queryParams.get('query_filter');
+
+      return (
+        response.url().includes('/api/v1/search/query') &&
+        queryFilter !== null &&
+        queryFilter !== ''
+      );
+    });
+
+    await filterResponse;
+
+    await expect(
+      page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
+    ).toBeVisible();
+
+    await page
+      .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
+      .click();
+
+    await page.waitForResponse('/api/v1/search/query*');
+  }
+};
+
+export const verifyAssetModalFilters = async (
+  page: Page,
+  hasExistingAssets = false
+) => {
+  if (!hasExistingAssets) {
+    await page.waitForSelector(
+      "text=Looks like you haven't added any data assets yet."
+    );
+  }
+
+  await page.click('[data-testid="glossary-term-add-button-menu"]');
+  await page.getByRole('menuitem', { name: 'Assets' }).click();
+
+  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
+  ).toContainText('Add Assets');
+
+  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+
+  await expect(
+    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+  ).toBeVisible();
+
+  const filterButton = page.locator(
+    '[data-testid="asset-selection-modal"] .feed-filter-icon'
+  );
+  await expect(filterButton).not.toBeVisible();
+
+  const filterNames = [
+    'Entity Type',
+    'Domains',
+    'Owners',
+    'Tag',
+    'Tier',
+    'Service',
+    'Service Type',
+  ];
+
+  for (const filterName of filterNames) {
+    await expect(
+      page.locator(`[data-testid="search-dropdown-${filterName}"]`)
+    ).toBeVisible();
+  }
+
+  const filterWrapper = page.locator('.asset-filters-wrapper');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await testFilterWithSpecificOption(
+    page,
+    filterWrapper,
+    'Entity Type',
+    'table',
+    'table'
+  );
+
+  await testFilterWithSpecificOption(
+    page,
+    filterWrapper,
+    'Service Type',
+    'mysql',
+    'mysql'
+  );
+
+  await testFilterWithFirstOption(page, filterWrapper, 'Tier');
+
+  await testFilterWithFirstOption(page, filterWrapper, 'Tag');
+
+  await testFilterWithFirstOption(page, filterWrapper, 'Domains');
+
+  await testFilterWithFirstOption(page, filterWrapper, 'Owners');
+
+  await page.getByTestId('cancel-btn').click();
 };
 
 export const updateNameForGlossaryTerm = async (

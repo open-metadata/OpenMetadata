@@ -477,7 +477,6 @@ export const useAssetSelectionContent = ({
       socket.on(SOCKET_EVENTS.BULK_ASSETS_CHANNEL, (newActivity) => {
         if (newActivity) {
           const activity = JSON.parse(newActivity);
-          console.log('activity', activity);
           if (activity.status === 'COMPLETED') {
             setAssetJobResponse(undefined);
             if (activity.result.status === 'success') {
