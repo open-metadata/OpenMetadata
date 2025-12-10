@@ -15,7 +15,6 @@ import { Box } from '@mui/material';
 import { Col, Form, Row } from 'antd';
 import { isArray } from 'lodash';
 import { Suspense, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
@@ -51,7 +50,6 @@ const TagsForm = ({
   isEditing = false,
   isTier = false,
 }: RenameFormProps) => {
-  const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
   const selectedColor = Form.useWatch('color', formRef);
   const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
@@ -70,8 +68,8 @@ const TagsForm = ({
       ...initialValues,
       iconURL: initialValues?.style?.iconURL,
       color: initialValues?.style?.color,
-    } as any);
-  }, [initialValues, formRef, t, isClassification]);
+    } as SubmitProps);
+  }, [initialValues, formRef]);
 
   const disableNameField = useMemo(
     () => isEditing && isSystemTag,
@@ -191,7 +189,7 @@ const TagsForm = ({
           ? domains?.map((domain) => domain.fullyQualifiedName)
           : undefined,
       };
-      await onSubmit(submitData as any);
+      await onSubmit(submitData as SubmitProps);
       formRef.setFieldsValue(DEFAULT_FORM_VALUE);
     } catch {
       // Parent will handle the error

@@ -12,7 +12,7 @@
  */
 import { DEFAULT_TAG_ICON } from '../../components/common/IconPicker';
 import { MUI_NAME_FIELD_RULES } from '../../constants/Form.constants';
-import { EntityReference } from '../../generated/tests/testCase';
+import { EntityReference } from '../../generated/entity/type';
 import {
   FieldProp,
   FieldTypes,

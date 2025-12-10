@@ -673,7 +673,7 @@ const TagsPage = () => {
   const handleEditTagClick = useCallback(
     (selectedTag: Tag) => {
       setEditTag(selectedTag);
-      setTimeout(() => openTagDrawer(), 0);
+      openTagDrawer();
     },
     [openTagDrawer]
   );
@@ -681,7 +681,7 @@ const TagsPage = () => {
   const handleAddNewTagClick = useCallback(() => {
     setEditTag(undefined);
     tagForm.resetFields();
-    setTimeout(() => openTagDrawer(), 0);
+    openTagDrawer();
   }, [openTagDrawer, tagForm]);
 
   const leftPanelLayout = useMemo(
