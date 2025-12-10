@@ -16,15 +16,15 @@ public class XssProtectionHeaderFactory extends HeaderFactory {
 
   public static final String XSS_PROTECTION_HEADER = "X-XSS-Protection";
 
-  @JsonProperty("enabled")
-  private boolean enabled = true;
+  @JsonProperty("on")
+  private boolean on = true;
 
   @JsonProperty("block")
   private boolean block = true;
 
   @Override
   protected Map<String, String> buildHeaders() {
-    if (!enabled) {
+    if (!on) {
       return Collections.singletonMap(XSS_PROTECTION_HEADER, "0");
     }
     String value = block ? "1; mode=block" : "1";

@@ -1,6 +1,7 @@
 package org.openmetadata.service.config.web;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.dropwizard.util.Duration;
 import java.util.Collections;
 import java.util.Map;
 import lombok.Getter;
@@ -17,7 +18,7 @@ public class HstsHeaderFactory extends HeaderFactory {
   public static final String HSTS_HEADER = "Strict-Transport-Security";
 
   @JsonProperty("maxAge")
-  private long maxAge = 31536000;
+  private Duration maxAge = Duration.days(365);
 
   @JsonProperty("includeSubDomains")
   private boolean includeSubDomains = true;
@@ -28,7 +29,7 @@ public class HstsHeaderFactory extends HeaderFactory {
   @Override
   protected Map<String, String> buildHeaders() {
     StringBuilder value = new StringBuilder();
-    value.append("max-age=").append(maxAge);
+    value.append("max-age=").append(maxAge.toSeconds());
     if (includeSubDomains) {
       value.append("; includeSubDomains");
     }
