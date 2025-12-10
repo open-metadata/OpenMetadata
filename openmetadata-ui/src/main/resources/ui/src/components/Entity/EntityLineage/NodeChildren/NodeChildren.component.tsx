@@ -65,7 +65,6 @@ const CustomPaginatedList = ({
 }: CustomPaginatedListProps) => {
   // console.log('rendering CustomPaginatedList');
   const { columnsInCurrentPages } = useLineageProvider();
-  const [itemsOfPreviousPage, setItemsOfPreviousPage] = useState<string[]>([]);
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
     useLineageProvider();
@@ -153,15 +152,10 @@ const CustomPaginatedList = ({
       }
       return updated;
     });
-  }, [
-    itemsOfPreviousPage,
-    currentNodeCurrentPageItems,
-    setColumnsInCurrentPages,
-  ]);
+  }, [currentNodeCurrentPageItems, setColumnsInCurrentPages]);
 
   const handlePageChange = useCallback(
     (newPage: number) => {
-      setItemsOfPreviousPage(currentNodeCurrentPageItems);
       setPage(newPage);
       if (nodeId) {
         updateNodeInternals(nodeId);
