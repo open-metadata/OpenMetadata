@@ -882,6 +882,26 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setEdges((prev) => {
       return prev.filter((item) => item.id !== edge.id);
     });
+
+    // Recompute columnsHavingLineage after removing the column edge
+    const allNodes: LineageEntityReference[] = uniqWith(
+      [
+        ...(entityLineage.nodes ?? []),
+        ...(entityLineage.entity ? [entityLineage.entity] : []),
+      ],
+      isEqual
+    );
+
+    const { columnsHavingLineage: updatedColumnsHavingLineage } =
+      createEdgesAndEdgeMaps(
+        allNodes,
+        updatedEdgeWithColumns,
+        entityFqn,
+        activeLayer.includes(LineageLayer.ColumnLevelLineage)
+      );
+
+    setColumnsHavingLineage(updatedColumnsHavingLineage);
+
     setShowDeleteModal(false);
   };
 
