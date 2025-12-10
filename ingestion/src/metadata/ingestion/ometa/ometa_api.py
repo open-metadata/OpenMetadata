@@ -15,7 +15,9 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 import traceback
+from collections import OrderedDict
 from collections.abc import Generator
+from itertools import chain
 from typing import (
     Any,
     Dict,
@@ -40,9 +42,14 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.bulkOperationResult import (
+    BulkOperationResult,
+    Response,
+)
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
+from metadata.ingestion.models.topology import get_entity_hierarchy_depth
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
@@ -636,6 +643,143 @@ class OpenMetadata(
         entity_name = get_entity_type(entity)
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile %s", resp)
+
+    def _group_entities_by_type(
+        self, entities: List[Type[T]]
+    ) -> Dict[Type[T], List[Type[T]]]:
+        """Group entities by type so we can process them in the correct order when
+        creating the entities from bulk API.
+
+        Entities are sorted by their hierarchy depth to ensure parent entities
+        are created before their children (e.g., DatabaseService before Database,
+        Database before DatabaseSchema, etc.).
+
+        Args:
+            entities (List[Type[T]]): List of entities to group by type
+
+        Returns:
+            Dict[Type[T], List[Type[T]]]: Dictionary of entities grouped by type,
+            ordered by hierarchy depth
+        """
+
+        grouped: Dict[Type[T], List[Type[T]]] = {}
+
+        for entity in entities:
+            entity_class = type(entity)
+
+            if entity_class not in grouped:
+                grouped[entity_class] = []
+
+            grouped[entity_class].append(entity)
+
+        sorted_grouped = OrderedDict(
+            sorted(
+                grouped.items(),
+                key=lambda item: get_entity_hierarchy_depth(
+                    self.get_entity_from_create(item[0])
+                ),
+            )
+        )
+
+        return sorted_grouped
+
+    def _execute_bulk_operation(
+        self, entities: List[Type[T]], use_async: bool = False
+    ) -> BulkOperationResult:
+        """Execute a bulk operation for a list of entities.
+
+        Args:
+            entities (List[Type[T]]): List of entities to execute the bulk operation for
+            use_async (bool, optional): Use backend async processing (default: False)
+
+        Returns:
+            BulkOperationResult: Result containing success/failure details
+        """
+        type_ = type(entities[0])
+        data: list[str] = [
+            entity.model_dump(mode="json", exclude_unset=True, exclude_none=True)
+            for entity in entities
+        ]
+        url = f"{self.get_suffix(type_)}/bulk"
+        url += f"?async={str(use_async).lower()}"
+        try:
+            resp = self.client.put(url, json=data)
+        except Exception as exc:
+            logger.debug("Failed to execute bulk operation for %s: %s", type_, exc)
+            logger.debug(traceback.format_exc())
+            return BulkOperationResult(
+                numberOfRowsProcessed=0,
+                numberOfRowsFailed=len(entities),
+                successRequest=[],
+                failedRequest=[
+                    Response(
+                        request=None,
+                        message=str(exc),
+                        status=500,
+                    )
+                ],
+            )
+        return BulkOperationResult(**resp)
+
+    def bulk_create_or_update(
+        self, entities: List[Type[T]], use_async: bool = False
+    ) -> BulkOperationResult:
+        """Bulk create or update (PUT) multiple entities in a single API call.
+
+        Args:
+            entities (List[Type[T]]): List of entities to create or update
+            async (bool, optional): Use backend async processing (default: False)
+
+        Returns:
+            BulkOperationResult: Result containing success/failure details
+        """
+        bulk_ops_results: list[BulkOperationResult] = []
+        if not entities:
+            return BulkOperationResult(
+                numberOfRowsProcessed=0,
+                numberOfRowsFailed=0,
+                successRequest=[],
+                failedRequest=[],
+            )
+
+        type_idx = OrderedDict.fromkeys(map(type, entities))
+        if len(type_idx) > 1:
+            grouped = self._group_entities_by_type(entities)
+            for _, entities in grouped.items():
+                try:
+                    bulk_ops_results.append(
+                        self._execute_bulk_operation(entities, use_async)
+                    )
+                except Exception as exc:
+                    logger.debug("Failed to execute bulk operation: %s", exc)
+                    logger.debug(traceback.format_exc())
+        else:
+            bulk_ops_results.append(self._execute_bulk_operation(entities, use_async))
+
+        failed_rows = sum(result.numberOfRowsFailed.root for result in bulk_ops_results)
+        return BulkOperationResult(
+            status=basic.Status.success if not failed_rows else basic.Status.failure,
+            numberOfRowsProcessed=sum(
+                result.numberOfRowsProcessed.root for result in bulk_ops_results
+            ),
+            numberOfRowsFailed=sum(
+                result.numberOfRowsFailed.root for result in bulk_ops_results
+            ),
+            successRequest=list(
+                chain.from_iterable(
+                    result.successRequest
+                    for result in bulk_ops_results
+                    if result.successRequest is not None
+                )
+            ),
+            failedRequest=list(
+                chain.from_iterable(
+                    result.failedRequest
+                    for result in bulk_ops_results
+                    if result.failedRequest is not None
+                )
+            ),
+        )
 
     def health_check(self) -> bool:
         """

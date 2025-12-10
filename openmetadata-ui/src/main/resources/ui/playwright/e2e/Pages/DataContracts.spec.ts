@@ -430,7 +430,7 @@ test.describe('Data Contracts', () => {
               .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
               .click();
 
-            await clickOutside(page);
+            await page.getByRole('heading', { name: 'Tags' }).click();
 
             await page.click('[data-testid="glossary-terms-selector"] input');
             await page.fill(
@@ -444,7 +444,7 @@ test.describe('Data Contracts', () => {
               )
               .click();
 
-            await clickOutside(page);
+            await page.getByRole('heading', { name: 'Glossary Terms' }).click();
 
             await page.getByTestId('pipeline-name').fill('test-pipeline');
 
@@ -459,6 +459,9 @@ test.describe('Data Contracts', () => {
             const pipelineResponse = page.waitForResponse(
               '/api/v1/services/ingestionPipelines'
             );
+            const deploy = page.waitForResponse(
+              '/api/v1/services/ingestionPipelines/deploy/*'
+            );
 
             const testCaseResponse = page.waitForResponse(
               '/api/v1/dataQuality/testCases'
@@ -466,6 +469,7 @@ test.describe('Data Contracts', () => {
             await page.click('[data-testid="create-btn"]');
             await testCaseResponse;
             await pipelineResponse;
+            await deploy;
 
             await expect(page.getByRole('dialog')).not.toBeVisible();
 

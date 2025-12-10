@@ -20,6 +20,16 @@
       "description": "Limits Configuration File.",
       "type": "string",
       "default": "limits-config.yaml"
+    },
+    "credits": {
+      "description": "Collate platform credits",
+      "existingJavaType": "java.math.BigDecimal",
+      "default": 1000
+    },
+    "billingCycleStart": {
+      "title": "Cycle Start",
+      "description": "The start of this limit cycle.",
+      "$ref": "../type/basic.json#/definitions/date"
     }
   },
   "required": ["enable"],

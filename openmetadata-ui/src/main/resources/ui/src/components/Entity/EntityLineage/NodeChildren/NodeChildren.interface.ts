@@ -20,11 +20,14 @@ import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface'
 export interface NodeChildrenProps {
   node: SearchedDataProps['data'][number]['_source'];
   isConnectable: boolean;
+  isChildrenListExpanded: boolean;
 }
 
-export type EntityChildren =
-  | Column[]
-  | EntityReference[]
-  | MlFeature[]
-  | Field[]
-  | SearchIndexField[];
+export type EntityChildrenItem =
+  | Column
+  | EntityReference
+  | MlFeature
+  | Field
+  | SearchIndexField;
+
+export type EntityChildren = EntityChildrenItem[];

@@ -44,6 +44,7 @@ export const getMlModelDetailsPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   fetchMlModel,
   handleFeedCount,
   mlModelDetail,
@@ -127,7 +128,6 @@ export const getMlModelDetailsPageTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
@@ -150,7 +150,7 @@ export const getMlModelDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.MLMODEL>
           entityType={EntityType.MLMODEL}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

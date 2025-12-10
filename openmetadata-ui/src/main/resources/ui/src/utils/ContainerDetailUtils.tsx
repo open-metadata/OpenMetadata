@@ -130,6 +130,7 @@ export const getContainerDetailPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
@@ -228,7 +229,6 @@ export const getContainerDetailPageTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
@@ -248,7 +248,7 @@ export const getContainerDetailPageTabs = ({
         <CustomPropertyTable<EntityType.CONTAINER>
           entityType={EntityType.CONTAINER}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

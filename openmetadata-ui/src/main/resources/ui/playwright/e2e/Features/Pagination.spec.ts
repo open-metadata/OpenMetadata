@@ -196,7 +196,7 @@ test.describe('Pagination tests for Notification Alerts page', () => {
   }) => {
     test.slow(true);
 
-    await page.goto('/settings/notifications');
+    await page.goto('/settings/notifications/alerts');
     await testPaginationNavigation(page, 'table');
   });
 });

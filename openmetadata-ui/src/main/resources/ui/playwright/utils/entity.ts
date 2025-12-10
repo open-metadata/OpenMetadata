@@ -438,9 +438,10 @@ export const addMultiOwner = async (data: {
 export const assignTier = async (
   page: Page,
   tier: string,
-  endpoint: string
+  endpoint: string,
+  initiatorId = 'edit-tier'
 ) => {
-  await page.getByTestId('edit-tier').click();
+  await page.getByTestId(initiatorId).click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByTestId(`radio-btn-${tier}`).click();
@@ -526,7 +527,8 @@ export const removeCertification = async (page: Page, endpoint: string) => {
 export const updateDescription = async (
   page: Page,
   description: string,
-  isModal = false
+  isModal = false,
+  validationContainerTestId = 'asset-description-container'
 ) => {
   await page.getByTestId('edit-description').click();
   await page.locator(descriptionBox).first().click();
@@ -540,16 +542,18 @@ export const updateDescription = async (
     });
   }
 
-  if (isEmpty(description)) {
-    // Check for either "No description" or handle potential UI duplication issue
-    const container = page.getByTestId('asset-description-container');
-    const text = await container.textContent();
+  if (validationContainerTestId) {
+    if (isEmpty(description)) {
+      // Check for either "No description" or handle potential UI duplication issue
+      const container = page.getByTestId(validationContainerTestId);
+      const text = await container.textContent();
 
-    expect(text).toMatch(/No description|Descriptiondescription/);
-  } else {
-    await expect(
-      page.getByTestId('asset-description-container').getByRole('paragraph')
-    ).toContainText(description);
+      expect(text).toMatch(/No description|Descriptiondescription/);
+    } else {
+      await expect(
+        page.getByTestId(validationContainerTestId).getByRole('paragraph')
+      ).toContainText(description);
+    }
   }
 };
 
@@ -1544,24 +1548,11 @@ export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
 
   // Check the presence or absence of the edit-lineage element based on the deleted flag
   if (deleted) {
-    await page.getByTestId('lineage-config').click();
-
     await expect(
-      page.getByRole('menuitem', { name: 'Edit Lineage' })
+      page.locator('[data-testid="edit-lineage"]')
     ).not.toBeVisible();
-
-    await page
-      .getByRole('dialog')
-      .getByRole('button', { name: 'Cancel' })
-      .click();
   } else {
-    await page.getByTestId('lineage-config').click();
-
-    await expect(
-      page.getByRole('menuitem', { name: 'Edit Lineage' })
-    ).toBeVisible();
-
-    await clickOutside(page);
+    await expect(page.locator('[data-testid="edit-lineage"]')).toBeVisible();
   }
 };
 

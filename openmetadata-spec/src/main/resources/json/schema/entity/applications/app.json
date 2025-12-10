@@ -106,6 +106,12 @@
           "name": "CollateAI"
         },
         {
+          "name": "CollateAITierAgent"
+        },
+        {
+          "name": "CollateAIQualityAgent"
+        },
+        {
           "name": "Metadata"
         }
       ]
@@ -319,6 +325,11 @@
     "ingestionRunner" : {
       "description": "The ingestion agent responsible for executing the ingestion pipeline. It will be defined at runtime based on the Ingestion Agent of the service.",
       "$ref": "../../type/entityReference.json"
+    },
+    "allowConcurrentExecution": {
+      "description": "If true, multiple instances of this app can run concurrently. This is useful for apps like QueryRunner that support parallel executions with different configurations.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,

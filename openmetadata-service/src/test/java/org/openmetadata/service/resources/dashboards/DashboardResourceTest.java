@@ -604,6 +604,74 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
   }
 
   @Test
+  void test_getDashboardByName_withMissingGlossaryTerm_shouldReturnDashboard(TestInfo test)
+      throws IOException {
+    // Create a dashboard with charts
+    CreateDashboard createDashboard =
+        createRequest(test)
+            .withName("DashboardWithMissingTag")
+            .withCharts(CHART_REFERENCES)
+            .withService(getContainer().getName());
+    Dashboard createdDashboard = createEntity(createDashboard, ADMIN_AUTH_HEADERS);
+
+    // Manually insert a tag_usage record with a non-existent glossary term
+    // This simulates the scenario where a glossary term was deleted but the tag reference remains
+    String dashboardFqn = createdDashboard.getFullyQualifiedName();
+    String nonExistentGlossaryTermFqn = "NonExistentGlossary.NonExistentTerm";
+
+    // Insert invalid tag usage directly into database
+    try {
+      Entity.getCollectionDAO()
+          .tagUsageDAO()
+          .applyTag(
+              org.openmetadata.schema.type.TagLabel.TagSource.GLOSSARY.ordinal(),
+              nonExistentGlossaryTermFqn,
+              nonExistentGlossaryTermFqn,
+              dashboardFqn,
+              org.openmetadata.schema.type.TagLabel.LabelType.MANUAL.ordinal(),
+              org.openmetadata.schema.type.TagLabel.State.CONFIRMED.ordinal(),
+              null);
+    } catch (Exception e) {
+      LOG.warn("Failed to insert invalid tag usage for test setup: {}", e.getMessage());
+    }
+
+    // Attempt to retrieve dashboard by name with tags field
+    // This should NOT throw an exception even though the glossary term doesn't exist
+    Dashboard retrievedDashboard =
+        getEntityByName(
+            createdDashboard.getFullyQualifiedName(), "tags,charts", ADMIN_AUTH_HEADERS);
+
+    // Verify dashboard was retrieved successfully
+    assertNotNull(retrievedDashboard, "Dashboard should be retrieved successfully");
+    assertEquals(
+        createdDashboard.getId(),
+        retrievedDashboard.getId(),
+        "Retrieved dashboard ID should match created dashboard");
+    assertEquals(
+        createdDashboard.getName(),
+        retrievedDashboard.getName(),
+        "Retrieved dashboard name should match");
+
+    // Verify charts are still present
+    assertListNotNull(retrievedDashboard.getCharts());
+    assertEquals(
+        CHART_REFERENCES.size(),
+        retrievedDashboard.getCharts().size(),
+        "All charts should be present");
+
+    // Tags field should be present (might be empty or contain only valid tags)
+    // The missing glossary term should have been gracefully skipped
+    assertNotNull(retrievedDashboard.getTags(), "Tags field should not be null");
+
+    LOG.info(
+        "Successfully retrieved dashboard with missing glossary term reference without error. Retrieved tags: {}",
+        retrievedDashboard.getTags());
+
+    // Clean up
+    deleteEntity(createdDashboard.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
   void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
     // Critical test: Verify that bulk updates preserve user-made changes
     // and only update the fields sent in the bulk request (incremental updates)

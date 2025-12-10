@@ -33,7 +33,10 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { DE_ACTIVE_COLOR, ROUTES } from '../../constants/constants';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -174,6 +177,13 @@ function AlertDetailsPage({
               url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
             },
             {
+              name: t('label.alert-plural'),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.NOTIFICATIONS,
+                GlobalSettingOptions.ALERTS
+              ),
+            },
+            {
               name: getEntityName(alertDetails),
               url: '',
             },
@@ -197,7 +207,7 @@ function AlertDetailsPage({
 
   const handleAlertDelete = useCallback(async () => {
     isNotificationAlert
-      ? navigate(ROUTES.NOTIFICATION_ALERTS)
+      ? navigate(ROUTES.NOTIFICATION_ALERT_LIST)
       : navigate(ROUTES.OBSERVABILITY_ALERTS);
   }, [history]);
 

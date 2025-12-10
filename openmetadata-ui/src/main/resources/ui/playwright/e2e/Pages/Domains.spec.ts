@@ -20,9 +20,10 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import {
-  EntityTypeEndpoint,
   ENTITY_PATH,
+  EntityTypeEndpoint,
 } from '../../support/entity/Entity.interface';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -71,6 +72,7 @@ import {
   followEntity,
   replyAnnouncement,
   unFollowEntity,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
   settingClick,
@@ -224,6 +226,15 @@ test.describe('Domains', () => {
 
     await test.step('Create DataProducts', async () => {
       await createDataProduct(page, dataProduct1.data);
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId(
+          `table-data-card_${dataProduct1.data.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+
       await createDataProduct(page, dataProduct2.data);
     });
 
@@ -262,6 +273,41 @@ test.describe('Domains', () => {
       ).not.toContainText(dataProduct1.data.displayName);
     });
 
+    await test.step(
+      'Verify empty assets message and Add Asset button',
+      async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct1.data);
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(
+          page.getByTestId('KnowledgePanel.Domain').getByTestId('add-domain')
+        ).not.toBeVisible();
+
+        await page.getByTestId('assets').getByText('Assets').click();
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.getByTestId('no-data-placeholder')).toContainText(
+          "Looks like you haven't added any data assets yet."
+        );
+
+        await page.getByTestId('data-assets-add-button').click();
+
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.getByTestId('form-heading')).toContainText(
+          'Add Assets'
+        );
+
+        await expect(page.getByTestId('cancel-btn')).toBeVisible();
+        await expect(page.getByTestId('save-btn')).toBeDisabled();
+      }
+    );
+
     await test.step('Add assets to DataProducts', async () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
@@ -279,6 +325,7 @@ test.describe('Domains', () => {
       await selectDataProduct(page, dataProduct1.data);
       await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
       await page.reload();
+      await waitForAllLoadersToDisappear(page);
       await page.waitForLoadState('networkidle');
       await checkAssetsCount(page, 0);
     });
@@ -391,12 +438,24 @@ test.describe('Domains', () => {
     await page.reload();
 
     await redirectToExplorePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await page.waitForLoadState('networkidle');
 
+    const domainsResponse = page.waitForResponse('api/v1/domains/hierarchy?*');
     await page.getByTestId('domain-dropdown').click();
+    await domainsResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    const searchDomainResponse = page.waitForResponse(
+      'api/v1/search/query?q=*&index=domain_search_index*'
+    );
+    await page.getByTestId('searchbar').fill(domain.responseData.displayName);
+    await searchDomainResponse;
 
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
       .click();
+    await waitForAllLoadersToDisappear(page);
 
     await page.waitForLoadState('networkidle');
 
@@ -712,6 +771,130 @@ test.describe('Domains', () => {
     await afterAction();
   });
 
+  test('Verify domain and subdomain asset count accuracy', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const { assets: domainAssets, assetCleanup: domainAssetCleanup } =
+      await setupAssetsForDomain(page);
+    const { assets: subDomainAssets, assetCleanup: subDomainAssetCleanup } =
+      await setupAssetsForDomain(page);
+
+    let subDomain!: SubDomain;
+
+    try {
+      await test.step('Create domain and subdomain via API', async () => {
+        await domain.create(apiContext);
+        subDomain = new SubDomain(domain);
+        await subDomain.create(apiContext);
+      });
+
+      await test.step('Add assets to domain', async () => {
+        await page.reload();
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
+        await page.getByTestId('assets').click();
+        await addAssetsToDomain(page, domain, domainAssets, false);
+      });
+
+      await test.step('Add assets to subdomain', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.DOMAIN);
+        await selectDomain(page, domain.data);
+        await page.getByTestId('subdomains').getByText('Sub Domains').click();
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await Promise.all([
+          page.getByTestId(subDomain.data.name).click(),
+          page.waitForResponse('/api/v1/domains/name/*'),
+        ]);
+
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page.getByTestId('assets').click();
+        await addAssetsToDomain(
+          page,
+          subDomain as unknown as Domain,
+          subDomainAssets,
+          false
+        );
+      });
+
+      await test.step(
+        'Verify domain asset count matches displayed cards',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+          await page.getByTestId('assets').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          const assetCountElement = page
+            .getByTestId('assets')
+            .getByTestId('count');
+          const countText = await assetCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+          const totalCount = domainAssets.length + subDomainAssets.length;
+          const assetCards = await page
+            .locator('[data-testid*="table-data-card_"]')
+            .count();
+
+          expect(displayedCount).toBe(totalCount);
+          expect(assetCards).toBe(totalCount);
+        }
+      );
+
+      await test.step(
+        'Verify subdomain asset count matches displayed cards',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDomain(page, domain.data);
+          await page.getByTestId('subdomains').getByText('Sub Domains').click();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          await Promise.all([
+            page.getByTestId(subDomain.data.name).click(),
+            page.waitForResponse('/api/v1/domains/name/*'),
+          ]);
+
+          await page.getByTestId('assets').click();
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          const assetCountElement = page
+            .getByTestId('assets')
+            .getByTestId('count');
+          const countText = await assetCountElement.textContent();
+          const displayedCount = parseInt(countText ?? '0', 10);
+
+          const assetCards = await page
+            .locator('[data-testid*="table-data-card_"]')
+            .count();
+
+          expect(displayedCount).toBe(subDomainAssets.length);
+          expect(assetCards).toBe(subDomainAssets.length);
+        }
+      );
+    } finally {
+      await subDomain?.delete(apiContext);
+      await domain.delete(apiContext);
+      await domainAssetCleanup();
+      await subDomainAssetCleanup();
+      await afterAction();
+    }
+  });
+
   test('Verify domain tags and glossary terms', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -802,6 +985,45 @@ test.describe('Domains', () => {
     }
   });
 
+  test('Verify redirect path on data product delete', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct = new DataProduct([domain]);
+
+    await domain.create(apiContext);
+    await dataProduct.create(apiContext);
+
+    await page.reload();
+    await redirectToHomePage(page);
+
+    await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+    await selectDataProduct(page, dataProduct.data);
+
+    await page.getByTestId('manage-button').click();
+    await page.getByTestId('delete-button-title').click();
+
+    await page.getByTestId('confirmation-text-input').click();
+    await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+    const dpListRes = page.waitForResponse(
+      '/api/v1/search/query?q=&index=data_product_search_index*'
+    );
+    const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
+
+    await page.getByTestId('confirm-button').click();
+
+    await deleteRes;
+    await dpListRes;
+
+    await expect(
+      page.getByText(`"Data Product" deleted successfully!`)
+    ).toBeVisible();
+
+    await expect(page.getByTestId('add-entity-button')).toBeVisible();
+
+    await afterAction();
+  });
+
   test('Verify duplicate domain creation', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -887,7 +1109,7 @@ test.describe('Domains', () => {
           // Add custom property value
           await page
             .getByTestId(`custom-property-${propertyName}-card`)
-            .locator('svg')
+            .getByTestId('edit-icon')
             .click();
 
           await page.getByTestId('value-input').fill(customPropertyValue);
@@ -1400,5 +1622,128 @@ test.describe('Domain Access with noDomain() Rule', () => {
     );
 
     await userAfterAction();
+  });
+});
+
+test.describe('Domain Tree View Functionality', () => {
+  let subDomain: SubDomain;
+  const domain = EntityDataClass.domain1;
+  const domainDisplayName = domain.responseData.displayName;
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    subDomain = new SubDomain(domain);
+    await subDomain.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    test.slow(true);
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await subDomain.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should render the domain tree view with correct details', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await page.getByRole('button', { name: 'tree' }).click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await page
+      .getByTestId('page-layout-v1')
+      .getByRole('textbox', { name: 'Search' })
+      .clear();
+
+    const searchDomain = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(domainDisplayName)}*`
+    );
+    await page
+      .getByTestId('page-layout-v1')
+      .getByRole('textbox', { name: 'Search' })
+      .fill(domainDisplayName);
+    await searchDomain;
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByRole('treeitem', {
+          name: domainDisplayName,
+        })
+        .locator('div')
+        .nth(2)
+    ).toBeVisible();
+
+    await page
+      .getByRole('treeitem', { name: domainDisplayName })
+      .locator('div')
+      .nth(2)
+      .click();
+
+    await expect(
+      page
+        .getByRole('treeitem', { name: subDomain.data.displayName })
+        .locator('div')
+        .nth(2)
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole('listitem')
+        .filter({ hasText: domain.responseData.fullyQualifiedName })
+        .getByTestId('breadcrumb-link')
+    ).toBeVisible();
+    await expect(page.getByTestId('entity-header-display-name')).toContainText(
+      domainDisplayName
+    );
+    await expect(page.getByTestId('entity-header-name')).toContainText(
+      domain.responseData.name
+    );
+    await expect(
+      page.getByTestId('documentation').getByText('Documentation')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('subdomains').getByText('Sub Domains')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('data_products').getByText('Data Products')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('activity_feed').getByText('Activity Feeds & Tasks')
+    ).toBeVisible();
+    await expect(page.getByTestId('assets').getByText('Assets')).toBeVisible();
+    await expect(
+      page.getByTestId('custom_properties').getByText('Custom Properties')
+    ).toBeVisible();
+    await expect(
+      page
+        .getByTestId('asset-description-container')
+        .getByText(domain.responseData.description)
+    ).toBeVisible();
+    await expect(page.getByTestId('domain-details-add-button')).toBeVisible();
+
+    await expect(
+      page.getByTestId('subdomains').getByTestId('count')
+    ).toContainText('1');
+
+    await page.getByTestId('subdomains').getByText('Sub Domains').click();
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByTestId(subDomain.data.name)
+        .getByText(subDomain.data.displayName)
+    ).toBeVisible();
   });
 });

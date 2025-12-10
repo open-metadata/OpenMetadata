@@ -20,7 +20,11 @@ import {
   mockSuggestion2,
   mockSuggestion3,
 } from '../../mocks/Suggestions.mock';
-import { getSuggestionByType, getUniqueSuggestions } from './SuggestionUtils';
+import {
+  getSuggestionByType,
+  getSuggestionTypeBasedOnData,
+  getUniqueSuggestions,
+} from './SuggestionUtils';
 
 describe('getSuggestionByType', () => {
   it('should correctly group suggestions by createdBy name and type', () => {
@@ -146,5 +150,126 @@ describe('getUniqueSuggestions', () => {
 
     expect(result).toHaveLength(1500); // 1000 existing + 500 new unique
     expect(endTime - startTime).toBeLessThan(100); // Should be fast (< 100ms)
+  });
+});
+
+describe('getSuggestionTypeBasedOnData', () => {
+  it('should return SuggestDescription when all suggestions are description type', () => {
+    const suggestions: Suggestion[] = [
+      {
+        id: '1',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+      {
+        id: '2',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+      {
+        id: '3',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestDescription);
+  });
+
+  it('should return SuggestTagLabel when all suggestions are tag type', () => {
+    const suggestions: Suggestion[] = [
+      {
+        id: '1',
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+      {
+        id: '2',
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+      {
+        id: '3',
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestTagLabel);
+  });
+
+  it('should return undefined when suggestions contain mixed types', () => {
+    const suggestions: Suggestion[] = [
+      {
+        id: '1',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+      {
+        id: '2',
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+      {
+        id: '3',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should return undefined when suggestions array is empty', () => {
+    const suggestions: Suggestion[] = [];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should return SuggestDescription for a single description suggestion', () => {
+    const suggestions: Suggestion[] = [
+      {
+        id: '1',
+        type: SuggestionType.SuggestDescription,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestDescription);
+  });
+
+  it('should return SuggestTagLabel for a single tag suggestion', () => {
+    const suggestions: Suggestion[] = [
+      {
+        id: '1',
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestTagLabel);
+  });
+
+  it('should handle large arrays of description suggestions', () => {
+    const suggestions: Suggestion[] = Array.from({ length: 100 }, (_, i) => ({
+      id: `${i}`,
+      type: SuggestionType.SuggestDescription,
+    })) as Suggestion[];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestDescription);
+  });
+
+  it('should handle large arrays of tag suggestions', () => {
+    const suggestions: Suggestion[] = Array.from({ length: 100 }, (_, i) => ({
+      id: `${i}`,
+      type: SuggestionType.SuggestTagLabel,
+    })) as Suggestion[];
+
+    const result = getSuggestionTypeBasedOnData(suggestions);
+
+    expect(result).toBe(SuggestionType.SuggestTagLabel);
   });
 });

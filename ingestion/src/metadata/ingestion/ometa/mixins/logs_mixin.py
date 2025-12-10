@@ -187,19 +187,15 @@ class OMetaLogsMixin:
         self,
         pipeline_fqn: str,
         run_id: UUID,
-    ) -> Optional[str]:
+    ) -> None:
         """
         Initialize a log stream for a pipeline run.
 
-        This method can be used to set up a log stream session with the server,
-        potentially getting a session ID or token for subsequent log shipments.
+        This method can be used to set up a log stream session with the server.
 
         Args:
             pipeline_fqn: Fully qualified name of the ingestion pipeline
             run_id: Unique identifier for the pipeline run
-
-        Returns:
-            Optional[str]: Stream session ID if applicable, None otherwise
         """
         try:
 
@@ -218,23 +214,15 @@ class OMetaLogsMixin:
                 data=json.dumps(init_data),
             )
 
-            # Return session ID if provided by the server
-            if response and isinstance(response, dict):
-                return response.get("sessionId")
-
-            return None
-
         except Exception as e:
             logger.warning(
                 f"Failed to initialize log stream for pipeline {pipeline_fqn}: {e}"
             )
-            return None
 
     def close_log_stream(
         self,
         pipeline_fqn: str,
         run_id: UUID,
-        session_id: Optional[str] = None,
     ) -> bool:
         """
         Close a log stream for a pipeline run.
@@ -245,7 +233,6 @@ class OMetaLogsMixin:
         Args:
             pipeline_fqn: Fully qualified name of the ingestion pipeline
             run_id: Unique identifier for the pipeline run
-            session_id: Optional session ID from create_log_stream
 
         Returns:
             bool: True if stream was closed successfully, False otherwise
@@ -258,9 +245,6 @@ class OMetaLogsMixin:
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
                 "timestamp": int(time.time() * 1000),
             }
-
-            if session_id:
-                close_data["sessionId"] = session_id
 
             self.client.post(
                 url,

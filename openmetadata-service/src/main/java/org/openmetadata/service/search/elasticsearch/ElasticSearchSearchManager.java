@@ -858,7 +858,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             request.getQuery(),
             request.getFrom(),
             request.getSize(),
-            request.getExplain());
+            request.getExplain(),
+            request.getIncludeAggregations() != null ? request.getIncludeAggregations() : true);
 
     LOG.debug(
         "Elasticsearch query for index '{}' with sanitized query '{}': {}",

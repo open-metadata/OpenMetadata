@@ -771,7 +771,7 @@ export const addAssetToGlossaryTerm = async (
 ) => {
   if (!hasExistingAssets) {
     await page.waitForSelector(
-      'text=Adding a new Asset is easy, just give it a spin!'
+      "text=Looks like you haven't added any data assets yet."
     );
   }
 

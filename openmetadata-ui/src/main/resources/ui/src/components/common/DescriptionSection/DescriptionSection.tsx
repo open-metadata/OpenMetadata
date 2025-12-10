@@ -129,10 +129,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   }, [checkIfTextIsTruncated]);
 
   const canShowEditButton =
-    showEditButton &&
-    hasPermission &&
-    !isEditDescription &&
-    onDescriptionUpdate;
+    showEditButton && hasPermission && onDescriptionUpdate;
 
   if (!description?.trim()) {
     return (

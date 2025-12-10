@@ -87,6 +87,47 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
 // Mock utility functions
 jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityLinkFromType: jest.fn().mockReturnValue('/test-entity-link'),
+  getEntityName: jest
+    .fn()
+    .mockImplementation((entity) => entity?.displayName || entity?.name || ''),
+}));
+
+// Mock RichTextEditorPreviewerV1
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ markdown }) => (
+      <div data-testid="rich-text-previewer">{markdown}</div>
+    )),
+}));
+
+// Mock ProfilePicture
+jest.mock('../../../common/ProfilePicture/ProfilePicture', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ name }) => (
+      <div data-testid="profile-picture">{name}</div>
+    )),
+}));
+
+// Mock entityUtilClassBase
+jest.mock('../../../../utils/EntityUtilClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityLink: jest.fn().mockReturnValue('/test-entity-link'),
+  },
+}));
+
+// Mock searchClassBase
+jest.mock('../../../../utils/SearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityIcon: jest
+      .fn()
+      .mockReturnValue(<span data-testid="entity-icon">Icon</span>),
+  },
 }));
 
 const mockEntityData = {
@@ -185,6 +226,7 @@ const defaultProps = {
   entityType: EntityType.TABLE,
   entityTypeDetail: mockEntityTypeDetail,
   isEntityDataLoading: false,
+  viewCustomPropertiesPermission: true,
   entityDetails: mockEntityDetails,
 };
 
@@ -271,6 +313,58 @@ describe('CustomPropertiesSection', () => {
       expect(container.querySelector('.text-justify')).toBeInTheDocument();
       expect(
         container.querySelector('.no-data-placeholder')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Permission Error', () => {
+    it('should render permission error when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.getByTestId('trans-component')).toHaveTextContent(
+        'message.no-access-placeholder - label.view-entity -'
+      );
+    });
+
+    it('should not render custom properties when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.queryByText('Property 1')).not.toBeInTheDocument();
+      expect(screen.queryByText('Property 2')).not.toBeInTheDocument();
+      expect(screen.queryByText('value1')).not.toBeInTheDocument();
+    });
+
+    it('should not render view all button when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.queryByText('label.view-all')).not.toBeInTheDocument();
+    });
+
+    it('should render permission error with correct placeholder type', () => {
+      const { container } = render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(
+        container.querySelector('.permission-error-placeholder')
       ).toBeInTheDocument();
     });
   });
@@ -555,7 +649,7 @@ describe('CustomPropertiesSection', () => {
         />
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
     });
 
     it('should handle empty extension data', () => {
@@ -656,6 +750,73 @@ describe('CustomPropertiesSection', () => {
     });
   });
 
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should render custom properties when viewCustomPropertiesPermission is true', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission
+        />
+      );
+
+      expect(screen.getByText('Property 1')).toBeInTheDocument();
+      expect(screen.getByText('value1')).toBeInTheDocument();
+    });
+
+    it('should hide custom properties and show error when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.queryByText('Property 1')).not.toBeInTheDocument();
+      expect(screen.getByTestId('trans-component')).toBeInTheDocument();
+    });
+
+    it('should take precedence over loading state when viewCustomPropertiesPermission is false', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          isEntityDataLoading
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+    });
+
+    it('should show permission error even when no custom properties exist', () => {
+      render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          entityTypeDetail={{ customProperties: [] }}
+          viewCustomPropertiesPermission={false}
+        />
+      );
+
+      expect(screen.getByTestId('trans-component')).toHaveTextContent(
+        'message.no-access-placeholder'
+      );
+    });
+
+    it('should display custom properties correctly when permission is granted and data exists', () => {
+      const { container } = render(
+        <CustomPropertiesSection
+          {...defaultProps}
+          viewCustomPropertiesPermission
+        />
+      );
+
+      expect(
+        container.querySelector('.custom-properties-list')
+      ).toBeInTheDocument();
+      expect(screen.getByText('Property 1')).toBeInTheDocument();
+      expect(screen.getByText('Property 2')).toBeInTheDocument();
+    });
+  });
+
   describe('CSS Classes and Structure', () => {
     it('should render with correct CSS classes for custom property items', () => {
       const { container } = render(
@@ -718,6 +879,592 @@ describe('CustomPropertiesSection', () => {
       const tbody = table?.querySelector('tbody');
 
       expect(tbody).toBeInTheDocument();
+    });
+  });
+
+  describe('Type Handling - Advanced Property Types', () => {
+    it('should handle markdown property type', () => {
+      const markdownData = {
+        extension: {
+          markdownProp: '# Heading\n\nThis is **bold** text',
+        },
+      };
+
+      const markdownProps = {
+        ...defaultProps,
+        entityData: markdownData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'markdownProp',
+              displayName: 'Markdown Property',
+              description: 'Markdown Property description',
+              propertyType: { id: 'md', name: 'markdown', type: 'type' },
+            },
+          ],
+        },
+      };
+
+      const { container } = render(
+        <CustomPropertiesSection {...markdownProps} />
+      );
+
+      expect(container.querySelector('.property-value')).toBeInTheDocument();
+    });
+
+    it('should handle enum property type with array of values', () => {
+      const enumData = {
+        extension: {
+          enumProp: ['Value1', 'Value2', 'Value3'],
+        },
+      };
+
+      const enumProps = {
+        ...defaultProps,
+        entityData: enumData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'enumProp',
+              displayName: 'Enum Property',
+              description: 'Enum Property description',
+              propertyType: { id: 'enum', name: 'enum', type: 'type' },
+            },
+          ],
+        },
+      };
+
+      render(<CustomPropertiesSection {...enumProps} />);
+
+      expect(screen.getByText('Value1')).toBeInTheDocument();
+      expect(screen.getByText('Value2')).toBeInTheDocument();
+      expect(screen.getByText('Value3')).toBeInTheDocument();
+    });
+
+    it('should handle entityReference property type', () => {
+      const entityRefData = {
+        extension: {
+          entityRef: {
+            id: 'entity-123',
+            type: 'table',
+            name: 'test-table',
+            fullyQualifiedName: 'database.schema.test-table',
+            displayName: 'Test Table',
+          },
+        },
+      };
+
+      const entityRefProps = {
+        ...defaultProps,
+        entityData: entityRefData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'entityRef',
+              displayName: 'Entity Reference',
+              description: 'Entity Reference description',
+              propertyType: {
+                id: 'entityRef',
+                name: 'entityReference',
+                type: 'type',
+              },
+            },
+          ],
+        },
+      };
+
+      const { container } = render(
+        <CustomPropertiesSection {...entityRefProps} />
+      );
+
+      const linkElement = container.querySelector('a');
+
+      expect(linkElement).toBeInTheDocument();
+      expect(linkElement).toHaveAttribute('href', '/test-entity-link');
+    });
+
+    it('should handle entityReferenceList property type', () => {
+      const entityRefListData = {
+        extension: {
+          entityRefList: [
+            {
+              id: 'entity-1',
+              type: 'table',
+              name: 'table-1',
+              fullyQualifiedName: 'db.schema.table-1',
+              displayName: 'Table 1',
+            },
+            {
+              id: 'entity-2',
+              type: 'dashboard',
+              name: 'dashboard-1',
+              fullyQualifiedName: 'service.dashboard-1',
+              displayName: 'Dashboard 1',
+            },
+          ],
+        },
+      };
+
+      const entityRefListProps = {
+        ...defaultProps,
+        entityData: entityRefListData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'entityRefList',
+              displayName: 'Entity Reference List',
+              description: 'Entity Reference List description',
+              propertyType: {
+                id: 'entityRefList',
+                name: 'entityReferenceList',
+                type: 'type',
+              },
+            },
+          ],
+        },
+      };
+
+      const { container } = render(
+        <CustomPropertiesSection {...entityRefListProps} />
+      );
+
+      const links = container.querySelectorAll('a');
+
+      expect(links).toHaveLength(2);
+      expect(links[0]).toHaveAttribute('href', '/test-entity-link');
+      expect(links[1]).toHaveAttribute('href', '/test-entity-link');
+    });
+
+    it('should handle timeInterval property type (start/end)', () => {
+      const timeIntervalData = {
+        extension: {
+          timeIntervalProp: {
+            start: 1710831125922,
+            end: 1711176725922,
+          },
+        },
+      };
+
+      const timeIntervalProps = {
+        ...defaultProps,
+        entityData: timeIntervalData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'timeIntervalProp',
+              displayName: 'Time Interval Property',
+              description: 'Time Interval Property description',
+              propertyType: {
+                id: 'timeInterval',
+                name: 'timeInterval',
+                type: 'type',
+              },
+            },
+          ],
+        },
+      };
+
+      render(<CustomPropertiesSection {...timeIntervalProps} />);
+
+      expect(screen.getByText(/label\.start-entity/)).toBeInTheDocument();
+      expect(screen.getByText(/1710831125922/)).toBeInTheDocument();
+      expect(screen.getByText(/label\.end-entity/)).toBeInTheDocument();
+      expect(screen.getByText(/1711176725922/)).toBeInTheDocument();
+    });
+
+    it('should handle range property type (start/end)', () => {
+      const rangeData = {
+        extension: {
+          rangeProp: {
+            start: 10,
+            end: 100,
+          },
+        },
+      };
+
+      const rangeProps = {
+        ...defaultProps,
+        entityData: rangeData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'rangeProp',
+              displayName: 'Range Property',
+              description: 'Range Property description',
+              propertyType: { id: 'range', name: 'range', type: 'type' },
+            },
+          ],
+        },
+      };
+
+      render(<CustomPropertiesSection {...rangeProps} />);
+
+      expect(screen.getByText(/label\.start-entity.*10/)).toBeInTheDocument();
+      expect(screen.getByText(/label\.end-entity.*100/)).toBeInTheDocument();
+    });
+
+    it('should handle user entity reference with ProfilePicture', () => {
+      const userRefData = {
+        extension: {
+          userRef: {
+            id: 'user-123',
+            type: 'user',
+            name: 'john.doe',
+            fullyQualifiedName: 'john.doe',
+            displayName: 'John Doe',
+          },
+        },
+      };
+
+      const userRefProps = {
+        ...defaultProps,
+        entityData: userRefData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'userRef',
+              displayName: 'User Reference',
+              description: 'User Reference description',
+              propertyType: {
+                id: 'userRef',
+                name: 'entityReference',
+                type: 'type',
+              },
+            },
+          ],
+        },
+      };
+
+      const { container } = render(
+        <CustomPropertiesSection {...userRefProps} />
+      );
+
+      const linkElement = container.querySelector('a');
+
+      expect(linkElement).toBeInTheDocument();
+    });
+
+    it('should handle team entity reference with ProfilePicture', () => {
+      const teamRefData = {
+        extension: {
+          teamRef: {
+            id: 'team-123',
+            type: 'team',
+            name: 'engineering',
+            fullyQualifiedName: 'engineering',
+            displayName: 'Engineering Team',
+          },
+        },
+      };
+
+      const teamRefProps = {
+        ...defaultProps,
+        entityData: teamRefData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'teamRef',
+              displayName: 'Team Reference',
+              description: 'Team Reference description',
+              propertyType: {
+                id: 'teamRef',
+                name: 'entityReference',
+                type: 'type',
+              },
+            },
+          ],
+        },
+      };
+
+      const { container } = render(
+        <CustomPropertiesSection {...teamRefProps} />
+      );
+
+      const linkElement = container.querySelector('a');
+
+      expect(linkElement).toBeInTheDocument();
+    });
+
+    it('should handle displayName property in entity objects', () => {
+      const displayNameData = {
+        extension: {
+          displayNameProp: {
+            name: 'internalName',
+            displayName: 'User Friendly Name',
+          },
+        },
+      };
+
+      const displayNameProps = {
+        ...defaultProps,
+        entityData: displayNameData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'displayNameProp',
+              displayName: 'Display Name Property',
+              description: 'Display Name Property description',
+              propertyType: { id: 'obj', name: 'object', type: 'type' },
+            },
+          ],
+        },
+      };
+
+      render(<CustomPropertiesSection {...displayNameProps} />);
+
+      expect(screen.getByText('internalName')).toBeInTheDocument();
+    });
+
+    it('should handle fallback to name when displayName is not present', () => {
+      const nameOnlyData = {
+        extension: {
+          nameOnlyProp: {
+            name: 'onlyNameAvailable',
+          },
+        },
+      };
+
+      const nameOnlyProps = {
+        ...defaultProps,
+        entityData: nameOnlyData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'nameOnlyProp',
+              displayName: 'Name Only Property',
+              description: 'Name Only Property description',
+              propertyType: { id: 'obj', name: 'object', type: 'type' },
+            },
+          ],
+        },
+      };
+
+      render(<CustomPropertiesSection {...nameOnlyProps} />);
+
+      expect(screen.getByText('onlyNameAvailable')).toBeInTheDocument();
+    });
+
+    it('should convert non-string primitives to strings', () => {
+      const primitiveData = {
+        extension: {
+          numberProp: 42,
+          booleanProp: true,
+        },
+      };
+
+      const primitiveProps = {
+        ...defaultProps,
+        entityData: primitiveData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'numberProp',
+              displayName: 'Number Property',
+              description: 'Number Property description',
+              propertyType: { id: 'num', name: 'number', type: 'type' },
+            },
+            {
+              name: 'booleanProp',
+              displayName: 'Boolean Property',
+              description: 'Boolean Property description',
+              propertyType: { id: 'bool', name: 'boolean', type: 'type' },
+            },
+          ],
+        },
+      };
+
+      render(<CustomPropertiesSection {...primitiveProps} />);
+
+      expect(screen.getByText('42')).toBeInTheDocument();
+      expect(screen.getByText('true')).toBeInTheDocument();
+    });
+
+    it('should handle empty enum array', () => {
+      const emptyEnumData = {
+        extension: {
+          emptyEnum: [],
+        },
+      };
+
+      const emptyEnumProps = {
+        ...defaultProps,
+        entityData: emptyEnumData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'emptyEnum',
+              displayName: 'Empty Enum',
+              description: 'Empty Enum description',
+              propertyType: { id: 'enum', name: 'enum', type: 'type' },
+            },
+          ],
+        },
+      };
+
+      const { container } = render(
+        <CustomPropertiesSection {...emptyEnumProps} />
+      );
+
+      const tagsWrapper = container.querySelector('.d-flex.flex-wrap.gap-2');
+
+      expect(tagsWrapper).toBeInTheDocument();
+      expect(tagsWrapper?.children.length).toBe(0);
+    });
+
+    it('should handle mixed entityReferenceList with users and other entities', () => {
+      const mixedRefListData = {
+        extension: {
+          mixedRefList: [
+            {
+              id: 'user-1',
+              type: 'user',
+              name: 'user1',
+              fullyQualifiedName: 'user1',
+            },
+            {
+              id: 'table-1',
+              type: 'table',
+              name: 'table1',
+              fullyQualifiedName: 'db.table1',
+            },
+            {
+              id: 'team-1',
+              type: 'team',
+              name: 'team1',
+              fullyQualifiedName: 'team1',
+            },
+          ],
+        },
+      };
+
+      const mixedRefListProps = {
+        ...defaultProps,
+        entityData: mixedRefListData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'mixedRefList',
+              displayName: 'Mixed Reference List',
+              description: 'Mixed Reference List description',
+              propertyType: {
+                id: 'mixed',
+                name: 'entityReferenceList',
+                type: 'type',
+              },
+            },
+          ],
+        },
+      };
+
+      const { container } = render(
+        <CustomPropertiesSection {...mixedRefListProps} />
+      );
+
+      const links = container.querySelectorAll('a');
+
+      expect(links).toHaveLength(3);
+    });
+
+    it('should handle table with custom column widths', () => {
+      const tableData = {
+        extension: {
+          tableProp: {
+            rows: [{ col1: 'value1', col2: 'value2', col3: 'value3' }],
+            columns: ['col1', 'col2', 'col3'],
+          },
+        },
+      };
+
+      const tableProps = {
+        ...defaultProps,
+        entityData: tableData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'tableProp',
+              displayName: 'Table Property',
+              description: 'Table Property description',
+              propertyType: { id: 'table', name: 'table', type: 'type' },
+            },
+          ],
+        },
+      };
+
+      const { container } = render(<CustomPropertiesSection {...tableProps} />);
+
+      const cols = container.querySelectorAll('colgroup col');
+
+      expect(cols).toHaveLength(3);
+
+      cols.forEach((col) => {
+        expect(col).toHaveClass('table-col-min-width');
+      });
+    });
+
+    it('should handle zero values (currently treated as falsy)', () => {
+      const zeroData = {
+        extension: {
+          zeroProp: 0,
+          zeroStartProp: { start: 0, end: 10 },
+        },
+      };
+
+      const zeroProps = {
+        ...defaultProps,
+        entityData: zeroData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'zeroProp',
+              displayName: 'Zero Property',
+              description: 'Zero Property description',
+              propertyType: { id: 'num', name: 'number', type: 'type' },
+            },
+            {
+              name: 'zeroStartProp',
+              displayName: 'Zero Start Property',
+              description: 'Zero Start Property description',
+              propertyType: { id: 'range', name: 'range', type: 'type' },
+            },
+          ],
+        },
+      };
+
+      render(<CustomPropertiesSection {...zeroProps} />);
+
+      // Note: Currently zero is treated as falsy in formatValue (if (!val))
+      // This test documents the current behavior
+      expect(screen.getByText('label.not-set')).toBeInTheDocument();
+      expect(screen.getByText(/label\.start-entity.*0/)).toBeInTheDocument();
+    });
+
+    it('should handle false boolean value (currently treated as falsy)', () => {
+      const falseData = {
+        extension: {
+          falseProp: false,
+        },
+      };
+
+      const falseProps = {
+        ...defaultProps,
+        entityData: falseData,
+        entityTypeDetail: {
+          customProperties: [
+            {
+              name: 'falseProp',
+              displayName: 'False Property',
+              description: 'False Property description',
+              propertyType: { id: 'bool', name: 'boolean', type: 'type' },
+            },
+          ],
+        },
+      };
+
+      render(<CustomPropertiesSection {...falseProps} />);
+
+      // Note: Currently false is treated as falsy in formatValue (if (!val))
+      // This test documents the current behavior
+      expect(screen.getByText('label.not-set')).toBeInTheDocument();
     });
   });
 });

@@ -179,7 +179,7 @@ export const visitOwnProfilePage = async (page: Page) => {
   const userResponse = page.waitForResponse(
     '/api/v1/users/name/*?fields=*&include=all'
   );
-  await page.getByTestId('user-name').click();
+  await page.getByRole('link', { name: 'View Profile' }).click();
   await userResponse;
   await clickOutside(page);
 };
@@ -193,7 +193,9 @@ export const assignDomain = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
 
   await page
@@ -234,7 +236,9 @@ export const assignSingleSelectDomain = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
 
   await page
@@ -275,7 +279,9 @@ export const updateDomain = async (
     .clear();
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
   await page
     .getByTestId('domain-selectable-tree')
@@ -313,7 +319,20 @@ export const removeDomain = async (
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  const searchDomain = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
+  );
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+  await searchDomain;
+
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await tagSelector.waitFor({ state: 'visible' });
+  await tagSelector.click();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
@@ -338,6 +357,22 @@ export const removeSingleSelectDomain = async (
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .clear();
+
+  const searchDomain = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
+  );
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+  await searchDomain;
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
@@ -372,7 +407,9 @@ export const assignDataProduct = async (
 
   for (const dataProduct of dataProducts) {
     const searchDataProduct = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(encodeURIComponent(domain.name))
     );
 
     await page
@@ -707,4 +744,69 @@ export const testPaginationNavigation = async (
   const paginationTextContent = await paginationText.textContent();
 
   expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
+};
+
+export const testTableSorting = async (
+  page: Page,
+  columnHeader: string,
+  columnIndex = 0
+) => {
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  const header = page.locator(`th:has-text("${columnHeader}")`).first();
+  const visibleRowSelector = `tbody tr:not([aria-hidden="true"])`;
+
+  const getFirstCellValue = async () => {
+    const firstCell = page.locator(`${visibleRowSelector} td`).nth(columnIndex);
+    await firstCell.waitFor({ state: 'visible' });
+
+    return (await firstCell.textContent())?.trim();
+  };
+
+  const rowCount = await page.locator(visibleRowSelector).count();
+  if (rowCount <= 1) {
+    return;
+  }
+
+  const initialValue = await getFirstCellValue();
+
+  await header.click();
+  await waitForAllLoadersToDisappear(page);
+  await header.click();
+  await waitForAllLoadersToDisappear(page);
+
+  const afterFirstClickValue = await getFirstCellValue();
+
+  expect(afterFirstClickValue).not.toBe(initialValue);
+
+  await header.click();
+  await waitForAllLoadersToDisappear(page);
+
+  const afterSecondClickValue = await getFirstCellValue();
+
+  expect(afterSecondClickValue).not.toBe(afterFirstClickValue);
+};
+
+export const testTableSearch = async (
+  page: Page,
+  searchIndex: string,
+  searchTerm: string,
+  notVisibleText: string
+) => {
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  const waitForSearchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*index=${searchIndex}*`
+  );
+
+  await page.getByTestId('searchbar').fill(searchTerm);
+  await waitForSearchResponse;
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.getByText(searchTerm).first()).toBeVisible();
+
+  await expect(page.getByText(notVisibleText).first()).not.toBeVisible();
 };

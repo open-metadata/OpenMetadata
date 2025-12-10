@@ -519,22 +519,27 @@ describe('DataAssetSummaryPanelV1', () => {
       });
     });
 
-    it('should not render sections for unsupported entity types', async () => {
-      const unsupportedProps = {
+    it('should render simplified sections for USER entity type', async () => {
+      const userProps = {
         ...defaultProps,
-        entityType: EntityType.USER as any, // USER entity type is not supported
+        entityType: EntityType.USER,
       };
 
       await act(async () => {
-        render(<DataAssetSummaryPanelV1 {...unsupportedProps} />);
+        render(<DataAssetSummaryPanelV1 {...userProps} />);
       });
 
       await waitFor(() => {
+        expect(screen.getByTestId('description-section')).toBeInTheDocument();
+        expect(screen.getByTestId('overview-section')).toBeInTheDocument();
+        expect(screen.getByTestId('owners-section')).toBeInTheDocument();
+        expect(screen.getByTestId('tags-section')).toBeInTheDocument();
+        // USER entity type should not have glossary terms or data products
         expect(
-          screen.queryByTestId('description-section')
+          screen.queryByTestId('glossary-terms-section')
         ).not.toBeInTheDocument();
         expect(
-          screen.queryByTestId('overview-section')
+          screen.queryByTestId('data-products-section')
         ).not.toBeInTheDocument();
       });
     });

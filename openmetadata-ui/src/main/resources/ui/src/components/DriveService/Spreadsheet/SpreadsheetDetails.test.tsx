@@ -572,4 +572,51 @@ describe('SpreadsheetDetails', () => {
 
     expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
   });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should pass ViewCustomFields permission correctly when true', async () => {
+      const permissionsWithViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: true,
+      };
+
+      renderSpreadsheetDetails({
+        spreadsheetPermissions: permissionsWithViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+
+    it('should pass ViewCustomFields permission correctly when false', async () => {
+      const permissionsWithoutViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: false,
+      };
+
+      renderSpreadsheetDetails({
+        spreadsheetPermissions: permissionsWithoutViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle undefined ViewCustomFields permission', async () => {
+      const permissionsWithUndefinedViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+      };
+      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+
+      renderSpreadsheetDetails({
+        spreadsheetPermissions: permissionsWithUndefinedViewCustomFields,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
+      });
+    });
+  });
 });

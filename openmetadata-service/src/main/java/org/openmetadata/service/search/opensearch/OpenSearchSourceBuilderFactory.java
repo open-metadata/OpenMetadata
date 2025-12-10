@@ -285,6 +285,16 @@ public class OpenSearchSourceBuilderFactory
 
   public OpenSearchRequestBuilder getSearchSourceBuilderV2(
       String indexName, String searchQuery, int fromOffset, int size, boolean includeExplain) {
+    return getSearchSourceBuilderV2(indexName, searchQuery, fromOffset, size, includeExplain, true);
+  }
+
+  public OpenSearchRequestBuilder getSearchSourceBuilderV2(
+      String indexName,
+      String searchQuery,
+      int fromOffset,
+      int size,
+      boolean includeExplain,
+      boolean includeAggregations) {
     indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(indexName);
 
     if (isTimeSeriesIndex(indexName)) {
@@ -301,12 +311,12 @@ public class OpenSearchSourceBuilderFactory
 
     if (isDataAssetIndex(indexName)) {
       return buildDataAssetSearchBuilderV2(
-          indexName, searchQuery, fromOffset, size, includeExplain);
+          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     if (indexName.equals("all") || indexName.equals("dataAsset")) {
       return buildDataAssetSearchBuilderV2(
-          indexName, searchQuery, fromOffset, size, includeExplain);
+          indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
 
     return switch (indexName) {
@@ -314,7 +324,7 @@ public class OpenSearchSourceBuilderFactory
           "user",
           "team_search_index",
           "team" -> buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
-      default -> buildAggregateSearchBuilderV2(searchQuery, fromOffset, size);
+      default -> buildAggregateSearchBuilderV2(searchQuery, fromOffset, size, includeAggregations);
     };
   }
 
@@ -359,6 +369,12 @@ public class OpenSearchSourceBuilderFactory
   }
 
   public OpenSearchRequestBuilder buildAggregateSearchBuilderV2(String query, int from, int size) {
+    return buildAggregateSearchBuilderV2(query, from, size, true);
+  }
+
+  @Override
+  public OpenSearchRequestBuilder buildAggregateSearchBuilderV2(
+      String query, int from, int size, boolean includeAggregations) {
     AssetTypeConfiguration compositeConfig = getOrBuildCompositeConfig();
     os.org.opensearch.client.opensearch._types.query_dsl.Query baseQuery =
         buildQueryWithMatchTypesV2(query, compositeConfig);
@@ -366,11 +382,25 @@ public class OpenSearchSourceBuilderFactory
         applyFunctionScoringV2(baseQuery, compositeConfig);
 
     OpenSearchRequestBuilder searchRequestBuilder = searchBuilderV2(finalQuery, null, from, size);
-    return addAggregationV2(searchRequestBuilder);
+    if (includeAggregations) {
+      addAggregationV2(searchRequestBuilder);
+    }
+    return searchRequestBuilder;
   }
 
   public OpenSearchRequestBuilder buildDataAssetSearchBuilderV2(
       String indexName, String query, int from, int size, boolean explain) {
+    return buildDataAssetSearchBuilderV2(indexName, query, from, size, explain, true);
+  }
+
+  @Override
+  public OpenSearchRequestBuilder buildDataAssetSearchBuilderV2(
+      String indexName,
+      String query,
+      int from,
+      int size,
+      boolean explain,
+      boolean includeAggregations) {
     AssetTypeConfiguration assetConfig = getAssetConfiguration(indexName);
     os.org.opensearch.client.opensearch._types.query_dsl.Query baseQuery =
         buildBaseQueryV2(query, assetConfig);
@@ -385,7 +415,9 @@ public class OpenSearchSourceBuilderFactory
       searchRequestBuilder.highlighter(highlightBuilder);
     }
 
-    addConfiguredAggregationsV2(searchRequestBuilder, assetConfig);
+    if (includeAggregations) {
+      addConfiguredAggregationsV2(searchRequestBuilder, assetConfig);
+    }
     searchRequestBuilder.explain(explain);
 
     return searchRequestBuilder;
