@@ -75,10 +75,7 @@ import {
   getTeamsWithFqnPath,
 } from '../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../utils/SearchUtils';
-import {
-  filterChildTeams,
-  getDeleteMessagePostFix,
-} from '../../../../utils/TeamUtils';
+import { getDeleteMessagePostFix } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -127,6 +124,7 @@ const TeamDetailsV1 = ({
   entityPermissions,
   isFetchingAdvancedDetails,
   isFetchingAllTeamAdvancedDetails,
+  isTeamBasicDataLoading,
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -200,8 +198,8 @@ const TeamDetailsV1 = ({
   );
 
   const teamCount = useMemo(
-    () => currentTeam.childrenCount ?? childTeamList.length,
-    [childTeamList, currentTeam.childrenCount]
+    () => (isTeamBasicDataLoading ? 0 : childTeamList.length),
+    [childTeamList, isTeamBasicDataLoading]
   );
   const updateActiveTab = (key: string) => {
     navigate({ search: Qs.stringify({ activeTab: key }) });
@@ -275,6 +273,7 @@ const TeamDetailsV1 = ({
           },
         },
         searchIndex: SearchIndex.TEAM,
+        includeDeleted: showDeletedTeam,
       });
 
       const data = res.hits.hits.map((value) => value._source as Team);
@@ -361,7 +360,7 @@ const TeamDetailsV1 = ({
     if (value) {
       searchTeams(value);
     } else {
-      setChildTeamList(filterChildTeams(childTeams ?? [], showDeletedTeam));
+      setChildTeamList(childTeams);
     }
   };
 
@@ -464,7 +463,7 @@ const TeamDetailsV1 = ({
   }, [currentTeam, parentTeams, showDeletedTeam]);
 
   useEffect(() => {
-    setChildTeamList(filterChildTeams(childTeams ?? [], showDeletedTeam));
+    setChildTeamList(childTeams);
     setSearchTerm('');
   }, [childTeams, showDeletedTeam]);
 
@@ -665,6 +664,7 @@ const TeamDetailsV1 = ({
         handleAddTeamButtonClick={handleAddTeamButtonClick}
         handleTeamSearch={handleTeamSearch}
         isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+        isTeamBasicDataLoading={isTeamBasicDataLoading}
         isTeamDeleted={isTeamDeleted}
         searchTerm={searchTerm}
         showDeletedTeam={showDeletedTeam}
@@ -1066,7 +1066,8 @@ const TeamDetailsV1 = ({
         isGroupType,
         isOrganization,
         teamCount,
-        assetsCount
+        assetsCount,
+        isTeamBasicDataLoading
       ).map((tab) => ({
         ...tab,
         label: (
@@ -1074,6 +1075,7 @@ const TeamDetailsV1 = ({
             count={tab.count}
             id={tab.key}
             isActive={currentTab === tab.key}
+            isLoading={tab?.isLoading}
             name={tab.name}
           />
         ),
@@ -1088,6 +1090,7 @@ const TeamDetailsV1 = ({
       assetsCount,
       getTabChildren,
       tabsChildrenRender,
+      isTeamBasicDataLoading,
     ]
   );
 
