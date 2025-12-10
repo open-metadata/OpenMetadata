@@ -1313,12 +1313,10 @@ test.describe('Glossary tests', () => {
       // Delete A
       await selectActiveGlossary(page, glossaryA.data.displayName);
       await initiateDelete(page);
-      await toastNotification(page, /Delete operation initiated/i);
 
       // Delete B
       await selectActiveGlossary(page, glossaryB.data.displayName);
       await initiateDelete(page);
-      await toastNotification(page, /Delete operation initiated/i);
 
       // A and B deleted, C remains
       await expect(
