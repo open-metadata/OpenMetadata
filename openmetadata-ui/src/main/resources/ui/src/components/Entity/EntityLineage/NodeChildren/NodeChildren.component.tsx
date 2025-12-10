@@ -47,22 +47,23 @@ import {
 } from './NodeChildren.interface';
 
 interface CustomPaginatedListProps {
+  children: EntityChildren;
+  isOnlyShowColumnsWithLineageFilterActive?: boolean;
   items: React.ReactNode[];
-  filteredColumns: EntityChildren;
   nodeId?: string;
   page: number;
   setPage: React.Dispatch<React.SetStateAction<number>>;
-  isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
 
 const CustomPaginatedList = ({
+  children,
+  isOnlyShowColumnsWithLineageFilterActive,
   items,
-  filteredColumns,
   nodeId,
   page,
   setPage,
-  isOnlyShowColumnsWithLineageFilterActive,
 }: CustomPaginatedListProps) => {
+  const allColumnsInCurrentNode = Object.values(children ?? {});
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
     useLineageProvider();
@@ -93,8 +94,10 @@ const CustomPaginatedList = ({
 
   const currentNodeAllPagesItems = useMemo(
     () =>
-      filteredColumns.flatMap((item) => getAllNestedChildrenInFlatArray(item)),
-    [filteredColumns, getAllNestedChildrenInFlatArray]
+      allColumnsInCurrentNode.flatMap((item) =>
+        getAllNestedChildrenInFlatArray(item)
+      ),
+    [allColumnsInCurrentNode, getAllNestedChildrenInFlatArray]
   );
 
   const {
@@ -129,7 +132,7 @@ const CustomPaginatedList = ({
       }
     });
 
-    const currentNodeCurrentPageItems = filteredColumns
+    const currentNodeCurrentPageItems = allColumnsInCurrentNode
       .slice(startIdx, endIdx)
       .filter(Boolean)
       .flatMap((item) => getAllNestedChildrenInFlatArray(item));
@@ -140,12 +143,32 @@ const CustomPaginatedList = ({
       outsideCurrentPageItems,
       currentNodeCurrentPageItems,
     };
-  }, [items, page, filteredColumns, getAllNestedChildrenInFlatArray]);
+  }, [
+    items,
+    page,
+    allColumnsInCurrentNode,
+    getAllNestedChildrenInFlatArray,
+    isOnlyShowColumnsWithLineageFilterActive,
+  ]);
 
+  /**
+   * This updates `columnsInCurrentPages` object for current node
+   *
+   * When page or filter is changed, this effect is called
+   * When filter is activated
+   *  - entry for nodeid is updated with `currentNodeAllPagesItems`
+   *  - `currentNodeAllPagesItems` is updated using `filteredColumns`
+   *  - `filteredColumns` is updated to only include columns having lineage
+   * When filter is deactivated
+   *  - entry is updated with `currentNodeCurrentPageItems`.
+   *  - `currentNodeCurrentPageItems` is updated using `filteredColumns`
+   *  - `filteredColumns` is updated to include all columns of current node
+   */
   useEffect(() => {
     setColumnsInCurrentPages((prev) => {
       const updated = { ...prev };
       if (nodeId) {
+        console.log({ currentNodeCurrentPageItems });
         updated[nodeId] = isOnlyShowColumnsWithLineageFilterActive
           ? currentNodeAllPagesItems
           : currentNodeCurrentPageItems;
@@ -307,15 +330,17 @@ const NodeChildren = ({
 
       if (value.trim() === '') {
         // If search value is empty, show all columns
-        const filterColumns = Object.values(children ?? {});
-        setFilteredColumns(filterColumns);
+        const allColumnsInCurrentNode = Object.values(children ?? {});
+        setFilteredColumns(allColumnsInCurrentNode);
         setShowAllColumns(false);
       } else {
         // Filter columns based on search value
-        const filtered = Object.values(children ?? {}).filter((column) =>
+        const filteredColumnsInCurrentNode = Object.values(
+          children ?? {}
+        ).filter((column) =>
           getEntityName(column).toLowerCase().includes(value.toLowerCase())
         );
-        setFilteredColumns(filtered);
+        setFilteredColumns(filteredColumnsInCurrentNode);
         setShowAllColumns(true);
       }
     },
@@ -344,11 +369,30 @@ const NodeChildren = ({
     ]
   );
 
+  /**
+   * This updates `filteredColumns` with `columnsHavingLineageInCurrentNode` when filter is activated
+   * or with `children` when filter is deactivated.
+   * `columnsHavingLineageInCurrentNode` is created using `allColumnsInCurrentNode`
+   * `allColumnsInCurrentNode` is created using `children`
+   */
   useEffect(() => {
-    if (!isEmpty(children) && !isOnlyShowColumnsWithLineageFilterActive) {
-      setFilteredColumns(children);
+    if (!isEmpty(children)) {
+      const allColumnsInCurrentNode = Object.values(children ?? {});
+      if (isOnlyShowColumnsWithLineageFilterActive) {
+        const columnsHavingLineageInCurrentNode =
+          allColumnsInCurrentNode.filter((item) =>
+            columnsHavingLineage.includes(item.fullyQualifiedName ?? '')
+          );
+        setFilteredColumns(columnsHavingLineageInCurrentNode);
+      } else {
+        setFilteredColumns(allColumnsInCurrentNode);
+      }
     }
-  }, [children, isOnlyShowColumnsWithLineageFilterActive]);
+  }, [
+    children,
+    isOnlyShowColumnsWithLineageFilterActive,
+    columnsHavingLineage,
+  ]);
 
   useEffect(() => {
     setShowAllColumns(expandAllColumns);
@@ -358,7 +402,13 @@ const NodeChildren = ({
     if (node.id) {
       updateNodeInternals?.(node.id);
     }
-  }, [selectedColumn, updateNodeInternals, tracedColumns, node.id]);
+  }, [
+    selectedColumn,
+    updateNodeInternals,
+    tracedColumns,
+    node.id,
+    isOnlyShowColumnsWithLineageFilterActive,
+  ]);
 
   const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
     setIsLoading(true);
@@ -380,15 +430,6 @@ const NodeChildren = ({
       setIsLoading(false);
     }
   }, [node, showDataObservabilitySummary, summary]);
-
-  useEffect(() => {
-    if (isOnlyShowColumnsWithLineageFilterActive) {
-      const columnsHavingLineageInThisNode = filteredColumns.filter((item) =>
-        columnsHavingLineage.includes(item.fullyQualifiedName ?? '')
-      );
-      setFilteredColumns(columnsHavingLineageInThisNode);
-    }
-  }, [isOnlyShowColumnsWithLineageFilterActive, columnsHavingLineage]);
 
   const renderRecord = useCallback(
     (record: Column) => {
@@ -557,14 +598,14 @@ const NodeChildren = ({
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
                   <CustomPaginatedList
-                    filteredColumns={filteredColumns}
+                    children={children}
+                    isOnlyShowColumnsWithLineageFilterActive={
+                      isOnlyShowColumnsWithLineageFilterActive
+                    }
                     items={renderedColumns}
                     nodeId={node.id}
                     page={page}
                     setPage={setPage}
-                    isOnlyShowColumnsWithLineageFilterActive={
-                      isOnlyShowColumnsWithLineageFilterActive
-                    }
                   />
                 </div>
               </section>
