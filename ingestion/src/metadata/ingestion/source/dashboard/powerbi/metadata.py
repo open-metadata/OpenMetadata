@@ -12,6 +12,7 @@
 
 import re
 import traceback
+from copy import deepcopy
 from typing import Any, Iterable, List, Optional, Union
 
 from pydantic import EmailStr
@@ -88,6 +89,7 @@ logger = ingestion_logger()
 OWNER_ACCESS_RIGHTS_KEYWORDS = ["owner", "write", "admin"]
 SNOWFLAKE_QUERY_EXPRESSION_KW = "Value.NativeQuery(Snowflake.Databases("
 DATABRICKS_QUERY_EXPRESSION_KW = "Value.NativeQuery(Databricks.Catalogs("
+MAX_PROJECT_FILTER_SIZE = 20
 
 
 class PowerbiSource(DashboardServiceSource):
@@ -155,64 +157,88 @@ class PowerbiSource(DashboardServiceSource):
                 )
             yield workspace
 
+    def _paginate_project_filter_pattern(self, filter_pattern):
+        """
+        paginate include filters if more then `20` filters
+        in single call
+        """
+        paginated_include_filters = [filter_pattern]
+        if filter_pattern.includes:
+            include_filters = [
+                filter_pattern.includes[i : i + MAX_PROJECT_FILTER_SIZE]
+                for i in range(0, len(filter_pattern.includes), MAX_PROJECT_FILTER_SIZE)
+            ]
+            paginated_include_filters = []
+            for include_filter in include_filters:
+                filter_pattern_copy = deepcopy(filter_pattern)
+                filter_pattern_copy.includes = include_filter
+                paginated_include_filters.append(filter_pattern_copy)
+        return paginated_include_filters
+
     def get_admin_workspace_data(self) -> Iterable[Optional[Group]]:
         """
         fetch all the workspace data
         """
         filter_pattern = self.source_config.projectFilterPattern
-        workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
-        if workspaces:
-            workspace_id_list = [workspace.id for workspace in workspaces]
+        paginated_filter_patterns = self._paginate_project_filter_pattern(
+            filter_pattern
+        )
+        for filter_pattern in paginated_filter_patterns:
+            workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
+            if workspaces:
+                workspace_id_list = [workspace.id for workspace in workspaces]
 
-            # Start the scan of the available workspaces for dashboard metadata
-            workspace_paginated_list = [
-                workspace_id_list[i : i + self.pagination_entity_per_page]
-                for i in range(
-                    0, len(workspace_id_list), self.pagination_entity_per_page
-                )
-            ]
-            count = 1
-            for workspace_ids_chunk in workspace_paginated_list:
-                logger.info(
-                    f"Scanning {count}/{len(workspace_paginated_list)} set of workspaces"
-                )
-                workspace_scan = self.client.api_client.initiate_workspace_scan(
-                    workspace_ids_chunk
-                )
-                if not workspace_scan:
-                    logger.error(
-                        f"Error initiating workspace scan for ids:{str(workspace_ids_chunk)}\n moving to next set of workspaces"
+                # Start the scan of the available workspaces for dashboard metadata
+                workspace_paginated_list = [
+                    workspace_id_list[i : i + self.pagination_entity_per_page]
+                    for i in range(
+                        0, len(workspace_id_list), self.pagination_entity_per_page
                     )
-                    count += 1
-                    continue
+                ]
+                count = 1
+                for workspace_ids_chunk in workspace_paginated_list:
+                    logger.info(
+                        f"Scanning {count}/{len(workspace_paginated_list)} set of workspaces"
+                    )
+                    workspace_scan = self.client.api_client.initiate_workspace_scan(
+                        workspace_ids_chunk
+                    )
+                    if not workspace_scan:
+                        logger.error(
+                            f"Error initiating workspace scan for ids:{str(workspace_ids_chunk)}\n moving to next set of workspaces"
+                        )
+                        count += 1
+                        continue
 
-                # Keep polling the scan status endpoint to check if scan is succeeded
-                workspace_scan_status = self.client.api_client.wait_for_scan_complete(
-                    scan_id=workspace_scan.id
-                )
-                if not workspace_scan_status:
-                    logger.error(
-                        f"Max poll hit to scan status for scan_id: {workspace_scan.id}, moving to next set of workspaces"
+                    # Keep polling the scan status endpoint to check if scan is succeeded
+                    workspace_scan_status = (
+                        self.client.api_client.wait_for_scan_complete(
+                            scan_id=workspace_scan.id
+                        )
                     )
-                    count += 1
-                    continue
+                    if not workspace_scan_status:
+                        logger.error(
+                            f"Max poll hit to scan status for scan_id: {workspace_scan.id}, moving to next set of workspaces"
+                        )
+                        count += 1
+                        continue
 
-                # Get scan result for successfull scan
-                response = self.client.api_client.fetch_workspace_scan_result(
-                    scan_id=workspace_scan.id
-                )
-                if not response:
-                    logger.error(
-                        f"Error getting workspace scan result for scan_id: {workspace_scan.id}"
+                    # Get scan result for successfull scan
+                    response = self.client.api_client.fetch_workspace_scan_result(
+                        scan_id=workspace_scan.id
                     )
+                    if not response:
+                        logger.error(
+                            f"Error getting workspace scan result for scan_id: {workspace_scan.id}"
+                        )
+                        count += 1
+                        continue
+                    for active_workspace in response.workspaces:
+                        if active_workspace.state == "Active":
+                            yield active_workspace
                     count += 1
-                    continue
-                for active_workspace in response.workspaces:
-                    if active_workspace.state == "Active":
-                        yield active_workspace
-                count += 1
-        else:
-            logger.error("Unable to fetch any PowerBI workspaces")
+            else:
+                logger.error("Unable to fetch any PowerBI workspaces")
 
     @classmethod
     def create(
