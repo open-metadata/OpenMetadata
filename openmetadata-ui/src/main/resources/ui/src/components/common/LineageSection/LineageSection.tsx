@@ -68,7 +68,9 @@ const LineageSection: React.FC<LineageSectionProps> = ({
         <Typography sx={textStyles}>
           {t('label.-with-colon', { text: t(`label.${type}`) })}
         </Typography>
-        <Typography sx={textStyles}>{count}</Typography>
+        <Typography data-testid={`${type}-count`} sx={textStyles}>
+          {count}
+        </Typography>
       </Stack>
     </Box>
   );
@@ -93,6 +95,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
 
   return (
     <Box
+      data-testid="lineage-section"
       sx={{
         paddingX: '14px',
         paddingBottom: 4,

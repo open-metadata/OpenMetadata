@@ -187,5 +187,17 @@ describe('LineageSection', () => {
       expect(upstreamSection).toBeInTheDocument();
       expect(downstreamSection).toBeInTheDocument();
     });
+
+    it('verifies count elements have proper data-testid attributes', () => {
+      render(<LineageSection downstreamCount={5} upstreamCount={10} />);
+
+      const upstreamCount = screen.getByTestId('upstream-count');
+      const downstreamCount = screen.getByTestId('downstream-count');
+
+      expect(upstreamCount).toBeInTheDocument();
+      expect(downstreamCount).toBeInTheDocument();
+      expect(upstreamCount).toHaveTextContent('10');
+      expect(downstreamCount).toHaveTextContent('5');
+    });
   });
 });

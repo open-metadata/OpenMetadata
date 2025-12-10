@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -22,9 +23,7 @@ export const openEntitySummaryPanel = async (
   await searchResponse;
 
   await page.getByTestId('searchBox').press('Enter');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page);
   await page.waitForLoadState('networkidle');
 
   const entityCard = page
