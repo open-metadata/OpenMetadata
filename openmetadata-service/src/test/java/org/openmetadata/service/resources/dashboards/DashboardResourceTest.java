@@ -822,8 +822,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     // Cleanup
     deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
-   
-   @Test
+
+  @Test
   void testDashboardWithOrphanedGlossaryTermReference_shouldNotFail(TestInfo test)
       throws IOException {
 
