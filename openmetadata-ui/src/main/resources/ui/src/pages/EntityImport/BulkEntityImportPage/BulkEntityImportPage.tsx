@@ -36,6 +36,7 @@ import { SOCKET_EVENTS } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { useGridEditController } from '../../../hooks/useGridEditController';
 import {
@@ -83,6 +84,7 @@ const BulkEntityImportPage = () => {
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { fqn } = useFqn();
   const [isValidating, setIsValidating] = useState(false);
+  const { entityRules } = useEntityRules(entityType);
 
   const translatedSteps = useMemo(
     () =>
@@ -181,14 +183,19 @@ const BulkEntityImportPage = () => {
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
         results.data as string[][],
         importedEntityType,
-        cellEditable
+        {
+          user: entityRules.canAddMultipleUserOwners,
+          team: entityRules.canAddMultipleTeamOwner,
+        },
+        cellEditable,
+        isBulkEdit
       );
       setDataSource(dataSource);
       setColumns(columns);
 
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
     },
-    [setDataSource, setColumns, handleActiveStepChange]
+    [isBulkEdit, entityRules, setDataSource, setColumns, handleActiveStepChange]
   );
 
   const handleLoadData = useCallback(
@@ -280,7 +287,12 @@ const BulkEntityImportPage = () => {
                 getEntityColumnsAndDataSourceFromCSV(
                   results.data as string[][],
                   importedEntityType,
-                  false
+                  {
+                    user: entityRules.canAddMultipleUserOwners,
+                    team: entityRules.canAddMultipleTeamOwner,
+                  },
+                  false,
+                  isBulkEdit
                 )
               );
             },
@@ -310,7 +322,12 @@ const BulkEntityImportPage = () => {
               getEntityColumnsAndDataSourceFromCSV(
                 results.data as string[][],
                 importedEntityType,
-                false
+                {
+                  user: entityRules.canAddMultipleUserOwners,
+                  team: entityRules.canAddMultipleTeamOwner,
+                },
+                false,
+                isBulkEdit
               )
             );
           },
@@ -323,6 +340,8 @@ const BulkEntityImportPage = () => {
       activeStepRef,
       entityType,
       fqn,
+      isBulkEdit,
+      entityRules,
       importedEntityType,
       handleResetImportJob,
       handleActiveStepChange,
@@ -535,7 +554,7 @@ const BulkEntityImportPage = () => {
                     ''
                   }
                   type={
-                    !isEmpty(activeAsyncImportJob.error) ? 'error' : 'success'
+                    isEmpty(activeAsyncImportJob.error) ? 'success' : 'error'
                   }
                 />
               )}
