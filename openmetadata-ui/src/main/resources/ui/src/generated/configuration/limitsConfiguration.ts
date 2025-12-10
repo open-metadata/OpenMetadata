@@ -15,17 +15,9 @@
  */
 export interface LimitsConfiguration {
     /**
-     * The start of this limit cycle.
-     */
-    billingCycleStart?: Date;
-    /**
      * Class Name for authorizer.
      */
     className?: string;
-    /**
-     * Collate platform credits
-     */
-    credits?: any;
     /**
      * Limits Enabled or Disabled.
      */

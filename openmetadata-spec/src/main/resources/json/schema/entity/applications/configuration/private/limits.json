@@ -25,12 +25,13 @@
     },
     "billingCycleStart": {
       "title": "Cycle Start",
-      "description": "The start of this limit cycle. DEPRECATED: Use central billingCycleStart from LimitsConfiguration in openmetadata.yaml",
+      "description": "The start of this limit cycle.",
       "$ref": "../../../../type/basic.json#/definitions/date"
     }
   },
   "additionalProperties": false,
   "required": [
-    "actions"
+    "actions",
+    "billingCycleStart"
   ]
 }

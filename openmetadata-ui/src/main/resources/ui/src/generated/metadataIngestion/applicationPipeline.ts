@@ -1008,10 +1008,9 @@ export interface AppLimitsConfig {
      */
     actions: { [key: string]: number };
     /**
-     * The start of this limit cycle. DEPRECATED: Use central billingCycleStart from
-     * LimitsConfiguration in openmetadata.yaml
+     * The start of this limit cycle.
      */
-    billingCycleStart?: Date;
+    billingCycleStart: Date;
 }
 
 /**
