@@ -86,7 +86,89 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
     return None
 
 
-search_cache = LRUCache(LRU_CACHE_SIZE)
+table_entity_search_cache = LRUCache(LRU_CACHE_SIZE)
+database_service_type_cache = LRUCache(LRU_CACHE_SIZE)
+
+
+@calculate_execution_time(context="GetDatabaseServiceType")
+def get_database_service_type(
+    metadata: OpenMetadata, service_name: str
+) -> Optional[str]:
+    """
+    Get the database service type (e.g., 'mysql', 'postgres', 'clickhouse').
+
+    Args:
+        metadata: OMeta client
+        service_name: service name
+
+    Returns:
+        The database service type or None if not found.
+    """
+    if service_name in database_service_type_cache:
+        return database_service_type_cache.get(service_name)
+
+    try:
+        # try ES search first
+        es_result_entities = metadata.es_search_from_fqn(
+            entity_type=DatabaseService,
+            fqn_search_string=service_name,
+        )
+
+        service: Optional[DatabaseService] = None
+        if es_result_entities:
+            service = es_result_entities[0] if es_result_entities else None
+
+        # try API search if ES is empty
+        if not service:
+            service = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
+
+        if service:
+            service_type = service.connection.config.type.value.lower()
+            logger.debug(
+                f"Service (name={service.name.root}) is of type '{service_type}'"
+            )
+
+            # cache the result
+            database_service_type_cache.put(service_name, service_type)
+            return service_type
+
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"Could not determine service type for service '{service_name}': {exc}"
+        )
+
+    return None
+
+
+def normalize_table_params_by_service(
+    metadata: OpenMetadata,
+    service_name: str,
+    database: Optional[str],
+    database_schema: Optional[str],
+) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Normalize database and schema parameters based on service type.
+
+    Certain database types require parameter normalization:
+    - ClickHouse: Uses database_schema as schema, sets database to None
+
+    Args:
+        metadata: OMeta client
+        service_name: service name
+        database: database name
+        database_schema: schema name
+
+    Returns:
+        Tuple of (normalized_database, normalized_schema)
+    """
+    conn_type = get_database_service_type(metadata, service_name)
+
+    # ClickHouse normalization
+    if conn_type == "clickhouse" and database:
+        return None, database_schema
+
+    return database, database_schema
 
 
 @calculate_execution_time(context="SearchTableEntities")
@@ -113,41 +195,26 @@ def search_table_entities(
     """
     if isinstance(service_names, str):
         service_names = [service_names]
+
     for service_name in service_names:
-        # Detect the connection type
-        try:
-            service: DatabaseService = metadata.get_by_name(
-                entity=DatabaseService, fqn=service_name
-            )
 
-            conn_type = service.connection.config.type.value.lower()
-            logger.debug(
-                f"Searching for connection type '{conn_type}' in service '{service.name}'"
-            )
+        # normalize database and schema parameters based on service type
+        normalized_db, normalized_schema = normalize_table_params_by_service(
+            metadata, service_name, database, database_schema
+        )
 
-        except Exception:
-            conn_type = None
-            logger.warning(
-                f"Could not determine connection type for service '{service_name}'"
-            )
-
-        # ClickHouse normalization
-        if conn_type == "clickhouse" and database:
-            logger.debug(
-                f"ClickHouse detected. Using database_schema='{database_schema}' as schema, table='{table}'"
-            )
-            database = None
-
-        search_tuple = (service_name, database, database_schema, table)
-        if search_tuple in search_cache:
-            result = search_cache.get(search_tuple)
+        search_tuple = (service_name, normalized_db, normalized_schema, table)
+        if search_tuple in table_entity_search_cache:
+            result = table_entity_search_cache.get(search_tuple)
             if result:
                 return result
+
         try:
             table_entities: Optional[List[Table]] = []
+
             # search on ES first
             fqn_search_string = build_es_fqn_search_string(
-                database, database_schema, service_name, table
+                normalized_db, normalized_schema, service_name, table
             )
             es_result_entities = metadata.es_search_from_fqn(
                 entity_type=Table,
@@ -161,8 +228,8 @@ def search_table_entities(
                     metadata,
                     entity_type=Table,
                     service_name=service_name,
-                    database_name=database,
-                    schema_name=database_schema,
+                    database_name=normalized_db,
+                    schema_name=normalized_schema,
                     table_name=table,
                     fetch_multiple_entities=True,
                     skip_es_search=True,
@@ -171,15 +238,18 @@ def search_table_entities(
                     table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
                     if table_entity:
                         table_entities.append(table_entity)
+
             # added the search tuple to the cache
-            search_cache.put(search_tuple, table_entities)
+            table_entity_search_cache.put(search_tuple, table_entities)
             if table_entities:
                 return table_entities
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Error searching for table entities for service [{service_name}]: {exc}"
             )
+
     return None
 
 
