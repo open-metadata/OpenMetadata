@@ -268,6 +268,7 @@ const NodeChildren = ({
     useUpdateNodeInternals,
     isCreatingEdge,
   } = useLineageProvider();
+  console.log({ columnsHavingLineage });
   const updateNodeInternals = useUpdateNodeInternals();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
@@ -326,12 +327,33 @@ const NodeChildren = ({
     [children]
   );
 
+  const hasLineageInNestedChildren = useCallback(
+    (column: EntityChildrenItem): boolean => {
+      if (columnsHavingLineage.includes(column.fullyQualifiedName ?? '')) {
+        return true;
+      }
+
+      if (
+        'children' in column &&
+        Array.isArray(column.children) &&
+        column.children.length > 0
+      ) {
+        return column.children.some((child) =>
+          hasLineageInNestedChildren(child)
+        );
+      }
+
+      return false;
+    },
+    [columnsHavingLineage]
+  );
+
   const currentNodeColumnsWithLineage = useMemo(
     () =>
       currentNodeAllColumns.filter((column) =>
-        columnsHavingLineage.includes(column.fullyQualifiedName ?? '')
+        hasLineageInNestedChildren(column)
       ),
-    [currentNodeAllColumns, columnsHavingLineage]
+    [currentNodeAllColumns, hasLineageInNestedChildren]
   );
 
   const handleSearchChange = useCallback(
