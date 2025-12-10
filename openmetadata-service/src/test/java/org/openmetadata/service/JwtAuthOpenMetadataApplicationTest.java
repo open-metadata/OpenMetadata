@@ -47,13 +47,12 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.eclipse.jetty.client.HttpClient;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.flywaydb.core.Flyway;
+import org.glassfish.jersey.apache.connector.ApacheClientProperties;
+import org.glassfish.jersey.apache.connector.ApacheConnectorProvider;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
-import org.glassfish.jersey.jetty.connector.JettyClientProperties;
-import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
-import org.glassfish.jersey.jetty.connector.JettyHttpClientSupplier;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -348,16 +347,19 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
   }
 
   private static void createClient() {
-    HttpClient httpClient = new HttpClient();
-    httpClient.setIdleTimeout(0);
+    // Use Apache HTTP client connector for Jetty 12.1 compatibility
+    // Configure connection pool to handle concurrent test requests
+    PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
+    connectionManager.setMaxTotal(200); // Max total connections
+    connectionManager.setDefaultMaxPerRoute(100); // Max connections per route
+
     ClientConfig config = new ClientConfig();
-    config.connectorProvider(new JettyConnectorProvider());
-    config.register(new JettyHttpClientSupplier(httpClient));
+    config.connectorProvider(new ApacheConnectorProvider());
+    config.property(ApacheClientProperties.CONNECTION_MANAGER, connectionManager);
     config.register(new JacksonFeature(APP.getObjectMapper()));
     config.property(ClientProperties.CONNECT_TIMEOUT, 0);
     config.property(ClientProperties.READ_TIMEOUT, 0);
     config.property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
-    config.property(JettyClientProperties.SYNC_LISTENER_RESPONSE_MAX_SIZE, 10 * 1024 * 1024);
     client = ClientBuilder.newClient(config);
   }
 
