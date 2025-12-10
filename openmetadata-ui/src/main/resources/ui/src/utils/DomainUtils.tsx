@@ -4,6 +4,7 @@
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
  *  http://www.apache.org/licenses/LICENSE-2.0
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -425,9 +426,7 @@ export const getDomainDetailTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.DOCUMENTATION}
-          name={
-            labelMap?.[EntityTabs.DOCUMENTATION] ?? t('label.documentation')
-          }
+          name={get(labelMap, EntityTabs.DOCUMENTATION, t('label.documentation'))}
         />
       ),
       key: EntityTabs.DOCUMENTATION,
@@ -442,10 +441,7 @@ export const getDomainDetailTabs = ({
                 count={subDomainsCount ?? 0}
                 id={EntityTabs.SUBDOMAINS}
                 isActive={activeTab === EntityTabs.SUBDOMAINS}
-                name={
-                  labelMap?.[EntityTabs.SUBDOMAINS] ??
-                  t('label.sub-domain-plural')
-                }
+                name={get(labelMap, EntityTabs.SUBDOMAINS, t('label.sub-domain-plural'))}
               />
             ),
             key: EntityTabs.SUBDOMAINS,
@@ -465,10 +461,7 @@ export const getDomainDetailTabs = ({
                 count={dataProductsCount ?? 0}
                 id={EntityTabs.DATA_PRODUCTS}
                 isActive={activeTab === EntityTabs.DATA_PRODUCTS}
-                name={
-                  labelMap?.[EntityTabs.DATA_PRODUCTS] ??
-                  t('label.data-product-plural')
-                }
+                name={get(labelMap, EntityTabs.DATA_PRODUCTS, t('label.data-product-plural'))}
               />
             ),
             key: EntityTabs.DATA_PRODUCTS,
@@ -487,10 +480,7 @@ export const getDomainDetailTabs = ({
                 count={feedCount?.totalCount ?? 0}
                 id={EntityTabs.ACTIVITY_FEED}
                 isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-                name={
-                  labelMap?.[EntityTabs.ACTIVITY_FEED] ??
-                  t('label.activity-feed-and-task-plural')
-                }
+                name={get(labelMap, EntityTabs.ACTIVITY_FEED, t('label.activity-feed-and-task-plural'))}
               />
             ),
             key: EntityTabs.ACTIVITY_FEED,
@@ -514,7 +504,7 @@ export const getDomainDetailTabs = ({
                 count={assetCount ?? 0}
                 id={EntityTabs.ASSETS}
                 isActive={activeTab === EntityTabs.ASSETS}
-                name={labelMap?.[EntityTabs.ASSETS] ?? t('label.asset-plural')}
+                name={get(labelMap, EntityTabs.ASSETS, t('label.asset-plural'))}
               />
             ),
             key: EntityTabs.ASSETS,
@@ -563,10 +553,7 @@ export const getDomainDetailTabs = ({
             label: (
               <TabsLabel
                 id={EntityTabs.CUSTOM_PROPERTIES}
-                name={
-                  labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ??
-                  t('label.custom-property-plural')
-                }
+                name={get(labelMap, EntityTabs.CUSTOM_PROPERTIES, t('label.custom-property-plural'))}
               />
             ),
             key: EntityTabs.CUSTOM_PROPERTIES,
