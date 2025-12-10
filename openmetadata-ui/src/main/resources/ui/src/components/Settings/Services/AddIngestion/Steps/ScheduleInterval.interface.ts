@@ -35,7 +35,7 @@ export type ScheduleIntervalProps<T> = {
   };
   topChildren?: ReactNode;
   showActionButtons?: boolean;
-  schedularOptions?: {
+  schedularOptions: {
     title: string;
     description: string;
     value: SchedularOptions;
