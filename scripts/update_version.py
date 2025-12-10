@@ -89,7 +89,7 @@ def update_openapi_version(args):
     """Updates OpenAPI version in OpenMetadataApplication.java."""
 
     version = args.version
-    file_path = "openmetadata-service/src/main/java/org/openmetadata/service/OpenMetadataApplication.java"
+    file_path = args.file_path
 
     logger.info(f"Updating OpenAPI version in {file_path} to {version}\n")
 
@@ -133,6 +133,13 @@ def main():
 
     # Update OpenAPI version in OpenMetadataApplication.java
     parser_uoav = subparsers.add_parser("update_openapi_version")
+    parser_uoav.add_argument(
+        "--file-path",
+        "-f",
+        type=str,
+        default="openmetadata-service/src/main/java/org/openmetadata/service/OpenMetadataApplication.java",
+        help="Java file to update (default: OpenMetadataApplication.java).",
+    )
     parser_uoav.add_argument("--version", "-v", type=str, help="Version to update to")
     parser_uoav.set_defaults(func=update_openapi_version)
 
