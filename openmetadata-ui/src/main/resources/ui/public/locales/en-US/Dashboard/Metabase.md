@@ -39,7 +39,4 @@ In order to create the lineage between the Dashboard sources and their tables of
 
 List of service path prefixes for lineage matching. Supported formats: 
 **DBServiceName**
-**DBServiceName.DatabaseName**
-**DBServiceName.DatabaseName.SchemaName**
-**DBServiceName.DatabaseName.SchemaName.TableName**
 $$
