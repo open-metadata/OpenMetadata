@@ -418,13 +418,16 @@ export const getDomainDetailTabs = ({
   feedCount,
   onFeedUpdate,
   onDeleteSubDomain,
+  labelMap,
 }: DomainDetailPageTabProps) => {
   return [
     {
       label: (
         <TabsLabel
           id={EntityTabs.DOCUMENTATION}
-          name={t('label.documentation')}
+          name={
+            labelMap?.[EntityTabs.DOCUMENTATION] ?? t('label.documentation')
+          }
         />
       ),
       key: EntityTabs.DOCUMENTATION,
@@ -439,7 +442,10 @@ export const getDomainDetailTabs = ({
                 count={subDomainsCount ?? 0}
                 id={EntityTabs.SUBDOMAINS}
                 isActive={activeTab === EntityTabs.SUBDOMAINS}
-                name={t('label.sub-domain-plural')}
+                name={
+                  labelMap?.[EntityTabs.SUBDOMAINS] ??
+                  t('label.sub-domain-plural')
+                }
               />
             ),
             key: EntityTabs.SUBDOMAINS,
@@ -459,7 +465,10 @@ export const getDomainDetailTabs = ({
                 count={dataProductsCount ?? 0}
                 id={EntityTabs.DATA_PRODUCTS}
                 isActive={activeTab === EntityTabs.DATA_PRODUCTS}
-                name={t('label.data-product-plural')}
+                name={
+                  labelMap?.[EntityTabs.DATA_PRODUCTS] ??
+                  t('label.data-product-plural')
+                }
               />
             ),
             key: EntityTabs.DATA_PRODUCTS,
@@ -478,7 +487,10 @@ export const getDomainDetailTabs = ({
                 count={feedCount?.totalCount ?? 0}
                 id={EntityTabs.ACTIVITY_FEED}
                 isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-                name={t('label.activity-feed-and-task-plural')}
+                name={
+                  labelMap?.[EntityTabs.ACTIVITY_FEED] ??
+                  t('label.activity-feed-and-task-plural')
+                }
               />
             ),
             key: EntityTabs.ACTIVITY_FEED,
@@ -502,7 +514,7 @@ export const getDomainDetailTabs = ({
                 count={assetCount ?? 0}
                 id={EntityTabs.ASSETS}
                 isActive={activeTab === EntityTabs.ASSETS}
-                name={t('label.asset-plural')}
+                name={labelMap?.[EntityTabs.ASSETS] ?? t('label.asset-plural')}
               />
             ),
             key: EntityTabs.ASSETS,
@@ -551,7 +563,10 @@ export const getDomainDetailTabs = ({
             label: (
               <TabsLabel
                 id={EntityTabs.CUSTOM_PROPERTIES}
-                name={t('label.custom-property-plural')}
+                name={
+                  labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ??
+                  t('label.custom-property-plural')
+                }
               />
             ),
             key: EntityTabs.CUSTOM_PROPERTIES,
