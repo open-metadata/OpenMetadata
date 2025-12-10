@@ -240,71 +240,77 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       applySearchFilter(filter, requestBuilder);
     }
 
-      return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
+    return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
 
-    @NotNull
-    private SearchResultListMapper doListWithOffset(int limit, int offset, String index, SearchSortFilter searchSortFilter, OpenSearchRequestBuilder requestBuilder) throws IOException {
-        requestBuilder.timeout("30s");
-        requestBuilder.from(offset);
-        requestBuilder.size(limit);
+  @NotNull
+  private SearchResultListMapper doListWithOffset(
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      OpenSearchRequestBuilder requestBuilder)
+      throws IOException {
+    requestBuilder.timeout("30s");
+    requestBuilder.from(offset);
+    requestBuilder.size(limit);
 
-        if (Boolean.TRUE.equals(searchSortFilter.isSorted())) {
-          String sortTypeCapitalized =
-              searchSortFilter.getSortType().substring(0, 1).toUpperCase()
-                  + searchSortFilter.getSortType().substring(1).toLowerCase();
-          SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
+    if (Boolean.TRUE.equals(searchSortFilter.isSorted())) {
+      String sortTypeCapitalized =
+          searchSortFilter.getSortType().substring(0, 1).toUpperCase()
+              + searchSortFilter.getSortType().substring(1).toLowerCase();
+      SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
 
-          if (Boolean.TRUE.equals(searchSortFilter.isNested())) {
-            String sortModeCapitalized =
-                searchSortFilter.getSortNestedMode().substring(0, 1).toUpperCase()
-                    + searchSortFilter.getSortNestedMode().substring(1).toLowerCase();
-            SortMode sortMode = SortMode.valueOf(sortModeCapitalized);
-            requestBuilder.sortWithNested(
-                searchSortFilter.getSortField(),
-                sortOrder,
-                "long",
-                searchSortFilter.getSortNestedPath(),
-                sortMode);
-          } else {
-            requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
-          }
-        }
-
-        try {
-          SearchRequest searchRequest = requestBuilder.build(index);
-          SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
-
-          List<Map<String, Object>> results = new ArrayList<>();
-          if (response.hits().hits() != null) {
-            response
-                .hits()
-                .hits()
-                .forEach(
-                    hit -> {
-                      if (hit.source() != null) {
-                        Map<String, Object> map = OsUtils.jsonDataToMap(hit.source());
-                        results.add(map);
-                      }
-                    });
-          }
-
-          long totalHits = 0;
-          if (response.hits().total() != null) {
-            totalHits = response.hits().total().value();
-          }
-
-          return new SearchResultListMapper(results, totalHits);
-        } catch (OpenSearchException e) {
-          if (e.status() == 404) {
-            throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
-          } else {
-            throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
-          }
-        }
+      if (Boolean.TRUE.equals(searchSortFilter.isNested())) {
+        String sortModeCapitalized =
+            searchSortFilter.getSortNestedMode().substring(0, 1).toUpperCase()
+                + searchSortFilter.getSortNestedMode().substring(1).toLowerCase();
+        SortMode sortMode = SortMode.valueOf(sortModeCapitalized);
+        requestBuilder.sortWithNested(
+            searchSortFilter.getSortField(),
+            sortOrder,
+            "long",
+            searchSortFilter.getSortNestedPath(),
+            sortMode);
+      } else {
+        requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
+      }
     }
 
-    @Override
+    try {
+      SearchRequest searchRequest = requestBuilder.build(index);
+      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+
+      List<Map<String, Object>> results = new ArrayList<>();
+      if (response.hits().hits() != null) {
+        response
+            .hits()
+            .hits()
+            .forEach(
+                hit -> {
+                  if (hit.source() != null) {
+                    Map<String, Object> map = OsUtils.jsonDataToMap(hit.source());
+                    results.add(map);
+                  }
+                });
+      }
+
+      long totalHits = 0;
+      if (response.hits().total() != null) {
+        totalHits = response.hits().total().value();
+      }
+
+      return new SearchResultListMapper(results, totalHits);
+    } catch (OpenSearchException e) {
+      if (e.status() == 404) {
+        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
+    }
+  }
+
+  @Override
   public SearchResultListMapper listWithOffset(
       String filter,
       int limit,
@@ -364,8 +370,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       }
     }
 
-        return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
-    }
+    return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
+  }
 
   @Override
   public SearchResultListMapper listWithDeepPagination(

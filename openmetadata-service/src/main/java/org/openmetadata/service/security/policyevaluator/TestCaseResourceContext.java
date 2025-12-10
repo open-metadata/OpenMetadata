@@ -78,9 +78,9 @@ public class TestCaseResourceContext implements ResourceContextInterface {
       if (entityLink != null) {
         entity = resolveEntityByEntityLink(entityLink);
       } else if (id != null) {
-          entity = resolveEntityById(id);
+        entity = resolveEntityById(id);
       } else if (testSuiteId != null) {
-          entity = resolveTestSuiteById(testSuiteId);
+        entity = resolveTestSuiteById(testSuiteId);
       } else if (entityFQN != null && entityType != null) {
         entity = resolveEntityFQN(entityFQN, entityType);
       } else {
@@ -90,10 +90,10 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     return entity;
   }
 
-    private static EntityInterface resolveTestSuiteById(UUID id) {
-        TestSuiteRepository dao = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-        return dao.get(null, id, dao.getFields("owners,tags,domains"), Include.ALL, true);
-    }
+  private static EntityInterface resolveTestSuiteById(UUID id) {
+    TestSuiteRepository dao = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    return dao.get(null, id, dao.getFields("owners,tags,domains"), Include.ALL, true);
+  }
 
   private static EntityInterface resolveEntityByEntityLink(EntityLink entityLink) {
     EntityRepository<? extends EntityInterface> entityRepository =
@@ -127,6 +127,6 @@ public class TestCaseResourceContext implements ResourceContextInterface {
 
   private static EntityInterface resolveEntityFQN(String entityFQN, String entityType) {
     EntityRepository<? extends EntityInterface> dao = Entity.getEntityRepository(entityType);
-      return dao.getByName(null, entityFQN, dao.getFields("owners,tags,domains"));
+    return dao.getByName(null, entityFQN, dao.getFields("owners,tags,domains"));
   }
 }

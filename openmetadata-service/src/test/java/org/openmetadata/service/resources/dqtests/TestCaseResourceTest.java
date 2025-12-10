@@ -202,6 +202,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   private static User USER_NO_PERMISSIONS;
   private static User USER_TABLE_OWNER;
   private static User CREATE_ALL_OPS_USER;
+  private static User USER_TEST_CASE_OWNER_VIEW;
 
   public TestCaseResourceTest() {
     super(
@@ -487,6 +488,40 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 .withName("user-test-case-all-ops")
                 .withEmail("user-test-case-all-ops@open-metadata.org")
                 .withRoles(List.of(ROLE_TEST_CASE_ALL_OPS.getId())),
+            ADMIN_AUTH_HEADERS);
+
+    // Create user with owner-based VIEW_BASIC permission for TEST_CASE
+    Rule testCaseOwnerViewRule =
+        new Rule()
+            .withName("AllowTestCaseOwnerView")
+            .withDescription("Allow VIEW_BASIC on TEST_CASE if user isOwner()")
+            .withEffect(Rule.Effect.ALLOW)
+            .withOperations(List.of(MetadataOperation.VIEW_BASIC))
+            .withResources(List.of(TEST_CASE))
+            .withCondition("isOwner()");
+
+    Policy policyTestCaseOwnerView =
+        policyResourceTest.createEntity(
+            new CreatePolicy()
+                .withName("Policy_TestCaseOwnerView")
+                .withDescription("Policy that allows VIEW_BASIC on TEST_CASE for owner")
+                .withRules(List.of(testCaseOwnerViewRule)),
+            ADMIN_AUTH_HEADERS);
+
+    Role roleTestCaseOwnerView =
+        roleResourceTest.createEntity(
+            new CreateRole()
+                .withName("Role_TestCaseOwnerView")
+                .withDescription("Role that references Policy_TestCaseOwnerView")
+                .withPolicies(List.of(policyTestCaseOwnerView.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    USER_TEST_CASE_OWNER_VIEW =
+        userResourceTest.createEntity(
+            new CreateUser()
+                .withName("user-test-case-owner-view")
+                .withEmail("user-test-case-owner-view@open-metadata.org")
+                .withRoles(List.of(roleTestCaseOwnerView.getId())),
             ADMIN_AUTH_HEADERS);
   }
 
@@ -5860,5 +5895,288 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     WebTarget target = getCollection().path("/logicalTestCases");
     org.openmetadata.service.util.TestUtils.put(
         target, createLogicalTestCases, TestSuite.class, OK, ADMIN_AUTH_HEADERS);
+  }
+
+  // ========================================
+  // Permission Tests for list and search/list endpoints
+  // ========================================
+
+  @Test
+  void test_listTestCases_permissions(TestInfo testInfo) throws IOException {
+    // Setup: Create test case
+    CreateTestCase create = createRequest(testInfo);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test 1: Admin can list test cases
+    Map<String, Object> queryParams = new HashMap<>();
+    ResultList<TestCase> testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    assertNotNull(testCases);
+
+    // Test 2: User with no permissions gets FORBIDDEN when listing test cases
+    assertResponse(
+        () -> getTestCases(queryParams, authHeaders(USER_NO_PERMISSIONS.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER_NO_PERMISSIONS.getName(), List.of(MetadataOperation.VIEW_BASIC)));
+  }
+
+  @Test
+  void test_listTestCases_withTestSuiteId_permissions(TestInfo testInfo) throws IOException {
+    // Setup: Create test case and get its test suite
+    CreateTestCase create = createRequest(testInfo);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    UUID testSuiteId = testCase.getTestSuite().getId();
+
+    // Test 1: Admin can list with testSuiteId
+    Map<String, Object> queryParams = new HashMap<>();
+    queryParams.put("testSuiteId", testSuiteId.toString());
+    ResultList<TestCase> testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    assertNotNull(testCases);
+
+    // Test 2: User with no permissions gets FORBIDDEN when listing with testSuiteId
+    // (requires both TEST_CASE:VIEW_BASIC and TEST_SUITE:VIEW_BASIC)
+    assertResponse(
+        () -> getTestCases(queryParams, authHeaders(USER_NO_PERMISSIONS.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER_NO_PERMISSIONS.getName(), List.of(MetadataOperation.VIEW_BASIC)));
+  }
+
+  @Test
+  void test_listTestCases_withEntityLink_permissions(TestInfo testInfo) throws IOException {
+    // Setup: Create test case
+    CreateTestCase create = createRequest(testInfo);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test 1: Admin can list with entityLink
+    Map<String, Object> queryParams = new HashMap<>();
+    queryParams.put("entityLink", TABLE_LINK);
+    ResultList<TestCase> testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    assertNotNull(testCases);
+
+    // Test 2: User with no permissions gets FORBIDDEN when listing with entityLink
+    // (requires both TEST_CASE:VIEW_BASIC and TABLE:VIEW_TESTS)
+    assertResponse(
+        () -> getTestCases(queryParams, authHeaders(USER_NO_PERMISSIONS.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER_NO_PERMISSIONS.getName(), List.of(MetadataOperation.VIEW_BASIC)));
+  }
+
+  @Test
+  void test_listTestCases_withEntityFQN_permissions(TestInfo testInfo) throws IOException {
+    // Setup: Create test case
+    CreateTestCase create = createRequest(testInfo);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test 1: Admin can list with entityFQN
+    Map<String, Object> queryParams = new HashMap<>();
+    queryParams.put("entityFQN", TEST_TABLE1.getFullyQualifiedName());
+    ResultList<TestCase> testCases = getTestCases(queryParams, ADMIN_AUTH_HEADERS);
+    assertNotNull(testCases);
+
+    // Test 2: User with no permissions gets FORBIDDEN when listing with entityFQN
+    // (requires both TEST_CASE:VIEW_BASIC and TABLE:VIEW_TESTS)
+    assertResponse(
+        () -> getTestCases(queryParams, authHeaders(USER_NO_PERMISSIONS.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER_NO_PERMISSIONS.getName(), List.of(MetadataOperation.VIEW_BASIC)));
+  }
+
+  @Test
+  void test_listTestCasesFromSearch_permissions(TestInfo testInfo) throws IOException {
+    // Setup: Create test case and wait for indexing
+    CreateTestCase create = createRequest(testInfo);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    Awaitility.await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(60, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              Map<String, String> queryParams = new HashMap<>();
+              ResultList<TestCase> searchResults =
+                  listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+              assertNotNull(searchResults);
+              assertFalse(searchResults.getData().isEmpty());
+            });
+
+    // Test 1: Admin can list test cases from search
+    Map<String, String> queryParams = new HashMap<>();
+    ResultList<TestCase> testCases =
+        listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(testCases);
+
+    // Test 2: User with no permissions gets FORBIDDEN when listing test cases from search
+    assertResponse(
+        () ->
+            listTestCasesFromSearch(queryParams, 10, 0, authHeaders(USER_NO_PERMISSIONS.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER_NO_PERMISSIONS.getName(), List.of(MetadataOperation.VIEW_BASIC)));
+  }
+
+  @Test
+  void test_listTestCasesFromSearch_withTestSuiteId_permissions(TestInfo testInfo)
+      throws IOException {
+    // Setup: Create test case and wait for indexing
+    CreateTestCase create = createRequest(testInfo);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    UUID testSuiteId = testCase.getTestSuite().getId();
+
+    Awaitility.await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(60, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              Map<String, String> queryParams = new HashMap<>();
+              queryParams.put("testSuiteId", testSuiteId.toString());
+              ResultList<TestCase> searchResults =
+                  listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+              assertNotNull(searchResults);
+            });
+
+    // Test 1: Admin can list with testSuiteId
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("testSuiteId", testSuiteId.toString());
+    ResultList<TestCase> testCases =
+        listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(testCases);
+
+    // Test 2: User with no permissions gets FORBIDDEN when listing with testSuiteId
+    // (requires both TEST_CASE:VIEW_BASIC and TEST_SUITE:VIEW_BASIC)
+    assertResponse(
+        () ->
+            listTestCasesFromSearch(queryParams, 10, 0, authHeaders(USER_NO_PERMISSIONS.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER_NO_PERMISSIONS.getName(), List.of(MetadataOperation.VIEW_BASIC)));
+  }
+
+  @Test
+  void test_listTestCasesFromSearch_withEntityLink_permissions(TestInfo testInfo)
+      throws IOException {
+    // Setup: Create test case and wait for indexing
+    CreateTestCase create = createRequest(testInfo);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    Awaitility.await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(60, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              Map<String, String> queryParams = new HashMap<>();
+              queryParams.put("entityLink", TABLE_LINK);
+              ResultList<TestCase> searchResults =
+                  listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+              assertNotNull(searchResults);
+            });
+
+    // Test 1: Admin can list with entityLink
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("entityLink", TABLE_LINK);
+    ResultList<TestCase> testCases =
+        listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(testCases);
+
+    // Test 2: User with no permissions gets FORBIDDEN when listing with entityLink
+    // (requires both TEST_CASE:VIEW_BASIC and TABLE:VIEW_TESTS)
+    assertResponse(
+        () ->
+            listTestCasesFromSearch(queryParams, 10, 0, authHeaders(USER_NO_PERMISSIONS.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(USER_NO_PERMISSIONS.getName(), List.of(MetadataOperation.VIEW_BASIC)));
+  }
+
+  @Test
+  void test_listTestCasesFromSearch_ownerOnlySeesOwnedTestCases(TestInfo testInfo)
+      throws IOException {
+    // Setup: Create a unique table for this test to avoid conflicts with other tests
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withName("ownerPermTestTable_" + UUID.randomUUID())
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName(C1)
+                        .withDisplayName("c1")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(10)));
+    Table testTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+    String tableLink = String.format("<#E::table::%s>", testTable.getFullyQualifiedName());
+
+    // Create a test case owned by USER_TEST_CASE_OWNER_VIEW
+    EntityReference ownerRef =
+        new EntityReference()
+            .withId(USER_TEST_CASE_OWNER_VIEW.getId())
+            .withType(Entity.USER)
+            .withName(USER_TEST_CASE_OWNER_VIEW.getName());
+
+    CreateTestCase createOwned =
+        new CreateTestCase()
+            .withName("OwnedTestCase_" + UUID.randomUUID())
+            .withDescription("Test case owned by USER_TEST_CASE_OWNER_VIEW")
+            .withEntityLink(tableLink)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withOwners(List.of(ownerRef));
+    TestCase ownedTestCase = createEntity(createOwned, ADMIN_AUTH_HEADERS);
+
+    // Create a test case owned by a different user (ADMIN)
+    CreateTestCase createNotOwned =
+        new CreateTestCase()
+            .withName("NotOwnedTestCase_" + UUID.randomUUID())
+            .withDescription("Test case owned by someone else")
+            .withEntityLink(tableLink)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withOwners(List.of(USER1_REF));
+    TestCase notOwnedTestCase = createEntity(createNotOwned, ADMIN_AUTH_HEADERS);
+
+    // Wait for indexing
+    Awaitility.await()
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(60, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              Map<String, String> queryParams = new HashMap<>();
+              queryParams.put("entityLink", tableLink);
+              ResultList<TestCase> searchResults =
+                  listTestCasesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+              assertNotNull(searchResults);
+              assertTrue(
+                  searchResults.getData().size() >= 2,
+                  "Expected at least 2 test cases to be indexed");
+            });
+
+    // Test 1: Admin can see all test cases
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("entityLink", tableLink);
+    ResultList<TestCase> adminResults =
+        listTestCasesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(adminResults);
+    assertTrue(adminResults.getData().size() >= 2, "Admin should see at least 2 test cases");
+
+    // Verify admin can see both test cases
+    Set<UUID> adminTestCaseIds =
+        adminResults.getData().stream().map(TestCase::getId).collect(Collectors.toSet());
+    assertTrue(
+        adminTestCaseIds.contains(ownedTestCase.getId()), "Admin should see the owned test case");
+    assertTrue(
+        adminTestCaseIds.contains(notOwnedTestCase.getId()),
+        "Admin should see the not owned test case");
+
+    // Test 2: USER_TEST_CASE_OWNER_VIEW should only see the test case they own
+    ResultList<TestCase> ownerResults =
+        listTestCasesFromSearch(
+            queryParams, 100, 0, authHeaders(USER_TEST_CASE_OWNER_VIEW.getName()));
+    assertNotNull(ownerResults);
+
+    // Verify that the owner only sees the test case they own
+    Set<UUID> ownerTestCaseIds =
+        ownerResults.getData().stream().map(TestCase::getId).collect(Collectors.toSet());
+
+    assertTrue(
+        ownerTestCaseIds.contains(ownedTestCase.getId()),
+        "Owner should see the test case they own");
+    assertFalse(
+        ownerTestCaseIds.contains(notOwnedTestCase.getId()),
+        "Owner should NOT see the test case they don't own");
   }
 }

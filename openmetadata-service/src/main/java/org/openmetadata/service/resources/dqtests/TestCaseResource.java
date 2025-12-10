@@ -233,38 +233,37 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             .addQueryParam("createdBy", createdBy);
     List<AuthRequest> authRequests = new ArrayList<>();
     ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().build();
-    OperationContext testCaseOperationContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_BASIC);
+    OperationContext testCaseOperationContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_BASIC);
     authRequests.add(new AuthRequest(testCaseOperationContext, testCaseRC));
 
     if (!nullOrEmpty(entityLink)) {
       ResourceContextInterface tableRC = getResourceContext(entityLink, filter);
-      OperationContext tableOperationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-        authRequests.add(new AuthRequest(tableOperationContext, tableRC));
+      OperationContext tableOperationContext =
+          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+      authRequests.add(new AuthRequest(tableOperationContext, tableRC));
     }
     if (!nullOrEmpty(entityFQN)) {
-        // Hardcode to TABLE entity since tests are only defined on tables and columns for now
-        // TODO: Make this dynamic when tests can be defined on other entity types
-      ResourceContextInterface entityRC = TestCaseResourceContext.builder().entityFQN(entityFQN).entityType(Entity.TABLE).build();
-      OperationContext operationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-        authRequests.add(new AuthRequest(operationContext, entityRC));
+      // Hardcode to TABLE entity since tests are only defined on tables and columns for now
+      // TODO: Make this dynamic when tests can be defined on other entity types
+      ResourceContextInterface entityRC =
+          TestCaseResourceContext.builder().entityFQN(entityFQN).entityType(Entity.TABLE).build();
+      OperationContext operationContext =
+          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+      authRequests.add(new AuthRequest(operationContext, entityRC));
     }
     if (!nullOrEmpty(testSuiteId)) {
-        ResourceContextInterface testSuiteRC = TestCaseResourceContext.builder().testSuiteId(testSuiteId).build();
-        OperationContext operationContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.VIEW_BASIC);
-        authRequests.add(new AuthRequest(operationContext, testSuiteRC));
+      ResourceContextInterface testSuiteRC =
+          TestCaseResourceContext.builder().testSuiteId(testSuiteId).build();
+      OperationContext operationContext =
+          new OperationContext(Entity.TEST_SUITE, MetadataOperation.VIEW_BASIC);
+      authRequests.add(new AuthRequest(operationContext, testSuiteRC));
     }
     Fields fields = getFields(fieldsParam);
 
     ResultList<TestCase> tests =
         super.listInternal(
-            uriInfo,
-            securityContext,
-            fields,
-            filter,
-            limitParam,
-            before,
-            after,
-            authRequests);
+            uriInfo, securityContext, fields, filter, limitParam, before, after, authRequests);
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
   }
 
@@ -1432,23 +1431,27 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       throws IOException {
     List<AuthRequest> authRequests = new ArrayList<>();
     ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().build();
-    OperationContext testCaseOpContext = new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_BASIC);
+    OperationContext testCaseOpContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_BASIC);
     authRequests.add(new AuthRequest(testCaseOpContext, testCaseRC));
     if (testSuiteId != null) {
-        ResourceContextInterface testSuiteRC = TestCaseResourceContext.builder().testSuiteId(testSuiteId).build();
-        OperationContext testSuiteOpContext = new OperationContext(Entity.TEST_SUITE, MetadataOperation.VIEW_BASIC);
-        authRequests.add(new AuthRequest(testSuiteOpContext, testSuiteRC));
+      ResourceContextInterface testSuiteRC =
+          TestCaseResourceContext.builder().testSuiteId(testSuiteId).build();
+      OperationContext testSuiteOpContext =
+          new OperationContext(Entity.TEST_SUITE, MetadataOperation.VIEW_BASIC);
+      authRequests.add(new AuthRequest(testSuiteOpContext, testSuiteRC));
     }
 
     if (!nullOrEmpty(entityLink)) {
       ResourceContextInterface tableRC = getResourceContext(entityLink, searchListFilter);
-      OperationContext tableOperationContext = new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+      OperationContext tableOperationContext =
+          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
       authRequests.add(new AuthRequest(tableOperationContext, tableRC));
     }
     Fields fields = getFields(fieldsParam);
 
     ResultList<TestCase> tests =
-         super.listInternalFromSearch(
+        super.listInternalFromSearch(
             uriInfo,
             securityContext,
             fields,

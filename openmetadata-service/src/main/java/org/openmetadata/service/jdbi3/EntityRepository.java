@@ -1882,7 +1882,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (limit > 0) {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString, subjectContext);
+              searchListFilter,
+              limit,
+              offset,
+              entityType,
+              searchSortFilter,
+              q,
+              queryString,
+              subjectContext);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
         T entity = JsonUtils.readOrConvertValueLenient(json, entityClass);
@@ -1892,7 +1899,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString, subjectContext);
+              searchListFilter,
+              limit,
+              offset,
+              entityType,
+              searchSortFilter,
+              q,
+              queryString,
+              subjectContext);
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, total.intValue());
     }

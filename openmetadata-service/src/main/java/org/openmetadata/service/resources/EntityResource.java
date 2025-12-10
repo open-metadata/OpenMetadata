@@ -193,30 +193,30 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return addHref(uriInfo, resultList);
   }
 
-    public ResultList<T> listInternal(
-            UriInfo uriInfo,
-            SecurityContext securityContext,
-            Fields fields,
-            ListFilter filter,
-            int limitParam,
-            String before,
-            String after,
-            List<AuthRequest> authRequests) {
-        RestUtil.validateCursors(before, after);
-        authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+  public ResultList<T> listInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Fields fields,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after,
+      List<AuthRequest> authRequests) {
+    RestUtil.validateCursors(before, after);
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
-        // Add Domain Filter
-        EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
+    // Add Domain Filter
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
-        // List
-        ResultList<T> resultList;
-        if (before != null) { // Reverse paging
-            resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
-        } else { // Forward paging or first page
-            resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-        }
-        return addHref(uriInfo, resultList);
+    // List
+    ResultList<T> resultList;
+    if (before != null) { // Reverse paging
+      resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
+    } else { // Forward paging or first page
+      resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
     }
+    return addHref(uriInfo, resultList);
+  }
 
   public ResultList<T> listInternalFromSearch(
       UriInfo uriInfo,
@@ -232,7 +232,15 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       throws IOException {
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
     return repository.listFromSearchWithOffset(
-        uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q, queryString, securityContext);
+        uriInfo,
+        fields,
+        searchListFilter,
+        limit,
+        offset,
+        searchSortFilter,
+        q,
+        queryString,
+        securityContext);
   }
 
   public T getInternal(
