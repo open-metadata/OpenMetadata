@@ -110,15 +110,4 @@ public interface IndexManagementClient {
    * @return set of indices that start with the prefix
    */
   Set<String> listIndicesByPrefix(String prefix);
-
-  /**
-   * Wait for an index to become ready (shards allocated and available for queries).
-   * This method polls the index health until it reaches at least YELLOW status
-   * or the timeout is reached.
-   *
-   * @param indexName the name of the index to wait for
-   * @param timeoutSeconds the maximum time to wait in seconds
-   * @return true if the index became ready, false if timeout was reached
-   */
-  boolean waitForIndexReady(String indexName, int timeoutSeconds);
 }
