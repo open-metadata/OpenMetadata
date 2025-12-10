@@ -120,5 +120,5 @@ export const AVAILABLE_ICONS: IconDefinition[] = [
   { name: 'Rss01', component: Rss01, category: 'icons' },
   { name: 'Browser', component: Browser, category: 'icons' },
   { name: 'Calendar', component: Calendar, category: 'icons' },
-  { name: 'LayersThree01', component: Cube01, category: 'icons' },
+  { name: 'LayersThree01', component: LayersThree01, category: 'icons' },
 ];

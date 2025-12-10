@@ -237,15 +237,15 @@ class TagClassBase {
     } as Tag;
   }
   public getAutoClassificationComponent = (
-    isClassification: boolean
+    _isClassification: boolean
   ): React.ReactElement | null => {
     return null;
   };
 
   public getRecognizerTab = (
-    tagData: Tag,
-    activeTab: string,
-    t: (key: string) => string
+    _tagData: Tag,
+    _activeTab: string,
+    _t: (key: string) => string
   ): {
     label: React.ReactElement;
     key: string;
