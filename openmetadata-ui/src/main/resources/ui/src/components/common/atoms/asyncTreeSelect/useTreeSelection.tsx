@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { TreeNode, TreeSelectionState } from './types';
 
 interface UseTreeSelectionOptions<T> {
@@ -25,13 +25,14 @@ interface UseTreeSelectionOptions<T> {
 export const useTreeSelection = <T = unknown,>({
   multiple = false,
   cascadeSelection = false,
-  // defaultSelected = [], // TODO: Implement proper defaultSelected handling with Map
+  defaultSelected = [],
   treeData,
   onSelectionChange,
 }: UseTreeSelectionOptions<T>): TreeSelectionState<T> => {
   const [selectedNodes, setSelectedNodes] = useState<Map<string, TreeNode<T>>>(
     new Map()
   );
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const findNodeById = useCallback(
     (nodeId: string, nodes: TreeNode<T>[]): TreeNode<T> | null => {
@@ -51,6 +52,25 @@ export const useTreeSelection = <T = unknown,>({
     },
     []
   );
+
+  // Initialize selection from defaultSelected when treeData is available
+  useEffect(() => {
+    if (!isInitialized && defaultSelected.length > 0 && treeData.length > 0) {
+      const initialSelection = new Map<string, TreeNode<T>>();
+
+      defaultSelected.forEach((nodeId) => {
+        const node = findNodeById(nodeId, treeData);
+        if (node) {
+          initialSelection.set(nodeId, node);
+        }
+      });
+
+      if (initialSelection.size > 0) {
+        setSelectedNodes(initialSelection);
+        setIsInitialized(true);
+      }
+    }
+  }, [defaultSelected, treeData, findNodeById, isInitialized]);
 
   const getAllChildrenIds = useCallback((node: TreeNode<T>): string[] => {
     const ids: string[] = [node.id];

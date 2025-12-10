@@ -28,8 +28,9 @@ import { ChangeDescription } from '../generated/entity/type';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
 import { getEntityVersionByField } from './EntityVersionUtils';
 import { t } from './i18next/LocalUtil';
+import { renderIcon } from './IconUtils';
 import { getClassificationTagPath } from './RouterUtils';
-import { getDeleteIcon, getTagImageSrc } from './TagsUtils';
+import { getDeleteIcon } from './TagsUtils';
 
 export const getDeleteButtonData = (
   record: Tag,
@@ -101,14 +102,11 @@ export const getCommonColumns = (options?: {
       width: 200,
       render: (_, record) => (
         <div className="d-flex items-center gap-2">
-          {record.style?.iconURL && (
-            <img
-              data-testid="tag-icon"
-              height={16}
-              src={getTagImageSrc(record.style.iconURL)}
-              width={16}
-            />
-          )}
+          {record.style?.iconURL &&
+            renderIcon(record.style.iconURL, {
+              size: 18,
+              className: 'flex-shrink-0',
+            })}
           <Link
             className="m-b-0"
             data-testid={record.name}

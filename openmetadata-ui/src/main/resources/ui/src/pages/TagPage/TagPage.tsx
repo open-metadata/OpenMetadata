@@ -90,6 +90,7 @@ import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getEntityDeleteMessage, getFeedCounts } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { renderIcon } from '../../utils/IconUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -100,7 +101,6 @@ import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
   getTagAssetsQueryFilter,
-  getTagImageSrc,
 } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -606,17 +606,13 @@ const TagPage = () => {
   ]);
   const icon = useMemo(() => {
     if (tagItem?.style?.iconURL) {
-      const iconUrl = getTagImageSrc(tagItem.style.iconURL);
-
       return (
-        <img
-          alt={tagItem.name ?? t('label.tag')}
-          className="align-middle object-contain"
-          data-testid="icon"
-          height={36}
-          src={iconUrl}
-          width={32}
-        />
+        <div className="align-middle" data-testid="icon">
+          {renderIcon(tagItem.style.iconURL, {
+            size: 36,
+            className: 'object-contain',
+          })}
+        </div>
       );
     }
 

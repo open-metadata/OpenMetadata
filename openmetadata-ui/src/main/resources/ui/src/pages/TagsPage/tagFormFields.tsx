@@ -12,7 +12,6 @@
  */
 import { DEFAULT_TAG_ICON } from '../../components/common/IconPicker';
 import { MUI_NAME_FIELD_RULES } from '../../constants/Form.constants';
-import { EntityReference } from '../../generated/entity/type';
 import {
   FieldProp,
   FieldTypes,
@@ -120,10 +119,8 @@ export const getOwnerField = ({
 
 export const getDomainField = ({
   canAddMultipleDomains,
-  activeDomainEntityRef,
 }: {
   canAddMultipleDomains: boolean;
-  activeDomainEntityRef?: EntityReference;
 }): FieldProp => ({
   name: 'domains',
   id: 'root/domains',
@@ -134,12 +131,10 @@ export const getDomainField = ({
     'data-testid': 'domain-select',
     hasPermission: true,
     multiple: canAddMultipleDomains,
-    value: activeDomainEntityRef,
   },
   formItemProps: {
     valuePropName: 'value',
     trigger: 'onChange',
-    initialValue: activeDomainEntityRef,
   },
 });
 

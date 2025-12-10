@@ -20,7 +20,6 @@ import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { useDomainStore } from '../../hooks/useDomainStore';
 import { useEntityRules } from '../../hooks/useEntityRules';
 import { FieldProp } from '../../interface/FormUtils.interface';
 import { generateFormFields, getField } from '../../utils/formUtils';
@@ -56,18 +55,21 @@ const TagsForm = ({
     'domains',
     formRef
   );
+  const selectedOwners = Form.useWatch<
+    EntityReference | EntityReference[] | undefined
+  >('owners', formRef);
   const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
     'mutuallyExclusive',
     formRef
   );
-
-  const { activeDomainEntityRef } = useDomainStore();
 
   useEffect(() => {
     formRef?.setFieldsValue({
       ...initialValues,
       iconURL: initialValues?.style?.iconURL,
       color: initialValues?.style?.color,
+      owners: initialValues?.owners,
+      domains: initialValues?.domains,
     } as SubmitProps);
   }, [initialValues, formRef]);
 
@@ -130,9 +132,8 @@ const TagsForm = ({
     () =>
       getDomainField({
         canAddMultipleDomains: entityRules.canAddMultipleDomains,
-        activeDomainEntityRef,
       }),
-    [entityRules.canAddMultipleDomains, activeDomainEntityRef]
+    [entityRules.canAddMultipleDomains]
   );
 
   const formFields: FieldProp[] = useMemo(
@@ -182,12 +183,19 @@ const TagsForm = ({
     } else if (selectedDomain) {
       domains = [selectedDomain];
     }
+
+    let owners: EntityReference[] = [];
+    if (isArray(selectedOwners)) {
+      owners = selectedOwners;
+    } else if (selectedOwners) {
+      owners = [selectedOwners];
+    }
+
     try {
       const submitData = {
         ...data,
-        domains: domains
-          ? domains?.map((domain) => domain.fullyQualifiedName)
-          : undefined,
+        owners: owners?.length ? owners : undefined,
+        domains: domains?.length ? domains : undefined,
       };
       await onSubmit(submitData as SubmitProps);
       formRef.setFieldsValue(DEFAULT_FORM_VALUE);

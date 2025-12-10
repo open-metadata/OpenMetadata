@@ -20,6 +20,7 @@ import {
   ConflictResolution,
 } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
+import { EntityReference } from '../../generated/entity/type';
 
 export type DeleteTagDetailsType = {
   id: string;
@@ -48,7 +49,8 @@ export interface SubmitProps {
   mutuallyExclusive?: boolean;
   iconURL?: string;
   color?: string;
-  domains?: string[];
+  owners?: EntityReference[];
+  domains?: EntityReference[];
   autoClassificationConfig?: FormAutoClassificationConfig | null;
   autoClassificationEnabled?: boolean;
   autoClassificationPriority?: number;
