@@ -63,8 +63,6 @@ const CustomPaginatedList = ({
   setPage,
   isOnlyShowColumnsWithLineageFilterActive,
 }: CustomPaginatedListProps) => {
-  // console.log('rendering CustomPaginatedList');
-  const { columnsInCurrentPages } = useLineageProvider();
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
     useLineageProvider();
@@ -93,8 +91,12 @@ const CustomPaginatedList = ({
     []
   );
 
-  const currentNodeAllPagesItems = filteredColumns.flatMap((item) =>
-    getAllNestedChildrenInFlatArray(item)
+  const currentNodeAllPagesItems = useMemo(
+    () =>
+      filteredColumns.flatMap((item) =>
+        getAllNestedChildrenInFlatArray(item)
+      ),
+    [filteredColumns, getAllNestedChildrenInFlatArray]
   );
 
   const {
