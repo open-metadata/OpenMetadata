@@ -50,21 +50,15 @@ const test = base.extend<{
   userPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
-    const adminContext = await browser.newContext({
-      storageState: 'playwright/.auth/admin.json',
-    });
-    const adminPage = await adminContext.newPage();
+    const adminPage = await browser.newPage();
     await adminPage.goto('/');
     await use(adminPage);
-    await adminContext.close();
+    await adminPage.close();
   },
   userPage: async ({ browser }, use) => {
-    const userContext = await browser.newContext({
-      storageState: undefined,
-    });
-    const userPage = await userContext.newPage();
+    const userPage = await browser.newPage();
     await use(userPage);
-    await userContext.close();
+    await userPage.close();
   },
 });
 
@@ -468,7 +462,6 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
       await settingClick(adminPage, GlobalSettingOptions.PERSONA);
       await personaListResponse;
-      await adminPage.waitForLoadState('networkidle');
       await navigateToPersonaWithPagination(
         adminPage,
         persona1.responseData.fullyQualifiedName ?? persona1.responseData.name,

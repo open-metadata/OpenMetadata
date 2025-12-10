@@ -94,9 +94,11 @@ export const editTags = async (
     .locator('[data-testid="selectable-list"]')
     .scrollIntoViewIfNeeded();
 
-  const searchTagResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${tagName}*index=tag_search_index*`
-  );
+    const searchTagResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        tagName
+      )}*index=tag_search_index*`
+    );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
   await searchTagResponse;
@@ -305,7 +307,9 @@ export const verifyDeletedEntityNotVisible = async (
     `[data-testid="${searchBarTestId}"]`
   );
   const searchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${entityName}*index=${searchIndexMap[searchIndexType]}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(`index=${searchIndexMap[searchIndexType]}`)
   );
   await searchBar.fill(entityName);
   await searchResponse;

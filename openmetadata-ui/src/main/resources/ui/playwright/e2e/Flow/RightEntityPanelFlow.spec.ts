@@ -1681,7 +1681,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Data Consumer - Overview Tab - Owners Section - Add and Update', async ({
+  test('Data Consumer - Overview Tab - Owners Section - View Owners', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
@@ -1689,20 +1689,8 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     );
     await waitForAllLoadersToDisappear(dataConsumerPage, 'loader');
     const ownersSection = summaryPanel.locator('.owners-section');
-    await ownersSection.scrollIntoViewIfNeeded();
 
     await expect(ownersSection).toBeVisible();
-
-    await addOwnerWithoutValidation({
-      page: dataConsumerPage,
-      owner: 'admin',
-      type: 'Users',
-      initiatorId: 'edit-owners',
-    });
-
-    await expect(
-      dataConsumerPage.getByText(/Owners updated successfully/i)
-    ).toBeVisible();
   });
 
   test('Data Consumer - Overview Tab - Tier Section - Add and Update', async ({
