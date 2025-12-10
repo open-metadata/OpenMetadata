@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Popover, Radio, Space, Spin, Typography } from 'antd';
+import { Button, Card, Empty, Popover, Radio, Space, Spin, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -63,10 +63,13 @@ const Certification = ({
 
       const { data, paging: newPaging } = response;
 
+      // Filter out disabled certifications
+      const enabledData = data.filter((cert) => !cert.disabled);
+
       // Sort certifications with Gold, Silver, Bronze first (only for initial load)
       const sortedData =
         page === 1
-          ? [...data].sort((a, b) => {
+          ? [...enabledData].sort((a, b) => {
               const order: Record<string, number> = {
                 Gold: 0,
                 Silver: 1,
@@ -81,7 +84,7 @@ const Certification = ({
 
               return aOrder - bOrder;
             })
-          : data;
+          : enabledData;
 
       if (append) {
         setCertifications((prev) => [...prev, ...sortedData]);
@@ -126,6 +129,15 @@ const Certification = ({
   };
 
   const certificationCardData = useMemo(() => {
+    if (certifications.length === 0) {
+      return (
+        <Empty
+          description={t('message.no-data-available')}
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        />
+      );
+    }
+
     return (
       <div
         className="h-max-100 overflow-y-auto overflow-x-hidden"
@@ -177,7 +189,7 @@ const Certification = ({
         )}
       </div>
     );
-  }, [certifications, selectedCertification, hasContentLoading, handleScroll]);
+  }, [certifications, selectedCertification, hasContentLoading, handleScroll, t]);
 
   const handleCloseCertification = async () => {
     popoverRef.current?.close();

@@ -67,6 +67,7 @@ import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerByName } from '../../../rest/storageAPI';
+import { getTagByFqn } from '../../../rest/tagAPI';
 import {
   getDataAssetsHeaderInfo,
   isDataAssetsWithServiceField,
@@ -158,6 +159,7 @@ export const DataAssetsHeader = ({
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
+  const [isCertificationDisabled, setIsCertificationDisabled] = useState(false);
 
   const fetchDataContract = async (entityId: string) => {
     try {
@@ -588,6 +590,24 @@ export const DataAssetsHeader = ({
     }
   }, [dataAsset?.id]);
 
+  useEffect(() => {
+    const checkCertificationStatus = async () => {
+      const certification = (dataAsset as Table).certification;
+      if (certification?.tagLabel?.tagFQN) {
+        try {
+          const tag = await getTagByFqn(certification.tagLabel.tagFQN);
+          setIsCertificationDisabled(tag.disabled ?? false);
+        } catch {
+          setIsCertificationDisabled(false);
+        }
+      } else {
+        setIsCertificationDisabled(false);
+      }
+    };
+
+    checkCertificationStatus();
+  }, [(dataAsset as Table).certification?.tagLabel?.tagFQN]);
+
   return (
     <>
       <Row
@@ -880,6 +900,7 @@ export const DataAssetsHeader = ({
                           <CertificationTag
                             showName
                             certification={(dataAsset as Table).certification!}
+                            isDisabled={isCertificationDisabled}
                           />
                         ) : (
                           NO_DATA_PLACEHOLDER

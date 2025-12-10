@@ -13,6 +13,7 @@
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CertificationIcon } from '../../../assets/svg/ic-certification.svg';
 import { AssetCertification } from '../../../generated/entity/data/table';
@@ -24,10 +25,13 @@ import './certification-tag.less';
 const CertificationTag = ({
   certification,
   showName = false,
+  isDisabled = false,
 }: {
   certification: AssetCertification;
   showName?: boolean;
+  isDisabled?: boolean;
 }) => {
+  const { t } = useTranslation();
   const imageItem = useMemo(() => {
     if (certification.tagLabel.style?.iconURL) {
       const name = getEntityName(certification.tagLabel);
@@ -61,13 +65,16 @@ const CertificationTag = ({
         }
       : {};
 
+    const tooltipTitle = isDisabled
+      ? t('label.disabled')
+      : null
+
     return (
-      <Tooltip
-        title={getTagTooltip(name, certification.tagLabel.description)}
-        trigger="hover">
+      <Tooltip title={tooltipTitle} trigger="hover">
         <Link
           className={classNames('d-flex items-center', {
             'certification-tag-with-name  gap-1': showName,
+            'certification-tag-disabled': isDisabled,
           })}
           data-testid={`certification-${certification.tagLabel.tagFQN}`}
           style={tagStyle}
@@ -82,10 +89,16 @@ const CertificationTag = ({
               {name}
             </Typography.Text>
           )}
+          {isDisabled && (
+            <Typography.Text
+              className="text-xs text-grey-muted certification-disabled-badge"
+              data-testid="certification-disabled-badge">
+            </Typography.Text>
+          )}
         </Link>
       </Tooltip>
     );
-  }, [certification, imageItem]);
+  }, [certification, imageItem, isDisabled, t]);
 
   return certificationRender;
 };
