@@ -29,3 +29,17 @@ This parameter specifies the host and port of the Metabase instance. This should
 
 For example, you might set it to `https://org.metabase.com:3000`.
 $$
+
+$$section
+### Database Service Prefixes $(id="dbServicePrefixes")
+
+When processing Dashboards and Charts we can extract information on which tables are used to create them.
+
+In order to create the lineage between the Dashboard sources and their tables of origin, we need to know where to look for such tables.
+
+List of service path prefixes for lineage matching. Supported formats: 
+**DBServiceName**
+**DBServiceName.DatabaseName**
+**DBServiceName.DatabaseName.SchemaName**
+**DBServiceName.DatabaseName.SchemaName.TableName**
+$$
