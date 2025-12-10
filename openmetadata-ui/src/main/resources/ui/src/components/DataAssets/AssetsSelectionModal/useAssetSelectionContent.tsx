@@ -20,7 +20,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Button as MuiButton,
   Divider as MuiDivider,
   Typography as MuiTypography,
 } from '@mui/material';
@@ -169,7 +168,7 @@ export const useAssetSelectionContent = ({
         setIsLoading(false);
       }
     },
-    [setActiveFilter, items.length]
+    [setActiveFilter]
   );
 
   const fetchCurrentEntity = useCallback(async () => {
@@ -470,7 +469,7 @@ export const useAssetSelectionContent = ({
 
     setFilters(clearedData);
     setQuickFilterQuery(undefined);
-  }, [filters, setQuickFilterQuery, setFilters]);
+  }, [filters]);
 
   useEffect(() => {
     if (socket) {
@@ -564,10 +563,10 @@ export const useAssetSelectionContent = ({
       </Box>
 
       <Box sx={{ display: 'flex', gap: 2 }}>
-        <MuiButton data-testid="cancel-btn" onClick={onCancel}>
+        <Button data-testid="cancel-btn" onClick={onCancel}>
           {t('label.cancel')}
-        </MuiButton>
-        <MuiButton
+        </Button>
+        <Button
           data-testid="save-btn"
           disabled={
             !selectedItems?.size ||
@@ -583,7 +582,7 @@ export const useAssetSelectionContent = ({
           variant="contained"
           onClick={onSaveAction}>
           {t('label.save')}
-        </MuiButton>
+        </Button>
       </Box>
     </Box>
   );
