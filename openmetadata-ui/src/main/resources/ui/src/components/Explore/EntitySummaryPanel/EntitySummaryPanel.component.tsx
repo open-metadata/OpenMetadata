@@ -17,6 +17,7 @@ import { AxiosError } from 'axios';
 import { get } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { LineageData } from '../../../components/Lineage/Lineage.interface';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -24,7 +25,7 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
@@ -57,6 +58,7 @@ import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -67,6 +69,7 @@ import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
+import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import CustomPropertiesSection from './CustomPropertiesSection';
@@ -93,6 +96,7 @@ export default function EntitySummaryPanel({
   };
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { getEntityPermission } = usePermissionProvider();
   const [isPermissionLoading, setIsPermissionLoading] =
     useState<boolean>(false);
@@ -352,6 +356,16 @@ export default function EntitySummaryPanel({
     [updateEntityData]
   );
 
+  const handleLineageClick = useCallback(() => {
+    const fqn = entityDetails?.details?.fullyQualifiedName;
+    const type = entityDetails?.details?.entityType as EntityType;
+
+    if (fqn && type) {
+      const lineageUrl = getEntityDetailsPath(type, fqn, EntityTabs.LINEAGE);
+      navigate(lineageUrl);
+    }
+  }, [entityDetails, navigate]);
+
   useEffect(() => {
     if (id) {
       fetchResourcePermission(id);
@@ -371,8 +385,11 @@ export default function EntitySummaryPanel({
       fetchLineageData();
     } else if (activeTab === EntityRightPanelTab.OVERVIEW) {
       fetchEntityData();
+      if (entityType && ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
+        fetchLineageData();
+      }
     }
-  }, [activeTab, fetchEntityData, fetchEntityTypeDetail, fetchLineageData]);
+  }, [activeTab, fetchEntityData, fetchEntityTypeDetail, fetchLineageData, entityType]);
 
   const viewPermission = useMemo(
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
@@ -443,11 +460,14 @@ export default function EntitySummaryPanel({
         }
         entityType={type}
         highlights={highlights}
+        isLineageLoading={isLineageLoading}
+        lineageData={lineageData}
         panelPath={panelPath}
         onDataProductsUpdate={handleDataProductsUpdate}
         onDescriptionUpdate={handleDescriptionUpdate}
         onDomainUpdate={handleDomainUpdate}
         onGlossaryTermsUpdate={handleGlossaryTermsUpdate}
+        onLineageClick={handleLineageClick}
         onLinkClick={handleClosePanel}
         onOwnerUpdate={handleOwnerUpdate}
         onTagsUpdate={handleTagsUpdate}
@@ -467,6 +487,9 @@ export default function EntitySummaryPanel({
     handleDataProductsUpdate,
     handleDescriptionUpdate,
     handleGlossaryTermsUpdate,
+    handleLineageClick,
+    lineageData,
+    isLineageLoading,
   ]);
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),

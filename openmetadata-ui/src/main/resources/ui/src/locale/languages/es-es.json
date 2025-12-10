@@ -2396,6 +2396,7 @@
     "no-kpi": "Define indicadores clave de rendimiento para monitorear el impacto y tomar decisiones más inteligentes.",
     "no-kpi-available-add-new-one": "No hay KPIs disponibles. Haz clic en el botón 'Agregar KPI' para agregar uno.",
     "no-kpi-found": "No se encontró un KPI con el nombre {{name}}",
+    "no-lineage-available": "No se encontraron conexiones de lineage",
     "no-match-found": "No se encontraron coincidencias",
     "no-mentions": "No hay instancias en las que tú o tu equipo hayan sido mencionados en ninguna actividad",
     "no-notification-found": "No se encontraron notificaciones",
