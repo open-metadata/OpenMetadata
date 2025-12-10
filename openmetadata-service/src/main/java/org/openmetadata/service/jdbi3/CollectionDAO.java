@@ -8374,6 +8374,19 @@ public interface CollectionDAO {
     default String getTimeSeriesTableName() {
       return "workflow_instance_time_series";
     }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series SET json = JSON_SET(json, '$.variables.global_relatedEntity', :newEntityLink) "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.variables.global_relatedEntity')) = :oldEntityLink",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series SET json = jsonb_set(json, '{variables,global_relatedEntity}', to_jsonb(:newEntityLink::text)) "
+                + "WHERE json->'variables'->>'global_relatedEntity' = :oldEntityLink",
+        connectionType = POSTGRES)
+    void updateEntityLink(
+        @Bind("oldEntityLink") String oldEntityLink, @Bind("newEntityLink") String newEntityLink);
   }
 
   interface WorkflowInstanceStateTimeSeriesDAO extends EntityTimeSeriesDAO {

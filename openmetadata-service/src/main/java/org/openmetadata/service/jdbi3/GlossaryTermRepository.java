@@ -35,8 +35,8 @@ import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
-import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getId;
+import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 import static org.openmetadata.service.util.EntityUtil.stringMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
@@ -79,8 +79,10 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -972,6 +974,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     EntityLink newAbout = new EntityLink(GLOSSARY_TERM, updated.getFullyQualifiedName());
 
     daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), original.getId().toString());
+
+    WorkflowInstanceRepository workflowInstanceRepository =
+        (WorkflowInstanceRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+    workflowInstanceRepository.updateEntityLinks(about.getLinkString(), newAbout.getLinkString());
+
     List<EntityReference> childTerms =
         findTo(updated.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
 
@@ -1224,7 +1231,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       validateParent();
-      updateStatus(original, updated, consolidatingChanges);
       updateSynonyms(original, updated);
       updateReferences(original, updated);
       updateRelatedTerms(original, updated);
@@ -1239,25 +1245,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
      */
     @Transaction
     public void moveAndStore() {
-      updateChangeDescriptionForMove();
+      changeDescription = new ChangeDescription().withPreviousVersion(original.getVersion());
       // Now updated from previous/original to updated one
       validateParent();
       updateParent(original, updated); // Only update parent/glossary and FQN/relationships
       storeUpdate();
       postUpdate(original, updated);
-    }
-
-    private void updateChangeDescriptionForMove() {
-      ChangeDescription change = new ChangeDescription().withPreviousVersion(original.getVersion());
-      if (!Objects.equals(original.getParent(), updated.getParent())) {
-        fieldUpdated(change, "parent", original.getParent(), updated.getParent());
-      }
-      if (!Objects.equals(original.getGlossary(), updated.getGlossary())) {
-        fieldUpdated(change, "glossary", original.getGlossary(), updated.getGlossary());
-      }
-      updated.setIncrementalChangeDescription(change);
-      updated.setChangeDescription(change);
-      this.changeDescription = change;
     }
 
     private boolean validateIfTagsAreEqual(
@@ -1312,21 +1305,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         updatedTags.sort(compareTagLabel);
         applyTags(updatedTags, fqn);
       }
-    }
-
-    private void updateStatus(
-        GlossaryTerm origTerm, GlossaryTerm updatedTerm, boolean consolidatingChanges) {
-      if (origTerm.getEntityStatus() == updatedTerm.getEntityStatus()) {
-        return;
-      }
-      // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
-      if (!consolidatingChanges
-          && origTerm.getEntityStatus() == EntityStatus.IN_REVIEW
-          && (updatedTerm.getEntityStatus() == EntityStatus.APPROVED
-              || updatedTerm.getEntityStatus() == EntityStatus.REJECTED)) {
-        checkUpdatedByReviewer(origTerm, updatedTerm.getUpdatedBy());
-      }
-      recordChange("entityStatus", origTerm.getEntityStatus(), updatedTerm.getEntityStatus());
     }
 
     private void updateSynonyms(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
@@ -1692,6 +1670,26 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     updated.setUpdatedAt(System.currentTimeMillis());
     GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PUT);
     updater.moveAndStore();
+    if (updated.getChangeDescription() != null
+        && !isNullOrEmptyChangeDescription(updated.getChangeDescription())) {
+      try {
+        ChangeEvent changeEvent =
+            new ChangeEvent()
+                .withId(UUID.randomUUID())
+                .withEventType(EventType.ENTITY_UPDATED)
+                .withEntityType(entityType)
+                .withEntityId(updated.getId())
+                .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+                .withUserName(updated.getUpdatedBy())
+                .withPreviousVersion(original.getVersion())
+                .withCurrentVersion(updated.getVersion())
+                .withTimestamp(System.currentTimeMillis())
+                .withEntity(updated);
+        Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      } catch (Exception e) {
+        LOG.error("Failed to insert change event for async move operation", e);
+      }
+    }
     return updated;
   }
 
