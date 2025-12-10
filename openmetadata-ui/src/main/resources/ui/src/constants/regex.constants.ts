@@ -30,7 +30,7 @@ export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
 export const TEST_CASE_NAME_REGEX = /^((?!::)(?!")(?!>).)*$/;
 
 export const TAG_NAME_REGEX = /^[\p{L}\p{M}\w\- .&()]+$/u;
-export const TAG_NAME_LENGTH_REGEX = /^.{2,64}$/;
+export const NAME_LENGTH_REGEX = /^.{2,64}$/;
 
 export const passwordRegex =
   /^(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\d\s:])([^\s]){8,56}$/g;
