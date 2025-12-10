@@ -358,6 +358,7 @@ const GlossaryTermsV1 = ({
     assetPermissions,
     handleAssetSave,
     previewAsset,
+    handleAssetClick,
     onExtensionUpdate,
   ]);
 
