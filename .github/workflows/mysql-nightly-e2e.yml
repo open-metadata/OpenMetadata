@@ -95,7 +95,7 @@ jobs:
             npx playwright test \
               --project=chromium \
               --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/5
+              --shard=${CHROMIUM_SHARD}/5 \
               --workers=50%
           fi
 
