@@ -24,11 +24,11 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
+  ASSET_LIST_PAGE_SIZE_OPTIONS,
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_MEDIUM,
-  TABLE_ENTITY_PAGE_SIZE_OPTIONS,
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
@@ -709,7 +709,7 @@ const SchemaTable = () => {
       paging,
       pagingHandler: handleColumnsPageChange,
       onShowSizeChange: handlePageSizeChange,
-      pageSizeOptions: TABLE_ENTITY_PAGE_SIZE_OPTIONS,
+      pageSizeOptions: ASSET_LIST_PAGE_SIZE_OPTIONS,
     }),
     [
       currentPage,

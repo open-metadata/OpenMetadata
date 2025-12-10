@@ -17,8 +17,8 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  PAGE_SIZE_MEDIUM,
-  TABLE_ENTITY_PAGE_SIZE_OPTIONS,
+  ASSET_LIST_PAGE_SIZE_OPTIONS,
+  PAGE_SIZE_LARGE,
 } from '../../../../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
@@ -78,7 +78,7 @@ const ModelTab = () => {
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_MEDIUM);
+  } = usePaging(PAGE_SIZE_LARGE);
 
   const { data: dataModel, permissions } =
     useGenericContext<DashboardDataModel>();
@@ -270,7 +270,7 @@ const ModelTab = () => {
       paging,
       pagingHandler: handleColumnsPageChange,
       onShowSizeChange: handlePageSizeChange,
-      pageSizeOptions: TABLE_ENTITY_PAGE_SIZE_OPTIONS,
+      pageSizeOptions: ASSET_LIST_PAGE_SIZE_OPTIONS,
     }),
     [
       currentPage,

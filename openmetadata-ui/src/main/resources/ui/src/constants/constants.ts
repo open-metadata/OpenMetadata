@@ -56,17 +56,20 @@ export const PAGE_SIZE_XXLARGE = 500;
 export const ES_MAX_PAGE_SIZE = 10000;
 
 // Table and Data Model entity specific page size options (includes larger sizes)
-export const TABLE_ENTITY_PAGE_SIZE_OPTIONS = [
+export const ASSET_LIST_PAGE_SIZE_OPTIONS = [
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_XLARGE,
   PAGE_SIZE_XXLARGE,
 ];
-
-// Page size options for different contexts
-export const ASSET_LIST_PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100, 250, 500];
-export const CONTENT_LIST_PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100, 250, 500];
+export const CONTENT_LIST_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_XLARGE,
+  PAGE_SIZE_XXLARGE,
+];
 export const GLOBAL_PAGE_SIZE_OPTIONS = [10, 15, 25, 50];
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
