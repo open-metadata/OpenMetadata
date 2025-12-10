@@ -29,8 +29,6 @@ import {
 } from '../../generated/events/eventSubscription';
 import {
   mockExternalDestinationOptions,
-  mockNonTaskInternalDestinationOptions,
-  mockTaskInternalDestinationOptions,
   mockTypedEvent1,
   mockTypedEvent2,
   mockTypedEvent3,
@@ -228,18 +226,70 @@ describe('AlertsUtil tests', () => {
       'task'
     );
 
-    expect(resultTask).toHaveLength(2);
+    expect(resultTask).toHaveLength(3);
 
-    resultTask.map((result) =>
-      expect(
-        mockTaskInternalDestinationOptions.includes(
-          result.value as SubscriptionCategory
-        )
-      ).toBeTruthy()
+    const taskCategories = resultTask.map(
+      (result) => result.value as SubscriptionCategory
+    );
+
+    expect(taskCategories).toContain(SubscriptionCategory.Owners);
+    expect(taskCategories).toContain(SubscriptionCategory.Assignees);
+    expect(taskCategories).toContain(SubscriptionCategory.Mentions);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Followers);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Admins);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Users);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Teams);
+  });
+
+  it('getFilteredDestinationOptions should return correct internal options for "conversation" source', () => {
+    const resultConversation = getFilteredDestinationOptions(
+      DESTINATION_DROPDOWN_TABS.internal,
+      'conversation'
+    );
+
+    expect(resultConversation).toHaveLength(2);
+
+    const conversationCategories = resultConversation.map(
+      (result) => result.value as SubscriptionCategory
+    );
+
+    expect(conversationCategories).toContain(SubscriptionCategory.Owners);
+    expect(conversationCategories).toContain(SubscriptionCategory.Mentions);
+    expect(conversationCategories).not.toContain(
+      SubscriptionCategory.Followers
+    );
+    expect(conversationCategories).not.toContain(SubscriptionCategory.Admins);
+    expect(conversationCategories).not.toContain(SubscriptionCategory.Users);
+    expect(conversationCategories).not.toContain(SubscriptionCategory.Teams);
+    expect(conversationCategories).not.toContain(
+      SubscriptionCategory.Assignees
     );
   });
 
-  it('getFilteredDestinationOptions should return correct internal options for non "task" source', () => {
+  it('getFilteredDestinationOptions should return correct internal options for "announcement" source', () => {
+    const resultAnnouncement = getFilteredDestinationOptions(
+      DESTINATION_DROPDOWN_TABS.internal,
+      'announcement'
+    );
+
+    expect(resultAnnouncement).toHaveLength(6);
+
+    const announcementCategories = resultAnnouncement.map(
+      (result) => result.value as SubscriptionCategory
+    );
+
+    expect(announcementCategories).toContain(SubscriptionCategory.Owners);
+    expect(announcementCategories).toContain(SubscriptionCategory.Followers);
+    expect(announcementCategories).toContain(SubscriptionCategory.Admins);
+    expect(announcementCategories).toContain(SubscriptionCategory.Users);
+    expect(announcementCategories).toContain(SubscriptionCategory.Teams);
+    expect(announcementCategories).toContain(SubscriptionCategory.Mentions);
+    expect(announcementCategories).not.toContain(
+      SubscriptionCategory.Assignees
+    );
+  });
+
+  it('getFilteredDestinationOptions should return correct internal options for default/other sources', () => {
     const resultContainer = getFilteredDestinationOptions(
       DESTINATION_DROPDOWN_TABS.internal,
       'container'
@@ -252,16 +302,17 @@ describe('AlertsUtil tests', () => {
     [resultContainer, resultTestSuite].forEach((results) => {
       expect(results).toHaveLength(5);
 
-      results.map((result) =>
-        expect(
-          mockNonTaskInternalDestinationOptions.includes(
-            result.value as Exclude<
-              SubscriptionCategory,
-              SubscriptionCategory.External | SubscriptionCategory.Assignees
-            >
-          )
-        ).toBeTruthy()
+      const defaultCategories = results.map(
+        (result) => result.value as SubscriptionCategory
       );
+
+      expect(defaultCategories).toContain(SubscriptionCategory.Owners);
+      expect(defaultCategories).toContain(SubscriptionCategory.Followers);
+      expect(defaultCategories).toContain(SubscriptionCategory.Admins);
+      expect(defaultCategories).toContain(SubscriptionCategory.Users);
+      expect(defaultCategories).toContain(SubscriptionCategory.Teams);
+      expect(defaultCategories).not.toContain(SubscriptionCategory.Assignees);
+      expect(defaultCategories).not.toContain(SubscriptionCategory.Mentions);
     });
   });
 });
