@@ -21,12 +21,14 @@ query Query($jobId: BigInt!, $runId: BigInt) {
       database
       schema
       dependsOn
+      runGeneratedAt
     }
     seeds {
       uniqueId
       name
       schema
       database
+      runGeneratedAt
     }
     sources {
       uniqueId
