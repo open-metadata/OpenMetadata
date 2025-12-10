@@ -12,21 +12,21 @@
  */
 import { Typography, useTheme } from '@mui/material';
 import {
+  Typography as AntTypography,
   Button,
   Col,
   Row,
   Segmented,
   Table,
-  Typography as AntTypography,
 } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
+import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
+import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { FieldCard } from '../components/common/FieldCard';
 import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
 import Loader from '../components/common/Loader/Loader';
-import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
-import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
@@ -341,7 +341,7 @@ const SchemaFieldCardsV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
-  }, [entityType, fqn, searchText, fetchPaginatedColumns]);
+  }, [entityType, fqn, searchText]);
 
   const handleToggleExpand = useCallback((key: string) => {
     setExpandedRowKeys((prev) =>
@@ -633,7 +633,7 @@ const APICollectionEndpointsV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
-  }, [fetchEndpoints]);
+  }, [fqn]);
 
   if (loading || (isLoading && !hasInitialized)) {
     return (
@@ -726,7 +726,7 @@ const DatabaseSchemaTablesV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
-  }, [fetchPaginatedTables]);
+  }, [fqn]);
 
   const loadMoreBtn = useMemo(() => {
     // For now, we fetch all tables at once, so no load more button needed
