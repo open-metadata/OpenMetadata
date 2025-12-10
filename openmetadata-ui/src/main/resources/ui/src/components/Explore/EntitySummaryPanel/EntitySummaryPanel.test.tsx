@@ -68,6 +68,7 @@ jest.mock('../../../utils/StringsUtils', () => ({
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: 'table' })),
   Link: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
