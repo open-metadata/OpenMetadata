@@ -557,23 +557,23 @@ class LineageParser:
         except TimeoutError:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Lineage with SqlGlot failed for dialect [{dialect.value}]."
+                f"[{self.query_hash}] Query parsing with SqlGlot failed for dialect [{dialect.value}]."
                 f" Parser has been running for more than {timeout_seconds} seconds."
             )
             logger.debug(self.query_parsing_failure_reason)
             lr_sqlglot = None
-        except Exception:
+        except Exception as err:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Lineage with SqlGlot failed"
-                f" for dialect [{dialect.value}]"
+                f"[{self.query_hash}] Query parsing with SqlGlot failed for dialect [{dialect.value}]."
+                f" Error: {err}"
             )
-            logger.debug(self.query_parsing_failure_reason)
+            logger.exception(self.query_parsing_failure_reason)
             lr_sqlglot = None
 
         if lr_sqlglot:
             logger.debug(
-                f"[{self.query_hash}] Using sqlglot for lineage parsing"
+                f"[{self.query_hash}] Query parsing with SqlGlot for dialect [{dialect.value}]"
                 f" for query: {self.masked_query or self.query}"
             )
             return lr_sqlglot
@@ -600,23 +600,23 @@ class LineageParser:
         except TimeoutError:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Lineage with SqlFluff failed for dialect [{dialect.value}]."
+                f"[{self.query_hash}] Query parsing with SqlFluff failed for dialect [{dialect.value}]."
                 f" Parser has been running for more than {timeout_seconds} seconds."
             )
             logger.debug(self.query_parsing_failure_reason)
             lr_sqlfluff = None
-        except Exception:
+        except Exception as err:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Lineage with SqlFluff failed"
-                f" for dialect [{dialect.value}]"
+                f"[{self.query_hash}] Query parsing with SqlFluff failed for dialect [{dialect.value}]."
+                f" Error: {err}"
             )
-            logger.debug(self.query_parsing_failure_reason)
+            logger.exception(self.query_parsing_failure_reason)
             lr_sqlfluff = None
 
         if lr_sqlfluff:
             logger.debug(
-                f"[{self.query_hash}] Using sqlfluff for lineage parsing"
+                f"[{self.query_hash}] Query parsing with SqlFluff for dialect [{dialect.value}]"
                 f" for query: {self.masked_query or self.query}"
             )
             return lr_sqlfluff
@@ -640,25 +640,34 @@ class LineageParser:
         except TimeoutError:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Lineage with SqlParse failed for dialect [{dialect.value}]."
+                f"[{self.query_hash}] Query parsing with SqlParse failed for dialect [{dialect.value}]."
                 f" Parser has been running for more than {timeout_seconds} seconds."
             )
             logger.debug(self.query_parsing_failure_reason)
-            return None
-        except Exception:
+            lr_sqlparse = None
+        except Exception as err:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
-                f"[{self.query_hash}] Lineage with SqlParse failed"
-                f" for dialect [{dialect.value}]"
+                f"[{self.query_hash}] Query parsing with SqlParse failed for dialect [{dialect.value}]."
+                f" Error: {err}"
             )
-            logger.debug(self.query_parsing_failure_reason)
-            return None
+            logger.exception(self.query_parsing_failure_reason)
+            # All parsers SqlGlot, SqlFluff, SqlParse have failed to parse the query
+            lr_sqlparse = None
 
+        if lr_sqlparse:
+            logger.debug(
+                f"[{self.query_hash}] Query parsing with SqlParse for dialect [{dialect.value}]"
+                f" for query: {self.masked_query or self.query}"
+            )
+            return lr_sqlparse
+
+        # log failed query
         logger.debug(
-            f"[{self.query_hash}] Using sqlparse for lineage parsing"
-            f" for query: {self.masked_query or self.query}"
+            f"[{self.query_hash}] Query parsing failed with SqlGlot, SqlFluff and SqlParse"
+            f" for dialect [{dialect.value}] for query: {self.masked_query or self.query}"
         )
-        return lr_sqlparse
+        return None
 
     @staticmethod
     def clean_table_name(table: Table) -> Table:
