@@ -168,7 +168,6 @@ const CustomPaginatedList = ({
     setColumnsInCurrentPages((prev) => {
       const updated = { ...prev };
       if (nodeId) {
-        console.log({ currentNodeCurrentPageItems });
         updated[nodeId] = isOnlyShowColumnsWithLineageFilterActive
           ? currentNodeAllPagesItems
           : currentNodeCurrentPageItems;
@@ -327,24 +326,31 @@ const NodeChildren = ({
       e.stopPropagation();
       const value = e.target.value;
       setSearchValue(value);
+      const allColumnsInCurrentNode = Object.values(children ?? {});
+      const allColumsHavingLineageInCurrentNode =
+        allColumnsInCurrentNode.filter((item) =>
+          columnsHavingLineage.includes(item.fullyQualifiedName ?? '')
+        );
+      const allColumnsForSearchDomainInCurrentNode =
+        isOnlyShowColumnsWithLineageFilterActive
+          ? allColumsHavingLineageInCurrentNode
+          : allColumnsInCurrentNode;
 
       if (value.trim() === '') {
         // If search value is empty, show all columns
-        const allColumnsInCurrentNode = Object.values(children ?? {});
-        setFilteredColumns(allColumnsInCurrentNode);
+        setFilteredColumns(allColumnsForSearchDomainInCurrentNode);
         setShowAllColumns(false);
       } else {
         // Filter columns based on search value
-        const filteredColumnsInCurrentNode = Object.values(
-          children ?? {}
-        ).filter((column) =>
-          getEntityName(column).toLowerCase().includes(value.toLowerCase())
-        );
+        const filteredColumnsInCurrentNode =
+          allColumnsForSearchDomainInCurrentNode.filter((column) =>
+            getEntityName(column).toLowerCase().includes(value.toLowerCase())
+          );
         setFilteredColumns(filteredColumnsInCurrentNode);
         setShowAllColumns(true);
       }
     },
-    [children]
+    [children, isOnlyShowColumnsWithLineageFilterActive]
   );
 
   const isColumnVisible = useCallback(
@@ -620,3 +626,7 @@ const NodeChildren = ({
 };
 
 export default NodeChildren;
+
+/**
+ * Rename for columnshavinglineage to be consistent
+ */
