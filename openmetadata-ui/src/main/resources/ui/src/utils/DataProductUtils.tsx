@@ -184,7 +184,7 @@ export const getDataProductDetailTabs = ({
                     <AssetsTabs
                       assetCount={assetCount}
                       entityFqn={dataProduct.fullyQualifiedName}
-                      isSummaryPanelOpen={false}
+                      isSummaryPanelOpen={Boolean(previewAsset)}
                       permissions={dataProductPermission}
                       ref={assetTabRef}
                       type={AssetsOfEntity.DATA_PRODUCT}
@@ -204,6 +204,10 @@ export const getDataProductDetailTabs = ({
                     <EntitySummaryPanel
                       entityDetails={previewAsset}
                       handleClosePanel={() => setPreviewAsset(undefined)}
+                      key={
+                        previewAsset.details.id ??
+                        previewAsset.details.fullyQualifiedName
+                      }
                     />
                   ),
                   minWidth: 400,
