@@ -1239,7 +1239,6 @@ public class WorkflowHandler {
               handle -> {
                 try {
                   // Terminate both trigger and main workflow instances
-                  getInstance().terminateWorkflow(mainWorkflowDefinitionName);
 
                   // Now terminate the main workflow instances that contain the user tasks
                   for (WorkflowInstance instance : conflictingInstances) {
