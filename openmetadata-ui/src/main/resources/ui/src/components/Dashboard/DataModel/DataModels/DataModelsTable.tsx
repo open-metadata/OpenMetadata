@@ -81,7 +81,7 @@ const DataModelTable = ({
     handlePageSizeChange,
     handlePagingChange,
     showPagination,
-  } = usePaging();
+  } = usePaging(undefined, 'assetListPageSize', 500);
   const [isLoading, setIsLoading] = useState(true);
   const { setFilters } = useTableFilters({});
 
