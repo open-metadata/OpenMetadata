@@ -69,18 +69,24 @@ class TagClassBase {
     if (emptyQueryFilter) {
       // If emptyQueryFilter is true, only use the disabled filter
       mergedQueryFilter = disabledFilter;
-    } else if (!isEmpty(queryFilterToRemoveSomeClassification)) {
-      // Merge both filters: disabled:false (must) + classification exclusions (must_not)
-      mergedQueryFilter = {
-        query: {
-          bool: {
-            must: disabledFilter.query.bool.must,
-            must_not: queryFilterToRemoveSomeClassification.query.bool.must_not,
-          },
-        },
-      };
     } else {
-      mergedQueryFilter = disabledFilter;
+      const hasClassificationFilter = !isEmpty(
+        queryFilterToRemoveSomeClassification
+      );
+      if (hasClassificationFilter) {
+        // Merge both filters: disabled:false (must) + classification exclusions (must_not)
+        mergedQueryFilter = {
+          query: {
+            bool: {
+              must: disabledFilter.query.bool.must,
+              must_not:
+                queryFilterToRemoveSomeClassification.query.bool.must_not,
+            },
+          },
+        };
+      } else {
+        mergedQueryFilter = disabledFilter;
+      }
     }
 
     const res = await searchQuery({

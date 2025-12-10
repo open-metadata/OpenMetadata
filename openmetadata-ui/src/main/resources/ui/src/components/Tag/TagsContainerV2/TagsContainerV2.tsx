@@ -426,25 +426,34 @@ const TagsContainerV2 = ({
   const tagBody = useMemo(() => {
     if (isEditTags) {
       return tagsSelectContainer;
-    } else {
-      return isHoriZontalLayout ? (
-        horizontalLayout
-      ) : showInlineEditButton || !isEmpty(renderTags) || !newLook ? (
-        <Row data-testid="entity-tags">
-          {showAddTagButton && (
-            <Col className="m-t-xss" onClick={handleAddClick}>
-              <TagsV1
-                startWith={TAG_START_WITH.PLUS}
-                tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
-                tagType={tagType}
-              />
-            </Col>
-          )}
-          {renderTags}
-          {showInlineEditButton ? <Col>{editTagButton}</Col> : null}
-        </Row>
-      ) : null;
     }
+
+    if (isHoriZontalLayout) {
+      return horizontalLayout;
+    }
+
+    const shouldShowVerticalLayout =
+      showInlineEditButton || !isEmpty(renderTags) || !newLook;
+
+    if (!shouldShowVerticalLayout) {
+      return null;
+    }
+
+    return (
+      <Row data-testid="entity-tags">
+        {showAddTagButton && (
+          <Col className="m-t-xss" onClick={handleAddClick}>
+            <TagsV1
+              startWith={TAG_START_WITH.PLUS}
+              tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
+              tagType={tagType}
+            />
+          </Col>
+        )}
+        {renderTags}
+        {showInlineEditButton ? <Col>{editTagButton}</Col> : null}
+      </Row>
+    );
   }, [
     isEditTags,
     tagsSelectContainer,
