@@ -32,7 +32,6 @@ from metadata.utils.execution_time_tracker import (
     calculate_execution_time,
     pretty_print_time_duration,
 )
-
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
