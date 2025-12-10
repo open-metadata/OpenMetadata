@@ -683,7 +683,7 @@ export const updateGlossaryTermDataFromTree = async (
   await glossaryTermResponse;
 
   await expect(
-    termRow.getByRole('cell', { name: 'Updated description' })
+    termRow.getByText('Updated description', { exact: true })
   ).toBeVisible();
 };
 
@@ -862,10 +862,23 @@ export const dragAndDropTerm = async (
   dragElement: string,
   dropTarget: string
 ) => {
-  await page.getByRole('cell', { name: dragElement, exact: true }).hover();
-  await page.mouse.down();
-  await page.getByRole('cell', { name: dropTarget, exact: true }).hover();
-  await page.mouse.up();
+  // Find the row containing the drag element text
+  const dragLocator = page
+    .locator('tr')
+    .filter({ hasText: dragElement })
+    .first();
+
+  // Find the row containing the drop target text (or the header if dropTarget is "Terms")
+  const dropLocator =
+    dropTarget === 'Terms'
+      ? page.locator('th:has-text("Terms")').first()
+      : page.locator('tr').filter({ hasText: dropTarget }).first();
+
+  await dragLocator.dragTo(dropLocator, {
+    force: true,
+    sourcePosition: { x: 10, y: 10 },
+    targetPosition: { x: 10, y: 10 },
+  });
 };
 
 export const confirmationDragAndDropGlossary = async (
