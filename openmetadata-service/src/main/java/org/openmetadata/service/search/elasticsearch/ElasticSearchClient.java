@@ -291,6 +291,21 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.listWithOffset(
+        filter, limit, offset, index, searchSortFilter, q, queryString, subjectContext);
+  }
+
+  @Override
   public SearchResultListMapper listWithDeepPagination(
       String index,
       String query,

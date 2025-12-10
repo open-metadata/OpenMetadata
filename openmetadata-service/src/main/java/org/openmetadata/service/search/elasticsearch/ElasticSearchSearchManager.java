@@ -51,6 +51,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -220,66 +221,137 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       applySearchFilter(filter, requestBuilder);
     }
 
-    requestBuilder.timeout("30s");
-    requestBuilder.from(offset);
-    requestBuilder.size(limit);
-
-    if (Boolean.TRUE.equals(searchSortFilter.isSorted())) {
-      String sortTypeCapitalized =
-          searchSortFilter.getSortType().substring(0, 1).toUpperCase()
-              + searchSortFilter.getSortType().substring(1).toLowerCase();
-      SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
-
-      if (Boolean.TRUE.equals(searchSortFilter.isNested())) {
-        String sortModeCapitalized =
-            searchSortFilter.getSortNestedMode().substring(0, 1).toUpperCase()
-                + searchSortFilter.getSortNestedMode().substring(1).toLowerCase();
-        SortMode sortMode = SortMode.valueOf(sortModeCapitalized);
-        requestBuilder.sortWithNested(
-            searchSortFilter.getSortField(),
-            sortOrder,
-            "long",
-            searchSortFilter.getSortNestedPath(),
-            sortMode);
-      } else {
-        requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
-      }
-    }
-
-    try {
-      SearchRequest searchRequest = requestBuilder.build(index);
-      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
-
-      List<Map<String, Object>> results = new ArrayList<>();
-      if (response.hits().hits() != null) {
-        response
-            .hits()
-            .hits()
-            .forEach(
-                hit -> {
-                  if (hit.source() != null) {
-                    Map<String, Object> map = EsUtils.jsonDataToMap(hit.source());
-                    results.add(map);
-                  }
-                });
-      }
-
-      long totalHits = 0;
-      if (response.hits().total() != null) {
-        totalHits = response.hits().total().value();
-      }
-
-      return new SearchResultListMapper(results, totalHits);
-    } catch (ElasticsearchException e) {
-      if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
-      } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
-      }
-    }
+      return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
 
   @Override
+  public SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("Elasticsearch client is not available");
+    }
+
+    ElasticSearchRequestBuilder requestBuilder = new ElasticSearchRequestBuilder();
+
+    if (!nullOrEmpty(q)) {
+      ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+      requestBuilder =
+          searchBuilderFactory.getSearchSourceBuilderV2(index, q, offset, limit, false);
+    }
+
+    if (!nullOrEmpty(queryString)) {
+      try {
+        String queryToProcess = EsUtils.parseJsonQuery(queryString);
+        Query query = Query.of(qb -> qb.withJson(new StringReader(queryToProcess)));
+        requestBuilder.query(query);
+      } catch (Exception e) {
+        LOG.warn("Error parsing queryString parameter, ignoring: {}", e.getMessage());
+      }
+    }
+
+    if (!nullOrEmpty(filter) && !filter.equals("{}")) {
+      applySearchFilter(filter, requestBuilder);
+    }
+
+      applyRbacCondition(subjectContext, requestBuilder);
+
+      return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
+  }
+
+    @NotNull
+    private SearchResultListMapper doListWithOffset(int limit, int offset, String index, SearchSortFilter searchSortFilter, ElasticSearchRequestBuilder requestBuilder) throws IOException {
+        requestBuilder.timeout("30s");
+        requestBuilder.from(offset);
+        requestBuilder.size(limit);
+
+        if (Boolean.TRUE.equals(searchSortFilter.isSorted())) {
+          String sortTypeCapitalized =
+              searchSortFilter.getSortType().substring(0, 1).toUpperCase()
+                  + searchSortFilter.getSortType().substring(1).toLowerCase();
+          SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
+
+          if (Boolean.TRUE.equals(searchSortFilter.isNested())) {
+            String sortModeCapitalized =
+                searchSortFilter.getSortNestedMode().substring(0, 1).toUpperCase()
+                    + searchSortFilter.getSortNestedMode().substring(1).toLowerCase();
+            SortMode sortMode = SortMode.valueOf(sortModeCapitalized);
+            requestBuilder.sortWithNested(
+                searchSortFilter.getSortField(),
+                sortOrder,
+                "long",
+                searchSortFilter.getSortNestedPath(),
+                sortMode);
+          } else {
+            requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
+          }
+        }
+
+        try {
+          SearchRequest searchRequest = requestBuilder.build(index);
+          SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+
+          List<Map<String, Object>> results = new ArrayList<>();
+          if (response.hits().hits() != null) {
+            response
+                .hits()
+                .hits()
+                .forEach(
+                    hit -> {
+                      if (hit.source() != null) {
+                        Map<String, Object> map = EsUtils.jsonDataToMap(hit.source());
+                        results.add(map);
+                      }
+                    });
+          }
+
+          long totalHits = 0;
+          if (response.hits().total() != null) {
+            totalHits = response.hits().total().value();
+          }
+
+          return new SearchResultListMapper(results, totalHits);
+        } catch (ElasticsearchException e) {
+          if (e.status() == 404) {
+            throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+          } else {
+            throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+          }
+        }
+    }
+
+    private void applyRbacCondition(SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+        if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+          OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+          if (rbacQueryBuilder != null) {
+            Query rbacQuery = ((ElasticQueryBuilder) rbacQueryBuilder).buildV2();
+            Query existingQuery = requestBuilder.query();
+            if (existingQuery != null) {
+              Query combinedQuery =
+                  Query.of(
+                      qb ->
+                          qb.bool(
+                              b -> {
+                                b.must(existingQuery);
+                                b.filter(rbacQuery);
+                                return b;
+                              }));
+              requestBuilder.query(combinedQuery);
+            } else {
+              requestBuilder.query(rbacQuery);
+            }
+          }
+        }
+    }
+
+    @Override
   public SearchResultListMapper listWithDeepPagination(
       String index,
       String query,
@@ -868,29 +940,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         requestBuilder.query());
 
     // Apply RBAC query
-    if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-      OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-      if (rbacQueryBuilder != null) {
-        Query rbacQuery = ((ElasticQueryBuilder) rbacQueryBuilder).buildV2();
-        Query existingQuery = requestBuilder.query();
-        if (existingQuery != null) {
-          Query combinedQuery =
-              Query.of(
-                  q ->
-                      q.bool(
-                          b -> {
-                            b.must(existingQuery);
-                            b.filter(rbacQuery);
-                            return b;
-                          }));
-          requestBuilder.query(combinedQuery);
-        } else {
-          requestBuilder.query(rbacQuery);
-        }
-      }
-    }
+      applyRbacCondition(subjectContext, requestBuilder);
 
-    // Apply query filter
+      // Apply query filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
         String queryToProcess = EsUtils.parseJsonQuery(request.getQueryFilter());
