@@ -70,6 +70,7 @@ class DBTSources(BaseModel):
     name: Optional[str] = None
     dbtschema: Optional[str] = Field(None, alias="schema")
     database: Optional[str] = None
+    runGeneratedAt: Optional[str] = None
     extra: Optional[Extra] = None
 
 
@@ -78,6 +79,7 @@ class DBTModel(BaseModel):
     name: Optional[str] = None
     dbtschema: Optional[str] = Field(None, alias="schema")
     database: Optional[str] = None
+    runGeneratedAt: Optional[str] = None
     dependsOn: Optional[List[str]] = None
 
 
