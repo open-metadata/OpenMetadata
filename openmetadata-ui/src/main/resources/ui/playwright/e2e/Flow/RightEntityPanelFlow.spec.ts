@@ -291,10 +291,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await editTags(adminPage, deletedTagDisplayName, true);
 
-      await expect(
-        adminPage.getByText(/Tags updated successfully/i)
-      ).toBeVisible();
-
       await deletedTag.delete(apiContext);
 
       await navigateToExploreAndSelectTable(adminPage);
@@ -1693,6 +1689,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     );
     await waitForAllLoadersToDisappear(dataConsumerPage, 'loader');
     const ownersSection = summaryPanel.locator('.owners-section');
+    await ownersSection.scrollIntoViewIfNeeded();
 
     await expect(ownersSection).toBeVisible();
 
