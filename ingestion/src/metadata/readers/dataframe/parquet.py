@@ -172,8 +172,12 @@ class ParquetDataFrameReader(DataFrameReader):
                 )
                 return dataframe_to_chunks(dataframe_response)
 
-        except Exception:
+        except Exception as exc:
             # Fallback to regular reading if size check fails
+            logger.warning(
+                f"Error reading parquet file from GCS '{file_path}': {exc}. "
+                f"Falling back to regular reading"
+            )
             file = gcs.open(file_path)
             parquet_file = ParquetFile(file)
             dataframe_response = parquet_file.read().to_pandas(
@@ -275,8 +279,12 @@ class ParquetDataFrameReader(DataFrameReader):
                 )
                 return dataframe_to_chunks(dataframe)
 
-        except Exception:
+        except Exception as exc:
             # Fallback to regular pandas reading if size check or batching fails
+            logger.warning(
+                f"Error reading parquet file from Azure '{account_url}': {exc}. "
+                f"Falling back to pandas reading"
+            )
             dataframe = pd.read_parquet(account_url, storage_options=storage_options)
             return dataframe_to_chunks(dataframe)
 
@@ -305,8 +313,12 @@ class ParquetDataFrameReader(DataFrameReader):
                 dataframe = pd.read_parquet(key)
                 return dataframe_to_chunks(dataframe)
 
-        except Exception:
+        except Exception as exc:
             # Fallback to regular pandas reading if size check fails
+            logger.warning(
+                f"Error reading parquet file from local path '{key}': {exc}. "
+                f"Falling back to pandas reading"
+            )
             dataframe = pd.read_parquet(key)
             return dataframe_to_chunks(dataframe)
 

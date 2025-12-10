@@ -305,3 +305,129 @@ class PandasInterfaceTest(TestCase):
         ][0]
         assert name_column_profile.nullCount == 2.0
         assert age_column_profile.median == 31.0
+
+    def test_compute_metrics_reports_status_for_table_metrics(self):
+        """Verify table metric execution reports status with metric type."""
+        self.datalake_profiler_interface.status.records = []
+
+        table_metric = ThreadPoolMetrics(
+            metrics=[
+                metric
+                for metric in self.metrics
+                if (not metric.is_col_metric() and not metric.is_system_metrics())
+            ],
+            metric_type=MetricTypes.Table,
+            column=None,
+            table=self.table_entity,
+        )
+
+        self.datalake_profiler_interface.compute_metrics(table_metric)
+
+        assert len(self.datalake_profiler_interface.status.records) == 1
+        assert self.datalake_profiler_interface.status.records[0] == "user__Table"
+
+    def test_compute_metrics_reports_status_for_column_metrics(self):
+        """Verify column metric execution reports status with column name and metric type."""
+        self.datalake_profiler_interface.status.records = []
+
+        col = list(inspect(User).c)[1]  # name column
+        column_metric = ThreadPoolMetrics(
+            metrics=[
+                metric
+                for metric in self.static_metrics
+                if metric.is_col_metric() and not metric.is_window_metric()
+            ],
+            metric_type=MetricTypes.Static,
+            column=col,
+            table=self.table_entity,
+        )
+
+        self.datalake_profiler_interface.compute_metrics(column_metric)
+
+        assert len(self.datalake_profiler_interface.status.records) == 1
+        assert self.datalake_profiler_interface.status.records[0] == "user.name__Static"
+
+    def test_compute_metrics_reports_multiple_statuses(self):
+        """Verify each metric group reports a separate status entry."""
+        self.datalake_profiler_interface.status.records = []
+
+        table_metric = ThreadPoolMetrics(
+            metrics=[
+                metric
+                for metric in self.metrics
+                if (not metric.is_col_metric() and not metric.is_system_metrics())
+            ],
+            metric_type=MetricTypes.Table,
+            column=None,
+            table=self.table_entity,
+        )
+
+        col_name = list(inspect(User).c)[1]  # name column
+        col_age = list(inspect(User).c)[5]  # age column
+
+        static_metric_name = ThreadPoolMetrics(
+            metrics=[
+                metric
+                for metric in self.static_metrics
+                if metric.is_col_metric() and not metric.is_window_metric()
+            ],
+            metric_type=MetricTypes.Static,
+            column=col_name,
+            table=self.table_entity,
+        )
+
+        static_metric_age = ThreadPoolMetrics(
+            metrics=[
+                metric
+                for metric in self.static_metrics
+                if metric.is_col_metric() and not metric.is_window_metric()
+            ],
+            metric_type=MetricTypes.Static,
+            column=col_age,
+            table=self.table_entity,
+        )
+
+        self.datalake_profiler_interface.compute_metrics(table_metric)
+        self.datalake_profiler_interface.compute_metrics(static_metric_name)
+        self.datalake_profiler_interface.compute_metrics(static_metric_age)
+
+        assert len(self.datalake_profiler_interface.status.records) == 3
+        assert "user__Table" in self.datalake_profiler_interface.status.records
+        assert "user.name__Static" in self.datalake_profiler_interface.status.records
+        assert "user.age__Static" in self.datalake_profiler_interface.status.records
+
+    def test_compute_metrics_failure_reports_failure_status(self):
+        """Verify failed metric execution reports a failure and not a success."""
+        self.datalake_profiler_interface.status.records = []
+        self.datalake_profiler_interface.status.failures = []
+
+        table_metric = ThreadPoolMetrics(
+            metrics=[
+                metric
+                for metric in self.metrics
+                if (not metric.is_col_metric() and not metric.is_system_metrics())
+            ],
+            metric_type=MetricTypes.Table,
+            column=None,
+            table=self.table_entity,
+        )
+
+        original_get_metric_fn = self.datalake_profiler_interface._get_metric_fn.copy()
+        self.datalake_profiler_interface._get_metric_fn = {
+            MetricTypes.Table.value: Mock(side_effect=Exception("Simulated error"))
+        }
+
+        try:
+            (
+                result,
+                column,
+                metric_type,
+            ) = self.datalake_profiler_interface.compute_metrics(table_metric)
+
+            assert result is None
+            assert column is None
+            assert metric_type is None
+            assert len(self.datalake_profiler_interface.status.records) == 0
+            assert len(self.datalake_profiler_interface.status.failures) == 1
+        finally:
+            self.datalake_profiler_interface._get_metric_fn = original_get_metric_fn

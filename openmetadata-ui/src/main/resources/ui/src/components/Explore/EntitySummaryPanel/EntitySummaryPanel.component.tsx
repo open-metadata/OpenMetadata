@@ -12,9 +12,9 @@
  */
 
 import { CloseOutlined } from '@mui/icons-material';
-import { Link } from '@mui/material';
-import { Button, Card, Tooltip } from 'antd';
+import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { get } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,43 +33,48 @@ import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
+import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
+import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
-import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
+import { getDataProductByName } from '../../../rest/dataProductAPI';
+import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
+import { getDomainByName } from '../../../rest/domainAPI';
+import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { getMlModelByFQN } from '../../../rest/mlModelAPI';
 import { getPipelineByFqn } from '../../../rest/pipelineAPI';
-import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
+import { getContainerByFQN } from '../../../rest/storageAPI';
 import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
-  getEntityName,
 } from '../../../utils/EntityUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
+import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
-import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
+import './entity-summary-panel.less';
 
 export default function EntitySummaryPanel({
   entityDetails,
@@ -107,8 +112,6 @@ export default function EntitySummaryPanel({
   );
 
   const id = useMemo(() => {
-    setIsPermissionLoading(true);
-
     return entityDetails?.details?.id ?? '';
   }, [entityDetails?.details?.id]);
 
@@ -129,6 +132,44 @@ export default function EntitySummaryPanel({
       setIsPermissionLoading(false);
     }
   };
+  // Memoize the entity fetch map to avoid recreating it on every render
+  const entityFetchMap = useMemo(() => {
+    const commonFields = 'owners,domains,tags,extension';
+
+    return {
+      [EntityType.TABLE]: (fqn: string) =>
+        getTableDetailsByFQN(fqn, { fields: commonFields }),
+      [EntityType.TOPIC]: (fqn: string) =>
+        getTopicByFqn(fqn, { fields: commonFields }),
+      [EntityType.DASHBOARD]: (fqn: string) =>
+        getDashboardByFqn(fqn, { fields: commonFields }),
+      [EntityType.PIPELINE]: (fqn: string) =>
+        getPipelineByFqn(fqn, { fields: commonFields }),
+      [EntityType.MLMODEL]: (fqn: string) =>
+        getMlModelByFQN(fqn, { fields: commonFields }),
+      [EntityType.DATABASE]: (fqn: string) =>
+        getDatabaseDetailsByFQN(fqn, { fields: commonFields }),
+      [EntityType.DASHBOARD_DATA_MODEL]: (fqn: string) =>
+        getDataModelByFqn(fqn, { fields: commonFields }),
+      [EntityType.SEARCH_INDEX]: (fqn: string) =>
+        getSearchIndexDetailsByFQN(fqn),
+      [EntityType.STORED_PROCEDURE]: (fqn: string) =>
+        getStoredProceduresByFqn(fqn, { fields: commonFields }),
+      [EntityType.CONTAINER]: (fqn: string) =>
+        getContainerByFQN(fqn, { fields: commonFields }),
+      [EntityType.GLOSSARY_TERM]: (fqn: string) =>
+        getGlossaryTermByFQN(fqn, { fields: commonFields }),
+      [EntityType.CHART]: (fqn: string) =>
+        getChartByFqn(fqn, { fields: commonFields }),
+      [EntityType.METRIC]: (fqn: string) =>
+        getMetricByFqn(fqn, { fields: commonFields }),
+      [EntityType.DATA_PRODUCT]: (fqn: string) =>
+        getDataProductByName(fqn, { fields: commonFields }),
+      [EntityType.DOMAIN]: (fqn: string) =>
+        getDomainByName(fqn, { fields: commonFields }),
+    } as Record<string, (fqn: string) => Promise<unknown>>;
+  }, []);
+
   const fetchEntityData = useCallback(async () => {
     if (!entityDetails?.details?.fullyQualifiedName || !entityType) {
       return;
@@ -139,63 +180,9 @@ export default function EntitySummaryPanel({
       const fqn = entityDetails.details.fullyQualifiedName;
       let entityPromise: Promise<any> | null = null;
 
-      // Fields needed for the right panel to reflect latest state
-      const commonFields = 'owners,domains,tags,dataProducts,extension';
-
-      switch (entityType) {
-        case EntityType.TABLE:
-          entityPromise = getTableDetailsByFQN(fqn, {
-            fields: commonFields,
-          });
-
-          break;
-
-        case EntityType.TOPIC:
-          entityPromise = getTopicByFqn(fqn, { fields: commonFields });
-
-          break;
-
-        case EntityType.DASHBOARD:
-          entityPromise = getDashboardByFqn(fqn, { fields: commonFields });
-
-          break;
-
-        case EntityType.PIPELINE:
-          entityPromise = getPipelineByFqn(fqn, { fields: commonFields });
-
-          break;
-
-        case EntityType.MLMODEL:
-          entityPromise = getMlModelByFQN(fqn, { fields: commonFields });
-
-          break;
-
-        case EntityType.DATABASE:
-          entityPromise = getDatabaseDetailsByFQN(fqn, {
-            fields: commonFields,
-          });
-
-          break;
-
-        case EntityType.DASHBOARD_DATA_MODEL:
-          entityPromise = getDataModelByFqn(fqn, { fields: commonFields });
-
-          break;
-
-        case EntityType.SEARCH_INDEX:
-          entityPromise = getSearchIndexDetailsByFQN(fqn);
-
-          break;
-
-        case EntityType.STORED_PROCEDURE:
-          entityPromise = getStoredProceduresByFqn(fqn, {
-            fields: commonFields,
-          });
-
-          break;
-
-        default:
-          break;
+      const fetchFn = entityFetchMap[entityType];
+      if (fetchFn) {
+        entityPromise = fetchFn(fqn);
       }
 
       if (entityPromise) {
@@ -232,7 +219,7 @@ export default function EntitySummaryPanel({
     } finally {
       setIsEntityDataLoading(false);
     }
-  }, [entityDetails?.details?.fullyQualifiedName, entityType]);
+  }, [entityDetails?.details?.fullyQualifiedName, entityType, entityFetchMap]);
 
   const fetchEntityTypeDetail = useCallback(async () => {
     if (!entityType || entityType === EntityType.KNOWLEDGE_PAGE) {
@@ -273,41 +260,48 @@ export default function EntitySummaryPanel({
     } finally {
       setIsLineageLoading(false);
     }
-  }, [entityDetails?.details?.fullyQualifiedName, entityType]);
+  }, [
+    entityDetails?.details?.fullyQualifiedName,
+    entityType,
+    upstreamDepth,
+    downstreamDepth,
+    nodesPerLayer,
+    pipelineViewMode,
+  ]);
 
-  const updateEntityData = (updatedData: Partial<EntityData>) => {
-    setEntityData((prevData: EntityData | null) => {
-      // Use entityDetails.details as a fallback if prevData is null.
-      // This handles the initial update before fetchEntityData completes.
-      const baseData = prevData || entityDetails.details;
+  const updateEntityData = useCallback(
+    (updatedData: Partial<EntityData>) => {
+      setEntityData((prevData: EntityData | null) => {
+        // Use entityDetails.details as a fallback if prevData is null.
+        // This handles the initial update before fetchEntityData completes.
+        const baseData = prevData || entityDetails.details;
 
-      // Safety check: If the base data's ID doesn't match the current entity,
-      // abort the update to prevent state corruption.
-      if (baseData.id !== entityDetails.details.id) {
-        return prevData; // Return the original state without changes
-      }
+        // Safety check: If the base data's ID doesn't match the current entity,
+        // abort the update to prevent state corruption.
+        if (baseData.id !== entityDetails.details.id) {
+          return prevData; // Return the original state without changes
+        }
 
-      const newState = { ...baseData, ...updatedData };
+        const newState = { ...baseData, ...updatedData };
 
-      // After updating the local state, trigger a re-fetch to ensure consistency
-      fetchEntityData();
-
-      return newState;
-    });
-  };
+        return newState;
+      });
+    },
+    [entityDetails.details]
+  );
 
   const handleOwnerUpdate = useCallback(
     (owners: EntityReference[]) => {
       updateEntityData({ owners });
     },
-    [fetchEntityData]
+    [updateEntityData]
   );
 
   const handleDomainUpdate = useCallback(
     (domains: EntityReference[]) => {
       updateEntityData({ domains });
     },
-    [fetchEntityData]
+    [updateEntityData]
   );
 
   const handleTagsUpdate = useCallback(
@@ -324,7 +318,7 @@ export default function EntitySummaryPanel({
         tags: [...updatedTags, ...glossaryTags, ...tierTags],
       });
     },
-    [entityData, fetchEntityData]
+    [entityData, updateEntityData]
   );
 
   const handleTierUpdate = useCallback(
@@ -338,14 +332,14 @@ export default function EntitySummaryPanel({
         : tagsWithoutTier;
       updateEntityData({ tags: newTags });
     },
-    [entityData, fetchEntityData]
+    [entityData, updateEntityData]
   );
 
   const handleDataProductsUpdate = useCallback(
     (updatedDataProducts: EntityReference[]) => {
       updateEntityData({ dataProducts: updatedDataProducts });
     },
-    [fetchEntityData]
+    [updateEntityData]
   );
 
   const handleGlossaryTermsUpdate = useCallback(
@@ -354,14 +348,14 @@ export default function EntitySummaryPanel({
       // We just need to update the parent's state with the new tags.
       updateEntityData({ tags: updatedTags });
     },
-    [fetchEntityData]
+    [updateEntityData]
   );
 
   const handleDescriptionUpdate = useCallback(
     (updatedDescription: string) => {
       updateEntityData({ description: updatedDescription });
     },
-    [fetchEntityData]
+    [updateEntityData]
   );
 
   useEffect(() => {
@@ -384,7 +378,7 @@ export default function EntitySummaryPanel({
     } else if (activeTab === EntityRightPanelTab.OVERVIEW) {
       fetchEntityData();
     }
-  }, [activeTab, fetchEntityData, fetchEntityTypeDetail, fetchLineageData]);
+  }, [activeTab]);
 
   const viewPermission = useMemo(
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
@@ -522,32 +516,11 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && !isSideDrawer && (
-              <div className="title-section">
-                <div className="title-container">
-                  <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
-                    title={entityDetails.details.name}
-                    trigger="hover">
-                    <div className="d-flex items-center">
-                      <span className="entity-icon">
-                        {searchClassBase.getEntityIcon(
-                          entityDetails.details.entityType ?? ''
-                        )}
-                      </span>
-                      <Link
-                        className="entity-title-link"
-                        data-testid="entity-link"
-                        href={entityLink as string}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                        underline="hover">
-                        {stringToHTML(getEntityName(entityDetails.details))}
-                      </Link>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
             )}
             <div className="overview-tab-content">{summaryComponentV1}</div>
           </>
@@ -556,32 +529,11 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && !isSideDrawer && (
-              <div className="title-section">
-                <div className="title-container">
-                  <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
-                    title={entityDetails.details.name}
-                    trigger="hover">
-                    <div className="d-flex items-center">
-                      <span className="entity-icon">
-                        {searchClassBase.getEntityIcon(
-                          entityDetails.details.entityType ?? ''
-                        )}
-                      </span>
-                      <Link
-                        className="entity-title-link"
-                        data-testid="entity-link"
-                        href={entityLink as string}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                        underline="hover">
-                        {stringToHTML(getEntityName(entityDetails.details))}
-                      </Link>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
             )}
             <div className="entity-summary-panel-tab-content">
               <EntityDetailsSection
@@ -597,32 +549,11 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && !isSideDrawer && (
-              <div className="title-section">
-                <div className="title-container">
-                  <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
-                    title={entityDetails.details.name}
-                    trigger="hover">
-                    <div className="d-flex items-center">
-                      <span className="entity-icon">
-                        {searchClassBase.getEntityIcon(
-                          entityDetails.details.entityType ?? ''
-                        )}
-                      </span>
-                      <Link
-                        className="entity-title-link"
-                        data-testid="entity-link"
-                        href={entityLink as string}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                        underline="hover">
-                        {stringToHTML(getEntityName(entityDetails.details))}
-                      </Link>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
             )}
             <div className="entity-summary-panel-tab-content">
               <div className="p-x-md">{renderLineageContent()}</div>
@@ -633,32 +564,11 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && !isSideDrawer && (
-              <div className="title-section">
-                <div className="title-container">
-                  <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
-                    title={entityDetails.details.name}
-                    trigger="hover">
-                    <div className="d-flex items-center">
-                      <span className="entity-icon">
-                        {searchClassBase.getEntityIcon(
-                          entityDetails.details.entityType ?? ''
-                        )}
-                      </span>
-                      <Link
-                        className="entity-title-link"
-                        data-testid="entity-link"
-                        href={entityLink as string}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                        underline="hover">
-                        {stringToHTML(getEntityName(entityDetails.details))}
-                      </Link>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
             )}
             <DataQualityTab
               entityFQN={entityDetails.details.fullyQualifiedName || ''}
@@ -670,32 +580,11 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && !isSideDrawer && (
-              <div className="title-section">
-                <div className="title-container">
-                  <Tooltip
-                    mouseEnterDelay={0.5}
-                    placement="topLeft"
-                    title={entityDetails.details.name}
-                    trigger="hover">
-                    <div className="d-flex items-center">
-                      <span className="entity-icon">
-                        {searchClassBase.getEntityIcon(
-                          entityDetails.details.entityType ?? ''
-                        )}
-                      </span>
-                      <Link
-                        className="entity-title-link"
-                        data-testid="entity-link"
-                        href={entityLink as string}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                        underline="hover">
-                        {stringToHTML(getEntityName(entityDetails.details))}
-                      </Link>
-                    </div>
-                  </Tooltip>
-                </div>
-              </div>
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
             )}
             <CustomPropertiesSection
               entityData={entityData}
@@ -717,35 +606,21 @@ export default function EntitySummaryPanel({
   };
 
   return (
-    <div className="entity-summary-panel-container">
+    <div
+      className={classNames('entity-summary-panel-container', {
+        explore: panelPath === 'explore',
+        lineage: panelPath === 'lineage',
+        'glossary-term-assets-tab': panelPath === 'glossary-term-assets-tab',
+      })}>
       {isSideDrawer && (
         <div className="d-flex items-center justify-between">
-          <div className="title-section drawer-title-section">
-            <div className="title-container">
-              <Tooltip
-                mouseEnterDelay={0.5}
-                placement="bottomLeft"
-                title={entityDetails.details.name}
-                trigger="hover">
-                <div className="d-flex items-center">
-                  <span className="entity-icon">
-                    {searchClassBase.getEntityIcon(
-                      entityDetails.details.entityType ?? ''
-                    )}
-                  </span>
-                  <Link
-                    className="entity-title-link"
-                    data-testid="entity-header-title"
-                    href={entityLink as string}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                    underline="hover">
-                    {stringToHTML(getEntityName(entityDetails.details))}
-                  </Link>
-                </div>
-              </Tooltip>
-            </div>
-          </div>
+          <EntityTitleSection
+            className="drawer-title-section"
+            entityDetails={entityDetails.details}
+            entityLink={entityLink}
+            testId="entity-header-title"
+            tooltipPlacement="bottomLeft"
+          />
           <Button
             aria-label={t('label.close')}
             className="drawer-close-icon flex-center mr-2"
@@ -756,7 +631,7 @@ export default function EntitySummaryPanel({
           />
         </div>
       )}
-      <div className="d-flex gap-2 w-full">
+      <div className="d-flex gap-2 w-full h-full">
         <Card
           bordered={false}
           className={`summary-panel-container ${
@@ -766,7 +641,7 @@ export default function EntitySummaryPanel({
             className={`content-area ${
               isSideDrawer ? 'drawer-content-area' : ''
             }`}
-            style={{ width: '80%', display: 'block' }}>
+            style={{ width: '100%', display: 'block' }}>
             {renderTabContent()}
           </Card>
         </Card>

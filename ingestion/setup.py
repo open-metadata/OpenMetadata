@@ -72,6 +72,7 @@ VERSIONS = {
     "asammdf": "asammdf~=7.4.5",
     "kafka-connect": "kafka-connect-py==0.10.11",
     "griffe2md": "griffe2md~=1.2",
+    "factory-boy": "factory-boy~=3.3.3",
 }
 
 COMMONS = {
@@ -400,6 +401,7 @@ test_unit = {
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     # TODO: Remove once no unit test requires testcontainers
     "testcontainers",
+    VERSIONS["factory-boy"],
 }
 
 test = {
@@ -471,6 +473,7 @@ test = {
     *plugins["exasol"],
     VERSIONS["opensearch"],
     VERSIONS["kafka-connect"],
+    VERSIONS["factory-boy"],
 }
 
 docs = {

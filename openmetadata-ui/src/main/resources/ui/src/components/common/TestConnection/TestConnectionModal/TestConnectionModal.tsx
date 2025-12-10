@@ -108,7 +108,7 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
         {errorMessage && (
           <InlineAlert
             description={errorMessage.description}
-            heading={TEST_CONNECTION_FAILURE_MESSAGE}
+            heading={t(TEST_CONNECTION_FAILURE_MESSAGE)}
             type="error"
             onClose={handleCloseErrorMessage}
           />

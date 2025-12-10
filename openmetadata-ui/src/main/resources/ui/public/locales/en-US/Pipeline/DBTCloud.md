@@ -32,9 +32,16 @@ $$
 
 $$section
 ### Project Ids $(id="projectIds")
-Project IDs of your DBT cloud Account to fetch metadata for. Look for the segment after "projects" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `87477`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Projects under the Account Id will be ingested. `Optional`
+Project IDs of your DBT cloud Account to fetch metadata for. Look for the segment after "projects" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the project ID is `87477`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Projects under the Account Id will be ingested. `Optional`
 
-Note that if both `Job Ids` and `Project Ids` are passed then it will filter out the jobs from the passed projects. any `Job Ids` not belonging to the `Project Ids` will also be filtered out.
+Note: If `Job Ids` are specified, they take precedence and `Project Ids` filter is ignored. `Project Ids` can be combined with `Environment Ids` to filter jobs matching both criteria.
+$$
+
+$$section
+### Environment Ids $(id="environmentIds")
+Environment IDs of your DBT cloud Account to fetch metadata for. You can find the environment ID in the URL when viewing an environment in dbt Cloud. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/environments/45678`, the environment ID is `45678`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Environments under the Account Id will be ingested. `Optional`
+
+Note: If `Job Ids` are specified, they take precedence and `Environment Ids` filter is ignored. `Environment Ids` can be combined with `Project Ids` to filter jobs matching both criteria.
 $$
 
 $$section

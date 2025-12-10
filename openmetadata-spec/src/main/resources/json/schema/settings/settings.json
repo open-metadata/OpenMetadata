@@ -37,7 +37,8 @@
         "workflowSettings",
         "scimConfiguration",
         "securityConfiguration",
-        "entityRulesSettings"
+        "entityRulesSettings",
+        "openLineageSettings"
       ]
     }
   },
@@ -101,6 +102,9 @@
         },
         {
           "$ref": "../configuration/securityConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/openLineageSettings.json"
         }
       ]
     }

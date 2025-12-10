@@ -25,7 +25,10 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/CommonUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageUtils';
-import { getEntityLinkFromType } from '../../../../utils/EntityUtils';
+import {
+  getEntityLinkFromType,
+  getEntityName,
+} from '../../../../utils/EntityUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import { getTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -133,14 +136,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
     const searchLower = searchText.toLowerCase();
 
     return lineageItems.filter((item) => {
-      const entityName = item.entity.name?.toLowerCase() || '';
-      const entityDisplayName = item.entity.displayName?.toLowerCase() || '';
+      const entityName = getEntityName(item.entity)?.toLowerCase() || '';
       const entityFqn = item.entity.fullyQualifiedName?.toLowerCase() || '';
 
       return (
-        entityName.includes(searchLower) ||
-        entityDisplayName.includes(searchLower) ||
-        entityFqn.includes(searchLower)
+        entityName.includes(searchLower) || entityFqn.includes(searchLower)
       );
     });
   }, [lineageItems, searchText]);
@@ -263,7 +263,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                 </div>
                 <div className="lineage-card-content">
                   <Typography.Text className="item-name-text">
-                    {item.entity.displayName || item.entity.name}
+                    {getEntityName(item.entity)}
                   </Typography.Text>
                   <div className="d-flex align-items-center gap-1 lineage-info-container">
                     {item.entity.entityType && (

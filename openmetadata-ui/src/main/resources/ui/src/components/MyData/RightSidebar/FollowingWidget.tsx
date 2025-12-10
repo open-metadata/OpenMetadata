@@ -179,7 +179,7 @@ function FollowingWidget({
     () => (
       <WidgetEmptyState
         actionButtonLink={ROUTES.EXPLORE}
-        actionButtonText={t('label.browse-assets')}
+        actionButtonText={t('label.explore-assets')}
         description={t('message.not-followed-anything')}
         icon={
           <NoDataAssetsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />

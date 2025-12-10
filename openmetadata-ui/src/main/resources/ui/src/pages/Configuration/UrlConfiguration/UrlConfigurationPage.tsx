@@ -96,7 +96,10 @@ const UrlConfigurationPage = () => {
                     PAGE_HEADERS.OM_URL_CONFIG.header,
                     PAGE_HEADERS.OM_URL_CONFIG.headerParams
                   ),
-                  subHeader: t(PAGE_HEADERS.OM_URL_CONFIG.subHeader),
+                  subHeader: translateWithNestedKeys(
+                    PAGE_HEADERS.OM_URL_CONFIG.subHeader,
+                    PAGE_HEADERS.OM_URL_CONFIG.subHeaderParams
+                  ),
                 }}
               />
             </Col>

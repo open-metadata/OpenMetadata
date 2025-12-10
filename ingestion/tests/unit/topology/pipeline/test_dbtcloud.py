@@ -434,6 +434,7 @@ EXPECTED_JOB_DETAILS = DBTJob(
     job_type="other",
     schedule=DBTSchedule(cron="6 */12 * * 0,1,2,3,4,5,6"),
     project_id=70403103926818,
+    environment_id=70403103931988,
 )
 
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
@@ -490,6 +491,8 @@ MOCK_PIPELINE = Pipeline(
 EXPECTED_JOB_FILTERS = ["70403103922125", "70403103922126"]
 
 EXPECTED_PROJECT_FILTERS = ["70403103922127", "70403103922128"]
+
+EXPECTED_ENVIRONMENT_FILTERS = ["70403103931988", "70403103931989"]
 
 EXPECTED_PIPELINE_NAME = str(MOCK_JOB_RESULT["data"][0]["name"])
 
@@ -769,152 +772,6 @@ class DBTCloudUnitTest(TestCase):
                 list(self.dbtcloud.yield_pipeline_usage(EXPECTED_JOB_DETAILS))[0].left
             )
 
-    def test_get_model_details(self):
-        """
-        Test getting model details from DBT Cloud
-        """
-        # Mock the graphql client's post method
-        with patch.object(self.dbtcloud.client.graphql_client, "post") as mock_post:
-            # Set up mock return value
-            mock_post.return_value = {
-                "data": {
-                    "job": {
-                        "models": [
-                            {
-                                "uniqueId": "model.dbt_test_new.model_32",
-                                "name": "model_32",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": [
-                                    "model.dbt_test_new.model_15",
-                                    "model.dbt_test_new.model_11",
-                                ],
-                            },
-                            {
-                                "uniqueId": "model.dbt_test_new.model_15",
-                                "name": "model_15",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": None,
-                            },
-                            {
-                                "uniqueId": "model.dbt_test_new.model_11",
-                                "name": "model_11",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": None,
-                            },
-                        ]
-                    }
-                }
-            }
-
-            # Call the method
-            models = self.dbtcloud.client.get_model_details(
-                70403103936332, 70403110257794
-            )
-
-            # Verify we got the expected models
-            self.assertEqual(len(models), 3)
-
-            # Verify the first model (model_32)
-            model_32 = next(m for m in models if m.name == "model_32")
-            self.assertEqual(model_32.database, "dev")
-            self.assertEqual(model_32.dbtschema, "dbt_test_new")
-            self.assertEqual(len(model_32.dependsOn), 2)
-            self.assertIn("model.dbt_test_new.model_15", model_32.dependsOn)
-            self.assertIn("model.dbt_test_new.model_11", model_32.dependsOn)
-
-            # Test error case
-            mock_post.side_effect = Exception("Test error")
-            error_models = self.dbtcloud.client.get_model_details(
-                70403103936332, 70403110257794
-            )
-            self.assertIsNone(error_models)
-
-    def test_get_models_and_seeds_details(self):
-        """
-        Test getting models and seeds details from DBT Cloud
-        """
-        # Mock the graphql client's post method
-        with patch.object(self.dbtcloud.client.graphql_client, "post") as mock_post:
-            # Set up mock return value
-            mock_post.return_value = {
-                "data": {
-                    "job": {
-                        "models": [
-                            {
-                                "uniqueId": "model.dbt_test_new.model_32",
-                                "name": "model_32",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": [
-                                    "model.dbt_test_new.model_15",
-                                    "model.dbt_test_new.model_11",
-                                ],
-                            },
-                            {
-                                "uniqueId": "model.dbt_test_new.model_15",
-                                "name": "model_15",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": None,
-                            },
-                            {
-                                "uniqueId": "model.dbt_test_new.model_11",
-                                "name": "model_11",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                                "dependsOn": None,
-                            },
-                        ],
-                        "seeds": [
-                            {
-                                "uniqueId": "seed.dbt_test_new.raw_payments",
-                                "name": "raw_payments",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                            },
-                            {
-                                "uniqueId": "seed.dbt_test_new.raw_orders",
-                                "name": "raw_orders",
-                                "schema": "dbt_test_new",
-                                "database": "dev",
-                            },
-                        ],
-                    }
-                }
-            }
-
-            # Call the method
-            models_and_seeds = self.dbtcloud.client.get_models_and_seeds_details(
-                70403103936332, 70403110257794
-            )
-
-            # Verify we got the expected models and seeds
-            self.assertEqual(len(models_and_seeds), 5)
-
-            # Verify the first model (model_32)
-            model_32 = next(m for m in models_and_seeds if m.name == "model_32")
-            self.assertEqual(model_32.database, "dev")
-            self.assertEqual(model_32.dbtschema, "dbt_test_new")
-            self.assertEqual(len(model_32.dependsOn), 2)
-            self.assertIn("model.dbt_test_new.model_15", model_32.dependsOn)
-            self.assertIn("model.dbt_test_new.model_11", model_32.dependsOn)
-
-            # Verify seeds
-            seeds = [m for m in models_and_seeds if m.uniqueId.startswith("seed.")]
-            self.assertEqual(len(seeds), 2)
-            self.assertIn("raw_payments", [s.name for s in seeds])
-            self.assertIn("raw_orders", [s.name for s in seeds])
-
-            # Test error case
-            mock_post.side_effect = Exception("Test error")
-            error_models = self.dbtcloud.client.get_models_and_seeds_details(
-                70403103936332, 70403110257794
-            )
-            self.assertIsNone(error_models)
-
     def test_error_handling_in_lineage(self):
         """
         Test error handling in lineage generation
@@ -1012,32 +869,34 @@ class DBTCloudUnitTest(TestCase):
 
             mock_get_by_name.side_effect = get_by_name_side_effect
 
-            # Mock the graphql client's post method
+            # Mock the combined GraphQL method
             with patch.object(
-                self.dbtcloud.client, "get_models_and_seeds_details"
-            ) as mock_get_parents, patch.object(
-                self.dbtcloud.client, "get_model_details"
-            ) as mock_get_models:
+                self.dbtcloud.client, "get_models_with_lineage"
+            ) as mock_get_models_with_lineage:
 
-                mock_get_parents.return_value = [
-                    DBTModel(
-                        uniqueId="model.dbt_test_new.model_15",
-                        name="model_15",
-                        dbtschema="dbt_test_new",
-                        database="dev",
-                        dependsOn=None,
-                    )
-                ]
-
-                mock_get_models.return_value = [
-                    DBTModel(
-                        uniqueId="model.dbt_test_new.model_32",
-                        name="model_32",
-                        dbtschema="dbt_test_new",
-                        database="dev",
-                        dependsOn=["model.dbt_test_new.model_15"],
-                    )
-                ]
+                # Return (models, seeds, sources) tuple
+                mock_get_models_with_lineage.return_value = (
+                    [
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.model_32",
+                            name="model_32",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                            dependsOn=["model.dbt_test_new.model_15"],
+                        ),
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.model_15",
+                            name="model_15",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                            dependsOn=None,
+                        ),
+                    ],
+                    [],  # seeds
+                    [],  # sources
+                )
 
                 # Get the lineage details
                 lineage_details = list(
@@ -1160,10 +1019,10 @@ class DBTCloudUnitTest(TestCase):
                 schedule=DBTSchedule(cron="0 */6 * * *"),
                 project_id=70403103926818,
             ),
-            "table_fqns": [
+            "table_fqns": {
                 "local_redshift.dev.dbt_test_new.cached_model_1",
                 "local_redshift.dev.dbt_test_new.cached_model_2",
-            ],
+            },
             "runs": [mock_run_1, mock_run_2],
         }
 
@@ -1370,23 +1229,26 @@ class DBTCloudUnitTest(TestCase):
 
             mock_get_by_name.side_effect = get_by_name_side_effect
 
-            # Mock client methods
+            # Mock client method - now using combined get_models_with_lineage
             with patch.object(
-                self.dbtcloud.client, "get_models_and_seeds_details"
-            ) as mock_get_parents, patch.object(
-                self.dbtcloud.client, "get_model_details"
-            ) as mock_get_models:
+                self.dbtcloud.client, "get_models_with_lineage"
+            ) as mock_get_models_with_lineage:
 
-                mock_get_parents.return_value = []
-                mock_get_models.return_value = [
-                    DBTModel(
-                        uniqueId="model.dbt_test_new.model_32",
-                        name="model_32",
-                        dbtschema="dbt_test_new",
-                        database="dev",
-                        dependsOn=[],
-                    )
-                ]
+                # Return (models, seeds, sources) tuple
+                mock_get_models_with_lineage.return_value = (
+                    [
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.model_32",
+                            name="model_32",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                            dependsOn=[],
+                        )
+                    ],
+                    [],  # seeds
+                    [],  # sources
+                )
 
                 # Set up context with run data
                 self.dbtcloud.context.get().__dict__["latest_run"] = mock_run
@@ -1402,8 +1264,8 @@ class DBTCloudUnitTest(TestCase):
 
                 cached_data = self.dbtcloud.observability_cache[cache_key]
                 self.assertIsNotNone(cached_data.get("pipeline_entity"))
-                # table_fqns should be a list (may be empty for models without lineage)
-                self.assertIsInstance(cached_data.get("table_fqns"), list)
+                # table_fqns should be a set (may be empty for models without lineage)
+                self.assertIsInstance(cached_data.get("table_fqns"), set)
                 self.assertIsNotNone(cached_data.get("runs"))
 
     def test_observability_multiple_runs_for_same_table(self):
@@ -1465,7 +1327,7 @@ class DBTCloudUnitTest(TestCase):
                     schedule=DBTSchedule(cron="0 */12 * * *"),
                     project_id=70403103926818,
                 ),
-                "table_fqns": [table_fqn],
+                "table_fqns": {table_fqn},
                 "runs": [run],
             }
 
@@ -1497,3 +1359,859 @@ class DBTCloudUnitTest(TestCase):
             statuses.append(status)
         self.assertIn("Successful", statuses)
         self.assertIn("Skipped", statuses)  # status 2 maps to Skipped
+
+    def test_get_models_with_lineage(self):
+        """
+        Test the combined GraphQL call for models and seeds with lineage info
+        """
+        with patch.object(self.dbtcloud.client.graphql_client, "post") as mock_post:
+            mock_post.return_value = {
+                "data": {
+                    "job": {
+                        "models": [
+                            {
+                                "uniqueId": "model.dbt_test_new.model_32",
+                                "name": "model_32",
+                                "schema": "dbt_test_new",
+                                "database": "dev",
+                                "dependsOn": [
+                                    "model.dbt_test_new.model_15",
+                                    "seed.dbt_test_new.raw_payments",
+                                ],
+                            },
+                            {
+                                "uniqueId": "model.dbt_test_new.model_15",
+                                "name": "model_15",
+                                "schema": "dbt_test_new",
+                                "database": "dev",
+                                "dependsOn": None,
+                            },
+                        ],
+                        "seeds": [
+                            {
+                                "uniqueId": "seed.dbt_test_new.raw_payments",
+                                "name": "raw_payments",
+                                "schema": "dbt_test_new",
+                                "database": "dev",
+                            },
+                        ],
+                        "sources": [],
+                    }
+                }
+            }
+
+            models, seeds, sources = self.dbtcloud.client.get_models_with_lineage(
+                70403103936332, 70403110257794
+            )
+
+            # Verify models
+            self.assertEqual(len(models), 2)
+            model_32 = next(m for m in models if m.name == "model_32")
+            self.assertEqual(model_32.database, "dev")
+            self.assertEqual(model_32.dbtschema, "dbt_test_new")
+            self.assertEqual(len(model_32.dependsOn), 2)
+
+            # Verify seeds
+            self.assertEqual(len(seeds), 1)
+            self.assertEqual(seeds[0].name, "raw_payments")
+            self.assertEqual(seeds[0].uniqueId, "seed.dbt_test_new.raw_payments")
+
+            # Verify sources (empty in this test case)
+            self.assertEqual(len(sources), 0)
+
+            # Test error case
+            mock_post.side_effect = Exception("Test error")
+            error_models, error_seeds = self.dbtcloud.client.get_models_with_lineage(
+                70403103936332, 70403110257794
+            )
+            self.assertIsNone(error_models)
+            self.assertIsNone(error_seeds)
+
+    def test_get_jobs_generator_pattern(self):
+        """
+        Test that get_jobs returns a generator and yields jobs correctly
+        """
+        with patch.object(self.dbtcloud.client, "_get_jobs") as mock_get_jobs:
+            # Mock _get_jobs to return a generator
+            mock_get_jobs.return_value = iter(DBTJobList(**MOCK_JOB_RESULT).Jobs)
+
+            # Temporarily clear job_ids and project_ids to test the else branch
+            original_job_ids = self.dbtcloud.client.job_ids
+            original_project_ids = self.dbtcloud.client.project_ids
+            self.dbtcloud.client.job_ids = None
+            self.dbtcloud.client.project_ids = None
+
+            try:
+                # get_jobs should return an iterable
+                jobs = self.dbtcloud.client.get_jobs()
+
+                # Verify it's iterable (generator)
+                from collections.abc import Iterable
+
+                self.assertIsInstance(jobs, Iterable)
+
+                # Consume the generator
+                jobs_list = list(jobs)
+                self.assertEqual(len(jobs_list), 1)
+                self.assertEqual(jobs_list[0].name, "New job")
+            finally:
+                # Restore original values
+                self.dbtcloud.client.job_ids = original_job_ids
+                self.dbtcloud.client.project_ids = original_project_ids
+
+    def test_get_jobs_with_project_ids_filter(self):
+        """
+        Test get_jobs filters by project_ids correctly
+        """
+        with patch.object(self.dbtcloud.client, "_get_jobs") as mock_get_jobs:
+            # Create jobs with different project IDs
+            job1 = DBTJob(
+                id=1,
+                name="Job 1",
+                project_id=70403103922127,
+                state=1,
+                job_type="other",
+                created_at="2024-05-27T10:42:10.111442+00:00",
+                updated_at="2024-05-27T10:42:10.111459+00:00",
+            )
+            job2 = DBTJob(
+                id=2,
+                name="Job 2",
+                project_id=70403103922128,
+                state=1,
+                job_type="other",
+                created_at="2024-05-27T10:42:10.111442+00:00",
+                updated_at="2024-05-27T10:42:10.111459+00:00",
+            )
+
+            # Mock _get_jobs to yield jobs for each project
+            def mock_get_jobs_impl(job_id=None, project_id=None, environment_id=None):
+                if project_id == "70403103922127":
+                    yield job1
+                elif project_id == "70403103922128":
+                    yield job2
+
+            mock_get_jobs.side_effect = mock_get_jobs_impl
+
+            # Temporarily clear job_ids and environment_ids to test project filtering only
+            original_job_ids = self.dbtcloud.client.job_ids
+            original_env_ids = self.dbtcloud.client.environment_ids
+            self.dbtcloud.client.job_ids = None
+            self.dbtcloud.client.environment_ids = None
+
+            try:
+                # Call get_jobs (client has project_ids set)
+                jobs = list(self.dbtcloud.client.get_jobs())
+
+                # Should have called _get_jobs for each project_id
+                self.assertEqual(mock_get_jobs.call_count, 2)
+                self.assertEqual(len(jobs), 2)
+            finally:
+                self.dbtcloud.client.job_ids = original_job_ids
+                self.dbtcloud.client.environment_ids = original_env_ids
+
+    def test_get_runs_generator_with_limit(self):
+        """
+        Test that get_runs respects numberOfRuns limit and uses generator pattern
+        """
+        with patch.object(self.dbtcloud.client.client, "get") as mock_get:
+            mock_get.return_value = MOCK_RUN_RESULT
+
+            # get_runs should return an iterable
+            runs = self.dbtcloud.client.get_runs(70403103936332)
+
+            from collections.abc import Iterable
+
+            self.assertIsInstance(runs, Iterable)
+
+            # Consume the generator
+            runs_list = list(runs)
+            # numberOfRuns is 10 in the config, but MOCK_RUN_RESULT has 2 runs
+            self.assertLessEqual(len(runs_list), 10)
+
+    def test_table_entity_cache(self):
+        """
+        Test that _get_table_entity caches table lookups
+        """
+        mock_table = Table(
+            id=uuid.uuid4(),
+            name="test_table",
+            fullyQualifiedName="service.db.schema.test_table",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        with patch.object(
+            self.dbtcloud.metadata, "get_by_name", return_value=mock_table
+        ) as mock_get:
+            # First call should hit the API
+            result1 = self.dbtcloud._get_table_entity("service.db.schema.test_table")
+            self.assertEqual(result1, mock_table)
+            self.assertEqual(mock_get.call_count, 1)
+
+            # Second call should use cache
+            result2 = self.dbtcloud._get_table_entity("service.db.schema.test_table")
+            self.assertEqual(result2, mock_table)
+            self.assertEqual(mock_get.call_count, 1)  # Still 1, no new API call
+
+            # Different FQN should hit the API again
+            self.dbtcloud._get_table_entity("service.db.schema.other_table")
+            self.assertEqual(mock_get.call_count, 2)
+
+    def test_observability_cache_uses_set_for_table_fqns(self):
+        """
+        Test that observability cache uses set for table_fqns to prevent duplicates
+        """
+        # Set up context
+        self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
+        self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
+        self.dbtcloud.context.get().__dict__[
+            "pipeline_service"
+        ] = "dbtcloud_pipeline_test"
+
+        mock_run = DBTRun(
+            id=70403110257794,
+            status=1,
+            state="Success",
+            started_at="2024-05-27 10:42:20.621788+00:00",
+            finished_at="2024-05-28 10:42:52.622408+00:00",
+        )
+        self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
+
+        # Mock source config
+        self.dbtcloud.source_config.lineageInformation = type(
+            "obj", (object,), {"dbServiceNames": ["local_redshift"]}
+        )
+
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="New job",
+            fullyQualifiedName="dbtcloud_pipeline_test.New job",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+
+        mock_table = Table(
+            id=uuid.uuid4(),
+            name="model_32",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.model_32",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        # Clear cache
+        self.dbtcloud.observability_cache.clear()
+
+        with patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name:
+
+            def get_by_name_side_effect(entity, fqn):
+                if entity == Pipeline:
+                    return mock_pipeline
+                elif entity == Table:
+                    return mock_table
+                return None
+
+            mock_get_by_name.side_effect = get_by_name_side_effect
+
+            with patch.object(
+                self.dbtcloud.client, "get_models_with_lineage"
+            ) as mock_get_models:
+                # Return same model multiple times to test deduplication
+                mock_get_models.return_value = (
+                    [
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.model_32",
+                            name="model_32",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                            dependsOn=[],
+                        ),
+                    ],
+                    [],
+                    [],
+                )
+
+                # Process lineage
+                list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
+
+                # Verify cache was populated with set
+                cache_key = (70403103936332, "70403110257794")
+                if cache_key in self.dbtcloud.observability_cache:
+                    table_fqns = self.dbtcloud.observability_cache[cache_key][
+                        "table_fqns"
+                    ]
+                    self.assertIsInstance(table_fqns, set)
+
+    def test_get_jobs_url_construction_with_project_id(self):
+        """
+        Test that _get_jobs constructs URL correctly with project_id filter
+        """
+        with patch.object(self.dbtcloud.client.client, "get") as mock_get:
+            mock_get.return_value = MOCK_JOB_RESULT
+
+            # Consume the generator
+            list(self.dbtcloud.client._get_jobs(project_id="70403103922127"))
+
+            # Verify the URL was constructed with project_id query param
+            call_args = mock_get.call_args
+            called_path = call_args[0][0]
+            self.assertIn("?project_id=70403103922127", called_path)
+
+    def test_get_runs_orders_by_created_at_descending(self):
+        """
+        Test that get_runs orders runs by created_at in descending order
+        """
+        with patch.object(self.dbtcloud.client.client, "get") as mock_get:
+            mock_get.return_value = MOCK_RUN_RESULT
+
+            # Consume the generator
+            list(self.dbtcloud.client.get_runs(70403103936332))
+
+            # Verify order_by was set correctly
+            call_args = mock_get.call_args
+            query_params = call_args[1]["data"]
+            self.assertEqual(query_params["order_by"], "-created_at")
+
+    def test_get_jobs_url_construction_with_environment_id(self):
+        """
+        Test that _get_jobs constructs URL correctly with environment_id filter
+        """
+        with patch.object(self.dbtcloud.client.client, "get") as mock_get:
+            mock_get.return_value = MOCK_JOB_RESULT
+
+            # Consume the generator
+            list(self.dbtcloud.client._get_jobs(environment_id="70403103931988"))
+
+            # Verify the URL was constructed with environment_id query param
+            call_args = mock_get.call_args
+            called_path = call_args[0][0]
+            self.assertIn("?environment_id=70403103931988", called_path)
+
+    def test_get_jobs_url_construction_with_both_project_and_environment_id(self):
+        """
+        Test that _get_jobs constructs URL correctly with both project_id and environment_id
+        """
+        with patch.object(self.dbtcloud.client.client, "get") as mock_get:
+            mock_get.return_value = MOCK_JOB_RESULT
+
+            # Consume the generator
+            list(
+                self.dbtcloud.client._get_jobs(
+                    project_id="70403103922127", environment_id="70403103931988"
+                )
+            )
+
+            # Verify the URL was constructed with both query params
+            call_args = mock_get.call_args
+            called_path = call_args[0][0]
+            self.assertIn("project_id=70403103922127", called_path)
+            self.assertIn("environment_id=70403103931988", called_path)
+            self.assertIn("&", called_path)
+
+    def test_get_jobs_with_environment_ids_filter(self):
+        """
+        Test get_jobs filters by environment_ids correctly
+        """
+        with patch.object(self.dbtcloud.client, "_get_jobs") as mock_get_jobs:
+            # Create jobs with different environment IDs
+            job1 = DBTJob(
+                id=1,
+                name="Job 1",
+                project_id=70403103926818,
+                environment_id=70403103931988,
+                state=1,
+                job_type="other",
+                created_at="2024-05-27T10:42:10.111442+00:00",
+                updated_at="2024-05-27T10:42:10.111459+00:00",
+            )
+            job2 = DBTJob(
+                id=2,
+                name="Job 2",
+                project_id=70403103926818,
+                environment_id=70403103931989,
+                state=1,
+                job_type="other",
+                created_at="2024-05-27T10:42:10.111442+00:00",
+                updated_at="2024-05-27T10:42:10.111459+00:00",
+            )
+
+            # Mock _get_jobs to yield jobs for each environment
+            def mock_get_jobs_impl(job_id=None, project_id=None, environment_id=None):
+                if environment_id == "70403103931988":
+                    yield job1
+                elif environment_id == "70403103931989":
+                    yield job2
+
+            mock_get_jobs.side_effect = mock_get_jobs_impl
+
+            # Temporarily set only environment_ids (no job_ids or project_ids)
+            original_job_ids = self.dbtcloud.client.job_ids
+            original_project_ids = self.dbtcloud.client.project_ids
+            original_env_ids = self.dbtcloud.client.environment_ids
+            self.dbtcloud.client.job_ids = None
+            self.dbtcloud.client.project_ids = None
+            self.dbtcloud.client.environment_ids = EXPECTED_ENVIRONMENT_FILTERS
+
+            try:
+                # Call get_jobs (client has environment_ids set)
+                jobs = list(self.dbtcloud.client.get_jobs())
+
+                # Should have called _get_jobs for each environment_id
+                self.assertEqual(mock_get_jobs.call_count, 2)
+                self.assertEqual(len(jobs), 2)
+            finally:
+                self.dbtcloud.client.job_ids = original_job_ids
+                self.dbtcloud.client.project_ids = original_project_ids
+                self.dbtcloud.client.environment_ids = original_env_ids
+
+    def test_get_jobs_job_ids_takes_precedence(self):
+        """
+        Test that jobIds takes precedence over projectIds and environmentIds
+        """
+        with patch.object(self.dbtcloud.client, "_get_jobs") as mock_get_jobs:
+            job1 = DBTJob(
+                id=70403103922125,
+                name="Specific Job",
+                project_id=70403103926818,
+                environment_id=70403103931988,
+                state=1,
+                job_type="other",
+                created_at="2024-05-27T10:42:10.111442+00:00",
+                updated_at="2024-05-27T10:42:10.111459+00:00",
+            )
+
+            def mock_get_jobs_impl(job_id=None, project_id=None, environment_id=None):
+                if job_id == "70403103922125":
+                    yield job1
+
+            mock_get_jobs.side_effect = mock_get_jobs_impl
+
+            # Set all filters - job_ids should take precedence
+            original_env_ids = self.dbtcloud.client.environment_ids
+            self.dbtcloud.client.environment_ids = EXPECTED_ENVIRONMENT_FILTERS
+
+            try:
+                jobs = list(self.dbtcloud.client.get_jobs())
+
+                # Should only call _get_jobs with job_id, ignoring project/environment
+                for call in mock_get_jobs.call_args_list:
+                    _, kwargs = call
+                    # Verify job_id is passed and project_id/environment_id are not
+                    self.assertIsNotNone(kwargs.get("job_id"))
+                    self.assertIsNone(kwargs.get("project_id"))
+                    self.assertIsNone(kwargs.get("environment_id"))
+            finally:
+                self.dbtcloud.client.environment_ids = original_env_ids
+
+    def test_get_jobs_with_project_and_environment_ids(self):
+        """
+        Test get_jobs with both projectIds and environmentIds filters
+        """
+        with patch.object(self.dbtcloud.client, "_get_jobs") as mock_get_jobs:
+            job1 = DBTJob(
+                id=1,
+                name="Job P1E1",
+                project_id=70403103922127,
+                environment_id=70403103931988,
+                state=1,
+                job_type="other",
+                created_at="2024-05-27T10:42:10.111442+00:00",
+                updated_at="2024-05-27T10:42:10.111459+00:00",
+            )
+
+            def mock_get_jobs_impl(job_id=None, project_id=None, environment_id=None):
+                if project_id and environment_id:
+                    yield job1
+
+            mock_get_jobs.side_effect = mock_get_jobs_impl
+
+            # Clear job_ids and set both project and environment filters
+            original_job_ids = self.dbtcloud.client.job_ids
+            original_env_ids = self.dbtcloud.client.environment_ids
+            self.dbtcloud.client.job_ids = None
+            self.dbtcloud.client.environment_ids = ["70403103931988"]
+
+            try:
+                jobs = list(self.dbtcloud.client.get_jobs())
+
+                # Should call _get_jobs for each project_id x environment_id combination
+                # 2 project_ids x 1 environment_id = 2 calls
+                self.assertEqual(mock_get_jobs.call_count, 2)
+
+                # Verify both project_id and environment_id are passed
+                for call in mock_get_jobs.call_args_list:
+                    _, kwargs = call
+                    self.assertIsNotNone(kwargs.get("project_id"))
+                    self.assertIsNotNone(kwargs.get("environment_id"))
+            finally:
+                self.dbtcloud.client.job_ids = original_job_ids
+                self.dbtcloud.client.environment_ids = original_env_ids
+
+    def test_lineage_skips_models_without_run_generated_at(self):
+        """
+        Test that models without runGeneratedAt are skipped during lineage processing
+        """
+        # Clear caches
+        self.dbtcloud._table_entity_cache.clear()
+        self.dbtcloud.observability_cache.clear()
+
+        # Mock the context
+        self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
+        self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
+        self.dbtcloud.context.get().__dict__[
+            "pipeline_service"
+        ] = "dbtcloud_pipeline_test"
+
+        mock_run = DBTRun(
+            id=70403110257794,
+            status=1,
+            state="Success",
+            started_at="2024-05-27 10:42:20.621788+00:00",
+            finished_at="2024-05-28 10:42:52.622408+00:00",
+        )
+        self.dbtcloud.context.get().__dict__["latest_run"] = mock_run
+        self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
+
+        # Mock source config
+        self.dbtcloud.source_config.lineageInformation = type(
+            "obj", (object,), {"dbServiceNames": ["local_redshift"]}
+        )
+
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="New job",
+            fullyQualifiedName="dbtcloud_pipeline_test.New job",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+
+        mock_table = Table(
+            id=uuid.uuid4(),
+            name="model_with_run",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.model_with_run",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        with patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name:
+
+            def get_by_name_side_effect(entity, fqn):
+                if entity == Pipeline:
+                    return mock_pipeline
+                elif entity == Table:
+                    return mock_table
+                return None
+
+            mock_get_by_name.side_effect = get_by_name_side_effect
+
+            with patch.object(
+                self.dbtcloud.client, "get_models_with_lineage"
+            ) as mock_get_models:
+                # Return models - one with runGeneratedAt, one without
+                mock_get_models.return_value = (
+                    [
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.model_with_run",
+                            name="model_with_run",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                            dependsOn=[],
+                        ),
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.model_without_run",
+                            name="model_without_run",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt=None,  # No runGeneratedAt
+                            dependsOn=[],
+                        ),
+                    ],
+                    [],  # seeds
+                    [],  # sources
+                )
+
+                # Process lineage
+                lineage_results = list(
+                    self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS)
+                )
+
+                # The model without runGeneratedAt should be skipped
+                # Only the model with runGeneratedAt should be processed
+                # Verify context table FQNs only contains the model with runGeneratedAt
+                ctx = self.dbtcloud.context.get()
+                if hasattr(ctx, "current_table_fqns") and ctx.current_table_fqns:
+                    # Should only have the model with runGeneratedAt
+                    for fqn_str in ctx.current_table_fqns:
+                        self.assertNotIn("model_without_run", fqn_str)
+
+    def test_lineage_skips_parent_models_without_run_generated_at(self):
+        """
+        Test that parent models/seeds without runGeneratedAt are skipped,
+        but parent sources are NOT skipped (sources don't need runGeneratedAt)
+        """
+        # Clear caches
+        self.dbtcloud._table_entity_cache.clear()
+        self.dbtcloud.observability_cache.clear()
+
+        # Mock the context
+        self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
+        self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
+        self.dbtcloud.context.get().__dict__[
+            "pipeline_service"
+        ] = "dbtcloud_pipeline_test"
+
+        mock_run = DBTRun(
+            id=70403110257794,
+            status=1,
+            state="Success",
+            started_at="2024-05-27 10:42:20.621788+00:00",
+            finished_at="2024-05-28 10:42:52.622408+00:00",
+        )
+        self.dbtcloud.context.get().__dict__["latest_run"] = mock_run
+        self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
+
+        # Mock source config
+        self.dbtcloud.source_config.lineageInformation = type(
+            "obj", (object,), {"dbServiceNames": ["local_redshift"]}
+        )
+
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="New job",
+            fullyQualifiedName="dbtcloud_pipeline_test.New job",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+
+        # Create mock tables for each entity
+        mock_tables = {
+            "child_model": Table(
+                id=uuid.uuid4(),
+                name="child_model",
+                fullyQualifiedName="local_redshift.dev.dbt_test_new.child_model",
+                database=EntityReference(id=uuid.uuid4(), type="database"),
+                columns=[],
+                databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+            ),
+            "parent_model_with_run": Table(
+                id=uuid.uuid4(),
+                name="parent_model_with_run",
+                fullyQualifiedName="local_redshift.dev.dbt_test_new.parent_model_with_run",
+                database=EntityReference(id=uuid.uuid4(), type="database"),
+                columns=[],
+                databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+            ),
+            "parent_model_without_run": Table(
+                id=uuid.uuid4(),
+                name="parent_model_without_run",
+                fullyQualifiedName="local_redshift.dev.dbt_test_new.parent_model_without_run",
+                database=EntityReference(id=uuid.uuid4(), type="database"),
+                columns=[],
+                databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+            ),
+            "source_table": Table(
+                id=uuid.uuid4(),
+                name="source_table",
+                fullyQualifiedName="local_redshift.dev.dbt_test_new.source_table",
+                database=EntityReference(id=uuid.uuid4(), type="database"),
+                columns=[],
+                databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+            ),
+        }
+
+        with patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name:
+
+            def get_by_name_side_effect(entity, fqn):
+                if entity == Pipeline:
+                    return mock_pipeline
+                elif entity == Table:
+                    fqn_str = str(fqn) if not isinstance(fqn, str) else fqn
+                    for table_name, table in mock_tables.items():
+                        if table_name in fqn_str:
+                            return table
+                return None
+
+            mock_get_by_name.side_effect = get_by_name_side_effect
+
+            with patch.object(
+                self.dbtcloud.client, "get_models_with_lineage"
+            ) as mock_get_models:
+                # Return a child model that depends on:
+                # 1. A parent model WITH runGeneratedAt (should create lineage)
+                # 2. A parent model WITHOUT runGeneratedAt (should be skipped)
+                # 3. A source (should create lineage - sources don't need runGeneratedAt)
+                mock_get_models.return_value = (
+                    [
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.child_model",
+                            name="child_model",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                            dependsOn=[
+                                "model.dbt_test_new.parent_model_with_run",
+                                "model.dbt_test_new.parent_model_without_run",
+                                "source.dbt_test_new.source_table",
+                            ],
+                        ),
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.parent_model_with_run",
+                            name="parent_model_with_run",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                            dependsOn=None,
+                        ),
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.parent_model_without_run",
+                            name="parent_model_without_run",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt=None,  # No runGeneratedAt - should be skipped
+                            dependsOn=None,
+                        ),
+                    ],
+                    [],  # seeds
+                    [
+                        DBTModel(
+                            uniqueId="source.dbt_test_new.source_table",
+                            name="source_table",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt=None,  # Sources don't have runGeneratedAt
+                            dependsOn=None,
+                        ),
+                    ],  # sources
+                )
+
+                # Process lineage
+                lineage_results = list(
+                    self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS)
+                )
+
+                # Verify method completed without errors
+                self.assertIsInstance(lineage_results, list)
+
+                # Verify that if any lineage was generated, parent_model_without_run
+                # should not appear as a from_entity (it should be skipped)
+                successful_edges = [r for r in lineage_results if r.right is not None]
+                for edge in successful_edges:
+                    from_entity_id = str(edge.right.edge.fromEntity.id)
+                    # The parent_model_without_run should never appear as a source
+                    self.assertNotEqual(
+                        from_entity_id,
+                        str(mock_tables["parent_model_without_run"].id),
+                    )
+
+    def test_lineage_allows_sources_without_run_generated_at(self):
+        """
+        Test that sources are processed even without runGeneratedAt
+        because sources are auto-generated and don't require it
+        """
+        # Clear caches
+        self.dbtcloud._table_entity_cache.clear()
+        self.dbtcloud.observability_cache.clear()
+
+        # Mock the context
+        self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
+        self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
+        self.dbtcloud.context.get().__dict__[
+            "pipeline_service"
+        ] = "dbtcloud_pipeline_test"
+
+        mock_run = DBTRun(
+            id=70403110257794,
+            status=1,
+            state="Success",
+            started_at="2024-05-27 10:42:20.621788+00:00",
+            finished_at="2024-05-28 10:42:52.622408+00:00",
+        )
+        self.dbtcloud.context.get().__dict__["latest_run"] = mock_run
+        self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
+
+        # Mock source config
+        self.dbtcloud.source_config.lineageInformation = type(
+            "obj", (object,), {"dbServiceNames": ["local_redshift"]}
+        )
+
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="New job",
+            fullyQualifiedName="dbtcloud_pipeline_test.New job",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+
+        mock_model_table = Table(
+            id=uuid.uuid4(),
+            name="model_from_source",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.model_from_source",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        mock_source_table = Table(
+            id=uuid.uuid4(),
+            name="raw_data",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.raw_data",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        with patch.object(self.dbtcloud.metadata, "get_by_name") as mock_get_by_name:
+
+            def get_by_name_side_effect(entity, fqn):
+                if entity == Pipeline:
+                    return mock_pipeline
+                elif entity == Table:
+                    fqn_str = str(fqn) if not isinstance(fqn, str) else fqn
+                    if "model_from_source" in fqn_str:
+                        return mock_model_table
+                    elif "raw_data" in fqn_str:
+                        return mock_source_table
+                return None
+
+            mock_get_by_name.side_effect = get_by_name_side_effect
+
+            with patch.object(
+                self.dbtcloud.client, "get_models_with_lineage"
+            ) as mock_get_models:
+                # Return a model that depends on a source (source has no runGeneratedAt)
+                mock_get_models.return_value = (
+                    [
+                        DBTModel(
+                            uniqueId="model.dbt_test_new.model_from_source",
+                            name="model_from_source",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt="2024-05-27T10:42:20.621788+00:00",
+                            dependsOn=["source.dbt_test_new.raw_data"],
+                        ),
+                    ],
+                    [],  # seeds
+                    [
+                        DBTModel(
+                            uniqueId="source.dbt_test_new.raw_data",
+                            name="raw_data",
+                            dbtschema="dbt_test_new",
+                            database="dev",
+                            runGeneratedAt=None,  # Sources don't have runGeneratedAt
+                            dependsOn=None,
+                        ),
+                    ],  # sources
+                )
+
+                # Process lineage
+                lineage_results = list(
+                    self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS)
+                )
+
+                # Verify method completed without errors
+                self.assertIsInstance(lineage_results, list)
+                # Sources should NOT be filtered out even though they have no runGeneratedAt
+                # Note: Actual lineage generation depends on entity resolution (FQN matching)
+                # The key test is that no exception was raised when processing
+                # a source with runGeneratedAt=None

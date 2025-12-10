@@ -21,8 +21,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
 import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.resources.system.IndexResource;
@@ -30,9 +28,6 @@ import org.openmetadata.service.resources.system.IndexResource;
 public class OpenMetadataAssetServlet extends AssetServlet {
   private final OMWebConfiguration webConfiguration;
   private final String basePath;
-
-  // List of frontend paths that should be whitelisted and serve the index file
-  private static final List<String> WHITELISTED_PATHS = Arrays.asList("/docs", "/signin");
 
   public OpenMetadataAssetServlet(
       String basePath,
@@ -53,8 +48,7 @@ public class OpenMetadataAssetServlet extends AssetServlet {
     String requestUri = req.getRequestURI();
 
     if (requestUri.endsWith("/")) {
-      IndexResource index = new IndexResource();
-      // Write the dynamic config.js content to the response
+      // Serve index.html for directory requests
       resp.setContentType("text/html");
       resp.getWriter().write(IndexResource.getIndexFile(this.basePath));
       return;
@@ -62,10 +56,10 @@ public class OpenMetadataAssetServlet extends AssetServlet {
 
     super.doGet(req, resp);
 
-    // Check if response is 404 and the path should be whitelisted
+    // For SPA routing: serve index.html for 404s that don't look like static asset requests
     if (!resp.isCommitted() && (resp.getStatus() == 404)) {
-      if (isWhitelistedPath(requestUri)) {
-        // Serve index file for whitelisted paths instead of 404
+      if (isSpaRoute(requestUri)) {
+        // Serve index file for SPA routes instead of 404
         resp.setStatus(200);
         resp.setContentType("text/html");
         resp.getWriter().write(IndexResource.getIndexFile(this.basePath));
@@ -76,16 +70,31 @@ public class OpenMetadataAssetServlet extends AssetServlet {
   }
 
   /**
-   * Check if the given URI path should be whitelisted
+   * Check if the request URI looks like a SPA route (not a static asset)
+   * Static assets typically have file extensions, SPA routes don't
    * @param requestUri The request URI to check
-   * @return true if the path should be whitelisted, false otherwise
+   * @return true if this should be treated as a SPA route, false if it's a static asset
    */
-  private boolean isWhitelistedPath(String requestUri) {
-    for (String whitelistedPath : WHITELISTED_PATHS) {
-      if (requestUri.startsWith(whitelistedPath)) {
-        return true;
-      }
+  private boolean isSpaRoute(String requestUri) {
+    // Remove base path if present
+    String pathToCheck = requestUri;
+    String normalizedBasePath =
+        basePath.endsWith("/") ? basePath.substring(0, basePath.length() - 1) : basePath;
+
+    if (!"/".equals(normalizedBasePath)
+        && !normalizedBasePath.isEmpty()
+        && requestUri.startsWith(normalizedBasePath)) {
+      pathToCheck = requestUri.substring(normalizedBasePath.length());
     }
-    return false;
+
+    // If path has a file extension, it's likely a static asset
+    // Don't serve index.html for these
+    String fileName = pathToCheck.substring(pathToCheck.lastIndexOf('/') + 1);
+    if (fileName.contains(".")) {
+      return false; // Has extension, likely a static asset
+    }
+
+    // No file extension, treat as SPA route
+    return true;
   }
 }

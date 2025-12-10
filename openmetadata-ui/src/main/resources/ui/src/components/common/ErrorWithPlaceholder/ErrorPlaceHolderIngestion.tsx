@@ -46,11 +46,15 @@ const ErrorPlaceHolderIngestion = ({
             <>
               <div>
                 <h6 className="text-base text-grey-body font-medium">
-                  {t('message.manage-airflow-api-failed')}
+                  {t('message.manage-airflow-api-failed', {
+                    brandName: brandClassBase.getPageTitle(),
+                  })}
                 </h6>
 
                 <p className="text-grey-body text-sm mb-5">
-                  {t('message.airflow-guide-message')}
+                  {t('message.airflow-guide-message', {
+                    brandName: brandClassBase.getPageTitle(),
+                  })}
                 </p>
               </div>
 

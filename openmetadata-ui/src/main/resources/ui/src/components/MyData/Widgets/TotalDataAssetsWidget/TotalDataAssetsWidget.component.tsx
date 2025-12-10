@@ -199,7 +199,7 @@ const TotalDataAssetsWidget = ({
     return (
       <WidgetEmptyState
         actionButtonLink={ROUTES.EXPLORE}
-        actionButtonText={t('label.browse-assets')}
+        actionButtonText={t('label.explore-assets')}
         description={t('message.no-data-for-total-assets')}
         icon={
           <TotalDataAssetsEmptyIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />

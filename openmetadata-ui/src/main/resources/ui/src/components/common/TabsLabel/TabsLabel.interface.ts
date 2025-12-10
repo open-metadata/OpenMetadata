@@ -27,4 +27,5 @@ export interface TabsLabelProps {
   isActive?: boolean;
   description?: string;
   isBeta?: boolean;
+  isLoading?: boolean;
 }

@@ -77,8 +77,25 @@
 }
 
 .assets-tab-container {
-  overflow-y: scroll;
+  overflow-y: auto;
   background-color: @white;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.assets-data-container {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.glossary-term-resizable-panel {
+  overflow-y: hidden !important;
+
+  .glossary-term-resizable-panel-container {
+    overflow-y: auto;
+    height: 100%;
+  }
 }
 
 .asset-tab-delete-notification {

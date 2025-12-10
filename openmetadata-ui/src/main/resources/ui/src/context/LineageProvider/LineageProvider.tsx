@@ -49,6 +49,7 @@ import {
   useEdgesState,
   useKeyPress,
   useNodesState,
+  useUpdateNodeInternals,
 } from 'reactflow';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -118,6 +119,7 @@ import {
   getAllDownstreamEdges,
   getAllTracedColumnEdge,
   getClassifiedEdge,
+  getColumnSourceTargetHandles,
   getConnectedNodesEdges,
   getEdgeDataFromEdge,
   getELKLayoutedElements,
@@ -229,6 +231,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const { showModal } = useEntityExportModalProvider();
   const [isPlatformLineage, setIsPlatformLineage] = useState(false);
   const [dqHighlightedEdges, setDqHighlightedEdges] = useState<Set<string>>();
+  const [isCreatingEdge, setIsCreatingEdge] = useState<boolean>(false);
+  const [columnsInCurrentPages, setColumnsInCurrentPages] = useState<string[]>(
+    []
+  );
+
+  const updateColumnsInCurrentPage = (columns: string[]) => {
+    setColumnsInCurrentPages(columns);
+  };
 
   // Add state for entityFqn that can be updated independently of URL params
   const [entityFqn, setEntityFqn] = useState<string>(decodedFqn);
@@ -769,6 +779,22 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [nodes, edges]
   );
 
+  const onColumnMouseEnter = useCallback(
+    (column: string) => {
+      const { columnEdge } = getClassifiedEdge(edges);
+      const { connectedColumnEdges } = getAllTracedColumnEdge(
+        column,
+        columnEdge
+      );
+      setTracedColumns(connectedColumnEdges);
+    },
+    [edges]
+  );
+
+  const onColumnMouseLeave = useCallback(() => {
+    setTracedColumns([]);
+  }, []);
+
   const removeEdgeHandler = async (
     edge: Edge,
     confirmDelete: boolean
@@ -1050,13 +1076,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         handleLineageTracing(node);
       }
     },
-    [handleLineageTracing]
+    [handleLineageTracing, selectedColumn]
   );
 
   const onPaneClick = useCallback(() => {
     setIsDrawerOpen(false);
     setTracedNodes([]);
     setTracedColumns([]);
+    setSelectedColumn('');
     setActiveNode(undefined);
     setSelectedNode({} as SourceType);
   }, []);
@@ -1067,7 +1094,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setSelectedNode({} as SourceType);
     setIsDrawerOpen(true);
     setTracedNodes([]);
-    setTracedColumns([]);
+    const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
+    if (sourceHandle && targetHandle) {
+      setTracedColumns([sourceHandle, targetHandle]);
+    }
   }, []);
 
   const onLineageEditClick = useCallback(() => {
@@ -1127,7 +1157,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         loading: false,
       }));
     }
-  }, [selectedEdge, setShowDeleteModal]);
+  }, [removeColumnEdge, removeEdgeHandler, selectedEdge]);
 
   const onConnect = useCallback(
     (params: Edge | Connection) => {
@@ -1145,6 +1175,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       if (columnConnection) {
         params.sourceHandle = decodeLineageHandles(params.sourceHandle);
         params.targetHandle = decodeLineageHandles(params.targetHandle);
+
+        if (!tracedColumns.includes(params.sourceHandle as string)) {
+          setTracedColumns((prev) => [...prev, params.sourceHandle as string]);
+        }
+
+        if (!tracedColumns.includes(params.targetHandle as string)) {
+          setTracedColumns((prev) => [...prev, params.targetHandle as string]);
+        }
       }
 
       setStatus('waiting');
@@ -1247,11 +1285,29 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           .finally(() => {
             setStatus('initial');
             setLoading(false);
+            setTracedNodes([]);
           });
       }
     },
-    [entityLineage, nodes, entityFqn]
+    [
+      nodes,
+      entityLineage,
+      updateLineageData,
+      setNodes,
+      entityFqn,
+      activeLayer,
+      setEdges,
+      tracedColumns,
+    ]
   );
+
+  const onConnectStart = useCallback(() => {
+    setIsCreatingEdge(true);
+  }, []);
+
+  const onConnectEnd = useCallback(() => {
+    setIsCreatingEdge(false);
+  }, []);
 
   const onAddPipelineClick = useCallback(() => {
     setShowAddEdgeModal(true);
@@ -1719,6 +1775,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       platformView,
       isPlatformLineage,
       entityFqn,
+      isCreatingEdge,
       exportLineageData,
       onCloseDrawer,
       updateEntityFqn,
@@ -1726,9 +1783,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onInitReactFlow,
       onPaneClick,
       onConnect,
+      onConnectStart,
+      onConnectEnd,
       onNodeDrop,
       onNodeCollapse,
       onColumnClick,
+      onColumnMouseEnter,
+      onColumnMouseLeave,
       onNodesChange,
       onEdgesChange,
       onZoomUpdate,
@@ -1752,6 +1813,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       queryFilter,
       onPlatformViewChange,
       dqHighlightedEdges,
+      useUpdateNodeInternals,
+      columnsInCurrentPages,
+      updateColumnsInCurrentPage,
+      setColumnsInCurrentPages,
     };
   }, [
     dataQualityLineage,
@@ -1775,6 +1840,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     expandAllColumns,
     isPlatformLineage,
     entityFqn,
+    isCreatingEdge,
     exportLineageData,
     onCloseDrawer,
     updateEntityFqn,
@@ -1782,9 +1848,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onInitReactFlow,
     onPaneClick,
     onConnect,
+    onConnectStart,
+    onConnectEnd,
     onNodeDrop,
     onNodeCollapse,
     onColumnClick,
+    onColumnMouseEnter,
+    onColumnMouseLeave,
     selectedQuickFilters,
     setSelectedQuickFilters,
     onNodesChange,
@@ -1806,6 +1876,10 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     redraw,
     onPlatformViewChange,
     dqHighlightedEdges,
+    useUpdateNodeInternals,
+    columnsInCurrentPages,
+    updateColumnsInCurrentPage,
+    setColumnsInCurrentPages,
   ]);
 
   useEffect(() => {
@@ -1935,6 +2009,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               entityDetails={{ details: selectedNode }}
               handleClosePanel={onCloseDrawer}
               nodesPerLayer={lineageConfig.nodesPerLayer}
+              panelPath="lineage"
               pipelineViewMode={lineageConfig.pipelineViewMode}
               upstreamDepth={lineageConfig.upstreamDepth}
             />

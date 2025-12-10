@@ -11,9 +11,12 @@
 """
 PII processing models
 """
+from dataclasses import dataclass
 from enum import Enum
 
 from pydantic import BaseModel
+
+from metadata.generated.schema.entity.classification.tag import Tag
 
 
 class TagType(Enum):
@@ -24,3 +27,32 @@ class TagType(Enum):
 class TagAndConfidence(BaseModel):
     tag_fqn: str
     confidence: float
+
+
+@dataclass(frozen=True)
+class ScoredTag:
+    """
+    Result of scoring a tag against sample data.
+
+    Attributes:
+        tag: The tag that was scored
+        score: Confidence score (0.0-1.0)
+        reason: Explanation of why this tag was matched
+    """
+
+    tag: Tag
+    score: float
+    reason: str
+
+    def __hash__(self) -> int:
+        return hash(self.tag.fullyQualifiedName)
+
+    @property
+    def classification_name(self) -> str:
+        if self.tag.classification and self.tag.classification.name:
+            return self.tag.classification.name
+        return "Unknown"
+
+    @property
+    def priority(self) -> int:
+        return self.tag.autoClassificationPriority or 50

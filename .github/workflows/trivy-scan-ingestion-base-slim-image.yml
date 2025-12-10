@@ -36,6 +36,17 @@ jobs:
           pull-request-number: '${{ github.event.pull_request.number }}'
           disable-reviews: true  # To not auto approve changes
 
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:

@@ -58,105 +58,6 @@ export const navigateToEntityPanelTab = async (page: Page, tabName: string) => {
   });
 };
 
-export const editDescription = async (page: Page, descriptionText: string) => {
-  const summaryPanel = page.locator('.entity-summary-panel-container');
-  const descriptionSection = summaryPanel.locator('.description-section');
-
-  const editButton = descriptionSection.getByTestId('edit-description');
-  await editButton.waitFor({ state: 'visible' });
-  await editButton.click();
-
-  const editor = page.locator('.ProseMirror[contenteditable="true"]').first();
-  await editor.click();
-  await editor.fill(descriptionText);
-
-  const patchResp = waitForPatchResponse(page);
-  await page.getByTestId('save').click();
-  await patchResp;
-};
-
-export const editOwners = async (
-  page: Page,
-  ownerNames: string[],
-  ownerType: 'Users' | 'Teams' = 'Users'
-) => {
-  const summaryPanel = page.locator('.entity-summary-panel-container');
-  const ownersSection = summaryPanel.locator('.owners-section');
-
-  const editButton = ownersSection.getByTestId('edit-owners');
-  await editButton.waitFor({ state: 'visible' });
-  if (await editButton.isVisible()) {
-    await editButton.click();
-
-    const popover = page.getByTestId('select-owner-tabs');
-    await popover.waitFor({ state: 'visible' });
-
-    await page.getByRole('tab', { name: ownerType }).click();
-
-    for (const ownerName of ownerNames) {
-      const searchBarTestId =
-        ownerType === 'Users'
-          ? 'owner-select-users-search-bar'
-          : 'owner-select-teams-search-bar';
-
-      const searchIndex =
-        ownerType === 'Users' ? 'user_search_index' : 'team_search_index';
-
-      const searchResponse = page.waitForResponse(
-        `/api/v1/search/query?q=*${ownerName}*index=${searchIndex}*`
-      );
-
-      const searchBar = await page.waitForSelector(
-        `[data-testid="${searchBarTestId}"]`
-      );
-      await searchBar.fill(ownerName);
-      await searchResponse;
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      const ownerToAssign = page.getByRole('listitem', {
-        name: ownerName,
-        exact: true,
-      });
-
-      if (await ownerToAssign.isVisible()) {
-        await ownerToAssign.click();
-
-        const updateBtn = page.getByRole('button', { name: 'Update' });
-        if (await updateBtn.isVisible()) {
-          const patchResp = waitForPatchResponse(page);
-          await updateBtn.click();
-          await patchResp;
-        }
-
-        break;
-      }
-    }
-  }
-};
-
-export const editTier = async (page: Page, tierName: string) => {
-  const summaryPanel = page.locator('.entity-summary-panel-container');
-  const tierSection = summaryPanel.locator('.tier-section');
-
-  await page.locator('[data-testid="edit-icon-tier"]').scrollIntoViewIfNeeded();
-
-  await page.locator('[data-testid="edit-icon-tier"]').click();
-
-  await page.locator('[data-testid="cards"]').scrollIntoViewIfNeeded();
-
-  const tierRadio = page.getByTestId(`radio-btn-${tierName}`);
-  await tierRadio.click();
-  await page.waitForSelector('[data-testid="update-tier-card"]', {
-    state: 'visible',
-  });
-  await page.getByTestId('update-tier-card').click();
-  const patchResp = waitForPatchResponse(page);
-  await patchResp;
-};
-
 export const editTags = async (
   page: Page,
   tagName: string,
@@ -174,7 +75,6 @@ export const editTags = async (
         name: 'Update',
       });
       await updateButton.click();
-      await waitForPatchResponse(page);
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
@@ -231,25 +131,32 @@ export const editGlossaryTerms = async (
   await page.locator('[data-testid="edit-glossary-terms"]').click();
 
   if (clearExisting) {
-    const clearAllButton = page.locator('[data-testid="clear-all-button"]');
-    if (await clearAllButton.isVisible()) {
-      await clearAllButton.click();
-      const updateButton = page.getByRole('button', {
-        name: 'Update',
-      });
-      await updateButton.click();
-      await waitForPatchResponse(page);
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+    const glossaryTermItems = page.locator('.selected-glossary-term-chip');
+    const glossaryTermsCount = await glossaryTermItems.count();
 
-      await page
-        .locator('[data-testid="edit-glossary-terms"]')
-        .scrollIntoViewIfNeeded();
-      await page.waitForSelector('[data-testid="edit-glossary-terms"]', {
-        state: 'visible',
-      });
-      await page.locator('[data-testid="edit-glossary-terms"]').click();
+    if (glossaryTermsCount >= 1) {
+      const clearAllButton = page.locator('[data-testid="clear-all-button"]');
+      if (await clearAllButton.isVisible()) {
+        await clearAllButton.click();
+        const updateButton = page.getByRole('button', {
+          name: 'Update',
+        });
+        await updateButton.click();
+        await waitForPatchResponse(page);
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await page
+          .locator('[data-testid="edit-glossary-terms"]')
+          .scrollIntoViewIfNeeded();
+        await page.waitForSelector('[data-testid="edit-glossary-terms"]', {
+          state: 'visible',
+        });
+        await page.locator('[data-testid="edit-glossary-terms"]').click();
+      }
+    } else {
+      await page.waitForTimeout(100);
     }
   }
 
@@ -389,7 +296,7 @@ export const verifyDeletedEntityNotVisible = async (
     user: 'user_search_index',
     team: 'team_search_index',
     tag: 'tag_search_index',
-    glossaryTerm: 'glossaryTerm_search_index',
+    glossaryTerm: 'glossary_term_search_index',
   };
 
   const searchBar = await page.waitForSelector(

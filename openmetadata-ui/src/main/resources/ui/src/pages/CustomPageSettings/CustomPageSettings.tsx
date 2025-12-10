@@ -180,7 +180,10 @@ export const CustomPageSettings = () => {
                 PAGE_HEADERS.CUSTOM_PAGE.header,
                 PAGE_HEADERS.CUSTOM_PAGE.headerParams
               ),
-              subHeader: t(PAGE_HEADERS.CUSTOM_PAGE.subHeader),
+              subHeader: translateWithNestedKeys(
+                PAGE_HEADERS.CUSTOM_PAGE.subHeader,
+                PAGE_HEADERS.CUSTOM_PAGE.subHeaderParams
+              ),
             }}
           />
         </Col>

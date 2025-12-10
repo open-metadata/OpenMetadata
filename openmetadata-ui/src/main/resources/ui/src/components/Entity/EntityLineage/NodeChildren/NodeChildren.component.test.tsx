@@ -34,6 +34,10 @@ const mockNode = {
   ],
 };
 
+const updateNodeInternalsMock = jest.fn();
+const useUpdateNodeInternalsMock = jest.fn(() => updateNodeInternalsMock);
+const setColumnsInCurrentPagesMock = jest.fn();
+
 const mockLineageProvider = {
   tracedColumns: [],
   activeLayer: [LineageLayer.ColumnLevelLineage],
@@ -41,6 +45,8 @@ const mockLineageProvider = {
   columnsHavingLineage: ['test.fqn.column1'],
   isEditMode: false,
   expandAllColumns: false,
+  useUpdateNodeInternals: useUpdateNodeInternalsMock,
+  setColumnsInCurrentPages: setColumnsInCurrentPagesMock,
 };
 
 jest.mock('../../../../context/LineageProvider/LineageProvider', () => ({
@@ -65,9 +71,9 @@ jest.mock('../../../../utils/SearchClassBase', () => ({
 }));
 
 jest.mock('../CustomNode.utils', () => ({
-  getColumnContent: jest
+  ColumnContent: jest
     .fn()
-    .mockImplementation((column) => <p>{column.name}</p>),
+    .mockImplementation(({ column }) => <p>{column.name}</p>),
 }));
 
 jest.mock('../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component', () =>

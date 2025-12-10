@@ -384,13 +384,20 @@ export const fillGlossaryRowDetails = async (
     owners: string[];
   },
   page: Page,
-  propertyListName?: Record<string, string>
+  propertyListName?: Record<string, string>,
+  isBulkEdit?: boolean
 ) => {
   await page
     .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
-  await fillTextInputDetails(page, row.name);
+  if (isBulkEdit) {
+    await expect(
+      page.locator('.rdg-cell[aria-selected="true"][aria-readonly="true"]')
+    ).toContainText(row.name);
+  } else {
+    await fillTextInputDetails(page, row.name);
+  }
 
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowRight');
 
@@ -660,21 +667,28 @@ export const fillRowDetails = async (
   },
   page: Page,
   customPropertyRecord?: Record<string, string>,
-  isFirstCellClick?: boolean
+  isFirstCellClick?: boolean,
+  isBulkEdit?: boolean
 ) => {
   if (!isFirstCellClick) {
     await page.locator('.rdg-cell-name').last().click();
   }
 
-  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
-  const isActive = await activeCell.isVisible();
-
-  if (isActive) {
-    await fillTextInputDetails(page, row.name);
+  if (isBulkEdit) {
+    await expect(
+      page.locator('.rdg-cell[aria-selected="true"][aria-readonly="true"]')
+    ).toContainText(row.name);
   } else {
-    // Click the name cell again
-    await page.locator('.rdg-cell-name').last().click();
-    await fillTextInputDetails(page, row.name);
+    const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
+    const isActive = await activeCell.isVisible();
+
+    if (isActive) {
+      await fillTextInputDetails(page, row.name);
+    } else {
+      // Click the name cell again
+      await page.locator('.rdg-cell-name').last().click();
+      await fillTextInputDetails(page, row.name);
+    }
   }
 
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).press('ArrowRight');

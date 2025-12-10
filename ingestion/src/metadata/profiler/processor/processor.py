@@ -89,6 +89,7 @@ class ProfilerProcessor(Processor):
             )
         else:
             # at this point we know we have an interface variable since we the `try` block above didn't raise
+            self.status.records.extend(record.profiler_source.interface.status.records)
             self.status.failures.extend(record.profiler_source.interface.status.failures)  # type: ignore
             return Either(right=profile)
         finally:

@@ -23,9 +23,11 @@ export interface NodeChildrenProps {
   isChildrenListExpanded: boolean;
 }
 
-export type EntityChildren =
-  | Column[]
-  | EntityReference[]
-  | MlFeature[]
-  | Field[]
-  | SearchIndexField[];
+export type EntityChildrenItem =
+  | Column
+  | EntityReference
+  | MlFeature
+  | Field
+  | SearchIndexField;
+
+export type EntityChildren = EntityChildrenItem[];

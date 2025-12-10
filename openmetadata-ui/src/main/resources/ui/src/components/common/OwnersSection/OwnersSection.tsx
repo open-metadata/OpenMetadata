@@ -74,7 +74,9 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         t,
       });
 
-      if (!result.success) {
+      if (result.success && result.data === displayOwners) {
+        completeEditing();
+      } else if (!result.success) {
         setIsLoading(false);
       }
     },

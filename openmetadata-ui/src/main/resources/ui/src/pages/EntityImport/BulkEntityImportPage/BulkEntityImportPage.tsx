@@ -187,14 +187,15 @@ const BulkEntityImportPage = () => {
           user: entityRules.canAddMultipleUserOwners,
           team: entityRules.canAddMultipleTeamOwner,
         },
-        cellEditable
+        cellEditable,
+        isBulkEdit
       );
       setDataSource(dataSource);
       setColumns(columns);
 
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
     },
-    [entityRules, setDataSource, setColumns, handleActiveStepChange]
+    [isBulkEdit, entityRules, setDataSource, setColumns, handleActiveStepChange]
   );
 
   const handleLoadData = useCallback(
@@ -290,7 +291,8 @@ const BulkEntityImportPage = () => {
                     user: entityRules.canAddMultipleUserOwners,
                     team: entityRules.canAddMultipleTeamOwner,
                   },
-                  false
+                  false,
+                  isBulkEdit
                 )
               );
             },
@@ -324,7 +326,8 @@ const BulkEntityImportPage = () => {
                   user: entityRules.canAddMultipleUserOwners,
                   team: entityRules.canAddMultipleTeamOwner,
                 },
-                false
+                false,
+                isBulkEdit
               )
             );
           },
@@ -337,6 +340,7 @@ const BulkEntityImportPage = () => {
       activeStepRef,
       entityType,
       fqn,
+      isBulkEdit,
       entityRules,
       importedEntityType,
       handleResetImportJob,
@@ -550,7 +554,7 @@ const BulkEntityImportPage = () => {
                     ''
                   }
                   type={
-                    !isEmpty(activeAsyncImportJob.error) ? 'error' : 'success'
+                    isEmpty(activeAsyncImportJob.error) ? 'success' : 'error'
                   }
                 />
               )}

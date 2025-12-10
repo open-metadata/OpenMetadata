@@ -36,6 +36,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getApplicationList } from '../../rest/applicationAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -153,7 +154,10 @@ const ApplicationPage = () => {
         <Col span={16}>
           <PageHeader
             data={{
-              header: t(PAGE_HEADERS.APPLICATION.header),
+              header: translateWithNestedKeys(
+                PAGE_HEADERS.APPLICATION.header,
+                PAGE_HEADERS.APPLICATION.headerParams
+              ),
               subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
             }}
           />

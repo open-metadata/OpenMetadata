@@ -314,7 +314,7 @@ const ScheduleInterval = <T,>({
                         disabled={disabled}
                         key={`${label}-${optionValue}`}
                         value={optionValue}>
-                        {t(label)[0]}
+                        {label[0]}
                       </Radio.Button>
                     ))}
                   </Radio.Group>
