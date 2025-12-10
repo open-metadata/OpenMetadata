@@ -63,7 +63,7 @@ const CustomPaginatedList = ({
   page,
   setPage,
 }: CustomPaginatedListProps) => {
-  const allColumnsInCurrentNode = Object.values(children ?? {});
+  const currentNodeAllColumns = Object.values(children ?? {});
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
     useLineageProvider();
@@ -94,10 +94,10 @@ const CustomPaginatedList = ({
 
   const currentNodeAllPagesItems = useMemo(
     () =>
-      allColumnsInCurrentNode.flatMap((item) =>
+      currentNodeAllColumns.flatMap((item) =>
         getAllNestedChildrenInFlatArray(item)
       ),
-    [allColumnsInCurrentNode, getAllNestedChildrenInFlatArray]
+    [currentNodeAllColumns, getAllNestedChildrenInFlatArray]
   );
 
   const {
@@ -132,7 +132,7 @@ const CustomPaginatedList = ({
       }
     });
 
-    const currentNodeCurrentPageItems = allColumnsInCurrentNode
+    const currentNodeCurrentPageItems = currentNodeAllColumns
       .slice(startIdx, endIdx)
       .filter(Boolean)
       .flatMap((item) => getAllNestedChildrenInFlatArray(item));
@@ -146,7 +146,7 @@ const CustomPaginatedList = ({
   }, [
     items,
     page,
-    allColumnsInCurrentNode,
+    currentNodeAllColumns,
     getAllNestedChildrenInFlatArray,
     isOnlyShowColumnsWithLineageFilterActive,
   ]);
@@ -321,36 +321,48 @@ const NodeChildren = ({
     [node]
   );
 
+  const currentNodeAllColumns = useMemo(
+    () => Object.values(children ?? {}),
+    [children]
+  );
+
+  const currentNodeColumnsWithLineage = useMemo(
+    () =>
+      currentNodeAllColumns.filter((column) =>
+        columnsHavingLineage.includes(column.fullyQualifiedName ?? '')
+      ),
+    [currentNodeAllColumns, columnsHavingLineage]
+  );
+
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       e.stopPropagation();
-      const value = e.target.value;
-      setSearchValue(value);
-      const allColumnsInCurrentNode = Object.values(children ?? {});
-      const allColumsHavingLineageInCurrentNode =
-        allColumnsInCurrentNode.filter((item) =>
-          columnsHavingLineage.includes(item.fullyQualifiedName ?? '')
-        );
-      const allColumnsForSearchDomainInCurrentNode =
+      const searchQuery = e.target.value;
+      setSearchValue(searchQuery);
+      const currentNodeColumnsToSearch =
         isOnlyShowColumnsWithLineageFilterActive
-          ? allColumsHavingLineageInCurrentNode
-          : allColumnsInCurrentNode;
+          ? currentNodeColumnsWithLineage
+          : currentNodeAllColumns;
 
-      if (value.trim() === '') {
-        // If search value is empty, show all columns
-        setFilteredColumns(allColumnsForSearchDomainInCurrentNode);
+      if (searchQuery.trim() === '') {
+        setFilteredColumns(currentNodeColumnsToSearch);
         setShowAllColumns(false);
       } else {
-        // Filter columns based on search value
-        const filteredColumnsInCurrentNode =
-          allColumnsForSearchDomainInCurrentNode.filter((column) =>
-            getEntityName(column).toLowerCase().includes(value.toLowerCase())
-          );
-        setFilteredColumns(filteredColumnsInCurrentNode);
+        const currentNodeMatchedColumns = currentNodeColumnsToSearch.filter(
+          (column) =>
+            getEntityName(column)
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())
+        );
+        setFilteredColumns(currentNodeMatchedColumns);
         setShowAllColumns(true);
       }
     },
-    [children, isOnlyShowColumnsWithLineageFilterActive]
+    [
+      currentNodeAllColumns,
+      currentNodeColumnsWithLineage,
+      isOnlyShowColumnsWithLineageFilterActive,
+    ]
   );
 
   const isColumnVisible = useCallback(
@@ -375,29 +387,18 @@ const NodeChildren = ({
     ]
   );
 
-  /**
-   * This updates `filteredColumns` with `columnsHavingLineageInCurrentNode` when filter is activated
-   * or with `children` when filter is deactivated.
-   * `columnsHavingLineageInCurrentNode` is created using `allColumnsInCurrentNode`
-   * `allColumnsInCurrentNode` is created using `children`
-   */
   useEffect(() => {
     if (!isEmpty(children)) {
-      const allColumnsInCurrentNode = Object.values(children ?? {});
       if (isOnlyShowColumnsWithLineageFilterActive) {
-        const columnsHavingLineageInCurrentNode =
-          allColumnsInCurrentNode.filter((item) =>
-            columnsHavingLineage.includes(item.fullyQualifiedName ?? '')
-          );
-        setFilteredColumns(columnsHavingLineageInCurrentNode);
+        setFilteredColumns(currentNodeColumnsWithLineage);
       } else {
-        setFilteredColumns(allColumnsInCurrentNode);
+        setFilteredColumns(currentNodeAllColumns);
       }
     }
   }, [
-    children,
+    currentNodeAllColumns,
+    currentNodeColumnsWithLineage,
     isOnlyShowColumnsWithLineageFilterActive,
-    columnsHavingLineage,
   ]);
 
   useEffect(() => {
@@ -626,7 +627,3 @@ const NodeChildren = ({
 };
 
 export default NodeChildren;
-
-/**
- * Rename for columnshavinglineage to be consistent
- */
