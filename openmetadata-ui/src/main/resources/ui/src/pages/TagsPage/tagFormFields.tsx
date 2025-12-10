@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { DEFAULT_TAG_ICON } from '../../components/common/IconPicker';
-import { TAG_NAME_FIELD_RULES } from '../../constants/Form.constants';
+import { MUI_NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { EntityReference } from '../../generated/tests/testCase';
 import {
   FieldProp,
@@ -74,7 +74,7 @@ export const getNameField = (disabled: boolean): FieldProp => ({
     },
     disabled,
   },
-  rules: TAG_NAME_FIELD_RULES,
+  rules: MUI_NAME_FIELD_RULES,
   formItemProps: {
     validateTrigger: ['onChange', 'onBlur'],
   },
