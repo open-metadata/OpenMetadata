@@ -37,6 +37,7 @@ import {
   getToken,
   redirectToHomePage,
 } from '../../utils/common';
+import { verifyCertificationInDropdown } from '../../utils/entity';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 
 const entities = [
@@ -128,6 +129,37 @@ entities.forEach((EntityClass) => {
           EntityDataClass.certificationTag1,
           EntityDataClass.certificationTag2
         );
+      });
+
+      test('Disabled certification should not appear in dropdown', async ({
+        page,
+      }) => {
+        const { apiContext, afterAction } = await getApiContext(page);
+        const certificationTag = EntityDataClass.certificationTag1;
+        const certificationFqn =
+          certificationTag.responseData.fullyQualifiedName;
+
+        await test.step('Verify certification is visible in dropdown', async () => {
+          await verifyCertificationInDropdown(page, certificationFqn, true);
+        });
+
+        await test.step('Disable the certification', async () => {
+          await certificationTag.setDisabled(apiContext, true);
+        });
+
+        await test.step('Verify disabled certification is not visible', async () => {
+          await verifyCertificationInDropdown(page, certificationFqn, false);
+        });
+
+        await test.step('Re-enable the certification', async () => {
+          await certificationTag.setDisabled(apiContext, false);
+        });
+
+        await test.step('Verify re-enabled certification is visible', async () => {
+          await verifyCertificationInDropdown(page, certificationFqn, true);
+        });
+
+        await afterAction();
       });
     }
 

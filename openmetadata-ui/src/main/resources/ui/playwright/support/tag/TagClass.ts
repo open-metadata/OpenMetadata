@@ -97,6 +97,26 @@ export class TagClass {
     return await response.json();
   }
 
+  async setDisabled(apiContext: APIRequestContext, disabled: boolean) {
+    const response = await apiContext.patch(
+      `/api/v1/tags/${this.responseData.id}`,
+      {
+        data: [
+          {
+            op: 'replace',
+            path: '/disabled',
+            value: disabled,
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    return await response.json();
+  }
+
   getTagDisplayName() {
     return this.responseData.displayName;
   }

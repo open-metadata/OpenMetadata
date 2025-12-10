@@ -524,6 +524,33 @@ export const removeCertification = async (page: Page, endpoint: string) => {
   await expect(page.getByTestId('certification-label')).toContainText('--');
 };
 
+export const verifyCertificationInDropdown = async (
+  page: Page,
+  certificationFqn: string,
+  shouldBeVisible: boolean
+) => {
+  const certificationResponse = page.waitForResponse(
+    '/api/v1/tags?parent=Certification&limit=50'
+  );
+  await page.getByTestId('edit-certification').click();
+  await certificationResponse;
+  await page.waitForSelector('.certification-card-popover', {
+    state: 'visible',
+  });
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const radioButton = page.getByTestId(`radio-btn-${certificationFqn}`);
+
+  if (shouldBeVisible) {
+    await expect(radioButton).toBeVisible();
+  } else {
+    await expect(radioButton).not.toBeVisible();
+  }
+
+  await page.getByTestId('close-certification').click();
+  await clickOutside(page);
+};
+
 export const updateDescription = async (
   page: Page,
   description: string,
