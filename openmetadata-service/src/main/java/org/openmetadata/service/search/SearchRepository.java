@@ -269,15 +269,6 @@ public class SearchRepository {
           Set<String> parentAliases =
               new HashSet<>(listOrEmpty(context.getParentAliases(entityType)));
 
-          if (stagedIndex != null && !stagedIndex.isEmpty()) {
-            boolean indexReady = searchClient.waitForIndexReady(stagedIndex, 30);
-            if (!indexReady) {
-              LOG.warn(
-                  "Staged index '{}' did not become ready within timeout. Proceeding anyway.",
-                  stagedIndex);
-            }
-          }
-
           EntityReindexContext entityReindexContext =
               EntityReindexContext.builder()
                   .entityType(entityType)
