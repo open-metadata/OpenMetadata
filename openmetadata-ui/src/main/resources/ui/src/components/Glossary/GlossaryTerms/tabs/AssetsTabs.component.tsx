@@ -198,13 +198,16 @@ const AssetsTabs = forwardRef(
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return getTermQuery(
-            { 'domains.fullyQualifiedName': entityFqn ?? '' },
-            'must',
-            undefined,
-            {
-              mustNotTerms: { entityType: 'dataProduct' },
-            }
+          return (
+            queryFilter ??
+            getTermQuery(
+              { 'domains.fullyQualifiedName': entityFqn ?? '' },
+              'must',
+              undefined,
+              {
+                mustNotTerms: { entityType: 'dataProduct' },
+              }
+            )
           );
         case AssetsOfEntity.DATA_PRODUCT:
           return getTermQuery({
