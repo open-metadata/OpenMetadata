@@ -36,6 +36,7 @@ import {
   removeAssetsFromTag,
   setupAssetsForTag,
   submitForm,
+  validateForm,
   verifyCertificationTagPageUI,
   verifyTagPageUI,
 } from '../../utils/tag';
@@ -254,6 +255,8 @@ test.describe('Tag Page with Admin Roles', () => {
     });
 
     await expect(adminPage.locator('.tags-form')).toBeVisible();
+
+    await validateForm(adminPage);
 
     await fillTagForm(adminPage, domain);
 

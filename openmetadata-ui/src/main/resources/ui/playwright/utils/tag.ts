@@ -46,8 +46,8 @@ export const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#FF5733',
-  icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
+  color: '#F14C75',
+  icon: 'Cube01',
 };
 
 export const visitClassificationPage = async (
@@ -490,6 +490,18 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.fill('[data-testid="name"]', NEW_TAG.name);
   await adminPage.fill('[data-testid="displayName"]', NEW_TAG.displayName);
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
+  await adminPage
+    .getByRole('group')
+    .filter({ hasText: 'Icon' })
+    .locator('div')
+    .nth(1)
+    .click();
+  await adminPage
+    .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
+    .click();
+  await adminPage
+    .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
+    .click();
 
   const domainInput = adminPage.locator('#async-tree-select');
   await domainInput.scrollIntoViewIfNeeded();

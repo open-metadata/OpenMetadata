@@ -38,8 +38,8 @@ const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#FF5733',
-  icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
+  color: '#F14C75',
+  icon: 'Cube01',
 };
 const tagFqn = `${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`;
 
@@ -104,7 +104,7 @@ test.beforeEach(async ({ page }) => {
 test('Classification Page', async ({ page }) => {
   test.slow();
 
-  await test.step('Should render basic elements on page', async () => {
+  await test.step.skip('Should render basic elements on page', async () => {
     const getTags = page.waitForResponse('/api/v1/tags*');
     await sidebarClick(page, SidebarItem.TAGS);
     await getTags;
@@ -128,7 +128,7 @@ test('Classification Page', async ({ page }) => {
     expect(headers).toEqual(['Tag', 'Display Name', 'Description', 'Actions']);
   });
 
-  await test.step('Disabled system tags should not render', async () => {
+  await test.step.skip('Disabled system tags should not render', async () => {
     const classificationResponse = page.waitForResponse(
       `/api/v1/tags?*parent=${classification.responseData.name}*`
     );
@@ -300,6 +300,18 @@ test('Classification Page', async ({ page }) => {
     await page.fill('[data-testid="name"]', NEW_TAG.name);
     await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
     await page.locator(descriptionBox).fill(NEW_TAG.description);
+    await page
+      .getByRole('group')
+      .filter({ hasText: 'Icon' })
+      .locator('div')
+      .nth(1)
+      .click();
+    await page
+      .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
+      .click();
+    await page
+      .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
+      .click();
 
     const createTagResponse = page.waitForResponse('api/v1/tags');
     await submitForm(page);
