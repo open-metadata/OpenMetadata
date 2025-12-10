@@ -59,6 +59,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   createTeamPermission,
   isTeamDeleted,
   handleTeamSearch,
+  isTeamBasicDataLoading,
 }) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -301,7 +302,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
             )}
           </Space>
         }
-        loading={isTableLoading}
+        loading={isTableLoading || isTeamBasicDataLoading}
         locale={{
           emptyText: <FilterTablePlaceHolder />,
         }}
