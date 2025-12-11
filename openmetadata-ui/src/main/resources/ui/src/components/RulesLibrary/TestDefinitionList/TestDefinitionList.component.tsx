@@ -15,7 +15,6 @@ import {
   Button,
   Card,
   Col,
-  Modal,
   Row,
   Space,
   Switch,
@@ -34,7 +33,7 @@ import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import {
-  deleteTestDefinitionById,
+  deleteTestDefinitionByFqn,
   getListTestDefinitions,
   patchTestDefinition,
 } from '../../../rest/testAPI';
@@ -45,6 +44,7 @@ import Loader from '../../common/Loader/Loader';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
+import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 
 const TestDefinitionList = () => {
@@ -130,9 +130,11 @@ const TestDefinitionList = () => {
     }
 
     try {
-      await deleteTestDefinitionById(definitionToDelete.id ?? '');
+      await deleteTestDefinitionByFqn(
+        definitionToDelete.fullyQualifiedName ?? ''
+      );
       showSuccessToast(
-        t('message.entity-deleted-success', {
+        t('server.entity-deleted-success', {
           entity: t('label.test-definition'),
         })
       );
@@ -350,21 +352,13 @@ const TestDefinitionList = () => {
         />
       )}
 
-      <Modal
-        cancelText={t('label.cancel')}
-        okText={t('label.delete')}
-        open={isDeleteModalVisible}
-        title={t('label.delete-entity', {
-          entity: t('label.test-definition'),
-        })}
+      <EntityDeleteModal
+        entityName={getEntityName(definitionToDelete)}
+        entityType={t('label.test-definition')}
+        visible={isDeleteModalVisible}
         onCancel={handleDeleteCancel}
-        onOk={handleDeleteConfirm}>
-        <Typography.Text>
-          {t('message.are-you-sure-delete', {
-            name: definitionToDelete?.displayName || definitionToDelete?.name,
-          })}
-        </Typography.Text>
-      </Modal>
+        onConfirm={handleDeleteConfirm}
+      />
     </>
   );
 };

@@ -17,6 +17,7 @@ import { PagingResponse } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
 import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
+import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import {
@@ -280,7 +281,7 @@ export const getTestDefinitionById = async (
   return response.data;
 };
 
-export const createTestDefinition = async (data: TestDefinition) => {
+export const createTestDefinition = async (data: CreateTestDefinition) => {
   const response = await APIClient.post<TestDefinition>(
     testDefinitionUrl,
     data
@@ -304,9 +305,20 @@ export const patchTestDefinition = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const deleteTestDefinitionById = async (id: string) => {
+export const deleteTestDefinitionByFqn = async (
+  fqn: string,
+  paramsValue?: { hardDelete?: boolean; recursive?: boolean }
+) => {
+  const params = {
+    hardDelete: true,
+    recursive: true,
+    ...paramsValue,
+  };
   const response = await APIClient.delete<TestDefinition>(
-    `${testDefinitionUrl}/${id}`
+    `${testDefinitionUrl}/name/${fqn}`,
+    {
+      params,
+    }
   );
 
   return response.data;

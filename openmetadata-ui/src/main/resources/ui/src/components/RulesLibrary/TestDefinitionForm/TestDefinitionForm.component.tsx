@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  MinusCircleOutlined,
+  PlusOutlined,
+  QuestionCircleOutlined,
+} from '@ant-design/icons';
 import {
   Button,
   Card,
@@ -21,12 +25,15 @@ import {
   Select,
   Space,
   Switch,
+  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useEffect, useState } from 'react';
+import { compare } from 'fast-json-patch';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { CreateTestDefinition } from '../../../generated/api/tests/createTestDefinition';
 import {
   DataQualityDimensions,
   DataType,
@@ -37,10 +44,11 @@ import {
 } from '../../../generated/tests/testDefinition';
 import {
   createTestDefinition,
-  updateTestDefinition,
+  patchTestDefinition,
 } from '../../../rest/testAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
+import FormItemLabel from '../../common/Form/FormItemLabel';
+import CodeEditor from '../../Database/SchemaEditor/CodeEditor';
 
 interface TestDefinitionFormProps {
   initialValues?: TestDefinition;
@@ -56,67 +64,43 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sqlExpression, setSqlExpression] = useState('');
-
   const isEditMode = Boolean(initialValues);
-
-  useEffect(() => {
-    if (initialValues) {
-      const initialSqlExpression =
-        (initialValues as TestDefinition & { sqlExpression?: string })
-          .sqlExpression || '';
-      setSqlExpression(initialSqlExpression);
-      form.setFieldsValue({
-        name: initialValues.name,
-        displayName: initialValues.displayName,
-        description: initialValues.description,
-        entityType: initialValues.entityType,
-        testPlatforms: initialValues.testPlatforms || [
-          TestPlatform.OpenMetadata,
-        ],
-        dataQualityDimension: initialValues.dataQualityDimension,
-        supportedDataTypes: initialValues.supportedDataTypes,
-        parameterDefinition: initialValues.parameterDefinition,
-        enabled: initialValues.enabled ?? true,
-      });
-    } else {
-      form.setFieldsValue({
-        enabled: true,
-        testPlatforms: [TestPlatform.OpenMetadata],
-      });
-    }
-  }, [initialValues, form]);
 
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      console.log('Values:', values);
       setIsSubmitting(true);
 
-      const payload: TestDefinition = {
-        ...initialValues,
-        name: values.name,
-        displayName: values.displayName,
-        description: values.description,
-        sqlExpression: sqlExpression,
-        entityType: values.entityType,
-        testPlatforms: values.testPlatforms,
-        dataQualityDimension: values.dataQualityDimension,
-        supportedDataTypes: values.supportedDataTypes,
-        parameterDefinition: values.parameterDefinition,
-        enabled: values.enabled,
-      };
-
-      if (isEditMode) {
-        await updateTestDefinition(payload);
+      if (isEditMode && initialValues) {
+        const updatedValues: TestDefinition = {
+          ...initialValues,
+          ...values,
+        };
+        const patch = compare(initialValues, updatedValues);
+        if (patch.length > 0) {
+          await patchTestDefinition(initialValues?.id ?? '', patch);
+        }
         showSuccessToast(
-          t('message.entity-updated-success', {
+          t('server.entity-updated-success', {
             entity: t('label.test-definition'),
           })
         );
       } else {
+        const payload: CreateTestDefinition = {
+          name: values.name,
+          displayName: values.displayName,
+          description: values.description,
+          sqlExpression: values.sqlExpression,
+          entityType: values.entityType,
+          testPlatforms: values.testPlatforms,
+          dataQualityDimension: values.dataQualityDimension,
+          supportedDataTypes: values.supportedDataTypes,
+          parameterDefinition: values.parameterDefinition,
+        };
         await createTestDefinition(payload);
         showSuccessToast(
-          t('message.entity-created-success', {
+          t('server.entity-created-success', {
             entity: t('label.test-definition'),
           })
         );
@@ -141,7 +125,15 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
       }
       width={720}
       onClose={onCancel}>
-      <Form form={form} layout="vertical">
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{
+          ...initialValues,
+          testPlatforms: initialValues?.testPlatforms || [
+            TestPlatform.OpenMetadata,
+          ],
+        }}>
         <Form.Item
           label={t('label.name')}
           name="name"
@@ -188,18 +180,26 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           />
         </Form.Item>
 
-        <div className="m-b-md">
-          <Typography.Text strong>{t('label.sql-query')}</Typography.Text>
-          <Typography.Paragraph className="m-t-xss text-grey-muted">
-            {t('message.test-definition-sql-query-help')}
-          </Typography.Paragraph>
-          <SchemaEditor
+        <Form.Item name="sqlExpression">
+          <CodeEditor
+            showCopyButton
+            refreshEditor
             className="custom-query-editor query-editor-h-200"
             mode={{ name: CSMode.SQL }}
-            value={sqlExpression}
-            onChange={(value) => setSqlExpression(value)}
+            title={
+              <div className="ant-form-item-label">
+                <label className="d-flex align-items-center">
+                  <Typography.Text className="form-label-title">
+                    {t('label.sql-query')}
+                  </Typography.Text>
+                  <Tooltip title={t('message.test-definition-sql-query-help')}>
+                    <QuestionCircleOutlined className="ant-form-item-tooltip" />
+                  </Tooltip>
+                </label>
+              </div>
+            }
           />
-        </div>
+        </Form.Item>
 
         <Form.Item
           label={t('label.entity-type')}
@@ -278,108 +278,110 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           />
         </Form.Item>
 
-        <Typography.Title level={5}>
-          {t('label.parameter-plural')}
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          {t('message.test-definition-parameters-description')}
-        </Typography.Text>
-
-        <Form.List name="parameterDefinition">
-          {(fields, { add, remove }) => (
-            <>
-              {fields.map(({ key, name, ...restField }) => (
-                <Card
-                  extra={<MinusCircleOutlined onClick={() => remove(name)} />}
-                  key={key}
-                  size="small"
-                  style={{ marginTop: 16 }}
-                  title={`${t('label.parameter')} ${name + 1}`}>
-                  <Form.Item
-                    {...restField}
-                    label={t('label.name')}
-                    name={[name, 'name']}
-                    rules={[
-                      {
-                        required: true,
-                        message: t('message.field-text-is-required', {
-                          fieldText: t('label.name'),
-                        }),
-                      },
-                    ]}>
-                    <Input placeholder={t('label.parameter-name')} />
-                  </Form.Item>
-
-                  <Form.Item
-                    {...restField}
-                    label={t('label.display-name')}
-                    name={[name, 'displayName']}>
-                    <Input placeholder={t('label.parameter-display-name')} />
-                  </Form.Item>
-
-                  <Form.Item
-                    {...restField}
-                    label={t('label.description')}
-                    name={[name, 'description']}>
-                    <Input.TextArea
-                      placeholder={t('label.parameter-description')}
-                      rows={2}
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    {...restField}
-                    label={t('label.data-type')}
-                    name={[name, 'dataType']}
-                    rules={[
-                      {
-                        required: true,
-                        message: t('message.field-text-is-required', {
-                          fieldText: t('label.data-type'),
-                        }),
-                      },
-                    ]}>
-                    <Select
-                      options={Object.values(TestDataType).map((type) => ({
-                        label: type,
-                        value: type,
-                      }))}
-                      placeholder={t('label.select-field', {
-                        field: t('label.data-type'),
-                      })}
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    {...restField}
-                    label={t('label.required')}
-                    name={[name, 'required']}
-                    valuePropName="checked">
-                    <Switch />
-                  </Form.Item>
-                </Card>
-              ))}
-              <Button
-                block
-                icon={<PlusOutlined />}
-                style={{ marginTop: 16 }}
-                type="dashed"
-                onClick={() => add()}>
-                {t('label.add-entity', { entity: t('label.parameter') })}
-              </Button>
-            </>
-          )}
-        </Form.List>
-
         <Form.Item
-          label={t('label.enabled')}
-          name="enabled"
-          style={{ marginTop: 16 }}
-          valuePropName="checked">
-          <Switch />
-        </Form.Item>
+          label={
+            <FormItemLabel
+              label={t('label.parameter-plural')}
+              helperText={t('message.test-definition-parameters-description')}
+            />
+          }>
+          <Form.List name="parameterDefinition">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Card
+                    extra={<MinusCircleOutlined onClick={() => remove(name)} />}
+                    key={key}
+                    size="small"
+                    style={{ marginTop: 16 }}
+                    title={`${t('label.parameter')} ${name + 1}`}>
+                    <Form.Item
+                      {...restField}
+                      label={t('label.name')}
+                      name={[name, 'name']}
+                      rules={[
+                        {
+                          required: true,
+                          message: t('message.field-text-is-required', {
+                            fieldText: t('label.name'),
+                          }),
+                        },
+                      ]}>
+                      <Input placeholder={t('label.parameter-name')} />
+                    </Form.Item>
 
-        <Space className="w-full justify-end">
+                    <Form.Item
+                      {...restField}
+                      label={t('label.display-name')}
+                      name={[name, 'displayName']}>
+                      <Input placeholder={t('label.parameter-display-name')} />
+                    </Form.Item>
+
+                    <Form.Item
+                      {...restField}
+                      label={t('label.description')}
+                      name={[name, 'description']}>
+                      <Input.TextArea
+                        placeholder={t('label.parameter-description')}
+                        rows={2}
+                      />
+                    </Form.Item>
+
+                    <Form.Item
+                      {...restField}
+                      label={t('label.data-type')}
+                      name={[name, 'dataType']}
+                      rules={[
+                        {
+                          required: true,
+                          message: t('message.field-text-is-required', {
+                            fieldText: t('label.data-type'),
+                          }),
+                        },
+                      ]}>
+                      <Select
+                        options={Object.values(TestDataType).map((type) => ({
+                          label: type,
+                          value: type,
+                        }))}
+                        placeholder={t('label.select-field', {
+                          field: t('label.data-type'),
+                        })}
+                      />
+                    </Form.Item>
+
+                    <Form.Item
+                      {...restField}
+                      label={t('label.required')}
+                      name={[name, 'required']}
+                      valuePropName="checked">
+                      <Switch />
+                    </Form.Item>
+                  </Card>
+                ))}
+                <Button
+                  block
+                  icon={<PlusOutlined />}
+                  style={{ marginTop: 16 }}
+                  type="dashed"
+                  onClick={() => add()}>
+                  {t('label.add-entity', { entity: t('label.parameter') })}
+                </Button>
+              </>
+            )}
+          </Form.List>
+        </Form.Item>
+        {isEditMode && (
+          <Form.Item
+            label={t('label.enabled')}
+            name="enabled"
+            style={{ marginTop: 16 }}
+            valuePropName="checked">
+            <Switch />
+          </Form.Item>
+        )}
+
+        <Space className="w-full justify-end m-t-lg">
           <Button onClick={onCancel}>{t('label.cancel')}</Button>
           <Button
             data-testid="save-test-definition"

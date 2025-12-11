@@ -13,7 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
-  deleteTestDefinitionById,
+  deleteTestDefinitionByFqn,
   getListTestDefinitions,
   patchTestDefinition,
 } from '../../../rest/testAPI';
@@ -220,7 +220,7 @@ describe('TestDefinitionList Component', () => {
     });
 
     await waitFor(() => {
-      expect(deleteTestDefinitionById).toHaveBeenCalledWith('test-def-1');
+      expect(deleteTestDefinitionByFqn).toHaveBeenCalledWith('test-def-1');
       expect(showSuccessToast).toHaveBeenCalled();
     });
   });

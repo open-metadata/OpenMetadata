@@ -26,7 +26,7 @@ import {
 } from '../../../generated/tests/testDefinition';
 import {
   createTestDefinition,
-  updateTestDefinition,
+  patchTestDefinition,
 } from '../../../rest/testAPI';
 import TestDefinitionForm from './TestDefinitionForm.component';
 
@@ -43,11 +43,12 @@ const mockInitialValues: TestDefinition = {
   dataQualityDimension: DataQualityDimensions.Completeness,
   supportedDataTypes: [DataType.String, DataType.Int],
   enabled: true,
+  sqlExpression: 'SELECT * FROM {table} WHERE {column} IS NOT NULL',
 };
 
 jest.mock('../../../rest/testAPI', () => ({
   createTestDefinition: jest.fn(),
-  updateTestDefinition: jest.fn(),
+  patchTestDefinition: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -55,15 +56,15 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../Database/SchemaEditor/SchemaEditor', () => ({
+jest.mock('../../Database/SchemaEditor/CodeEditor', () => ({
   __esModule: true,
   default: jest
     .fn()
     .mockImplementation(({ value, onChange }) => (
       <textarea
-        data-testid="schema-editor"
+        data-testid="code-editor"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange?.(e.target.value)}
       />
     )),
 }));
@@ -72,7 +73,7 @@ describe('TestDefinitionForm Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (createTestDefinition as jest.Mock).mockResolvedValue({});
-    (updateTestDefinition as jest.Mock).mockResolvedValue({});
+    (patchTestDefinition as jest.Mock).mockResolvedValue({});
   });
 
   describe('Rendering', () => {
@@ -84,16 +85,17 @@ describe('TestDefinitionForm Component', () => {
       expect(screen.getByLabelText('label.name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.description')).toBeInTheDocument();
-      expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
+      expect(screen.getByTestId('code-editor')).toBeInTheDocument();
       expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
-      expect(screen.getByLabelText('label.test-platform')).toBeInTheDocument();
+      expect(
+        screen.getByLabelText('label.test-platform-plural')
+      ).toBeInTheDocument();
       expect(
         screen.getByLabelText('label.data-quality-dimension')
       ).toBeInTheDocument();
       expect(
         screen.getByLabelText('label.supported-data-type-plural')
       ).toBeInTheDocument();
-      expect(screen.getByLabelText('label.enabled')).toBeInTheDocument();
       expect(screen.getByTestId('save-test-definition')).toBeInTheDocument();
     });
 
@@ -130,11 +132,7 @@ describe('TestDefinitionForm Component', () => {
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
 
-      expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-      expect(screen.getByText('label.sql-query')).toBeInTheDocument();
-      expect(
-        screen.getByText('message.test-definition-sql-query-help')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('code-editor')).toBeInTheDocument();
     });
 
     it('should render parameter section with add button', () => {
@@ -142,12 +140,9 @@ describe('TestDefinitionForm Component', () => {
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
 
-      expect(screen.getByText('label.parameter-plural')).toBeInTheDocument();
-      expect(
-        screen.getByText('message.test-definition-parameters-description')
-      ).toBeInTheDocument();
-
-      const addButtons = screen.getAllByText('label.add-entity');
+      const addButtons = screen.getAllByRole('button', {
+        name: /label.add-entity/i,
+      });
       expect(addButtons.length).toBeGreaterThan(0);
     });
   });
@@ -175,38 +170,27 @@ describe('TestDefinitionForm Component', () => {
       expect(nameInput).not.toBeDisabled();
     });
 
-    it('should default enabled switch to checked in create mode', () => {
+    it('should show enabled switch in edit mode', () => {
       render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+        <TestDefinitionForm
+          initialValues={mockInitialValues}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
       );
 
       const enabledSwitch = screen.getByRole('switch');
+      expect(enabledSwitch).toBeInTheDocument();
       expect(enabledSwitch).toBeChecked();
     });
 
-    it('should toggle enabled switch', async () => {
+    it('should not show enabled switch in create mode', () => {
       render(
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
 
-      const enabledSwitch = screen.getByRole('switch');
-      expect(enabledSwitch).toBeChecked();
-
-      await act(async () => {
-        fireEvent.click(enabledSwitch);
-      });
-
-      await waitFor(() => {
-        expect(enabledSwitch).not.toBeChecked();
-      });
-
-      await act(async () => {
-        fireEvent.click(enabledSwitch);
-      });
-
-      await waitFor(() => {
-        expect(enabledSwitch).toBeChecked();
-      });
+      const switches = screen.queryAllByRole('switch');
+      expect(switches).toHaveLength(0);
     });
 
     it('should update SQL expression when typing in editor', async () => {
@@ -215,7 +199,7 @@ describe('TestDefinitionForm Component', () => {
       );
 
       const sqlEditor = screen.getByTestId(
-        'schema-editor'
+        'code-editor'
       ) as HTMLTextAreaElement;
 
       await act(async () => {
@@ -230,21 +214,18 @@ describe('TestDefinitionForm Component', () => {
     });
 
     it('should populate SQL expression in edit mode', () => {
-      const mockValuesWithSql = {
-        ...mockInitialValues,
-        sqlExpression: 'SELECT * FROM {table}',
-      } as TestDefinition & { sqlExpression?: string };
-
       render(
         <TestDefinitionForm
-          initialValues={mockValuesWithSql}
+          initialValues={mockInitialValues}
           onCancel={mockOnCancel}
           onSuccess={mockOnSuccess}
         />
       );
 
-      const sqlEditor = screen.getByTestId('schema-editor');
-      expect(sqlEditor).toHaveValue('SELECT * FROM {table}');
+      const sqlEditor = screen.getByTestId('code-editor');
+      expect(sqlEditor).toHaveValue(
+        'SELECT * FROM {table} WHERE {column} IS NOT NULL'
+      );
     });
   });
 
@@ -335,7 +316,9 @@ describe('TestDefinitionForm Component', () => {
       expect(screen.getByLabelText('label.name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.description')).toBeInTheDocument();
       expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
-      expect(screen.getByLabelText('label.test-platform')).toBeInTheDocument();
+      expect(
+        screen.getByLabelText('label.test-platform-plural')
+      ).toBeInTheDocument();
       expect(screen.getByTestId('save-test-definition')).toBeInTheDocument();
     });
 
@@ -348,7 +331,9 @@ describe('TestDefinitionForm Component', () => {
         />
       );
 
-      const testPlatformField = screen.getByLabelText('label.test-platform');
+      const testPlatformField = screen.getByLabelText(
+        'label.test-platform-plural'
+      );
       expect(testPlatformField).toBeInTheDocument();
     });
   });
