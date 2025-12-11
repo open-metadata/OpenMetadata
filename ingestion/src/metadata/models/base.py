@@ -23,6 +23,8 @@ class DictModel(RootModel[Dict[K, V]], Generic[K, V]):
     """Base DictModel to be used when a Dict RootModel is needed.
     It implements proxies for useful Dict API methods."""
 
+    # We are not proxying __iter__ as pydantic uses it for internal purposes
+
     def __getitem__(self, key: K) -> V:
         return self.root[key]
 
@@ -37,9 +39,6 @@ class DictModel(RootModel[Dict[K, V]], Generic[K, V]):
 
     def items(self):
         return self.root.items()
-
-    def __iter__(self):
-        return iter(self.root)
 
     def __len__(self):
         return len(self.root)
