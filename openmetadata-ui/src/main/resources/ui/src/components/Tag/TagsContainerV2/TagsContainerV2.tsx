@@ -234,7 +234,7 @@ const TagsContainerV2 = ({
         <Col span={24}>
           <TagsViewer
             displayType={displayType}
-            entityFqn={entityFqn}
+            entityFqn={columnData?.fqn ?? entityFqn}
             entityType={entityType}
             newLook={tagNewLook}
             showNoDataPlaceholder={showNoDataPlaceholder}
@@ -403,7 +403,7 @@ const TagsContainerV2 = ({
         ) : null}
         <TagsViewer
           displayType={displayType}
-          entityFqn={entityFqn}
+          entityFqn={columnData?.fqn ?? entityFqn}
           entityType={entityType}
           newLook={newLook}
           showNoDataPlaceholder={showNoDataPlaceholder}

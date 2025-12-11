@@ -588,7 +588,12 @@ const TagPage = () => {
       },
     ];
 
-    const recognizerTab = tagClassBase.getRecognizerTab(tagItem, activeTab, t);
+    const recognizerTab = tagClassBase.getRecognizerTab(
+      tagItem,
+      activeTab,
+      t,
+      tagItem?.recognizers?.length || 0
+    );
     if (recognizerTab) {
       items.push(recognizerTab);
     }
