@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -56,7 +56,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     (tag.tagFQN || tag.name || tag.displayName || '').toString();
 
   const nonTierTags: TagLabel[] = (displayTags || []).filter(
-    (t) => !getTagFqn(t).startsWith('Tier.')
+    (t) => !getTagFqn(t).startsWith('Tier.') && t.source !== TagSource.Glossary
   );
   const tierTags: TagLabel[] = (displayTags || []).filter((t) =>
     getTagFqn(t).startsWith('Tier.')
@@ -71,7 +71,14 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
     async (tagsToSave: TagLabel[]) => {
       setIsLoading(true);
 
-      const updatedTags: TagLabel[] = [...tierTags, ...tagsToSave];
+      const glossaryTags = displayTags.filter(
+        (tag) => tag.source === TagSource.Glossary
+      );
+      const updatedTags: TagLabel[] = [
+        ...tierTags,
+        ...glossaryTags,
+        ...tagsToSave,
+      ];
 
       const result = await updateEntityField({
         entityId,
