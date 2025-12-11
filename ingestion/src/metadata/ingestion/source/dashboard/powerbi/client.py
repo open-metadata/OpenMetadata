@@ -38,6 +38,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBIReport,
     PowerBiTable,
     PowerBiToken,
+    ReportPagesAPIResponse,
     ReportsResponse,
     TablesResponse,
     Tile,
@@ -280,6 +281,21 @@ class PowerBiApiClient:
             logger.warning(f"Error fetching dataset tables: {exc}")
 
         return None
+
+    def fetch_report_pages(self, group_id: str, report_id: str) -> Optional[List[dict]]:
+        # get report pages for report url formation
+        try:
+            # https://api.powerbi.com/v1.0/myorg/groups/4e57dcbb-***/reports/a2902011-***/pages
+            response_data = self.client.get(
+                f"/myorg/groups/{group_id}/reports/{report_id}/pages"
+            )
+            if response_data:
+                response = ReportPagesAPIResponse(**response_data)
+                return response.value
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching report pages: {exc}")
+        return []
 
     def regex_to_odata_condition(self, regex: str) -> str:
         """

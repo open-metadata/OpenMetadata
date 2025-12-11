@@ -48,4 +48,35 @@ export const t = (key: string, options?: Record<string, unknown>): string => {
   return String(translation);
 };
 
+/**
+ * Translates a label with support for nested translation parameters.
+ * If parameters contain translation keys (strings), they will be translated first.
+ *
+ * @param label - The translation key to translate
+ * @param params - Optional parameters where string values will be treated as translation keys
+ * @returns The translated string with all nested translations resolved
+ *
+ * @example
+ * translateWithNestedKeys('label.entity-type-plural', { entity: 'label.table' })
+ * // Translates 'label.table' first, then uses it as parameter for 'label.entity-type-plural'
+ */
+export const translateWithNestedKeys = (
+  label: string,
+  params?: Record<string, string | number | boolean>
+): string => {
+  if (!params) {
+    return t(label);
+  }
+
+  const translatedParams = Object.entries(params).reduce(
+    (acc, [key, value]) => ({
+      ...acc,
+      [key]: typeof value === 'string' ? t(value) : value,
+    }),
+    {}
+  );
+
+  return t(label, translatedParams);
+};
+
 export default i18n;

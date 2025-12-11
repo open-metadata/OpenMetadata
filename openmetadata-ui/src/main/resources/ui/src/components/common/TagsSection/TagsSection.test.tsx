@@ -515,7 +515,6 @@ describe('TagsSection', () => {
       clickEditControl();
 
       expect(screen.getByTestId('async-select-list')).toBeInTheDocument();
-      expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
     });
 
     it('should show AsyncSelectList with correct props in edit mode', () => {

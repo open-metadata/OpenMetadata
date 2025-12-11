@@ -74,6 +74,7 @@ import org.openmetadata.service.search.indexes.MetadataServiceIndex;
 import org.openmetadata.service.search.indexes.MetricIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.MlModelServiceIndex;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.PipelineServiceIndex;
 import org.openmetadata.service.search.indexes.PromptTemplateIndex;
@@ -167,6 +168,11 @@ public class SearchIndexFactory {
       case Entity.TEST_CASE_RESOLUTION_STATUS -> new TestCaseResolutionStatusIndex(
           (TestCaseResolutionStatus) entity);
       case Entity.TEST_CASE_RESULT -> new TestCaseResultIndex((TestCaseResult) entity);
+      case Entity.PIPELINE_EXECUTION -> {
+        PipelineExecutionIndex.PipelineExecutionData data =
+            (PipelineExecutionIndex.PipelineExecutionData) entity;
+        yield new PipelineExecutionIndex(data.getPipeline(), data.getPipelineStatus());
+      }
       default -> buildExternalIndexes(entityType, entity);
     };
   }

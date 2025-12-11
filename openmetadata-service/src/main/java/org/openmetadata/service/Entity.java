@@ -258,6 +258,7 @@ public final class Entity {
   public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
   public static final String TEST_CASE_RESULT = "testCaseResult";
   public static final String TEST_CASE_DIMENSION_RESULT = "testCaseDimensionResult";
+  public static final String PIPELINE_EXECUTION = "pipelineExecution";
   public static final String ENTITY_PROFILE = "entityProfile";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA =
       "webAnalyticEntityViewReportData";
@@ -628,6 +629,12 @@ public final class Entity {
           CatalogExceptionMessage.entityRepositoryNotFound(entityType));
     }
     return entityRepository;
+  }
+
+  /** Check if an entity type has a registered repository */
+  public static boolean hasEntityRepository(@NonNull String entityType) {
+    return ENTITY_REPOSITORY_MAP.containsKey(entityType)
+        || ENTITY_TS_REPOSITORY_MAP.containsKey(entityType);
   }
 
   public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>

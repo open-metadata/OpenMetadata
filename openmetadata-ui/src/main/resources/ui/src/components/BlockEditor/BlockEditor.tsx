@@ -48,6 +48,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       onChange,
       showInlineAlert = true,
       extensionOptions,
+      showMenu,
     },
     ref
   ) => {
@@ -63,10 +64,12 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     const editorWrapperRef = useRef<HTMLDivElement>(null);
 
+    const extensions =
+      blockEditorExtensionsClassBase.getExtensions(extensionOptions);
+
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
-      extensions:
-        blockEditorExtensionsClassBase.getExtensions(extensionOptions),
+      extensions,
       onUpdate({ editor }) {
         handleErrorMessage?.(undefined);
         const htmlContent = editor.getHTML();
@@ -244,7 +247,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
             type="error"
           />
         )}
-        {menuType === 'bar' && !isNil(editor) && (
+        {showMenu && menuType === 'bar' && !isNil(editor) && (
           <BarMenu
             editor={editor}
             onLinkToggle={editorSlots.current?.onLinkToggle}

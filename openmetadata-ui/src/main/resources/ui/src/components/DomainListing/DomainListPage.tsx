@@ -150,7 +150,7 @@ const DomainListPage = () => {
   });
 
   const { view, viewToggle, isTreeView } = useViewToggle({
-    views: ['table', 'tree', 'card'],
+    views: ['table', 'card', 'tree'],
   });
   const { domainCardTemplate } = useDomainCardTemplates();
 
@@ -215,7 +215,6 @@ const DomainListPage = () => {
             openAddDomainDrawer={openDrawer}
             refreshToken={treeRefreshToken}
             searchQuery={domainListing.urlState.searchQuery}
-            onDomainMutated={refreshAllDomains}
           />
         </Box>
       );
@@ -273,7 +272,16 @@ const DomainListPage = () => {
   ]);
 
   return (
-    <>
+    <Box
+      sx={
+        isTreeView
+          ? {
+              display: 'flex',
+              flexDirection: 'column',
+              height: 'calc(100vh - 80px)',
+            }
+          : {}
+      }>
       {breadcrumbs}
       {pageHeader}
 
@@ -302,7 +310,7 @@ const DomainListPage = () => {
       </TableContainer>
       {deleteModal}
       {formDrawer}
-    </>
+    </Box>
   );
 };
 

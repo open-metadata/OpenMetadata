@@ -34,8 +34,10 @@ import {
 import {
   addMultiOwner,
   assignGlossaryTerm,
+  assignGlossaryTermToChildren,
   assignTag,
   updateDescription,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
   addAssetToGlossaryTerm,
@@ -725,12 +727,14 @@ test.describe('Glossary tests', () => {
 
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const table = new TableClass();
+    const table1 = new TableClass();
     const topic = new TopicClass();
     const dashboard = new DashboardClass();
 
     await table.create(apiContext);
     await topic.create(apiContext);
     await dashboard.create(apiContext);
+    await table1.create(apiContext);
 
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
@@ -738,16 +742,35 @@ test.describe('Glossary tests', () => {
     await glossary1.create(apiContext);
     await glossaryTerm1.create(apiContext);
 
-    const assets = [table, topic, dashboard];
+    const assetsToBeAddedViaUI = [table, topic, dashboard];
+    const allAssets = [...assetsToBeAddedViaUI, table1];
 
     try {
+      await test.step('Assign Glossary Term to table column', async () => {
+        await redirectToHomePage(page);
+        await table1.visitEntityPage(page);
+
+        await assignGlossaryTermToChildren({
+          page,
+          glossaryTerm: glossaryTerm1.responseData,
+          rowId: table1.childrenSelectorId ?? '',
+          entityEndpoint: 'tables',
+        });
+      });
+
       await test.step('Rename Glossary Term', async () => {
         const newName = `PW.${uuid()}%${getRandomLastName()}`;
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, glossary1.data.displayName);
-        await goToAssetsTab(page, glossaryTerm1.data.displayName);
-        await addAssetToGlossaryTerm(page, assets);
+        await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+        const queryRes1 = page.waitForResponse(
+          '/api/v1/search/query?q=*&index=all&from=0&*'
+        );
+        await page.getByTestId('assets').click();
+        await queryRes1;
+        await addAssetToGlossaryTerm(page, assetsToBeAddedViaUI, true);
         await renameGlossaryTerm(page, glossaryTerm1, newName);
 
         await page.click('[data-testid="overview"]');
@@ -764,8 +787,61 @@ test.describe('Glossary tests', () => {
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
-        ).toContainText(`${assets.length}`);
+        ).toContainText(`${allAssets.length}`);
       });
+
+      await test.step(
+        'Verify the entity page by clicking on asset',
+        async () => {
+          await redirectToHomePage(page);
+          await table.visitEntityPage(page);
+
+          await expect(
+            page
+              .getByTestId('KnowledgePanel.GlossaryTerms')
+              .getByTestId('glossary-container')
+              .getByTestId(
+                `tag-${glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+          ).toBeVisible();
+
+          await redirectToHomePage(page);
+          await topic.visitEntityPage(page);
+
+          await expect(
+            page
+              .getByTestId('KnowledgePanel.GlossaryTerms')
+              .getByTestId('glossary-container')
+              .getByTestId(
+                `tag-${glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+          ).toBeVisible();
+
+          await redirectToHomePage(page);
+          await dashboard.visitEntityPage(page);
+
+          await expect(
+            page
+              .getByTestId('KnowledgePanel.GlossaryTerms')
+              .getByTestId('glossary-container')
+              .getByTestId(
+                `tag-${glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+          ).toBeVisible();
+
+          await redirectToHomePage(page);
+          await table1.visitEntityPage(page);
+
+          await expect(
+            page
+              .locator(`[data-row-key="${table1.childrenSelectorId}"]`)
+              .getByTestId('glossary-container')
+              .getByTestId(
+                `tag-${glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+          ).toBeVisible();
+        }
+      );
 
       await test.step('Rename the same entity again', async () => {
         const newName = `PW Space.${uuid()}%${getRandomLastName()}`;
@@ -775,7 +851,7 @@ test.describe('Glossary tests', () => {
         await goToAssetsTab(
           page,
           glossaryTerm1.data.displayName,
-          assets.length
+          allAssets.length
         );
         await renameGlossaryTerm(page, glossaryTerm1, newName);
         await page.click('[data-testid="overview"]');
@@ -788,12 +864,13 @@ test.describe('Glossary tests', () => {
 
         await expect(
           page.getByTestId('assets').getByTestId('filter-count')
-        ).toContainText(`${assets.length}`);
+        ).toContainText(`${allAssets.length}`);
       });
     } finally {
       await table.delete(apiContext);
       await topic.delete(apiContext);
       await dashboard.delete(apiContext);
+      await table1.delete(apiContext);
       await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
@@ -1785,6 +1862,105 @@ test.describe('Glossary tests', () => {
     } finally {
       await afterAction();
       await afterActionUser1();
+    }
+  });
+
+  test('Create glossary, change language to Dutch, and delete glossary', async ({
+    browser,
+  }) => {
+    test.slow(true);
+
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary = new Glossary();
+
+    try {
+      await test.step('Create Glossary via API', async () => {
+        await glossary.create(apiContext);
+      });
+
+      await test.step('Navigate to Glossary page', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+        await selectActiveGlossary(page, glossary.data.displayName);
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+          glossary.data.displayName
+        );
+      });
+
+      await test.step('Change application language to German', async () => {
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+        const languageDropdown = page
+          .locator('.nav-bar-side-items button.ant-dropdown-trigger')
+          .filter({ hasText: 'EN' })
+          .first();
+        await languageDropdown.click();
+
+        const germanOption = page.getByRole('menuitem', {
+          name: 'Deutsch - DE',
+        });
+        await germanOption.click();
+
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+      });
+
+      await test.step(
+        'Open delete modal and verify delete confirmation',
+        async () => {
+          await sidebarClick(page, SidebarItem.GLOSSARY);
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+          await selectActiveGlossary(page, glossary.data.displayName);
+          await waitForAllLoadersToDisappear(page);
+          await page.waitForLoadState('networkidle');
+
+          await page.getByTestId('manage-button').click();
+          await page.getByTestId('delete-button').click();
+
+          await expect(page.locator('[role="dialog"]')).toBeVisible();
+          await expect(page.getByTestId('modal-header')).toContainText(
+            glossary.data.name
+          );
+
+          await expect(page.getByTestId('body-text')).toContainText('DELETE');
+
+          const confirmationInput = page.getByTestId('confirmation-text-input');
+
+          await expect(confirmationInput).toBeVisible();
+
+          await confirmationInput.fill('DELETE');
+
+          await page.getByTestId('confirm-button').click();
+
+          await toastNotification(
+            page,
+            new RegExp(`.*${glossary.data.name}.*`)
+          );
+        }
+      );
+
+      await test.step('Change language back to English', async () => {
+        await waitForAllLoadersToDisappear(page);
+        await page.waitForLoadState('networkidle');
+        const languageDropdown = page
+          .locator('.nav-bar-side-items button.ant-dropdown-trigger')
+          .filter({ hasText: 'DE' })
+          .first();
+        await languageDropdown.click();
+
+        const englishOption = page.getByRole('menuitem', {
+          name: 'English - EN',
+        });
+        await englishOption.click();
+      });
+    } finally {
+      await afterAction();
     }
   });
 

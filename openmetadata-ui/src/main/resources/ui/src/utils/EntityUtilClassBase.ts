@@ -50,6 +50,7 @@ import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import WorksheetDetailsPage from '../pages/WorksheetDetailsPage/WorksheetDetailsPage';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchApiEndPoint } from '../rest/apiEndpointsAPI';
+import { patchApplication } from '../rest/applicationAPI';
 import { patchChartDetails } from '../rest/chartsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import {
@@ -58,12 +59,22 @@ import {
 } from '../rest/databaseAPI';
 import { patchDataModelDetails } from '../rest/dataModelsAPI';
 import { patchDataProduct } from '../rest/dataProductAPI';
+import { patchDomains } from '../rest/domainAPI';
+import { patchDriveAssetDetails } from '../rest/driveAPI';
+import { patchGlossaries, patchGlossaryTerm } from '../rest/glossaryAPI';
+import { patchKPI } from '../rest/KpiAPI';
+import { patchMetric } from '../rest/metricsAPI';
 import { patchMlModelDetails } from '../rest/mlModelAPI';
 import { patchPipelineDetails } from '../rest/pipelineAPI';
+import { patchQueries } from '../rest/queryAPI';
+import { patchPolicy, patchRole } from '../rest/rolesAPIV1';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
+import { patchService } from '../rest/serviceAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchStoredProceduresDetails } from '../rest/storedProceduresAPI';
 import { patchTableDetails } from '../rest/tableAPI';
+import { patchClassification, patchTag } from '../rest/tagAPI';
+import { patchTeamDetail } from '../rest/teamsAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
@@ -126,7 +137,9 @@ class EntityUtilClassBase {
     });
   }
 
-  protected ENTITY_PATCH_API_MAP: Record<EntityType, PatchAPIFunction> = {
+  protected ENTITY_PATCH_API_MAP: Partial<
+    Record<EntityType, PatchAPIFunction>
+  > = {
     [EntityType.TABLE]: patchTableDetails,
     [EntityType.DASHBOARD]: patchDashboardDetails,
     [EntityType.TOPIC]: patchTopicDetails,
@@ -142,7 +155,50 @@ class EntityUtilClassBase {
     [EntityType.DASHBOARD_DATA_MODEL]: patchDataModelDetails,
     [EntityType.SEARCH_INDEX]: patchSearchIndexDetails,
     [EntityType.DATA_PRODUCT]: patchDataProduct,
-  } as Record<EntityType, PatchAPIFunction>;
+    [EntityType.METRIC]: patchMetric,
+    [EntityType.GLOSSARY]: patchGlossaries,
+    [EntityType.GLOSSARY_TERM]: patchGlossaryTerm,
+    [EntityType.DOMAIN]: patchDomains,
+    [EntityType.TAG]: patchTag,
+    [EntityType.DIRECTORY]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.DIRECTORY),
+    [EntityType.FILE]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.FILE),
+    [EntityType.SPREADSHEET]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.SPREADSHEET),
+    [EntityType.WORKSHEET]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.WORKSHEET),
+    [EntityType.DATABASE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('databaseServices', id, patch),
+    [EntityType.DASHBOARD_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('dashboardServices', id, patch),
+    [EntityType.MESSAGING_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('messagingServices', id, patch),
+    [EntityType.PIPELINE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('pipelineServices', id, patch),
+    [EntityType.MLMODEL_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('mlmodelServices', id, patch),
+    [EntityType.METADATA_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('metadataServices', id, patch),
+    [EntityType.STORAGE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('storageServices', id, patch),
+    [EntityType.SEARCH_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('searchServices', id, patch),
+    [EntityType.API_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('apiServices', id, patch),
+    [EntityType.SECURITY_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('securityServices', id, patch),
+    [EntityType.DRIVE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('driveServices', id, patch),
+    [EntityType.KPI]: patchKPI,
+    [EntityType.APPLICATION]: patchApplication,
+    [EntityType.QUERY]: patchQueries,
+    [EntityType.ROLE]: (id: string, patch: Operation[]) => patchRole(patch, id),
+    [EntityType.POLICY]: (id: string, patch: Operation[]) =>
+      patchPolicy(patch, id),
+    [EntityType.CLASSIFICATION]: patchClassification,
+    [EntityType.TEAM]: patchTeamDetail,
+  };
 
   private createNormalizedLookupMap<T extends Record<string, string>>(
     obj: T

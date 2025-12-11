@@ -66,6 +66,11 @@ export interface TestDefinition {
     provider?:            ProviderType;
     supportedDataTypes?:  DataType[];
     /**
+     * List of services that this test definition supports. When empty, it implies all services
+     * are supported.
+     */
+    supportedServices?: string[];
+    /**
      * When `true` indicates the test case supports dynamic assertions.
      */
     supportsDynamicAssertion?: boolean;
@@ -162,6 +167,7 @@ export enum DataQualityDimensions {
     Completeness = "Completeness",
     Consistency = "Consistency",
     Integrity = "Integrity",
+    NoDimension = "NoDimension",
     SQL = "SQL",
     Uniqueness = "Uniqueness",
     Validity = "Validity",
