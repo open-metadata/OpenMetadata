@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { uuid } from '../../utils/common';
+import { selectDataProduct } from '../../utils/domain';
+import { sidebarClick } from '../../utils/sidebar';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Domain } from './Domain';
@@ -74,6 +77,12 @@ export class DataProduct extends EntityClass {
     this.responseData = data;
 
     return data;
+  }
+
+  async visitEntityPage(page: Page) {
+    await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+    await page.waitForLoadState('networkidle');
+    await selectDataProduct(page, this.responseData);
   }
 
   get() {
