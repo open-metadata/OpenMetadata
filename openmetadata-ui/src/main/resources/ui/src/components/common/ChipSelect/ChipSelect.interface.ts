@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,26 +11,19 @@
  *  limitations under the License.
  */
 
-import { EntityTags } from 'Models';
-import { TagSource } from '../../../generated/type/tagLabel';
-
-export interface TagsViewerProps {
-  tags: EntityTags[];
-  sizeCap?: number;
-  displayType?: DisplayType;
-  showNoDataPlaceholder?: boolean;
-  tagType?: TagSource;
-  newLook?: boolean;
-  entityFqn?: string;
-  entityType?: string;
+export interface ChipOption {
+  value: string;
+  label: string;
 }
 
-export enum DisplayType {
-  READ_MORE = 'read-more',
-  POPOVER = 'popover',
-}
-
-export enum LayoutType {
-  HORIZONTAL = 'horizontal',
-  VERTICAL = 'vertical',
+export interface ChipSelectProps {
+  options: ChipOption[];
+  value: string;
+  onChange: (value: string) => void;
+  label?: string;
+  required?: boolean;
+  error?: boolean;
+  helperText?: string;
+  disabled?: boolean;
+  'data-testid'?: string;
 }

@@ -26,6 +26,7 @@ import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
 import { Tab } from '../generated/system/ui/uiCustomization';
+import { TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../rest/searchAPI';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
@@ -68,18 +69,24 @@ class TagClassBase {
     if (emptyQueryFilter) {
       // If emptyQueryFilter is true, only use the disabled filter
       mergedQueryFilter = disabledFilter;
-    } else if (!isEmpty(queryFilterToRemoveSomeClassification)) {
-      // Merge both filters: disabled:false (must) + classification exclusions (must_not)
-      mergedQueryFilter = {
-        query: {
-          bool: {
-            must: disabledFilter.query.bool.must,
-            must_not: queryFilterToRemoveSomeClassification.query.bool.must_not,
-          },
-        },
-      };
     } else {
-      mergedQueryFilter = disabledFilter;
+      const hasClassificationFilter = !isEmpty(
+        queryFilterToRemoveSomeClassification
+      );
+      if (hasClassificationFilter) {
+        // Merge both filters: disabled:false (must) + classification exclusions (must_not)
+        mergedQueryFilter = {
+          query: {
+            bool: {
+              must: disabledFilter.query.bool.must,
+              must_not:
+                queryFilterToRemoveSomeClassification.query.bool.must_not,
+            },
+          },
+        };
+      } else {
+        mergedQueryFilter = disabledFilter;
+      }
     }
 
     const res = await searchQuery({
@@ -253,6 +260,14 @@ class TagClassBase {
   } | null => {
     return null;
   };
+
+  public getRecognizerFeedbackComponent(
+    tagLabel: TagLabel,
+    entityLink: string,
+    onFeedbackSuccess?: () => void
+  ): React.ReactElement | null {
+    return null;
+  }
 }
 
 const tagClassBase = new TagClassBase();

@@ -234,6 +234,8 @@ const TagsContainerV2 = ({
         <Col span={24}>
           <TagsViewer
             displayType={displayType}
+            entityFqn={entityFqn}
+            entityType={entityType}
             newLook={tagNewLook}
             showNoDataPlaceholder={showNoDataPlaceholder}
             sizeCap={sizeCap}
@@ -242,7 +244,14 @@ const TagsContainerV2 = ({
           />
         </Col>
       ),
-    [displayType, showNoDataPlaceholder, tags?.[tagType], layoutType]
+    [
+      displayType,
+      showNoDataPlaceholder,
+      tags?.[tagType],
+      layoutType,
+      entityFqn,
+      entityType,
+    ]
   );
 
   const tagsSelectContainer = useMemo(() => {
@@ -394,6 +403,8 @@ const TagsContainerV2 = ({
         ) : null}
         <TagsViewer
           displayType={displayType}
+          entityFqn={entityFqn}
+          entityType={entityType}
           newLook={newLook}
           showNoDataPlaceholder={showNoDataPlaceholder}
           sizeCap={sizeCap}
@@ -415,25 +426,34 @@ const TagsContainerV2 = ({
   const tagBody = useMemo(() => {
     if (isEditTags) {
       return tagsSelectContainer;
-    } else {
-      return isHoriZontalLayout ? (
-        horizontalLayout
-      ) : showInlineEditButton || !isEmpty(renderTags) || !newLook ? (
-        <Row data-testid="entity-tags">
-          {showAddTagButton && (
-            <Col className="m-t-xss" onClick={handleAddClick}>
-              <TagsV1
-                startWith={TAG_START_WITH.PLUS}
-                tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
-                tagType={tagType}
-              />
-            </Col>
-          )}
-          {renderTags}
-          {showInlineEditButton ? <Col>{editTagButton}</Col> : null}
-        </Row>
-      ) : null;
     }
+
+    if (isHoriZontalLayout) {
+      return horizontalLayout;
+    }
+
+    const shouldShowVerticalLayout =
+      showInlineEditButton || !isEmpty(renderTags) || !newLook;
+
+    if (!shouldShowVerticalLayout) {
+      return null;
+    }
+
+    return (
+      <Row data-testid="entity-tags">
+        {showAddTagButton && (
+          <Col className="m-t-xss" onClick={handleAddClick}>
+            <TagsV1
+              startWith={TAG_START_WITH.PLUS}
+              tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
+              tagType={tagType}
+            />
+          </Col>
+        )}
+        {renderTags}
+        {showInlineEditButton ? <Col>{editTagButton}</Col> : null}
+      </Row>
+    );
   }, [
     isEditTags,
     tagsSelectContainer,
