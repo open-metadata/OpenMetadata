@@ -69,7 +69,6 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      console.log('Values:', values);
       setIsSubmitting(true);
 
       if (isEditMode && initialValues) {
@@ -127,13 +126,13 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
       onClose={onCancel}>
       <Form
         form={form}
-        layout="vertical"
         initialValues={{
           ...initialValues,
           testPlatforms: initialValues?.testPlatforms || [
             TestPlatform.OpenMetadata,
           ],
-        }}>
+        }}
+        layout="vertical">
         <Form.Item
           label={t('label.name')}
           name="name"
@@ -182,8 +181,8 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
 
         <Form.Item name="sqlExpression">
           <CodeEditor
-            showCopyButton
             refreshEditor
+            showCopyButton
             className="custom-query-editor query-editor-h-200"
             mode={{ name: CSMode.SQL }}
             title={
@@ -213,8 +212,8 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
             },
           ]}>
           <Select
-            id="entityType"
             disabled={isEditMode}
+            id="entityType"
             options={Object.values(EntityType).map((type) => ({
               label: type,
               value: type,
@@ -281,8 +280,8 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
         <Form.Item
           label={
             <FormItemLabel
-              label={t('label.parameter-plural')}
               helperText={t('message.test-definition-parameters-description')}
+              label={t('label.parameter-plural')}
             />
           }>
           <Form.List name="parameterDefinition">
