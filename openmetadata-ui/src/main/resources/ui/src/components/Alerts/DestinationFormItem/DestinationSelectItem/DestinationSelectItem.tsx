@@ -53,6 +53,8 @@ import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUti
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
 // Helper function to filter out empty key-value pairs from arrays
+// Note: trim() returns empty string for empty/whitespace strings, which is falsy
+// String values like '0' or 'false' will be preserved as they're truthy after trim
 const filterEmptyKeyValuePairs = (items?: { key: string; value: string }[]) =>
   items?.filter((item) => item.key?.trim() && item.value?.trim());
 
