@@ -14,7 +14,7 @@
  * Qlik Sense Connection Config
  */
 export interface QlikSenseConnection {
-    certificates: QlikCertificatesBy;
+    certificates: Qlik;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -62,8 +62,10 @@ export interface QlikSenseConnection {
  * Qlik Authentication Certificate By Values
  *
  * Qlik Authentication Certificate File Path
+ *
+ * Qlik Authentication using JWT Token
  */
-export interface QlikCertificatesBy {
+export interface Qlik {
     sslConfig?: Config;
     /**
      * Client Certificate
@@ -77,6 +79,10 @@ export interface QlikCertificatesBy {
      * Root Certificate.
      */
     rootCertificate?: string;
+    /**
+     * JWT token to authenticate to Qlik Sense.
+     */
+    token?: string;
     [property: string]: any;
 }
 

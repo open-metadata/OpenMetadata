@@ -28,6 +28,22 @@ Example: `wss://server.domain.com:4747` or `wss://server.domain.com[/virtual pro
 **Note:** Notice that you have to provide the websocket url here which would begin with either `wss://` or `ws://`
 $$
 
+## Authentication Methods
+
+Qlik Sense supports two authentication methods:
+
+### JWT Token Authentication (Recommended)
+
+$$section
+### JWT Token $(id="token")
+
+JWT token to authenticate to Qlik Sense. This is the recommended authentication method if you can obtain a JWT token from your Qlik Sense deployment.
+
+**Note:** When using JWT authentication, you don't need to provide certificates or user directory/ID information.
+$$
+
+### Certificate-Based Authentication
+
 $$section
 ### Client Certificate Value $(id="clientCertificateData")
 
