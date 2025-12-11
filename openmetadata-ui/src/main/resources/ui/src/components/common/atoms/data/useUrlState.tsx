@@ -25,12 +25,18 @@ export const useUrlState = (
     searchKey = 'q',
     filterKeys,
     pageKey = 'page',
+    pageSizeKey = 'size',
+    defaultPageSize = 10,
     filterConfigs,
   } = config;
 
   const urlState: UrlState = useMemo(() => {
     const searchQuery = searchParams.get(searchKey) || '';
     const currentPage = parseInt(searchParams.get(pageKey) || '1', 10);
+    const pageSize = parseInt(
+      searchParams.get(pageSizeKey) || String(defaultPageSize),
+      10
+    );
 
     const filters: Record<string, string[]> = {};
     filterKeys.forEach((key: string) => {
@@ -42,8 +48,16 @@ export const useUrlState = (
       searchQuery,
       filters,
       currentPage,
+      pageSize,
     };
-  }, [searchParams, searchKey, pageKey, filterKeys]);
+  }, [
+    searchParams,
+    searchKey,
+    pageKey,
+    pageSizeKey,
+    defaultPageSize,
+    filterKeys,
+  ]);
 
   const parsedFilters: ExploreQuickFilterField[] = useMemo(() => {
     if (!filterConfigs) {
@@ -125,6 +139,17 @@ export const useUrlState = (
     [pageKey, updateUrlParams]
   );
 
+  const setPageSize = useCallback(
+    (size: number) => {
+      const updates: Record<string, string | null> = {
+        [pageSizeKey]: size !== defaultPageSize ? size.toString() : null,
+        [pageKey]: '1', // Reset to first page when changing page size
+      };
+      updateUrlParams(updates);
+    },
+    [pageSizeKey, pageKey, defaultPageSize, updateUrlParams]
+  );
+
   const resetFilters = useCallback(() => {
     const updates: Record<string, string | null> = {};
     filterKeys.forEach((key: string) => {
@@ -151,6 +176,7 @@ export const useUrlState = (
     setSearchQuery,
     setFilters,
     setCurrentPage,
+    setPageSize,
     resetFilters,
     resetAll,
   };

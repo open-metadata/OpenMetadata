@@ -19,12 +19,15 @@ export interface UrlStateConfig {
   searchKey?: string;
   filterKeys: string[];
   pageKey?: string;
+  pageSizeKey?: string;
+  defaultPageSize?: number;
 }
 
 export interface UrlState {
   searchQuery: string;
   filters: Record<string, string[]>;
   currentPage: number;
+  pageSize: number;
 }
 
 export interface UrlStateHook {
@@ -33,6 +36,7 @@ export interface UrlStateHook {
   setSearchQuery: (query: string) => void;
   setFilters: (filters: ExploreQuickFilterField[]) => void;
   setCurrentPage: (page: number) => void;
+  setPageSize: (pageSize: number) => void;
   resetFilters: () => void;
   resetAll: () => void;
 }
@@ -41,7 +45,7 @@ export interface DataFetchingConfig<T> {
   searchIndex: string;
   baseFilter?: string;
   pageSize?: number;
-  transform?: (data: any) => T[];
+  transform?: (data: unknown) => T[];
 }
 
 export interface DataFetchingResult<T> {
@@ -73,11 +77,11 @@ export interface SelectionState {
 export interface FilterField {
   key: string;
   aggregationField: string;
-  processor?: (options: any[]) => any[];
+  processor?: (options: unknown[]) => unknown[];
 }
 
 export interface FilterOptions {
-  [key: string]: any[];
+  [key: string]: unknown[];
 }
 
 export interface FilterConfig {
@@ -92,7 +96,7 @@ export interface ColumnConfig<T> {
   key: string;
   labelKey: string;
   render: string;
-  getValue?: (entity: T) => any;
+  getValue?: (entity: T) => unknown;
   customRenderer?: string;
 }
 
@@ -131,6 +135,7 @@ export interface ListingData<T> {
   handleSearchChange: (query: string) => void;
   handleFilterChange: (filters: ExploreQuickFilterField[]) => void;
   handlePageChange: (page: number) => void;
+  handlePageSizeChange?: (pageSize: number) => void;
   refetch: () => void;
 }
 
@@ -138,15 +143,15 @@ export interface TableViewConfig<T> {
   listing: ListingData<T>;
   enableSelection?: boolean;
   entityLabelKey?: string;
-  customTableRow?: React.ComponentType<any>;
+  customTableRow?: React.ComponentType<Record<string, unknown>>;
 }
 
 export interface DropdownConfig {
   key: string;
   labelKey: string;
   searchKey: string;
-  options: any[];
-  selectedOptions: any[];
-  onChange: (values: any[]) => void;
+  options: unknown[];
+  selectedOptions: unknown[];
+  onChange: (values: unknown[]) => void;
   onSearch: (term: string) => void;
 }
