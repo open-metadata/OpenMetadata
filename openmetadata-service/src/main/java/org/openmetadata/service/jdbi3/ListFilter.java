@@ -257,7 +257,7 @@ public class ListFilter extends Filter<ListFilter> {
     boolean isQueryEntity = tableName != null && tableName.equals("query_entity");
     if (isQueryEntity && !NULL_PARAM.equals(domainId)) {
       // For queries, check if any of the tables they are used in belong to the specified domain(s)
-      // Queries are related to tables via MENTIONED_IN relationship (relation=4)
+      // Queries are related to tables via MENTIONED_IN relationship
       if (Boolean.TRUE.toString().equals(domainAccessControl)) {
         // Allow queries with no queryUsedIn OR queries used in tables that belong to the specified domain(s)
         return String.format(
