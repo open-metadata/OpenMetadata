@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -63,7 +64,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/dataProducts")
@@ -78,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
 public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   private final DataProductMapper mapper = new DataProductMapper();
-  static final String FIELDS = "domains,owners,experts,assets,extension,tags,followers";
+  static final String FIELDS = "domains,owners,reviewers,experts,extension,tags,followers";
 
   public DataProductResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_PRODUCT, authorizer, limits);
@@ -87,7 +87,6 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   @Override
   public DataProduct addHref(UriInfo uriInfo, DataProduct dataProduct) {
     super.addHref(uriInfo, dataProduct);
-    Entity.withHref(uriInfo, dataProduct.getAssets());
     return dataProduct;
   }
 
@@ -287,7 +286,14 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public Response create(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateDataProduct create) {
+      @RequestBody(
+              description = "CreateDataProduct request",
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema = @Schema(implementation = CreateDataProduct.class)))
+          @Valid
+          CreateDataProduct create) {
     DataProduct dataProduct =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dataProduct);
@@ -312,7 +318,14 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateDataProduct create) {
+      @RequestBody(
+              description = "CreateDataProduct request",
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema = @Schema(implementation = CreateDataProduct.class)))
+          @Valid
+          CreateDataProduct create) {
     DataProduct dataProduct =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dataProduct);
@@ -556,5 +569,111 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     return repository
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
+  }
+
+  @GET
+  @Path("/{id}/assets")
+  @Operation(
+      operationId = "getDataProductAssets",
+      summary = "Get assets for a data product",
+      description = "Get paginated list of assets belonging to a data product.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {id} is not found")
+      })
+  public Response getAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the data product", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description =
+                  "Limit the number of results returned. Maximum of 1000 records will be returned in a single request.",
+              schema = @Schema(type = "integer", defaultValue = "10"))
+          @QueryParam("limit")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          int limit,
+      @Parameter(
+              description = "Offset from which to start returning results",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset) {
+    return Response.ok(repository.getDataProductAssets(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/assets")
+  @Operation(
+      operationId = "getDataProductAssetsByName",
+      summary = "Get assets for a data product by name",
+      description =
+          "Get paginated list of assets belonging to a data product by data product name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "DataProduct for instance {name} is not found")
+      })
+  public Response getAssetsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the data product", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description =
+                  "Limit the number of results returned. Maximum of 1000 records will be returned in a single request.",
+              schema = @Schema(type = "integer", defaultValue = "10"))
+          @QueryParam("limit")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          int limit,
+      @Parameter(
+              description = "Offset from which to start returning results",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset) {
+    return Response.ok(repository.getDataProductAssetsByName(fqn, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllDataProductsWithAssetsCount",
+      summary = "Get all data products with their asset counts",
+      description =
+          "Get a map of data product fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of data product FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllDataProductsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllDataProductsWithAssetsCount();
+    return Response.ok(result).build();
   }
 }

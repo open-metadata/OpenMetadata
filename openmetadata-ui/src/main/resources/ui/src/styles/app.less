@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import (reference) url('./variables.less');
+@import (reference) './variables.less';
 
 /* Generic */
 
@@ -357,7 +357,7 @@ a[href].link-text-grey,
 }
 
 .shadow-custom {
-  box-shadow: 1px 1px 8px rgb(0 0 0 / 6%);
+  box-shadow: 1px 1px 8px rgba(0, 0, 0, 0.06);
 }
 
 .card-box-shadow {
@@ -627,9 +627,13 @@ a[href].link-text-grey,
   }
 
   /* Lineage tab panel styling */
+  [id*='rc-tabs-'][id*='-panel-contract'],
   [id*='rc-tabs-'][id*='-panel-lineage'],
-  [id*='rc-tabs-'][id*='-panel-erDiagram'] {
+  [id*='rc-tabs-'][id*='-panel-erDiagram'],
+  [id*='rc-tabs-'][id*='-panel-custom_properties'] {
     background-color: @grey-9;
+    // This will remove extra space below the lineage graph
+    height: initial;
   }
 }
 

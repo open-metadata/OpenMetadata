@@ -22,6 +22,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
@@ -62,6 +63,7 @@ public class ApplicationHandler {
       return;
     }
     instance = new ApplicationHandler(config);
+    instance.cleanupStaleJobs();
   }
 
   /**
@@ -95,6 +97,16 @@ public class ApplicationHandler {
     } catch (ConfigurationException e) {
       LOG.error("Error reading config file for app {}", appName, e);
       return false;
+    }
+  }
+
+  public void cleanupStaleJobs() {
+    try {
+      LOG.info("Cleaning up stale application jobs from previous server runs");
+      Entity.getCollectionDAO().appExtensionTimeSeriesDao().markAllStaleEntriesFailed();
+      LOG.info("Stale application jobs cleanup completed successfully");
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup stale application jobs", e);
     }
   }
 

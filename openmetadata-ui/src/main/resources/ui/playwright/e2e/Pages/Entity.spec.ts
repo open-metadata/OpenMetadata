@@ -22,24 +22,28 @@ import { ChartClass } from '../../support/entity/ChartClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  assignDomain,
+  assignSingleSelectDomain,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
-  removeDomain,
+  removeSingleSelectDomain,
   verifyDomainPropagation,
 } from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
@@ -63,6 +67,10 @@ const entities = [
   DashboardDataModelClass,
   MetricClass,
   ChartClass,
+  DirectoryClass,
+  FileClass,
+  SpreadsheetClass,
+  WorksheetClass,
 ] as const;
 
 const adminUser = new UserClass();
@@ -110,7 +118,6 @@ entities.forEach((EntityClass) => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
@@ -120,8 +127,9 @@ entities.forEach((EntityClass) => {
       await entity.visitEntityPage(page);
     });
 
-    // Need to address fixes for Domain / Data Product update
-    test.fixme('Domain Add, Update and Remove', async ({ page }) => {
+    test('Domain Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.domain(
         page,
         EntityDataClass.domain1.responseData,
@@ -144,7 +152,10 @@ entities.forEach((EntityClass) => {
           false
         );
 
-        await assignDomain(page, EntityDataClass.domain1.responseData);
+        await assignSingleSelectDomain(
+          page,
+          EntityDataClass.domain1.responseData
+        );
         await verifyDomainPropagation(
           page,
           EntityDataClass.domain1.responseData,
@@ -159,22 +170,25 @@ entities.forEach((EntityClass) => {
           },
           false
         );
-        await removeDomain(page, EntityDataClass.domain1.responseData);
+        await removeSingleSelectDomain(
+          page,
+          EntityDataClass.domain1.responseData
+        );
       }
     });
 
     test('User as Owner Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
-      const OWNER1 = EntityDataClass.user1.getUserName();
-      const OWNER2 = EntityDataClass.user2.getUserName();
-      const OWNER3 = EntityDataClass.user3.getUserName();
+      const OWNER1 = EntityDataClass.user1.getUserDisplayName();
+      const OWNER2 = EntityDataClass.user2.getUserDisplayName();
+      const OWNER3 = EntityDataClass.user3.getUserDisplayName();
       await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
     test('Team as Owner Add, Update and Remove', async ({ page }) => {
-      const OWNER1 = EntityDataClass.team1.data.displayName;
-      const OWNER2 = EntityDataClass.team2.data.displayName;
+      const OWNER1 = EntityDataClass.team1.responseData.displayName;
+      const OWNER2 = EntityDataClass.team2.responseData.displayName;
       await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
     });
 
@@ -191,7 +205,7 @@ entities.forEach((EntityClass) => {
 
       await addMultiOwner({
         page,
-        ownerNames: [OWNER2.getUserName()],
+        ownerNames: [OWNER2.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         resultTestId: 'data-assets-header',
         endpoint: entity.endpoint,
@@ -200,7 +214,7 @@ entities.forEach((EntityClass) => {
 
       await addMultiOwner({
         page,
-        ownerNames: [OWNER1.getUserName()],
+        ownerNames: [OWNER1.getUserDisplayName()],
         activatorBtnDataTestId: 'edit-owner',
         resultTestId: 'data-assets-header',
         endpoint: entity.endpoint,
@@ -210,7 +224,7 @@ entities.forEach((EntityClass) => {
 
       await removeOwnersFromList({
         page,
-        ownerNames: [OWNER1.getUserName()],
+        ownerNames: [OWNER1.getUserDisplayName()],
         endpoint: entity.endpoint,
         dataTestId: 'data-assets-header',
       });
@@ -218,7 +232,7 @@ entities.forEach((EntityClass) => {
       await removeOwner({
         page,
         endpoint: entity.endpoint,
-        ownerName: OWNER2.getUserName(),
+        ownerName: OWNER2.getUserDisplayName(),
         type: 'Users',
         dataTestId: 'data-assets-header',
       });
@@ -284,7 +298,16 @@ entities.forEach((EntityClass) => {
       );
     });
 
-    if (!['Store Procedure', 'Metric', 'Chart'].includes(entity.type)) {
+    if (
+      ![
+        'Store Procedure',
+        'Metric',
+        'Chart',
+        'Directory',
+        'File',
+        'Spreadsheet',
+      ].includes(entity.type)
+    ) {
       test('Tag and Glossary Selector should close vice versa', async ({
         page,
       }) => {
@@ -523,6 +546,92 @@ entities.forEach((EntityClass) => {
 
     // Add the data consumer test only for Table entity
     if (entityName === 'Table') {
+      test('Switch from Data Observability tab to Activity Feed tab and verify data appears', async ({
+        page,
+      }) => {
+        test.slow();
+
+        // Create a test case to ensure there's data in the profiler tab
+        const { apiContext, afterAction } = await getApiContext(page);
+        await tableEntity.createTestCase(apiContext);
+        await afterAction();
+
+        // Navigate to the table entity page
+        await entity.visitEntityPage(page);
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Step 1: Navigate to Data Observability tab and verify profiler tab is selected by default
+        await test.step('Navigate to Data Observability tab', async () => {
+          const profilerTab = page.getByTestId('profiler');
+
+          await expect(profilerTab).toBeVisible();
+
+          // Wait for profiler API call (profiler tab is selected by default, no need to click)
+          const profilerResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/tables/') &&
+              response.url().includes('/tableProfile')
+          );
+
+          await profilerTab.click();
+          await profilerResponse;
+
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+        });
+
+        // Step 2: Verify tabs UI component is rendered in Data Observability tab
+        await test.step(
+          'Verify tabs UI component is rendered in Data Observability tab',
+          async () => {
+            // Verify that the profiler sub-tabs are visible
+            // (Table Profile, Column Profile, Data Quality, or Incidents)
+            expect(page.getByTestId('table-profile')).toBeVisible();
+            expect(page.getByTestId('column-profile')).toBeVisible();
+            expect(page.getByTestId('data-quality')).toBeVisible();
+          }
+        );
+
+        // Step 3: Switch to Activity Feed tab (all tab is selected by default)
+        await test.step('Switch to Activity Feed tab', async () => {
+          const activityFeedTab = page.getByTestId('activity_feed');
+
+          await expect(activityFeedTab).toBeVisible();
+
+          // Wait for activity feed API call (all tab is selected by default)
+          const activityFeedResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/feed') &&
+              response.url().includes('entityLink')
+          );
+
+          await activityFeedTab.click();
+          await activityFeedResponse;
+
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+        });
+
+        // Step 4: Verify tabs or left component is rendered in Activity Feed tab
+        await test.step(
+          'Verify tabs or left component is rendered in Activity Feed tab',
+          async () => {
+            // Verify that activity feed tabs are visible (All, Mentions, Tasks)
+            // Check for the left panel menu or the tab navigation
+            await expect(
+              page.locator('[data-testid="global-setting-left-panel"]')
+            ).toBeVisible();
+          }
+        );
+      });
+
       test('Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level', async ({
         page,
         dataConsumerPage,
@@ -604,7 +713,6 @@ entities.forEach((EntityClass) => {
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
     });
   });
@@ -614,7 +722,7 @@ entities.forEach((EntityClass) => {
     test.slow(true);
 
     await redirectToHomePage(page);
-    // get the token from localStorage
+    // get the token
     const token = await getToken(page);
 
     // create a new context with the token

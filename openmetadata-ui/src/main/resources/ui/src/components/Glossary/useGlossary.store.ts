@@ -19,12 +19,14 @@ import { findAndUpdateNested } from '../../utils/GlossaryUtils';
 export type ModifiedGlossary = Glossary & {
   children?: GlossaryTermWithChildren[];
   childrenCount?: number;
+  termCount?: number;
 };
 
 export type GlossaryFunctionRef = {
   onAddGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
   onEditGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
   refreshGlossaryTerms: () => void;
+  loadMoreTerms?: () => void;
 };
 
 export const useGlossaryStore = create<{
@@ -42,6 +44,7 @@ export const useGlossaryStore = create<{
   onAddGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
   onEditGlossaryTerm: (glossaryTerm?: GlossaryTerm) => void;
   refreshGlossaryTerms: () => void;
+  loadMoreTerms: () => void;
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => void;
 }>()((set, get) => ({
   glossaries: [],
@@ -109,13 +112,24 @@ export const useGlossaryStore = create<{
     }
   },
   setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => {
-    set({ glossaryChildTerms });
+    // Ensure glossaryChildTerms is always an array
+    const validTerms = Array.isArray(glossaryChildTerms)
+      ? glossaryChildTerms
+      : [];
+    set({ glossaryChildTerms: validTerms });
   },
   setTermsLoading: (termsLoading: boolean) => {
     set({ termsLoading });
   },
   setGlossaryFunctionRef: (glossaryFunctionRef: GlossaryFunctionRef) => {
-    set({ ...glossaryFunctionRef });
+    set({
+      ...glossaryFunctionRef,
+      loadMoreTerms:
+        glossaryFunctionRef.loadMoreTerms ||
+        (() => {
+          // Placeholder function
+        }),
+    });
   },
 
   onAddGlossaryTerm: (_glossaryTerm?: GlossaryTerm) => {
@@ -127,6 +141,10 @@ export const useGlossaryStore = create<{
   },
 
   refreshGlossaryTerms: () => {
+    // This is a placeholder function that will be replaced by the actual function
+  },
+
+  loadMoreTerms: () => {
     // This is a placeholder function that will be replaced by the actual function
   },
 }));

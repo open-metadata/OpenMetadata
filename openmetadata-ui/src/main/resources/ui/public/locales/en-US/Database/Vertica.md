@@ -12,7 +12,7 @@ GRANT SELECT ON ALL TABLES IN SCHEMA PUBLIC TO openmetadata;
 GRANT SELECT ON ALL TABLES IN SCHEMA V_CATALOG TO openmetadata;
 ```
 
-Note that these `GRANT`s won't be applied to any new table created on the schema unless the schema has [Inherited Privileges](https://www.vertica.com/docs/8.1.x/HTML/index.htm#Authoring/AdministratorsGuide/Security/DBUsersAndPrivileges/GrantInheritedPrivileges.htm).
+Note that these `GRANT`s won't be applied to any new table created on the schema unless the schema has <a href="https://www.vertica.com/docs/8.1.x/HTML/index.htm#Authoring/AdministratorsGuide/Security/DBUsersAndPrivileges/GrantInheritedPrivileges.htm" target="_blank">Inherited Privileges</a>.
 
 ```sql
 ALTER SCHEMA s1 DEFAULT INCLUDE PRIVILEGES;
@@ -44,7 +44,7 @@ To run the profiler, it's not enough to have `USAGE` permissions to the schema a
 GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO openmetadata;
 ```
 
-You can find further information on the Vertica connector in the [docs](https://docs.open-metadata.org/connectors/database/vertica).
+You can find further information on the Vertica connector in the <a href="https://docs.open-metadata.org/connectors/database/vertica" target="_blank">docs</a>.
 
 ## Connection Details
 

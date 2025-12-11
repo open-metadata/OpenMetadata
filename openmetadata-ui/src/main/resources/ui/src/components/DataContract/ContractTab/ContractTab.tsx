@@ -22,6 +22,7 @@ import {
   getContractByEntityId,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../common/Loader/Loader';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -30,9 +31,7 @@ import { ContractDetail } from '../ContractDetailTab/ContractDetail';
 import './contract-tab.less';
 
 export const ContractTab = () => {
-  const {
-    data: { id },
-  } = useGenericContext();
+  const { data: entityData } = useGenericContext();
   const { t } = useTranslation();
   const [tabMode, setTabMode] = useState<DataContractTabMode>(
     DataContractTabMode.VIEW
@@ -40,11 +39,13 @@ export const ContractTab = () => {
   const [contract, setContract] = useState<DataContract>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const { id } = entityData ?? {};
 
   const fetchContract = async () => {
     try {
       setIsLoading(true);
-      const contract = await getContractByEntityId(id, EntityType.TABLE, [
+      const contract = await getContractByEntityId(id, entityType, [
         TabSpecificField.OWNERS,
       ]);
       setContract(contract);
@@ -55,7 +56,7 @@ export const ContractTab = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (contract?.id) {
       setIsDeleteModalVisible(true);
     }
@@ -88,19 +89,6 @@ export const ContractTab = () => {
   const content = useMemo(() => {
     switch (tabMode) {
       case DataContractTabMode.ADD:
-        return (
-          <AddDataContract
-            contract={contract}
-            onCancel={() => {
-              setTabMode(DataContractTabMode.VIEW);
-            }}
-            onSave={() => {
-              fetchContract();
-              setTabMode(DataContractTabMode.VIEW);
-            }}
-          />
-        );
-
       case DataContractTabMode.EDIT:
         return (
           <AddDataContract

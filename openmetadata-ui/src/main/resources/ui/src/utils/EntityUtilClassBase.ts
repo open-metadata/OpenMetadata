@@ -12,6 +12,7 @@
  */
 
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Operation } from 'fast-json-patch';
 import { capitalize } from 'lodash';
 import { FC } from 'react';
 import { NavigateFunction } from 'react-router-dom';
@@ -35,29 +36,56 @@ import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetails
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import DirectoryDetailsPage from '../pages/DirectoryDetailsPage/DirectoryDetailsPage';
 import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
+import FileDetailsPage from '../pages/FileDetailsPage/FileDetailsPage';
 import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
 import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexDetailsPage';
+import SpreadsheetDetailsPage from '../pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage';
 import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
+import WorksheetDetailsPage from '../pages/WorksheetDetailsPage/WorksheetDetailsPage';
+import { patchApiCollection } from '../rest/apiCollectionsAPI';
+import { patchApiEndPoint } from '../rest/apiEndpointsAPI';
+import { patchApplication } from '../rest/applicationAPI';
+import { patchChartDetails } from '../rest/chartsAPI';
+import { patchDashboardDetails } from '../rest/dashboardAPI';
 import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemaDetailsByFQN,
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
 } from '../rest/databaseAPI';
-import { getGlossariesByName } from '../rest/glossaryAPI';
-import { getServiceByFQN } from '../rest/serviceAPI';
-import { getTableDetailsByFQN } from '../rest/tableAPI';
+import { patchDataModelDetails } from '../rest/dataModelsAPI';
+import { patchDataProduct } from '../rest/dataProductAPI';
+import { patchDomains } from '../rest/domainAPI';
+import { patchDriveAssetDetails } from '../rest/driveAPI';
+import { patchGlossaries, patchGlossaryTerm } from '../rest/glossaryAPI';
+import { patchKPI } from '../rest/KpiAPI';
+import { patchMetric } from '../rest/metricsAPI';
+import { patchMlModelDetails } from '../rest/mlModelAPI';
+import { patchPipelineDetails } from '../rest/pipelineAPI';
+import { patchQueries } from '../rest/queryAPI';
+import { patchPolicy, patchRole } from '../rest/rolesAPIV1';
+import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
+import { patchService } from '../rest/serviceAPI';
+import { patchContainerDetails } from '../rest/storageAPI';
+import { patchStoredProceduresDetails } from '../rest/storedProceduresAPI';
+import { patchTableDetails } from '../rest/tableAPI';
+import { patchClassification, patchTag } from '../rest/tagAPI';
+import { patchTeamDetail } from '../rest/teamsAPI';
+import { patchTopicDetails } from '../rest/topicsAPI';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+import { getEntityByFqnUtil } from './EntityByFqnUtils';
 import { EntityTypeName } from './EntityUtils';
 import {
   FormattedAPIServiceType,
   FormattedDashboardServiceType,
   FormattedDatabaseServiceType,
+  FormattedDriveServiceType,
   FormattedMessagingServiceType,
   FormattedMetadataServiceType,
   FormattedMlModelServiceType,
@@ -67,10 +95,13 @@ import {
 } from './EntityUtils.interface';
 import {
   getApplicationDetailsPath,
+  getBotsPath,
+  getClassificationTagPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
+  getKpiPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
@@ -86,6 +117,8 @@ import {
 import { ExtraTableDropdownOptions } from './TableUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
+type PatchAPIFunction = (id: string, patch: Operation[]) => Promise<any>;
+
 class EntityUtilClassBase {
   serviceTypeLookupMap: Map<string, string>;
 
@@ -100,8 +133,72 @@ class EntityUtilClassBase {
       ...FormattedMessagingServiceType,
       ...FormattedAPIServiceType,
       ...FormattedStorageServiceType,
+      ...FormattedDriveServiceType,
     });
   }
+
+  protected ENTITY_PATCH_API_MAP: Partial<
+    Record<EntityType, PatchAPIFunction>
+  > = {
+    [EntityType.TABLE]: patchTableDetails,
+    [EntityType.DASHBOARD]: patchDashboardDetails,
+    [EntityType.TOPIC]: patchTopicDetails,
+    [EntityType.PIPELINE]: patchPipelineDetails,
+    [EntityType.MLMODEL]: patchMlModelDetails,
+    [EntityType.CHART]: patchChartDetails,
+    [EntityType.API_COLLECTION]: patchApiCollection,
+    [EntityType.API_ENDPOINT]: patchApiEndPoint,
+    [EntityType.DATABASE]: patchDatabaseDetails,
+    [EntityType.DATABASE_SCHEMA]: patchDatabaseSchemaDetails,
+    [EntityType.STORED_PROCEDURE]: patchStoredProceduresDetails,
+    [EntityType.CONTAINER]: patchContainerDetails,
+    [EntityType.DASHBOARD_DATA_MODEL]: patchDataModelDetails,
+    [EntityType.SEARCH_INDEX]: patchSearchIndexDetails,
+    [EntityType.DATA_PRODUCT]: patchDataProduct,
+    [EntityType.METRIC]: patchMetric,
+    [EntityType.GLOSSARY]: patchGlossaries,
+    [EntityType.GLOSSARY_TERM]: patchGlossaryTerm,
+    [EntityType.DOMAIN]: patchDomains,
+    [EntityType.TAG]: patchTag,
+    [EntityType.DIRECTORY]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.DIRECTORY),
+    [EntityType.FILE]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.FILE),
+    [EntityType.SPREADSHEET]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.SPREADSHEET),
+    [EntityType.WORKSHEET]: (id: string, patch: Operation[]) =>
+      patchDriveAssetDetails(id, patch, EntityType.WORKSHEET),
+    [EntityType.DATABASE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('databaseServices', id, patch),
+    [EntityType.DASHBOARD_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('dashboardServices', id, patch),
+    [EntityType.MESSAGING_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('messagingServices', id, patch),
+    [EntityType.PIPELINE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('pipelineServices', id, patch),
+    [EntityType.MLMODEL_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('mlmodelServices', id, patch),
+    [EntityType.METADATA_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('metadataServices', id, patch),
+    [EntityType.STORAGE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('storageServices', id, patch),
+    [EntityType.SEARCH_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('searchServices', id, patch),
+    [EntityType.API_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('apiServices', id, patch),
+    [EntityType.SECURITY_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('securityServices', id, patch),
+    [EntityType.DRIVE_SERVICE]: (id: string, patch: Operation[]) =>
+      patchService('driveServices', id, patch),
+    [EntityType.KPI]: patchKPI,
+    [EntityType.APPLICATION]: patchApplication,
+    [EntityType.QUERY]: patchQueries,
+    [EntityType.ROLE]: (id: string, patch: Operation[]) => patchRole(patch, id),
+    [EntityType.POLICY]: (id: string, patch: Operation[]) =>
+      patchPolicy(patch, id),
+    [EntityType.CLASSIFICATION]: patchClassification,
+    [EntityType.TEAM]: patchTeamDetail,
+  };
 
   private createNormalizedLookupMap<T extends Record<string, string>>(
     obj: T
@@ -216,6 +313,7 @@ class EntityUtilClassBase {
         );
       case SearchIndex.TAG:
       case EntityType.TAG:
+        return getClassificationTagPath(fullyQualifiedName, tab, subTab);
       case EntityType.CLASSIFICATION:
         return getTagsDetailsPath(fullyQualifiedName);
 
@@ -257,7 +355,7 @@ class EntityUtilClassBase {
 
       case EntityType.DOMAIN:
       case SearchIndex.DOMAIN:
-        return getDomainDetailsPath(fullyQualifiedName, tab);
+        return getDomainDetailsPath(fullyQualifiedName, tab, subTab);
 
       case EntityType.DATA_PRODUCT:
       case SearchIndex.DATA_PRODUCT:
@@ -317,6 +415,40 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+      case EntityType.DIRECTORY:
+        return getEntityDetailsPath(
+          EntityType.DIRECTORY,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.FILE:
+        return getEntityDetailsPath(
+          EntityType.FILE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.SPREADSHEET:
+        return getEntityDetailsPath(
+          EntityType.SPREADSHEET,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.WORKSHEET:
+        return getEntityDetailsPath(
+          EntityType.WORKSHEET,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case EntityType.BOT:
+        return getBotsPath(fullyQualifiedName);
+
+      case EntityType.KPI:
+        return getKpiPath(fullyQualifiedName);
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:
@@ -330,23 +462,24 @@ class EntityUtilClassBase {
     }
   }
 
-  public getEntityByFqn(entityType: string, fqn: string, fields?: string[]) {
-    switch (entityType) {
-      case EntityType.DATABASE_SERVICE:
-        return getServiceByFQN('databaseServices', fqn, { fields });
-      case EntityType.DATABASE:
-        return getDatabaseDetailsByFQN(fqn, { fields });
-      case EntityType.DATABASE_SCHEMA:
-        return getDatabaseSchemaDetailsByFQN(fqn, { fields });
-
-      case EntityType.GLOSSARY_TERM:
-        return getGlossariesByName(fqn, { fields });
-      default:
-        return getTableDetailsByFQN(fqn, { fields });
+  public getEntityPatchAPI(entityType: EntityType): PatchAPIFunction {
+    if (!entityType) {
+      throw new Error('Entity type is required');
     }
+
+    const api = this.ENTITY_PATCH_API_MAP[entityType];
+
+    if (!api) {
+      throw new Error(`No patch API available for entity type: ${entityType}`);
+    }
+
+    return api;
+  }
+  public getEntityByFqn(entityType: string, fqn: string, fields?: string) {
+    return getEntityByFqnUtil(entityType, fqn, fields);
   }
 
-  public getEntityDetailComponent(entityType: string) {
+  public getEntityDetailComponent(entityType: string): FC | null {
     switch (entityType) {
       case EntityType.DATABASE:
         return DatabaseDetailsPage;
@@ -380,6 +513,14 @@ class EntityUtilClassBase {
         return APIEndpointPage;
       case EntityType.METRIC:
         return MetricDetailsPage;
+      case EntityType.DIRECTORY:
+        return DirectoryDetailsPage;
+      case EntityType.FILE:
+        return FileDetailsPage;
+      case EntityType.SPREADSHEET:
+        return SpreadsheetDetailsPage;
+      case EntityType.WORKSHEET:
+        return WorksheetDetailsPage;
 
       default:
         return null;
@@ -439,6 +580,18 @@ class EntityUtilClassBase {
       case EntityType.METRIC: {
         return ResourceEntity.METRIC;
       }
+      case EntityType.DIRECTORY: {
+        return ResourceEntity.DRIVE_SERVICE;
+      }
+      case EntityType.FILE: {
+        return ResourceEntity.FILE;
+      }
+      case EntityType.SPREADSHEET: {
+        return ResourceEntity.SPREADSHEET;
+      }
+      case EntityType.WORKSHEET: {
+        return ResourceEntity.WORKSHEET;
+      }
 
       default: {
         return ResourceEntity.TABLE;
@@ -446,6 +599,7 @@ class EntityUtilClassBase {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getEntityFloatingButton(_: EntityType): FC | null {
     return null;
   }
@@ -529,6 +683,11 @@ class EntityUtilClassBase {
       this.getEntityTypeLookupMap().get(normalizedKey) ??
       serviceType
     );
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public shouldShowEntityStatus(entityType: string): boolean {
+    return false;
   }
 }
 

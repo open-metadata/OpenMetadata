@@ -29,6 +29,7 @@ export interface CustomMessagingConnection {
      * Custom messaging service type
      */
     type: ServiceType;
+    [property: string]: any;
 }
 
 /**

@@ -21,6 +21,7 @@
         "Redshift",
         "Snowflake",
         "Postgres",
+        "Timescale",
         "Mssql",
         "Oracle",
         "Athena",
@@ -62,7 +63,8 @@
         "Exasol",
         "Cockroach",
         "SSAS",
-        "Epic"
+        "Epic",
+        "ServiceNow"
       ],
       "javaEnums": [
         {
@@ -82,6 +84,9 @@
         },
         {
           "name": "Postgres"
+        },
+        {
+          "name": "Timescale"
         },
         {
           "name": "Mssql"
@@ -208,6 +213,9 @@
         },
         {
           "name": "Epic"
+        },
+        {
+          "name": "ServiceNow"
         }
       ]
     },
@@ -277,6 +285,9 @@
             },
             {
               "$ref": "./connections/database/postgresConnection.json"
+            },
+            {
+              "$ref": "./connections/database/timescaleConnection.json"
             },
             {
               "$ref": "./connections/database/prestoConnection.json"
@@ -358,6 +369,9 @@
             },
             {
               "$ref": "./connections/database/epicConnection.json"
+            },
+            {
+              "$ref": "./connections/database/serviceNowConnection.json"
             }
           ]
         }
@@ -420,6 +434,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "owners": {
       "description": "Owners of this database service.",

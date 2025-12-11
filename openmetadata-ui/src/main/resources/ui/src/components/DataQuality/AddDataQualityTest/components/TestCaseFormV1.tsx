@@ -32,9 +32,17 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, isEqual, isString, snakeCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  FocusEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
+import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
 import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
 import {
@@ -42,13 +50,16 @@ import {
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
+import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
+import { OPEN_METADATA } from '../../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { ServiceCategory } from '../../../../enums/service.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import {
   CreateIngestionPipeline,
@@ -68,7 +79,6 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
-import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
   addIngestionPipeline,
@@ -90,6 +100,7 @@ import {
 import { convertSearchSourceToTable } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
+  createScrollToErrorHandler,
   generateFormFields,
   getPopupContainer,
 } from '../../../../utils/formUtils';
@@ -102,6 +113,7 @@ import AlertBar from '../../../AlertBar/AlertBar';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCardGroup.interface';
+import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import ScheduleIntervalV1 from '../../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
@@ -113,14 +125,6 @@ import {
   TestLevel,
 } from './TestCaseFormV1.interface';
 import './TestCaseFormV1.less';
-
-const TABLE_SEARCH_FIELDS: (keyof TableSearchSource)[] = [
-  'name',
-  'fullyQualifiedName',
-  'displayName',
-  'columns',
-  'testSuite',
-];
 
 // =============================================
 // MAIN COMPONENT
@@ -162,6 +166,13 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
       }),
       icon: <ColumnIcon />,
     },
+    {
+      value: TestLevel.COLUMN_DIMENSION,
+      label: 'Dimension Level',
+      description: 'Column with dimension',
+      icon: <DimensionIcon />,
+      isBeta: true,
+    },
   ];
 
   // =============================================
@@ -199,10 +210,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     useState<boolean>(false);
   const [isCustomQuery, setIsCustomQuery] = useState<boolean>(false);
 
+  const [activeField, setActiveField] = useState<string>('');
+
+  const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
+
   // =============================================
   // HOOKS - Form Watches
   // =============================================
-  const selectedTestLevel = Form.useWatch('testLevel', form);
+  const testLevelFieldValue = Form.useWatch('testLevel', form);
   const selectedTable = Form.useWatch('selectedTable', form);
   const selectedColumn = Form.useWatch('selectedColumn', form);
   const selectAllTestCases = Form.useWatch('selectAllTestCases', form);
@@ -223,6 +238,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const pipelineSchedules = config?.limits?.config.featureLimits.find(
     (feature) => feature.name === 'dataQuality'
   )?.pipelineSchedules;
+
+  const selectedTestLevel = useMemo(() => {
+    if (testLevelFieldValue === TestLevel.COLUMN_DIMENSION) {
+      return TestLevel.COLUMN;
+    }
+
+    return testLevelFieldValue;
+  }, [testLevelFieldValue]);
 
   // =============================================
   // HOOKS - Memoized Values (grouped by functionality)
@@ -248,6 +271,15 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
       data: column,
     }));
   }, [selectedTableData]);
+
+  // Filtered options for dimension columns (excludes selected column)
+  const dimensionColumnOptions = useMemo(() => {
+    if (!selectedColumn) {
+      return columnOptions;
+    }
+
+    return columnOptions.filter((option) => option.value !== selectedColumn);
+  }, [columnOptions, selectedColumn]);
 
   // Test type options
   const testTypeOptions = useMemo(
@@ -275,6 +307,22 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     [selectedTestDefinition]
   );
 
+  const handleActiveField = useCallback(
+    (id: string) => {
+      // Only update if id matches pattern root/{any string}
+      if (/^root\/.+/.test(id)) {
+        setActiveField((pre) => {
+          if (pre !== id) {
+            return id;
+          }
+
+          return pre;
+        });
+      }
+    },
+    [setActiveField]
+  );
+
   // Parameter form rendering
   const generateParamsField = useMemo(() => {
     if (!selectedTestDefinition?.parameterDefinition) {
@@ -282,12 +330,19 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     }
 
     return (
-      <ParameterForm
-        definition={selectedTestDefinition}
-        table={selectedTableData}
-      />
+      <div
+        onClick={() =>
+          handleActiveField(
+            selectedTestType ? `root/${selectedTestType}` : 'root/testType'
+          )
+        }>
+        <ParameterForm
+          definition={selectedTestDefinition}
+          table={selectedTableData}
+        />
+      </div>
     );
-  }, [selectedTestDefinition, selectedTableData]);
+  }, [selectedTestDefinition, selectedTableData, selectedTestType]);
 
   // Dynamic test name generation
   const generateDynamicTestName = useCallback(() => {
@@ -339,13 +394,13 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         name: 'testName',
         required: false,
         label: t('label.name'),
-        id: 'root/testName',
+        id: 'root/name',
         type: FieldTypes.TEXT,
         placeholder: t('message.enter-test-case-name'),
         rules: [
           {
-            pattern: ENTITY_NAME_REGEX,
-            message: t('message.entity-name-validation'),
+            pattern: TEST_CASE_NAME_REGEX,
+            message: t('message.test-case-name-validation'),
           },
           {
             max: MAX_NAME_LENGTH,
@@ -389,13 +444,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         name: 'tags',
         required: false,
         label: t('label.tag-plural'),
-        id: 'root/tags',
+        id: 'tags',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
           selectProps: {
             'data-testid': 'tags-selector',
             getPopupContainer,
             maxTagCount: 8,
+            id: 'root/tags',
           },
           newLook: true,
         },
@@ -404,13 +460,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         name: 'glossaryTerms',
         required: false,
         label: t('label.glossary-term-plural'),
-        id: 'root/glossaryTerms',
+        id: 'glossaryTerms',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
           selectProps: {
             'data-testid': 'glossary-terms-selector',
             getPopupContainer,
             maxTagCount: 8,
+            id: 'root/glossaryTerms',
           },
           open: false,
           hasNoActionButtons: true,
@@ -504,6 +561,7 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         (definition) => definition.fullyQualifiedName === value
       );
       setSelectedTestDefinition(testDefinition);
+      setActiveField(() => `root/${value}`);
     },
     [testDefinitions]
   );
@@ -555,7 +613,6 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           pageNumber: page,
           pageSize: PAGE_SIZE_MEDIUM,
           searchIndex: SearchIndex.TABLE,
-          includeFields: TABLE_SEARCH_FIELDS,
           fetchSource: true,
           trackTotalHits: true,
         });
@@ -574,6 +631,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
           return {
             label: hit._source.fullyQualifiedName,
             value: hit._source.fullyQualifiedName,
+            onclick: () => {
+              handleActiveField('root/selected-entity');
+            },
             data: hit._source,
           };
         });
@@ -718,6 +778,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         computePassedFailedRowCount: value.computePassedFailedRowCount,
         entityLink,
         testDefinition: value.testTypeId ?? '',
+        dimensionColumns:
+          value.testLevel === TestLevel.COLUMN_DIMENSION
+            ? value.dimensionColumns
+            : undefined,
         description: isEmpty(value.description) ? undefined : value.description,
         tags: [...(value.tags ?? []), ...(value.glossaryTerms ?? [])],
         ...testCaseClassBase.getCreateTestCaseObject(
@@ -796,9 +860,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               config: {
                 type: ConfigType.TestSuite,
                 entityFullyQualifiedName: testSuiteResponse.fullyQualifiedName,
-                testCases: values.selectAllTestCases
-                  ? undefined
-                  : [createdTestCase.name, ...selectedTestCases],
+                testCases:
+                  values?.selectAllTestCases === false
+                    ? [createdTestCase.name, ...selectedTestCases]
+                    : undefined,
               },
             },
           };
@@ -830,6 +895,15 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
       }
     },
     [createTestCaseObj, testSuite, selectedTable, table, onFormSubmit, onCancel]
+  );
+
+  const handleFieldFocus = useCallback(
+    (event: FocusEvent<HTMLFormElement>) => {
+      if (event.target.id) {
+        handleActiveField(event.target.id);
+      }
+    },
+    [handleActiveField]
   );
 
   // =============================================
@@ -864,7 +938,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
     } else {
       setSelectedTableData(table);
     }
-    form.setFieldsValue({ selectedColumn: undefined });
+    form.setFieldsValue({
+      selectedColumn: undefined,
+      dimensionColumns: undefined,
+    });
   }, [selectedTable, table, tablesCache, fetchSelectedTableData, form]);
 
   // Fetch existing test cases when table data is available
@@ -888,12 +965,16 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         setCurrentColumnType(selectedColumnData?.dataType);
       }
     }
+
+    // Reset dimensionColumns when selectedColumn changes
+    form.setFieldValue('dimensionColumns', undefined);
   }, [
     selectedColumn,
     selectedTableData,
     currentColumnType,
     selectedTestLevel,
     fetchTestDefinitions,
+    form,
   ]);
 
   // Check for existing pipelines when table is selected
@@ -987,12 +1068,9 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         layout="vertical"
         name="testCaseFormV1"
         preserve={false}
-        scrollToFirstError={{
-          behavior: 'smooth',
-          block: 'center',
-          scrollMode: 'if-needed',
-        }}
         onFinish={handleSubmit}
+        onFinishFailed={scrollToError}
+        onFocus={handleFieldFocus}
         onValuesChange={handleValuesChange}>
         <Card className="form-card-section" data-testid="select-table-card">
           <Form.Item
@@ -1006,7 +1084,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 }),
               },
             ]}>
-            <SelectionCardGroup options={TEST_LEVEL_OPTIONS} />
+            <SelectionCardGroup
+              options={TEST_LEVEL_OPTIONS}
+              onClick={() => handleActiveField('root/testLevel')}
+            />
           </Form.Item>
           <Form.Item
             label={t('label.select-entity', {
@@ -1038,13 +1119,18 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               api={fetchTables}
               disabled={Boolean(table)}
               getPopupContainer={getPopupContainer}
+              id={selectedTable ? `root/selected-entity` : 'root/table'}
+              notFoundContent={undefined}
               placeholder={t('label.select-entity', {
                 entity: t('label.table'),
               })}
+              onChange={(value) =>
+                handleActiveField(value ? `root/selected-entity` : 'root/table')
+              }
             />
           </Form.Item>
 
-          {selectedTestLevel === TestLevel.COLUMN && selectedTable && (
+          {selectedTestLevel === TestLevel.COLUMN && (
             <Form.Item
               label={t('label.select-entity', {
                 entity: t('label.column'),
@@ -1061,8 +1147,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               <Select
                 allowClear
                 showSearch
+                disabled={!selectedTable}
                 filterOption={filterSelectOptions}
                 getPopupContainer={getPopupContainer}
+                id="root/column"
                 loading={!selectedTableData}
                 options={columnOptions}
                 placeholder={t('label.select-entity', {
@@ -1071,13 +1159,33 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               />
             </Form.Item>
           )}
+          {testLevelFieldValue === TestLevel.COLUMN_DIMENSION && (
+            <Form.Item
+              label={t('label.select-entity', {
+                entity: t('label.dimension-plural'),
+              })}
+              name="dimensionColumns">
+              <Select
+                allowClear
+                showSearch
+                disabled={!selectedTable}
+                filterOption={filterSelectOptions}
+                getPopupContainer={getPopupContainer}
+                id="root/dimensionColumns"
+                loading={!selectedTableData}
+                mode="multiple"
+                options={dimensionColumnOptions}
+                placeholder={t('label.select-entity', {
+                  entity: t('label.dimension-plural'),
+                })}
+              />
+            </Form.Item>
+          )}
         </Card>
 
-        <Card className="form-card-section" data-testid="test-details-card">
-          {generateFormFields(testDetailsFormFields)}
-        </Card>
-
-        <Card className="form-card-section" data-testid="test-type-card">
+        <Card
+          className="form-card-section test-type-card"
+          data-testid="test-type-card">
           <Form.Item className="custom-select-test-type-style m-b-md">
             {selectedTestLevel === TestLevel.TABLE && (
               <div
@@ -1142,6 +1250,11 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
                 data-testid="test-type"
                 filterOption={filterSelectOptions}
                 getPopupContainer={getPopupContainer}
+                id={
+                  selectedTestType
+                    ? `root/${selectedTestType}`
+                    : 'root/testType'
+                }
                 options={testTypeOptions}
                 placeholder={t('label.select-test-type')}
                 popupClassName="no-wrap-option"
@@ -1172,6 +1285,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             generateFormFields(computeRowCountField)}
         </Card>
 
+        <Card className="form-card-section" data-testid="test-details-card">
+          {generateFormFields(testDetailsFormFields)}
+        </Card>
+
         {shouldShowScheduler && (
           <Row gutter={[20, 20]}>
             <Col span={24}>
@@ -1193,7 +1310,11 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
             </Col>
 
             <Col span={24}>
-              <Card className="form-card-section" data-testid="scheduler-card">
+              <Card
+                className="form-card-section"
+                data-testid="scheduler-card"
+                id="root/cron"
+                onClick={() => handleActiveField('root/cron')}>
                 <div className="card-title-container">
                   <Typography.Paragraph className="card-title-text">
                     {t('label.create-entity', {
@@ -1309,15 +1430,14 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   return (
     <Drawer
       destroyOnClose
-      className="custom-drawer-style"
+      className="custom-drawer-style test-case-form-drawer"
       closable={false}
       footer={drawerFooter}
-      maskClosable={false}
       placement="right"
-      size="large"
       title={t('label.add-entity', {
         entity: t('label.test-case'),
       })}
+      width="80%"
       {...drawerProps}
       extra={
         <Button
@@ -1328,7 +1448,17 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         />
       }
       onClose={onCancel}>
-      <div className="drawer-form-content">{formContent}</div>
+      <div className="drawer-content-wrapper">
+        <div className="drawer-form-content">{formContent}</div>
+        <div className="drawer-doc-panel service-doc-panel markdown-parser">
+          <ServiceDocPanel
+            activeField={activeField}
+            selectedEntity={selectedTableData}
+            serviceName={TEST_CASE_FORM}
+            serviceType={OPEN_METADATA as ServiceCategory}
+          />
+        </div>
+      </div>
     </Drawer>
   );
 };

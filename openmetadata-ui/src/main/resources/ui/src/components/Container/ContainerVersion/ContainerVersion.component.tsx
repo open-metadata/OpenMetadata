@@ -25,6 +25,7 @@ import {
   ChangeDescription,
   Column,
 } from '../../../generated/entity/data/container';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
@@ -34,7 +35,9 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
+import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -88,7 +91,9 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     );
 
   const columns = useMemo(() => {
-    const colList = cloneDeep(currentVersionData.dataModel?.columns);
+    const colList = cloneDeep(
+      pruneEmptyChildren(currentVersionData.dataModel?.columns ?? [])
+    );
 
     return getColumnsDataWithVersionChanges<Column>(
       changeDescription,
@@ -141,6 +146,13 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
     () => getConstraintChanges(changeDescription, EntityField.CONSTRAINT),
     [changeDescription]
   );
+
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -213,7 +225,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
             isVersionView
             entityType={EntityType.CONTAINER}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
@@ -223,7 +235,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       entityFqn,
       columns,
       currentVersionData,
-      entityPermissions,
+      viewCustomPropertiesPermission,
       addedColumnConstraintDiffs,
       deletedColumnConstraintDiffs,
     ]

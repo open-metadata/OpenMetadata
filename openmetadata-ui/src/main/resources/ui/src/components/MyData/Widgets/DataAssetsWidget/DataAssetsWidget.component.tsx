@@ -52,7 +52,7 @@ const DataAssetsWidget = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [services, setServices] = useState<Bucket[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
-    DATA_ASSETS_SORT_BY_KEYS.A_TO_Z
+    DATA_ASSETS_SORT_BY_KEYS.HIGH_TO_LOW
   );
 
   const widgetData = useMemo(
@@ -68,14 +68,7 @@ const DataAssetsWidget = ({
       const sortField = getSortField(selectedSortBy);
       const sortOrder = getSortOrder(selectedSortBy);
       const res = await searchData('', 0, 0, '', sortField, sortOrder, [
-        SearchIndex.TABLE,
-        SearchIndex.TOPIC,
-        SearchIndex.DASHBOARD,
-        SearchIndex.PIPELINE,
-        SearchIndex.MLMODEL,
-        SearchIndex.CONTAINER,
-        SearchIndex.SEARCH_INDEX,
-        SearchIndex.API_ENDPOINT_INDEX,
+        SearchIndex.DATA_ASSET
       ]);
       setServices(res?.data.aggregations?.['sterms#serviceType'].buckets);
     } catch (error) {
@@ -119,7 +112,7 @@ const DataAssetsWidget = ({
     () => (
       <WidgetEmptyState
         icon={
-          <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
+          <NoDataAssetsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
         }
         title={t('message.no-data-assets-yet')}
       />
@@ -156,6 +149,15 @@ const DataAssetsWidget = ({
     [services, loading]
   );
 
+  const translatedSortOptions = useMemo(
+    () =>
+      DATA_ASSETS_SORT_BY_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -165,10 +167,9 @@ const DataAssetsWidget = ({
         icon={<DataAssetIcon height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}
-        sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.data-asset-plural')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />
@@ -184,6 +185,7 @@ const DataAssetsWidget = ({
       selectedSortBy,
       handleSortByClick,
       handleTitleClick,
+      translatedSortOptions,
     ]
   );
 

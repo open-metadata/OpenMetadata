@@ -37,6 +37,7 @@ from metadata.ingestion.source.database.saphana.cdata_parser import (
 )
 from metadata.ingestion.source.database.saphana.models import SapHanaLineageModel
 from metadata.ingestion.source.database.saphana.queries import SAPHANA_LINEAGE
+from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 
@@ -108,6 +109,17 @@ class SaphanaLineageSource(Source):
                 try:
                     lineage_model = SapHanaLineageModel.validate(dict(row))
 
+                    if filter_by_table(
+                        self.source_config.tableFilterPattern,
+                        lineage_model.name,
+                    ):
+                        self.status.filter(
+                            lineage_model.name,
+                            "View Object Filtered Out",
+                        )
+                        continue
+
+                    logger.debug(f"Processing lineage for view: {lineage_model.name}")
                     yield from self.parse_cdata(
                         metadata=self.metadata, lineage_model=lineage_model
                     )
@@ -138,17 +150,18 @@ class SaphanaLineageSource(Source):
             if to_entity:
                 yield from parsed_lineage.to_request(
                     metadata=metadata,
+                    engine=self.engine,
                     service_name=self.config.serviceName,
                     to_entity=to_entity,
                 )
         except Exception as exc:
             error = (
                 f"Error parsing CDATA XML for {lineage_model.object_suffix} at "
-                + f"{lineage_model.package_id}/{lineage_model.object_name} due to [{exc}]"
+                + f"{lineage_model.name} due to [{exc}]"
             )
             self.status.failed(
                 error=StackTraceError(
-                    name=lineage_model.object_name,
+                    name=lineage_model.name,
                     error=error,
                     stackTrace=traceback.format_exc(),
                 )

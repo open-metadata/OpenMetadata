@@ -29,6 +29,7 @@ export interface CustomStorageConnection {
      * Custom storage service type
      */
     type: ServiceType;
+    [property: string]: any;
 }
 
 /**

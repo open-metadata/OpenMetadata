@@ -6,14 +6,20 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,12 +54,17 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.DefaultRecreateHandler;
+import org.openmetadata.service.search.EntityReindexContext;
+import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -176,6 +188,137 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
           method.setAccessible(true);
           method.invoke(searchIndexApp, task, jobExecutionContext);
         });
+  }
+
+  @Test
+  void testCreateContextDataIncludesTargetIndexWhenStaged() throws Exception {
+    EventPublisherJob jobDataWithRecreate =
+        JsonUtils.convertValue(testJobData, EventPublisherJob.class).withRecreateIndex(true);
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(jobDataWithRecreate, Object.class));
+
+    searchIndexApp.init(testApp);
+
+    ReindexContext context = new ReindexContext();
+    context.add(
+        "table",
+        "cluster_table",
+        "cluster_table",
+        "cluster_table_rebuild_123",
+        Set.of("cluster_table_alias"),
+        "table",
+        List.of("dataAsset"));
+
+    Field contextField = SearchIndexApp.class.getDeclaredField("recreateContext");
+    contextField.setAccessible(true);
+    contextField.set(searchIndexApp, context);
+
+    Method createContextData =
+        SearchIndexApp.class.getDeclaredMethod("createContextData", String.class);
+    createContextData.setAccessible(true);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> contextData =
+        (Map<String, Object>) createContextData.invoke(searchIndexApp, "table");
+
+    assertEquals("cluster_table_rebuild_123", contextData.get(TARGET_INDEX_KEY));
+    assertTrue((Boolean) contextData.get("recreateIndex"));
+  }
+
+  @Test
+  void testFinalizeReindexMovesAliasesForTargetEntityOnly() {
+    AliasState aliasState = new AliasState();
+    aliasState.put(
+        "table_search_index_rebuild_old",
+        Set.of("table", "table_search_index", "all", "dataAsset"));
+    aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+    aliasState.put(
+        "dashboard_search_index_rebuild_old",
+        Set.of("dashboard", "dashboard_search_index", "all", "dataAsset"));
+
+    SearchClient client = aliasState.toMock();
+    SearchRepository repo = mock(SearchRepository.class);
+    when(repo.getSearchClient()).thenReturn(client);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+      EntityReindexContext entityReindexContext =
+          EntityReindexContext.builder()
+              .entityType("table")
+              .canonicalIndex("table_search_index")
+              .originalIndex("table_search_index_rebuild_old")
+              .activeIndex("table_search_index_rebuild_old")
+              .stagedIndex("table_search_index_rebuild_new")
+              .existingAliases(Set.of("table", "table_search_index", "all", "dataAsset"))
+              .canonicalAliases("table")
+              .parentAliases(
+                  Set.of("all", "dataAsset", "database", "databaseSchema", "databaseService"))
+              .build();
+
+      new DefaultRecreateHandler().finalizeReindex(entityReindexContext, true);
+    }
+
+    assertTrue(aliasState.deletedIndices.contains("table_search_index_rebuild_old"));
+    assertEquals(
+        Set.of(
+            "table",
+            "table_search_index",
+            "all",
+            "dataAsset",
+            "database",
+            "databaseSchema",
+            "databaseService"),
+        aliasState.indexAliases.get("table_search_index_rebuild_new"));
+    assertEquals(
+        Set.of("dashboard", "dashboard_search_index", "all", "dataAsset"),
+        aliasState.indexAliases.get("dashboard_search_index_rebuild_old"));
+  }
+
+  @Test
+  void testFinalizeReindexRemovesPreviousEntityRebuildIndexes() {
+    AliasState aliasState = new AliasState();
+    aliasState.put(
+        "table_search_index_rebuild_old1",
+        Set.of("table", "table_search_index", "all", "dataAsset"));
+    aliasState.put(
+        "table_search_index_rebuild_old2",
+        Set.of("table", "table_search_index", "all", "dataAsset"));
+    aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+    SearchClient client = aliasState.toMock();
+    SearchRepository repo = mock(SearchRepository.class);
+    when(repo.getSearchClient()).thenReturn(client);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+
+      EntityReindexContext entityReindexContext =
+          EntityReindexContext.builder()
+              .entityType("table")
+              .canonicalIndex("table_search_index")
+              .originalIndex("table_search_index_rebuild_old1")
+              .activeIndex("table_search_index_rebuild_old1")
+              .stagedIndex("table_search_index_rebuild_new")
+              .existingAliases(Set.of("table", "table_search_index", "all", "dataAsset"))
+              .canonicalAliases("table")
+              .parentAliases(Set.of("all", "dataAsset"))
+              .build();
+
+      new DefaultRecreateHandler().finalizeReindex(entityReindexContext, true);
+    }
+
+    assertTrue(aliasState.deletedIndices.contains("table_search_index_rebuild_old1"));
+    assertEquals(
+        Set.of("table", "table_search_index", "all", "dataAsset"),
+        aliasState.indexAliases.get("table_search_index_rebuild_new"));
+    assertTrue(
+        aliasState.indexAliases.containsKey("table_search_index_rebuild_old2")
+            ? aliasState.indexAliases.get("table_search_index_rebuild_old2").isEmpty()
+            : true);
   }
 
   @Test
@@ -838,6 +981,8 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     SearchIndexApp.IndexingTask<EntityInterface> task =
         new SearchIndexApp.IndexingTask<>("table", resultList, 0);
 
+    searchIndexApp.getJobData().setStatus(EventPublisherJob.Status.RUNNING);
+
     // Process the task
     var processTaskMethod =
         SearchIndexApp.class.getDeclaredMethod(
@@ -903,5 +1048,77 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     assertEquals(5, jobData.getBatchSize());
     assertEquals(10, jobData.getMaxConcurrentRequests());
     assertEquals(1000000L, jobData.getPayLoadSize());
+  }
+
+  private static class AliasState {
+    final Map<String, Set<String>> indexAliases = new HashMap<>();
+    final Set<String> deletedIndices = new HashSet<>();
+
+    void put(String indexName, Set<String> aliases) {
+      indexAliases.put(indexName, new HashSet<>(aliases));
+    }
+
+    SearchClient toMock() {
+      SearchClient client = mock(SearchClient.class);
+
+      lenient().when(client.isClientAvailable()).thenReturn(true);
+      lenient()
+          .when(client.getSearchType())
+          .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+      when(client.indexExists(anyString()))
+          .thenAnswer(invocation -> indexAliases.containsKey(invocation.getArgument(0)));
+      lenient()
+          .when(client.getAliases(anyString()))
+          .thenAnswer(
+              invocation ->
+                  new HashSet<>(indexAliases.getOrDefault(invocation.getArgument(0), Set.of())));
+      lenient()
+          .when(client.getIndicesByAlias(anyString()))
+          .thenAnswer(
+              invocation ->
+                  indexAliases.entrySet().stream()
+                      .filter(e -> e.getValue().contains(invocation.getArgument(0)))
+                      .map(Map.Entry::getKey)
+                      .collect(Collectors.toSet()));
+
+      doAnswer(
+              invocation -> {
+                String index = invocation.getArgument(0);
+                @SuppressWarnings("unchecked")
+                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(1));
+                indexAliases.computeIfPresent(
+                    index,
+                    (k, v) -> {
+                      v.removeAll(aliases);
+                      return v;
+                    });
+                return null;
+              })
+          .when(client)
+          .removeAliases(anyString(), anySet());
+
+      doAnswer(
+              invocation -> {
+                String index = invocation.getArgument(0);
+                @SuppressWarnings("unchecked")
+                Set<String> aliases = new HashSet<>((Set<String>) invocation.getArgument(1));
+                indexAliases.computeIfAbsent(index, k -> new HashSet<>()).addAll(aliases);
+                return null;
+              })
+          .when(client)
+          .addAliases(anyString(), anySet());
+
+      doAnswer(
+              invocation -> {
+                String index = invocation.getArgument(0);
+                indexAliases.remove(index);
+                deletedIndices.add(index);
+                return null;
+              })
+          .when(client)
+          .deleteIndex(anyString());
+
+      return client;
+    }
   }
 }

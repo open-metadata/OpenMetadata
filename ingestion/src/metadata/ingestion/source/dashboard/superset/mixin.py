@@ -117,6 +117,8 @@ class SupersetSourceMixin(DashboardServiceSource):
         self, dashboard_details: Union[DashboardResult, FetchDashboard]
     ) -> Optional[EntityReferenceList]:
         try:
+            if not self.source_config.includeOwners:
+                return None
             if hasattr(dashboard_details, "owners"):
                 for owner in dashboard_details.owners or []:
                     if owner.email:

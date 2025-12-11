@@ -19,6 +19,7 @@ import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
+import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
@@ -38,6 +39,7 @@ const TableQueryRightPanel = ({
   permission,
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
+  const { entityRules } = useEntityRules(EntityType.TABLE);
   const { EditAll, EditDescription, EditOwners, EditTags } = permission;
 
   const handleUpdateOwner = async (owners: Query['owners']) => {
@@ -91,7 +93,10 @@ const TableQueryRightPanel = ({
                     {(EditAll || EditOwners) && (
                       <UserTeamSelectableList
                         hasPermission={EditAll || EditOwners}
-                        multiple={{ user: true, team: false }}
+                        multiple={{
+                          user: entityRules.canAddMultipleUserOwners,
+                          team: entityRules.canAddMultipleTeamOwner,
+                        }}
                         owner={query.owners}
                         onUpdate={(updatedUsers) =>
                           handleUpdateOwner(updatedUsers)
@@ -108,7 +113,12 @@ const TableQueryRightPanel = ({
                   </Space>
                 ),
               }}>
-              <OwnerLabel hasPermission={false} owners={query.owners} />
+              <OwnerLabel
+                hasPermission={false}
+                isCompactView={false}
+                owners={query.owners}
+                showLabel={false}
+              />
             </ExpandableCard>
           </Col>
           <Col span={24}>

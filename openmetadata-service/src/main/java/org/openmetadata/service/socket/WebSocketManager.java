@@ -27,6 +27,7 @@ public class WebSocketManager {
   public static final String SEARCH_INDEX_JOB_BROADCAST_CHANNEL = "searchIndexJobStatus";
   public static final String DATA_INSIGHTS_JOB_BROADCAST_CHANNEL = "dataInsightsJobStatus";
   public static final String BACKGROUND_JOB_CHANNEL = "backgroundJobStatus";
+  public static final String CACHE_WARMUP_JOB_BROADCAST_CHANNEL = "cacheWarmupJobStatus";
   public static final String MENTION_CHANNEL = "mentionChannel";
   public static final String ANNOUNCEMENT_CHANNEL = "announcementChannel";
   public static final String CSV_EXPORT_CHANNEL = "csvExportChannel";
@@ -36,6 +37,7 @@ public class WebSocketManager {
 
   public static final String DELETE_ENTITY_CHANNEL = "deleteEntityChannel";
   public static final String MOVE_GLOSSARY_TERM_CHANNEL = "moveGlossaryTermChannel";
+  public static final String RDF_INDEX_JOB_BROADCAST_CHANNEL = "rdfIndexJobStatus";
   public static final String CHART_DATA_STREAM_CHANNEL = "chartDataStream";
 
   @Getter
@@ -80,8 +82,9 @@ public class WebSocketManager {
                       remoteAddress);
                   UUID id = UUID.fromString(userId);
                   Map<String, SocketIoSocket> allUserConnection = activityFeedEndpoints.get(id);
-                  allUserConnection.remove(socket.getId());
-                  activityFeedEndpoints.put(id, allUserConnection);
+                  if (allUserConnection != null) {
+                    allUserConnection.remove(socket.getId());
+                  }
                 });
 
             // On Socket Connection Error
@@ -103,13 +106,9 @@ public class WebSocketManager {
                         remoteAddress));
 
             UUID id = UUID.fromString(userId);
-            Map<String, SocketIoSocket> userSocketConnections;
-            userSocketConnections =
-                activityFeedEndpoints.containsKey(id)
-                    ? activityFeedEndpoints.get(id)
-                    : new HashMap<>();
+            Map<String, SocketIoSocket> userSocketConnections =
+                activityFeedEndpoints.computeIfAbsent(id, k -> new ConcurrentHashMap<>());
             userSocketConnections.put(socket.getId(), socket);
-            activityFeedEndpoints.put(id, userSocketConnections);
           }
         });
     ns.on("error", args -> LOG.error("Connection error on the server"));

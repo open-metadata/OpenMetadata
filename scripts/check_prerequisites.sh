@@ -50,7 +50,7 @@ jq["required_version"]="any"
 declare -A node
 node["name"]="Node"
 node["version_command"]="node --version"
-node["required_version"]="18"
+node["required_version"]="22"
 
 declare -A yarn
 yarn["name"]="Yarn"

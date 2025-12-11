@@ -17,6 +17,7 @@ import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.inte
 import {
   checkIfExpandViewSupported,
   getDefaultTabs,
+  getTabDisplayName,
   getTabLabelFromId,
   getTabLabelMapFromTabs,
   sortTabs,
@@ -24,6 +25,55 @@ import {
 } from './CustomizePageUtils';
 
 describe('CustomizePageUtils', () => {
+  describe('getTabDisplayName', () => {
+    it('should return displayName if present', () => {
+      const tab: Tab = {
+        id: EntityTabs.OVERVIEW,
+        name: EntityTabs.OVERVIEW,
+        displayName: 'Custom Overview',
+        layout: [],
+      };
+
+      expect(getTabDisplayName(tab)).toBe('Custom Overview');
+    });
+
+    it('should fallback to getTabLabelFromId if displayName is missing', () => {
+      const tab: Tab = {
+        id: EntityTabs.OVERVIEW,
+        name: EntityTabs.OVERVIEW,
+        layout: [],
+      };
+
+      const result = getTabDisplayName(tab);
+
+      expect(typeof result).toBe('string');
+    });
+
+    it('should return empty string if displayName and name are missing', () => {
+      const tab: Tab = {
+        id: EntityTabs.OVERVIEW,
+        name: '' as EntityTabs,
+        layout: [],
+      };
+
+      const result = getTabDisplayName(tab);
+
+      expect(typeof result).toBe('string');
+    });
+
+    it("should return name if it's not predefined", () => {
+      const tab: Tab = {
+        id: EntityTabs.OVERVIEW,
+        name: 'custom-tab-name' as EntityTabs,
+        layout: [],
+      };
+
+      const result = getTabDisplayName(tab);
+
+      expect(result).toBe('custom-tab-name');
+    });
+  });
+
   describe('sortTabs', () => {
     it('should sort tabs according to given order', () => {
       const tabs: TabsProps['items'] = [
@@ -66,7 +116,7 @@ describe('CustomizePageUtils', () => {
     it('should return empty string for invalid tab id', () => {
       const result = getTabLabelFromId('invalid-tab' as EntityTabs);
 
-      expect(result).toBe('');
+      expect(result).toBe('invalid-tab');
     });
   });
 

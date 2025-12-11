@@ -11,58 +11,16 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
-
-const adminUser = new UserClass();
-const dataConsumerUser = new UserClass();
-
-const test = base.extend<{
-  page: Page;
-  dataConsumerPage: Page;
-}>({
-  page: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-  dataConsumerPage: async ({ browser }, use) => {
-    const page = await browser.newPage();
-    await dataConsumerUser.login(page);
-    await use(page);
-    await page.close();
-  },
-});
-
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  test.slow(true);
-
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await dataConsumerUser.create(apiContext);
-
-  await afterAction();
-});
-
-base.afterAll('Cleanup', async ({ browser }) => {
-  test.slow(true);
-
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-
-  await afterAction();
-});
+import { test } from '../fixtures/pages';
 
 test.describe('Online Users Feature', () => {
+  test.slow(true);
+
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -72,6 +30,10 @@ test.describe('Online Users Feature', () => {
   }) => {
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
     await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     // Verify we're on the Online Users page
     await expect(
@@ -118,6 +80,10 @@ test.describe('Online Users Feature', () => {
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
     await page.waitForLoadState('networkidle');
 
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     // Admin user should appear in the online users list
     const adminLink = page.locator('a').filter({ hasText: 'admin' }).first();
 
@@ -148,6 +114,10 @@ test.describe('Online Users Feature', () => {
   test('Should filter users by time window', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
     await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     // Find the time filter dropdown by looking for the one that contains "Last"
     const timeFilterDropdown = page
@@ -200,6 +170,10 @@ test.describe('Online Users Feature', () => {
   test('Should show correct last activity format', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.ONLINE_USERS);
     await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
     // Check various time formats in the Last Activity column
     const activityCells = page.locator('tbody tr td:nth-child(2)');
     const count = await activityCells.count();

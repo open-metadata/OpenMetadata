@@ -49,10 +49,16 @@
       },
       "default": null
     },
+    "reviewers": {
+      "description": "User references of the reviewers for this DataProduct.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "assets": {
       "description": "Data assets collection that is part of this data product.",
       "$ref": "../../type/entityReferenceList.json",
-      "default": null
+      "default": null,
+      "deprecated": true,
+      "$comment": "@deprecated Use PUT /v1/dataProducts/{name}/assets/add bulkAssets API endpoint to add assets to data product"
     },
     "tags": {
       "description": "Tags for this Data Product.",

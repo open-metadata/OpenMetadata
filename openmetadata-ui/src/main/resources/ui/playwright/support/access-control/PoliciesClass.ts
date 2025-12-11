@@ -32,11 +32,12 @@ export type PolicyRulesType = {
 };
 
 export class PolicyClass {
-  id = uuid();
+  id: string;
   data: ResponseDataType;
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
+    this.id = uuid();
     this.data = data ?? {
       name: `PW%Policy-${this.id}`,
       displayName: `PW Policy ${this.id}`,

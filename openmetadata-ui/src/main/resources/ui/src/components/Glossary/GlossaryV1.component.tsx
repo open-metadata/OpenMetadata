@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
+import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -32,7 +33,7 @@ import { useCustomPages } from '../../hooks/useCustomPages';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import {
   addGlossaryTerm,
-  getFirstLevelGlossaryTerms,
+  getFirstLevelGlossaryTermsPaginated,
   ListGlossaryTermsParams,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
@@ -66,6 +67,7 @@ const GlossaryV1 = ({
   onAssetClick,
   isSummaryPanelOpen,
   refreshActiveGlossaryTerm,
+  refreshGlossaryList,
 }: GlossaryV1Props) => {
   const { t } = useTranslation();
   const { action, tab } = useRequiredParams<{
@@ -82,7 +84,7 @@ const GlossaryV1 = ({
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
   const [isPermissionLoading, setIsPermissionLoading] = useState(false);
-  const { setGlossaryFunctionRef, setTermsLoading } = useGlossaryStore();
+  const { setGlossaryFunctionRef } = useGlossaryStore();
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
   const [isDelete, setIsDelete] = useState<boolean>(false);
@@ -102,26 +104,51 @@ const GlossaryV1 = ({
     glossaryChildTerms,
     setGlossaryChildTerms,
     insertNewGlossaryTermToChildTerms,
+    termsLoading,
+    setTermsLoading,
   } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
 
+  const [afterCursor, setAfterCursor] = useState<string | undefined>(undefined);
+  const [hasMore, setHasMore] = useState(true);
+
   const fetchGlossaryTerm = async (
     params?: ListGlossaryTermsParams,
-    refresh?: boolean
+    refresh?: boolean,
+    append?: boolean
   ) => {
-    refresh ? setTermsLoading(true) : setIsLoading(true);
+    if (!append) {
+      refresh ? setTermsLoading(true) : setIsLoading(true);
+    }
+
     try {
-      const { data } = await getFirstLevelGlossaryTerms(
-        params?.glossary ?? params?.parent ?? ''
+      const { data, paging } = await getFirstLevelGlossaryTermsPaginated(
+        params?.glossary ?? params?.parent ?? '',
+        PAGE_SIZE_LARGE,
+        append ? afterCursor : undefined
       );
-      // We are considering childrenCount fot expand collapse state
-      // Hence don't need any intervention to list response here
-      setGlossaryChildTerms(data as ModifiedGlossary[]);
+
+      if (append) {
+        // Append to existing terms
+        const currentTerms = glossaryChildTerms || [];
+        const mergedTerms = [...currentTerms, ...(data as ModifiedGlossary[])];
+        setGlossaryChildTerms(mergedTerms);
+      } else {
+        // Replace terms
+        setGlossaryChildTerms(data as ModifiedGlossary[]);
+      }
+
+      // Update cursor for next page
+      setAfterCursor(paging?.after);
+      // Check if there are more terms to load
+      setHasMore(paging?.after !== undefined);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      refresh ? setTermsLoading(false) : setIsLoading(false);
+      if (!append) {
+        refresh ? setTermsLoading(false) : setIsLoading(false);
+      }
     }
   };
 
@@ -168,16 +195,23 @@ const GlossaryV1 = ({
   };
 
   const loadGlossaryTerms = useCallback(
-    (refresh = false) => {
+    (refresh = false, append = false) => {
       fetchGlossaryTerm(
         isGlossaryActive
           ? { glossary: fullyQualifiedName }
           : { parent: fullyQualifiedName },
-        refresh
+        refresh,
+        append
       );
     },
-    [fullyQualifiedName, isGlossaryActive]
+    [fullyQualifiedName, isGlossaryActive, afterCursor]
   );
+
+  const loadMoreTerms = useCallback(() => {
+    if (hasMore && !termsLoading) {
+      loadGlossaryTerms(false, true);
+    }
+  }, [hasMore, termsLoading, loadGlossaryTerms]);
 
   const handleGlossaryTermModalAction = useCallback(
     (editMode: boolean, glossaryTerm: GlossaryTerm | null) => {
@@ -227,19 +261,23 @@ const GlossaryV1 = ({
       setTermsLoading(true);
       // Update store with newly created term
       insertNewGlossaryTermToChildTerms(term);
-      if (!isGlossaryActive && tab !== 'terms') {
+      if (!isGlossaryActive && tab !== EntityTabs.GLOSSARY_TERMS) {
         navigate(
           getGlossaryTermDetailsPath(
             selectedData.fullyQualifiedName || '',
-            EntityTabs.TERMS
+            EntityTabs.GLOSSARY_TERMS
           )
         );
       }
       // Close modal and set loading to false
       setIsEditModalOpen(false);
       setTermsLoading(false);
+      // Refresh glossary list to update term count
+      if (isGlossaryActive && refreshGlossaryList) {
+        refreshGlossaryList();
+      }
     },
-    [isGlossaryActive, tab, selectedData]
+    [isGlossaryActive, tab, selectedData, refreshGlossaryList]
   );
 
   const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
@@ -328,7 +366,13 @@ const GlossaryV1 = ({
   const initializeGlossary = async () => {
     const permission = await initPermissions();
     if (permission?.ViewAll || permission?.ViewBasic) {
-      loadGlossaryTerms();
+      // Only load terms if we're viewing a glossary term, not a glossary
+      // GlossaryTermTab handles pagination for glossaries
+      if (!isGlossaryActive) {
+        loadGlossaryTerms();
+      } else {
+        setIsLoading(false);
+      }
     } else {
       setIsLoading(false);
     }
@@ -336,8 +380,17 @@ const GlossaryV1 = ({
 
   useEffect(() => {
     if (id && !action) {
+      // Clear terms and reset pagination when switching entities
+      setGlossaryChildTerms([]);
+      setAfterCursor(undefined);
+      setHasMore(true);
       initializeGlossary();
     }
+
+    // Cleanup on unmount
+    return () => {
+      setGlossaryChildTerms([]);
+    };
   }, [id, isGlossaryActive, isVersionsView, action]);
 
   useEffect(() => {
@@ -347,8 +400,9 @@ const GlossaryV1 = ({
       onEditGlossaryTerm: (term) =>
         handleGlossaryTermModalAction(true, term ?? null),
       refreshGlossaryTerms: () => loadGlossaryTerms(true),
+      loadMoreTerms: loadMoreTerms,
     });
-  }, [loadGlossaryTerms, handleGlossaryTermModalAction]);
+  }, [loadGlossaryTerms, handleGlossaryTermModalAction, loadMoreTerms]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);

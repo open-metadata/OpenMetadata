@@ -63,7 +63,11 @@ export interface HiveConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                        HiveScheme;
+    scheme?: HiveScheme;
+    /**
+     * SSL Configuration details.
+     */
+    sslConfig?:                     Config;
     supportsDBTExtraction?:         boolean;
     supportsMetadataExtraction?:    boolean;
     supportsProfiler?:              boolean;
@@ -81,6 +85,11 @@ export interface HiveConnection {
      * Hive.
      */
     username?: string;
+    /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     */
+    useSSL?: boolean;
 }
 
 /**

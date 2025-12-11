@@ -1,0 +1,93 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "Thread": {
+        "@id": "om:Thread",
+        "@type": "om:Entity"
+      },
+      "Post": {
+        "@id": "om:Post", 
+        "@type": "om:Entity"
+      },
+      "message": {
+        "@id": "om:message",
+        "@type": "xsd:string"
+      },
+      "postTs": {
+        "@id": "om:postedAt",
+        "@type": "xsd:dateTime"
+      },
+      "from": {
+        "@id": "om:postedBy",
+        "@type": "@id"
+      },
+      "reactions": {
+        "@id": "om:hasReaction",
+        "@type": "@json",
+        "@container": "@list"
+      },
+      "posts": {
+        "@id": "om:containsPosts",
+        "@type": "@id",
+        "@container": "@list"
+      },
+      "postsCount": {
+        "@id": "om:postsCount",
+        "@type": "xsd:integer"
+      },
+      "threadTs": {
+        "@id": "om:threadCreatedAt",
+        "@type": "xsd:dateTime"
+      },
+      "about": {
+        "@id": "om:isAbout",
+        "@type": "@id"
+      },
+      "entityId": {
+        "@id": "om:aboutEntity",
+        "@type": "@id"
+      },
+      "entityType": {
+        "@id": "om:aboutEntityType",
+        "@type": "xsd:string"
+      },
+      "addressedTo": {
+        "@id": "om:addressedTo",
+        "@type": "@id"
+      },
+      "createdBy": {
+        "@id": "om:createdBy",
+        "@type": "@id"
+      },
+      "updatedBy": {
+        "@id": "om:editedBy",
+        "@type": "@id"
+      },
+      "resolved": {
+        "@id": "om:isResolved",
+        "@type": "xsd:boolean"
+      },
+      "task": {
+        "@id": "om:hasTask",
+        "@type": "@json"
+      },
+      "announcement": {
+        "@id": "om:hasAnnouncement",
+        "@type": "@json"
+      },
+      "type": {
+        "@id": "om:threadType",
+        "@type": "xsd:string"
+      },
+      "feedInfo": {
+        "@id": "om:hasFeedInfo",
+        "@type": "@json"
+      },
+      "fieldOperation": {
+        "@id": "om:hasFieldOperation",
+        "@type": "@json"
+      }
+    }
+  ]
+}

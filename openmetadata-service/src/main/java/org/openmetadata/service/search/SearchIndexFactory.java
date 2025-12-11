@@ -65,6 +65,7 @@ import org.openmetadata.service.search.indexes.MetadataServiceIndex;
 import org.openmetadata.service.search.indexes.MetricIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.MlModelServiceIndex;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.PipelineServiceIndex;
 import org.openmetadata.service.search.indexes.QueryCostRecordIndex;
@@ -117,7 +118,7 @@ public class SearchIndexFactory {
       case Entity.TEST_SUITE -> new TestSuiteIndex((TestSuite) entity);
       case Entity.CHART -> new ChartIndex((Chart) entity);
       case Entity.DASHBOARD_DATA_MODEL -> new DashboardDataModelIndex((DashboardDataModel) entity);
-      case Entity.API_COLLCECTION -> new APICollectionIndex((APICollection) entity);
+      case Entity.API_COLLECTION -> new APICollectionIndex((APICollection) entity);
       case Entity.API_ENDPOINT -> new APIEndpointIndex((APIEndpoint) entity);
       case Entity.DASHBOARD_SERVICE -> new DashboardServiceIndex((DashboardService) entity);
       case Entity.DATABASE_SERVICE -> new DatabaseServiceIndex((DatabaseService) entity);
@@ -152,6 +153,11 @@ public class SearchIndexFactory {
       case Entity.TEST_CASE_RESOLUTION_STATUS -> new TestCaseResolutionStatusIndex(
           (TestCaseResolutionStatus) entity);
       case Entity.TEST_CASE_RESULT -> new TestCaseResultIndex((TestCaseResult) entity);
+      case Entity.PIPELINE_EXECUTION -> {
+        PipelineExecutionIndex.PipelineExecutionData data =
+            (PipelineExecutionIndex.PipelineExecutionData) entity;
+        yield new PipelineExecutionIndex(data.getPipeline(), data.getPipelineStatus());
+      }
       default -> buildExternalIndexes(entityType, entity);
     };
   }

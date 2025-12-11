@@ -7,9 +7,9 @@ Configure and schedule QlikCloud metadata and profiler workflows from the OpenMe
 
 ## Requirements
 
-We will extract the metadata using the [Qlik Cloud REST APIs](https://qlik.dev/apis/).
+We will extract the metadata using the <a href="https://qlik.dev/apis/" target="_blank">Qlik Cloud REST APIs</a>.
 
-You can find further information on the Qlik Cloud connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/qlikcloud).
+You can find further information on the Qlik Cloud connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/qlikcloud" target="_blank">docs</a>.
 
 
 ## Connection Details
@@ -17,7 +17,7 @@ You can find further information on the Qlik Cloud connector in the [docs](https
 $$section
 ### Qlik Cloud API Token $(id="token")
 
-API token for Qlik Cloud APIs access. Refer to [this](https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Admin/mc-generate-api-keys.htm) document for more details.
+API token for Qlik Cloud APIs access. Refer to <a href="https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/Admin/mc-generate-api-keys.htm" target="_blank">this</a> document for more details.
 
 Example: `eyJhbGciOiJFU***`
 $$

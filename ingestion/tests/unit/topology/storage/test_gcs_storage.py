@@ -259,7 +259,7 @@ class StorageUnitTest(TestCase):
                 data_model=None,
                 creation_date=bucket_response.creation_date.isoformat(),
                 sourceUrl=SourceUrl(
-                    "https://console.cloud.google.com/storage/browser/test_bucket;tab=objects?project=my-gcp-project"
+                    "https://console.cloud.google.com/storage/browser/test_bucket?project=my-gcp-project"
                 ),
                 fullPath="gs://test_bucket",
             ),
@@ -304,7 +304,7 @@ class StorageUnitTest(TestCase):
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
                 parent=entity_ref,
                 sourceUrl=SourceUrl(
-                    f"https://console.cloud.google.com/storage/browser/_details/test_bucket/transactions;tab=live_object?project=my-gcp-project"
+                    f"https://console.cloud.google.com/storage/browser/test_bucket/transactions?project=my-gcp-project"
                 ),
                 fullPath="gs://test_bucket/transactions",
             ),

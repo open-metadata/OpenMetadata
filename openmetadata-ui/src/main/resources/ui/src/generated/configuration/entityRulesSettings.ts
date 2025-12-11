@@ -38,6 +38,10 @@ export interface SemanticsRule {
      */
     ignoredEntities?: string[];
     /**
+     * JSON Tree to represents rule in UI.
+     */
+    jsonTree?: string;
+    /**
      * Name of the semantics rule.
      */
     name:      string;

@@ -91,7 +91,7 @@ class OpenMetadataValidationAction(ValidationAction):
         data_context: great expectation data context
         database_service_name: name of the service for the table
         api_version: default to v1
-        config_file_path: path to the open metdata config path
+        config_file_path: path to the open metadata config path
     """
 
     def __init__(

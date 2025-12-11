@@ -45,12 +45,21 @@ export const visitObservabilityAlertPage = async (page: Page) => {
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
+
+  // Set up the response promise before navigation
   const getAlerts = page.waitForResponse(
     '/api/v1/events/subscriptions?*alertType=Observability*'
   );
+
+  // Set up navigation promise before clicking
+  const navigationPromise = page.waitForURL('**/observability/alerts', {
+    waitUntil: 'networkidle',
+  });
+
   await sidebarClick(page, SidebarItem.OBSERVABILITY_ALERT);
-  await page.waitForURL('**/observability/alerts');
-  await getAlerts;
+
+  // Wait for both navigation and API response
+  await Promise.all([navigationPromise, getAlerts]);
 };
 
 export const addExternalDestination = async ({
@@ -70,6 +79,10 @@ export const addExternalDestination = async ({
   await page.click(
     `[data-testid="destination-category-select-${destinationNumber}"]`
   );
+
+  await page.waitForSelector(`.ant-select-dropdown:visible`, {
+    state: 'visible',
+  });
 
   // Select external tab
   await page.click(`[data-testid="tab-label-external"]:visible`);
@@ -387,7 +400,7 @@ export const editObservabilityAlert = async ({
   await addOwnerFilter({
     page,
     filterNumber: 0,
-    ownerName: user.getUserName(),
+    ownerName: user.getUserDisplayName(),
     selectId: 'Owner Name',
   });
 

@@ -21,6 +21,7 @@ import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationContext;
 import org.openmetadata.service.migration.context.MigrationOps;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class MigrationProcessImpl implements MigrationProcess {
@@ -45,8 +46,7 @@ public class MigrationProcessImpl implements MigrationProcess {
     this.collectionDAO = handle.attach(CollectionDAO.class);
     this.migrationDAO = handle.attach(MigrationDAO.class);
     this.openMetadataApplicationConfig = this.migrationFile.openMetadataApplicationConfig;
-    this.authenticationConfiguration =
-        this.openMetadataApplicationConfig.getAuthenticationConfiguration();
+    this.authenticationConfiguration = SecurityConfigurationManager.getCurrentAuthConfig();
   }
 
   public void initializeWorkflowHandler() {
@@ -92,6 +92,11 @@ public class MigrationProcessImpl implements MigrationProcess {
   }
 
   @Override
+  public String getMigrationsDir() {
+    return migrationFile.getDirPath();
+  }
+
+  @Override
   public Map<String, QueryStatus> runSchemaChanges(boolean isForceMigration) {
     return performSqlExecutionAndUpdate(
         handle,
@@ -113,10 +118,22 @@ public class MigrationProcessImpl implements MigrationProcess {
     if (!nullOrEmpty(queryList)) {
       for (String sql : queryList) {
         try {
-          String previouslyRanSql = migrationDAO.getSqlQuery(hash(sql), version);
+          String previouslyRanSql = null;
+          try {
+            previouslyRanSql = migrationDAO.getSqlQuery(hash(sql), version);
+          } catch (Exception dbException) {
+            // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
+            previouslyRanSql = null;
+          }
+
           if ((previouslyRanSql == null || previouslyRanSql.isEmpty())) {
             handle.execute(sql);
-            migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
+            try {
+              migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
+            } catch (Exception logException) {
+              // If logging fails (table doesn't exist yet), continue - the SQL was executed
+              // successfully
+            }
           }
           queryStatusMap.put(
               sql, new QueryStatus(QueryStatus.Status.SUCCESS, "Successfully Executed Query"));

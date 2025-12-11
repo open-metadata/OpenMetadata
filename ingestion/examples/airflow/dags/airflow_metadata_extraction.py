@@ -15,7 +15,7 @@ the `openmetadata-ingestion[airflow-container]` package. Its purpose
 is to connect to the underlying database, retrieve the information
 and push it to OpenMetadata.
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import yaml
 from airflow import DAG
@@ -24,8 +24,6 @@ try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
-
-from airflow.utils.dates import days_ago
 
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -78,9 +76,9 @@ with DAG(
     "airflow_metadata_extraction",
     default_args=default_args,
     description="An example DAG which pushes Airflow data to OM",
-    start_date=days_ago(1),
+    start_date=datetime(2024, 1, 1),
     is_paused_upon_creation=True,
-    schedule_interval="*/5 * * * *",
+    schedule="*/5 * * * *",
     catchup=False,
 ) as dag:
     ingest_task = PythonOperator(

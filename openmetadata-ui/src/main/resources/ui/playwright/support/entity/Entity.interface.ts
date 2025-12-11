@@ -38,6 +38,7 @@ export enum EntityTypeEndpoint {
   SearchIndex = 'searchIndexes',
   SearchService = 'services/searchServices',
   StorageService = 'services/storageServices',
+  DriveService = 'services/driveServices',
   StoreProcedure = 'storedProcedures',
   Table = 'tables',
   Teams = 'teams',
@@ -46,6 +47,10 @@ export enum EntityTypeEndpoint {
   User = 'users',
   Classification = 'classifications',
   Tag = 'tags',
+  Directory = 'drives/directories',
+  File = 'drives/files',
+  Spreadsheet = 'drives/spreadsheets',
+  Worksheet = 'drives/worksheets',
 }
 
 export type EntityDataType = {
@@ -74,6 +79,7 @@ export enum ENTITY_PATH {
   'dataProducts' = 'dataProduct',
   'metrics' = 'metric',
   charts = 'chart',
+  dataProductsTab = 'dataProductsTab',
 }
 
 export type ResponseDataType = {

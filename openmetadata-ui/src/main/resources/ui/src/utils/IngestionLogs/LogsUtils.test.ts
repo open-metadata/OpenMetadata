@@ -13,7 +13,10 @@
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useDownloadProgressStore } from '../../hooks/useDownloadProgressStore';
 import { IngestionPipelineLogByIdInterface } from '../../pages/LogsViewerPage/LogsViewerPage.interfaces';
-import { getIngestionPipelineLogById } from '../../rest/ingestionPipelineAPI';
+import {
+  downloadIngestionPipelineLogsById,
+  getIngestionPipelineLogById,
+} from '../../rest/ingestionPipelineAPI';
 import { showErrorToast } from '../ToastUtils';
 import {
   downloadIngestionLog,
@@ -23,7 +26,23 @@ import {
 
 const mockUpdateProgress = jest.fn();
 
-jest.mock('../../rest/ingestionPipelineAPI');
+jest.mock('../../rest/ingestionPipelineAPI', () => ({
+  getIngestionPipelineLogById: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        ingestion_task: 'metadata_logs_1',
+        total: '100',
+        after: '50',
+      },
+    })
+  ),
+  downloadIngestionPipelineLogsById: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: 'downloaded_logs',
+    })
+  ),
+}));
+
 jest.mock('../ToastUtils');
 jest.mock('../../hooks/useDownloadProgressStore');
 jest.mock('../../hooks/useDownloadProgressStore', () => ({
@@ -144,56 +163,36 @@ describe('LogsUtils', () => {
 
   describe('downloadIngestionLog', () => {
     const ingestionId = '123';
-    const pipelineType = PipelineType.Metadata;
-    let mockFetchLogsRecursively: jest.SpyInstance;
-
-    beforeAll(() => {
-      mockFetchLogsRecursively = jest.spyOn(utils, 'fetchLogsRecursively');
-    });
-
-    afterAll(() => {
-      jest.clearAllMocks();
-    });
 
     it('should return the downloaded logs', async () => {
-      const logs = 'metadata_logs';
+      const result = await downloadIngestionLog(ingestionId);
 
-      mockFetchLogsRecursively.mockResolvedValueOnce(logs);
-
-      const result = await downloadIngestionLog(ingestionId, pipelineType);
-
-      expect(mockFetchLogsRecursively).toHaveBeenCalledWith(
-        ingestionId,
-        pipelineType
+      expect(downloadIngestionPipelineLogsById).toHaveBeenCalledWith(
+        ingestionId
       );
-      expect(result).toBe(logs);
+      expect(result).toBe('downloaded_logs');
     });
 
     it('should show error toast and return empty string if an error occurs', async () => {
       const error = new Error('Failed to fetch logs');
+      (downloadIngestionPipelineLogsById as jest.Mock).mockRejectedValueOnce(
+        error
+      );
 
-      mockFetchLogsRecursively.mockRejectedValueOnce(error);
+      const result = await downloadIngestionLog(ingestionId);
 
-      const result = await downloadIngestionLog(ingestionId, pipelineType);
-
-      expect(mockFetchLogsRecursively).toHaveBeenCalledWith(
-        ingestionId,
-        pipelineType
+      expect(downloadIngestionPipelineLogsById).toHaveBeenCalledWith(
+        ingestionId
       );
       expect(showErrorToast).toHaveBeenCalledWith(error);
       expect(result).toBe('');
     });
 
     it('should return empty string if ingestionId or pipelineType is not provided', async () => {
-      const result = await downloadIngestionLog(undefined, pipelineType);
+      const result = await downloadIngestionLog(undefined);
 
-      expect(mockFetchLogsRecursively).not.toHaveBeenCalled();
+      expect(downloadIngestionPipelineLogsById).not.toHaveBeenCalled();
       expect(result).toBe('');
-
-      const result2 = await downloadIngestionLog(ingestionId, undefined);
-
-      expect(mockFetchLogsRecursively).not.toHaveBeenCalled();
-      expect(result2).toBe('');
     });
   });
 });

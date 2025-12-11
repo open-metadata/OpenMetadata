@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as setup } from '@playwright/test';
+import { test as setup } from '@playwright/test';
 import {
   EDIT_DESCRIPTION_RULE,
   EDIT_GLOSSARY_TERM_RULE,
@@ -71,20 +71,38 @@ const ownerUser = new UserClass({
 
 setup('authenticate all users', async ({ browser }) => {
   setup.setTimeout(120 * 1000);
-
-  let adminPage: Page;
-  let dataConsumerPage: Page;
-  let dataStewardPage: Page;
-  let editDescriptionPage: Page;
-  let editTagsPage: Page;
-  let editGlossaryTermPage: Page;
-  let ownerPage: Page;
+  // Create separate pages for each user
+  const [
+    adminPage,
+    dataConsumerPage,
+    dataStewardPage,
+    editDescriptionPage,
+    editTagsPage,
+    editGlossaryTermPage,
+    ownerPage,
+  ] = await Promise.all([
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+    browser.newPage(),
+  ]);
 
   try {
     // Create admin page and context
-    adminPage = await browser.newPage();
     const admin = new AdminClass();
+
     await loginAsAdmin(adminPage, admin);
+
+    // Create a new page to login with admin user after token expiry is set to 4 hours
+    // This is done to avoid logging out the user to get the new token
+    const newAdminPage = await browser.newPage();
+    await admin.login(newAdminPage);
+
+    await newAdminPage.waitForURL('**/my-data');
+
     const { apiContext, afterAction } = await getApiContext(adminPage);
 
     // Create all users, Using allSettled to avoid failing the setup if one of the users fails to create
@@ -119,56 +137,59 @@ setup('authenticate all users', async ({ browser }) => {
       ownerUser.setDataConsumerRole(apiContext),
     ]);
 
-    // Save admin state
-    await adminPage.context().storageState({ path: adminFile });
+    // Wait for indexedDB databases to be available
+    await adminPage.waitForFunction(() => indexedDB.databases());
 
-    // Create separate pages for each user
-    const [
-      dataConsumerPage,
-      dataStewardPage,
-      editDescriptionPage,
-      editTagsPage,
-      editGlossaryTermPage,
-      ownerPage,
-    ] = await Promise.all([
-      browser.newPage(),
-      browser.newPage(),
-      browser.newPage(),
-      browser.newPage(),
-      browser.newPage(),
-      browser.newPage(),
-    ]);
+    // Additional wait to ensure auth state is persisted
+    await adminPage.waitForTimeout(2000);
+
+    // Save admin state
+    await newAdminPage
+      .context()
+      .storageState({ path: adminFile, indexedDB: true });
 
     // Save states for each user sequentially to avoid file operation conflicts
     await dataConsumer.login(dataConsumerPage);
     await dataConsumerPage.waitForLoadState('networkidle');
-    await dataConsumerPage.context().storageState({ path: dataConsumerFile });
+    await dataConsumerPage
+      .context()
+      .storageState({ path: dataConsumerFile, indexedDB: true });
 
     await dataSteward.login(dataStewardPage);
     await dataStewardPage.waitForLoadState('networkidle');
-    await dataStewardPage.context().storageState({ path: dataStewardFile });
+    await dataStewardPage
+      .context()
+      .storageState({ path: dataStewardFile, indexedDB: true });
 
     await editDescriptionUser.login(editDescriptionPage);
     await editDescriptionPage.waitForLoadState('networkidle');
     await editDescriptionPage
       .context()
-      .storageState({ path: editDescriptionFile });
+      .storageState({ path: editDescriptionFile, indexedDB: true });
 
     await editTagsUser.login(editTagsPage);
     await editTagsPage.waitForLoadState('networkidle');
-    await editTagsPage.context().storageState({ path: editTagsFile });
+    await editTagsPage
+      .context()
+      .storageState({ path: editTagsFile, indexedDB: true });
 
     await editGlossaryTermUser.login(editGlossaryTermPage);
     await editGlossaryTermPage.waitForLoadState('networkidle');
     await editGlossaryTermPage
       .context()
-      .storageState({ path: editGlossaryTermFile });
+      .storageState({ path: editGlossaryTermFile, indexedDB: true });
 
     await ownerUser.login(ownerPage);
     await ownerPage.waitForLoadState('networkidle');
-    await ownerPage.context().storageState({ path: ownerFile });
+    await ownerPage
+      .context()
+      .storageState({ path: ownerFile, indexedDB: true });
 
     await afterAction();
+
+    if (newAdminPage) {
+      await newAdminPage.close();
+    }
   } catch (error) {
     // eslint-disable-next-line no-console
     console.error('Error during authentication setup:', error);

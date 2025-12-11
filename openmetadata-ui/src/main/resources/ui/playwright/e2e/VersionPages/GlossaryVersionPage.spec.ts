@@ -79,7 +79,7 @@ test('Glossary', async ({ page }) => {
 
     await addMultiOwner({
       page,
-      ownerNames: [user.getUserName()],
+      ownerNames: [user.getUserDisplayName()],
       activatorBtnDataTestId: 'add-owner',
       resultTestId: 'glossary-right-panel-owner-link',
       endpoint: EntityTypeEndpoint.Glossary,
@@ -108,7 +108,7 @@ test('Glossary', async ({ page }) => {
 
     await addMultiOwner({
       page,
-      ownerNames: [reviewer.getUserName()],
+      ownerNames: [reviewer.getUserDisplayName()],
       activatorBtnDataTestId: 'Add',
       resultTestId: 'glossary-reviewer-name',
       endpoint: EntityTypeEndpoint.Glossary,
@@ -178,7 +178,7 @@ test('GlossaryTerm', async ({ page }) => {
 
     await addMultiOwner({
       page,
-      ownerNames: [user.getUserName()],
+      ownerNames: [user.getUserDisplayName()],
       activatorBtnDataTestId: 'add-owner',
       resultTestId: 'glossary-right-panel-owner-link',
       endpoint: EntityTypeEndpoint.Glossary,
@@ -208,7 +208,7 @@ test('GlossaryTerm', async ({ page }) => {
 
     await addMultiOwner({
       page,
-      ownerNames: [reviewer.getUserName()],
+      ownerNames: [reviewer.getUserDisplayName()],
       activatorBtnDataTestId: 'Add',
       resultTestId: 'glossary-reviewer-name',
       endpoint: EntityTypeEndpoint.GlossaryTerm,
@@ -222,7 +222,7 @@ test('GlossaryTerm', async ({ page }) => {
     await expect(
       page
         .locator('[data-testid="glossary-reviewer-name"]')
-        .getByTestId(reviewer.getUserName())
+        .getByTestId(reviewer.getUserDisplayName())
     ).toBeVisible();
 
     await page.click('[data-testid="version-button"]');

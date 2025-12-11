@@ -15,10 +15,10 @@ GRANT SELECT TO Mary;
 ```
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
 ### Usage & Lineage
-For the usage and lineage workflow, the user will need `SELECT` privilege table. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
+For the usage and lineage workflow, the user will need `SELECT` privilege table. You can find more information on the usage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage" target="_blank">here</a> and the lineage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/lineage" target="_blank">here</a>.
 
 ### Remote Connection
 
@@ -44,9 +44,9 @@ If you are using SQL server on Windows, you must configure the firewall on the c
 6. In the `Profile` dialog box, select any profiles that describe the computer connection environment when you want to connect to the Database Engine, and then select `Next`.
 7. In the `Name` dialog box, type a name and description for this rule, and then select `Finish`.
 
-For details step please refer this [link](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-a-windows-firewall-for-database-engine-access?view=sql-server-ver15).
+For details step please refer this <a href="https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/configure-a-windows-firewall-for-database-engine-access?view=sql-server-ver15" target="_blank">link</a>.
 
-You can find further information on the MSSQL connector in the [docs](https://docs.open-metadata.org/connectors/database/mssql).
+You can find further information on the MSSQL connector in the <a href="https://docs.open-metadata.org/connectors/database/mssql" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -92,11 +92,40 @@ $$section
 
 Connecting to MSSQL via **pyodbc** scheme requires the ODBC driver to be installed. Specify ODBC driver name in the field.
 
-You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-ver16).
+You can download the ODBC driver from <a href="https://learn.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server?view=sql-server-ver16" target="_blank">here</a>.
 
 In case of Docker or Kubernetes deployments, this driver comes out of the box with version `ODBC Driver 18 for SQL Server`.
 $$
 
+$$section
+### Encrypt Connection $(id="encrypt")
+
+Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted between the client and server will be encrypted.
+
+**Important:**
+- Can be configured along with Trust Server Certificate option
+- May require additional connection arguments for fine-grained control
+- Default value is `false`
+$$
+
+$$section
+### Trust Server Certificate $(id="trustServerCertificate")
+
+Trust the server certificate without validation When using **pyodbc** scheme.
+
+**Important:**
+- Can be combined with Encrypt Connection option
+- Default value is `false`
+$$
+
+$$section
+### SSL Configuration $(id="sslConfig")
+
+SSL/TLS certificate configuration for client authentication. Provide CA certificate for mutual TLS authentication.
+
+**Important:**
+- For certificate-based authentication with **pytds** scheme, provide the CA certificate file path in the SSL Configuration
+$$
 
 $$section
 ### Ingest All Databases $(id="ingestAllDatabases")
@@ -115,5 +144,7 @@ $$section
 
 Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MSSQL during the connection. These details must be added as Key-Value pairs.
 
-When Connecting to MSSQL via **pyodbc** scheme requires the Connection Arguments Encrypt: No and TrustServerCertificate: Yes.
+When Connecting to MSSQL via **pyodbc** scheme requires the Connection Arguments Encrypt: No and TrustServerCertificate: Yes. You can also configure these through the corresponding fields.
+
+When using the pytds connection scheme with a CA certificate, you might need to specify validate_host: false in the connection arguments.
 $$

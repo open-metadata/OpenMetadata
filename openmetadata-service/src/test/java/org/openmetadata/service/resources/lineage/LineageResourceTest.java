@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.lineage;
 
-import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -61,6 +60,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
@@ -70,6 +70,7 @@ import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -99,6 +100,7 @@ import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.mlmodels.MlModelResourceTest;
+import org.openmetadata.service.resources.services.APIServiceResourceTest;
 import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
@@ -344,20 +346,20 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
 
     // Add invalid column lineage (from column or to column are invalid)
+    // invalid columns are now silently filtered out instead of throwing errors
     details
         .getColumnsLineage()
         .add(new ColumnLineage().withFromColumns(List.of("invalidColumn")).withToColumn(t2c1FQN));
-    assertResponse(
-        () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Invalid column name invalidColumn");
+    // This should now succeed with the invalid column being filtered out
+    addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
+
+    // Clear and test invalid toColumn
+    details.getColumnsLineage().clear();
     details
         .getColumnsLineage()
         .add(new ColumnLineage().withFromColumns(List.of(t1c1FQN)).withToColumn("invalidColumn"));
-    assertResponse(
-        () -> addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        "Invalid column name invalidColumn");
+    // the invalid column lineage being filtered out
+    addEdge(TABLES.get(0), TABLES.get(1), details, ADMIN_AUTH_HEADERS);
 
     // Add column level lineage with multiple fromColumns (t1c1 + t3c1) to t2c1
     details.getColumnsLineage().clear();
@@ -406,10 +408,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     String f3FQN = "test_non_existent_filed";
     topicToTableLineage.add(
         new ColumnLineage().withFromColumns(List.of(f3FQN)).withToColumn(d1c1FQN));
-    assertResponse(
-        () -> addEdge(TOPIC, TABLE_DATA_MODEL_LINEAGE, topicToTable, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format("Invalid column name %s", f3FQN));
+    // invalid columns are now silently filtered out instead of throwing errors
+    addEdge(TOPIC, TABLE_DATA_MODEL_LINEAGE, topicToTable, ADMIN_AUTH_HEADERS);
 
     LineageDetails topicToContainer = new LineageDetails();
     String f1c1 = CONTAINER.getDataModel().getColumns().get(0).getFullyQualifiedName();
@@ -423,10 +423,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     String f2c3FQN = "test_non_existent_container_column";
     topicToContainerLineage.add(
         new ColumnLineage().withFromColumns(List.of(f2FQN)).withToColumn(f2c3FQN));
-    assertResponse(
-        () -> addEdge(TOPIC, CONTAINER, topicToContainer, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format("Invalid column name %s", f2c3FQN));
+    // invalid columns are now silently filtered out instead of throwing errors
+    addEdge(TOPIC, CONTAINER, topicToContainer, ADMIN_AUTH_HEADERS);
 
     LineageDetails containerToTable = new LineageDetails();
     List<ColumnLineage> containerToTableLineage = containerToTable.getColumnsLineage();
@@ -448,10 +446,8 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     String m3f3 = "test_non_existent_feature";
     tableToMlModelLineage.add(
         new ColumnLineage().withFromColumns(List.of(f2t2)).withToColumn(m3f3));
-    assertResponse(
-        () -> addEdge(TABLE_DATA_MODEL_LINEAGE, ML_MODEL, tableToMlModel, ADMIN_AUTH_HEADERS),
-        BAD_REQUEST,
-        String.format("Invalid column name %s", m3f3));
+    // invalid columns are now silently filtered out instead of throwing errors
+    addEdge(TABLE_DATA_MODEL_LINEAGE, ML_MODEL, tableToMlModel, ADMIN_AUTH_HEADERS);
 
     LineageDetails tableToDashboard = new LineageDetails();
     String c1d1 = DASHBOARD.getCharts().get(0).getFullyQualifiedName();
@@ -520,10 +516,16 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
     MessageParser.EntityLink TABLE4_COLUMN_LINK =
         MessageParser.EntityLink.parse(
-            String.format("<#E::table::%s::columns::c1>", TABLES.get(4).getFullyQualifiedName()));
+            String.format(
+                "<#E::table::%s::columns::%s>",
+                TABLES.get(4).getFullyQualifiedName(),
+                TABLES.get(4).getColumns().get(0).getName()));
     MessageParser.EntityLink TABLE6_COLUMN_LINK =
         MessageParser.EntityLink.parse(
-            String.format("<#E::table::%s::columns::c1>", TABLES.get(6).getFullyQualifiedName()));
+            String.format(
+                "<#E::table::%s::columns::%s>",
+                TABLES.get(6).getFullyQualifiedName(),
+                TABLES.get(6).getColumns().get(0).getName()));
     CreateTestCase create4 = testCaseResourceTest.createRequest(test);
     CreateTestCase create6 = testCaseResourceTest.createRequest(test, 2);
     create4
@@ -692,11 +694,11 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
     assertNotNull(upstreamZeroResult);
     // Debug output
-    // For depth=0, expect starting node + immediate upstreams
-    assertEquals(2, upstreamZeroResult.getNodes().size());
-    assertTrue(upstreamZeroResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    // For depth=1, expect starting node + nothing else
+    assertEquals(1, upstreamZeroResult.getNodes().size());
+    assertFalse(upstreamZeroResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
     assertTrue(upstreamZeroResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
-    assertEquals(1, upstreamZeroResult.getUpstreamEdges().size());
+    assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
     assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
 
     // Test DOWNSTREAM direction for tableB (should find B -> C)
@@ -712,11 +714,11 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     SearchLineageResult downstreamResult =
         TestUtils.get(downstreamTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
 
-    // Assertions for downstream: should find tableB -> tableC, upstream=0 will still return you
-    // tableA upstream connection
+    // Assertions for downstream: should find tableB -> tableC, upstream=0 will should not return
+    // anything
     assertNotNull(downstreamResult);
-    assertEquals(3, downstreamResult.getNodes().size());
-    assertTrue(downstreamResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    assertEquals(2, downstreamResult.getNodes().size());
+    assertFalse(downstreamResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
     assertTrue(downstreamResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
     assertTrue(downstreamResult.getNodes().containsKey(tableC.getFullyQualifiedName()));
 
@@ -727,10 +729,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertEquals(tableC.getId(), downstreamEdge.getToEntity().getId());
 
     // 1 upstream is there, for upstreamDepth = 0
-    assertEquals(1, downstreamResult.getUpstreamEdges().size());
-    upstreamEdge = downstreamResult.getUpstreamEdges().values().iterator().next();
-    assertEquals(tableA.getId(), upstreamEdge.getFromEntity().getId());
-    assertEquals(tableB.getId(), upstreamEdge.getToEntity().getId());
+    assertEquals(0, downstreamResult.getUpstreamEdges().size());
 
     // Clean up
     deleteEdge(tableA, tableB);
@@ -1023,7 +1022,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     // Check the number of upstream edges (downstreamEdges will always be empty for platformLineage)
     // 5 edges are created
     int expectedUpstreamEdges = serviceViewResult.getUpstreamEdges().size();
-    assertEquals(5, expectedUpstreamEdges, "Should have 3 upstream edges");
+    assertEquals(5, expectedUpstreamEdges, "Should have 5 upstream edges");
     assertTrue(
         serviceViewResult.getDownstreamEdges().isEmpty(),
         "Downstream edges should be empty for platformLineage");
@@ -1033,6 +1032,70 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     deleteEdge(TABLES.get(3), TABLES.get(4));
     deleteEdge(TABLES.get(5), TABLES.get(6));
     deleteEdge(TABLES.get(6), TABLES.get(7));
+  }
+
+  @Order(14)
+  @Test
+  void test_searchLineageForServiceEntity(TestInfo test) throws IOException {
+    // Test that lineage search works correctly for service entities (apiService, databaseService)
+
+    // Create an API service
+    APIServiceResourceTest apiServiceResourceTest = new APIServiceResourceTest();
+    CreateApiService createApiService =
+        apiServiceResourceTest
+            .createRequest(test)
+            .withName("test_lineage_api_service")
+            .withServiceType(CreateApiService.ApiServiceType.Rest)
+            .withConnection(TestUtils.API_SERVICE_CONNECTION);
+
+    ApiService apiService =
+        apiServiceResourceTest.createEntity(createApiService, ADMIN_AUTH_HEADERS);
+
+    // Test searching lineage for the API service entity
+    WebTarget target = getResource("lineage/getLineage");
+    target = target.queryParam("fqn", apiService.getFullyQualifiedName());
+    target = target.queryParam("type", "apiService");
+    target = target.queryParam("upstreamDepth", 0);
+    target = target.queryParam("downstreamDepth", 0);
+
+    SearchLineageResult result =
+        TestUtils.get(target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Verify the API service was found in search
+    assertNotNull(result, "Search lineage result should not be null");
+    assertNotNull(result.getNodes(), "Nodes map should not be null");
+    assertEquals(1, result.getNodes().size(), "Should find exactly one node");
+    assertTrue(
+        result.getNodes().containsKey(apiService.getFullyQualifiedName()),
+        "Should contain the API service in nodes");
+
+    // Verify the node information
+    NodeInformation nodeInfo = result.getNodes().get(apiService.getFullyQualifiedName());
+    assertNotNull(nodeInfo, "Node information should not be null");
+    assertEquals(
+        "apiService", nodeInfo.getEntity().get("entityType"), "Entity type should be apiService");
+
+    // Test with includeDeleted=false (the original issue scenario)
+    WebTarget targetWithDeletedFalse = getResource("lineage/getLineage");
+    targetWithDeletedFalse =
+        targetWithDeletedFalse.queryParam("fqn", apiService.getFullyQualifiedName());
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("type", "apiService");
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("upstreamDepth", 0);
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("downstreamDepth", 0);
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("includeDeleted", false);
+
+    SearchLineageResult resultWithDeleted =
+        TestUtils.get(targetWithDeletedFalse, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Verify the API service is still found with includeDeleted=false
+    assertNotNull(resultWithDeleted, "Result with includeDeleted=false should not be null");
+    assertEquals(
+        1,
+        resultWithDeleted.getNodes().size(),
+        "Should still find the API service with includeDeleted=false");
+
+    // Cleanup
+    apiServiceResourceTest.deleteEntity(apiService.getId(), ADMIN_AUTH_HEADERS);
   }
 
   public Edge getEdge(Table from, Table to) {

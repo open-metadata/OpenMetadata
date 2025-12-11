@@ -41,6 +41,7 @@ export interface CustomDashboardConnection {
      * Custom dashboard service type
      */
     type: ServiceType;
+    [property: string]: any;
 }
 
 /**

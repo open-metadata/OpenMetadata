@@ -83,10 +83,8 @@ from metadata.ingestion.source.database.bigquery.models import (
     BigQueryStoredProcedure,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_GET_MATERIALIZED_VIEW_NAMES,
     BIGQUERY_GET_SCHEMA_NAMES,
     BIGQUERY_GET_STORED_PROCEDURES,
-    BIGQUERY_GET_VIEW_NAMES,
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_SCHEMA_DESCRIPTION,
     BIGQUERY_TABLE_AND_TYPE,
@@ -120,6 +118,8 @@ from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
 _bigquery_table_types = {
     "BASE TABLE": TableType.Regular,
     "EXTERNAL": TableType.External,
+    "MATERIALIZED VIEW": TableType.MaterializedView,
+    "VIEW": TableType.View,
 }
 
 
@@ -187,34 +187,12 @@ def get_columns(bq_schema):
             "max_length": field.max_length,
             "system_data_type": get_system_data_type(col_type),
             "is_complex": is_complex_type(str(col_type)),
-            "policy_tags": None,
+            "policy_tags": field.policy_tags,
         }
         if getattr(field, "fields", None):
             # Nested Columns available
             col_obj["children"] = get_columns(field.fields)
-        try:
-            if field.policy_tags:
-                policy_tag_name = field.policy_tags.names[0]
-                taxonomy_name = (
-                    policy_tag_name.split("/policyTags/")[0] if policy_tag_name else ""
-                )
-                if not taxonomy_name:
-                    raise NotImplementedError(
-                        f"Taxonomy Name not present for {field.name}"
-                    )
-                col_obj["taxonomy"] = (
-                    PolicyTagManagerClient()
-                    .get_taxonomy(name=taxonomy_name)
-                    .display_name
-                )
-                col_obj["policy_tags"] = (
-                    PolicyTagManagerClient()
-                    .get_policy_tag(name=policy_tag_name)
-                    .display_name
-                )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Skipping Policy Tag: {exc}")
+
         col_list.append(col_obj)
     return col_list
 
@@ -403,10 +381,18 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
         """
+        view_filter = (
+            "AND table_type NOT IN  ('VIEW', 'MATERIALIZED VIEW')"
+            if not self.source_config.includeViews
+            else ""
+        )
+
         table_names_and_types = (
             self.engine.execute(
                 BIGQUERY_TABLE_AND_TYPE.format(
-                    project_id=self.context.get().database, schema_name=schema_name
+                    project_id=self.context.get().database,
+                    schema_name=schema_name,
+                    view_filter=view_filter,
                 )
             )
             or []
@@ -439,49 +425,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., material views,...
         """
-
-        if self.incremental.enabled:
-            view_names = [
-                view_name
-                for view_name in view_names
-                if view_name
-                in self.incremental_table_processor.get_not_deleted(schema_name)
-            ]
-
-        table_name_and_types = []
-        for table_type, query in {
-            TableType.View: BIGQUERY_GET_VIEW_NAMES,
-            TableType.MaterializedView: BIGQUERY_GET_MATERIALIZED_VIEW_NAMES,
-        }.items():
-            view_names = list(
-                map(
-                    lambda x: x[0],
-                    (
-                        self.engine.execute(
-                            query.format(
-                                project=self.context.get().database, dataset=schema_name
-                            )
-                        )
-                        or []
-                    ),
-                )
-            )
-            if self.incremental.enabled:
-                view_names = [
-                    view_name
-                    for view_name in view_names
-                    if view_name
-                    in self.incremental_table_processor.get_not_deleted(schema_name)
-                ]
-
-            table_name_and_types.extend(
-                [
-                    TableNameAndType(name=view_name, type_=table_type)
-                    for view_name in view_names
-                ]
-            )
-
-        return table_name_and_types
+        return []
 
     # pylint: disable=arguments-differ
     @calculate_execution_time()
@@ -513,6 +457,13 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         metadata=self.metadata,
                         system_tags=True,
                     )
+
+            if not self.service_connection.includePolicyTags:
+                logger.info(
+                    "'includePolicyTags' is set to false so skipping policy tag ingestion"
+                )
+                return
+
             # Fetching policy tags on the column level
             list_project_ids = [self.context.get().database]
             if not self.service_connection.taxonomyProjectID:
@@ -712,6 +663,32 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     table_tag_labels.append(tag_label)
         return table_tag_labels
 
+    def get_policy_tags_for_column(self, column: dict) -> dict:
+        try:
+            if column.get("policy_tags"):
+                policy_tag_name = column["policy_tags"].names[0]
+                taxonomy_name = (
+                    policy_tag_name.split("/policyTags/")[0] if policy_tag_name else ""
+                )
+                if not taxonomy_name:
+                    raise NotImplementedError(
+                        f"Taxonomy Name not present for {column['name']}"
+                    )
+                column["taxonomy"] = (
+                    PolicyTagManagerClient()
+                    .get_taxonomy(name=taxonomy_name)
+                    .display_name
+                )
+                column["policy_tags"] = (
+                    PolicyTagManagerClient()
+                    .get_policy_tag(name=policy_tag_name)
+                    .display_name
+                )
+                return column
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Skipping Policy Tag: {exc}")
+
     def get_column_tag_labels(
         self, table_name: str, column: dict
     ) -> Optional[List[TagLabel]]:
@@ -719,12 +696,14 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         This will only get executed if the tags context
         is properly informed
         """
-        if column.get("policy_tags"):
+        if self.service_connection.includePolicyTags and column.get("policy_tags"):
+            self.get_policy_tags_for_column(column)
             return fetch_tag_labels_om(
                 metadata=self.metadata,
                 tags=[column["policy_tags"]],
                 classification_name=column["taxonomy"],
-                include_tags=self.source_config.includeTags,
+                include_tags=self.source_config.includeTags
+                and self.service_connection.includePolicyTags,
             )
         return None
 

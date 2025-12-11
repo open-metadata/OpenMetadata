@@ -22,14 +22,18 @@ import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
+import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { SpreadsheetClass } from '../../support/entity/SpreadsheetClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { WorksheetClass } from '../../support/entity/WorksheetClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TagClass } from '../../support/tag/TagClass';
@@ -129,7 +133,7 @@ test.describe('Explore Tree scenarios', () => {
 
       await expect(
         page.getByTestId('search-dropdown-Data Assets')
-      ).toContainText('Data Assets: glossaryTerm');
+      ).toContainText('Data Assets: glossaryterm');
 
       await page.getByTestId('explore-tree-title-Tags').click();
 
@@ -286,6 +290,10 @@ test.describe('Explore page', () => {
   const mlModel = new MlModelClass();
   const database = new DatabaseClass();
   const databaseSchema = new DatabaseSchemaClass();
+  const directory = new DirectoryClass();
+  const file = new FileClass();
+  const spreadsheet = new SpreadsheetClass();
+  const worksheet = new WorksheetClass();
   const metric = new MetricClass();
   const domain = new Domain();
   const dataProduct = new DataProduct([domain]);
@@ -315,6 +323,10 @@ test.describe('Explore page', () => {
     await metric.create(apiContext);
     await dataProduct.create(apiContext);
     await tag.create(apiContext);
+    await directory.create(apiContext);
+    await file.create(apiContext);
+    await spreadsheet.create(apiContext);
+    await worksheet.create(apiContext);
     await afterAction();
   });
 
@@ -340,6 +352,10 @@ test.describe('Explore page', () => {
     await domain.delete(apiContext);
     await dataProduct.delete(apiContext);
     await tag.delete(apiContext);
+    await directory.delete(apiContext);
+    await file.delete(apiContext);
+    await spreadsheet.delete(apiContext);
+    await worksheet.delete(apiContext);
     await afterAction();
   });
 

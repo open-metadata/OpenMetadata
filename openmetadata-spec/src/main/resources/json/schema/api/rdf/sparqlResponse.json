@@ -1,0 +1,67 @@
+{
+  "$id": "https://open-metadata.org/schema/api/rdf/sparqlResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SparqlResponse",
+  "description": "SPARQL query response",
+  "type": "object",
+  "properties": {
+    "head": {
+      "description": "Header information about the query results",
+      "type": "object",
+      "properties": {
+        "vars": {
+          "description": "List of variable names in the results",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "link": {
+          "description": "Links to additional resources",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "results": {
+      "description": "Query results",
+      "type": "object",
+      "properties": {
+        "bindings": {
+          "description": "Result bindings",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["uri", "literal", "bnode"]
+                },
+                "value": {
+                  "type": "string"
+                },
+                "datatype": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "xml:lang": {
+                  "type": "string"
+                }
+              },
+              "required": ["type", "value"]
+            }
+          }
+        }
+      }
+    },
+    "boolean": {
+      "description": "Boolean result for ASK queries",
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

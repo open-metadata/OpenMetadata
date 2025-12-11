@@ -114,7 +114,9 @@ const DescriptionV1 = ({
   }, [entityType, entityFqn]);
 
   const taskActionButton = useMemo(() => {
-    const hasDescription = !isDescriptionContentEmpty(description.trim());
+    const hasDescription = !isDescriptionContentEmpty(
+      description?.trim() ?? ''
+    );
 
     const isTaskEntity = TASK_ENTITIES.includes(entityType);
 

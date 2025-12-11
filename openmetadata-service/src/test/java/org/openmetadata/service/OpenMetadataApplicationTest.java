@@ -23,13 +23,15 @@ import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
-import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.jersey.validation.Validators;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import io.minio.BucketExistsArgs;
+import io.minio.MakeBucketArgs;
+import io.minio.MinioClient;
 import jakarta.validation.Validator;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -46,7 +48,6 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.eclipse.jetty.client.HttpClient;
-import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.jetty.connector.JettyClientProperties;
@@ -69,6 +70,7 @@ import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.JobDAO;
@@ -84,6 +86,7 @@ import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -105,6 +108,9 @@ public abstract class OpenMetadataApplicationTest {
   public static final ElasticSearchConfiguration.SearchType ELASTIC_SEARCH_TYPE =
       ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
+  public static final String MINIO_ACCESS_KEY = "minioadmin";
+  public static final String MINIO_SECRET_KEY = "minioadmin";
+  public static final String MINIO_BUCKET = "pipeline-logs-test";
 
   protected static final WebhookCallbackResource webhookCallbackResource =
       new WebhookCallbackResource();
@@ -115,7 +121,8 @@ public abstract class OpenMetadataApplicationTest {
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
   private static GenericContainer<?> REDIS_CONTAINER;
-
+  private static GenericContainer<?> RDF_CONTAINER;
+  private static GenericContainer<?> MINIO_CONTAINER;
   protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
   private static final String JDBC_CONTAINER_CLASS_NAME =
@@ -165,17 +172,15 @@ public abstract class OpenMetadataApplicationTest {
     sqlContainer.withUsername("username");
     sqlContainer.start();
 
-    // Note: Added DataSourceFactory since this configuration is needed by the WorkflowHandler.
-    DataSourceFactory dataSourceFactory = new DataSourceFactory();
+    // Note: Added HikariCPDataSourceFactory since this configuration is needed by the
+    // WorkflowHandler.
+    HikariCPDataSourceFactory dataSourceFactory = new HikariCPDataSourceFactory();
     dataSourceFactory.setUrl(sqlContainer.getJdbcUrl());
     dataSourceFactory.setUser(sqlContainer.getUsername());
     dataSourceFactory.setPassword(sqlContainer.getPassword());
     dataSourceFactory.setDriverClass(sqlContainer.getDriverClassName());
     config.setDataSourceFactory(dataSourceFactory);
 
-    final String flyWayMigrationScriptsLocation =
-        ResourceHelpers.resourceFilePath(
-            "db/sql/migrations/flyway/" + sqlContainer.getDriverClassName());
     final String nativeMigrationScriptsLocation =
         ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
 
@@ -190,17 +195,6 @@ public abstract class OpenMetadataApplicationTest {
     } catch (Exception ex) {
       LOG.info("Extension migrations not found");
     }
-    Flyway flyway =
-        Flyway.configure()
-            .dataSource(
-                sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
-            .table("DATABASE_CHANGE_LOG")
-            .locations("filesystem:" + flyWayMigrationScriptsLocation)
-            .sqlMigrationPrefix("v")
-            .cleanDisabled(false)
-            .load();
-    flyway.clean();
-    flyway.migrate();
 
     ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
     ELASTIC_SEARCH_CONTAINER.withPassword("password");
@@ -225,12 +219,16 @@ public abstract class OpenMetadataApplicationTest {
 
     // Migration overrides
     configOverrides.add(
-        ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScriptsLocation));
-    configOverrides.add(
         ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScriptsLocation));
 
     // Redis cache configuration (if enabled by system properties)
     setupRedisIfEnabled();
+
+    // RDF configuration (if enabled by system properties)
+    setupRdfIfEnabled();
+
+    // MinIO configuration (if enabled by system properties)
+    setupMinioIfEnabled();
 
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
     APP = getApp(configOverridesArray);
@@ -268,6 +266,7 @@ public abstract class OpenMetadataApplicationTest {
             nativeMigrationSQLPath,
             connType,
             extensionSQLScriptRootPath,
+            config.getMigrationConfiguration().getFlywayPath(),
             config,
             forceMigrations);
     // Initialize search repository
@@ -277,7 +276,7 @@ public abstract class OpenMetadataApplicationTest {
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
-    workflow.runMigrationWorkflows();
+    workflow.runMigrationWorkflows(false);
     WorkflowHandler.initialize(config);
     SettingsCache.initialize(config);
     ApplicationHandler.initialize(config);
@@ -362,6 +361,26 @@ public abstract class OpenMetadataApplicationTest {
         LOG.info("Redis container stopped successfully");
       } catch (Exception e) {
         LOG.error("Error stopping Redis container", e);
+      }
+    }
+
+    // Stop RDF container if it was started
+    if (RDF_CONTAINER != null) {
+      try {
+        RDF_CONTAINER.stop();
+        LOG.info("RDF container stopped successfully");
+      } catch (Exception e) {
+        LOG.error("Error stopping RDF container", e);
+      }
+    }
+
+    // Stop MinIO container if it was started
+    if (MINIO_CONTAINER != null) {
+      try {
+        MINIO_CONTAINER.stop();
+        LOG.info("MinIO container stopped successfully");
+      } catch (Exception e) {
+        LOG.error("Error stopping MinIO container", e);
       }
     }
 
@@ -464,21 +483,18 @@ public abstract class OpenMetadataApplicationTest {
 
       LOG.info("Redis container started at {}:{}", redisHost, redisPort);
 
-      // Add Redis configuration overrides
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.enabled", "true"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.provider", "REDIS_STANDALONE"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.host", redisHost));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.port", redisPort.toString()));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.authType", "PASSWORD"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.password", "test-password"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.useSsl", "false"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.database", "0"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.ttlSeconds", "3600"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.connectionTimeoutSecs", "5"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.socketTimeoutSecs", "60"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.maxRetries", "3"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupEnabled", "true"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupThreads", "2"));
+      // Add Redis configuration overrides for the new cache system
+      // Note: redis.url should be host:port without the redis:// scheme
+      String redisUrl = String.format("%s:%d", redisHost, redisPort);
+      configOverrides.add(ConfigOverride.config("cache.provider", "redis"));
+      configOverrides.add(ConfigOverride.config("cache.redis.url", redisUrl));
+      configOverrides.add(ConfigOverride.config("cache.redis.keyspace", "om:test"));
+      configOverrides.add(ConfigOverride.config("cache.redis.passwordRef", "test-password"));
+      configOverrides.add(ConfigOverride.config("cache.redis.connectTimeoutMs", "2000"));
+      configOverrides.add(ConfigOverride.config("cache.redis.poolSize", "16"));
+      configOverrides.add(ConfigOverride.config("cache.entityTtlSeconds", "900"));
+      configOverrides.add(ConfigOverride.config("cache.relationshipTtlSeconds", "900"));
+      configOverrides.add(ConfigOverride.config("cache.tagTtlSeconds", "900"));
 
       LOG.info("Redis configuration overrides added");
     } else {
@@ -486,6 +502,55 @@ public abstract class OpenMetadataApplicationTest {
           "Redis cache not enabled for tests (enableCache={}, cacheType={})",
           enableCache,
           cacheType);
+    }
+  }
+
+  private static void setupRdfIfEnabled() {
+    String enableRdf = System.getProperty("enableRdf");
+    String rdfContainerImage = System.getProperty("rdfContainerImage");
+    if ("true".equals(enableRdf)) {
+      LOG.info("RDF is enabled for tests. Starting Fuseki container...");
+      if (CommonUtil.nullOrEmpty(rdfContainerImage)) {
+        rdfContainerImage = "stain/jena-fuseki:latest";
+      }
+
+      try {
+        RDF_CONTAINER =
+            new GenericContainer<>(DockerImageName.parse(rdfContainerImage))
+                .withExposedPorts(3030)
+                .withEnv("ADMIN_PASSWORD", "test-admin")
+                .withEnv("FUSEKI_DATASET_1", "openmetadata")
+                .waitingFor(
+                    Wait.forHttp("/$/ping")
+                        .forPort(3030)
+                        .forStatusCode(200)
+                        .withStartupTimeout(Duration.ofMinutes(2)));
+
+        RDF_CONTAINER.start();
+        String rdfHost = RDF_CONTAINER.getHost();
+        Integer rdfPort = RDF_CONTAINER.getMappedPort(3030);
+
+        LOG.info("Fuseki container started at {}:{}", rdfHost, rdfPort);
+
+        // Add RDF configuration overrides
+        configOverrides.add(ConfigOverride.config("rdf.enabled", "true"));
+        configOverrides.add(ConfigOverride.config("rdf.storageType", "FUSEKI"));
+        configOverrides.add(
+            ConfigOverride.config(
+                "rdf.remoteEndpoint",
+                String.format("http://%s:%d/openmetadata", rdfHost, rdfPort)));
+        configOverrides.add(ConfigOverride.config("rdf.username", "admin"));
+        configOverrides.add(ConfigOverride.config("rdf.password", "test-admin"));
+        configOverrides.add(ConfigOverride.config("rdf.baseUri", "https://open-metadata.org/"));
+
+        LOG.info("RDF configuration overrides added");
+      } catch (Exception e) {
+        LOG.warn("Failed to start RDF container, disabling RDF for tests", e);
+        // If container fails to start, disable RDF but continue tests
+        configOverrides.add(ConfigOverride.config("rdf.enabled", "false"));
+      }
+    } else {
+      LOG.info("RDF not enabled for tests (enableRdf={})", enableRdf);
     }
   }
 
@@ -514,5 +579,101 @@ public abstract class OpenMetadataApplicationTest {
         .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(ELASTIC_SEARCH_TYPE);
     return esConfig;
+  }
+
+  private static void setupMinioIfEnabled() {
+    String enableMinio = System.getProperty("enableMinio");
+    String minioContainerImage = System.getProperty("minioContainerImage");
+
+    if ("true".equals(enableMinio)) {
+      LOG.info("MinIO log storage enabled for tests");
+
+      if (CommonUtil.nullOrEmpty(minioContainerImage)) {
+        minioContainerImage = "minio/minio:latest";
+      }
+
+      LOG.info("Starting MinIO container with image: {}", minioContainerImage);
+
+      MINIO_CONTAINER =
+          new GenericContainer<>(DockerImageName.parse(minioContainerImage))
+              .withExposedPorts(9000)
+              .withEnv("MINIO_ROOT_USER", "minioadmin")
+              .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
+              .withCommand("server", "/data")
+              .withReuse(false)
+              .withStartupTimeout(Duration.ofMinutes(2))
+              .waitingFor(Wait.forHttp("/minio/health/live").forPort(9000));
+
+      MINIO_CONTAINER.start();
+
+      String minioHost = MINIO_CONTAINER.getHost();
+      Integer minioPort = MINIO_CONTAINER.getFirstMappedPort();
+      String minioEndpoint = String.format("http://%s:%d", minioHost, minioPort);
+
+      MinioClient minioClient =
+          MinioClient.builder()
+              .endpoint(minioEndpoint)
+              .credentials(MINIO_ACCESS_KEY, MINIO_SECRET_KEY)
+              .build();
+
+      try {
+        if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket(MINIO_BUCKET).build())) {
+          minioClient.makeBucket(MakeBucketArgs.builder().bucket(MINIO_BUCKET).build());
+          LOG.info("Created MinIO bucket: {}", MINIO_BUCKET);
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to create MinIO bucket", e);
+        throw new RuntimeException("MinIO setup failed", e);
+      }
+
+      LOG.info("MinIO container started at {}", minioEndpoint);
+
+      // Add MinIO configuration overrides
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.type", "s3"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.enabled", "true"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.bucketName",
+              "pipeline-logs-test"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.prefix", "test-logs"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.enableServerSideEncryption",
+              "false"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.maxConcurrentStreams",
+              "10"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.awsConfig.awsAccessKeyId",
+              "minioadmin"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.awsConfig.awsSecretAccessKey",
+              "minioadmin"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.awsConfig.awsRegion",
+              "us-east-1"));
+      configOverrides.add(
+          ConfigOverride.config(
+              "pipelineServiceClientConfiguration.logStorageConfiguration.awsConfig.endPointURL",
+              minioEndpoint));
+    }
+  }
+
+  public static String getMinioEndpointForTests() {
+    if (MINIO_CONTAINER != null && MINIO_CONTAINER.isRunning()) {
+      return String.format(
+          "http://%s:%d", MINIO_CONTAINER.getHost(), MINIO_CONTAINER.getFirstMappedPort());
+    }
+    return null;
   }
 }

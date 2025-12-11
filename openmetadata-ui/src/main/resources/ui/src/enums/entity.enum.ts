@@ -30,6 +30,7 @@ export enum EntityType {
   STORAGE_SERVICE = 'storageService',
   SEARCH_SERVICE = 'searchService',
   SECURITY_SERVICE = 'securityService',
+  DRIVE_SERVICE = 'driveService',
   WEBHOOK = 'webhook',
   MLMODEL = 'mlmodel',
   TYPE = 'type',
@@ -79,6 +80,12 @@ export enum EntityType {
   WORKFLOW_DEFINITION = 'workflowDefinition',
   SERVICE = 'service',
   DATA_CONTRACT = 'dataContract',
+  INGESTION_RUNNER = 'ingestionRunner',
+  DIRECTORY = 'directory',
+  FILE = 'file',
+  SPREADSHEET = 'spreadsheet',
+  WORKSHEET = 'worksheet',
+  NOTIFICATION_TEMPLATE = 'notificationTemplate',
 }
 
 export enum EntityLineageDirection {
@@ -167,6 +174,17 @@ export enum TabSpecificField {
   USER_COUNT = 'userCount',
   VIEW_DEFINITION = 'viewDefinition',
   VOTES = 'votes',
+  DIRECTORY_TYPE = 'directoryType',
+  NUMBER_OF_FILES = 'numberOfFiles',
+  NUMBER_OF_SUB_DIRECTORIES = 'numberOfSubDirectories',
+  WORKSHEETS = 'worksheets',
+  MIME_TYPE = 'mimeType',
+  MODIFIED_TIME = 'modifiedTime',
+  CREATED_TIME = 'createdTime',
+  ROW_COUNT = 'rowCount',
+  FILE_TYPE = 'fileType',
+  FILE_EXTENSION = 'fileExtension',
+  FILE_VERSION = 'fileVersion',
 }
 
 export enum FqnPart {
@@ -190,6 +208,7 @@ export enum EntityTabs {
   TABLE_QUERIES = 'table_queries',
   PROFILER = 'profiler',
   LINEAGE = 'lineage',
+  KNOWLEDGE_GRAPH = 'knowledge_graph',
   DBT = 'dbt',
   VIEW_DEFINITION = 'view_definition',
   SCHEMA_DEFINITION = 'schema_definition',
@@ -226,6 +245,10 @@ export enum EntityTabs {
   DATA_PRODUCTS = 'data_products',
   SUBDOMAINS = 'subdomains',
   CONTRACT = 'contract',
+  DIRECTORIES = 'directories',
+  WORKSHEETS = 'worksheets',
+  FILES = 'files',
+  SPREADSHEETS = 'spreadsheets',
 }
 
 export enum EntityAction {

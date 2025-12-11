@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../../../styles/variables.less');
+@import (reference) '../../../../../styles/variables.less';
 
 .schedule-interval-v1 {
   .cron-expression-card {
@@ -38,5 +38,19 @@
         border-radius: 50%;
       }
     }
+  }
+  .ant-radio-button-wrapper.week-selector-buttons,
+  .ant-radio-button-wrapper.week-selector-buttons:first-child,
+  .ant-radio-button-wrapper.week-selector-buttons:last-child {
+    height: 32px;
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    border-width: 1px;
+  }
+  .ant-radio-button-wrapper.week-selector-buttons:not(:first-child)::before {
+    position: relative;
   }
 }

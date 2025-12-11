@@ -40,6 +40,7 @@ class DbtFilteredModel(BaseModel):
 class DbtMetaGlossaryTier(BaseModel):
     tier: Optional[str] = None
     glossary: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
 
 
 class DbtMeta(BaseModel):

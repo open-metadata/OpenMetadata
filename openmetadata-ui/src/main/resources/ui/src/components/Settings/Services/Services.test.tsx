@@ -13,8 +13,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ColumnsType } from 'antd/lib/table';
 import React, { ReactNode } from 'react';
+import { DISABLED } from '../../../constants/constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineServiceType } from '../../../generated/entity/data/pipeline';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -137,7 +139,7 @@ jest.mock('../../../rest/serviceAPI', () => ({
   getServices: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockGetServicesData)),
-  searchService: mockSearchService,
+  searchService: jest.fn().mockImplementation(() => mockSearchService()),
 }));
 
 jest.mock('../../../utils/StringsUtils', () => ({
@@ -161,6 +163,7 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
 
 jest.mock('../../../utils/ServiceUtils', () => ({
   getOptionalFields: jest.fn(),
+  getSearchIndexFromService: jest.fn(),
   getResourceEntityFromServiceCategory: jest.fn(),
   getServiceTypesFromServiceCategory: jest.fn(),
 }));
@@ -365,5 +368,18 @@ describe('Services', () => {
     expect(await screen.findByTestId('service-description')).toHaveTextContent(
       'label.no-description'
     );
+  });
+
+  it('should show add service button even if platform is disabled', async () => {
+    (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+      platform: DISABLED,
+    }));
+    await act(async () => {
+      render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
+    });
+
+    const addServiceButton = screen.getByTestId('add-service-button');
+
+    expect(addServiceButton).toBeInTheDocument();
   });
 });

@@ -3,7 +3,7 @@ In this section, we provide guides and references to use the Apache Flink connec
 
 ## Requirements
 
-OpenMetadata is integrated with flink up to version [1.19.0](https://nightlies.apache.org/flink/flink-docs-master/docs/dev/table/sql/gettingstarted/) and will continue to work for future flink versions.
+OpenMetadata is integrated with flink up to version <a href="https://nightlies.apache.org/flink/flink-docs-master/docs/dev/table/sql/gettingstarted/" target="_blank">1.19.0</a> and will continue to work for future flink versions.
 
 The ingestion framework uses flink REST APIs to connect to the instance and perform the API calls
 

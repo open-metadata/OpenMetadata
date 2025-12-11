@@ -150,7 +150,7 @@ test.describe('Listing page and add Metric flow should work', () => {
 
     await expect(page.getByTestId('heading')).toHaveText('Metrics');
     await expect(page.getByTestId('sub-heading')).toHaveText(
-      'Track the health of your data assets with metrics.'
+      'Define and catalog standardized metrics across your organization.'
     );
 
     const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');

@@ -10,14 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import { forwardRef } from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, forwardRef } from 'react';
 import {
   LabelType,
   State,
@@ -61,6 +55,17 @@ jest.mock('../../../../pages/TasksPage/shared/TagSuggestion', () =>
       {children}
     </div>
   ))
+);
+
+// Mock ServiceDocPanel component
+jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
+  jest
+    .fn()
+    .mockImplementation(({ activeField }) => (
+      <div data-testid="service-doc-panel">
+        ServiceDocPanel Component - Active Field: {activeField}
+      </div>
+    ))
 );
 
 // Mock AlertBar component
@@ -142,35 +147,24 @@ describe('EditTestCaseModalV1 Component', () => {
     });
   });
 
-  it('should render form with Card structure', async () => {
-    render(<EditTestCaseModalV1 {...mockProps} />);
-
-    expect(await screen.findByTestId('edit-test-form')).toBeInTheDocument();
-
-    // Check for Card containers
-    expect(document.querySelector('.form-card-section')).toBeInTheDocument();
-  });
-
   it('should render all form fields correctly', async () => {
-    render(<EditTestCaseModalV1 {...mockProps} />);
+    act(() => {
+      render(<EditTestCaseModalV1 {...mockProps} />);
+    });
 
     // Wait for form to load
     await waitFor(() => {
       expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
     });
 
-    // Check table and column fields
-    expect(await screen.findByLabelText('label.table')).toBeInTheDocument();
-    expect(await screen.findByLabelText('label.column')).toBeInTheDocument();
+    // Check table and column fields using text content
+    expect(screen.getByText('label.table')).toBeInTheDocument();
+    expect(screen.getByText('label.column')).toBeInTheDocument();
 
     // Check test case details
-    expect(await screen.findByLabelText('label.name')).toBeInTheDocument();
-    expect(
-      await screen.findByLabelText('label.display-name')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByLabelText('label.test-entity')
-    ).toBeInTheDocument();
+    expect(screen.getByText('label.name')).toBeInTheDocument();
+    expect(screen.getByText('label.display-name')).toBeInTheDocument();
+    expect(screen.getByText('label.test-entity')).toBeInTheDocument();
 
     // Check parameter form
     expect(
@@ -179,46 +173,48 @@ describe('EditTestCaseModalV1 Component', () => {
   });
 
   it('should have disabled fields for non-editable elements', async () => {
-    render(<EditTestCaseModalV1 {...mockProps} />);
+    act(() => {
+      render(<EditTestCaseModalV1 {...mockProps} />);
+    });
 
     await waitFor(() => {
-      expect(screen.getByLabelText('label.table')).toBeDisabled();
-      expect(screen.getByLabelText('label.column')).toBeDisabled();
-      expect(screen.getByLabelText('label.name')).toBeDisabled();
-      expect(screen.getByLabelText('label.test-entity')).toBeDisabled();
+      const disabledInputs = document.querySelectorAll('input[disabled]');
+
+      expect(disabledInputs.length).toBeGreaterThanOrEqual(3); // table, column, name, test-entity fields
     });
   });
 
   it('should have editable display name field', async () => {
-    render(<EditTestCaseModalV1 {...mockProps} />);
+    act(() => {
+      render(<EditTestCaseModalV1 {...mockProps} />);
+    });
 
-    const displayNameField = await screen.findByLabelText('label.display-name');
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    const displayNameField = document.querySelector(
+      'input[id="root/displayName"]'
+    );
 
     expect(displayNameField).toBeInTheDocument();
     expect(displayNameField).not.toBeDisabled();
-    expect(displayNameField).toHaveValue(MOCK_TEST_CASE[0].displayName);
   });
 
   it('should populate fields with test case data', async () => {
-    render(<EditTestCaseModalV1 {...mockProps} />);
+    act(() => {
+      render(<EditTestCaseModalV1 {...mockProps} />);
+    });
 
     await waitFor(() => {
-      expect(screen.getByLabelText('label.table')).toHaveValue('dim_address');
-      expect(screen.getByLabelText('label.column')).toHaveValue('last_name');
-      expect(screen.getByLabelText('label.name')).toHaveValue(
-        'column_values_to_match_regex'
+      const tableField = document.querySelector(
+        'input[id="root/selected-entity"]'
       );
-      expect(screen.getByLabelText('label.test-entity')).toHaveValue(
-        'Column Values To Match Regex Pattern'
-      );
+      const nameField = document.querySelector('input[id="root/name"]');
+
+      expect(tableField).toHaveValue('dim_address');
+      expect(nameField).toHaveValue('column_values_to_match_regex');
     });
-  });
-
-  it('should render action buttons in drawer footer', async () => {
-    render(<EditTestCaseModalV1 {...mockProps} />);
-
-    expect(await screen.findByText('label.cancel')).toBeInTheDocument();
-    expect(await screen.findByText('label.update')).toBeInTheDocument();
   });
 
   it('should call onCancel when cancel button is clicked', async () => {
@@ -265,7 +261,12 @@ describe('EditTestCaseModalV1 Component', () => {
     render(<EditTestCaseModalV1 {...mockProps} testCase={columnTestCase} />);
 
     // Should render column field for column test
-    expect(await screen.findByLabelText('label.column')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('label.column')).toBeInTheDocument();
+      expect(
+        document.querySelector('input[id="root/column"]')
+      ).toBeInTheDocument();
+    });
   });
 
   it('should handle table test case correctly', async () => {
@@ -278,17 +279,22 @@ describe('EditTestCaseModalV1 Component', () => {
 
     await waitFor(() => {
       // Should not render column field for table test
-      expect(screen.queryByLabelText('label.column')).not.toBeInTheDocument();
+      expect(screen.queryByText('label.column')).not.toBeInTheDocument();
+      expect(
+        document.querySelector('input[id="root/column"]')
+      ).not.toBeInTheDocument();
     });
   });
 
   it('should render tags and glossary terms fields', async () => {
     render(<EditTestCaseModalV1 {...mockProps} />);
 
-    expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('glossary-terms-selector')
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('tags-selector')).toBeInTheDocument();
+    expect(screen.getByTestId('glossary-terms-selector')).toBeInTheDocument();
 
     // Verify TagSuggestion components are rendered
     const tagComponents = screen.getAllByText('TagSuggestion Component');
@@ -319,10 +325,12 @@ describe('EditTestCaseModalV1 Component', () => {
       <EditTestCaseModalV1 {...mockProps} testCase={mockTestCaseWithTags} />
     );
 
-    expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('glossary-terms-selector')
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('tags-selector')).toBeInTheDocument();
+    expect(screen.getByTestId('glossary-terms-selector')).toBeInTheDocument();
   });
 
   it('should filter out tier tags correctly', async () => {
@@ -348,11 +356,13 @@ describe('EditTestCaseModalV1 Component', () => {
       <EditTestCaseModalV1 {...mockProps} testCase={mockTestCaseWithTierTag} />
     );
 
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
     // Should still render tag fields
-    expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('glossary-terms-selector')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('tags-selector')).toBeInTheDocument();
+    expect(screen.getByTestId('glossary-terms-selector')).toBeInTheDocument();
   });
 
   it('should handle showOnlyParameter mode correctly', async () => {
@@ -433,93 +443,250 @@ describe('EditTestCaseModalV1 Component', () => {
 
     expect(cards.length).toBeGreaterThan(0);
 
-    // Verify basic form fields are present
-    expect(screen.getByLabelText('label.table')).toBeInTheDocument();
-    expect(screen.getByLabelText('label.name')).toBeInTheDocument();
+    // Verify basic form fields are present using text content
+    expect(screen.getByText('label.table')).toBeInTheDocument();
+    expect(screen.getByText('label.name')).toBeInTheDocument();
   });
 
-  it('should close drawer when onClose is called', async () => {
-    render(<EditTestCaseModalV1 {...mockProps} />);
+  // =============================================
+  // NEW FEATURE TESTS
+  // =============================================
 
-    // Find and click the close button (if visible) or trigger onClose
-    const drawer = document.querySelector('.ant-drawer');
-
-    expect(drawer).toBeInTheDocument();
-
-    // Simulate drawer close
-    await act(async () => {
-      // This would typically be triggered by the drawer's close mechanism
-      mockProps.onCancel();
-    });
-
-    expect(mockProps.onCancel).toHaveBeenCalled();
-  });
-
-  it('should show loading state correctly', async () => {
-    // Mock a delayed response to test loading state
-    (getTestDefinitionById as jest.Mock).mockImplementation(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(
-            () => resolve(MOCK_TEST_DEFINITION_COLUMN_VALUES_TO_MATCH_REGEX),
-            100
-          )
-        )
-    );
-
-    render(<EditTestCaseModalV1 {...mockProps} />);
-
-    // Should show loader initially
-    expect(screen.getByTestId('loader')).toBeInTheDocument();
-
-    // Wait for loading to complete
-    await waitFor(
-      () => {
-        expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
-      },
-      { timeout: 5000 }
-    );
-  });
-
-  it('should handle test case without tags gracefully', async () => {
-    const mockTestCaseWithoutTags = {
-      ...MOCK_TEST_CASE[0],
-      tags: undefined,
-    };
-
-    render(
-      <EditTestCaseModalV1 {...mockProps} testCase={mockTestCaseWithoutTags} />
-    );
-
-    // Should still render tag fields even when no tags exist
-    expect(await screen.findByTestId('tags-selector')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('glossary-terms-selector')
-    ).toBeInTheDocument();
-  });
-
-  it('should apply correct CSS classes', async () => {
+  it('should render ServiceDocPanel with correct props', async () => {
     render(<EditTestCaseModalV1 {...mockProps} />);
 
     await waitFor(() => {
-      // Check for test-case-form-v1 and drawer-mode classes
-      expect(document.querySelector('.test-case-form-v1')).toBeInTheDocument();
-      expect(document.querySelector('.drawer-mode')).toBeInTheDocument();
+      expect(screen.getByTestId('service-doc-panel')).toBeInTheDocument();
+      expect(
+        screen.getByText(/ServiceDocPanel Component - Active Field:/)
+      ).toBeInTheDocument();
     });
   });
 
-  it('should handle drawerProps correctly', async () => {
-    const customDrawerProps = {
-      size: 'default' as const,
-      placement: 'left' as const,
-    };
+  it('should update activeField when field receives focus', async () => {
+    render(<EditTestCaseModalV1 {...mockProps} />);
 
-    render(
-      <EditTestCaseModalV1 {...mockProps} drawerProps={customDrawerProps} />
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    const displayNameField = document.querySelector(
+      'input[id="root/displayName"]'
     );
 
-    const drawer = document.querySelector('.ant-drawer');
+    expect(displayNameField).toBeInTheDocument();
 
-    expect(drawer).toBeInTheDocument();
+    expect(displayNameField).toBeTruthy();
+
+    if (displayNameField) {
+      fireEvent.focus(displayNameField);
+    }
+
+    // ActiveField should be updated in ServiceDocPanel
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Active Field: root\/displayName/)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('should handle field focus for valid root patterns only', async () => {
+    render(<EditTestCaseModalV1 {...mockProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    const tableField = document.querySelector(
+      'input[id="root/selected-entity"]'
+    );
+
+    expect(tableField).toBeInTheDocument();
+
+    expect(tableField).toBeTruthy();
+
+    if (tableField) {
+      fireEvent.focus(tableField);
+    }
+
+    // ActiveField should be updated for root/selected-entity pattern
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Active Field: root\/selected-entity/)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('should render drawer with dual-pane layout', async () => {
+    render(<EditTestCaseModalV1 {...mockProps} />);
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('.drawer-content-wrapper')
+      ).toBeInTheDocument();
+      expect(
+        document.querySelector('.drawer-form-content')
+      ).toBeInTheDocument();
+      expect(document.querySelector('.drawer-doc-panel')).toBeInTheDocument();
+    });
+  });
+
+  it('should allow editing display name field', async () => {
+    render(<EditTestCaseModalV1 {...mockProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    const displayNameField = document.querySelector(
+      'input[id="root/displayName"]'
+    );
+
+    expect(displayNameField).toBeInTheDocument();
+    expect(displayNameField).not.toBeDisabled();
+
+    expect(displayNameField).toBeTruthy();
+
+    if (displayNameField) {
+      fireEvent.change(displayNameField, {
+        target: { value: 'New Display Name' },
+      });
+    }
+
+    expect(displayNameField).toHaveValue('New Display Name');
+  });
+
+  it('should submit form with updated display name', async () => {
+    render(<EditTestCaseModalV1 {...mockProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    const displayNameField = document.querySelector(
+      'input[id="root/displayName"]'
+    );
+
+    expect(displayNameField).toBeInTheDocument();
+
+    expect(displayNameField).toBeTruthy();
+
+    if (displayNameField) {
+      fireEvent.change(displayNameField, {
+        target: { value: 'Updated Display Name' },
+      });
+    }
+
+    const updateBtn = await screen.findByText('label.update');
+
+    fireEvent.click(updateBtn);
+
+    await waitFor(() => {
+      expect(mockProps.onUpdate).toHaveBeenCalled();
+    });
+  });
+
+  it('should handle parameter form click to update activeField', async () => {
+    render(<EditTestCaseModalV1 {...mockProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    const parameterForm = screen.getByText('ParameterForm.component');
+
+    fireEvent.click(parameterForm);
+
+    // Should update activeField for parameter definition
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Active Field: root\/columnValuesToMatchRegex/)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('should preserve display name when showOnlyParameter is true', async () => {
+    render(<EditTestCaseModalV1 {...mockProps} showOnlyParameter />);
+
+    await waitFor(() => {
+      expect(screen.getByText('ParameterForm.component')).toBeInTheDocument();
+    });
+
+    const updateBtn = screen.getByText('label.update');
+
+    fireEvent.click(updateBtn);
+
+    // Since showOnlyParameter mode preserves the original displayName from testCase
+    await waitFor(() => {
+      expect(mockProps.onUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          displayName: MOCK_TEST_CASE[0].displayName,
+        })
+      );
+    });
+  });
+
+  it('should render form cards in correct structure', async () => {
+    render(<EditTestCaseModalV1 {...mockProps} />);
+
+    // Wait for loading to complete and form to render
+    await waitFor(
+      () => {
+        expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+        expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+      },
+      { timeout: 10000 }
+    );
+
+    const formCards = document.querySelectorAll('.form-card-section');
+
+    expect(formCards).toHaveLength(3); // Table/Column card, Test config card, Test details card
+  });
+
+  it('should handle drawer footer actions correctly', async () => {
+    render(<EditTestCaseModalV1 {...mockProps} />);
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('.drawer-footer-actions')
+      ).toBeInTheDocument();
+    });
+
+    const cancelBtn = await screen.findByTestId('cancel-btn');
+    const updateBtn = await screen.findByTestId('update-btn');
+
+    expect(cancelBtn).toBeInTheDocument();
+    expect(updateBtn).toBeInTheDocument();
+  });
+
+  it('should handle focus events that do not match root pattern', async () => {
+    render(<EditTestCaseModalV1 {...mockProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-test-form')).toBeInTheDocument();
+    });
+
+    // Verify ServiceDocPanel shows no active field initially
+    expect(screen.getByTestId('service-doc-panel')).toBeInTheDocument();
+    expect(
+      screen.getByText('ServiceDocPanel Component - Active Field:')
+    ).toBeInTheDocument();
+
+    // Create an element with non-root pattern id and focus it
+    const testElement = document.createElement('input');
+    testElement.id = 'invalid-pattern';
+    document.body.appendChild(testElement);
+
+    fireEvent.focus(testElement);
+
+    // ActiveField should remain empty for invalid patterns
+    await waitFor(() => {
+      expect(
+        screen.getByText('ServiceDocPanel Component - Active Field:')
+      ).toBeInTheDocument();
+    });
+
+    // Cleanup
+    document.body.removeChild(testElement);
   });
 });

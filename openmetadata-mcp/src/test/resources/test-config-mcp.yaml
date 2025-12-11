@@ -22,6 +22,8 @@ server:
   adminConnectors:
     - type: http
       port: 0
+  enableVirtualThreads: true
+  maxQueuedRequests: 1024  
 
 
 # Above configuration for running http is fine for dev and testing.
@@ -195,7 +197,7 @@ eventHandlerConfiguration:
     - "org.openmetadata.service.events.ChangeEventHandler"
 
 pipelineServiceClientConfiguration:
-  className: "org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient"
+  className: "org.openmetadata.service.pipelineService.MockPipelineServiceClient"
   metadataApiEndpoint: http://localhost:8585/api
   apiEndpoint: http://localhost:8080
   hostIp: ""
