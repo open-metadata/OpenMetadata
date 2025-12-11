@@ -21,7 +21,6 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
           "tableProfile",
           "joins",
           "changeDescription",
-          "schemaDefinition",
           "tableProfilerConfig",
           "profile",
           "location",
