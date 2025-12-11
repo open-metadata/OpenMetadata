@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/common/lineageParserConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LineageParserConfig",
+  "description": "Configuration for SQL lineage parser selection.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.common.LineageParserConfig",
+  "definitions": {
+    "lineageParserType": {
+      "description": "Type of SQL parser to use for lineage extraction. SQLGlot is recommended for best accuracy and performance (100% parse success vs 10% for SQLFluff).",
+      "type": "string",
+      "enum": ["sqlglot", "sqlfluff", "sqlparse", "auto"],
+      "default": "sqlglot"
+    }
+  },
+  "properties": {
+    "parserType": {
+      "title": "Lineage Parser Type",
+      "description": "Choose the SQL parser for lineage extraction:\n• sqlglot (default): Recommended - 100% parse success, schema-aware, 27x faster\n• sqlfluff: Legacy parser - may have parsing issues and timeouts\n• sqlparse: Generic ANSI SQL fallback\n• auto: Automatically tries sqlglot first, falls back to sqlparse",
+      "$ref": "#/definitions/lineageParserType",
+      "default": "sqlglot"
+    }
+  },
+  "additionalProperties": false
+}

@@ -9,18 +9,22 @@
     "oracleType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Oracle"],
+      "enum": [
+        "Oracle"
+      ],
       "default": "Oracle"
     },
     "oracleScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["oracle+cx_oracle"],
+      "enum": [
+        "oracle+cx_oracle"
+      ],
       "default": "oracle+cx_oracle"
     },
     "OracleDatabaseSchema": {
       "title": "Database Schema",
-      "type":"object",
+      "type": "object",
       "properties": {
         "databaseSchema": {
           "title": "DatabaseSchema",
@@ -28,11 +32,13 @@
           "type": "string"
         }
       },
-      "required": ["databaseSchema"]
+      "required": [
+        "databaseSchema"
+      ]
     },
     "OracleServiceName": {
       "title": "Oracle Service Name",
-      "type":"object",
+      "type": "object",
       "properties": {
         "oracleServiceName": {
           "title": "Oracle Service Name",
@@ -40,11 +46,13 @@
           "type": "string"
         }
       },
-      "required": ["oracleServiceName"]
+      "required": [
+        "oracleServiceName"
+      ]
     },
     "OracleTNSConnection": {
       "title": "Oracle TNS Connection",
-      "type":"object",
+      "type": "object",
       "properties": {
         "oracleTNSConnection": {
           "title": "Oracle TNS Connection String",
@@ -52,7 +60,9 @@
           "type": "string"
         }
       },
-      "required": ["oracleTNSConnection"]
+      "required": [
+        "oracleTNSConnection"
+      ]
     }
   },
   "properties": {
@@ -119,13 +129,18 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^sys$", "^ctxsys$", "^dbsnmp$", "^outln$"]
+        "excludes": [
+          "^sys$",
+          "^ctxsys$",
+          "^dbsnmp$",
+          "^outln$"
+        ]
       }
     },
     "tableFilterPattern": {
@@ -160,14 +175,23 @@
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     },
     "supportsDataDiff": {
-        "title": "Supports Data Diff Extraction.",
-        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "lineageParserType": {
+      "title": "Lineage Parser Type",
+      "description": "Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).",
+      "$ref": "common/lineageParserConfig.json#/definitions/lineageParserType",
+      "default": "sqlglot"
     }
   },
   "additionalProperties": false,
-  "required": ["username", "oracleConnectionType"]
+  "required": [
+    "username",
+    "oracleConnectionType"
+  ]
 }

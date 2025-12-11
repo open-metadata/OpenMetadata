@@ -44,7 +44,7 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser_selection import create_lineage_parser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.metabase.models import (
@@ -374,13 +374,14 @@ class MetabaseSource(DashboardServiceSource):
 
         db_service = self._get_database_service(prefix_service_name)
 
-        lineage_parser = LineageParser(
-            query,
-            (
+        lineage_parser = create_lineage_parser(
+            query=query,
+            dialect=(
                 ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
                 if db_service
                 else Dialect.ANSI
             ),
+            parser_type=self.source_config.parserType,
         )
 
         if (

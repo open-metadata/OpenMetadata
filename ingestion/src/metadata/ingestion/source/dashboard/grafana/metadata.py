@@ -42,7 +42,7 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser_selection import create_lineage_parser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.grafana.client import GrafanaApiClient
@@ -344,7 +344,11 @@ class GrafanaSource(DashboardServiceSource):
                 pass
 
             # Extract table references from the SQL
-            parser = LineageParser(sql_query, dialect)
+            parser = create_lineage_parser(
+                query=sql_query,
+                dialect=dialect,
+                parser_type=self.source_config.parserType,
+            )
             database_name_hint = getattr(datasource, "database", None)
 
             for table in parser.source_tables or []:

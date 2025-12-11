@@ -9,13 +9,17 @@
     "athenaType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Athena"],
+      "enum": [
+        "Athena"
+      ],
       "default": "Athena"
     },
     "athenaScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["awsathena+rest"],
+      "enum": [
+        "awsathena+rest"
+      ],
       "default": "awsathena+rest"
     }
   },
@@ -32,7 +36,6 @@
       "$ref": "#/definitions/athenaScheme",
       "default": "awsathena+rest"
     },
-    
     "awsConfig": {
       "title": "AWS Credentials Configuration",
       "$ref": "../../../../security/credentials/awsCredentials.json"
@@ -61,7 +64,7 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
@@ -102,14 +105,24 @@
       "default": true
     },
     "supportsDataDiff": {
-        "title": "Supports Data Diff Extraction.",
-        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "lineageParserType": {
+      "title": "Lineage Parser Type",
+      "description": "Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).",
+      "$ref": "common/lineageParserConfig.json#/definitions/lineageParserType",
+      "default": "sqlglot"
     }
   },
   "additionalProperties": false,
-  "required": ["s3StagingDir", "awsConfig", "workgroup"]
+  "required": [
+    "s3StagingDir",
+    "awsConfig",
+    "workgroup"
+  ]
 }

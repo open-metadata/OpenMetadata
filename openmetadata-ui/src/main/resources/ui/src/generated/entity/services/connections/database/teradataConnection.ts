@@ -31,6 +31,11 @@ export interface TeradataConnection {
      */
     hostPort: string;
     /**
+     * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+     * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+     */
+    lineageParserType?: LineageParserType;
+    /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
      * mechanism.
@@ -95,6 +100,20 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+ * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+ *
+ * Type of SQL parser to use for lineage extraction. SQLGlot is recommended for best
+ * accuracy and performance (100% parse success vs 10% for SQLFluff).
+ */
+export enum LineageParserType {
+    Auto = "auto",
+    Sqlfluff = "sqlfluff",
+    Sqlglot = "sqlglot",
+    Sqlparse = "sqlparse",
 }
 
 /**

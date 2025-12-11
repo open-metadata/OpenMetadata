@@ -27,6 +27,11 @@ export interface AthenaConnection {
      */
     databaseName?: string;
     /**
+     * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+     * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+     */
+    lineageParserType?: LineageParserType;
+    /**
      * S3 Staging Directory. Example: s3://postgres/input/
      */
     s3StagingDir:             string;
@@ -130,6 +135,20 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy
+ * (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).
+ *
+ * Type of SQL parser to use for lineage extraction. SQLGlot is recommended for best
+ * accuracy and performance (100% parse success vs 10% for SQLFluff).
+ */
+export enum LineageParserType {
+    Auto = "auto",
+    Sqlfluff = "sqlfluff",
+    Sqlglot = "sqlglot",
+    Sqlparse = "sqlparse",
 }
 
 /**

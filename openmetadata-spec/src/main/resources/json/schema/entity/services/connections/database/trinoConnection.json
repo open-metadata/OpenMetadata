@@ -9,13 +9,17 @@
     "trinoType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Trino"],
+      "enum": [
+        "Trino"
+      ],
       "default": "Trino"
     },
     "trinoScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["trino"],
+      "enum": [
+        "trino"
+      ],
       "default": "trino"
     }
   },
@@ -91,7 +95,7 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
-    "schemaFilterPattern":{
+    "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
@@ -138,16 +142,25 @@
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     },
     "supportsDataDiff": {
-        "title": "Supports Data Diff Extraction.",
-        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+      "title": "Supports Data Diff Extraction.",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
     "queryHistoryTable": {
       "title": "Query History Table",
       "description": "Table name to fetch the query history.",
       "type": "string",
       "default": "\"system\".\"runtime\".\"queries\""
+    },
+    "lineageParserType": {
+      "title": "Lineage Parser Type",
+      "description": "Choose the SQL parser for lineage extraction. SQLGlot is recommended for best accuracy (100% parse success vs 10% for SQLFluff) and performance (27x faster, no timeouts).",
+      "$ref": "common/lineageParserConfig.json#/definitions/lineageParserType",
+      "default": "sqlglot"
     }
   },
   "additionalProperties": false,
-  "required": ["hostPort", "username"]
+  "required": [
+    "hostPort",
+    "username"
+  ]
 }

@@ -19,6 +19,12 @@ export interface DatabaseServiceQueryUsagePipeline {
      */
     filterCondition?: string;
     /**
+     * Type of SQL parser to use for lineage extraction. Options: 'sqlglot' (default,
+     * recommended for best accuracy), 'sqlfluff' (legacy, may have parsing issues), 'sqlparse'
+     * (generic fallback), 'auto' (tries sqlglot first, falls back to sqlparse).
+     */
+    parserType?: LineageParserType;
+    /**
      * Configuration to process query cost
      */
     processQueryCostAnalysis?: boolean;
@@ -43,6 +49,21 @@ export interface DatabaseServiceQueryUsagePipeline {
      * Pipeline type
      */
     type?: DatabaseUsageConfigType;
+}
+
+/**
+ * Type of SQL parser to use for lineage extraction. Options: 'sqlglot' (default,
+ * recommended for best accuracy), 'sqlfluff' (legacy, may have parsing issues), 'sqlparse'
+ * (generic fallback), 'auto' (tries sqlglot first, falls back to sqlparse).
+ *
+ * Type of parser to use for SQL lineage extraction. SQLGlot is recommended for best
+ * accuracy and performance.
+ */
+export enum LineageParserType {
+    Auto = "auto",
+    Sqlfluff = "sqlfluff",
+    Sqlglot = "sqlglot",
+    Sqlparse = "sqlparse",
 }
 
 /**
