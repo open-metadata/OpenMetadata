@@ -227,8 +227,9 @@ const EntityFooter = ({
           'only-show-columns-with-lineage-filter-button',
           isOnlyShowColumnsWithLineageFilterActive && 'active'
         )}
+        data-testid="lineage-filter-button"
         onClick={handleOnlyShowColumnsWithLineage}>
-        <FilterIcon className="mapping-icon" height={20} width={20} />
+        <FilterIcon height={20} width={20} />
       </IconButton>
     </div>
   );
