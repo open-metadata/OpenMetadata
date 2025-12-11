@@ -70,7 +70,7 @@ const TagsForm = ({
       color: initialValues?.style?.color,
       owners: initialValues?.owners,
       domains: initialValues?.domains,
-    } as SubmitProps);
+    });
   }, [initialValues, formRef]);
 
   const disableNameField = useMemo(
@@ -197,7 +197,7 @@ const TagsForm = ({
         owners: owners?.length ? owners : undefined,
         domains: domains?.length ? domains : undefined,
       };
-      await onSubmit(submitData as SubmitProps);
+      await onSubmit(submitData);
       formRef.setFieldsValue(DEFAULT_FORM_VALUE);
     } catch {
       // Parent will handle the error

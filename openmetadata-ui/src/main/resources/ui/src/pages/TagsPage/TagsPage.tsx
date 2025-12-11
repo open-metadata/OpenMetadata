@@ -609,6 +609,7 @@ const TagsPage = () => {
         isEditing={!isUndefined(editTag)}
         isSystemTag={editTag?.provider === ProviderType.System}
         isTier={isTier}
+        key={editTag?.id ?? 'new-tag'}
         permissions={tagsFormPermissions}
         onSubmit={async (formData: SubmitProps) => {
           setIsTagFormLoading(true);
