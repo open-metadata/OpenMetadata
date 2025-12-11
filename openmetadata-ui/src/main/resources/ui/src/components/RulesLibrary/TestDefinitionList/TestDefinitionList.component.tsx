@@ -28,7 +28,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ProviderType } from '../../../generated/entity/bot';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -38,6 +45,10 @@ import {
   patchTestDefinition,
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  checkPermission,
+  DEFAULT_ENTITY_PERMISSION,
+} from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -49,6 +60,7 @@ import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.compone
 
 const TestDefinitionList = () => {
   const { t } = useTranslation();
+  const { permissions, getEntityPermissionByFqn } = usePermissionProvider();
   const {
     currentPage,
     paging,
@@ -68,6 +80,91 @@ const TestDefinitionList = () => {
   const [definitionToDelete, setDefinitionToDelete] = useState<
     TestDefinition | undefined
   >();
+  const [testDefinitionPermissions, setTestDefinitionPermissions] = useState<
+    Record<string, OperationPermission>
+  >({});
+
+  const createPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.Create,
+        ResourceEntity.TEST_DEFINITION,
+        permissions
+      ),
+    [permissions]
+  );
+
+  const viewPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.ViewBasic,
+        ResourceEntity.TEST_DEFINITION,
+        permissions
+      ) ||
+      checkPermission(
+        Operation.ViewAll,
+        ResourceEntity.TEST_DEFINITION,
+        permissions
+      ),
+    [permissions]
+  );
+
+  const fetchTestDefinitionPermissions = useCallback(
+    async (definitions: TestDefinition[]) => {
+      try {
+        const { nonSystemDefinitions, permissionPromises } = definitions.reduce(
+          (acc, def) => {
+            if (def.provider !== ProviderType.System) {
+              acc.nonSystemDefinitions.push(def);
+              acc.permissionPromises.push(
+                getEntityPermissionByFqn(
+                  ResourceEntity.TEST_DEFINITION,
+                  def.fullyQualifiedName ?? ''
+                )
+              );
+            }
+
+            return acc;
+          },
+          {
+            nonSystemDefinitions: [] as TestDefinition[],
+            permissionPromises: [] as Promise<OperationPermission>[],
+          }
+        );
+
+        const permissionResponses = await Promise.allSettled(
+          permissionPromises
+        );
+
+        const permissionsMap = definitions.reduce((acc, def) => {
+          if (def.provider === ProviderType.System) {
+            return {
+              ...acc,
+              [def.name]: DEFAULT_ENTITY_PERMISSION,
+            };
+          }
+
+          const nonSystemIndex = nonSystemDefinitions.findIndex(
+            (nsDef) => nsDef.name === def.name
+          );
+          const response = permissionResponses[nonSystemIndex];
+
+          return {
+            ...acc,
+            [def.name]:
+              response?.status === 'fulfilled'
+                ? response.value
+                : DEFAULT_ENTITY_PERMISSION,
+          };
+        }, {} as Record<string, OperationPermission>);
+
+        setTestDefinitionPermissions(permissionsMap);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [getEntityPermissionByFqn]
+  );
 
   const fetchTestDefinitions = useCallback(
     async (pagingOffset?: Partial<Paging>) => {
@@ -80,13 +177,14 @@ const TestDefinitionList = () => {
         });
         setTestDefinitions(data);
         handlePagingChange(responsePaging);
+        await fetchTestDefinitionPermissions(data);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
     },
-    [pageSize, handlePagingChange]
+    [pageSize, handlePagingChange, fetchTestDefinitionPermissions]
   );
 
   useEffect(() => {
@@ -220,34 +318,42 @@ const TestDefinitionList = () => {
         fixed: 'right',
         render: (_, record: TestDefinition) => {
           const isSystemProvider = record.provider === ProviderType.System;
+          const entityPermissions =
+            testDefinitionPermissions[record.name] || DEFAULT_ENTITY_PERMISSION;
+          const hasEditPermission = entityPermissions[Operation.EditAll];
+          const hasDeletePermission = entityPermissions[Operation.Delete];
+
+          const editTooltip = isSystemProvider
+            ? t('message.system-test-definition-edit-warning')
+            : !hasEditPermission
+            ? t('message.no-permission-for-action')
+            : t('label.edit');
+
+          const deleteTooltip = isSystemProvider
+            ? t('message.system-test-definition-delete-warning')
+            : !hasDeletePermission
+            ? t('message.no-permission-for-action')
+            : t('label.delete');
 
           return (
             <Space size={0}>
-              <Tooltip
-                title={
-                  isSystemProvider &&
-                  t('message.system-test-definition-edit-warning')
-                }>
+              <Tooltip title={editTooltip}>
                 <Button
                   data-testid={`edit-test-definition-${record.name}`}
+                  disabled={isSystemProvider || !hasEditPermission}
                   icon={<IconEdit height={16} width={16} />}
                   type="text"
                   onClick={() => handleEdit(record)}
-                  disabled={isSystemProvider}
                 />
               </Tooltip>
 
-              <Tooltip
-                title={
-                  isSystemProvider &&
-                  t('message.system-test-definition-delete-warning')
-                }>
+              <Tooltip title={deleteTooltip}>
                 <Button
                   data-testid={`delete-test-definition-${record.name}`}
+                  disabled={isSystemProvider || !hasDeletePermission}
                   icon={<IconDelete height={16} width={16} />}
                   type="text"
                   onClick={() => handleDeleteClick(record)}
-                  disabled={isSystemProvider}
                 />
               </Tooltip>
             </Space>
@@ -255,7 +361,7 @@ const TestDefinitionList = () => {
         },
       },
     ],
-    [t]
+    [t, testDefinitionPermissions]
   );
 
   const handlePageChangeCallback = ({
@@ -297,9 +403,13 @@ const TestDefinitionList = () => {
     return <Loader />;
   }
 
+  if (!viewPermission) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
+
   return (
     <>
-      <Row gutter={[16, 16]} className="bg-white p-md">
+      <Row className="bg-white p-md" gutter={[16, 16]}>
         <Col span={24}>
           <Card>
             <Row justify="space-between">
@@ -311,16 +421,18 @@ const TestDefinitionList = () => {
                   {t('message.page-sub-header-for-test-definitions')}
                 </Typography.Text>
               </Col>
-              <Col>
-                <Button
-                  data-testid="add-test-definition-button"
-                  type="primary"
-                  onClick={() => setIsFormVisible(true)}>
-                  {t('label.add-entity', {
-                    entity: t('label.test-definition'),
-                  })}
-                </Button>
-              </Col>
+              {createPermission && (
+                <Col>
+                  <Button
+                    data-testid="add-test-definition-button"
+                    type="primary"
+                    onClick={() => setIsFormVisible(true)}>
+                    {t('label.add-entity', {
+                      entity: t('label.test-definition'),
+                    })}
+                  </Button>
+                </Col>
+              )}
             </Row>
           </Card>
         </Col>
@@ -329,6 +441,7 @@ const TestDefinitionList = () => {
             <Table
               bordered
               columns={columns}
+              customPaginationProps={customPaginationProps}
               data-testid="test-definition-table"
               dataSource={testDefinitions}
               loading={isLoading}
@@ -336,7 +449,6 @@ const TestDefinitionList = () => {
               rowKey="id"
               scroll={{ x: 1200 }}
               size="small"
-              customPaginationProps={customPaginationProps}
             />
           ) : (
             <ErrorPlaceHolder />

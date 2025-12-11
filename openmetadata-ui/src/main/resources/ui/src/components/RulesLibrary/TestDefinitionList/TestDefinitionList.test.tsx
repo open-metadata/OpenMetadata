@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { ProviderType } from '../../../generated/entity/bot';
 import {
   deleteTestDefinitionByFqn,
   getListTestDefinitions,
@@ -26,20 +27,24 @@ const mockTestDefinitions = {
     {
       id: 'test-def-1',
       name: 'columnValuesToBeNotNull',
+      fullyQualifiedName: 'columnValuesToBeNotNull',
       displayName: 'Column Values To Be Not Null',
       description: 'Ensures that all values in a column are not null',
       entityType: 'COLUMN',
       testPlatforms: ['OpenMetadata'],
       enabled: true,
+      provider: ProviderType.User,
     },
     {
       id: 'test-def-2',
       name: 'tableRowCountToBeBetween',
+      fullyQualifiedName: 'tableRowCountToBeBetween',
       displayName: 'Table Row Count To Be Between',
       description: 'Ensures table row count is between min and max values',
       entityType: 'TABLE',
       testPlatforms: ['OpenMetadata', 'DBT'],
       enabled: false,
+      provider: ProviderType.System,
     },
   ],
   paging: {
@@ -52,7 +57,7 @@ jest.mock('../../../rest/testAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockTestDefinitions)),
   patchTestDefinition: jest.fn().mockImplementation(() => Promise.resolve({})),
-  deleteTestDefinitionById: jest
+  deleteTestDefinitionByFqn: jest
     .fn()
     .mockImplementation(() => Promise.resolve({})),
 }));
@@ -92,6 +97,39 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
   }),
 }));
 
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      ViewBasic: true,
+      EditAll: true,
+    }),
+    permissions: {
+      testDefinition: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        ViewBasic: true,
+        EditAll: true,
+      },
+    },
+  }),
+}));
+
+jest.mock('../../Modals/EntityDeleteModal/EntityDeleteModal', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ visible, onConfirm, onCancel }) =>
+    visible ? (
+      <div data-testid="entity-delete-modal">
+        <button onClick={onCancel}>Cancel</button>
+        <button onClick={onConfirm}>Confirm</button>
+      </div>
+    ) : null
+  ),
+}));
+
 describe('TestDefinitionList Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -122,7 +160,7 @@ describe('TestDefinitionList Component', () => {
       expect(labels).toContain('label.name');
       expect(labels).toContain('label.description');
       expect(labels).toContain('label.entity-type');
-      expect(labels).toContain('label.test-platform');
+      expect(labels).toContain('label.test-platform-plural');
       expect(labels).toContain('label.enabled');
       expect(labels).toContain('label.action-plural');
     });
@@ -200,11 +238,11 @@ describe('TestDefinitionList Component', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/label.delete-entity/)).toBeInTheDocument();
+      expect(screen.getByTestId('entity-delete-modal')).toBeInTheDocument();
     });
   });
 
-  it('should call deleteTestDefinitionById when delete is confirmed', async () => {
+  it('should call deleteTestDefinitionByFqn when delete is confirmed', async () => {
     render(<TestDefinitionList />, { wrapper: MemoryRouter });
 
     await waitFor(() => {
@@ -213,14 +251,14 @@ describe('TestDefinitionList Component', () => {
     });
 
     await waitFor(() => {
-      const confirmButton = screen.getByRole('button', {
-        name: /label.delete/,
-      });
+      const confirmButton = screen.getByText('Confirm');
       fireEvent.click(confirmButton);
     });
 
     await waitFor(() => {
-      expect(deleteTestDefinitionByFqn).toHaveBeenCalledWith('test-def-1');
+      expect(deleteTestDefinitionByFqn).toHaveBeenCalledWith(
+        'columnValuesToBeNotNull'
+      );
       expect(showSuccessToast).toHaveBeenCalled();
     });
   });
@@ -278,6 +316,62 @@ describe('TestDefinitionList Component', () => {
     await waitFor(() => {
       expect(getListTestDefinitions).toHaveBeenCalledTimes(
         initialCallCount + 1
+      );
+    });
+  });
+
+  it('should disable edit and delete buttons for System test definitions', async () => {
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      const editButtons = screen.getAllByTestId(/edit-test-definition-/);
+      const deleteButtons = screen.getAllByTestId(/delete-test-definition-/);
+
+      // First definition is User provider - should be enabled
+      expect(editButtons[0]).not.toBeDisabled();
+      expect(deleteButtons[0]).not.toBeDisabled();
+
+      // Second definition is System provider - should be disabled
+      expect(editButtons[1]).toBeDisabled();
+      expect(deleteButtons[1]).toBeDisabled();
+    });
+  });
+
+  it('should not fetch permissions for System test definitions', async () => {
+    const mockGetEntityPermissionByFqn = jest.fn().mockResolvedValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      ViewBasic: true,
+      EditAll: true,
+    });
+
+    const { usePermissionProvider } = jest.requireMock(
+      '../../../context/PermissionProvider/PermissionProvider'
+    );
+
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
+      permissions: {
+        testDefinition: {
+          Create: true,
+          Delete: true,
+          ViewAll: true,
+          ViewBasic: true,
+          EditAll: true,
+        },
+      },
+    });
+
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      // Should only be called once for the User provider test definition
+      // Not called for System provider test definition
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(1);
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+        'testDefinition',
+        'columnValuesToBeNotNull'
       );
     });
   });
