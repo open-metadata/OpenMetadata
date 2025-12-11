@@ -26,16 +26,7 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.AbstractMap;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
@@ -4611,11 +4602,11 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT source, tagFQN,  labelType, state, reason FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
+        "SELECT source, tagFQN,  labelType, state, reason, appliedAt FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@BindFQN("targetFQNHash") String targetFQNHash);
 
     @SqlQuery(
-        "SELECT targetFQNHash, source, tagFQN, labelType, state, reason "
+        "SELECT targetFQNHash, source, tagFQN, labelType, state, reason, appliedAt "
             + "FROM tag_usage "
             + "WHERE targetFQNHash IN (<targetFQNHashes>) "
             + "ORDER BY targetFQNHash, tagFQN")
@@ -4641,7 +4632,9 @@ public interface CollectionDAO {
                 .withSource(TagLabel.TagSource.values()[usage.getSource()])
                 .withTagFQN(usage.getTagFQN())
                 .withLabelType(TagLabel.LabelType.DERIVED)
-                .withState(TagLabel.State.values()[usage.getState()]);
+                .withState(TagLabel.State.values()[usage.getState()])
+                .withReason(usage.getReason())
+                .withAppliedAt(usage.toTagLabel().getAppliedAt());
         if (usage.getReason() != null) {
           tagLabel.withReason(usage.getReason());
         }
@@ -4653,7 +4646,7 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, "
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, "
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
@@ -4665,7 +4658,7 @@ public interface CollectionDAO {
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, "
+            "SELECT tu.source, tu.tagFQN, tu.labelType, tu.targetFQNHash, tu.state, tu.reason, tu.appliedAt, "
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
@@ -4892,7 +4885,8 @@ public interface CollectionDAO {
             .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
             .withState(TagLabel.State.values()[r.getInt("state")])
             .withTagFQN(r.getString("tagFQN"))
-            .withReason(r.getString("reason"));
+            .withReason(r.getString("reason"))
+            .withAppliedAt(r.getTimestamp("appliedAt"));
       }
     }
 
@@ -4914,7 +4908,8 @@ public interface CollectionDAO {
                 .withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
                 .withState(TagLabel.State.values()[r.getInt("state")])
                 .withTagFQN(r.getString("tagFQN"))
-                .withReason(r.getString("reason"));
+                .withReason(r.getString("reason"))
+                .withAppliedAt(r.getTimestamp("appliedAt"));
         TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
         if (source == TagLabel.TagSource.CLASSIFICATION) {
           Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
@@ -4945,6 +4940,7 @@ public interface CollectionDAO {
         tag.setLabelType(rs.getInt("labelType"));
         tag.setState(rs.getInt("state"));
         tag.setReason(rs.getString("reason"));
+        tag.setAppliedAt(rs.getTimestamp("appliedAt"));
         return tag;
       }
     }
@@ -4958,6 +4954,7 @@ public interface CollectionDAO {
       private int labelType;
       private int state;
       private String reason;
+      private Date appliedAt;
 
       // Getters and Setters
 
@@ -4968,6 +4965,7 @@ public interface CollectionDAO {
         tagLabel.setLabelType(TagLabel.LabelType.values()[this.labelType]);
         tagLabel.setState(TagLabel.State.values()[this.state]);
         tagLabel.setReason(this.reason);
+        tagLabel.setAppliedAt(this.appliedAt);
         return tagLabel;
       }
     }
@@ -5109,7 +5107,7 @@ public interface CollectionDAO {
     long getTotalTagUsageCount();
 
     @SqlQuery(
-        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
+        "SELECT source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedAt FROM tag_usage ORDER BY source, tagFQNHash LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(TagUsageObjectMapper.class)
     List<TagUsageObject> getAllTagUsagesPaginated(
         @Bind("offset") long offset, @Bind("limit") int limit);
@@ -5132,6 +5130,7 @@ public interface CollectionDAO {
     private int labelType;
     private int state;
     private String reason;
+    private Date appliedAt;
   }
 
   class TagUsageObjectMapper implements RowMapper<TagUsageObject> {
@@ -5145,6 +5144,7 @@ public interface CollectionDAO {
           .labelType(r.getInt("labelType"))
           .state(r.getInt("state"))
           .reason(r.getString("reason"))
+          .appliedAt(r.getTimestamp("appliedAt"))
           .build();
     }
   }

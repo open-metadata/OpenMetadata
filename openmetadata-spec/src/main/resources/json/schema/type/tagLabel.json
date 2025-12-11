@@ -57,6 +57,11 @@
     "reason": {
       "type": "string",
       "description": "An explanation of why this tag was proposed, specially for autoclassification tags"
+    },
+    "appliedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when this tag was applied in ISO 8601 format"
     }
   },
   "required": ["tagFQN", "source", "labelType", "state"],
