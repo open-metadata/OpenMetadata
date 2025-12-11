@@ -403,6 +403,7 @@ class OpenMetadata(
         fqn: Union[str, FullyQualifiedEntityName],
         fields: Optional[List[str]] = None,
         nullable: bool = True,
+        include: Optional[str] = None,
     ) -> Optional[T]:
         """
         Return entity by name or None
@@ -413,6 +414,7 @@ class OpenMetadata(
             path=f"name/{quote(fqn)}",
             fields=fields,
             nullable=nullable,
+            include=include,
         )
 
     def get_by_id(
@@ -438,6 +440,7 @@ class OpenMetadata(
         path: str,
         fields: Optional[List[str]] = None,
         nullable: bool = True,
+        include: Optional[str] = None,
     ) -> Optional[T]:
         """
         Generic GET operation for an entity
@@ -446,8 +449,11 @@ class OpenMetadata(
         :param fields: List of fields to return
         """
         fields_str = "?fields=" + ",".join(fields) if fields else ""
+        include = f"&include={include}" if include else ""
         try:
-            resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}")
+            resp = self.client.get(
+                f"{self.get_suffix(entity)}/{path}{fields_str}{include}"
+            )
             if not resp:
                 raise EmptyPayloadException(
                     f"Got an empty response when trying to GET from {self.get_suffix(entity)}/{path}{fields_str}"
@@ -502,6 +508,7 @@ class OpenMetadata(
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
         skip_on_failure: bool = False,
+        include: Optional[str] = None,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -512,8 +519,10 @@ class OpenMetadata(
         url_after = f"&after={after}" if after else ""
         url_before = f"&before={before}" if before else ""
         url_fields = f"&fields={','.join(fields)}" if fields else ""
+        url_include = f"&include={include}" if include else ""
         resp = self.client.get(
-            path=f"{suffix}{url_limit}{url_after}{url_before}{url_fields}", data=params
+            path=f"{suffix}{url_limit}{url_after}{url_before}{url_fields}{url_include}",
+            data=params,
         )
 
         if self._use_raw_data:
@@ -547,6 +556,7 @@ class OpenMetadata(
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
         skip_on_failure: bool = False,
+        include: Optional[str] = None,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -565,6 +575,7 @@ class OpenMetadata(
             limit=limit,
             params=params,
             skip_on_failure=skip_on_failure,
+            include=include,
         )
         yield from entity_list.entities
 
@@ -577,6 +588,7 @@ class OpenMetadata(
                 params=params,
                 after=after,
                 skip_on_failure=skip_on_failure,
+                include=include,
             )
             yield from entity_list.entities
             after = entity_list.after
@@ -635,6 +647,40 @@ class OpenMetadata(
         url += f"?recursive={str(recursive).lower()}"
         url += f"&hardDelete={str(hard_delete).lower()}"
         self.client.delete(url)
+
+    def restore(
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+    ) -> Optional[T]:
+        """
+        API call to restore a soft-deleted entity from entity ID
+
+        Args
+            entity (T): entity Type
+            entity_id (basic.Uuid): entity ID
+        Returns
+            Restored entity or None
+        """
+        try:
+            url = f"{self.get_suffix(entity)}/restore"
+            data = {"id": model_str(entity_id)}
+            resp = self.client.put(url, json=data)
+            if not resp:
+                raise EmptyPayloadException(
+                    f"Got an empty response when trying to restore {entity.__name__} with ID {entity_id}"
+                )
+            return entity(**resp)
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Failed to restore %s with ID %s. Error %s - %s",
+                entity.__name__,
+                entity_id,
+                err.status_code,
+                err,
+            )
+            return None
 
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
         """
