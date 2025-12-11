@@ -528,7 +528,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'description',
         key: 'description',
         ellipsis: true,
-        render: (text: string) => <span>{text}</span>,
+        render: (text: string) => <span>{isEmpty(text) ? NO_DATA : text}</span>,
       },
       {
         title: t('label.domain-plural'),
