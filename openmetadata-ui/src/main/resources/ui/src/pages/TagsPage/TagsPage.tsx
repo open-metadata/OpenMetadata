@@ -25,7 +25,6 @@ import ClassificationDetails from '../../components/Classifications/Classificati
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import { useFormDrawerWithRef } from '../../components/common/atoms/drawer';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
@@ -686,7 +685,7 @@ const TagsPage = () => {
 
   const leftPanelLayout = useMemo(
     () => (
-      <LeftPanelCard id="tags">
+      <div className="h-full" data-testid="tags-left-panel">
         <TagsLeftPanelSkeleton loading={isLoading}>
           <div className="p-y-xs" data-testid="data-summary-container">
             <Space
@@ -751,7 +750,7 @@ const TagsPage = () => {
             ))}
           </div>
         </TagsLeftPanelSkeleton>
-      </LeftPanelCard>
+      </div>
     ),
     [
       isLoading,

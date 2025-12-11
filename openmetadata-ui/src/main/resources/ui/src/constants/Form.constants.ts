@@ -14,11 +14,7 @@
 import { Rule } from 'antd/lib/form';
 
 import i18n from '../utils/i18next/LocalUtil';
-import {
-  ENTITY_NAME_REGEX,
-  NAME_LENGTH_REGEX,
-  TAG_NAME_REGEX,
-} from './regex.constants';
+import { ENTITY_NAME_REGEX } from './regex.constants';
 
 export const NAME_FIELD_RULES: Rule[] = [
   {
@@ -51,26 +47,5 @@ export const DISPLAY_NAME_FIELD_RULES: Rule[] = [
       min: 1,
       max: 128,
     }),
-  },
-];
-
-export const MUI_NAME_FIELD_RULES: Rule[] = [
-  {
-    required: true,
-    message: i18n.t('label.field-required', {
-      field: i18n.t('label.name'),
-    }),
-  },
-  {
-    pattern: NAME_LENGTH_REGEX,
-    message: i18n.t('message.entity-size-in-between', {
-      entity: i18n.t('label.name'),
-      min: 2,
-      max: 64,
-    }),
-  },
-  {
-    pattern: TAG_NAME_REGEX,
-    message: i18n.t('message.entity-name-validation'),
   },
 ];
