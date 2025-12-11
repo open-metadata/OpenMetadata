@@ -208,6 +208,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             highlight
             fixedOrderOptions={field.key === TIER_FQN_KEY}
             hasNullOption={hasNullOption}
+            hideCounts={fields.hideCounts ?? false}
             independent={independent}
             index={index as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}

@@ -230,6 +230,12 @@ class DbtcloudSource(PipelineServiceSource):
                 }
 
             for model in dbt_models or []:
+                if not model.runGeneratedAt:
+                    logger.debug(
+                        f"Skipping model with missing runGeneratedAt: name={getattr(model, 'name', None)}"
+                    )
+                    continue
+
                 if not all([model.name, model.database, model.dbtschema]):
                     logger.debug(
                         f"Skipping model with missing attributes: name={getattr(model, 'name', None)}, "
@@ -267,6 +273,15 @@ class DbtcloudSource(PipelineServiceSource):
                         # Use dict lookup instead of list comprehension
                         parent = parent_by_unique_id.get(unique_id)
                         if not parent:
+                            continue
+
+                        # Check runGeneratedAt for models and seeds (not sources)
+                        # Sources are auto-generated and don't have runGeneratedAt
+                        is_source = unique_id.startswith("source.")
+                        if not is_source and not parent.runGeneratedAt:
+                            logger.debug(
+                                f"Skipping parent with missing runGeneratedAt: uniqueId={unique_id}"
+                            )
                             continue
 
                         if not all([parent.name, parent.database, parent.dbtschema]):

@@ -175,6 +175,7 @@ const CustomControls: FC<{
       setSelectedQuickFilters(updatedQuickFilters);
     }
   }, []);
+
   const queryParams = useMemo(() => {
     return QueryString.parse(location.search, {
       ignoreQueryPrefix: true,

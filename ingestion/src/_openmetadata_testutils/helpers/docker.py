@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import os
+import re
 import tarfile
 
 import docker
@@ -13,7 +14,10 @@ def try_bind(container, container_port, host_port):
     try:
         with container.with_bind_ports(container_port, host_port) as container:
             yield container
-    except docker.errors.APIError:
+    except docker.errors.APIError as e:
+        if not re.search(rf"Bind for .+:{host_port} failed", e.explanation):
+            raise e
+
         logging.warning("Port %s is already in use, trying another port", host_port)
         with container.with_bind_ports(container_port, None) as container:
             yield container

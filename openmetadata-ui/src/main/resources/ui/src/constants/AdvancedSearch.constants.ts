@@ -289,6 +289,14 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
 export const LINEAGE_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   {
+    label: 'label.database',
+    key: EntityFields.DATABASE,
+  },
+  {
+    label: 'label.schema',
+    key: EntityFields.DATABASE_SCHEMA,
+  },
+  {
     label: 'label.column',
     key: EntityFields.COLUMN,
   },

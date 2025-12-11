@@ -2009,6 +2009,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               entityDetails={{ details: selectedNode }}
               handleClosePanel={onCloseDrawer}
               nodesPerLayer={lineageConfig.nodesPerLayer}
+              panelPath="lineage"
               pipelineViewMode={lineageConfig.pipelineViewMode}
               upstreamDepth={lineageConfig.upstreamDepth}
             />

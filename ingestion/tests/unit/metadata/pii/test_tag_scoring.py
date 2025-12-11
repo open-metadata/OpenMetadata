@@ -11,29 +11,34 @@
 """
 Unit tests for PII classifiers
 """
-import uuid
 from unittest.mock import Mock
 
 import pytest
+from dirty_equals import HasAttributes, IsInstance, IsNumeric
 from presidio_analyzer.nlp_engine import NlpEngine
 
+from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
+    TagFactory,
+)
+from _openmetadata_testutils.factories.metadata.generated.schema.type.recognizer import (
+    PatternFactory,
+    PatternRecognizerFactory,
+    RecognizerFactory,
+)
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
-from metadata.generated.schema.type.patternRecognizer import PatternRecognizer
+from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.piiEntity import PIIEntity
-from metadata.generated.schema.type.recognizer import (
-    Recognizer,
-    RecognizerConfig,
-    RecognizerException,
-    Target,
-)
-from metadata.generated.schema.type.recognizers.patterns import Pattern
-from metadata.generated.schema.type.recognizers.regexFlags import RegexFlags
-from metadata.pii.algorithms.classifiers import TagClassifier
+from metadata.generated.schema.type.recognizer import RecognizerException, Target
+from metadata.pii.algorithms.tag_scoring import TagScorer
+from metadata.pii.models import ScoredTag
 from metadata.pii.tag_analyzer import TagAnalyzer
 
 
-class TestTagClassifier:
+class TestTagScorer:
     """Test the TagClassifier with TagAnalyzers"""
 
     @pytest.fixture
@@ -60,106 +65,92 @@ class TestTagClassifier:
         )
 
     @pytest.fixture
-    def email_tag(self, column_to_ignore: Column) -> Tag:
+    def email_tag(
+        self, column_to_ignore: Column, pii_classification: Classification
+    ) -> Tag:
         """Create email tag for testing"""
-        return Tag(
-            id=uuid.uuid4(),
-            name="EmailTag",
-            fullyQualifiedName="PII.EmailTag",
-            description="Tag for email addresses",
-            autoClassificationEnabled=True,
-            recognizers=[
-                Recognizer(
-                    id=uuid.uuid4(),
-                    name="EmailRecognizer",
-                    description="Recognizes email addresses",
-                    recognizerConfig=RecognizerConfig(
-                        root=PatternRecognizer(
-                            type="pattern",
-                            patterns=[
-                                Pattern(
-                                    name="Email pattern",
-                                    regex="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
-                                    score=0.9,
-                                )
-                            ],
-                            supportedEntity=PIIEntity.EMAIL_ADDRESS,
-                            regexFlags=RegexFlags(),
-                            context=[],
-                            supportedLanguage="en",
-                        ),
-                    ),
-                    confidenceThreshold=0.7,
-                    exceptionList=[
-                        RecognizerException(
-                            entityLink="<#E::table::test.table::columns::ignore_column>",
-                            reason="Not my style",
-                        )
-                    ],
-                    target=Target.content,
-                ),
-                Recognizer(
-                    id=uuid.uuid4(),
-                    name="EmailColumnNameRecognizer",
-                    description="Recognizes email address columns",
-                    recognizerConfig=RecognizerConfig(
-                        root=PatternRecognizer(
-                            type="pattern",
-                            patterns=[
-                                Pattern(
-                                    name="Email pattern",
-                                    regex="^email_address$",
-                                    score=0.9,
-                                )
-                            ],
-                            supportedEntity=PIIEntity.EMAIL_ADDRESS,
-                            regexFlags=RegexFlags(),
-                            context=[],
-                            supportedLanguage="en",
-                        ),
-                    ),
-                    confidenceThreshold=0.7,
-                    exceptionList=[],
-                    target=Target.column_name,
-                ),
+        email_pattern = PatternFactory.create(
+            name="Email pattern",
+            regex="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+            score=0.9,
+        )
+        email_pattern_recognizer = PatternRecognizerFactory.create(
+            patterns=[email_pattern],
+            supportedEntity=PIIEntity.EMAIL_ADDRESS,
+            context=[],
+            supportedLanguage="en",
+        )
+        email_recognizer = RecognizerFactory.create(
+            name="EmailRecognizer",
+            description="Recognizes email addresses",
+            recognizerConfig=email_pattern_recognizer,
+            confidenceThreshold=0.7,
+            exceptionList=[
+                RecognizerException(
+                    entityLink="<#E::table::test.table::columns::ignore_column>",
+                    reason="Not my style",
+                )
             ],
+            target=Target.content,
+        )
+
+        column_name_pattern = PatternFactory.create(
+            name="Email pattern",
+            regex="^email_address$",
+            score=0.9,
+        )
+        column_name_pattern_recognizer = PatternRecognizerFactory.create(
+            patterns=[column_name_pattern],
+            supportedEntity=PIIEntity.EMAIL_ADDRESS,
+            context=[],
+            supportedLanguage="en",
+        )
+        column_name_recognizer = RecognizerFactory.create(
+            name="EmailColumnNameRecognizer",
+            description="Recognizes email address columns",
+            recognizerConfig=column_name_pattern_recognizer,
+            confidenceThreshold=0.7,
+            exceptionList=[],
+            target=Target.column_name,
+        )
+
+        return TagFactory.create(
+            tag_name="EmailTag",
+            tag_classification=pii_classification,
+            autoClassificationEnabled=True,
+            recognizers=[email_recognizer, column_name_recognizer],
+            description="Tag for email addresses",
         )
 
     @pytest.fixture
-    def phone_tag(self) -> Tag:
+    def phone_tag(self, pii_classification: Classification) -> Tag:
         """Create phone tag for testing"""
-        return Tag(
-            id=uuid.uuid4(),
-            name="PhoneTag",
-            fullyQualifiedName="PII.PhoneTag",
-            description="Tag for phone numbers",
+        phone_pattern = PatternFactory.create(
+            name="US Phone pattern",
+            regex="\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b",
+            score=0.85,
+        )
+        phone_pattern_recognizer = PatternRecognizerFactory.create(
+            patterns=[phone_pattern],
+            supportedEntity=PIIEntity.PHONE_NUMBER,
+            context=[],
+            supportedLanguage="en",
+        )
+        phone_recognizer = RecognizerFactory.create(
+            name="PhoneRecognizer",
+            description="Recognizes phone numbers",
+            recognizerConfig=phone_pattern_recognizer,
+            confidenceThreshold=0.6,
+            exceptionList=[],
+            target=Target.content,
+        )
+
+        return TagFactory.create(
+            tag_name="PhoneTag",
+            tag_classification=pii_classification,
             autoClassificationEnabled=True,
-            recognizers=[
-                Recognizer(
-                    id=uuid.uuid4(),
-                    name="PhoneRecognizer",
-                    description="Recognizes phone numbers",
-                    recognizerConfig=RecognizerConfig(
-                        root=PatternRecognizer(
-                            type="pattern",
-                            patterns=[
-                                Pattern(
-                                    name="US Phone pattern",
-                                    regex="\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b",
-                                    score=0.85,
-                                )
-                            ],
-                            supportedEntity=PIIEntity.PHONE_NUMBER,
-                            regexFlags=RegexFlags(),
-                            context=[],
-                            supportedLanguage="en",
-                        ),
-                    ),
-                    confidenceThreshold=0.6,
-                    exceptionList=[],
-                    target=Target.content,
-                )
-            ],
+            recognizers=[phone_recognizer],
+            description="Tag for phone numbers",
         )
 
     @pytest.fixture
@@ -173,7 +164,7 @@ class TestTagClassifier:
     @pytest.fixture
     def classifier(self, tag_analyzers):
         """Create a TagClassifier instance with tag analyzers"""
-        return TagClassifier(
+        return TagScorer(
             tag_analyzers=tag_analyzers,
             column_name_contribution=0.5,
             score_cutoff=0.1,
@@ -190,9 +181,18 @@ class TestTagClassifier:
 
         scores = classifier.predict_scores(sample_data, column_name="customer_email")
 
+        assert len(scores) == 1
+        scored_tag = scores[0]
+
         # Should detect emails through tag analyzer
-        assert "PII.EmailTag" in scores
-        assert scores["PII.EmailTag"] > 0.5
+        assert scored_tag == IsInstance(ScoredTag) & HasAttributes(
+            tag=IsInstance(Tag)
+            & HasAttributes(
+                name=EntityName(root="EmailTag"),
+                fullyQualifiedName="PII.EmailTag",
+            ),
+            score=IsNumeric(gt=0.5),
+        )
 
     def test_classify_phone_with_tag_analyzer(self, classifier, phone_tag):
         """Test classification with phone data using TagAnalyzer"""
@@ -200,20 +200,29 @@ class TestTagClassifier:
 
         scores = classifier.predict_scores(sample_data, column_name="contact_phone")
 
-        # Should detect phones through tag analyzer
-        assert "PII.PhoneTag" in scores
-        assert scores["PII.PhoneTag"] > 0.5
+        assert len(scores) == 1
+        scored_tag = scores[0]
+
+        # Should detect emails through tag analyzer
+        assert scored_tag == IsInstance(ScoredTag) & HasAttributes(
+            tag=IsInstance(Tag)
+            & HasAttributes(
+                name=EntityName(root="PhoneTag"),
+                fullyQualifiedName="PII.PhoneTag",
+            ),
+            score=IsNumeric(gt=0.5),
+        )
 
     def test_empty_data_returns_empty(self, classifier):
         """Test that empty data returns empty scores"""
         scores = classifier.predict_scores([])
-        assert scores == {}
+        assert scores == []
 
     def test_low_cardinality_returns_empty(self, classifier):
         """Test that low cardinality data returns empty scores"""
         sample_data = ["same_value"] * 100
         scores = classifier.predict_scores(sample_data)
-        assert scores == {}
+        assert scores == []
 
     def test_mixed_data_detection(self, classifier):
         """Test detection of mixed PII types"""
@@ -231,7 +240,7 @@ class TestTagClassifier:
     def test_score_cutoff_filtering(self, tag_analyzers):
         """Test that scores below cutoff are filtered"""
         # Create a classifier with high cutoff
-        high_cutoff_classifier = TagClassifier(
+        high_cutoff_classifier = TagScorer(
             tag_analyzers=tag_analyzers,
             column_name_contribution=0.5,
             score_cutoff=0.95,  # Very high cutoff
@@ -239,10 +248,14 @@ class TestTagClassifier:
         )
 
         sample_data = ["maybe an email@somewhere", "could be phone 123456"]
-        scores = high_cutoff_classifier.predict_scores(sample_data, column_name="data")
+        scored_tags = high_cutoff_classifier.predict_scores(
+            sample_data, column_name="data"
+        )
 
         # With such a high cutoff, weak matches should be filtered
-        assert len(scores) == 0 or all(score >= 0.95 for score in scores.values())
+        assert len(scored_tags) == 0 or all(
+            scored_tag.score >= 0.95 for scored_tag in scored_tags
+        )
 
     def test_column_name_contribution(self, classifier):
         """Test that column name contributes to score"""
@@ -281,38 +294,31 @@ class TestTagAnalyzer:
     @pytest.fixture
     def email_tag(self) -> Tag:
         """Create email tag for testing"""
-        return Tag(
-            id=uuid.uuid4(),
-            name="EmailTag",
-            fullyQualifiedName="PII.EmailTag",
-            description="Tag for email addresses",
+        email_pattern = PatternFactory.create(
+            name="Email pattern",
+            regex="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+            score=0.9,
+        )
+        email_pattern_recognizer = PatternRecognizerFactory.create(
+            patterns=[email_pattern],
+            supportedEntity=PIIEntity.EMAIL_ADDRESS,
+            context=[],
+            supportedLanguage="en",
+        )
+        email_recognizer = RecognizerFactory.create(
+            name="EmailRecognizer",
+            description="Recognizes email addresses",
+            recognizerConfig=email_pattern_recognizer,
+            confidenceThreshold=0.7,
+            exceptionList=[],
+            target=Target.content,
+        )
+
+        return TagFactory.create(
+            tag_name="EmailTag",
             autoClassificationEnabled=True,
-            recognizers=[
-                Recognizer(
-                    id=uuid.uuid4(),
-                    name="EmailRecognizer",
-                    description="Recognizes email addresses",
-                    recognizerConfig=RecognizerConfig(
-                        root=PatternRecognizer(
-                            type="pattern",
-                            patterns=[
-                                Pattern(
-                                    name="Email pattern",
-                                    regex="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
-                                    score=0.9,
-                                )
-                            ],
-                            supportedEntity=PIIEntity.EMAIL_ADDRESS,
-                            regexFlags=RegexFlags(),
-                            context=[],
-                            supportedLanguage="en",
-                        ),
-                    ),
-                    confidenceThreshold=0.7,
-                    exceptionList=[],
-                    target=Target.content,
-                )
-            ],
+            recognizers=[email_recognizer],
+            description="Tag for email addresses",
         )
 
     @pytest.fixture
@@ -343,32 +349,27 @@ class TestTagAnalyzer:
         )
 
         # Add column name recognizer to tag
-        email_tag.recognizers.append(
-            Recognizer(
-                id=uuid.uuid4(),
-                name="EmailColumnRecognizer",
-                description="Recognizes email columns",
-                recognizerConfig=RecognizerConfig(
-                    root=PatternRecognizer(
-                        type="pattern",
-                        patterns=[
-                            Pattern(
-                                name="Email column pattern",
-                                regex=".*email.*",
-                                score=0.8,
-                            )
-                        ],
-                        supportedEntity=PIIEntity.EMAIL_ADDRESS,
-                        regexFlags=RegexFlags(ignoreCase=True),
-                        context=[],
-                        supportedLanguage="en",
-                    ),
-                ),
-                confidenceThreshold=0.6,
-                exceptionList=[],
-                target=Target.column_name,
-            )
+        column_name_pattern = PatternFactory.create(
+            name="Email column pattern",
+            regex=".*email.*",
+            score=0.8,
         )
+        column_name_pattern_recognizer = PatternRecognizerFactory.create(
+            patterns=[column_name_pattern],
+            supportedEntity=PIIEntity.EMAIL_ADDRESS,
+            regexFlags__ignoreCase=True,
+            context=[],
+            supportedLanguage="en",
+        )
+        column_name_recognizer = RecognizerFactory.create(
+            name="EmailColumnRecognizer",
+            description="Recognizes email columns",
+            recognizerConfig=column_name_pattern_recognizer,
+            confidenceThreshold=0.6,
+            exceptionList=[],
+            target=Target.column_name,
+        )
+        email_tag.recognizers.append(column_name_recognizer)
 
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
         score = analyzer.analyze_column()
@@ -386,30 +387,25 @@ class TestTagAnalyzer:
 
     def test_disabled_auto_classification(self, column, nlp_engine):
         """Test that disabled auto-classification returns no recognizers"""
-        tag = Tag(
-            id=uuid.uuid4(),
-            name="DisabledTag",
-            fullyQualifiedName="Test.DisabledTag",
-            description="Tag with disabled auto-classification",
+        test_pattern = PatternFactory.create(name="test", regex=".*", score=1.0)
+        test_pattern_recognizer = PatternRecognizerFactory.create(
+            patterns=[test_pattern],
+            supportedEntity=PIIEntity.EMAIL_ADDRESS,
+            context=[],
+            supportedLanguage="en",
+        )
+        test_recognizer = RecognizerFactory.create(
+            name="TestRecognizer",
+            description="Should not be used",
+            recognizerConfig=test_pattern_recognizer,
+            target=Target.content,
+        )
+
+        tag = TagFactory.create(
+            tag_name="DisabledTag",
             autoClassificationEnabled=False,
-            recognizers=[
-                Recognizer(
-                    id=uuid.uuid4(),
-                    name="TestRecognizer",
-                    description="Should not be used",
-                    recognizerConfig=RecognizerConfig(
-                        root=PatternRecognizer(
-                            type="pattern",
-                            patterns=[Pattern(name="test", regex=".*", score=1.0)],
-                            supportedEntity=PIIEntity.EMAIL_ADDRESS,
-                            regexFlags=RegexFlags(),
-                            context=[],
-                            supportedLanguage="en",
-                        ),
-                    ),
-                    target=Target.content,
-                )
-            ],
+            recognizers=[test_recognizer],
+            description="Tag with disabled auto-classification",
         )
 
         analyzer = TagAnalyzer(tag=tag, column=column, nlp_engine=nlp_engine)

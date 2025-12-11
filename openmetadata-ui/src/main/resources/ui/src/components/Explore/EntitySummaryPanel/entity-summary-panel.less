@@ -16,7 +16,12 @@
 
 .entity-summary-panel-container {
   height: 100%;
-  background: @background-primary;
+  background: @white;
+  &.explore,
+  &.lineage,
+  &.glossary-term-assets-tab {
+    background: @background-primary;
+  }
 
   .overview-tab-content {
     height: 100vh;
@@ -24,7 +29,8 @@
   .summary-panel-container {
     position: sticky;
     box-shadow: none;
-    width: 78%;
+    width: 100%;
+    height: 100%;
     font-size: 14px;
     overflow: hidden;
     border-bottom: none !important;
@@ -73,18 +79,15 @@
       display: inherit;
       flex-direction: row;
       position: relative;
-      .scrollable-card-body();
       width: 100%;
     }
 
     .content-area {
-      max-height: calc(100vh - 120px);
       overflow-y: auto;
       flex: 1;
       overflow-x: hidden;
       overflow-y: auto;
       -ms-overflow-style: none;
-      scrollbar-width: none;
       height: 100%;
       border-radius: 8px;
       position: relative;

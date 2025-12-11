@@ -26,6 +26,7 @@ export interface TeamHierarchyProps {
     updateChildNode?: boolean
   ) => void;
   isFetchingAllTeamAdvancedDetails: boolean;
+  isSearchLoading: boolean;
   searchTerm?: string;
   showDeletedTeam: boolean;
   onShowDeletedTeamChange: () => void;

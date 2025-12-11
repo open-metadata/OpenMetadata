@@ -116,7 +116,8 @@
         "Validity",
         "Uniqueness",
         "Integrity",
-        "SQL"
+        "SQL",
+        "NoDimension"
       ]
     }
   },

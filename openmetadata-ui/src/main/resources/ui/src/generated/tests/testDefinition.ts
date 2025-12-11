@@ -167,6 +167,7 @@ export enum DataQualityDimensions {
     Completeness = "Completeness",
     Consistency = "Consistency",
     Integrity = "Integrity",
+    NoDimension = "NoDimension",
     SQL = "SQL",
     Uniqueness = "Uniqueness",
     Validity = "Validity",

@@ -23,6 +23,10 @@ export interface DbtCloudConnection {
      */
     discoveryAPI: string;
     /**
+     * List of IDs of your DBT cloud environments separated by comma `,`
+     */
+    environmentIds?: string[];
+    /**
      * DBT cloud Access URL.
      */
     host: string;

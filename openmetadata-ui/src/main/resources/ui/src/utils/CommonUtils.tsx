@@ -50,6 +50,7 @@ import { useApplicationStore } from '../hooks/useApplicationStore';
 import { FeedCounts } from '../interface/feed.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
+import brandClassBase from './BrandData/BrandClassBase';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
 import i18n, { t } from './i18next/LocalUtil';
@@ -667,6 +668,7 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
     return t('message.permanently-delete-metadata-and-dependents', {
       entityName: entity,
       dependents,
+      brandName: brandClassBase.getPageTitle(),
     });
   } else {
     return (
@@ -677,6 +679,7 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
         }
         values={{
           entityName: entity,
+          brandName: brandClassBase.getPageTitle(),
         }}
       />
     );

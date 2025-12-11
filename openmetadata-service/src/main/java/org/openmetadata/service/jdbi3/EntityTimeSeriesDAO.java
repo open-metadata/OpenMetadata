@@ -148,6 +148,7 @@ public interface EntityTimeSeriesDAO {
           + "WHERE ranked.row_num = 1 LIMIT :limit OFFSET :offset")
   List<String> listWithOffset(
       @Define("table") String table,
+      @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Define("partition") String partition,
       @Bind("limit") int limit,
@@ -160,6 +161,7 @@ public interface EntityTimeSeriesDAO {
     return latest
         ? listWithOffset(
             getTimeSeriesTableName(),
+            filter.getQueryParams(),
             filter.getCondition(),
             getPartitionFieldName(),
             limit,

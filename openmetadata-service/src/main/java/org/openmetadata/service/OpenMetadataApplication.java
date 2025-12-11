@@ -400,7 +400,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Get session expiry - use OIDC config if available, otherwise default
     int sessionExpiry = 604800; // Default 7 days in seconds
-    if (SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration() != null) {
+    if (SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration() != null
+        && SecurityConfigurationManager.getCurrentAuthConfig()
+                .getOidcConfiguration()
+                .getSessionExpiry()
+            >= 3600) {
       sessionExpiry =
           SecurityConfigurationManager.getCurrentAuthConfig()
               .getOidcConfiguration()

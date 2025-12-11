@@ -72,6 +72,7 @@ def fetch_dataframe(
                     f"[{config_source.__class__.__name__}] due to: [{err}]"
                 )
     except Exception as err:
+        logger.debug(traceback.format_exc())
         logger.error(
             f"Error fetching file [{bucket_name}/{key}] using [{config_source.__class__.__name__}] due to: [{err}]"
         )
@@ -300,8 +301,12 @@ class GenericDataFrameColumnParser:
                     data_type = max(parsed_object_datatype_list)
                     # Determine the data type of the parsed object
 
-                except (ValueError, SyntaxError):
+                except (ValueError, SyntaxError) as exc:
                     # Handle any exceptions that may occur
+                    logger.debug(
+                        f"ValueError/SyntaxError while parsing column '{column_name}' datatype: {exc}. "
+                        f"Falling back to string."
+                    )
                     data_type = "string"
 
             data_type = cls._data_formats.get(
@@ -378,10 +383,13 @@ class GenericDataFrameColumnParser:
         json_column = cast(Series, json_column)
         try:
             json_column = json_column.apply(json.loads)
-        except TypeError:
+        except TypeError as exc:
             # if values are not strings, we will assume they are already json objects
             # based on the read class logic
-            pass
+            logger.debug(
+                f"TypeError while parsing JSON column children: {exc}. "
+                f"Assuming values are already JSON objects."
+            )
         json_structure = cls.unique_json_structure(json_column.values.tolist())
 
         return cls.construct_json_column_children(json_structure)
@@ -453,8 +461,12 @@ class ParquetDataFrameColumnParser:
                 try:
                     item_field = column.type.value_field
                     parsed_column["arrayDataType"] = self._get_pq_data_type(item_field)
-                except AttributeError:
+                except AttributeError as exc:
                     # if the value field is not specified, we will set it to UNKNOWN
+                    logger.debug(
+                        f"Could not extract array item type for column '{column.name}': {exc}. "
+                        f"Setting arrayDataType to UNKNOWN."
+                    )
                     parsed_column["arrayDataType"] = DataType.UNKNOWN
 
             if parsed_column["dataType"] == DataType.BINARY:
@@ -592,8 +604,12 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                         if isinstance(type_str, str)
                         else DataType.STRING
                     )
-                except (ValueError, AttributeError):
+                except (ValueError, AttributeError) as exc:
                     # If the type is not recognized, default to STRING
+                    logger.debug(
+                        f"Unrecognized data type '{type_str}' for column '{column_name}': {exc}. "
+                        f"Defaulting to STRING."
+                    )
                     data_type = DataType.STRING
 
                 column = Column(
@@ -644,7 +660,11 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                         if isinstance(type_str, str)
                         else DataType.STRING
                     )
-                except (ValueError, AttributeError):
+                except (ValueError, AttributeError) as exc:
+                    logger.debug(
+                        f"Unrecognized data type '{type_str}' for nested field '{child_name}': {exc}. "
+                        f"Defaulting to STRING."
+                    )
                     data_type = DataType.STRING
 
                 child = {

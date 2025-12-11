@@ -19,7 +19,6 @@ from typing import (
     Dict,
     Generic,
     Hashable,
-    Iterable,
     Mapping,
     Optional,
     Sequence,
@@ -49,7 +48,6 @@ from metadata.pii.algorithms.presidio_utils import (
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
-from metadata.pii.tag_analyzer import TagAnalyzer
 
 T = TypeVar("T", bound=Hashable)
 
@@ -183,60 +181,5 @@ class PIISensitiveClassifier(ColumnClassifier[PIISensitivityTag]):
         for tag in results:
             if counts[tag] > 0:
                 results[tag] /= counts[tag]
-
-        return results
-
-
-@final
-class TagClassifier(ColumnClassifier[str]):
-    """
-    Heuristic PII Column Classifier
-    """
-
-    def __init__(
-        self,
-        *,
-        tag_analyzers: Iterable[TagAnalyzer],
-        column_name_contribution: float = 0.5,
-        score_cutoff: float = 0.1,
-        relative_cardinality_cutoff: float = 0.01,
-    ):
-        set_presidio_logger_level()
-
-        self._analyzers = tag_analyzers
-
-        self._column_name_contribution = column_name_contribution
-        self._score_cutoff = score_cutoff
-        self._relative_cardinality_cutoff = relative_cardinality_cutoff
-
-    def predict_scores(
-        self,
-        sample_data: Sequence[Any],
-        column_name: Optional[str] = None,
-        column_data_type: Optional[DataType] = None,
-    ) -> Mapping[str, float]:
-        str_values = preprocess_values(sample_data)
-
-        if not str_values:
-            return {}
-
-        # Relative cardinality test
-        unique_values = set(str_values)
-        if len(unique_values) / len(str_values) < self._relative_cardinality_cutoff:
-            return {}
-
-        results: dict[str, float] = defaultdict(float)
-        for analyzer in self._analyzers:
-            content_score = analyzer.analyze_content(values=str_values)
-            column_score = 0.0
-            if column_name is not None:
-                column_score = analyzer.analyze_column()
-                column_score *= max(column_score, self._column_name_contribution)
-
-            total_score = content_score + column_score
-            if total_score > self._score_cutoff:
-                results[str(analyzer.tag.fullyQualifiedName)] = (
-                    content_score + column_score
-                )
 
         return results

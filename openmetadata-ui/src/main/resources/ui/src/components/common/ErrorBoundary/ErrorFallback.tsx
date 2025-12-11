@@ -18,6 +18,7 @@ import { FallbackProps } from 'react-error-boundary';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as OmUpgradeIcon } from '../../../assets/svg/om-upgrade.svg';
 import { ERROR500 } from '../../../constants/constants';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { t } from '../../../utils/i18next/LocalUtil';
 
 const ErrorFallback: React.FC<FallbackProps> = ({
@@ -33,7 +34,9 @@ const ErrorFallback: React.FC<FallbackProps> = ({
     : error.message;
 
   const title = isChunkLoadError
-    ? t('message.look-like-upgraded-om')
+    ? t('message.look-like-upgraded-om', {
+        brandName: brandClassBase.getPageTitle(),
+      })
     : ERROR500;
 
   const handleReset = () => {

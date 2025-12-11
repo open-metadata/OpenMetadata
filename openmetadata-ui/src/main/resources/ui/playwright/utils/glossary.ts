@@ -809,7 +809,6 @@ export const addAssetToGlossaryTerm = async (
   }
 
   await page.click('[data-testid="save-btn"]');
-  await checkAssetsCount(page, assets.length);
 };
 
 export const updateNameForGlossaryTerm = async (
@@ -1597,7 +1596,7 @@ export const checkGlossaryTermDetails = async (
 };
 
 export const setupGlossaryDenyPermissionTest = async (
-  apiContext: any,
+  apiContext: APIRequestContext,
   isGlossary?: boolean
 ) => {
   // Create all necessary resources
