@@ -447,6 +447,18 @@ test.describe('User with different Roles', () => {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
+    // Search for the domain
+    const searchPromise2 = adminPage.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        domain.responseData.displayName
+      )}**`
+    );
+    await adminPage
+      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .fill(domain.responseData.displayName);
+
+    await searchPromise2;
+
     // Find the parent domain node switcher (expand icon)
     const parentDomainNode = adminPage
       .locator('.domain-custom-dropdown-class')
