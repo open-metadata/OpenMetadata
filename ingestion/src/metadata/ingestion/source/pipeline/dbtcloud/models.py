@@ -32,6 +32,7 @@ class DBTJob(BaseModel):
     job_type: Optional[str] = None
     schedule: Optional[DBTSchedule] = None
     project_id: int
+    environment_id: Optional[int] = None
 
 
 class Pagination(BaseModel):
@@ -69,6 +70,7 @@ class DBTSources(BaseModel):
     name: Optional[str] = None
     dbtschema: Optional[str] = Field(None, alias="schema")
     database: Optional[str] = None
+    runGeneratedAt: Optional[str] = None
     extra: Optional[Extra] = None
 
 
@@ -77,6 +79,7 @@ class DBTModel(BaseModel):
     name: Optional[str] = None
     dbtschema: Optional[str] = Field(None, alias="schema")
     database: Optional[str] = None
+    runGeneratedAt: Optional[str] = None
     dependsOn: Optional[List[str]] = None
 
 
