@@ -219,7 +219,9 @@ test.describe('Service form functionality', async () => {
       ).toEqual(supersetFormDetails4.connection.scheme);
     });
 
-    test('Verify SSL cert upload functionality', async ({ page }) => {
+    test('Verify SSL cert upload with long filename and UI overflow handling', async ({
+      page,
+    }) => {
       await page.goto('/dashboardServices/add-service');
       await waitForAllLoadersToDisappear(page);
       await page.click(`[data-testid="Superset"]`);
