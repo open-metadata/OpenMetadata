@@ -1517,6 +1517,22 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
+    @SqlUpdate(
+        "UPDATE entity_relationship "
+            + "SET fromId = :newFromId "
+            + "WHERE fromId = :oldFromId "
+            + "AND fromEntity = :fromEntity "
+            + "AND toEntity = :toEntity "
+            + "AND relation = :relation "
+            + "AND toId IN (<toIds>)")
+    void bulkUpdateFromId(
+        @BindUUID("oldFromId") UUID oldFromId,
+        @BindUUID("newFromId") UUID newFromId,
+        @BindList("toIds") List<String> toIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
     //
     // Find to operations
     //
