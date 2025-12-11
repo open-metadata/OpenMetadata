@@ -62,7 +62,7 @@ export interface AgentExecution {
     /**
      * Unique identifier of the Agent Execution
      */
-    id: string;
+    id?: string;
     /**
      * Input provided to the agent
      */
