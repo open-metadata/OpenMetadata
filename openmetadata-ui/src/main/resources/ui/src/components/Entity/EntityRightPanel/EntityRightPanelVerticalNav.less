@@ -16,12 +16,17 @@
 
 .entity-right-panel-vertical-nav {
   &.drawer-entity-right-panel-vertical-nav {
+    height: 100vh;
     max-height: calc(100vh - 70px);
     margin-right: 8px;
+  }
+  &.column-detail-panel-vertical-nav {
+    height: 100%;
   }
   width: 80px;
   right: 2px;
   position: relative;
+  height: calc(100vh - 170px);
   background: @white;
   display: flex;
   flex-direction: column;

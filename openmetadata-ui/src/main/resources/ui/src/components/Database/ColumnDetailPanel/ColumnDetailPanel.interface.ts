@@ -23,6 +23,7 @@ export interface ColumnDetailPanelProps {
     glossaryTerms?: boolean;
     description?: boolean;
     viewAllPermission?: boolean;
+    customProperties?: boolean;
   };
   allColumns?: Column[];
   currentColumnIndex?: number;

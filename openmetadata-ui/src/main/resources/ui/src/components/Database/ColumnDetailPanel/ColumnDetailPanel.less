@@ -23,12 +23,12 @@
   font-weight: 500 !important;
 }
 .column-detail-panel-vertical-nav {
-  width: auto !important;
+  width: 70px;
 }
 
 .column-detail-panel {
   .ant-drawer-header {
-    padding: 12px;
+    padding: 8px;
     padding-bottom: 0;
 
     .ant-drawer-header-title {
@@ -41,10 +41,59 @@
     height: 100%;
   }
 
+  .title-section {
+    padding-bottom: 0;
+    .data-type-chip {
+      margin-top: 6px;
+      width: fit-content;
+      border: 1px solid @blue-30;
+      border-radius: 16px;
+      color: @grey-700;
+      padding: 4px 8px;
+      font-size: 10px;
+      background-color: @blue-29;
+      height: 20px;
+    }
+    .title-container {
+      display: flex;
+      flex-direction: column;
+      height: auto;
+      padding: 16px 12px;
+      padding-top: 0px;
+      border-radius: 6px;
+
+      background-color: @grey-9;
+      .entity-icon {
+        width: 12px;
+        height: 12px;
+        margin-right: 0px;
+        color: @primary-6;
+        display: inline-flex;
+        align-items: center;
+
+        svg {
+          width: 12px;
+          height: 12px;
+        }
+      }
+
+      .entity-title-link {
+        font-size: 15px;
+        font-weight: 600;
+        color: @primary-6;
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+
   .column-detail-panel-container {
     background-color: @grey-50;
 
-    height: 100%;
+    height: calc(100vh - 170px);
     display: flex;
     flex-direction: column;
 
@@ -55,14 +104,15 @@
     .summary-panel-container {
       flex: 1;
       height: 100%;
+      background: @grey-50;
       overflow: hidden;
       border-radius: 0;
       margin-left: 8px;
-      margin-top: 12px;
       .ant-card-body {
         padding: 0;
         height: 100%;
-        max-height: calc(100% - 30px);
+        // margin-bottom: 8px;
+        // max-height: calc(100% - 30px);
       }
 
       .content-area {
@@ -70,49 +120,6 @@
         overflow-y: auto;
 
         max-height: 100%;
-      }
-    }
-
-    .title-section {
-      padding-bottom: 0;
-      .data-type-chip {
-        margin-top: 8px;
-        width: fit-content;
-        border: 1px solid @blue-30;
-        border-radius: 16px;
-        color: @grey-700;
-        padding: 4px 8px;
-        font-size: 10px;
-        background-color: @blue-29;
-        height: 20px;
-      }
-      .title-container {
-        display: flex;
-        flex-direction: column;
-        height: auto;
-        padding: 16px 12px;
-        background-color: @grey-9;
-        .entity-icon {
-          margin-right: 8px;
-          display: inline-flex;
-          align-items: center;
-
-          svg {
-            width: 20px;
-            height: 20px;
-          }
-        }
-
-        .entity-title-link {
-          font-size: 16px;
-          font-weight: 500;
-          color: @primary-6;
-          text-decoration: none;
-
-          &:hover {
-            text-decoration: underline;
-          }
-        }
       }
     }
   }

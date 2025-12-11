@@ -11,24 +11,17 @@
  *  limitations under the License.
  */
 
+import { EntityTags, TagFilterOptions } from 'Models';
 import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
-import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
   TABLE_SCROLL_VALUE,
@@ -38,6 +31,13 @@ import {
   DEFAULT_SCHEMA_TABLE_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
+import {
+  DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
   Column,
@@ -85,11 +85,6 @@ import {
   updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../common/Table/Table';
-import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import {
@@ -97,6 +92,11 @@ import {
   EntityNameWithAdditionFields,
 } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import Table from '../../common/Table/Table';
+import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { ColumnDetailPanel } from '../ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
@@ -161,6 +161,7 @@ const SchemaTable = () => {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
+    editCustomAttributePermission,
     editDisplayNamePermission,
     viewAllPermission,
   } = useMemo(
@@ -172,6 +173,9 @@ const SchemaTable = () => {
         !deleted,
       editGlossaryTermsPermission:
         (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
+        !deleted,
+      editCustomAttributePermission:
+        (tablePermissions.EditCustomFields || tablePermissions.EditAll) &&
         !deleted,
       editAllPermission: tablePermissions.EditAll && !deleted,
       editLineagePermission:
@@ -508,9 +512,13 @@ const SchemaTable = () => {
                   tableConstraints,
                 })}
                 <Typography.Text
-                  className={classNames('m-b-0 d-block break-word', {
-                    'text-grey-600': !isEmpty(displayName),
-                  })}
+                  onClick={() => handleColumnClick(record)}
+                  className={classNames(
+                    'm-b-0 d-block break-word cursor-pointer',
+                    {
+                      'text-grey-600': !isEmpty(displayName),
+                    }
+                  )}
                   data-testid="column-name">
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
@@ -794,10 +802,10 @@ const SchemaTable = () => {
           searchProps={searchProps}
           size="middle"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-          onRow={(record) => ({
-            onClick: () => handleColumnClick(record),
-            style: { cursor: 'pointer' },
-          })}
+          //   onRow={(record) => ({
+          //     onClick: () => handleColumnClick(record),
+          //     style: { cursor: 'pointer' },
+          //   })}
         />
       </Col>
       {editColumn && (
@@ -837,6 +845,7 @@ const SchemaTable = () => {
           glossaryTerms: editGlossaryTermsPermission,
           description: editDescriptionPermission,
           viewAllPermission: viewAllPermission,
+          customProperties: editCustomAttributePermission,
         }}
         isOpen={isColumnDetailOpen}
         tableConstraints={table?.tableConstraints}

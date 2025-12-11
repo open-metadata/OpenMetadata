@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CloseOutlined } from '@ant-design/icons';
-import { Chip, Link } from '@mui/material';
+import { Chip } from '@mui/material';
 import { Button, Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -30,16 +30,17 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
+import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
+import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
+import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
+import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
+import { LineageData } from '../../Lineage/Lineage.interface';
 import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
 import Loader from '../../common/Loader/Loader';
 import TagsSection from '../../common/TagsSection/TagsSection';
-import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
-import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
-import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
-import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
-import { LineageData } from '../../Lineage/Lineage.interface';
 import {
   ColumnDetailPanelProps,
   TestCaseStatusCounts,
@@ -186,6 +187,8 @@ export const ColumnDetailPanel = ({
         if (onColumnUpdate) {
           onColumnUpdate(response);
         }
+
+        return response.tags;
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -193,6 +196,7 @@ export const ColumnDetailPanel = ({
             entity: t('label.tag-plural'),
           })
         );
+        throw error;
       } finally {
         setIsLoading(false);
       }
@@ -202,7 +206,7 @@ export const ColumnDetailPanel = ({
 
   const handleGlossaryTermsUpdate = useCallback(
     async (updatedGlossaryTerms: Column['tags']) => {
-      if (!column?.fullyQualifiedName || !column.tags) {
+      if (!column?.fullyQualifiedName) {
         return;
       }
 
@@ -225,6 +229,8 @@ export const ColumnDetailPanel = ({
         if (onColumnUpdate) {
           onColumnUpdate(response);
         }
+
+        return response.tags;
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -232,6 +238,7 @@ export const ColumnDetailPanel = ({
             entity: t('label.glossary-term-plural'),
           })
         );
+        throw error;
       } finally {
         setIsLoading(false);
       }
@@ -328,7 +335,7 @@ export const ColumnDetailPanel = ({
 
         <GlossaryTermsSection
           entityId={column?.fullyQualifiedName || ''}
-          entityType={EntityType.TABLE}
+          entityType={'_column' as EntityType}
           hasPermission={hasEditPermission.glossaryTerms}
           maxVisibleGlossaryTerms={3}
           tags={column?.tags}
@@ -337,7 +344,7 @@ export const ColumnDetailPanel = ({
 
         <TagsSection
           entityId={column?.fullyQualifiedName || ''}
-          entityType={EntityType.TABLE}
+          entityType={'_column' as EntityType}
           hasPermission={hasEditPermission.tags}
           tags={
             column?.tags?.filter((tag) => tag.source !== TagSource.Glossary) ||
@@ -411,90 +418,122 @@ export const ColumnDetailPanel = ({
     );
   };
 
+  const renderCustomPropertiesTab = () => {
+    if (!column?.fullyQualifiedName) {
+      return null;
+    }
+
+    return (
+      <div className="overview-tab-content">
+        <CustomPropertiesSection
+          entityData={column as unknown as { extension?: Record<string, unknown> }}
+          entityDetails={{ details: column }}
+          entityType={EntityType.TABLE}
+          isEntityDataLoading={isLoading}
+          viewCustomPropertiesPermission={
+            hasEditPermission.customProperties ?? false
+          }
+        />
+      </div>
+    );
+  };
+  const isPrimaryKey = tableConstraints.some(
+    (constraint: TableConstraint) =>
+      constraint.constraintType === 'PRIMARY_KEY' &&
+      constraint.columns?.includes(column?.name ?? '')
+  );
+
+  const columnTitle = column ? (
+    <div className="title-section">
+      <div className="title-container items-start">
+        <Tooltip
+          mouseEnterDelay={0.5}
+          placement="topLeft"
+          title={column.displayName || column.name}
+          trigger="hover">
+          <div className="d-flex items-center justify-between w-full">
+            <div className="d-flex items-center gap-2">
+              <span className="entity-icon">
+                <ColumnIcon />
+              </span>
+              <Typography.Text
+                className="entity-title-link"
+                data-testid="entity-link"
+                ellipsis={{ tooltip: true }}>
+                {stringToHTML(getEntityName(column))}
+              </Typography.Text>
+            </div>
+            <div>
+              <Button
+                icon={<CloseOutlined />}
+                size="small"
+                type="text"
+                onClick={onClose}
+              />
+            </div>
+          </div>
+        </Tooltip>
+        <div className="d-flex items-center gap-2">
+          <Chip
+            className="data-type-chip"
+            label={column.dataTypeDisplay}
+            size="small"
+            variant="outlined"
+          />
+          {isPrimaryKey && (
+            <Chip
+              className="data-type-chip"
+              icon={<KeyIcon height={12} width={12} />}
+              label={t('label.primary-key')}
+              size="small"
+              variant="outlined"
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   const renderTabContent = () => {
     if (!column) {
       return null;
     }
-    const isPrimaryKey = tableConstraints.some(
-      (constraint: TableConstraint) =>
-        constraint.constraintType === 'PRIMARY_KEY' &&
-        constraint.columns?.includes(column.name)
-    );
-
-    const columnTitle = (
-      <div className="title-section">
-        <div className="title-container items-start">
-          <Tooltip
-            mouseEnterDelay={0.5}
-            placement="topLeft"
-            title={column.displayName || column.name}
-            trigger="hover">
-            <div className="d-flex items-center">
-              <span className="entity-icon">
-                <ColumnIcon />
-              </span>
-              <Link
-                className="entity-title-link"
-                data-testid="entity-link"
-                href={column.fullyQualifiedName as string}
-                rel="noopener noreferrer"
-                target="_blank"
-                underline="hover">
-                {stringToHTML(getEntityName(column))}
-              </Link>
-            </div>
-          </Tooltip>
-          <div className="d-flex items-center gap-2">
-            <Chip
-              className="data-type-chip"
-              label={column.dataTypeDisplay}
-              size="small"
-              variant="outlined"
-            />
-            {isPrimaryKey && (
-              <Chip
-                className="data-type-chip"
-                icon={<KeyIcon height={12} width={12} />}
-                label={t('label.primary-key')}
-                size="small"
-                variant="outlined"
-              />
-            )}
-          </div>
-        </div>
-      </div>
-    );
 
     switch (activeTab) {
       case EntityRightPanelTab.OVERVIEW:
         return (
           <>
-            {hasEditPermission.viewAllPermission && columnTitle}
             <div className="overview-tab-content">{renderOverviewTab()}</div>
           </>
         );
       case EntityRightPanelTab.DATA_QUALITY:
         return (
           <>
-            {hasEditPermission.viewAllPermission && columnTitle}
             <DataQualityTab
+              isColumnDetailPanel
               entityFQN={column.fullyQualifiedName || ''}
-              entityType={EntityType.TABLE}
+              entityType={EntityType.TABLE as string}
             />
-          </>
-        );
-      default:
-        return (
-          <>
-            {hasEditPermission.viewAllPermission && columnTitle}
-            <div className="overview-tab-content">{renderOverviewTab()}</div>
           </>
         );
       case EntityRightPanelTab.LINEAGE:
         return (
           <>
-            {hasEditPermission.viewAllPermission && columnTitle}
             <div className="overview-tab-content">{renderLineageTab()}</div>
+          </>
+        );
+      case EntityRightPanelTab.CUSTOM_PROPERTIES:
+        return (
+          <>
+            <div className="overview-tab-content">
+              {renderCustomPropertiesTab()}
+            </div>
+          </>
+        );
+      default:
+        return (
+          <>
+            <div className="overview-tab-content">{renderOverviewTab()}</div>
           </>
         );
     }
@@ -508,9 +547,7 @@ export const ColumnDetailPanel = ({
     <Drawer
       className="column-detail-panel"
       closable={false}
-      open={isOpen}
-      placement="right"
-      title={
+      footer={
         <div className="d-flex justify-between items-center w-full navigation-container">
           <div className="d-flex items-center gap-1 m-t-sm">
             <Button
@@ -532,24 +569,21 @@ export const ColumnDetailPanel = ({
               {allColumns.length} {t('label.column-plural').toLowerCase()}
             </Typography.Text>
           </div>
-          <Button
-            icon={<CloseOutlined />}
-            size="small"
-            type="text"
-            onClick={onClose}
-          />
         </div>
       }
+      open={isOpen}
+      placement="right"
+      title={columnTitle}
       width={480}
       onClose={onClose}>
       <div className="column-detail-panel-container">
-        <div className="d-flex gap-2 h-full">
+        <div className="d-flex gap-2">
           <Card bordered={false} className="summary-panel-container">
             <Card className="content-area" style={{ width: '100%' }}>
               {renderTabContent()}
             </Card>
           </Card>
-          <div className="m-r-sm m-t-sm">
+          <div className="m-r-sm">
             <EntityRightPanelVerticalNav
               activeTab={activeTab}
               entityType={TabSpecificField.COLUMNS}
