@@ -61,20 +61,29 @@ const ChipSelect: FC<ChipSelectProps> = ({
               icon={isSelected ? <Check height={12} width={12} /> : undefined}
               key={option.value}
               label={option.label}
-              sx={{
+              sx={(theme) => ({
                 fontSize: '12px',
-
-                borderColor: isSelected ? 'primary.main' : 'grey.200',
-                backgroundColor: isSelected ? 'primary.main' : 'grey.50',
-                color: isSelected ? 'primary.contrastText' : 'text.primary',
+                borderColor: isSelected
+                  ? theme.palette.allShades.brand[600]
+                  : theme.palette.grey[200],
+                backgroundColor: isSelected
+                  ? theme.palette.allShades.brand[600]
+                  : theme.palette.grey[50],
+                color: isSelected
+                  ? theme.palette.primary.contrastText
+                  : theme.palette.grey[900],
                 '&:hover': {
-                  backgroundColor: isSelected ? 'primary.dark' : 'action.hover',
+                  backgroundColor: isSelected
+                    ? theme.palette.primary.dark
+                    : theme.palette.grey[100],
                 },
                 '& .MuiChip-icon': {
-                  color: isSelected ? 'primary.contrastText' : 'text.primary',
+                  color: isSelected
+                    ? theme.palette.primary.contrastText
+                    : theme.palette.grey[900],
                 },
                 borderRadius: '4px',
-              }}
+              })}
               variant={isSelected ? 'filled' : 'outlined'}
               onClick={() => handleChipClick(option.value)}
             />

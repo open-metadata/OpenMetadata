@@ -12,7 +12,6 @@
  */
 
 import { EntityTags } from 'Models';
-import { EntityType } from '../../../enums/entity.enum';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { DisplayType, LayoutType } from '../TagsViewer/TagsViewer.interface';
 
@@ -20,7 +19,7 @@ export interface TagsContainerV2Props {
   permission: boolean;
   showTaskHandler?: boolean;
   selectedTags: EntityTags[];
-  entityType?: EntityType;
+  entityType?: string;
   entityFqn?: string;
   tagType: TagSource;
   columnData?: {
