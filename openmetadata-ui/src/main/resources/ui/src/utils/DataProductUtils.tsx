@@ -125,9 +125,7 @@ export const getDataProductDetailTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.DOCUMENTATION}
-          name={
-            labelMap?.[EntityTabs.DOCUMENTATION] ?? t('label.documentation')
-          }
+          name={t('label.documentation')}
         />
       ),
       key: EntityTabs.DOCUMENTATION,
@@ -142,10 +140,7 @@ export const getDataProductDetailTabs = ({
                 count={feedCount.totalCount}
                 id={EntityTabs.ACTIVITY_FEED}
                 isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-                name={
-                  labelMap?.[EntityTabs.ACTIVITY_FEED] ??
-                  t('label.activity-feed-and-task-plural')
-                }
+                name={t('label.activity-feed-and-task-plural')}
               />
             ),
             key: EntityTabs.ACTIVITY_FEED,
@@ -170,7 +165,7 @@ export const getDataProductDetailTabs = ({
                 count={assetCount ?? 0}
                 id={EntityTabs.ASSETS}
                 isActive={activeTab === EntityTabs.ASSETS}
-                name={labelMap?.[EntityTabs.ASSETS] ?? t('label.asset-plural')}
+                name={t('label.asset-plural')}
               />
             ),
             key: EntityTabs.ASSETS,
@@ -223,10 +218,7 @@ export const getDataProductDetailTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={
-            labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ??
-            t('label.custom-property-plural')
-          }
+          name={t('label.custom-property-plural')}
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
