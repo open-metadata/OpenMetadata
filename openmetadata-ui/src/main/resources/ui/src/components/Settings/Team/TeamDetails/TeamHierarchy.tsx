@@ -21,11 +21,11 @@ import { isEmpty, isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { TABLE_CONSTANTS } from '../../../../constants/Teams.constants';
 import {
   DESCRIPTION_LENGTH,
   NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
-import { TABLE_CONSTANTS } from '../../../../constants/Teams.constants';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
@@ -52,6 +52,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   data,
   onTeamExpand,
   isFetchingAllTeamAdvancedDetails,
+  isSearchLoading,
   searchTerm,
   showDeletedTeam,
   onShowDeletedTeamChange,
@@ -59,6 +60,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
   createTeamPermission,
   isTeamDeleted,
   handleTeamSearch,
+  isTeamBasicDataLoading,
 }) => {
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -301,7 +303,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
             )}
           </Space>
         }
-        loading={isTableLoading}
+        loading={isTableLoading || isTeamBasicDataLoading || isSearchLoading}
         locale={{
           emptyText: <FilterTablePlaceHolder />,
         }}
