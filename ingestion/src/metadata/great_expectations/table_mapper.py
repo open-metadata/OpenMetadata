@@ -11,10 +11,17 @@
 """
 Handles the TableMapper for the GX Action.
 """
+import logging
 from enum import Enum, auto
 from typing import Dict, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+
+from metadata.models.base import DictModel
+
+logger = logging.getLogger(
+    "great_expectations.validation_operators.validation_operators.openmetadata"
+)
 
 
 class TablePart(Enum):
@@ -41,6 +48,24 @@ class TableConfig(BaseModel):
         )
 
 
+class TableConfigMap(DictModel[str, TableConfig]):
+    @classmethod
+    def parse(cls, raw: Dict[str, Dict[str, str]]):
+        parsed: Dict[str, TableConfig] = {}
+
+        for suite_name, cfg_dict in raw.items():
+            try:
+                parsed[suite_name] = TableConfig.model_validate(cfg_dict)
+            except ValidationError as exc:
+                logger.warning(
+                    "Invalid TableConfig for Expectation Suite '%s':\n    %s",
+                    suite_name,
+                    exc.errors(),
+                )
+                continue
+        return cls(parsed)
+
+
 class TableMapper:
     """
     Handles the Table Mapping between GX Expectation Suite and OpenMetadata Table.
@@ -51,7 +76,7 @@ class TableMapper:
         default_database_name: Optional[str],
         default_schema_name: Optional[str],
         default_table_name: Optional[str],
-        expectation_suite_table_config_map: Optional[Dict[str, TableConfig]],
+        expectation_suite_table_config_map: TableConfigMap,
     ):
         self.default = TableConfig(
             database_name=default_database_name,
@@ -66,8 +91,9 @@ class TableMapper:
     ):
         table_config = self.default
         if self.expectation_suite_table_config_map and expectation_suite_name:
-            table_config = self.expectation_suite_table_config_map.get(
-                expectation_suite_name, self.default
+            table_config = (
+                self.expectation_suite_table_config_map.get(expectation_suite_name)
+                or self.default
             )
 
         match part:

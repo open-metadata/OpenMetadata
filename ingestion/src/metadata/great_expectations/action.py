@@ -69,7 +69,11 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.great_expectations.table_mapper import TableConfig, TableMapper, TablePart
+from metadata.great_expectations.table_mapper import (
+    TableConfigMap,
+    TableMapper,
+    TablePart,
+)
 from metadata.great_expectations.utils.ometa_config_handler import (
     create_jinja_environment,
     create_ometa_connection_obj,
@@ -125,10 +129,9 @@ class OpenMetadataValidationAction(ValidationAction):
             default_database_name=self.database_name,
             default_schema_name=self.schema_name,
             default_table_name=self.table_name,
-            expectation_suite_table_config_map={
-                k: TableConfig.model_validate(v)
-                for k, v in self.expectation_suite_table_config_map.items()
-            },
+            expectation_suite_table_config_map=TableConfigMap.parse(
+                self.expectation_suite_table_config_map
+            ),
         )
         self.ometa_conn = self._create_ometa_connection()
         self.expectation_suite = None
