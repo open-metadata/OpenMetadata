@@ -19,10 +19,11 @@ import {
   Row,
   Space,
   Switch,
-  Table,
+  Tooltip,
   Typography,
 } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,11 +38,13 @@ import {
   getListTestDefinitions,
   patchTestDefinition,
 } from '../../../rest/testAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
+import Table from '../../common/Table/Table';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 
 const TestDefinitionList = () => {
@@ -52,6 +55,7 @@ const TestDefinitionList = () => {
     pageSize,
     handlePagingChange,
     handlePageChange,
+    showPagination,
   } = usePaging();
 
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
@@ -77,7 +81,7 @@ const TestDefinitionList = () => {
         setTestDefinitions(data);
         handlePagingChange(responsePaging);
       } catch (error) {
-        showErrorToast(error as Error);
+        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }
@@ -106,7 +110,7 @@ const TestDefinitionList = () => {
       );
       fetchTestDefinitions();
     } catch (error) {
-      showErrorToast(error as Error);
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -136,7 +140,7 @@ const TestDefinitionList = () => {
       setDefinitionToDelete(undefined);
       fetchTestDefinitions();
     } catch (error) {
-      showErrorToast(error as Error);
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -163,8 +167,8 @@ const TestDefinitionList = () => {
         dataIndex: 'name',
         key: 'name',
         width: 250,
-        render: (name: string, record: TestDefinition) => (
-          <Typography.Text>{record.displayName || name}</Typography.Text>
+        render: (_name: string, record: TestDefinition) => (
+          <Typography.Text>{getEntityName(record)}</Typography.Text>
         ),
       },
       {
@@ -173,7 +177,7 @@ const TestDefinitionList = () => {
         key: 'description',
         ellipsis: true,
         render: (description: string) => (
-          <Typography.Text>{description || '--'}</Typography.Text>
+          <RichTextEditorPreviewerNew markdown={description} />
         ),
       },
       {
@@ -186,12 +190,12 @@ const TestDefinitionList = () => {
         ),
       },
       {
-        title: t('label.test-platform'),
+        title: t('label.test-platform-plural'),
         dataIndex: 'testPlatforms',
         key: 'testPlatforms',
         width: 200,
         render: (testPlatforms: string[]) => (
-          <Typography.Text>{testPlatforms?.join(', ') || '--'}</Typography.Text>
+          <Typography.Text>{testPlatforms?.join(', ') ?? '--'}</Typography.Text>
         ),
       },
       {
@@ -216,23 +220,34 @@ const TestDefinitionList = () => {
           const isSystemProvider = record.provider === ProviderType.System;
 
           return (
-            <Space size="small">
-              {!isSystemProvider && (
-                <>
-                  <Button
-                    data-testid={`edit-test-definition-${record.name}`}
-                    icon={<IconEdit height={16} width={16} />}
-                    type="text"
-                    onClick={() => handleEdit(record)}
-                  />
-                  <Button
-                    data-testid={`delete-test-definition-${record.name}`}
-                    icon={<IconDelete height={16} width={16} />}
-                    type="text"
-                    onClick={() => handleDeleteClick(record)}
-                  />
-                </>
-              )}
+            <Space size={0}>
+              <Tooltip
+                title={
+                  isSystemProvider &&
+                  t('message.system-test-definition-edit-warning')
+                }>
+                <Button
+                  data-testid={`edit-test-definition-${record.name}`}
+                  icon={<IconEdit height={16} width={16} />}
+                  type="text"
+                  onClick={() => handleEdit(record)}
+                  disabled={isSystemProvider}
+                />
+              </Tooltip>
+
+              <Tooltip
+                title={
+                  isSystemProvider &&
+                  t('message.system-test-definition-delete-warning')
+                }>
+                <Button
+                  data-testid={`delete-test-definition-${record.name}`}
+                  icon={<IconDelete height={16} width={16} />}
+                  type="text"
+                  onClick={() => handleDeleteClick(record)}
+                  disabled={isSystemProvider}
+                />
+              </Tooltip>
             </Space>
           );
         },
@@ -258,13 +273,31 @@ const TestDefinitionList = () => {
     }
   };
 
+  const customPaginationProps = useMemo(
+    () => ({
+      currentPage: currentPage,
+      pageSize: pageSize,
+      paging: paging,
+      pagingHandler: handlePageChangeCallback,
+      showPagination: showPagination,
+    }),
+    [
+      currentPage,
+      paging,
+      pageSize,
+      handlePagingChange,
+      handlePageChange,
+      showPagination,
+    ]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
 
   return (
     <>
-      <Row gutter={[16, 16]}>
+      <Row gutter={[16, 16]} className="bg-white p-md">
         <Col span={24}>
           <Card>
             <Row justify="space-between">
@@ -291,27 +324,18 @@ const TestDefinitionList = () => {
         </Col>
         <Col span={24}>
           {testDefinitions.length > 0 ? (
-            <>
-              <Table
-                bordered
-                columns={columns}
-                data-testid="test-definition-table"
-                dataSource={testDefinitions}
-                loading={isLoading}
-                pagination={false}
-                rowKey="id"
-                scroll={{ x: 1200 }}
-                size="small"
-              />
-              {paging && (
-                <NextPrevious
-                  currentPage={currentPage}
-                  pageSize={pageSize}
-                  paging={paging}
-                  pagingHandler={handlePageChangeCallback}
-                />
-              )}
-            </>
+            <Table
+              bordered
+              columns={columns}
+              data-testid="test-definition-table"
+              dataSource={testDefinitions}
+              loading={isLoading}
+              pagination={false}
+              rowKey="id"
+              scroll={{ x: 1200 }}
+              size="small"
+              customPaginationProps={customPaginationProps}
+            />
           ) : (
             <ErrorPlaceHolder />
           )}

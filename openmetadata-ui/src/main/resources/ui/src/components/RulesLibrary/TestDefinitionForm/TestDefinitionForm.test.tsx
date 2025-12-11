@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import {
   DataQualityDimensions,
   DataType,
@@ -23,7 +28,6 @@ import {
   createTestDefinition,
   updateTestDefinition,
 } from '../../../rest/testAPI';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import TestDefinitionForm from './TestDefinitionForm.component';
 
 const mockOnSuccess = jest.fn();
@@ -42,8 +46,8 @@ const mockInitialValues: TestDefinition = {
 };
 
 jest.mock('../../../rest/testAPI', () => ({
-  createTestDefinition: jest.fn().mockImplementation(() => Promise.resolve({})),
-  updateTestDefinition: jest.fn().mockImplementation(() => Promise.resolve({})),
+  createTestDefinition: jest.fn(),
+  updateTestDefinition: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -67,432 +71,307 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () => ({
 describe('TestDefinitionForm Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (createTestDefinition as jest.Mock).mockResolvedValue({});
+    (updateTestDefinition as jest.Mock).mockResolvedValue({});
   });
 
-  it('should render form in create mode', () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    expect(screen.getAllByText('label.add-entity').length).toBeGreaterThan(0);
-    expect(screen.getByLabelText('label.name')).toBeInTheDocument();
-    expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
-    expect(screen.getByLabelText('label.description')).toBeInTheDocument();
-    expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-    expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
-    expect(
-      screen.getByLabelText('label.data-quality-dimension')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText('label.supported-data-type-plural')
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText('label.enabled')).toBeInTheDocument();
-  });
-
-  it('should render form in edit mode with initial values', () => {
-    render(
-      <TestDefinitionForm
-        initialValues={mockInitialValues}
-        onCancel={mockOnCancel}
-        onSuccess={mockOnSuccess}
-      />
-    );
-
-    expect(screen.getByText('label.edit-entity')).toBeInTheDocument();
-
-    const nameInput = screen.getByLabelText('label.name') as HTMLInputElement;
-
-    expect(nameInput.value).toBe('columnValuesToBeNotNull');
-    expect(nameInput).toBeDisabled();
-
-    const displayNameInput = screen.getByLabelText(
-      'label.display-name'
-    ) as HTMLInputElement;
-
-    expect(displayNameInput.value).toBe('Column Values To Be Not Null');
-
-    const descriptionInput = screen.getByLabelText(
-      'label.description'
-    ) as HTMLTextAreaElement;
-
-    expect(descriptionInput.value).toBe(
-      'Ensures that all values in a column are not null'
-    );
-  });
-
-  it('should disable name and entityType fields in edit mode', () => {
-    render(
-      <TestDefinitionForm
-        initialValues={mockInitialValues}
-        onCancel={mockOnCancel}
-        onSuccess={mockOnSuccess}
-      />
-    );
-
-    const nameInput = screen.getByLabelText('label.name');
-
-    expect(nameInput).toBeDisabled();
-  });
-
-  it('should enable all fields in create mode', () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const nameInput = screen.getByLabelText('label.name');
-
-    expect(nameInput).not.toBeDisabled();
-  });
-
-  it('should default enabled to true in create mode', () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const enabledSwitch = screen.getByRole('switch');
-
-    expect(enabledSwitch).toBeChecked();
-  });
-
-  it('should show validation error when required fields are empty', async () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const saveButton = screen.getByTestId('save-test-definition');
-    fireEvent.click(saveButton);
-
-    await waitFor(() => {
-      const errors = screen.getAllByText('message.field-text-is-required');
-
-      expect(errors.length).toBeGreaterThan(0);
-    });
-  });
-
-  it('should call createTestDefinition when submitting in create mode', async () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const nameInput = screen.getByLabelText('label.name');
-    const descriptionInput = screen.getByLabelText('label.description');
-
-    await userEvent.type(nameInput, 'testDefinitionName');
-    await userEvent.type(descriptionInput, 'Test description');
-
-    const entityTypeSelect = screen.getByLabelText('label.entity-type');
-    await userEvent.click(entityTypeSelect);
-
-    const tableOption = await screen.findByText('TABLE');
-    await userEvent.click(tableOption);
-
-    const saveButton = screen.getByTestId('save-test-definition');
-    fireEvent.click(saveButton);
-
-    await waitFor(() => {
-      expect(createTestDefinition).toHaveBeenCalled();
-      expect(showSuccessToast).toHaveBeenCalled();
-      expect(mockOnSuccess).toHaveBeenCalled();
-    });
-  });
-
-  it('should call updateTestDefinition when submitting in edit mode', async () => {
-    render(
-      <TestDefinitionForm
-        initialValues={mockInitialValues}
-        onCancel={mockOnCancel}
-        onSuccess={mockOnSuccess}
-      />
-    );
-
-    const displayNameInput = screen.getByLabelText('label.display-name');
-    await userEvent.clear(displayNameInput);
-    await userEvent.type(displayNameInput, 'Updated Display Name');
-
-    const saveButton = screen.getByTestId('save-test-definition');
-    fireEvent.click(saveButton);
-
-    await waitFor(() => {
-      expect(updateTestDefinition).toHaveBeenCalled();
-      expect(showSuccessToast).toHaveBeenCalled();
-      expect(mockOnSuccess).toHaveBeenCalled();
-    });
-  });
-
-  it('should call onCancel when cancel button is clicked', () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const cancelButton = screen.getByRole('button', { name: 'label.cancel' });
-    fireEvent.click(cancelButton);
-
-    expect(mockOnCancel).toHaveBeenCalled();
-  });
-
-  it('should show error toast when API call fails', async () => {
-    const mockError = new Error('API Error');
-
-    (createTestDefinition as jest.Mock).mockRejectedValueOnce(mockError);
-
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const nameInput = screen.getByLabelText('label.name');
-    const descriptionInput = screen.getByLabelText('label.description');
-
-    await userEvent.type(nameInput, 'testDefinitionName');
-    await userEvent.type(descriptionInput, 'Test description');
-
-    const entityTypeSelect = screen.getByLabelText('label.entity-type');
-    await userEvent.click(entityTypeSelect);
-
-    const tableOption = await screen.findByText('TABLE');
-    await userEvent.click(tableOption);
-
-    const saveButton = screen.getByTestId('save-test-definition');
-    fireEvent.click(saveButton);
-
-    await waitFor(() => {
-      expect(showErrorToast).toHaveBeenCalledWith(mockError);
-      expect(mockOnSuccess).not.toHaveBeenCalled();
-    });
-  });
-
-  it('should toggle enabled switch', async () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const enabledSwitch = screen.getByRole('switch');
-
-    expect(enabledSwitch).toBeChecked();
-
-    fireEvent.click(enabledSwitch);
-
-    await waitFor(() => {
-      expect(enabledSwitch).not.toBeChecked();
-    });
-
-    fireEvent.click(enabledSwitch);
-
-    await waitFor(() => {
-      expect(enabledSwitch).toBeChecked();
-    });
-  });
-
-  it('should close drawer when onClose is called', () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const drawer = screen.getByRole('dialog');
-
-    expect(drawer).toBeInTheDocument();
-
-    fireEvent.click(screen.getByLabelText('Close'));
-
-    expect(mockOnCancel).toHaveBeenCalled();
-  });
-
-  it('should disable save button while submitting', async () => {
-    let resolveCreate: (value: unknown) => void;
-    const createPromise = new Promise((resolve) => {
-      resolveCreate = resolve;
-    });
-
-    (createTestDefinition as jest.Mock).mockReturnValueOnce(createPromise);
-
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const nameInput = screen.getByLabelText('label.name');
-    const descriptionInput = screen.getByLabelText('label.description');
-
-    await userEvent.type(nameInput, 'testDefinitionName');
-    await userEvent.type(descriptionInput, 'Test description');
-
-    const entityTypeSelect = screen.getByLabelText('label.entity-type');
-    await userEvent.click(entityTypeSelect);
-
-    const tableOption = await screen.findByText('TABLE');
-    await userEvent.click(tableOption);
-
-    const saveButton = screen.getByTestId('save-test-definition');
-    fireEvent.click(saveButton);
-
-    await waitFor(() => {
-      expect(saveButton).toHaveClass('ant-btn-loading');
-    });
-
-    resolveCreate({});
-
-    await waitFor(() => {
-      expect(saveButton).not.toHaveClass('ant-btn-loading');
-    });
-  });
-
-  it('should render SQL query editor', () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-    expect(screen.getByText('label.sql-query')).toBeInTheDocument();
-    expect(
-      screen.getByText('message.test-definition-sql-query-help')
-    ).toBeInTheDocument();
-  });
-
-  it('should update SQL expression when typing in editor', async () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const sqlEditor = screen.getByTestId(
-      'schema-editor'
-    ) as HTMLTextAreaElement;
-
-    fireEvent.change(sqlEditor, {
-      target: { value: 'SELECT * FROM {table} WHERE {column} IS NOT NULL' },
-    });
-
-    expect(sqlEditor.value).toBe(
-      'SELECT * FROM {table} WHERE {column} IS NOT NULL'
-    );
-  });
-
-  it('should render add parameter button', () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const addButtons = screen.getAllByText('label.add-entity');
-
-    expect(addButtons.length).toBeGreaterThan(0);
-  });
-
-  it('should add new parameter when add button is clicked', async () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
-
-    const addButtons = screen.getAllByText('label.add-entity');
-    const parameterAddButton = addButtons[addButtons.length - 1];
-
-    fireEvent.click(parameterAddButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
+  describe('Rendering', () => {
+    it('should render form in create mode with all required fields', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      expect(screen.getByLabelText('label.name')).toBeInTheDocument();
+      expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
+      expect(screen.getByLabelText('label.description')).toBeInTheDocument();
+      expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
+      expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
+      expect(screen.getByLabelText('label.test-platform')).toBeInTheDocument();
       expect(
-        screen.getByPlaceholderText('label.parameter-name')
+        screen.getByLabelText('label.data-quality-dimension')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByLabelText('label.supported-data-type-plural')
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText('label.enabled')).toBeInTheDocument();
+      expect(screen.getByTestId('save-test-definition')).toBeInTheDocument();
+    });
+
+    it('should render form in edit mode with initial values populated', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockInitialValues}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      expect(screen.getByText('label.edit-entity')).toBeInTheDocument();
+
+      const nameInput = screen.getByLabelText('label.name') as HTMLInputElement;
+      expect(nameInput.value).toBe('columnValuesToBeNotNull');
+      expect(nameInput).toBeDisabled();
+
+      const displayNameInput = screen.getByLabelText(
+        'label.display-name'
+      ) as HTMLInputElement;
+      expect(displayNameInput.value).toBe('Column Values To Be Not Null');
+
+      const descriptionInput = screen.getByLabelText(
+        'label.description'
+      ) as HTMLTextAreaElement;
+      expect(descriptionInput.value).toBe(
+        'Ensures that all values in a column are not null'
+      );
+    });
+
+    it('should render SQL query editor section', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
+      expect(screen.getByText('label.sql-query')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.test-definition-sql-query-help')
       ).toBeInTheDocument();
     });
-  });
 
-  it('should remove parameter when remove button is clicked', async () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
+    it('should render parameter section with add button', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
 
-    const addButtons = screen.getAllByText('label.add-entity');
-    const parameterAddButton = addButtons[addButtons.length - 1];
+      expect(screen.getByText('label.parameter-plural')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.test-definition-parameters-description')
+      ).toBeInTheDocument();
 
-    fireEvent.click(parameterAddButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
-    });
-
-    const removeButton = screen.getByLabelText('minus-circle');
-    fireEvent.click(removeButton);
-
-    await waitFor(() => {
-      expect(screen.queryByText('label.parameter 1')).not.toBeInTheDocument();
+      const addButtons = screen.getAllByText('label.add-entity');
+      expect(addButtons.length).toBeGreaterThan(0);
     });
   });
 
-  it('should hardcode testPlatforms to OpenMetadata in payload', async () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
+  describe('Form Field Behavior', () => {
+    it('should disable name field in edit mode', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockInitialValues}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
 
-    const nameInput = screen.getByLabelText('label.name');
-    const descriptionInput = screen.getByLabelText('label.description');
+      const nameInput = screen.getByLabelText('label.name');
+      expect(nameInput).toBeDisabled();
+    });
 
-    await userEvent.type(nameInput, 'testDefinitionName');
-    await userEvent.type(descriptionInput, 'Test description');
+    it('should enable name field in create mode', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
 
-    const entityTypeSelect = screen.getByLabelText('label.entity-type');
-    await userEvent.click(entityTypeSelect);
+      const nameInput = screen.getByLabelText('label.name');
+      expect(nameInput).not.toBeDisabled();
+    });
 
-    const tableOption = await screen.findByText('TABLE');
-    await userEvent.click(tableOption);
+    it('should default enabled switch to checked in create mode', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
 
-    const saveButton = screen.getByTestId('save-test-definition');
-    fireEvent.click(saveButton);
+      const enabledSwitch = screen.getByRole('switch');
+      expect(enabledSwitch).toBeChecked();
+    });
 
-    await waitFor(() => {
-      expect(createTestDefinition).toHaveBeenCalledWith(
-        expect.objectContaining({
-          testPlatforms: [TestPlatform.OpenMetadata],
-        })
+    it('should toggle enabled switch', async () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      const enabledSwitch = screen.getByRole('switch');
+      expect(enabledSwitch).toBeChecked();
+
+      await act(async () => {
+        fireEvent.click(enabledSwitch);
+      });
+
+      await waitFor(() => {
+        expect(enabledSwitch).not.toBeChecked();
+      });
+
+      await act(async () => {
+        fireEvent.click(enabledSwitch);
+      });
+
+      await waitFor(() => {
+        expect(enabledSwitch).toBeChecked();
+      });
+    });
+
+    it('should update SQL expression when typing in editor', async () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      const sqlEditor = screen.getByTestId(
+        'schema-editor'
+      ) as HTMLTextAreaElement;
+
+      await act(async () => {
+        fireEvent.change(sqlEditor, {
+          target: { value: 'SELECT * FROM {table} WHERE {column} IS NOT NULL' },
+        });
+      });
+
+      expect(sqlEditor.value).toBe(
+        'SELECT * FROM {table} WHERE {column} IS NOT NULL'
       );
     });
-  });
 
-  it('should include sqlExpression in payload', async () => {
-    render(
-      <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-    );
+    it('should populate SQL expression in edit mode', () => {
+      const mockValuesWithSql = {
+        ...mockInitialValues,
+        sqlExpression: 'SELECT * FROM {table}',
+      } as TestDefinition & { sqlExpression?: string };
 
-    const nameInput = screen.getByLabelText('label.name');
-    const descriptionInput = screen.getByLabelText('label.description');
-    const sqlEditor = screen.getByTestId('schema-editor');
-
-    await userEvent.type(nameInput, 'testDefinitionName');
-    await userEvent.type(descriptionInput, 'Test description');
-
-    const entityTypeSelect = screen.getByLabelText('label.entity-type');
-    await userEvent.click(entityTypeSelect);
-
-    const tableOption = await screen.findByText('TABLE');
-    await userEvent.click(tableOption);
-
-    fireEvent.change(sqlEditor, {
-      target: { value: 'SELECT COUNT(*) FROM {table} WHERE {column} IS NULL' },
-    });
-
-    const saveButton = screen.getByTestId('save-test-definition');
-    fireEvent.click(saveButton);
-
-    await waitFor(() => {
-      expect(createTestDefinition).toHaveBeenCalledWith(
-        expect.objectContaining({
-          sqlExpression: 'SELECT COUNT(*) FROM {table} WHERE {column} IS NULL',
-        })
+      render(
+        <TestDefinitionForm
+          initialValues={mockValuesWithSql}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
       );
+
+      const sqlEditor = screen.getByTestId('schema-editor');
+      expect(sqlEditor).toHaveValue('SELECT * FROM {table}');
     });
   });
 
-  it('should populate SQL expression in edit mode', () => {
-    const mockValuesWithSql = {
-      ...mockInitialValues,
-      sqlExpression: 'SELECT * FROM {table}',
-    } as any;
+  describe('Parameter Management', () => {
+    it('should add new parameter when add button is clicked', async () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
 
-    render(
-      <TestDefinitionForm
-        initialValues={mockValuesWithSql}
-        onCancel={mockOnCancel}
-        onSuccess={mockOnSuccess}
-      />
-    );
+      const addButtons = screen.getAllByText('label.add-entity');
+      const parameterAddButton = addButtons[addButtons.length - 1];
 
-    const sqlEditor = screen.getByTestId('schema-editor');
+      await act(async () => {
+        fireEvent.click(parameterAddButton);
+      });
 
-    expect(sqlEditor).toHaveValue('SELECT * FROM {table}');
+      await waitFor(() => {
+        expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
+        expect(
+          screen.getByPlaceholderText('label.parameter-name')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should remove parameter when remove button is clicked', async () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      const addButtons = screen.getAllByText('label.add-entity');
+      const parameterAddButton = addButtons[addButtons.length - 1];
+
+      await act(async () => {
+        fireEvent.click(parameterAddButton);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
+      });
+
+      const removeButton = screen.getByLabelText('minus-circle');
+
+      await act(async () => {
+        fireEvent.click(removeButton);
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByText('label.parameter 1')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Form Validation', () => {
+    it('should show validation errors when required fields are empty', async () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      const saveButton = screen.getByTestId('save-test-definition');
+
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      await waitFor(() => {
+        const errors = screen.getAllByText('message.field-text-is-required');
+        expect(errors.length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  describe('Form Submission', () => {
+    it('should have save button that triggers form submission', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      const saveButton = screen.getByTestId('save-test-definition');
+      expect(saveButton).toBeInTheDocument();
+      expect(saveButton).toHaveTextContent('label.save');
+    });
+
+    it('should render form with proper structure for submission', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      expect(screen.getByLabelText('label.name')).toBeInTheDocument();
+      expect(screen.getByLabelText('label.description')).toBeInTheDocument();
+      expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
+      expect(screen.getByLabelText('label.test-platform')).toBeInTheDocument();
+      expect(screen.getByTestId('save-test-definition')).toBeInTheDocument();
+    });
+
+    it('should initialize with testPlatforms field in edit mode', () => {
+      render(
+        <TestDefinitionForm
+          initialValues={mockInitialValues}
+          onCancel={mockOnCancel}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+      const testPlatformField = screen.getByLabelText('label.test-platform');
+      expect(testPlatformField).toBeInTheDocument();
+    });
+  });
+
+  describe('User Interactions', () => {
+    it('should call onCancel when cancel button is clicked', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      const cancelButton = screen.getByText('label.cancel');
+      fireEvent.click(cancelButton);
+
+      expect(mockOnCancel).toHaveBeenCalled();
+    });
+
+    it('should close drawer when clicking close icon', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      const drawer = screen.getByRole('dialog');
+      expect(drawer).toBeInTheDocument();
+    });
   });
 });

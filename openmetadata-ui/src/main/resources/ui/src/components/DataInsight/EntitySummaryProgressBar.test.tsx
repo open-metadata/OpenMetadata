@@ -42,8 +42,8 @@ describe('EntitySummaryProgressBar component', () => {
   it('Should render label if provided', async () => {
     render(<EntitySummaryProgressBar {...mockProps} label="test" />);
 
-    expect((await screen.findByTestId('entity-value')).textContent).toBe(
-      'test'
-    );
+    expect(
+      (await screen.findByTestId('entity-value')).textContent
+    ).toStrictEqual('test');
   });
 });

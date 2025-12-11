@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { UserClass } from '../../../support/user/UserClass';
@@ -44,7 +44,6 @@ const TEST_DEFINITION_DATA_STEWARD_RULES = [
     effect: 'allow',
   },
 ];
-
 
 // Create policy and role instances
 const dataConsumerPolicy = new PolicyClass();
@@ -296,9 +295,7 @@ test.describe('Test Definition Permissions - Data Steward', () => {
     ).toBeVisible();
 
     // Data Steward should NOT have Create permission
-    const addButton = dataStewardPage.getByTestId(
-      'add-test-definition-button'
-    );
+    const addButton = dataStewardPage.getByTestId('add-test-definition-button');
 
     await expect(addButton).not.toBeVisible();
 

@@ -60,7 +60,6 @@
   ],
   "provider": "system",
   "enabled": true,
-  "dataQualityDimension": "Consistency"
   "dataQualityDimension": "Consistency",
   "supportedServices": [
     "Snowflake",

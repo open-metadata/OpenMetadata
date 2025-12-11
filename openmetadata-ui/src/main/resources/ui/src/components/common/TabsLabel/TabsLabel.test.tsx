@@ -32,7 +32,7 @@ describe('TabsLabel component', () => {
     const count = await screen.findByTestId('count');
 
     expect(count).toBeVisible();
-    expect(count.textContent).toBe('3');
+    expect(count.textContent).toStrictEqual('3');
   });
 
   it('Container should have id, provided via prop', async () => {

@@ -197,7 +197,7 @@ describe('CSVUtils', () => {
         MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES
       );
 
-      expect(convertedCSVEntities).toBe(`dateCp:undefined`);
+      expect(convertedCSVEntities).toStrictEqual(`dateCp:undefined`);
     });
   });
 

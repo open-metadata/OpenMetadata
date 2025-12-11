@@ -23,6 +23,7 @@ import {
   Switch,
   Typography,
 } from 'antd';
+import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -61,14 +62,18 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
 
   useEffect(() => {
     if (initialValues) {
-      const initialSqlExpression = (initialValues as TestDefinition & { sqlExpression?: string }).sqlExpression || '';
+      const initialSqlExpression =
+        (initialValues as TestDefinition & { sqlExpression?: string })
+          .sqlExpression || '';
       setSqlExpression(initialSqlExpression);
       form.setFieldsValue({
         name: initialValues.name,
         displayName: initialValues.displayName,
         description: initialValues.description,
         entityType: initialValues.entityType,
-        testPlatforms: initialValues.testPlatforms || [TestPlatform.OpenMetadata],
+        testPlatforms: initialValues.testPlatforms || [
+          TestPlatform.OpenMetadata,
+        ],
         dataQualityDimension: initialValues.dataQualityDimension,
         supportedDataTypes: initialValues.supportedDataTypes,
         parameterDefinition: initialValues.parameterDefinition,
@@ -87,7 +92,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
       const values = await form.validateFields();
       setIsSubmitting(true);
 
-      const payload: Partial<TestDefinition> & { sqlExpression?: string } = {
+      const payload: TestDefinition = {
         ...initialValues,
         name: values.name,
         displayName: values.displayName,
@@ -119,7 +124,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
 
       onSuccess();
     } catch (error) {
-      showErrorToast(error as Error);
+      showErrorToast(error as AxiosError);
     } finally {
       setIsSubmitting(false);
     }
@@ -221,13 +226,13 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
         </Form.Item>
 
         <Form.Item
-          label={t('label.test-platform')}
+          label={t('label.test-platform-plural')}
           name="testPlatforms"
           rules={[
             {
               required: true,
               message: t('message.field-text-is-required', {
-                fieldText: t('label.test-platform'),
+                fieldText: t('label.test-platform-plural'),
               }),
             },
           ]}>

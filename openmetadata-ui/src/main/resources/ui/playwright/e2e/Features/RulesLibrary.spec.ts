@@ -52,16 +52,15 @@ test.describe('Rules Library', () => {
     await responsePromise;
 
     // Verify table is displayed
-    await expect(
-      page.getByTestId('test-definition-table')
-    ).toBeVisible();
+    await expect(page.getByTestId('test-definition-table')).toBeVisible();
   });
 
   test('should display system test definitions', async ({ page }) => {
     // Wait for API response before navigation
-    const responsePromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-      response.request().method() === 'GET'
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+        response.request().method() === 'GET'
     );
 
     await page.goto('/rules-library');
@@ -97,12 +96,18 @@ test.describe('Rules Library', () => {
 
     // Select entity type
     await page.locator('#entityType').click();
-    await page.locator('.ant-select-item-option-content:has-text("TABLE")').first().click();
+    await page
+      .locator('.ant-select-item-option-content:has-text("TABLE")')
+      .first()
+      .click();
     await page.waitForTimeout(500);
 
     // Select test platform
     await page.locator('#testPlatforms').click();
-    await page.locator('.ant-select-item-option-content:has-text("OpenMetadata")').first().click();
+    await page
+      .locator('.ant-select-item-option-content:has-text("OpenMetadata")')
+      .first()
+      .click();
 
     // Verify enabled switch is checked by default
     const enabledSwitch = page.getByRole('switch');
@@ -247,7 +252,9 @@ test.describe('Rules Library', () => {
     await page.getByTestId('save-test-definition').click();
 
     // Verify validation errors appear for required fields
-    await expect(page.locator('.ant-form-item-explain-error').first()).toBeVisible();
+    await expect(
+      page.locator('.ant-form-item-explain-error').first()
+    ).toBeVisible();
   });
 
   test('should cancel form and close drawer', async ({ page }) => {
@@ -274,9 +281,10 @@ test.describe('Rules Library', () => {
     page,
   }) => {
     // Wait for API response promise before navigation
-    const responsePromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-      response.request().method() === 'GET'
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+        response.request().method() === 'GET'
     );
 
     await page.goto('/rules-library');
@@ -293,7 +301,11 @@ test.describe('Rules Library', () => {
 
     // Pagination uses NextPrevious component, not ant-pagination
     await expect(
-      page.locator('[data-testid="pagination-next-button"], [data-testid="pagination-previous-button"]').first()
+      page
+        .locator(
+          '[data-testid="pagination-next-button"], [data-testid="pagination-previous-button"]'
+        )
+        .first()
     ).toBeVisible();
   });
 
@@ -349,9 +361,10 @@ test.describe('Rules Library', () => {
     page,
   }) => {
     // Wait for API response before navigation
-    const responsePromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-      response.request().method() === 'GET'
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+        response.request().method() === 'GET'
     );
 
     await page.goto('/rules-library');
@@ -409,12 +422,18 @@ test.describe('Rules Library', () => {
 
     // Select entity type
     await page.locator('#entityType').click();
-    await page.locator('.ant-select-item-option-content:has-text("TABLE")').first().click();
+    await page
+      .locator('.ant-select-item-option-content:has-text("TABLE")')
+      .first()
+      .click();
     await page.waitForTimeout(500);
 
     // Select test platform
     await page.locator('#testPlatforms').click();
-    await page.locator('.ant-select-item-option-content:has-text("OpenMetadata")').first().click();
+    await page
+      .locator('.ant-select-item-option-content:has-text("OpenMetadata")')
+      .first()
+      .click();
 
     // Click save
     await page.getByTestId('save-test-definition').click();
@@ -444,9 +463,10 @@ test.describe('Rules Library', () => {
     page,
   }) => {
     // Wait for API response before navigation
-    const responsePromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-      response.request().method() === 'GET'
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+        response.request().method() === 'GET'
     );
 
     await page.goto('/rules-library');
@@ -501,9 +521,10 @@ test.describe('Rules Library', () => {
     // This test verifies backend validation for system test definitions
 
     // Wait for API response before navigation
-    const responsePromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-      response.request().method() === 'GET'
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+        response.request().method() === 'GET'
     );
 
     await page.goto('/rules-library');
@@ -530,9 +551,10 @@ test.describe('Rules Library', () => {
     page,
   }) => {
     // Wait for API response before navigation
-    const responsePromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-      response.request().method() === 'GET'
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+        response.request().method() === 'GET'
     );
 
     await page.goto('/rules-library');
@@ -572,12 +594,18 @@ test.describe('Rules Library', () => {
 
     // Select entity type - COLUMN
     await page.locator('#entityType').click();
-    await page.locator('.ant-select-item-option-content:has-text("COLUMN")').first().click();
+    await page
+      .locator('.ant-select-item-option-content:has-text("COLUMN")')
+      .first()
+      .click();
     await page.waitForTimeout(500);
 
     // Select test platform
     await page.locator('#testPlatforms').click();
-    await page.locator('.ant-select-item-option-content:has-text("OpenMetadata")').first().click();
+    await page
+      .locator('.ant-select-item-option-content:has-text("OpenMetadata")')
+      .first()
+      .click();
 
     // Click save
     await page.getByTestId('save-test-definition').click();
@@ -624,9 +652,10 @@ test.describe('Rules Library', () => {
     page,
   }) => {
     // Wait for API response before navigation
-    const responsePromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
-      response.request().method() === 'GET'
+    const responsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+        response.request().method() === 'GET'
     );
 
     await page.goto('/rules-library');
