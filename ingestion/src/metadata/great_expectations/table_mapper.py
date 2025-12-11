@@ -43,7 +43,7 @@ class TableConfig(BaseModel):
 
 class TableMapper:
     """
-    HJandles the Table Mapping between GX Expectation Suite and OpenMetadata Table.
+    Handles the Table Mapping between GX Expectation Suite and OpenMetadata Table.
     """
 
     def __init__(
