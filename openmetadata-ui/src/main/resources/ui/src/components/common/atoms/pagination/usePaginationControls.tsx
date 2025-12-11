@@ -24,7 +24,19 @@ import {
 import { ArrowLeft, ArrowRight } from '@untitledui/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  PAGE_SIZE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../constants/constants';
 import { formatNumberWithComma } from '../../../../utils/CommonUtils';
+
+// Default rows per page options used across pagination components
+const DEFAULT_ROWS_PER_PAGE_OPTIONS = [
+  PAGE_SIZE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+] as const;
 
 interface PaginationControlsConfig {
   currentPage: number;
@@ -50,12 +62,17 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
 
   const showPagination = config.totalPages > 1;
 
-  const rowsPerPageOptions = config.rowsPerPageOptions ?? [10, 25, 50];
+  const rowsPerPageOptions = useMemo(
+    () => config.rowsPerPageOptions ?? [...DEFAULT_ROWS_PER_PAGE_OPTIONS],
+    [config.rowsPerPageOptions]
+  );
 
   // Ensure the selected value is in the options, otherwise use the first option
-  const selectedPageSize = rowsPerPageOptions.includes(config.pageSize)
-    ? config.pageSize
-    : rowsPerPageOptions[0];
+  const selectedPageSize = useMemo(() => {
+    return rowsPerPageOptions.includes(config.pageSize)
+      ? config.pageSize
+      : rowsPerPageOptions[0];
+  }, [rowsPerPageOptions, config.pageSize]);
 
   const handlePageSizeChange = (event: SelectChangeEvent<number>) => {
     const newPageSize = event.target.value as number;
@@ -179,7 +196,19 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
         </Box>
       </Box>
     ),
-    [config, rowsPerPageOptions, displayedRowsRange, theme, t]
+    [
+      config.currentPage,
+      config.totalPages,
+      config.pageSize,
+      config.totalEntities,
+      config.onPageChange,
+      config.onPageSizeChange,
+      rowsPerPageOptions,
+      displayedRowsRange,
+      selectedPageSize,
+      theme,
+      t,
+    ]
   );
 
   return {
