@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 import { SearchOutlined } from '@ant-design/icons';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { IconButton, Stack, Typography } from '@mui/material';
 import { Collapse, Input } from 'antd';
+import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BORDER_COLOR } from '../../../../constants/constants';
+import {
+  BORDER_COLOR,
+  LINEAGE_CHILD_ITEMS_PER_PAGE,
+} from '../../../../constants/constants';
 import {
   DATATYPES_HAVING_SUBFIELDS,
   LINEAGE_COLUMN_NODE_SUPPORTED,
@@ -32,8 +39,180 @@ import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getColumnContent } from '../CustomNode.utils';
-import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
+import { ColumnContent } from '../CustomNode.utils';
+import {
+  EntityChildren,
+  EntityChildrenItem,
+  NodeChildrenProps,
+} from './NodeChildren.interface';
+
+interface CustomPaginatedListProps {
+  items: React.ReactNode[];
+  filteredColumns: EntityChildren;
+  nodeId?: string;
+  page: number;
+  setPage: React.Dispatch<React.SetStateAction<number>>;
+}
+
+const CustomPaginatedList = ({
+  items,
+  filteredColumns,
+  nodeId,
+  page,
+  setPage,
+}: CustomPaginatedListProps) => {
+  const [itemsOfPreviousPage, setItemsOfPreviousPage] = useState<string[]>([]);
+  const { t } = useTranslation();
+  const { setColumnsInCurrentPages, useUpdateNodeInternals } =
+    useLineageProvider();
+  const updateNodeInternals = useUpdateNodeInternals();
+
+  const getAllNestedChildrenInFlatArray = useCallback(
+    (item: EntityChildrenItem): string[] => {
+      const result: string[] = [];
+
+      if (item.fullyQualifiedName) {
+        result.push(item.fullyQualifiedName);
+      }
+
+      if (
+        'children' in item &&
+        Array.isArray(item.children) &&
+        item.children.length > 0
+      ) {
+        for (const child of item.children) {
+          result.push(...getAllNestedChildrenInFlatArray(child));
+        }
+      }
+
+      return result;
+    },
+    []
+  );
+
+  const {
+    totalPages,
+    insideCurrentPageItems,
+    outsideCurrentPageItems,
+    itemsOfCurrentPage,
+  } = useMemo(() => {
+    const totalPages = Math.ceil(items.length / LINEAGE_CHILD_ITEMS_PER_PAGE);
+    const startIdx = (page - 1) * LINEAGE_CHILD_ITEMS_PER_PAGE;
+    const endIdx = startIdx + LINEAGE_CHILD_ITEMS_PER_PAGE;
+
+    const insideCurrentPageItems: React.ReactNode[] = [];
+    const outsideCurrentPageItems: React.ReactNode[] = [];
+
+    items.forEach((item, i) => {
+      const wrappedItem = (
+        <div
+          className={
+            i >= startIdx && i < endIdx
+              ? 'inside-current-page-item'
+              : 'outside-current-page-item'
+          }>
+          {item}
+        </div>
+      );
+
+      if (i >= startIdx && i < endIdx) {
+        insideCurrentPageItems.push(wrappedItem);
+      } else {
+        outsideCurrentPageItems.push(wrappedItem);
+      }
+    });
+
+    const itemsOfCurrentPage = filteredColumns
+      .slice(startIdx, endIdx)
+      .filter(Boolean)
+      .flatMap((item) => getAllNestedChildrenInFlatArray(item));
+
+    return {
+      totalPages,
+      insideCurrentPageItems,
+      outsideCurrentPageItems,
+      itemsOfCurrentPage,
+    };
+  }, [items, page, filteredColumns, getAllNestedChildrenInFlatArray]);
+
+  useEffect(() => {
+    setColumnsInCurrentPages((prev) => {
+      const filtered = prev.filter(
+        (item) => !itemsOfPreviousPage.includes(item)
+      );
+
+      const updated = new Set(filtered);
+      itemsOfCurrentPage.forEach((item) => updated.add(item));
+
+      return Array.from(updated);
+    });
+  }, [itemsOfPreviousPage, itemsOfCurrentPage, setColumnsInCurrentPages]);
+
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      setItemsOfPreviousPage(itemsOfCurrentPage);
+      setPage(newPage);
+      if (nodeId) {
+        updateNodeInternals(nodeId);
+      }
+    },
+    [itemsOfCurrentPage, nodeId, updateNodeInternals]
+  );
+
+  const handlePrev = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      handlePageChange(Math.max(page - 1, 1));
+    },
+    [page, handlePageChange]
+  );
+
+  const handleNext = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      handlePageChange(Math.min(page + 1, totalPages));
+    },
+    [page, totalPages, handlePageChange]
+  );
+
+  return (
+    <>
+      <Stack className="inside-current-page-items" spacing={1}>
+        {insideCurrentPageItems}
+      </Stack>
+      <Stack className="outside-current-page-items" spacing={1}>
+        {outsideCurrentPageItems}
+      </Stack>
+
+      <Stack
+        alignItems="center"
+        direction="row"
+        justifyContent="center"
+        mt={2}
+        spacing={1}>
+        <IconButton
+          data-testid="prev-btn"
+          disabled={page === 1}
+          size="small"
+          onClick={handlePrev}>
+          <ChevronLeftIcon />
+        </IconButton>
+
+        <Typography variant="body2">
+          {page} {t('label.slash-symbol')} {totalPages}
+        </Typography>
+
+        <IconButton
+          data-testid="next-btn"
+          disabled={page === totalPages}
+          size="small"
+          onClick={handleNext}>
+          <ChevronRightIcon />
+        </IconButton>
+      </Stack>
+    </>
+  );
+};
 
 const NodeChildren = ({
   node,
@@ -46,16 +225,23 @@ const NodeChildren = ({
     tracedColumns,
     activeLayer,
     onColumnClick,
+    onColumnMouseEnter,
+    onColumnMouseLeave,
     columnsHavingLineage,
     isEditMode,
     expandAllColumns,
+    selectedColumn,
+    useUpdateNodeInternals,
+    isCreatingEdge,
   } = useLineageProvider();
+  const updateNodeInternals = useUpdateNodeInternals();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [showAllColumns, setShowAllColumns] = useState(false);
   const [summary, setSummary] = useState<TestSummary>();
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   const { isColumnLayerEnabled, showDataObservability } = useMemo(() => {
     return {
@@ -94,11 +280,11 @@ const NodeChildren = ({
       node &&
       LINEAGE_COLUMN_NODE_SUPPORTED.includes(node.entityType as EntityType)
     );
-  }, [node.id]);
+  }, [node]);
 
   const { children, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
-    [node.id]
+    [node]
   );
 
   const handleSearchChange = useCallback(
@@ -156,6 +342,12 @@ const NodeChildren = ({
     setShowAllColumns(expandAllColumns);
   }, [expandAllColumns]);
 
+  useEffect(() => {
+    if (node.id) {
+      updateNodeInternals?.(node.id);
+    }
+  }, [selectedColumn, updateNodeInternals, tracedColumns, node.id]);
+
   const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
     setIsLoading(true);
     try {
@@ -185,14 +377,15 @@ const NodeChildren = ({
 
       const columnSummary = getColumnSummary(record);
 
-      const headerContent = getColumnContent(
-        record,
-        isColumnTraced,
-        isConnectable,
-        onColumnClick,
-        showDataObservabilitySummary,
-        isLoading,
-        columnSummary
+      const headerContent = (
+        <ColumnContent
+          column={record}
+          isColumnTraced={isColumnTraced}
+          isConnectable={isConnectable}
+          isLoading={isLoading}
+          showDataObservabilitySummary={showDataObservabilitySummary}
+          summary={columnSummary}
+        />
       );
 
       if (!record.children || record.children.length === 0) {
@@ -219,14 +412,16 @@ const NodeChildren = ({
             return null;
           }
 
-          return getColumnContent(
-            child,
-            isColumnTraced,
-            isConnectable,
-            onColumnClick,
-            showDataObservabilitySummary,
-            isLoading,
-            columnSummary
+          return (
+            <ColumnContent
+              column={child}
+              isColumnTraced={isColumnTraced}
+              isConnectable={isConnectable}
+              isLoading={isLoading}
+              key={fullyQualifiedName}
+              showDataObservabilitySummary={showDataObservabilitySummary}
+              summary={columnSummary}
+            />
           );
         }
       });
@@ -251,13 +446,17 @@ const NodeChildren = ({
       );
     },
     [
-      isConnectable,
       tracedColumns,
+      getColumnSummary,
+      selectedColumn,
+      isConnectable,
       onColumnClick,
-      isColumnVisible,
+      onColumnMouseEnter,
+      onColumnMouseLeave,
       showDataObservabilitySummary,
       isLoading,
-      summary,
+      Panel,
+      isColumnVisible,
     ]
   );
   const renderColumnsData = useCallback(
@@ -273,24 +472,30 @@ const NodeChildren = ({
           return null;
         }
 
-        return getColumnContent(
-          column,
-          isColumnTraced,
-          isConnectable,
-          onColumnClick,
-          showDataObservabilitySummary,
-          isLoading,
-          columnSummary
+        return (
+          <ColumnContent
+            column={column}
+            isColumnTraced={isColumnTraced}
+            isConnectable={isConnectable}
+            isLoading={isLoading}
+            showDataObservabilitySummary={showDataObservabilitySummary}
+            summary={columnSummary}
+          />
         );
       }
     },
     [
-      isConnectable,
+      getColumnSummary,
+      renderRecord,
       tracedColumns,
       isColumnVisible,
+      selectedColumn,
+      isConnectable,
+      onColumnClick,
+      onColumnMouseEnter,
+      onColumnMouseLeave,
       showDataObservabilitySummary,
       isLoading,
-      summary,
     ]
   );
 
@@ -306,9 +511,15 @@ const NodeChildren = ({
     (isColumnLayerEnabled || showDataObservability || isChildrenListExpanded)
   ) {
     return (
-      (isColumnLayerEnabled || isChildrenListExpanded) &&
+      isChildrenListExpanded &&
       !isEmpty(children) && (
-        <div className="column-container" data-testid="column-container">
+        <div
+          className={classNames(
+            'column-container',
+            selectedColumn && 'any-column-selected',
+            isCreatingEdge && 'creating-edge'
+          )}
+          data-testid="column-container">
           <div className="search-box">
             <Input
               data-testid="search-column-input"
@@ -321,10 +532,16 @@ const NodeChildren = ({
               onClick={(e) => e.stopPropagation()}
             />
 
-            {isChildrenListExpanded && !isEmpty(renderedColumns) && (
+            {!isEmpty(renderedColumns) && (
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
-                  {renderedColumns}
+                  <CustomPaginatedList
+                    filteredColumns={filteredColumns}
+                    items={renderedColumns}
+                    nodeId={node.id}
+                    page={page}
+                    setPage={setPage}
+                  />
                 </div>
               </section>
             )}

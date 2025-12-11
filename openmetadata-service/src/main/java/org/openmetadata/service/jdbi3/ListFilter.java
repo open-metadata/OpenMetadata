@@ -112,18 +112,20 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
-    return entityLinkStr == null ? "" : String.format("entityLink = '%s'", entityLinkStr);
+    return entityLinkStr == null ? "" : "entityLink = :entityLink";
   }
 
   private String getAgentTypeCondition() {
-    String agentType = queryParams.get("agentType");
-    if (agentType == null) {
+    String agentTypes = queryParams.get("agentType");
+    if (agentTypes == null || agentTypes.trim().isEmpty()) {
       return "";
     } else {
+      // Handle multiple values using the existing pattern
+      String inCondition = getInConditionFromString(agentTypes);
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return String.format("JSON_EXTRACT(json, '$.agentType') = '%s'", agentType);
+        return String.format("JSON_EXTRACT(json, '$.agentType') IN (%s)", inCondition);
       } else {
-        return String.format("json->>'agentType' = '%s'", agentType);
+        return String.format("json->>'agentType' IN (%s)", inCondition);
       }
     }
   }
@@ -558,6 +560,8 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getInConditionFromString(String condition) {
     return Arrays.stream(condition.split(","))
+        .map(String::trim)
+        .filter(s -> !s.isEmpty())
         .map(s -> String.format("'%s'", s))
         .collect(Collectors.joining(","));
   }

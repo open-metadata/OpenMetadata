@@ -17,7 +17,7 @@
   border-bottom: 0.6px solid @grey-15;
   padding-left: 16px;
   padding-right: 16px;
-  padding-bottom: 4px;
+  padding-bottom: 8px;
   padding-top: 16px;
   .field-card-header {
     justify-content: space-between;
@@ -38,27 +38,13 @@
         font-size: 13px;
         font-weight: 600;
         color: @grey-900;
-        margin-bottom: 10px;
+        margin-bottom: 4px;
       }
-    }
-
-    .data-type-badge {
-      font-size: 12px;
-      font-weight: 500;
-      padding: 1px 6px;
-      margin-bottom: 8px;
-      height: 22px;
-      align-content: center;
-      color: @grey-900;
-      border: 1px solid @grey-38;
-      border-radius: 4px;
-      white-space: nowrap;
-      background-color: @grey-9;
-      text-transform: capitalize;
     }
   }
 
   .field-card-content {
+    display: flex;
     .field-description {
       color: @grey-700;
       font-size: 13px !important;
@@ -122,6 +108,7 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
+      margin-top: 12px;
       margin-bottom: 8px;
 
       .metadata-section {
@@ -238,10 +225,6 @@
 
       .field-name-container {
         width: 100%;
-      }
-
-      .data-type-badge {
-        align-self: flex-end;
       }
     }
   }

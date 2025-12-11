@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
@@ -162,7 +162,7 @@ export const dragAndDropNode = async (
   await page.mouse.down();
   const box = (await destinationElement.boundingBox()) as DOMRect;
   const x = box.x + 250;
-  const y = box.y + box.height / 2;
+  const y = box.y + box.height / 2 + 100;
   await page.mouse.move(x, y, { steps: 20 });
   await page.mouse.up();
 };
@@ -475,6 +475,8 @@ export const addColumnLineage = async (
   );
   await lineageRes;
 
+  await page.getByTestId(`column-${toColumnNode}`).click();
+
   if (exitEditMode) {
     await editLineageClick(page);
   }
@@ -783,4 +785,24 @@ export const verifyLineageConfig = async (page: Page) => {
   const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
   await page.getByText('OK').click();
   await saveRes;
+};
+
+export const connectEdgeBetweenNodesViaAPI = (
+  apiContext: APIRequestContext,
+  fromEntity: { id: string; type: string },
+  toEntity: { id: string; type: string },
+  columnsLineage: Array<{ fromColumns: string[]; toColumn: string }>
+) => {
+  return apiContext.put('/api/v1/lineage/', {
+    data: {
+      edge: {
+        fromEntity,
+        toEntity,
+        lineageDetails: { columnsLineage, description: '' },
+      },
+    },
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
 };

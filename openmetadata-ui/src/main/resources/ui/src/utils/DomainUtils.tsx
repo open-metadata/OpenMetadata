@@ -196,9 +196,9 @@ export const domainTypeTooltipDataRender = () => (
     {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
       <Fragment key={type}>
         <Space direction="vertical" size={0}>
-          <Typography.Text>{`${type} :`}</Typography.Text>
+          <Typography.Text>{`${t(type)} :`}</Typography.Text>
           <Typography.Paragraph className="m-0 text-grey-muted">
-            {description}
+            {t(description)}
           </Typography.Paragraph>
         </Space>
 
@@ -527,7 +527,7 @@ export const getDomainDetailTabs = ({
                     />
                   ),
                   minWidth: 800,
-                  flex: 0.87,
+                  flex: 0.67,
                 }}
                 hideSecondPanel={!previewAsset}
                 pageTitle={t('label.domain')}
@@ -540,7 +540,7 @@ export const getDomainDetailTabs = ({
                     />
                   ),
                   minWidth: 400,
-                  flex: 0.13,
+                  flex: 0.33,
                   className:
                     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
                 }}

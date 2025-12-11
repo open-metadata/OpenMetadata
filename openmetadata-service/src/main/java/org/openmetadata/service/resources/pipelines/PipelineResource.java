@@ -544,9 +544,19 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               description = "Search pipeline statuses by task name",
               schema = @Schema(type = "string"))
           @QueryParam("search")
-          String search) {
+          String search,
+      @Parameter(
+              description = "Filter pipeline statuses by minimum duration in milliseconds",
+              schema = @Schema(type = "number"))
+          @QueryParam("minDuration")
+          Long minDuration,
+      @Parameter(
+              description = "Filter pipeline statuses by maximum duration in milliseconds",
+              schema = @Schema(type = "number"))
+          @QueryParam("maxDuration")
+          Long maxDuration) {
     return repository.getPipelineStatuses(
-        fqn, startTs, endTs, limitParam, before, after, status, search);
+        fqn, startTs, endTs, limitParam, before, after, status, search, minDuration, maxDuration);
   }
 
   @DELETE

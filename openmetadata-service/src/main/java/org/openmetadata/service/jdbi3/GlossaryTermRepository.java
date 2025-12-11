@@ -177,6 +177,36 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return getGlossaryTermAssets(term.getId(), limit, offset);
   }
 
+  public Map<String, Integer> getAllGlossaryTermsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for glossary term asset counts");
+      return new HashMap<>();
+    }
+
+    List<GlossaryTerm> allGlossaryTerms =
+        listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> glossaryTermAssetCounts = new HashMap<>();
+
+    for (GlossaryTerm term : allGlossaryTerms) {
+      InheritedFieldQuery query =
+          InheritedFieldQuery.forGlossaryTerm(term.getFullyQualifiedName(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for glossary term {} asset count. Returning 0.",
+                    term.getFullyQualifiedName());
+                return 0;
+              });
+
+      glossaryTermAssetCounts.put(term.getFullyQualifiedName(), count);
+    }
+
+    return glossaryTermAssetCounts;
+  }
+
   @Override
   public void setFields(GlossaryTerm entity, Fields fields) {
     entity.withParent(getParent(entity)).withGlossary(getGlossary(entity));
@@ -1152,6 +1182,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
+  private void checkDuplicateTermsForUpdate(GlossaryTerm original, GlossaryTerm updated) {
+    if (!original.getName().equals(updated.getName())) {
+      int count =
+          daoCollection
+              .glossaryTermDAO()
+              .getGlossaryTermCountIgnoreCaseExcludingId(
+                  updated.getGlossary().getName(), updated.getName(), original.getId().toString());
+      if (count > 0) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.duplicateGlossaryTerm(
+                updated.getName(), updated.getGlossary().getName()));
+      }
+    }
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryTermUpdater extends EntityUpdater {
     public GlossaryTermUpdater(GlossaryTerm original, GlossaryTerm updated, Operation operation) {
@@ -1323,7 +1368,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        checkDuplicateTerms(updated);
+        checkDuplicateTermsForUpdate(original, updated);
         // Glossary term name changed - update the FQNs of the children terms to reflect this
         setFullyQualifiedName(updated);
         LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
