@@ -17,7 +17,6 @@ import { CreateClassification } from '../../generated/api/classification/createC
 import {
   AutoClassificationConfig,
   Classification,
-  ConflictResolution,
 } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { EntityReference } from '../../generated/entity/type';
@@ -35,13 +34,6 @@ export type DeleteTagsType = {
   state: boolean;
 };
 
-export type FormAutoClassificationConfig = {
-  enabled?: boolean;
-  conflictResolution?: ConflictResolution;
-  minimumConfidence?: number;
-  requireExplicitMatch?: boolean;
-};
-
 export interface SubmitProps {
   name: string;
   description: string;
@@ -51,7 +43,7 @@ export interface SubmitProps {
   color?: string;
   owners?: EntityReference[];
   domains?: EntityReference[];
-  autoClassificationConfig?: FormAutoClassificationConfig | null;
+  autoClassificationConfig?: AutoClassificationConfig | null;
   autoClassificationEnabled?: boolean;
   autoClassificationPriority?: number;
 }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { DEFAULT_TAG_ICON } from '../../components/common/IconPicker';
-import { MUI_NAME_FIELD_RULES } from '../../constants/Form.constants';
+import { MUI_NAME_FIELD_RULES } from '../../constants/Tags.constant';
 import {
   FieldProp,
   FieldTypes,

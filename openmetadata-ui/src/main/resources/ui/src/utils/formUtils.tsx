@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Autocomplete, Switch as MUISwitch } from '@mui/material';
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
@@ -45,11 +44,13 @@ import { FilterPatternProps } from '../components/common/FilterPattern/filterPat
 import FormItemLabel from '../components/common/Form/FormItemLabel';
 import { MUIIconPicker } from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
+import MUIAutocomplete from '../components/common/MUIAutocomplete/MUIAutocomplete';
 import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUISelect from '../components/common/MUISelect/MUISelect';
+import MUISwitch from '../components/common/MUISwitch/MUISwitch';
 import MUITagSuggestion from '../components/common/MUITagSuggestion/MUITagSuggestion';
 import MUITextField from '../components/common/MUITextField/MUITextField';
 import MUIUserTeamSelect, {
@@ -452,47 +453,14 @@ export const getField = (field: FieldProp) => {
         (rule) => (rule as RuleObject).required
       );
 
-      const AutocompleteWrapper = ({
-        value,
-        onChange,
-      }: {
-        value?: string[];
-        onChange?: (value: string[]) => void;
-      }) => {
-        const handleChange = (_event: unknown, newValue: string[]) => {
-          onChange?.(newValue);
-        };
-
-        const hasValue = value && value.length > 0;
-
-        return (
-          <Autocomplete
-            freeSolo
-            multiple
-            options={[]}
-            renderInput={(params) => (
-              <MUITextField
-                {...params}
-                label={muiLabel}
-                placeholder={hasValue ? undefined : placeholder}
-                required={isRequired}
-                slotProps={{
-                  inputLabel: {
-                    shrink: true,
-                  },
-                }}
-              />
-            )}
-            value={value || []}
-            onChange={handleChange}
-            {...(props as Record<string, unknown>)}
-          />
-        );
-      };
-
       return (
         <Form.Item {...formProps}>
-          <AutocompleteWrapper />
+          <MUIAutocomplete
+            label={muiLabel as string}
+            placeholder={placeholder}
+            required={isRequired}
+            {...(props as Record<string, unknown>)}
+          />
         </Form.Item>
       );
     }
@@ -502,37 +470,13 @@ export const getField = (field: FieldProp) => {
         (rule) => (rule as RuleObject).required
       );
 
-      const MUISwitchWrapper = ({
-        checked = false,
-        onChange,
-      }: {
-        checked?: boolean;
-        onChange?: (checked: boolean) => void;
-      }) => {
-        const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-          onChange?.(event.target.checked);
-        };
-
-        return (
-          <div className="d-flex gap-2 items-center">
-            <MUISwitch
-              checked={checked}
-              required={isRequired}
-              onChange={handleChange}
-              {...(props as Record<string, unknown>)}
-            />
-            {muiLabel && (
-              <Typography.Text className="font-medium">
-                {muiLabel}
-              </Typography.Text>
-            )}
-          </div>
-        );
-      };
-
       return (
         <Form.Item {...formProps} valuePropName="checked">
-          <MUISwitchWrapper />
+          <MUISwitch
+            label={muiLabel as string}
+            required={isRequired}
+            {...(props as Record<string, unknown>)}
+          />
         </Form.Item>
       );
     }
