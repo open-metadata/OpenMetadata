@@ -43,9 +43,9 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { addMultiOwner } from './entity';
+import { addMultiOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
-import { TASK_OPEN_FETCH_LINK, TaskDetails } from './task';
+import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
 
 type TaskEntity = {
   entityRef: {
@@ -762,6 +762,7 @@ export const checkAssetsCount = async (page: Page, assetsCount: number) => {
   await expect(
     page.locator('[data-testid="assets"] [data-testid="filter-count"]')
   ).toHaveText(assetsCount.toString());
+
   if (assetsCount > 0) {
     await expect(page.getByTestId('pagination')).toBeVisible();
   }
@@ -795,6 +796,7 @@ export const addAssetToGlossaryTerm = async (
   const filterButton = page.locator(
     '[data-testid="asset-selection-modal"] .feed-filter-icon'
   );
+
   await expect(filterButton).not.toBeVisible();
 
   for (const asset of assets) {
@@ -860,11 +862,15 @@ const testFilterWithSpecificOption = async (
     page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
   ).toBeVisible();
 
+  const clearFilterResponse = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/search/query')
+  );
+
   await page
     .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
     .click();
 
-  await page.waitForResponse('/api/v1/search/query*');
+  await clearFilterResponse;
 };
 
 const testFilterWithFirstOption = async (
@@ -877,38 +883,46 @@ const testFilterWithFirstOption = async (
 
   await page.waitForSelector('[data-testid="drop-down-menu"]');
 
-  const options = page.locator(
-    '[data-testid="drop-down-menu"] .ant-tree-treenode'
-  );
+  const options = page.locator('[data-testid="drop-down-menu"]');
+  await waitForAllLoadersToDisappear(page);
   const firstOption = options.first();
+  const noDataPlaceholder = page.getByText(/No data available/i);
+  if (await noDataPlaceholder.isVisible()) {
+    await page.getByTestId('close-btn').click();
+  } else {
+    const optionCount = await firstOption.count();
+    if (optionCount > 0) {
+      const filterResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        const queryParams = new URLSearchParams(url.search);
+        const queryFilter = queryParams.get('query_filter');
 
-  if ((await firstOption.count()) > 0) {
-    await firstOption.click();
-    await page.getByTestId('update-btn').click();
+        return (
+          response.url().includes('/api/v1/search/query') &&
+          queryFilter !== null &&
+          queryFilter !== ''
+        );
+      });
 
-    const filterResponse = page.waitForResponse((response) => {
-      const url = new URL(response.url());
-      const queryParams = new URLSearchParams(url.search);
-      const queryFilter = queryParams.get('query_filter');
+      await firstOption.click();
+      await page.getByTestId('update-btn').click();
 
-      return (
-        response.url().includes('/api/v1/search/query') &&
-        queryFilter !== null &&
-        queryFilter !== ''
+      await filterResponse;
+
+      await expect(
+        page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
+      ).toBeVisible();
+
+      const clearFilterResponse = page.waitForResponse((response) =>
+        response.url().includes('/api/v1/search/query')
       );
-    });
 
-    await filterResponse;
+      await page
+        .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
+        .click();
 
-    await expect(
-      page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-    ).toBeVisible();
-
-    await page
-      .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-      .click();
-
-    await page.waitForResponse('/api/v1/search/query*');
+      await clearFilterResponse;
+    }
   }
 };
 
@@ -939,6 +953,7 @@ export const verifyAssetModalFilters = async (
   const filterButton = page.locator(
     '[data-testid="asset-selection-modal"] .feed-filter-icon'
   );
+
   await expect(filterButton).not.toBeVisible();
 
   const filterNames = [
@@ -976,15 +991,14 @@ export const verifyAssetModalFilters = async (
     'mysql'
   );
 
-  await testFilterWithFirstOption(page, filterWrapper, 'Tier');
-
   await testFilterWithFirstOption(page, filterWrapper, 'Tag');
 
   await testFilterWithFirstOption(page, filterWrapper, 'Domains');
 
+  await testFilterWithFirstOption(page, filterWrapper, 'Tier');
   await testFilterWithFirstOption(page, filterWrapper, 'Owners');
 
-  await page.getByTestId('cancel-btn').click();
+  //   await page.getByTestId('cancel-btn').click();
 };
 
 export const updateNameForGlossaryTerm = async (

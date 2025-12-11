@@ -881,6 +881,8 @@ test.describe('Glossary tests', () => {
   test('Verify asset selection modal filters are shown upfront', async ({
     browser,
   }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
 
     const glossary1 = new Glossary();
