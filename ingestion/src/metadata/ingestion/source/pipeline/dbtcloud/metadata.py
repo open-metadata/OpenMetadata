@@ -191,17 +191,28 @@ class DbtcloudSource(PipelineServiceSource):
                     return
 
                 # Use combined GraphQL call instead of two separate calls
-                dbt_models, dbt_seeds, dbt_sources = self.client.get_models_with_lineage(
+                (
+                    dbt_models,
+                    dbt_seeds,
+                    dbt_sources,
+                ) = self.client.get_models_with_lineage(
                     job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
                 )
 
                 # Combine models and seeds for parent lookup
-                dbt_parents = (dbt_models or []) + (dbt_seeds or []) + (dbt_sources or [])
+                dbt_parents = (
+                    (dbt_models or []) + (dbt_seeds or []) + (dbt_sources or [])
+                )
 
                 # Build parent lookup dict for O(1) access instead of O(n) list search
                 parent_by_unique_id = {p.uniqueId: p for p in dbt_parents if p.uniqueId}
 
                 for model in dbt_models or []:
+                    if not model.runGeneratedAt:
+                        logger.debug(
+                            f"Skipping model with missing runGeneratedAt: name={getattr(model, 'name', None)}"
+                        )
+                        continue
                     if not all([model.name, model.database, model.dbtschema]):
                         logger.debug(
                             f"Skipping model with missing attributes: name={getattr(model, 'name', None)}, "
@@ -231,7 +242,18 @@ class DbtcloudSource(PipelineServiceSource):
                             if not parent:
                                 continue
 
-                            if not all([parent.name, parent.database, parent.dbtschema]):
+                            # Check runGeneratedAt for models and seeds (not sources)
+                            # Sources are auto-generated and don't have runGeneratedAt
+                            is_source = unique_id.startswith("source.")
+                            if not is_source and not parent.runGeneratedAt:
+                                logger.debug(
+                                    f"Skipping parent with missing runGeneratedAt: uniqueId={unique_id}"
+                                )
+                                continue
+
+                            if not all(
+                                [parent.name, parent.database, parent.dbtschema]
+                            ):
                                 logger.debug(
                                     f"Skipping parent with missing attributes: name={getattr(parent, 'name', None)}, "
                                     f"database={getattr(parent, 'database', None)}, schema={getattr(parent, 'dbtschema', None)}"
