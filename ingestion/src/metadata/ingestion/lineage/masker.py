@@ -149,7 +149,6 @@ def mask_query(
     return masked_query
 
 
-@calculate_execution_time(context="MaskQuery")
 def mask_query_impl(
     query: str,
     dialect: str = Dialect.ANSI.value,

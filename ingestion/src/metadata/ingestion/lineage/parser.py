@@ -41,6 +41,7 @@ from metadata.utils.helpers import (
     pretty_print_time_duration,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.memory_limit import MemoryLimitExceeded, memory_limit
 from metadata.utils.timeout import timeout
 
 # Prevent sqllineage from modifying the logger config
@@ -56,6 +57,8 @@ logger = ingestion_logger()
 
 # max lineage parsing wait in second when using specific dialect
 LINEAGE_PARSING_TIMEOUT = 30
+# max memory in MB that lineage parsing can consume
+LINEAGE_PARSING_MEMORY_LIMIT_MB = 100
 
 
 class LineageParser:
@@ -536,11 +539,15 @@ class LineageParser:
             f"[{self.query_hash}] Evaluating best parser (query length: {len(query)} chars)"
         )
 
-        # Try SQLGlot analyzer first (new, more accurate parser)
+        @calculate_execution_time(context="GetSqlGlotLineageRunner")
         @timeout(seconds=timeout_seconds)
-        def get_sqlglot_lineage_runner(qry: str, dialect: str) -> LineageRunner:
+        @memory_limit(
+            max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
+            context=self.query_hash,
+        )
+        def get_sqlglot_lineage_runner(query: str, dialect: str) -> LineageRunner:
             lr_sqlglot = LineageRunner(
-                qry, dialect=dialect, analyzer=SqlGlotLineageAnalyzer
+                query, dialect=dialect, analyzer=SqlGlotLineageAnalyzer
             )
             lr_sqlglot.get_column_lineage()
             return lr_sqlglot
@@ -562,6 +569,14 @@ class LineageParser:
             )
             logger.debug(self.query_parsing_failure_reason)
             lr_sqlglot = None
+        except MemoryLimitExceeded as mem_err:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"[{self.query_hash}] Query parsing with SqlGlot failed for dialect [{dialect.value}]."
+                f" Parser exceeded memory limit of {LINEAGE_PARSING_MEMORY_LIMIT_MB}MB. Error: {mem_err}"
+            )
+            logger.debug(self.query_parsing_failure_reason)
+            lr_sqlglot = None
         except Exception as err:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
@@ -578,12 +593,15 @@ class LineageParser:
             )
             return lr_sqlglot
 
-        # Fall back to sqlfluff analyzer if SQLGlot failed
-
+        @calculate_execution_time(context="GetSqlFluffLineageRunner")
         @timeout(seconds=timeout_seconds)
-        def get_sqlfluff_lineage_runner(qry: str, dialect: str) -> LineageRunner:
+        @memory_limit(
+            max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
+            context=self.query_hash,
+        )
+        def get_sqlfluff_lineage_runner(query: str, dialect: str) -> LineageRunner:
             lr_sqlfluff = LineageRunner(
-                qry, dialect=dialect, analyzer=SqlFluffLineageAnalyzer
+                query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer
             )
             lr_sqlfluff.get_column_lineage()
             return lr_sqlfluff
@@ -605,6 +623,14 @@ class LineageParser:
             )
             logger.debug(self.query_parsing_failure_reason)
             lr_sqlfluff = None
+        except MemoryLimitExceeded as mem_err:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"[{self.query_hash}] Query parsing with SqlFluff failed for dialect [{dialect.value}]."
+                f" Parser exceeded memory limit of {LINEAGE_PARSING_MEMORY_LIMIT_MB}MB. Error: {mem_err}"
+            )
+            logger.debug(self.query_parsing_failure_reason)
+            lr_sqlfluff = None
         except Exception as err:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
@@ -621,9 +647,14 @@ class LineageParser:
             )
             return lr_sqlfluff
 
+        @calculate_execution_time(context="GetSqlParseLineageRunner")
         @timeout(seconds=timeout_seconds)
-        def get_sqlparse_lineage_runner(qry: str) -> LineageRunner:
-            lr_sqlparse = LineageRunner(qry)
+        @memory_limit(
+            max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
+            context=self.query_hash,
+        )
+        def get_sqlparse_lineage_runner(query: str) -> LineageRunner:
+            lr_sqlparse = LineageRunner(query)
             lr_sqlparse.get_column_lineage()
             return lr_sqlparse
 
@@ -642,6 +673,14 @@ class LineageParser:
             self.query_parsing_failure_reason = (
                 f"[{self.query_hash}] Query parsing with SqlParse failed for dialect [{dialect.value}]."
                 f" Parser has been running for more than {timeout_seconds} seconds."
+            )
+            logger.debug(self.query_parsing_failure_reason)
+            lr_sqlparse = None
+        except MemoryLimitExceeded as mem_err:
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"[{self.query_hash}] Query parsing with SqlParse failed for dialect [{dialect.value}]."
+                f" Parser exceeded memory limit of {LINEAGE_PARSING_MEMORY_LIMIT_MB}MB. Error: {mem_err}"
             )
             logger.debug(self.query_parsing_failure_reason)
             lr_sqlparse = None
