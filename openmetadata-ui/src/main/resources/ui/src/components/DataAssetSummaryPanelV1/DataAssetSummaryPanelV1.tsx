@@ -46,11 +46,11 @@ import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 import {
   DataAssetSummaryPanelProps,
   TestCaseStatusCounts,
 } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
+import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../common/DescriptionSection/DescriptionSection';
@@ -170,33 +170,43 @@ export const DataAssetSummaryPanelV1 = ({
     );
   }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
 
-  const { upstreamCount, downstreamCount, shouldShowLineageSection } = useMemo(() => {
-    if (!ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
-      return { upstreamCount: 0, downstreamCount: 0, shouldShowLineageSection: false };
-    }
+  const { upstreamCount, downstreamCount, shouldShowLineageSection } =
+    useMemo(() => {
+      if (!ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
+        return {
+          upstreamCount: 0,
+          downstreamCount: 0,
+          shouldShowLineageSection: false,
+        };
+      }
 
-    if (!lineageData || !dataAsset.fullyQualifiedName) {
-      return { upstreamCount: 0, downstreamCount: 0, shouldShowLineageSection: true };
-    }
+      if (!lineageData || !dataAsset.fullyQualifiedName) {
+        return {
+          upstreamCount: 0,
+          downstreamCount: 0,
+          shouldShowLineageSection: true,
+        };
+      }
 
-    const nodes = Object.values(lineageData.nodes).map((node) => node.entity);
-    const edges = [
-      ...Object.values(lineageData.upstreamEdges),
-      ...Object.values(lineageData.downstreamEdges),
-    ];
+      const nodes = Object.values(lineageData.nodes).map((node) => node.entity);
+      const edges = [
+        ...Object.values(lineageData.upstreamEdges),
+        ...Object.values(lineageData.downstreamEdges),
+      ];
 
-    const { upstreamNodes, downstreamNodes } = getUpstreamDownstreamNodesEdges(
-      edges,
-      nodes,
-      dataAsset.fullyQualifiedName
-    );
+      const { upstreamNodes, downstreamNodes } =
+        getUpstreamDownstreamNodesEdges(
+          edges,
+          nodes,
+          dataAsset.fullyQualifiedName
+        );
 
-    return {
-      upstreamCount: upstreamNodes.length,
-      downstreamCount: downstreamNodes.length,
-      shouldShowLineageSection: true,
-    };
-  }, [lineageData, entityType, dataAsset.fullyQualifiedName]);
+      return {
+        upstreamCount: upstreamNodes.length,
+        downstreamCount: downstreamNodes.length,
+        shouldShowLineageSection: true,
+      };
+    }, [lineageData, entityType, dataAsset.fullyQualifiedName]);
 
   const fetchIncidentCount = useCallback(async () => {
     if (
@@ -544,9 +554,7 @@ export const DataAssetSummaryPanelV1 = ({
                 key={`tags-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
-                tags={dataAsset.tags?.filter(
-                  (tag: TagLabel) => tag.source !== TagSource.Glossary
-                )}
+                tags={dataAsset.tags}
                 onTagsUpdate={onTagsUpdate}
               />
             </div>

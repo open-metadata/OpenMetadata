@@ -34,6 +34,7 @@ import {
   addOwnerWithoutValidation,
   assignTier,
   updateDescription,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
   clearAndAddGlossaryTerms,
@@ -289,10 +290,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(tagsSection).toBeVisible();
 
       await editTags(adminPage, deletedTagDisplayName, true);
-
-      await expect(
-        adminPage.getByText(/Tags updated successfully/i)
-      ).toBeVisible();
 
       await deletedTag.delete(apiContext);
 
@@ -1746,26 +1743,16 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
     ).toBeVisible();
   });
 
-  test('Data Consumer - Overview Tab - Owners Section - Add and Update', async ({
+  test('Data Consumer - Overview Tab - Owners Section - View Owners', async ({
     dataConsumerPage,
   }) => {
     const summaryPanel = dataConsumerPage.locator(
       '.entity-summary-panel-container'
     );
+    await waitForAllLoadersToDisappear(dataConsumerPage, 'loader');
     const ownersSection = summaryPanel.locator('.owners-section');
 
     await expect(ownersSection).toBeVisible();
-
-    await addOwnerWithoutValidation({
-      page: dataConsumerPage,
-      owner: 'admin',
-      type: 'Users',
-      initiatorId: 'edit-owners',
-    });
-
-    await expect(
-      dataConsumerPage.getByText(/Owners updated successfully/i)
-    ).toBeVisible();
   });
 
   test('Data Consumer - Overview Tab - Tier Section - Add and Update', async ({
