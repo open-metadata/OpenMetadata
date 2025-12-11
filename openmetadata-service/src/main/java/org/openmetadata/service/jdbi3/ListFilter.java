@@ -253,6 +253,35 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     }
 
+    // Special handling for Query entities - check domains of tables in queryUsedIn
+    boolean isQueryEntity = tableName != null && tableName.equals("query_entity");
+    if (isQueryEntity && !NULL_PARAM.equals(domainId)) {
+      // For queries, check if any of the tables they are used in belong to the specified domain(s)
+      // Queries are related to tables via MENTIONED_IN relationship (relation=4)
+      if (Boolean.TRUE.toString().equals(domainAccessControl)) {
+        // Allow queries with no queryUsedIn OR queries used in tables that belong to the specified domain(s)
+        return String.format(
+            "(NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.relation=%d AND er.toEntity='query' AND er.toId = %s) OR "
+                + "EXISTS (SELECT 1 FROM entity_relationship er1 "
+                + "JOIN entity_relationship er2 ON er1.fromId = er2.toId "
+                + "WHERE er1.toId = %s AND er1.toEntity='query' AND er1.relation=%d "
+                + "AND er2.fromEntity='domain' AND er2.fromId IN (%s) AND er2.relation=10))",
+            Relationship.MENTIONED_IN.ordinal(),
+            entityIdColumn,
+            entityIdColumn,
+            Relationship.MENTIONED_IN.ordinal(),
+            domainId);
+      }
+      return String.format(
+          "(%s IN (SELECT er1.toId FROM entity_relationship er1 "
+              + "JOIN entity_relationship er2 ON er1.fromId = er2.toId "
+              + "WHERE er1.toEntity='query' AND er1.relation=%d "
+              + "AND er2.fromEntity='domain' AND er2.fromId IN (%s) AND er2.relation=10))",
+          entityIdColumn,
+          Relationship.MENTIONED_IN.ordinal(),
+          domainId);
+    }
+
     if (NULL_PARAM.equals(domainId)) {
       String entityType = getQueryParam("entityType");
       String entityTypeCondition =
