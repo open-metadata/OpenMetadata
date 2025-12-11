@@ -56,6 +56,23 @@ test.describe('Service form functionality', async () => {
   });
 
   test.describe('Superset', () => {
+    // Create the Certificate file for upload
+    const testCertPath = path.join(__dirname, '..', 'output', CERT_FILE);
+
+    test.beforeAll(() => {
+      const fixturesDir = path.dirname(testCertPath);
+      if (!fs.existsSync(fixturesDir)) {
+        fs.mkdirSync(fixturesDir, { recursive: true });
+      }
+
+      fs.writeFileSync(testCertPath, CERT_FILE);
+    });
+
+    test.afterAll(() => {
+      // Clean up the test file after upload
+      fs.unlinkSync(testCertPath);
+    });
+
     test('Verify form selects are working properly', async ({ page }) => {
       test.slow();
 
@@ -234,16 +251,6 @@ test.describe('Service form functionality', async () => {
 
       await page.getByText('SupersetApiConnection Advanced Config').click();
 
-      // Create the Certificate file for upload
-      const testCertPath = path.join(__dirname, '..', 'output', CERT_FILE);
-
-      const fixturesDir = path.dirname(testCertPath);
-      if (!fs.existsSync(fixturesDir)) {
-        fs.mkdirSync(fixturesDir, { recursive: true });
-      }
-
-      fs.writeFileSync(testCertPath, CERT_FILE);
-
       // Upload the test certificate file
       const fileInput1 = page
         .getByTestId(
@@ -313,9 +320,6 @@ test.describe('Service form functionality', async () => {
           state: 'detached',
         }
       );
-
-      // Clean up the test file after upload
-      fs.unlinkSync(testCertPath);
     });
   });
 
