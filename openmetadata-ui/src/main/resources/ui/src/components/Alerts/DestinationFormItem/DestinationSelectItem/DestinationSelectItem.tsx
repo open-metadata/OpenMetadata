@@ -52,6 +52,10 @@ import { Transi18next } from '../../../../utils/CommonUtils';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
+// Helper function to filter out empty key-value pairs from arrays
+const filterEmptyKeyValuePairs = (items?: { key: string; value: string }[]) =>
+  items?.filter((item) => item.key?.trim() && item.value?.trim());
+
 function DestinationSelectItem({
   selectorKey,
   id,
@@ -76,18 +80,6 @@ function DestinationSelectItem({
 
   const destinationStatusDetails = useMemo(() => {
     const { type, category, config } = destinationItem;
-
-    // Helper function to filter out empty key-value pairs from arrays
-    const filterEmptyKeyValuePairs = (
-      items?: { key: string; value: string }[]
-    ) =>
-      items?.filter(
-        (item) =>
-          item.key?.trim() !== '' &&
-          item.value !== undefined &&
-          item.value !== null &&
-          item.value?.trim() !== ''
-      );
 
     // Normalize the form config by filtering empty values
     const normalizedFormConfig = omitBy(
