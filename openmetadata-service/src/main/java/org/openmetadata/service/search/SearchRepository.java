@@ -1639,6 +1639,15 @@ public class SearchRepository {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
   }
 
+  public DataQualityReport genericAggregation(
+      String query,
+      String index,
+      SearchAggregation aggregationMetadata,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.genericAggregation(query, index, aggregationMetadata, subjectContext);
+  }
+
   public Response listDataInsightChartResult(
       Long startTs,
       Long endTs,
