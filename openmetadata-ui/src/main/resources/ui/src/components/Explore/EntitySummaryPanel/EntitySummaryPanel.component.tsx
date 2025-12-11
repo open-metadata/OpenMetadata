@@ -14,6 +14,7 @@
 import { CloseOutlined } from '@mui/icons-material';
 import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { get } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,11 +34,12 @@ import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
+import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
-import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
+import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
 import { getDomainByName } from '../../../rest/domainAPI';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
@@ -45,7 +47,6 @@ import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { getMlModelByFQN } from '../../../rest/mlModelAPI';
 import { getPipelineByFqn } from '../../../rest/pipelineAPI';
-import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
 import { getContainerByFQN } from '../../../rest/storageAPI';
 import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
@@ -62,21 +63,21 @@ import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
-import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
+import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
-import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
+import './entity-summary-panel.less';
 
 export default function EntitySummaryPanel({
   entityDetails,
@@ -115,8 +116,6 @@ export default function EntitySummaryPanel({
   );
 
   const id = useMemo(() => {
-    setIsPermissionLoading(true);
-
     return entityDetails?.details?.id ?? '';
   }, [entityDetails?.details?.id]);
 
@@ -224,7 +223,7 @@ export default function EntitySummaryPanel({
     } finally {
       setIsEntityDataLoading(false);
     }
-  }, [entityDetails?.details?.fullyQualifiedName, entityType]);
+  }, [entityDetails?.details?.fullyQualifiedName, entityType, entityFetchMap]);
 
   const fetchEntityTypeDetail = useCallback(async () => {
     if (!entityType || entityType === EntityType.KNOWLEDGE_PAGE) {
@@ -265,7 +264,14 @@ export default function EntitySummaryPanel({
     } finally {
       setIsLineageLoading(false);
     }
-  }, [entityDetails?.details?.fullyQualifiedName, entityType]);
+  }, [
+    entityDetails?.details?.fullyQualifiedName,
+    entityType,
+    upstreamDepth,
+    downstreamDepth,
+    nodesPerLayer,
+    pipelineViewMode,
+  ]);
 
   const updateEntityData = useCallback(
     (updatedData: Partial<EntityData>) => {
@@ -285,7 +291,7 @@ export default function EntitySummaryPanel({
         return newState;
       });
     },
-    [entityDetails.details, fetchEntityData]
+    [entityDetails.details]
   );
 
   const handleOwnerUpdate = useCallback(
@@ -389,7 +395,13 @@ export default function EntitySummaryPanel({
         fetchLineageData();
       }
     }
-  }, [activeTab, fetchEntityData, fetchEntityTypeDetail, fetchLineageData, entityType]);
+  }, [
+    activeTab,
+    fetchEntityData,
+    fetchEntityTypeDetail,
+    fetchLineageData,
+    entityType,
+  ]);
 
   const viewPermission = useMemo(
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
@@ -623,7 +635,12 @@ export default function EntitySummaryPanel({
   };
 
   return (
-    <div className="entity-summary-panel-container">
+    <div
+      className={classNames('entity-summary-panel-container', {
+        explore: panelPath === 'explore',
+        lineage: panelPath === 'lineage',
+        'glossary-term-assets-tab': panelPath === 'glossary-term-assets-tab',
+      })}>
       {isSideDrawer && (
         <div className="d-flex items-center justify-between">
           <EntityTitleSection
@@ -643,7 +660,7 @@ export default function EntitySummaryPanel({
           />
         </div>
       )}
-      <div className="d-flex gap-2 w-full">
+      <div className="d-flex gap-2 w-full h-full">
         <Card
           bordered={false}
           className={`summary-panel-container ${
@@ -653,7 +670,7 @@ export default function EntitySummaryPanel({
             className={`content-area ${
               isSideDrawer ? 'drawer-content-area' : ''
             }`}
-            style={{ width: '80%', display: 'block' }}>
+            style={{ width: '100%', display: 'block' }}>
             {renderTabContent()}
           </Card>
         </Card>
