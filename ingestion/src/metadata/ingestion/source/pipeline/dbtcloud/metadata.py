@@ -174,129 +174,120 @@ class DbtcloudSource(PipelineServiceSource):
         Uses combined GraphQL call for models and seeds, with optimized caching.
         """
         try:  # pylint: disable=too-many-nested-blocks
-            if self.source_config.lineageInformation:
-                pipeline_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Pipeline,
-                    service_name=self.context.get().pipeline_service,
-                    pipeline_name=self.context.get().pipeline,
-                )
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
+            )
 
-                pipeline_entity = self.metadata.get_by_name(
-                    entity=Pipeline, fqn=pipeline_fqn
-                )
+            pipeline_entity = self.metadata.get_by_name(
+                entity=Pipeline, fqn=pipeline_fqn
+            )
 
-                if not pipeline_entity:
-                    logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")
-                    return
+            if not pipeline_entity:
+                logger.warning(f"Pipeline entity not found for FQN: {pipeline_fqn}")
+                return
 
-                # Use combined GraphQL call instead of two separate calls
-                (
-                    dbt_models,
-                    dbt_seeds,
-                    dbt_sources,
-                ) = self.client.get_models_with_lineage(
-                    job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
-                )
+            # Use combined GraphQL call instead of two separate calls
+            (dbt_models, dbt_seeds, dbt_sources,) = self.client.get_models_with_lineage(
+                job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
+            )
 
-                # Combine models and seeds for parent lookup
-                dbt_parents = (
-                    (dbt_models or []) + (dbt_seeds or []) + (dbt_sources or [])
-                )
+            # Combine models and seeds for parent lookup
+            dbt_parents = (dbt_models or []) + (dbt_seeds or []) + (dbt_sources or [])
 
-                # Build parent lookup dict for O(1) access instead of O(n) list search
-                parent_by_unique_id = {p.uniqueId: p for p in dbt_parents if p.uniqueId}
+            # Build parent lookup dict for O(1) access instead of O(n) list search
+            parent_by_unique_id = {p.uniqueId: p for p in dbt_parents if p.uniqueId}
 
-                for model in dbt_models or []:
-                    if not model.runGeneratedAt:
-                        logger.debug(
-                            f"Skipping model with missing runGeneratedAt: name={getattr(model, 'name', None)}"
-                        )
+            for model in dbt_models or []:
+                if not model.runGeneratedAt:
+                    logger.debug(
+                        f"Skipping model with missing runGeneratedAt: name={getattr(model, 'name', None)}"
+                    )
+                    continue
+                if not all([model.name, model.database, model.dbtschema]):
+                    logger.debug(
+                        f"Skipping model with missing attributes: name={getattr(model, 'name', None)}, "
+                        f"database={getattr(model, 'database', None)}, schema={getattr(model, 'dbtschema', None)}"
+                    )
+                    continue
+
+                for dbservicename in self.get_db_service_names() or ["*"]:
+                    to_entity_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Table,
+                        table_name=model.name,
+                        database_name=model.database,
+                        schema_name=model.dbtschema,
+                        service_name=dbservicename,
+                    )
+
+                    # Use cached table entity lookup
+                    to_entity = self._get_table_entity(to_entity_fqn)
+
+                    if to_entity is None:
                         continue
-                    if not all([model.name, model.database, model.dbtschema]):
-                        logger.debug(
-                            f"Skipping model with missing attributes: name={getattr(model, 'name', None)}, "
-                            f"database={getattr(model, 'database', None)}, schema={getattr(model, 'dbtschema', None)}"
-                        )
-                        continue
 
-                    for dbservicename in self.get_db_service_names() or ["*"]:
-                        to_entity_fqn = fqn.build(
+                    for unique_id in model.dependsOn or []:
+                        # Use dict lookup instead of list comprehension
+                        parent = parent_by_unique_id.get(unique_id)
+                        if not parent:
+                            continue
+
+                        # Check runGeneratedAt for models and seeds (not sources)
+                        # Sources are auto-generated and don't have runGeneratedAt
+                        is_source = unique_id.startswith("source.")
+                        if not is_source and not parent.runGeneratedAt:
+                            logger.debug(
+                                f"Skipping parent with missing runGeneratedAt: uniqueId={unique_id}"
+                            )
+                            continue
+
+                        if not all([parent.name, parent.database, parent.dbtschema]):
+                            logger.debug(
+                                f"Skipping parent with missing attributes: name={getattr(parent, 'name', None)}, "
+                                f"database={getattr(parent, 'database', None)}, schema={getattr(parent, 'dbtschema', None)}"
+                            )
+                            continue
+
+                        from_entity_fqn = fqn.build(
                             metadata=self.metadata,
                             entity_type=Table,
-                            table_name=model.name,
-                            database_name=model.database,
-                            schema_name=model.dbtschema,
+                            table_name=parent.name,
+                            database_name=parent.database,
+                            schema_name=parent.dbtschema,
                             service_name=dbservicename,
                         )
 
                         # Use cached table entity lookup
-                        to_entity = self._get_table_entity(to_entity_fqn)
+                        from_entity = self._get_table_entity(from_entity_fqn)
 
-                        if to_entity is None:
+                        if from_entity is None:
                             continue
 
-                        for unique_id in model.dependsOn or []:
-                            # Use dict lookup instead of list comprehension
-                            parent = parent_by_unique_id.get(unique_id)
-                            if not parent:
-                                continue
+                        lineage_details = LineageDetails(
+                            pipeline=EntityReference(
+                                id=pipeline_entity.id.root, type="pipeline"
+                            ),
+                            source=LineageSource.PipelineLineage,
+                        )
 
-                            # Check runGeneratedAt for models and seeds (not sources)
-                            # Sources are auto-generated and don't have runGeneratedAt
-                            is_source = unique_id.startswith("source.")
-                            if not is_source and not parent.runGeneratedAt:
-                                logger.debug(
-                                    f"Skipping parent with missing runGeneratedAt: uniqueId={unique_id}"
-                                )
-                                continue
-
-                            if not all(
-                                [parent.name, parent.database, parent.dbtschema]
-                            ):
-                                logger.debug(
-                                    f"Skipping parent with missing attributes: name={getattr(parent, 'name', None)}, "
-                                    f"database={getattr(parent, 'database', None)}, schema={getattr(parent, 'dbtschema', None)}"
-                                )
-                                continue
-
-                            from_entity_fqn = fqn.build(
-                                metadata=self.metadata,
-                                entity_type=Table,
-                                table_name=parent.name,
-                                database_name=parent.database,
-                                schema_name=parent.dbtschema,
-                                service_name=dbservicename,
-                            )
-
-                            # Use cached table entity lookup
-                            from_entity = self._get_table_entity(from_entity_fqn)
-
-                            if from_entity is None:
-                                continue
-
-                            lineage_details = LineageDetails(
-                                pipeline=EntityReference(
-                                    id=pipeline_entity.id.root, type="pipeline"
-                                ),
-                                source=LineageSource.PipelineLineage,
-                            )
-
-                            yield Either(
-                                right=AddLineageRequest(
-                                    edge=EntitiesEdge(
-                                        fromEntity=EntityReference(
-                                            id=from_entity.id,
-                                            type="table",
-                                        ),
-                                        toEntity=EntityReference(
-                                            id=to_entity.id,
-                                            type="table",
-                                        ),
-                                        lineageDetails=lineage_details,
-                                    )
+                        yield Either(
+                            right=AddLineageRequest(
+                                edge=EntitiesEdge(
+                                    fromEntity=EntityReference(
+                                        id=from_entity.id,
+                                        type="table",
+                                    ),
+                                    toEntity=EntityReference(
+                                        id=to_entity.id,
+                                        type="table",
+                                    ),
+                                    lineageDetails=lineage_details,
                                 )
                             )
+                        )
 
         except Exception as exc:
             yield Either(
