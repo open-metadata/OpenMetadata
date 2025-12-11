@@ -65,6 +65,12 @@ import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
@@ -599,19 +605,17 @@ public class OpenSearchClient implements SearchClient {
                 httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
               }
 
-              // Configure authentication if provided
+              // Configure authentication if provided: prioritize username/password over AWS IAM
               if (StringUtils.isNotEmpty(esConfig.getUsername())
                   && StringUtils.isNotEmpty(esConfig.getPassword())) {
-                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-                credentialsProvider.setCredentials(
-                    AuthScope.ANY,
-                    new UsernamePasswordCredentials(
-                        esConfig.getUsername(), esConfig.getPassword()));
-                httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                configureBasicAuthentication(httpAsyncClientBuilder, esConfig);
+              } else if (esConfig.getAws() != null
+                  && Boolean.TRUE.equals(esConfig.getAws().getUseIamAuth())) {
+                configureAwsIamAuthentication(httpAsyncClientBuilder, esConfig);
               }
 
               // Configure SSL if needed
-              SSLContext sslContext = null;
+              SSLContext sslContext;
               try {
                 sslContext = createElasticSearchSSLContext(esConfig);
               } catch (KeyStoreException e) {
@@ -834,5 +838,86 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     return entityManager.getSchemaEntityRelationship(
         schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
+  }
+
+  /**
+   * Configures AWS IAM authentication for OpenSearch using SigV4 request signing.
+   *
+   * @param httpAsyncClientBuilder The HTTP client builder to configure
+   * @param esConfig The ElasticSearch configuration containing AWS credentials
+   */
+  private void configureAwsIamAuthentication(
+      org.apache.http.impl.nio.client.HttpAsyncClientBuilder httpAsyncClientBuilder,
+      ElasticSearchConfiguration esConfig) {
+    if (StringUtils.isEmpty(esConfig.getAws().getRegion())) {
+      LOG.error("AWS region is required for IAM authentication but was not provided");
+      return;
+    }
+
+    try {
+      Region region = Region.of(esConfig.getAws().getRegion());
+      String serviceName =
+          esConfig.getAws().getServiceName() != null
+              ? esConfig.getAws().getServiceName().value()
+              : "es";
+
+      AwsCredentialsProvider credentialsProvider = createAwsCredentialsProvider(esConfig);
+
+      httpAsyncClientBuilder.addInterceptorLast(
+          new SigV4RequestSigningInterceptor(credentialsProvider, region, serviceName));
+
+      LOG.info(
+          "AWS IAM authentication configured for OpenSearch with region: {} and service: {}",
+          region,
+          serviceName);
+    } catch (Exception e) {
+      LOG.error("Failed to configure AWS IAM authentication", e);
+    }
+  }
+
+  /**
+   * Creates AWS credentials provider based on the configuration. Supports explicit credentials with
+   * optional session token, or falls back to default credential chain.
+   *
+   * @param esConfig The ElasticSearch configuration containing AWS credentials
+   * @return AwsCredentialsProvider instance
+   */
+  private AwsCredentialsProvider createAwsCredentialsProvider(ElasticSearchConfiguration esConfig) {
+    if (StringUtils.isNotEmpty(esConfig.getAws().getAccessKeyId())
+        && StringUtils.isNotEmpty(esConfig.getAws().getSecretAccessKey())) {
+      if (StringUtils.isNotEmpty(esConfig.getAws().getSessionToken())) {
+        // Use session credentials for temporary access
+        return StaticCredentialsProvider.create(
+            AwsSessionCredentials.create(
+                esConfig.getAws().getAccessKeyId(),
+                esConfig.getAws().getSecretAccessKey(),
+                esConfig.getAws().getSessionToken()));
+      } else {
+        // Use basic credentials for long-term access
+        return StaticCredentialsProvider.create(
+            AwsBasicCredentials.create(
+                esConfig.getAws().getAccessKeyId(), esConfig.getAws().getSecretAccessKey()));
+      }
+    } else {
+      // Use default credential chain (IAM role, environment variables, etc.)
+      return DefaultCredentialsProvider.create();
+    }
+  }
+
+  /**
+   * Configures basic authentication for OpenSearch using username and password.
+   *
+   * @param httpAsyncClientBuilder The HTTP client builder to configure
+   * @param esConfig The ElasticSearch configuration containing username and password
+   */
+  private void configureBasicAuthentication(
+      org.apache.http.impl.nio.client.HttpAsyncClientBuilder httpAsyncClientBuilder,
+      ElasticSearchConfiguration esConfig) {
+    CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+    credentialsProvider.setCredentials(
+        AuthScope.ANY,
+        new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
+    httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+    LOG.info("Using basic authentication with username/password for OpenSearch");
   }
 }

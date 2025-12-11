@@ -15,6 +15,10 @@
  */
 export interface ElasticSearchConfiguration {
     /**
+     * AWS IAM configuration for OpenSearch authentication
+     */
+    aws?: Aws;
+    /**
      * Batch Size for Requests
      */
     batchSize: number;
@@ -87,6 +91,46 @@ export interface ElasticSearchConfiguration {
      * Elastic Search Username for Login
      */
     username?: string;
+}
+
+/**
+ * AWS IAM configuration for OpenSearch authentication
+ */
+export interface Aws {
+    /**
+     * AWS access key ID for explicit credentials (optional if using IAM role)
+     */
+    accessKeyId?: string;
+    /**
+     * AWS region for SigV4 request signing
+     */
+    region?: string;
+    /**
+     * AWS secret access key for explicit credentials (optional if using IAM role)
+     */
+    secretAccessKey?: string;
+    /**
+     * AWS service name for signing ('es' for Elasticsearch Service, 'aoss' for OpenSearch
+     * Serverless)
+     */
+    serviceName?: ServiceName;
+    /**
+     * AWS session token for temporary credentials
+     */
+    sessionToken?: string;
+    /**
+     * Enable AWS IAM (SigV4) authentication for OpenSearch
+     */
+    useIamAuth?: boolean;
+}
+
+/**
+ * AWS service name for signing ('es' for Elasticsearch Service, 'aoss' for OpenSearch
+ * Serverless)
+ */
+export enum ServiceName {
+    Aoss = "aoss",
+    Es = "es",
 }
 
 /**

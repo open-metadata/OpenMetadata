@@ -103,6 +103,41 @@
       "description": "Index factory name",
       "type": "string"
     },
+    "aws": {
+      "description": "AWS IAM configuration for OpenSearch authentication",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.AwsIamConfiguration",
+      "properties": {
+        "useIamAuth": {
+          "description": "Enable AWS IAM (SigV4) authentication for OpenSearch",
+          "type": "boolean",
+          "default": false
+        },
+        "region": {
+          "description": "AWS region for SigV4 request signing",
+          "type": "string"
+        },
+        "accessKeyId": {
+          "description": "AWS access key ID for explicit credentials (optional if using IAM role)",
+          "type": "string"
+        },
+        "secretAccessKey": {
+          "description": "AWS secret access key for explicit credentials (optional if using IAM role)",
+          "type": "string"
+        },
+        "sessionToken": {
+          "description": "AWS session token for temporary credentials",
+          "type": "string"
+        },
+        "serviceName": {
+          "description": "AWS service name for signing ('es' for Elasticsearch Service, 'aoss' for OpenSearch Serverless)",
+          "type": "string",
+          "default": "es",
+          "enum": ["es", "aoss"]
+        }
+      },
+      "additionalProperties": false
+    },
     "naturalLanguageSearch": {
       "description": "Configuration for natural language search capabilities",
       "type": "object",
