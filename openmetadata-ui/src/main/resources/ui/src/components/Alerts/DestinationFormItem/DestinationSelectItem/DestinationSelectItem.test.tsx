@@ -947,4 +947,293 @@ describe('DestinationSelectItem component', () => {
       useWatchMock.mockRestore();
     });
   });
+
+  describe('Destination Status Display', () => {
+    it('should display status when destination matches with empty headers filtered out', async () => {
+      const mockDestinationsWithStatus = [
+        {
+          type: SubscriptionType.Webhook,
+          category: SubscriptionCategory.External,
+          config: {
+            endpoint: 'https://example.com/webhook',
+          },
+          statusDetails: {
+            status: 200,
+            statusCode: 200,
+            reason: 'OK',
+          },
+        },
+      ];
+
+      const mockFormInstance: Partial<FormInstance> = {
+        setFieldValue: jest.fn(),
+        getFieldValue: jest
+          .fn()
+          .mockImplementation((val: string | string[]) => {
+            if (isString(val)) {
+              return [{ category: SubscriptionCategory.External }];
+            }
+
+            return '';
+          }),
+      };
+
+      jest
+        .spyOn(Form, 'useFormInstance')
+        .mockImplementation(() => mockFormInstance as FormInstance);
+
+      const useWatchMock = jest
+        .spyOn(Form, 'useWatch')
+        .mockImplementation((name: string | string[]) => {
+          if (
+            Array.isArray(name) &&
+            name[0] === 'destinations' &&
+            Number(name[1]) === 0
+          ) {
+            return {
+              type: SubscriptionType.Webhook,
+              category: SubscriptionCategory.External,
+              config: {
+                endpoint: 'https://example.com/webhook',
+                headers: [{ key: '', value: '' }], // Empty headers that should be filtered
+              },
+            };
+          }
+          if (name === 'destinations') {
+            return [
+              {
+                type: SubscriptionType.Webhook,
+                category: SubscriptionCategory.External,
+                config: {
+                  endpoint: 'https://example.com/webhook',
+                  headers: [{ key: '', value: '' }],
+                },
+              },
+            ];
+          }
+
+          return undefined;
+        });
+
+      await act(async () => {
+        render(
+          <Form
+            initialValues={{
+              destinations: [
+                {
+                  type: SubscriptionType.Webhook,
+                  category: SubscriptionCategory.External,
+                  config: {
+                    endpoint: 'https://example.com/webhook',
+                    headers: [{ key: '', value: '' }],
+                  },
+                },
+              ],
+            }}>
+            <DestinationSelectItem
+              {...MOCK_DESTINATION_SELECT_ITEM_PROPS}
+              destinationsWithStatus={mockDestinationsWithStatus}
+            />
+          </Form>
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('label.status:')).toBeInTheDocument();
+        expect(screen.getByText(/200.*OK/)).toBeInTheDocument();
+      });
+
+      useWatchMock.mockRestore();
+    });
+
+    it('should display status when destination has valid headers', async () => {
+      const mockDestinationsWithStatus = [
+        {
+          type: SubscriptionType.Webhook,
+          category: SubscriptionCategory.External,
+          config: {
+            endpoint: 'https://example.com/webhook',
+            headers: { 'Content-Type': 'application/json' },
+          },
+          statusDetails: {
+            status: 200,
+            statusCode: 200,
+            reason: 'Success',
+          },
+        },
+      ];
+
+      const mockFormInstance: Partial<FormInstance> = {
+        setFieldValue: jest.fn(),
+        getFieldValue: jest
+          .fn()
+          .mockImplementation((val: string | string[]) => {
+            if (isString(val)) {
+              return [{ category: SubscriptionCategory.External }];
+            }
+
+            return '';
+          }),
+      };
+
+      jest
+        .spyOn(Form, 'useFormInstance')
+        .mockImplementation(() => mockFormInstance as FormInstance);
+
+      const useWatchMock = jest
+        .spyOn(Form, 'useWatch')
+        .mockImplementation((name: string | string[]) => {
+          if (
+            Array.isArray(name) &&
+            name[0] === 'destinations' &&
+            Number(name[1]) === 0
+          ) {
+            return {
+              type: SubscriptionType.Webhook,
+              category: SubscriptionCategory.External,
+              config: {
+                endpoint: 'https://example.com/webhook',
+                headers: [
+                  { key: 'Content-Type', value: 'application/json' },
+                  { key: '', value: '' }, // Mix of valid and empty
+                ],
+              },
+            };
+          }
+          if (name === 'destinations') {
+            return [
+              {
+                type: SubscriptionType.Webhook,
+                category: SubscriptionCategory.External,
+                config: {
+                  endpoint: 'https://example.com/webhook',
+                  headers: [
+                    { key: 'Content-Type', value: 'application/json' },
+                    { key: '', value: '' },
+                  ],
+                },
+              },
+            ];
+          }
+
+          return undefined;
+        });
+
+      await act(async () => {
+        render(
+          <Form
+            initialValues={{
+              destinations: [
+                {
+                  type: SubscriptionType.Webhook,
+                  category: SubscriptionCategory.External,
+                  config: {
+                    endpoint: 'https://example.com/webhook',
+                    headers: [
+                      { key: 'Content-Type', value: 'application/json' },
+                      { key: '', value: '' },
+                    ],
+                  },
+                },
+              ],
+            }}>
+            <DestinationSelectItem
+              {...MOCK_DESTINATION_SELECT_ITEM_PROPS}
+              destinationsWithStatus={mockDestinationsWithStatus}
+            />
+          </Form>
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('label.status:')).toBeInTheDocument();
+        expect(screen.getByText(/200.*Success/)).toBeInTheDocument();
+      });
+
+      useWatchMock.mockRestore();
+    });
+
+    it('should not display status when loading', async () => {
+      const mockDestinationsWithStatus = [
+        {
+          type: SubscriptionType.Webhook,
+          category: SubscriptionCategory.External,
+          config: {
+            endpoint: 'https://example.com/webhook',
+          },
+          statusDetails: {
+            status: 200,
+            statusCode: 200,
+            reason: 'OK',
+          },
+        },
+      ];
+
+      const mockFormInstance: Partial<FormInstance> = {
+        setFieldValue: jest.fn(),
+        getFieldValue: jest
+          .fn()
+          .mockImplementation((val: string | string[]) => {
+            if (isString(val)) {
+              return [{ category: SubscriptionCategory.External }];
+            }
+
+            return '';
+          }),
+      };
+
+      jest
+        .spyOn(Form, 'useFormInstance')
+        .mockImplementation(() => mockFormInstance as FormInstance);
+
+      const useWatchMock = jest
+        .spyOn(Form, 'useWatch')
+        .mockImplementation((name: string | string[]) => {
+          if (
+            Array.isArray(name) &&
+            name[0] === 'destinations' &&
+            Number(name[1]) === 0
+          ) {
+            return {
+              type: SubscriptionType.Webhook,
+              category: SubscriptionCategory.External,
+              config: {
+                endpoint: 'https://example.com/webhook',
+              },
+            };
+          }
+
+          return undefined;
+        });
+
+      await act(async () => {
+        render(
+          <Form
+            initialValues={{
+              destinations: [
+                {
+                  type: SubscriptionType.Webhook,
+                  category: SubscriptionCategory.External,
+                  config: {
+                    endpoint: 'https://example.com/webhook',
+                  },
+                },
+              ],
+            }}>
+            <DestinationSelectItem
+              {...MOCK_DESTINATION_SELECT_ITEM_PROPS}
+              destinationsWithStatus={mockDestinationsWithStatus}
+              isDestinationStatusLoading={true}
+            />
+          </Form>
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByText('label.status:')).not.toBeInTheDocument();
+      });
+
+      useWatchMock.mockRestore();
+    });
+  });
 });
