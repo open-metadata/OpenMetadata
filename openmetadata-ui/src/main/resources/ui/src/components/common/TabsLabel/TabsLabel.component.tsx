@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import './tabs-label.less';
 import { TabsLabelProps } from './TabsLabel.interface';
+import Loader from '../Loader/Loader';
 
 const TabsLabel = ({
   name,
@@ -24,6 +25,7 @@ const TabsLabel = ({
   id,
   description,
   isBeta,
+  isLoading,
 }: TabsLabelProps) => {
   const { t } = useTranslation();
 
@@ -31,8 +33,16 @@ const TabsLabel = ({
     <div className="w-full tabs-label-container" data-testid={id}>
       <div className="d-flex justify-between gap-1">
         {name}
-        {!isNil(count) && (
-          <span data-testid="count">{getCountBadge(count, '', isActive)}</span>
+        {isLoading ? (
+          <span data-testid="loading-skeleton" className="d-flex justify-center items-center">
+            <Loader size="small" />
+          </span>
+        ) : (
+          !isNil(count) && (
+            <span data-testid="count">
+              {getCountBadge(count, '', isActive)}
+            </span>
+          )
         )}
         {isBeta && (
           <Badge className="service-beta-tag" count={t('label.beta')} />

@@ -637,7 +637,7 @@ export const fetchEntityData = async ({
           pageNumber: page,
           pageSize: size,
           includeDeleted: showDeleted,
-          excludeSourceFields: ['columns'],
+          excludeSourceFields: ['columns', 'queries', 'columnNames'],
         };
 
         try {
@@ -669,7 +669,7 @@ export const fetchEntityData = async ({
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
-        excludeSourceFields: ['columns'],
+        excludeSourceFields: ['columns', 'queries', 'columnNames'],
       };
 
       try {

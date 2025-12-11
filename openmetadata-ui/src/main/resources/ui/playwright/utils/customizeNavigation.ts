@@ -60,17 +60,45 @@ export const validateLeftSidebarWithHiddenItems = async (
       const items = SIDEBAR_LIST_ITEMS[item as keyof typeof SIDEBAR_LIST_ITEMS];
 
       if (items) {
+        await page.hover('[data-testid="left-sidebar"]');
         await page.click(`[data-testid="${items[0]}"]`);
-        await page.waitForTimeout(300); // Wait for tooltip to appear
+
+        // Wait for dropdown to expand - wait for any child item of the parent to be visible
+        // This confirms the dropdown has fully expanded before checking specific items
+        // For Observability, wait for at least one of its children to be visible
+        const anyChildInDropdown = page
+          .locator(`[data-testid="left-sidebar"]`)
+          .locator(`[data-testid^="app-bar-item-"]`)
+          .first();
+
+        try {
+          // Wait for at least one child to be visible (with timeout)
+          await anyChildInDropdown.waitFor({ state: 'visible', timeout: 3000 });
+        } catch {
+          // If no children are visible, the dropdown might not have expanded
+          // Wait a bit more and continue
+          await page.waitForTimeout(500);
+        }
+
+        const childElement = page
+          .locator(`[data-testid="app-bar-item-${items[1]}"]`)
+          .first();
 
         if (hiddenItems.includes(items[1])) {
-          await expect(
-            page.getByTestId(`app-bar-item-${items[1]}`)
-          ).not.toBeVisible();
+          // For hidden items, they are filtered out from DOM entirely by filterHiddenNavigationItems
+          // Check if element exists in DOM
+          const elementCount = await childElement.count();
+
+          if (elementCount > 0) {
+            // If element exists, it should not be visible
+            await expect(childElement).not.toBeVisible();
+          }
+          // If count is 0, element doesn't exist (expected for hidden items filtered from DOM)
         } else {
-          await expect(
-            page.getByTestId(`app-bar-item-${items[1]}`)
-          ).toBeVisible();
+          // For visible items, wait for them to be visible (with timeout)
+          await childElement.waitFor({ state: 'visible', timeout: 5000 });
+
+          await expect(childElement).toBeVisible();
         }
 
         await page.click(`[data-testid="${items[0]}"]`);
