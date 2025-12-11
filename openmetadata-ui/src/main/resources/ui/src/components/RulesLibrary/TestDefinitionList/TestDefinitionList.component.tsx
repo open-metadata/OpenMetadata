@@ -16,6 +16,7 @@ import {
   Card,
   Col,
   Row,
+  Skeleton,
   Space,
   Switch,
   Tooltip,
@@ -83,6 +84,7 @@ const TestDefinitionList = () => {
   const [testDefinitionPermissions, setTestDefinitionPermissions] = useState<
     Record<string, OperationPermission>
   >({});
+  const [permissionLoading, setPermissionLoading] = useState(true);
 
   const createPermission = useMemo(
     () =>
@@ -112,42 +114,29 @@ const TestDefinitionList = () => {
   const fetchTestDefinitionPermissions = useCallback(
     async (definitions: TestDefinition[]) => {
       try {
-        const { nonSystemDefinitions, permissionPromises } = definitions.reduce(
-          (acc, def) => {
-            if (def.provider !== ProviderType.System) {
-              acc.nonSystemDefinitions.push(def);
-              acc.permissionPromises.push(
-                getEntityPermissionByFqn(
-                  ResourceEntity.TEST_DEFINITION,
-                  def.fullyQualifiedName ?? ''
-                )
-              );
-            }
+        setPermissionLoading(true);
 
-            return acc;
-          },
-          {
-            nonSystemDefinitions: [] as TestDefinition[],
-            permissionPromises: [] as Promise<OperationPermission>[],
-          }
-        );
+        if (!definitions.length) {
+          setTestDefinitionPermissions({});
+
+          return;
+        }
+
+        // Fetch permissions for all definitions (including system definitions)
+        const permissionPromises: Promise<OperationPermission>[] =
+          definitions.map((def) =>
+            getEntityPermissionByFqn(
+              ResourceEntity.TEST_DEFINITION,
+              def.fullyQualifiedName ?? ''
+            )
+          );
 
         const permissionResponses = await Promise.allSettled(
           permissionPromises
         );
 
-        const permissionsMap = definitions.reduce((acc, def) => {
-          if (def.provider === ProviderType.System) {
-            return {
-              ...acc,
-              [def.name]: DEFAULT_ENTITY_PERMISSION,
-            };
-          }
-
-          const nonSystemIndex = nonSystemDefinitions.findIndex(
-            (nsDef) => nsDef.name === def.name
-          );
-          const response = permissionResponses[nonSystemIndex];
+        const permissionsMap = definitions.reduce((acc, def, idx) => {
+          const response = permissionResponses[idx];
 
           return {
             ...acc,
@@ -161,6 +150,8 @@ const TestDefinitionList = () => {
         setTestDefinitionPermissions(permissionsMap);
       } catch (error) {
         showErrorToast(error as AxiosError);
+      } finally {
+        setPermissionLoading(false);
       }
     },
     [getEntityPermissionByFqn]
@@ -177,7 +168,8 @@ const TestDefinitionList = () => {
         });
         setTestDefinitions(data);
         handlePagingChange(responsePaging);
-        await fetchTestDefinitionPermissions(data);
+        // Fetch permissions asynchronously to avoid blocking list render
+        fetchTestDefinitionPermissions(data);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -196,17 +188,26 @@ const TestDefinitionList = () => {
     checked: boolean
   ) => {
     try {
-      const originalData = { ...record };
       const updatedData = { ...record, enabled: checked };
-      const patch = compare(originalData, updatedData);
+      const patch = compare(record, updatedData);
 
       await patchTestDefinition(record.id ?? '', patch);
       showSuccessToast(
-        t('message.entity-updated-success', {
+        t('server.entity-updated-success', {
           entity: t('label.test-definition'),
         })
       );
-      fetchTestDefinitions();
+      // Optimistically update the local state instead of re-fetching
+      setTestDefinitions((prev) =>
+        prev.map((item) =>
+          item.id === record.id
+            ? {
+                ...item,
+                enabled: checked,
+              }
+            : item
+        )
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -303,13 +304,30 @@ const TestDefinitionList = () => {
         dataIndex: 'enabled',
         key: 'enabled',
         width: 100,
-        render: (enabled: boolean, record: TestDefinition) => (
-          <Switch
-            checked={enabled ?? true}
-            size="small"
-            onChange={(checked) => handleEnableToggle(record, checked)}
-          />
-        ),
+        render: (enabled: boolean, record: TestDefinition) => {
+          const entityPermissions = testDefinitionPermissions[record.name];
+          const hasEditPermission = entityPermissions?.[Operation.EditAll];
+
+          if (permissionLoading || !entityPermissions) {
+            return (
+              <Skeleton.Button active size="small" style={{ width: 32 }} />
+            );
+          }
+
+          return (
+            <Tooltip
+              title={
+                !hasEditPermission && t('message.no-permission-for-action')
+              }>
+              <Switch
+                checked={enabled ?? true}
+                disabled={!hasEditPermission}
+                size="small"
+                onChange={(checked) => handleEnableToggle(record, checked)}
+              />
+            </Tooltip>
+          );
+        },
       },
       {
         title: t('label.action-plural'),
@@ -318,10 +336,15 @@ const TestDefinitionList = () => {
         fixed: 'right',
         render: (_, record: TestDefinition) => {
           const isSystemProvider = record.provider === ProviderType.System;
-          const entityPermissions =
-            testDefinitionPermissions[record.name] || DEFAULT_ENTITY_PERMISSION;
-          const hasEditPermission = entityPermissions[Operation.EditAll];
-          const hasDeletePermission = entityPermissions[Operation.Delete];
+          const entityPermissions = testDefinitionPermissions[record.name];
+          const hasEditPermission = entityPermissions?.[Operation.EditAll];
+          const hasDeletePermission = entityPermissions?.[Operation.Delete];
+
+          if (permissionLoading || !entityPermissions) {
+            return (
+              <Skeleton.Button active size="small" style={{ width: 24 }} />
+            );
+          }
 
           const editTooltip = isSystemProvider
             ? t('message.system-test-definition-edit-warning')
@@ -409,7 +432,7 @@ const TestDefinitionList = () => {
 
   return (
     <>
-      <Row className="bg-white p-md" gutter={[16, 16]}>
+      <Row className="p-b-md" gutter={[16, 16]}>
         <Col span={24}>
           <Card>
             <Row justify="space-between">

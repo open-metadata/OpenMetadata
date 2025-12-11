@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../../../generated/entity/bot';
 import {
   deleteTestDefinitionByFqn,
@@ -181,11 +182,9 @@ describe('TestDefinitionList Component', () => {
   it('should render enabled switch for each test definition', async () => {
     render(<TestDefinitionList />, { wrapper: MemoryRouter });
 
-    await waitFor(() => {
-      const switches = screen.getAllByRole('switch');
+    const switches = await screen.findAllByRole('switch');
 
-      expect(switches).toHaveLength(2);
-    });
+    expect(switches).toHaveLength(2);
   });
 
   it('should call patchTestDefinition when enable switch is toggled', async () => {
@@ -195,7 +194,7 @@ describe('TestDefinitionList Component', () => {
       expect(screen.getByTestId('test-definition-table')).toBeInTheDocument();
     });
 
-    const switches = screen.getAllByRole('switch');
+    const switches = await screen.findAllByRole('switch');
     fireEvent.click(switches[1]);
 
     await waitFor(() => {
@@ -207,13 +206,13 @@ describe('TestDefinitionList Component', () => {
   it('should render edit and delete action buttons', async () => {
     render(<TestDefinitionList />, { wrapper: MemoryRouter });
 
-    await waitFor(() => {
-      const editButtons = screen.getAllByTestId(/edit-test-definition-/);
-      const deleteButtons = screen.getAllByTestId(/delete-test-definition-/);
+    const editButtons = await screen.findAllByTestId(/edit-test-definition-/);
+    const deleteButtons = await screen.findAllByTestId(
+      /delete-test-definition-/
+    );
 
-      expect(editButtons).toHaveLength(2);
-      expect(deleteButtons).toHaveLength(2);
-    });
+    expect(editButtons).toHaveLength(2);
+    expect(deleteButtons).toHaveLength(2);
   });
 
   it('should open form drawer when edit button is clicked', async () => {
@@ -366,13 +365,81 @@ describe('TestDefinitionList Component', () => {
     render(<TestDefinitionList />, { wrapper: MemoryRouter });
 
     await waitFor(() => {
-      // Should only be called once for the User provider test definition
-      // Not called for System provider test definition
-      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(1);
+      // Permissions fetched for all definitions (including system)
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledTimes(2);
       expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
-        'testDefinition',
+        ResourceEntity.TEST_DEFINITION,
         'columnValuesToBeNotNull'
       );
+      expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+        ResourceEntity.TEST_DEFINITION,
+        'tableRowCountToBeBetween'
+      );
     });
+  });
+
+  it('should disable enabled switch when user lacks EditAll permission', async () => {
+    const { usePermissionProvider } = jest.requireMock(
+      '../../../context/PermissionProvider/PermissionProvider'
+    );
+
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+        Create: false,
+        Delete: false,
+        ViewAll: true,
+        ViewBasic: true,
+        EditAll: false,
+      }),
+      permissions: {
+        testDefinition: {
+          Create: true,
+          Delete: true,
+          ViewAll: true,
+          ViewBasic: true,
+          EditAll: true,
+        },
+      },
+    });
+
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    const switches = await screen.findAllByRole('switch');
+
+    // First definition should be disabled due to lack of EditAll permission
+    expect(switches[0]).toBeDisabled();
+  });
+
+  it('should enable switch when user has EditAll permission', async () => {
+    const { usePermissionProvider } = jest.requireMock(
+      '../../../context/PermissionProvider/PermissionProvider'
+    );
+
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue({
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        ViewBasic: true,
+        EditAll: true,
+      }),
+      permissions: {
+        testDefinition: {
+          Create: true,
+          Delete: true,
+          ViewAll: true,
+          ViewBasic: true,
+          EditAll: true,
+        },
+      },
+    });
+
+    render(<TestDefinitionList />, { wrapper: MemoryRouter });
+
+    const switches = await screen.findAllByRole('switch');
+
+    // Both definitions should be enabled with EditAll permission
+    expect(switches[0]).not.toBeDisabled();
+    expect(switches[1]).not.toBeDisabled();
   });
 });
