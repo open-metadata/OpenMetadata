@@ -268,7 +268,6 @@ const NodeChildren = ({
     useUpdateNodeInternals,
     isCreatingEdge,
   } = useLineageProvider();
-  console.log({ columnsHavingLineage });
   const updateNodeInternals = useUpdateNodeInternals();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
