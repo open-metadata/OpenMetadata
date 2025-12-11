@@ -80,7 +80,14 @@ function DestinationSelectItem({
     // Helper function to filter out empty key-value pairs from arrays
     const filterEmptyKeyValuePairs = (
       items?: { key: string; value: string }[]
-    ) => items?.filter((item) => item.key && item.value);
+    ) =>
+      items?.filter(
+        (item) =>
+          item.key?.trim() !== '' &&
+          item.value !== undefined &&
+          item.value !== null &&
+          item.value?.trim() !== ''
+      );
 
     // Normalize the form config by filtering empty values
     const normalizedFormConfig = omitBy(
