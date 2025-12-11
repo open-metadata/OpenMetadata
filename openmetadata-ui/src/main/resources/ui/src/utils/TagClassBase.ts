@@ -252,7 +252,8 @@ class TagClassBase {
   public getRecognizerTab = (
     _tagData: Tag,
     _activeTab: string,
-    _t: (key: string) => string
+    _t: (key: string) => string,
+    _count?: number
   ): {
     label: React.ReactElement;
     key: string;
@@ -261,10 +262,11 @@ class TagClassBase {
     return null;
   };
 
-  public getRecognizerFeedbackComponent(
-    tagLabel: TagLabel,
-    entityLink: string,
-    onFeedbackSuccess?: () => void
+  public getRecognizerFeedbackPopup(
+    _tagLabel: TagLabel,
+    _entityType: string,
+    _entityFqn: string,
+    _children: React.ReactElement
   ): React.ReactElement | null {
     return null;
   }
