@@ -19,7 +19,6 @@ export const DRAWER_HEADER_STYLING = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundRepeat: 'no-repeat',
     opacity: 0.3,
     zIndex: 0,
   },
