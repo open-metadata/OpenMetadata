@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
+import { ASSET_FILTER_NAMES } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
@@ -841,20 +842,11 @@ const testFilterWithSpecificOption = async (
 
   await page.locator(`[data-testid="${optionTestId}"]`).click();
 
+  const filterResponse = page.waitForResponse(
+    `/api/v1/search/query?*query_filter=*${expectedQueryFilterValue}*`
+  );
+
   await page.getByTestId('update-btn').click();
-
-  const filterResponse = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    const queryParams = new URLSearchParams(url.search);
-    const queryFilter = queryParams.get('query_filter');
-
-    return (
-      response.url().includes('/api/v1/search/query') &&
-      queryFilter !== null &&
-      queryFilter !== '' &&
-      queryFilter.includes(expectedQueryFilterValue)
-    );
-  });
 
   await filterResponse;
 
@@ -862,9 +854,7 @@ const testFilterWithSpecificOption = async (
     page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
   ).toBeVisible();
 
-  const clearFilterResponse = page.waitForResponse((response) =>
-    response.url().includes('/api/v1/search/query')
-  );
+  const clearFilterResponse = page.waitForResponse('/api/v1/search/query?*');
 
   await page
     .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
@@ -892,17 +882,9 @@ const testFilterWithFirstOption = async (
   } else {
     const optionCount = await firstOption.count();
     if (optionCount > 0) {
-      const filterResponse = page.waitForResponse((response) => {
-        const url = new URL(response.url());
-        const queryParams = new URLSearchParams(url.search);
-        const queryFilter = queryParams.get('query_filter');
-
-        return (
-          response.url().includes('/api/v1/search/query') &&
-          queryFilter !== null &&
-          queryFilter !== ''
-        );
-      });
+      const filterResponse = page.waitForResponse(
+        '/api/v1/search/query?*query_filter=*'
+      );
 
       await firstOption.click();
       await page.getByTestId('update-btn').click();
@@ -913,8 +895,8 @@ const testFilterWithFirstOption = async (
         page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
       ).toBeVisible();
 
-      const clearFilterResponse = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/search/query')
+      const clearFilterResponse = page.waitForResponse(
+        '/api/v1/search/query?*'
       );
 
       await page
@@ -956,17 +938,7 @@ export const verifyAssetModalFilters = async (
 
   await expect(filterButton).not.toBeVisible();
 
-  const filterNames = [
-    'Entity Type',
-    'Domains',
-    'Owners',
-    'Tag',
-    'Tier',
-    'Service',
-    'Service Type',
-  ];
-
-  for (const filterName of filterNames) {
+  for (const filterName of ASSET_FILTER_NAMES) {
     await expect(
       page.locator(`[data-testid="search-dropdown-${filterName}"]`)
     ).toBeVisible();
@@ -997,8 +969,6 @@ export const verifyAssetModalFilters = async (
 
   await testFilterWithFirstOption(page, filterWrapper, 'Tier');
   await testFilterWithFirstOption(page, filterWrapper, 'Owners');
-
-  //   await page.getByTestId('cancel-btn').click();
 };
 
 export const updateNameForGlossaryTerm = async (
