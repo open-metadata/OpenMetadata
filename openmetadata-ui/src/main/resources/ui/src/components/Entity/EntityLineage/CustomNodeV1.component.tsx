@@ -207,7 +207,6 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   useEffect(() => {
     setIsChildrenListExpanded(isColumnLayerEnabled);
-    setIsOnlyShowColumnsWithLineageFilterActive(isColumnLayerEnabled);
   }, [isColumnLayerEnabled]);
 
   const containerClass = getNodeClassNames({
