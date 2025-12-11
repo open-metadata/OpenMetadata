@@ -77,24 +77,45 @@ function DestinationSelectItem({
   const destinationStatusDetails = useMemo(() => {
     const { type, category, config } = destinationItem;
 
-    const currentDestination = destinationsWithStatus?.find((destination) =>
-      isEqual(
-        { type, category, config: omitBy(config, isUndefined) },
+    // Helper function to filter out empty key-value pairs from arrays
+    const filterEmptyKeyValuePairs = (
+      items?: { key: string; value: string }[]
+    ) => items?.filter((item) => item.key && item.value);
+
+    // Normalize the form config by filtering empty values
+    const normalizedFormConfig = omitBy(
+      {
+        ...config,
+        headers: filterEmptyKeyValuePairs(config?.headers),
+        queryParams: filterEmptyKeyValuePairs(config?.queryParams),
+      },
+      (value) => isUndefined(value) || isEmpty(value)
+    );
+
+    const currentDestination = destinationsWithStatus?.find((destination) => {
+      // Normalize the destination config for comparison
+      const normalizedDestConfig = omitBy(
+        {
+          ...destination.config,
+          headers: filterEmptyKeyValuePairs(
+            getConfigHeaderArrayFromObject(destination?.config?.headers)
+          ),
+          queryParams: filterEmptyKeyValuePairs(
+            getConfigHeaderArrayFromObject(destination?.config?.queryParams)
+          ),
+        },
+        (value) => isUndefined(value) || isEmpty(value)
+      );
+
+      return isEqual(
+        { type, category, config: normalizedFormConfig },
         {
           type: destination.type,
           category: destination.category,
-          config: omitBy(
-            {
-              ...destination.config,
-              headers: getConfigHeaderArrayFromObject(
-                destination?.config?.headers
-              ),
-            },
-            isUndefined
-          ),
+          config: normalizedDestConfig,
         }
-      )
-    );
+      );
+    });
 
     return currentDestination?.statusDetails;
   }, [destinationItem, destinationsWithStatus]);
