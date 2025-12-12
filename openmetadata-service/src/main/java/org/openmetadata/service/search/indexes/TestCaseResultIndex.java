@@ -47,7 +47,7 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
         Entity.getEntityByName(
             Entity.TEST_CASE,
             testCaseResult.getTestCaseFQN(),
-            "testSuites,testSuite,testDefinition,entityLink,owners,tags",
+            "testSuites,testSuite,testDefinition,entityLink,dataContract,owners,tags",
             Include.ALL);
 
     // Load TestDefinition with only required fields
@@ -72,11 +72,15 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
                 "testSuites",
                 "testSuite",
                 "testCaseResult",
-                "testDefinition")); // remove testCase fields not needed
+                "testDefinition",
+                "dataContract")); // remove testCase fields not needed
     esDoc.put("testCase", testCaseMap);
     esDoc.put("@timestamp", testCaseResult.getTimestamp());
     if (testDefinition != null) {
       esDoc.put("testDefinition", JsonUtils.getMap(testDefinition));
+    }
+    if (testCase.getDataContract() != null) {
+      esDoc.put("dataContract", JsonUtils.getMap(testCase.getDataContract()));
     }
     setParentRelationships(testCase, esDoc);
     return esDoc;

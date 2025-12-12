@@ -96,24 +96,25 @@
         }
       },
       "testCase": {
-        "id": {
-          "type": "text"
-        },
-        "name": {
-          "type": "text",
-          "analyzer": "om_analyzer_jp",
-          "fields": {
-            "keyword": {
-              "type": "keyword",
-              "ignore_above": 256,
-              "normalizer": "lowercase_normalizer"
-            },
-            "ngram": {
-              "type": "text",
-              "analyzer": "om_ngram"
+        "properties": {
+          "id": {
+            "type": "text"
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
             }
-          }
-        },
+          },
         "fullyQualifiedName": {
           "type": "text",
           "analyzer": "om_analyzer_jp",
@@ -325,6 +326,51 @@
             "state": {
               "type": "keyword"
             }
+          }
+        }
+      },
+      "dataContract": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "displayName": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "description": {
+            "type": "text",
+            "analyzer": "om_analyzer_jp"
           }
         }
       },

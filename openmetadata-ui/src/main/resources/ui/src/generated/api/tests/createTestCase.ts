@@ -19,6 +19,11 @@ export interface CreateTestCase {
      */
     computePassedFailedRowCount?: boolean;
     /**
+     * Data Contract that this test case is associated with. Fully qualified name of the data
+     * contract.
+     */
+    dataContract?: string;
+    /**
      * Description of the testcase.
      */
     description?: string;

@@ -28,6 +28,10 @@ export interface TestCase {
      */
     createdBy?: string;
     /**
+     * Data Contract that this test case is associated with.
+     */
+    dataContract?: EntityReference;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -215,15 +219,17 @@ export interface FieldChange {
 }
 
 /**
- * Domains the test case belongs to. When not set, the test case inherits the domain from
- * the table it belongs to.
+ * Data Contract that this test case is associated with.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * Domains the test case belongs to. When not set, the test case inherits the domain from
+ * the table it belongs to.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.

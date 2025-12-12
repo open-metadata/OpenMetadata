@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.data;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -70,6 +71,7 @@ import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServic
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -91,6 +93,7 @@ import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -114,6 +117,7 @@ import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
+import org.openmetadata.service.resources.dqtests.TestCaseResultResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
@@ -937,6 +941,19 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   private String getTableUri() {
     return String.format("http://localhost:%s/api/v1/tables", APP.getLocalPort());
+  }
+
+  private TestCaseResult postTestCaseResult(
+      String testCaseFQN, CreateTestCaseResult createTestCaseResult) throws HttpResponseException {
+    WebTarget target =
+        APP.client()
+            .target(
+                String.format(
+                    "http://localhost:%s/api/v1/dataQuality/testCases/testCaseResults/%s",
+                    APP.getLocalPort(), testCaseFQN));
+    Response response =
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createTestCaseResult));
+    return TestUtils.readResponse(response, TestCaseResult.class, Status.CREATED.getStatusCode());
   }
 
   /**
@@ -2858,6 +2875,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_2_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -3132,6 +3150,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase1 =
         testCaseResourceTest
             .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
@@ -3139,6 +3158,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_validity_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -3255,6 +3275,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase1 =
         testCaseResourceTest
             .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
@@ -3262,6 +3283,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_validity_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -3594,6 +3616,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase1 =
         testCaseResourceTest
             .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
@@ -3601,6 +3624,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_validity_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -3723,6 +3747,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest("test_case_quality_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase =
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -3951,6 +3976,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest("test_case_dashboard_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase =
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -4673,6 +4699,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest("test_case_table_all_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase =
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -4772,6 +4799,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest("test_case_quality_constraint_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase =
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -4792,6 +4820,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase tableTestCase =
         testCaseResourceTest
             .createRequest("test_case_table_quality_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(realTableLink);
     TestCase tableTest =
         testCaseResourceTest.createAndCheckEntity(tableTestCase, ADMIN_AUTH_HEADERS);
@@ -4898,6 +4927,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest("test_case_multiple_errors_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase =
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -6127,5 +6157,738 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         status == Status.OK.getStatusCode() || status == Status.CREATED.getStatusCode(),
         "Expected 200 or 201 but got " + status);
     return response.readEntity(DataContract.class);
+  }
+
+  // ===================== Execute Summary Tests for Tests Without Results =====================
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testValidateContractWithNoTestResults(TestInfo test) throws IOException {
+    // Test scenario 1: No tests have results - Test suite is created with all tests
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create multiple test cases for quality expectations
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_1_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(tableLink);
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_2_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(tableLink);
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase3 =
+        testCaseResourceTest
+            .createRequest("test_case_3_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(tableLink);
+    TestCase testCase3 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> qualityExpectations =
+        List.of(
+            testCase1.getEntityReference(),
+            testCase2.getEntityReference(),
+            testCase3.getEntityReference());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table)
+            .withQualityExpectations(qualityExpectations);
+
+    DataContract dataContract = createDataContract(create);
+    assertNotNull(dataContract.getTestSuite());
+
+    // Verify test suite was created and contains all tests (no results exist)
+    TestSuite testSuite =
+        testSuiteResourceTest.getEntity(
+            dataContract.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    assertNotNull(testSuite.getTests());
+    assertEquals(3, testSuite.getTests().size());
+
+    // Call validate endpoint - should trigger DQ validation since no tests have results
+    DataContractResult result = runValidate(dataContract);
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Running, result.getContractExecutionStatus());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testValidateContractWithAllTestResultsCompileExisting(TestInfo test) throws IOException {
+    // Test scenario: All tests have results - Test suite should be empty and results compiled from
+    // existing data
+    Table table = createUniqueTable(test.getDisplayName());
+
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    // Create two test cases
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_all_results_1_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(tableLink);
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_all_results_2_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(tableLink);
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> qualityExpectations =
+        List.of(testCase1.getEntityReference(), testCase2.getEntityReference());
+
+    // Create the contract first
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table)
+            .withQualityExpectations(qualityExpectations);
+
+    DataContract dataContract = createDataContract(create);
+
+    // Run validate to create initial result for the contract
+    DataContractResult initialResult = runValidate(dataContract);
+    assertNotNull(initialResult);
+
+    // Now post test results to simulate they have been executed
+    // This creates time series data that will be picked up by the DataContract filtering logic
+    CreateTestCaseResult createTestCaseResult1 =
+        new CreateTestCaseResult()
+            .withResult("Test passed")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase1.getFullyQualifiedName(), createTestCaseResult1);
+
+    CreateTestCaseResult createTestCaseResult2 =
+        new CreateTestCaseResult()
+            .withResult("Test failed")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase2.getFullyQualifiedName(), createTestCaseResult2);
+
+    // Update the contract - this should remove all tests from test suite since all have results
+    DataContract updatedContract = updateDataContract(create);
+
+    // Verify test suite is null since all tests have results - no test suite should be created
+    assertNull(
+        updatedContract.getTestSuite(),
+        "Test suite should be null when all tests already have results - no test suite should be created");
+
+    // Call validate endpoint - should compile existing results without triggering new DQ validation
+    DataContractResult result = runValidate(dataContract);
+    assertNotNull(result);
+    assertEquals(
+        ContractExecutionStatus.Failed,
+        result.getContractExecutionStatus(),
+        "Contract should fail because one test failed");
+
+    // Verify quality validation was compiled from existing results
+    assertNotNull(result.getQualityValidation());
+    assertEquals(2, result.getQualityValidation().getTotal().intValue());
+    assertEquals(1, result.getQualityValidation().getPassed().intValue());
+    assertEquals(1, result.getQualityValidation().getFailed().intValue());
+    assertEquals(50.0, result.getQualityValidation().getQualityScore(), 0.01);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testUpdateContractFiltersTestsWithResults(TestInfo test) throws IOException {
+    // Test that when updating a contract, tests with results are filtered out of the test suite
+    Table table = createUniqueTable(test.getDisplayName());
+
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    // Create three test cases
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_update_1_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(tableLink);
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_update_2_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(tableLink);
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase3 =
+        testCaseResourceTest
+            .createRequest("test_case_update_3_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(tableLink);
+    TestCase testCase3 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> qualityExpectations =
+        List.of(
+            testCase1.getEntityReference(),
+            testCase2.getEntityReference(),
+            testCase3.getEntityReference());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table)
+            .withQualityExpectations(qualityExpectations);
+
+    // Create initial contract - should create test suite with all tests since no results exist
+    DataContract dataContract = createDataContract(create);
+    assertNotNull(dataContract.getTestSuite());
+
+    TestSuite initialTestSuite =
+        testSuiteResourceTest.getEntity(
+            dataContract.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    assertNotNull(initialTestSuite.getTests());
+    assertEquals(3, initialTestSuite.getTests().size(), "All tests should be in suite initially");
+
+    // Run validate to create initial result for the contract
+    DataContractResult initialResult = runValidate(dataContract);
+    assertNotNull(initialResult);
+
+    // Post test results for testCase1 and testCase2 to simulate they have been executed
+    // This creates time series data that will be picked up by the DataContract filtering logic
+    CreateTestCaseResult createTestCaseResult1 =
+        new CreateTestCaseResult()
+            .withResult("Test passed")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase1.getFullyQualifiedName(), createTestCaseResult1);
+
+    CreateTestCaseResult createTestCaseResult2 =
+        new CreateTestCaseResult()
+            .withResult("Test failed")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase2.getFullyQualifiedName(), createTestCaseResult2);
+
+    // Now update the contract - this should filter out tests with results
+    DataContract updated = updateDataContract(create);
+    assertNotNull(updated.getTestSuite());
+
+    // After update, the test suite should only contain testCase3 (the one without results)
+    TestSuite updatedTestSuite =
+        testSuiteResourceTest.getEntity(updated.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    assertNotNull(updatedTestSuite.getTests());
+    assertEquals(
+        1,
+        updatedTestSuite.getTests().size(),
+        "Test suite should only contain tests without results after update");
+    assertEquals(
+        testCase3.getId(),
+        updatedTestSuite.getTests().get(0).getId(),
+        "Test suite should contain only testCase3 which has no results");
+
+    // Validate the contract - should trigger DQ for remaining test and compile existing results
+    DataContractResult validationResult = runValidate(updated);
+    assertEquals(
+        ContractExecutionStatus.Failed,
+        validationResult.getContractExecutionStatus(),
+        "Should be Failed because testCase2 already failed");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCompleteWorkflowFromNoResultsToAllResults(TestInfo test) throws IOException {
+    // Comprehensive test: Start with no results, gradually add results, and verify filtering
+    // behavior
+    Table table = createUniqueTable(test.getDisplayName());
+
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    // Create three test cases
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_workflow_1_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(tableLink);
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_workflow_2_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(tableLink);
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase3 =
+        testCaseResourceTest
+            .createRequest("test_case_workflow_3_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withEntityLink(tableLink);
+    TestCase testCase3 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> qualityExpectations =
+        List.of(
+            testCase1.getEntityReference(),
+            testCase2.getEntityReference(),
+            testCase3.getEntityReference());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table)
+            .withQualityExpectations(qualityExpectations);
+
+    // Phase 1: Create contract - all tests should be in test suite
+    DataContract dataContract = createDataContract(create);
+    TestSuite initialTestSuite =
+        testSuiteResourceTest.getEntity(
+            dataContract.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(3, initialTestSuite.getTests().size(), "All tests should be in suite initially");
+
+    // Run validate to create initial result for the contract
+    DataContractResult initialResult = runValidate(dataContract);
+    assertNotNull(initialResult);
+
+    // Phase 2: Execute first test to generate results
+    // Post result for testCase1 only
+    CreateTestCaseResult firstTestResult =
+        new CreateTestCaseResult()
+            .withResult("Test passed")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase1.getFullyQualifiedName(), firstTestResult);
+
+    // Update contract and verify filtering
+    DataContract afterFirstResult = updateDataContract(create);
+    TestSuite suiteAfterFirst =
+        testSuiteResourceTest.getEntity(
+            afterFirstResult.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(2, suiteAfterFirst.getTests().size(), "Should have 2 tests without results");
+
+    // Phase 3: Execute second test to generate more results
+    // Post result for testCase2 (testCase1 already has results from Phase 2)
+    CreateTestCaseResult secondTestResult =
+        new CreateTestCaseResult()
+            .withResult("Test failed")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase2.getFullyQualifiedName(), secondTestResult);
+
+    // Update contract and verify filtering
+    DataContract afterSecondResult = updateDataContract(create);
+    TestSuite suiteAfterSecond =
+        testSuiteResourceTest.getEntity(
+            afterSecondResult.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    assertEquals(1, suiteAfterSecond.getTests().size(), "Should have 1 test without results");
+    assertEquals(testCase3.getId(), suiteAfterSecond.getTests().get(0).getId());
+
+    // Phase 4: Execute final test
+    // Post result for testCase3 (testCase1 and testCase2 already have results)
+    CreateTestCaseResult thirdTestResult =
+        new CreateTestCaseResult()
+            .withResult("Test passed")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase3.getFullyQualifiedName(), thirdTestResult);
+
+    // Final update and validation
+    DataContract finalContract = updateDataContract(create);
+    assertNull(
+        finalContract.getTestSuite(), "Test suite should be null when all tests have results");
+
+    // Final validation - should compile all existing results
+    DataContractResult finalResult = runValidate(finalContract);
+    assertEquals(
+        ContractExecutionStatus.Failed,
+        finalResult.getContractExecutionStatus(),
+        "Contract should fail due to one failed test");
+
+    assertNotNull(finalResult.getQualityValidation());
+    assertEquals(3, finalResult.getQualityValidation().getTotal().intValue());
+    assertEquals(2, finalResult.getQualityValidation().getPassed().intValue());
+    assertEquals(1, finalResult.getQualityValidation().getFailed().intValue());
+
+    double expectedScore = (2.0 / 3.0) * 100;
+    assertEquals(expectedScore, finalResult.getQualityValidation().getQualityScore(), 0.01);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testSearchListEndpointWithDataContractIdFilter(TestInfo test) throws IOException {
+    // Create two unique tables for test isolation
+    Table table1 = createUniqueTable(test.getDisplayName() + "_1");
+    Table table2 = createUniqueTable(test.getDisplayName() + "_2");
+
+    String table1Link = String.format("<#E::table::%s>", table1.getFullyQualifiedName());
+    String table2Link = String.format("<#E::table::%s>", table2.getFullyQualifiedName());
+
+    // Create first data contract with test cases
+    CreateDataContract createContract1 =
+        createDataContractRequest("testSearchContract1_" + test.getDisplayName(), table1);
+
+    // Create second data contract with different test cases
+    CreateDataContract createContract2 =
+        createDataContractRequest("testSearchContract2_" + test.getDisplayName(), table2);
+
+    // First create the data contracts
+    DataContract dataContract1 = createDataContract(createContract1);
+    DataContract dataContract2 = createDataContract(createContract2);
+
+    // Then create test cases associated with the data contracts
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("search_test_case_1_" + test.getDisplayName())
+            .withEntityLink(table1Link)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withDataContract(dataContract1.getFullyQualifiedName());
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("search_test_case_2_" + test.getDisplayName())
+            .withEntityLink(table1Link)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withDataContract(dataContract1.getFullyQualifiedName());
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase3 =
+        testCaseResourceTest
+            .createRequest("search_test_case_3_" + test.getDisplayName())
+            .withEntityLink(table2Link)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withDataContract(dataContract2.getFullyQualifiedName());
+    TestCase testCase3 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
+
+    // Create test case results for all test cases
+    CreateTestCaseResult result1 =
+        new CreateTestCaseResult()
+            .withResult("Test passed successfully")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase1.getFullyQualifiedName(), result1);
+
+    CreateTestCaseResult result2 =
+        new CreateTestCaseResult()
+            .withResult("Test failed due to data quality issue")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase2.getFullyQualifiedName(), result2);
+
+    CreateTestCaseResult result3 =
+        new CreateTestCaseResult()
+            .withResult("Test passed with warnings")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase3.getFullyQualifiedName(), result3);
+
+    // Test 1: Filter by dataContract1 ID - should return results for testCase1 and testCase2
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    ResultList<TestCaseResult> testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        2, testCaseResults.getData().size(), "Should return exactly 2 results for dataContract1");
+
+    List<String> returnedTestCaseFQNs =
+        testCaseResults.getData().stream()
+            .map(TestCaseResult::getTestCaseFQN)
+            .collect(Collectors.toList());
+
+    assertTrue(
+        returnedTestCaseFQNs.contains(testCase1.getFullyQualifiedName()),
+        "Results should include testCase1");
+    assertTrue(
+        returnedTestCaseFQNs.contains(testCase2.getFullyQualifiedName()),
+        "Results should include testCase2");
+
+    // Verify result content and completeness
+    for (TestCaseResult result : testCaseResults.getData()) {
+      assertNotNull(result.getId(), "Result should have an ID");
+      assertNotNull(result.getTestCaseFQN(), "Result should have test case FQN");
+      assertNotNull(result.getTestCaseStatus(), "Result should have status");
+      assertNotNull(result.getTimestamp(), "Result should have timestamp");
+      assertNotNull(result.getResult(), "Result should have result content");
+    }
+
+    // Test 2: Filter by dataContract2 ID - should return result for testCase3 only
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract2.getId().toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        1, testCaseResults.getData().size(), "Should return exactly 1 result for dataContract2");
+    assertEquals(
+        testCase3.getFullyQualifiedName(),
+        testCaseResults.getData().get(0).getTestCaseFQN(),
+        "Should return result for testCase3");
+    assertEquals(
+        TestCaseStatus.Success,
+        testCaseResults.getData().get(0).getTestCaseStatus(),
+        "testCase3 result should have Success status");
+
+    // Test 3: Edge case - filter with non-existent dataContractId
+    queryParams.clear();
+    queryParams.put("dataContractId", UUID.randomUUID().toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        0,
+        testCaseResults.getData().size(),
+        "Should return no results for non-existent dataContractId");
+
+    // Test 4: Combine dataContractId filter with status filter
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    queryParams.put("testCaseStatus", TestCaseStatus.Success.toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        1, testCaseResults.getData().size(), "Should return 1 successful result for dataContract1");
+    assertEquals(
+        testCase1.getFullyQualifiedName(),
+        testCaseResults.getData().get(0).getTestCaseFQN(),
+        "Should return successful testCase1 result");
+    assertEquals(
+        TestCaseStatus.Success,
+        testCaseResults.getData().get(0).getTestCaseStatus(),
+        "Returned result should have Success status");
+
+    // Test 5: Combine dataContractId filter with conflicting status filter
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract2.getId().toString());
+    queryParams.put("testCaseStatus", TestCaseStatus.Failed.toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        0,
+        testCaseResults.getData().size(),
+        "Should return no results when dataContract2 has no failed tests");
+
+    // Test 6: Test with fields parameter to verify returned data is complete
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    queryParams.put("fields", "testCase,testDefinition");
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        2, testCaseResults.getData().size(), "Should return 2 results with requested fields");
+
+    for (TestCaseResult result : testCaseResults.getData()) {
+      assertNotNull(result.getTestCase(), "Result should include testCase field");
+      assertNotNull(result.getTestDefinition(), "Result should include testDefinition field");
+    }
+
+    // Test 7: Test pagination with dataContractId filter
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 1, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(1, testCaseResults.getData().size(), "Should return 1 result with limit=1");
+    assertNotNull(testCaseResults.getPaging(), "Should include paging information");
+
+    ResultList<TestCaseResult> secondPage =
+        listTestCaseResultsFromSearch(
+            queryParams, 1, 1, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(1, secondPage.getData().size(), "Should return 1 result on second page");
+
+    // Verify different results on different pages
+    assertNotEquals(
+        testCaseResults.getData().get(0).getId(),
+        secondPage.getData().get(0).getId(),
+        "Different pages should return different results");
+  }
+
+  private ResultList<TestCaseResult> listTestCaseResultsFromSearch(
+      Map<String, String> queryParams,
+      Integer limit,
+      Integer offset,
+      String path,
+      Map<String, String> authHeader)
+      throws HttpResponseException {
+    WebTarget target =
+        APP.client()
+            .target(
+                String.format(
+                    "http://localhost:%s/api/v1/dataQuality/testCases/", APP.getLocalPort()))
+            .path(path);
+
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+
+    if (limit != null) {
+      target = target.queryParam("limit", limit);
+    }
+    if (offset != null) {
+      target = target.queryParam("offset", offset);
+    }
+
+    return TestUtils.get(target, TestCaseResultResource.TestCaseResultList.class, authHeader);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractTestCaseReferencesLifecycle(TestInfo test) throws IOException {
+    // Test that test cases get dataContract references when contracts are created/updated/deleted
+    Table table = createUniqueTable(test.getDisplayName());
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    // Create test cases
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_lifecycle_1_" + test.getDisplayName())
+            .withEntityLink(tableLink)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_lifecycle_2_" + test.getDisplayName())
+            .withEntityLink(tableLink)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase3 =
+        testCaseResourceTest
+            .createRequest("test_case_lifecycle_3_" + test.getDisplayName())
+            .withEntityLink(tableLink)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    TestCase testCase3 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
+
+    // Verify test cases initially don't have dataContract references
+    TestCase initialTestCase1 =
+        testCaseResourceTest.getEntity(testCase1.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase initialTestCase2 =
+        testCaseResourceTest.getEntity(testCase2.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase initialTestCase3 =
+        testCaseResourceTest.getEntity(testCase3.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+
+    assertNull(
+        initialTestCase1.getDataContract(),
+        "Test case 1 should not have dataContract reference initially");
+    assertNull(
+        initialTestCase2.getDataContract(),
+        "Test case 2 should not have dataContract reference initially");
+    assertNull(
+        initialTestCase3.getDataContract(),
+        "Test case 3 should not have dataContract reference initially");
+
+    // Step 1: Create data contract with quality expectations (testCase1, testCase2)
+    List<EntityReference> initialQualityExpectations =
+        List.of(testCase1.getEntityReference(), testCase2.getEntityReference());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table)
+            .withQualityExpectations(initialQualityExpectations);
+
+    DataContract dataContract = createDataContract(create);
+
+    // Verify test cases 1 and 2 now have dataContract references after creation
+    TestCase afterCreateTestCase1 =
+        testCaseResourceTest.getEntity(testCase1.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterCreateTestCase2 =
+        testCaseResourceTest.getEntity(testCase2.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterCreateTestCase3 =
+        testCaseResourceTest.getEntity(testCase3.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(
+        afterCreateTestCase1.getDataContract(),
+        "Test case 1 should have dataContract reference after contract creation");
+    assertEquals(
+        dataContract.getId(),
+        afterCreateTestCase1.getDataContract().getId(),
+        "Test case 1 should reference the correct data contract");
+    assertEquals(
+        dataContract.getFullyQualifiedName(),
+        afterCreateTestCase1.getDataContract().getFullyQualifiedName());
+
+    assertNotNull(
+        afterCreateTestCase2.getDataContract(),
+        "Test case 2 should have dataContract reference after contract creation");
+    assertEquals(
+        dataContract.getId(),
+        afterCreateTestCase2.getDataContract().getId(),
+        "Test case 2 should reference the correct data contract");
+
+    assertNull(
+        afterCreateTestCase3.getDataContract(),
+        "Test case 3 should not have dataContract reference (not in quality expectations)");
+
+    // Step 2: Update data contract to include testCase3 and remove testCase1
+    List<EntityReference> updatedQualityExpectations =
+        List.of(testCase2.getEntityReference(), testCase3.getEntityReference());
+
+    String originalJson = JsonUtils.pojoToJson(dataContract);
+    dataContract.setQualityExpectations(updatedQualityExpectations);
+    DataContract updatedDataContract =
+        patchDataContract(dataContract.getId(), originalJson, dataContract);
+
+    // Verify test case references after update
+    TestCase afterUpdateTestCase1 =
+        testCaseResourceTest.getEntity(testCase1.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterUpdateTestCase2 =
+        testCaseResourceTest.getEntity(testCase2.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterUpdateTestCase3 =
+        testCaseResourceTest.getEntity(testCase3.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+
+    assertNull(
+        afterUpdateTestCase1.getDataContract(),
+        "Test case 1 should no longer have dataContract reference (removed from quality expectations)");
+
+    assertNotNull(
+        afterUpdateTestCase2.getDataContract(),
+        "Test case 2 should still have dataContract reference");
+    assertEquals(dataContract.getId(), afterUpdateTestCase2.getDataContract().getId());
+
+    assertNotNull(
+        afterUpdateTestCase3.getDataContract(),
+        "Test case 3 should now have dataContract reference (added to quality expectations)");
+    assertEquals(dataContract.getId(), afterUpdateTestCase3.getDataContract().getId());
+
+    // Step 3: Delete data contract
+    deleteDataContract(dataContract.getId());
+
+    // Verify all test case references are removed after deletion
+    TestCase afterDeleteTestCase1 =
+        testCaseResourceTest.getEntity(testCase1.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterDeleteTestCase2 =
+        testCaseResourceTest.getEntity(testCase2.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterDeleteTestCase3 =
+        testCaseResourceTest.getEntity(testCase3.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+
+    assertNull(
+        afterDeleteTestCase1.getDataContract(),
+        "Test case 1 should not have dataContract reference after contract deletion");
+    assertNull(
+        afterDeleteTestCase2.getDataContract(),
+        "Test case 2 should not have dataContract reference after contract deletion");
+    assertNull(
+        afterDeleteTestCase3.getDataContract(),
+        "Test case 3 should not have dataContract reference after contract deletion");
   }
 }

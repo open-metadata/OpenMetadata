@@ -35,5 +35,6 @@ public class Migration extends MigrationProcessImpl {
   @SneakyThrows
   public void runDataMigration() {
     this.migrationUtil.migrateFlywayHistory(handle);
+    MigrationUtil.migrateTestCaseDataContractReferences(collectionDAO);
   }
 }
