@@ -1,4 +1,3 @@
- 
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,6 +81,7 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../../utils/ExploreUtils';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
@@ -188,7 +188,7 @@ const AssetsTabs = forwardRef(
     const filterMenu: ItemType[] = useMemo(() => {
       return filters.map((filter) => ({
         key: filter.key,
-        label: filter.label,
+        label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
         onClick: handleMenuClick,
       }));
     }, [filters]);
@@ -197,13 +197,16 @@ const AssetsTabs = forwardRef(
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return getTermQuery(
-            { 'domains.fullyQualifiedName': entityFqn ?? '' },
-            'must',
-            undefined,
-            {
-              mustNotTerms: { entityType: 'dataProduct' },
-            }
+          return (
+            queryFilter ??
+            getTermQuery(
+              { 'domains.fullyQualifiedName': entityFqn ?? '' },
+              'must',
+              undefined,
+              {
+                mustNotTerms: { entityType: 'dataProduct' },
+              }
+            )
           );
         case AssetsOfEntity.DATA_PRODUCT:
           return getTermQuery({

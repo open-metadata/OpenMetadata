@@ -20,7 +20,6 @@ import '@testing-library/jest-dom/extend-expect';
 // Polyfill for TextEncoder and TextDecoder
 import { TextDecoder, TextEncoder } from 'util';
 
-// eslint-disable-next-line no-undef
 Object.assign(global, {
   TextDecoder,
   TextEncoder,
@@ -107,6 +106,9 @@ jest.mock('utils/i18next/LocalUtil', () => ({
   }),
   detectBrowserLanguage: jest.fn().mockReturnValue('en-US'),
   t: (key) => key,
+  translateWithNestedKeys: jest.fn((key, params) => {
+    return params ? `${key}_${JSON.stringify(params)}` : key;
+  }),
   dir: jest.fn().mockReturnValue('ltr'),
 }));
 /**
@@ -177,7 +179,7 @@ jest.mock('@mui/material/styles', () => {
  */
 jest.mock('@mui/styled-engine', () => {
   const actual = jest.requireActual('@mui/styled-engine');
-   
+
   const React = require('react');
 
   const styled = (component) => () => {
@@ -202,7 +204,6 @@ jest.mock('@mui/styled-engine', () => {
  * Mock @mui/material components for consistent testing
  */
 jest.mock('@mui/material', () => {
-   
   const React = require('react');
 
   const styled = (component) => () => component;

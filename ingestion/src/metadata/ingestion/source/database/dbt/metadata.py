@@ -1345,7 +1345,7 @@ class DbtSource(DbtServiceSource):
                         )
                     except APIError as err:
                         if err.code != 409:
-                            raise APIError(err) from err
+                            raise err
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

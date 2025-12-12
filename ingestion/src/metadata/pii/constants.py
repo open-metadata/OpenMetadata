@@ -17,7 +17,6 @@ PII = "PII"
 # Constants for Presidio
 PRESIDIO_LOGGER = "presidio-analyzer"
 SPACY_EN_MODEL = "en_core_web_md"
-SPACY_MULTILANGUAGE_MODEL = "xx_ent_wiki_sm"
 
 # Supported language for Presidio.
 # Don't change this unless you know what you are doing.

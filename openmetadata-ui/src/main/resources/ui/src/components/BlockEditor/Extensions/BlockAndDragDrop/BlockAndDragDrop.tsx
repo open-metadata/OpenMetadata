@@ -24,10 +24,7 @@ export interface BlockAndDragHandleOptions {
   blockHandleWidth: number;
 }
 
- 
-interface DragAndDropOptions {}
-
-const DragAndDrop = Extension.create<DragAndDropOptions>({
+const DragAndDrop = Extension.create({
   name: 'dragAndDrop',
 
   addProseMirrorPlugins() {

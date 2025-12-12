@@ -17,7 +17,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -191,7 +191,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
     for (DashboardDataModel dataModel : dataModels) {
       dataModel.setTags(
-          addDerivedTags(
+          addDerivedTagsGracefully(
               tagsMap.getOrDefault(dataModel.getFullyQualifiedName(), Collections.emptyList())));
     }
 

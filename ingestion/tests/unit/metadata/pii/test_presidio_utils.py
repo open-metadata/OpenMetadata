@@ -20,11 +20,7 @@ from metadata.pii.algorithms.presidio_utils import (
     build_analyzer_engine,
     load_nlp_engine,
 )
-from metadata.pii.constants import (
-    SPACY_EN_MODEL,
-    SPACY_MULTILANGUAGE_MODEL,
-    SUPPORTED_LANG,
-)
+from metadata.pii.constants import SPACY_EN_MODEL, SUPPORTED_LANG
 
 
 class TestSpacyModelLoading:
@@ -107,5 +103,5 @@ class TestAnalyzerEngine:
             result = build_analyzer_engine()
 
             mock_load_nlp.assert_called_once_with(
-                model_name=SPACY_MULTILANGUAGE_MODEL, supported_language=SUPPORTED_LANG
+                model_name=SPACY_EN_MODEL, supported_language=SUPPORTED_LANG
             )

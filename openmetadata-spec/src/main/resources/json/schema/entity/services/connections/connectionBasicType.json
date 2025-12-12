@@ -90,11 +90,6 @@
       "type": "boolean",
       "default": true
     },
-    "supportsQueryRunner": {
-      "description": "Supports Query Runner for executing ad-hoc queries with user credentials.",
-      "type": "boolean",
-      "default": false
-    },
     "dataStorageConfig": {
       "description": "Storage config to store sample data",
       "type": "object",

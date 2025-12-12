@@ -140,7 +140,7 @@ describe('DimensionalityHeatmap Component', () => {
       expect(screen.getByText('Jan 3')).toBeInTheDocument();
     });
 
-    it('should render dates in reverse chronological order', () => {
+    it('should render dates in chronological order', () => {
       const { container } = render(
         <DimensionalityHeatmap
           data={mockData}
@@ -151,11 +151,11 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       const headers = container.querySelectorAll(
-        '.dimensionality-heatmap__header-cell:not(.dimensionality-heatmap__header-cell--placeholder)'
+        '.dimensionality-heatmap__header-cell'
       );
 
-      expect(headers[0]).toHaveTextContent('Jan 3');
-      expect(headers[2]).toHaveTextContent('Jan 1');
+      expect(headers[0]).toHaveTextContent('Jan 1');
+      expect(headers[2]).toHaveTextContent('Jan 3');
     });
   });
 
@@ -185,9 +185,7 @@ describe('DimensionalityHeatmap Component', () => {
         { wrapper: Wrapper }
       );
 
-      const cells = container.querySelectorAll(
-        '.dimensionality-heatmap__cell:not(.dimensionality-heatmap__cell--placeholder)'
-      );
+      const cells = container.querySelectorAll('.dimensionality-heatmap__cell');
 
       expect(cells).toHaveLength(6);
     });
@@ -281,7 +279,6 @@ describe('DimensionalityHeatmap Component', () => {
 
     it('should render right scroll indicator when showRightIndicator is true', () => {
       const mockUseScrollIndicator =
-         
         require('./useScrollIndicator.hook').useScrollIndicator;
       const mockHandleScrollRight = jest.fn();
 
@@ -315,7 +312,6 @@ describe('DimensionalityHeatmap Component', () => {
 
     it('should render left scroll indicator when showLeftIndicator is true', () => {
       const mockUseScrollIndicator =
-         
         require('./useScrollIndicator.hook').useScrollIndicator;
       const mockHandleScrollLeft = jest.fn();
 
@@ -349,7 +345,6 @@ describe('DimensionalityHeatmap Component', () => {
 
     it('should call handleScrollRight when right scroll indicator is clicked', () => {
       const mockUseScrollIndicator =
-         
         require('./useScrollIndicator.hook').useScrollIndicator;
       const mockHandleScrollRight = jest.fn();
 
@@ -381,7 +376,6 @@ describe('DimensionalityHeatmap Component', () => {
 
     it('should call handleScrollLeft when left scroll indicator is clicked', () => {
       const mockUseScrollIndicator =
-         
         require('./useScrollIndicator.hook').useScrollIndicator;
       const mockHandleScrollLeft = jest.fn();
 
@@ -413,7 +407,6 @@ describe('DimensionalityHeatmap Component', () => {
 
     it('should render both indicators when both are true', () => {
       const mockUseScrollIndicator =
-         
         require('./useScrollIndicator.hook').useScrollIndicator;
 
       mockUseScrollIndicator.mockReturnValue({
@@ -445,8 +438,43 @@ describe('DimensionalityHeatmap Component', () => {
     });
   });
 
-  describe('Responsive Behavior', () => {
-    it('should render placeholder cells when container is measured', () => {
+  describe('Auto-scroll Behavior', () => {
+    it('should scroll to the right when date range changes', () => {
+      const { container, rerender } = render(
+        <DimensionalityHeatmap
+          data={mockData}
+          endDate={endDate}
+          startDate={startDate}
+        />,
+        { wrapper: Wrapper }
+      );
+
+      const scrollContainer = container.querySelector(
+        '.dimensionality-heatmap__scroll-container'
+      ) as HTMLElement;
+
+      expect(scrollContainer).toBeInTheDocument();
+
+      const initialScrollLeft = scrollContainer.scrollLeft;
+
+      const newEndDate = new Date('2025-01-05').getTime();
+
+      rerender(
+        <Wrapper>
+          <DimensionalityHeatmap
+            data={mockData}
+            endDate={newEndDate}
+            startDate={startDate}
+          />
+        </Wrapper>
+      );
+
+      expect(scrollContainer.scrollLeft).toBeGreaterThanOrEqual(
+        initialScrollLeft
+      );
+    });
+
+    it('should scroll to maximum right position on mount', () => {
       const { container } = render(
         <DimensionalityHeatmap
           data={mockData}
@@ -456,16 +484,12 @@ describe('DimensionalityHeatmap Component', () => {
         { wrapper: Wrapper }
       );
 
-      Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
-        configurable: true,
-        value: 1000,
-      });
+      const scrollContainer = container.querySelector(
+        '.dimensionality-heatmap__scroll-container'
+      ) as HTMLElement;
 
-      const placeholderHeaders = container.querySelectorAll(
-        '.dimensionality-heatmap__header-cell--placeholder'
-      );
-
-      expect(placeholderHeaders.length).toBeGreaterThanOrEqual(0);
+      expect(scrollContainer).toBeInTheDocument();
+      expect(scrollContainer.scrollLeft).toBeDefined();
     });
   });
 
@@ -505,9 +529,7 @@ describe('DimensionalityHeatmap Component', () => {
         { wrapper: Wrapper }
       );
 
-      const cells = container.querySelectorAll(
-        '.dimensionality-heatmap__cell:not(.dimensionality-heatmap__cell--placeholder)'
-      );
+      const cells = container.querySelectorAll('.dimensionality-heatmap__cell');
 
       expect(cells).toHaveLength(3);
 
@@ -516,34 +538,6 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       expect(noDataCells).toHaveLength(2);
-    });
-  });
-
-  describe('ResizeObserver Integration', () => {
-    it('should set up ResizeObserver on mount', () => {
-      const observeMock = jest.fn();
-      const disconnectMock = jest.fn();
-
-      window.ResizeObserver = jest.fn().mockImplementation(() => ({
-        observe: observeMock,
-        disconnect: disconnectMock,
-        unobserve: jest.fn(),
-      }));
-
-      const { unmount } = render(
-        <DimensionalityHeatmap
-          data={mockData}
-          endDate={endDate}
-          startDate={startDate}
-        />,
-        { wrapper: Wrapper }
-      );
-
-      expect(observeMock).toHaveBeenCalled();
-
-      unmount();
-
-      expect(disconnectMock).toHaveBeenCalled();
     });
   });
 });

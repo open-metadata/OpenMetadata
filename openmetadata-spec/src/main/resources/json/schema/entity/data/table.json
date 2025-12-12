@@ -1301,6 +1301,14 @@
       },
       "default": null
     },
+    "pipelineObservability": {
+      "description": "Pipeline observability information for the table. Multiple pipelines can process the same table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/pipelineObservability.json"
+      },
+      "default": null
+    },
     "entityStatus": {
       "description": "Status of the Table.",
       "$ref": "../../type/status.json"

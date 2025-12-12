@@ -129,7 +129,6 @@ const DataProductsDetailsPage = ({
   const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
     PageType.DataProduct
   );
-  const [assetModelVisible, setAssetModelVisible] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
@@ -173,10 +172,10 @@ const DataProductsDetailsPage = ({
           dataProduct.fullyQualifiedName ?? ''
         )
       );
-      if (!isEmpty(announcements.data)) {
-        setActiveAnnouncement(announcements.data[0]);
-      } else {
+      if (isEmpty(announcements.data)) {
         setActiveAnnouncement(undefined);
+      } else {
+        setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
       showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
@@ -498,7 +497,7 @@ const DataProductsDetailsPage = ({
       assetTabRef,
       previewAsset,
       setPreviewAsset,
-      setAssetModalVisible: setAssetModelVisible,
+      setAssetModalVisible: openAssetDrawer,
       handleAssetClick,
       handleAssetSave,
       feedCount,

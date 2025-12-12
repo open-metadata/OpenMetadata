@@ -48,6 +48,10 @@ export interface Pipeline {
      */
     domains?: EntityReference[];
     /**
+     * End date of the workflow.
+     */
+    endDate?: Date;
+    /**
      * Status of the Pipeline.
      */
     entityStatus?: EntityStatus;

@@ -36,11 +36,7 @@ from presidio_analyzer.predefined_recognizers import (
 from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
 from metadata.pii.algorithms import patterns
-from metadata.pii.constants import (
-    PRESIDIO_LOGGER,
-    SPACY_MULTILANGUAGE_MODEL,
-    SUPPORTED_LANG,
-)
+from metadata.pii.constants import PRESIDIO_LOGGER, SPACY_EN_MODEL, SUPPORTED_LANG
 from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
 
@@ -48,7 +44,7 @@ logger = pii_logger()
 
 
 def load_nlp_engine(
-    model_name: str = SPACY_MULTILANGUAGE_MODEL,
+    model_name: str = SPACY_EN_MODEL,
     supported_language: str = SUPPORTED_LANG,
 ) -> SpacyNlpEngine:
     _load_spacy_model(model_name)
@@ -60,7 +56,7 @@ def load_nlp_engine(
 
 
 def build_analyzer_engine(
-    model_name: str = SPACY_MULTILANGUAGE_MODEL,
+    model_name: str = SPACY_EN_MODEL,
 ) -> AnalyzerEngine:
     """
     Build a Presidio analyzer engine for the model_name and tailored to our use case.

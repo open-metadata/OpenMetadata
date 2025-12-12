@@ -62,7 +62,6 @@ export interface TrinoConnection {
     supportsMetadataExtraction?: boolean;
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
-    supportsQueryRunner?:        boolean;
     supportsUsageExtraction?:    boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.

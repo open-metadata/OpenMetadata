@@ -28,10 +28,15 @@ import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { CSMode } from '../enums/codemirror.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { Operation } from '../generated/entity/policies/policy';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { DashboardDataModelDetailPageTabProps } from './DashboardDataModelClassBase';
 import i18n, { t } from './i18next/LocalUtil';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from './PermissionsUtils';
 const EntityLineageTab = lazy(() =>
   import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
     (module) => ({ default: module.EntityLineageTab })
@@ -162,11 +167,14 @@ export const getDashboardDataModelDetailPageTabs = ({
       children: (
         <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
           entityType={EntityType.DASHBOARD_DATA_MODEL}
-          hasEditAccess={
-            dataModelPermissions.EditAll ||
-            dataModelPermissions.EditCustomFields
-          }
-          hasPermission={dataModelPermissions.ViewAll}
+          hasEditAccess={getPrioritizedEditPermission(
+            dataModelPermissions,
+            Operation.EditCustomFields
+          )}
+          hasPermission={getPrioritizedViewPermission(
+            dataModelPermissions,
+            Operation.ViewCustomFields
+          )}
           isVersionView={false}
         />
       ),

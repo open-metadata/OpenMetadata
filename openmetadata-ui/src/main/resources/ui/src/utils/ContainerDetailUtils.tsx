@@ -130,6 +130,7 @@ export const getContainerDetailPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
@@ -247,7 +248,7 @@ export const getContainerDetailPageTabs = ({
         <CustomPropertyTable<EntityType.CONTAINER>
           entityType={EntityType.CONTAINER}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

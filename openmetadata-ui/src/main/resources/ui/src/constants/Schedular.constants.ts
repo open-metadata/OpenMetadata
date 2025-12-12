@@ -14,71 +14,70 @@
 import { toString } from 'lodash';
 import { Combination } from '../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import { SchedularOptions } from '../enums/Schedular.enum';
-import i18n from '../utils/i18next/LocalUtil';
 
 export const SCHEDULAR_OPTIONS = [
   {
-    title: i18n.t('label.schedule'),
-    description: i18n.t('message.schedule-description'),
+    title: 'label.schedule',
+    description: 'message.schedule-description',
     value: SchedularOptions.SCHEDULE,
   },
   {
-    title: i18n.t('label.on-demand'),
-    description: i18n.t('message.on-demand-description'),
+    title: 'label.on-demand',
+    description: 'message.on-demand-description',
     value: SchedularOptions.ON_DEMAND,
   },
 ];
 
 export const PERIOD_OPTIONS = [
   {
-    label: i18n.t('label.hour'),
+    label: 'label.hour',
     value: 'hour',
   },
   {
-    label: i18n.t('label.day'),
+    label: 'label.day',
     value: 'day',
   },
   {
-    label: i18n.t('label.week'),
+    label: 'label.week',
     value: 'week',
   },
   {
-    label: i18n.t('label.month'),
+    label: 'label.month',
     value: 'month',
   },
   {
-    label: i18n.t('label.custom'),
+    label: 'label.custom',
     value: 'custom',
   },
 ];
 
 export const DAY_OPTIONS = [
   {
-    label: i18n.t('label.sunday'),
+    label: 'Sunday',
     value: '0',
   },
   {
-    label: i18n.t('label.monday'),
+    label: 'Monday',
     value: '1',
   },
   {
-    label: i18n.t('label.tuesday'),
+    label: 'Tuesday',
     value: '2',
   },
   {
-    label: i18n.t('label.wednesday'),
+    label: 'Wednesday',
     value: '3',
   },
   {
-    label: i18n.t('label.thursday'),
+    label: 'Thursday',
     value: '4',
   },
   {
-    label: i18n.t('label.friday'),
+    label: 'Friday',
     value: '5',
   },
   {
-    label: i18n.t('label.saturday'),
+    label: 'Saturday',
     value: '6',
   },
 ];

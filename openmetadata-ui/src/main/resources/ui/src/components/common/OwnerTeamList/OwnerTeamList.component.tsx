@@ -47,7 +47,7 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
 
   const { visibleTeam, remainingTeam } = useMemo(() => {
     return {
-      visibleTeam: owners.slice(0, 1)[0],
+      visibleTeam: owners[0],
       remainingTeam: owners.slice(1),
     };
   }, [owners]);

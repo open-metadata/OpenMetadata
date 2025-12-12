@@ -177,6 +177,36 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return getGlossaryTermAssets(term.getId(), limit, offset);
   }
 
+  public Map<String, Integer> getAllGlossaryTermsWithAssetsCount() {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for glossary term asset counts");
+      return new HashMap<>();
+    }
+
+    List<GlossaryTerm> allGlossaryTerms =
+        listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    Map<String, Integer> glossaryTermAssetCounts = new HashMap<>();
+
+    for (GlossaryTerm term : allGlossaryTerms) {
+      InheritedFieldQuery query =
+          InheritedFieldQuery.forGlossaryTerm(term.getFullyQualifiedName(), 0, 0);
+
+      Integer count =
+          inheritedFieldEntitySearch.getCountForField(
+              query,
+              () -> {
+                LOG.warn(
+                    "Search fallback for glossary term {} asset count. Returning 0.",
+                    term.getFullyQualifiedName());
+                return 0;
+              });
+
+      glossaryTermAssetCounts.put(term.getFullyQualifiedName(), count);
+    }
+
+    return glossaryTermAssetCounts;
+  }
+
   @Override
   public void setFields(GlossaryTerm entity, Fields fields) {
     entity.withParent(getParent(entity)).withGlossary(getGlossary(entity));
@@ -268,6 +298,29 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     if (!update) {
       checkDuplicateTerms(entity);
+    }
+  }
+
+  /**
+   * Performs initial validation during CSV dry-run.
+   * Checks only for circular self-references to prevent known import issues.
+   * Full validation is performed during the actual import (dryRun = false) using the validateHierarchy method inside prepareInternal().
+   */
+  public void validateForDryRun(
+      GlossaryTerm entity, Map<String, GlossaryTerm> dryRunCreatedEntities) {
+    if (entity.getParent() == null) {
+      return;
+    }
+
+    // Check if term name matches parent name (catches CSV import circular reference)
+    // Example: parent name = "term1", term name = "term1" indicates self-reference
+    if (entity.getName() != null
+        && entity.getParent().getName() != null
+        && entity.getName().equals(entity.getParent().getName())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid hierarchy: Term '%s' cannot be its own parent",
+              entity.getParent().getFullyQualifiedName()));
     }
   }
 
@@ -794,43 +847,68 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       return;
     }
 
-    if (term.getId().equals(term.getParent().getId())) {
+    if (term.getId() != null
+        && term.getParent().getId() != null
+        && term.getId().equals(term.getParent().getId())) {
       throw new IllegalArgumentException(
           String.format(
               "Invalid hierarchy: Term '%s' cannot be its own parent",
               term.getFullyQualifiedName()));
     }
 
+    // Check by FQN to catch cases where UUIDs might differ (e.g., CSV import with new UUID)
+    if (term.getFullyQualifiedName() != null
+        && term.getParent().getFullyQualifiedName() != null
+        && term.getFullyQualifiedName().equals(term.getParent().getFullyQualifiedName())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid hierarchy: Term '%s' cannot be its own parent",
+              term.getFullyQualifiedName()));
+    }
+
+    // Check if term name matches parent name (catches CSV import circular reference)
+    // Example: parent name = "term1", term name = "term1" indicates self-reference
+    if (term.getName() != null
+        && term.getParent().getName() != null
+        && term.getName().equals(term.getParent().getName())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid hierarchy: Term '%s' cannot be its own parent",
+              term.getParent().getFullyQualifiedName()));
+    }
+
     // Check for circular references by traversing the entire parent chain in the database
     // We track visited terms to detect cycles
-    Set<UUID> visitedTerms = new HashSet<>();
-    visitedTerms.add(term.getId());
-    UUID currentParentId = term.getParent().getId();
+    if (term.getId() != null && term.getParent().getId() != null) {
+      Set<UUID> visitedTerms = new HashSet<>();
+      visitedTerms.add(term.getId());
+      UUID currentParentId = term.getParent().getId();
 
-    while (currentParentId != null) {
-      if (visitedTerms.contains(currentParentId)) {
-        // Fqn is changed, so we need the old fqn for proper error message
-        GlossaryTerm originalTerm =
-            Entity.getEntity(GLOSSARY_TERM, term.getId(), "fullyQualifiedName", Include.ALL);
-        throw new IllegalArgumentException(
-            String.format(
-                "Circular reference detected: Cannot set parent relationship as it would create a cycle. "
-                    + "Term '%s' (or one of its descendants) already exists in the parent chain.",
-                originalTerm.getFullyQualifiedName()));
+      while (currentParentId != null) {
+        if (visitedTerms.contains(currentParentId)) {
+          // Fqn is changed, so we need the old fqn for proper error message
+          GlossaryTerm originalTerm =
+              Entity.getEntity(GLOSSARY_TERM, term.getId(), "fullyQualifiedName", Include.ALL);
+          throw new IllegalArgumentException(
+              String.format(
+                  "Circular reference detected: Cannot set parent relationship as it would create a cycle. "
+                      + "Term '%s' (or one of its descendants) already exists in the parent chain.",
+                  originalTerm.getFullyQualifiedName()));
+        }
+
+        visitedTerms.add(currentParentId);
+
+        List<EntityRelationshipRecord> parentRelationships =
+            daoCollection
+                .relationshipDAO()
+                .findFrom(
+                    currentParentId, GLOSSARY_TERM, Relationship.CONTAINS.ordinal(), GLOSSARY_TERM);
+
+        if (parentRelationships.isEmpty()) {
+          break;
+        }
+        currentParentId = parentRelationships.getFirst().getId();
       }
-
-      visitedTerms.add(currentParentId);
-
-      List<EntityRelationshipRecord> parentRelationships =
-          daoCollection
-              .relationshipDAO()
-              .findFrom(
-                  currentParentId, GLOSSARY_TERM, Relationship.CONTAINS.ordinal(), GLOSSARY_TERM);
-
-      if (parentRelationships.isEmpty()) {
-        break;
-      }
-      currentParentId = parentRelationships.getFirst().getId();
     }
   }
 
@@ -1104,6 +1182,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
+  private void checkDuplicateTermsForUpdate(GlossaryTerm original, GlossaryTerm updated) {
+    if (!original.getName().equals(updated.getName())) {
+      int count =
+          daoCollection
+              .glossaryTermDAO()
+              .getGlossaryTermCountIgnoreCaseExcludingId(
+                  updated.getGlossary().getName(), updated.getName(), original.getId().toString());
+      if (count > 0) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.duplicateGlossaryTerm(
+                updated.getName(), updated.getGlossary().getName()));
+      }
+    }
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class GlossaryTermUpdater extends EntityUpdater {
     public GlossaryTermUpdater(GlossaryTerm original, GlossaryTerm updated, Operation operation) {
@@ -1275,7 +1368,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        checkDuplicateTerms(updated);
+        checkDuplicateTermsForUpdate(original, updated);
         // Glossary term name changed - update the FQNs of the children terms to reflect this
         setFullyQualifiedName(updated);
         LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());

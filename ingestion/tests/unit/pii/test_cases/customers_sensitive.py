@@ -109,11 +109,11 @@ sample_data = SampleData(
         rows=[
             ["--", "harsha@gmail.com", 1, "Harsha", "2240 W Ina Rd"],
             ["--", "suresh@gmail.com", 2, "Suresh", "7192 Kalanianaole Hwy"],
-            ["--", "sanket@gmail.com", 3, "Sanket", "5900 N Cannon Ave"],
-            ["--", "mayur@gmail.com", 4, "Mayur", "4350 Main St"],
-            ["--", "teddy@gmail.com", 5, "Teddy", "903 W Main St"],
+            ["--", "stelle@gmail.com", 3, "Stelle", "5900 N Cannon Ave"],
+            ["--", "peter@gmail.com", 4, "Peter", "4350 Main St"],
+            ["--", "teddy@gmail.com", 5, "Theodore", "903 W Main St"],
             ["--", "akash@gmail.com", 6, "Akash", "2220 Coit Rd"],
-            ["--", "shilpa@gmail.com", 7, "Shilpa", "7 Southside Dr"],
+            ["--", "mary@gmail.com", 7, "Mary", "7 Southside Dr"],
             ["--", "chirag@gmail.com", 8, "Chirag", "2929 S 25th Ave"],
         ],
     )
@@ -135,16 +135,6 @@ expected_column_tags = [
         tag_label=TagLabel(
             name="Sensitive",
             tagFQN=TagFQN(root="PII.Sensitive"),
-            source=TagSource.Classification,
-            labelType=LabelType.Generated,
-            state=State.Suggested,
-        ),
-    ),
-    ColumnTag(
-        column_fqn="Service.database.schema.example_table.address",
-        tag_label=TagLabel(
-            name="NonSensitive",
-            tagFQN=TagFQN(root="PII.NonSensitive"),
             source=TagSource.Classification,
             labelType=LabelType.Generated,
             state=State.Suggested,

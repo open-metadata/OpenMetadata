@@ -1,4 +1,16 @@
 /*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+/*
  * Copyright 2022 Collate.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +28,14 @@ import prettierConfig from 'eslint-config-prettier';
 import i18next from 'eslint-plugin-i18next';
 import jest from 'eslint-plugin-jest';
 import jestFormatting from 'eslint-plugin-jest-formatting';
-import jsoncParser from 'jsonc-eslint-parser';
 import jsoncPlugin from 'eslint-plugin-jsonc';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import globals from 'globals';
+import jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default [
   // Base recommended configs
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -44,9 +57,9 @@ export default tseslint.config(
     ],
   },
 
-  // Base config for TypeScript/JavaScript files
+  // Base config for JavaScript and TypeScript files
   {
-    files: ['**/*.{js,jsx,ts,tsx}'],
+    files: ['src/**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
       parser: tseslint.parser,
       ecmaVersion: 2018,
@@ -55,19 +68,21 @@ export default tseslint.config(
         ecmaFeatures: {
           jsx: true,
         },
-        project: './tsconfig.json',
       },
       globals: {
-        browser: true,
-        es6: true,
-        jest: true,
-        node: true,
-        console: true,
-        process: true,
-        __dirname: true,
-        __filename: true,
-        module: true,
-        require: true,
+        ...globals.node,
+        ...globals.jest,
+        // Browser globals needed for tests and components
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        location: 'readonly',
+        localStorage: 'readonly',
+        sessionStorage: 'readonly',
+        fetch: 'readonly',
+        FormData: 'readonly',
+        XMLHttpRequest: 'readonly',
+        Range: 'readonly',
       },
     },
 
@@ -163,6 +178,9 @@ export default tseslint.config(
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-use-before-define': 'warn',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-expressions': 'warn',
 
       // i18next rules - temporarily disabled due to ESLint 9 compatibility issues
       // TODO: Re-enable when eslint-plugin-i18next fully supports ESLint 9 flat config
@@ -172,7 +190,7 @@ export default tseslint.config(
 
   // JSON files
   {
-    files: ['*.json'],
+    files: ['src/**/*.json'],
     languageOptions: {
       parser: jsoncParser,
     },
@@ -216,7 +234,7 @@ export default tseslint.config(
 
   // Playwright tests
   {
-    files: ['playwright/**'],
+    files: ['**/playwright/**/*.{js,jsx,ts,tsx}'],
     rules: {
       'jest/expect-expect': 'off',
       'jest/valid-expect-in-promise': 'off',
@@ -226,7 +244,23 @@ export default tseslint.config(
       'jest/no-done-callback': 'off',
       'jest/no-standalone-expect': 'off',
       'jest/no-conditional-expect': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-duplicate-enum-values': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-expressions': 'warn',
     },
   },
 
-);
+  // Test setup files
+  {
+    files: [
+      'src/setupTests.js',
+      'src/**/*.test.{js,jsx,ts,tsx}',
+      'src/**/*.spec.{js,jsx,ts,tsx}',
+      'playwright/**/*.spec.{js,jsx,ts,tsx}',
+    ],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+];

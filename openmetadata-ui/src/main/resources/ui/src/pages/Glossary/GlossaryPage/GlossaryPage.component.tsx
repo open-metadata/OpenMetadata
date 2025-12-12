@@ -21,9 +21,7 @@ import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
-import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
-import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
 import GlossaryV1 from '../../../components/Glossary/GlossaryV1.component';
 import {
@@ -515,32 +513,7 @@ const GlossaryPage = () => {
       }}
     />
   ) : (
-    <ResizablePanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        children: glossaryElement,
-        minWidth: 700,
-        flex: 0.7,
-        wrapInCard: false,
-      }}
-      hideSecondPanel={!previewAsset}
-      pageTitle={t('label.glossary')}
-      secondPanel={{
-        wrapInCard: false,
-        children: previewAsset && (
-          <EntitySummaryPanel
-            entityDetails={previewAsset}
-            handleClosePanel={() => setPreviewAsset(undefined)}
-            highlights={{ 'tag.name': [glossaryFqn] }}
-          />
-        ),
-        className:
-          'content-resizable-panel-container entity-summary-resizable-right-panel-container',
-        minWidth: 400,
-        flex: 0.3,
-      }}
-    />
+    glossaryElement
   );
 
   return <div>{resizableLayout}</div>;

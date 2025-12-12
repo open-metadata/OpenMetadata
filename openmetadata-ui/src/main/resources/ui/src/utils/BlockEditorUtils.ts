@@ -22,8 +22,8 @@ import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
-import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
+import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
 
 export const getSelectedText = (state: EditorState) => {
   const { from, to } = state.selection;

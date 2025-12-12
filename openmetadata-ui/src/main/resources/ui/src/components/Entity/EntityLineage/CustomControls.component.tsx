@@ -32,7 +32,6 @@ import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exi
 import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
 import { ReactComponent as SettingsOutlined } from '../../../assets/svg/ic-settings-gear.svg';
-import { ReactComponent as SortIcon } from '../../../assets/svg/ic-sort-both.svg';
 import { LINEAGE_DROPDOWN_ITEMS } from '../../../constants/AdvancedSearch.constants';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
@@ -97,9 +96,6 @@ const CustomControls: FC<{
   const theme = useTheme();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
-  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(
-    null
-  );
 
   const queryFilter = useMemo(() => {
     const nodeIds = (nodes ?? [])
@@ -179,6 +175,7 @@ const CustomControls: FC<{
       setSelectedQuickFilters(updatedQuickFilters);
     }
   }, []);
+
   const queryParams = useMemo(() => {
     return QueryString.parse(location.search, {
       ignoreQueryPrefix: true,
@@ -346,88 +343,52 @@ const CustomControls: FC<{
     },
     [updateURLParams]
   );
-
-  const settingsButton = useMemo(() => {
-    let menu = null;
-
+  const lineageEditButton = useMemo(() => {
     const showEditOption =
-      (!activeTab || activeTab === 'lineage') &&
       hasEditAccess &&
       !deleted &&
       platformView === LineagePlatformView.None &&
       entityType &&
       !SERVICE_TYPES.includes(entityType as AssetsUnion);
 
-    if (showEditOption) {
-      menu = (
-        <StyledMenu
-          anchorEl={settingsAnchorEl}
-          anchorOrigin={{
-            horizontal: 'right',
-            vertical: 'bottom',
-          }}
-          open={Boolean(settingsAnchorEl)}
-          transformOrigin={{
-            horizontal: 'right',
-            vertical: 'top',
-          }}
-          onClose={() => setSettingsAnchorEl(null)}>
-          <MenuItem
-            key="edit"
-            selected={isEditMode}
-            onClick={() => {
-              onLineageEditClick();
-              setSettingsAnchorEl(null);
-            }}>
-            <EditIcon />
-            {t('label.edit-entity', { entity: t('label.lineage') })}
-          </MenuItem>
-          <MenuItem
-            disabled={isEditMode}
-            key="depth"
-            onClick={() => {
-              setSettingsAnchorEl(null);
-              setDialogVisible(true);
-            }}>
-            <SortIcon />
-            {t('label.node-depth')}
-          </MenuItem>
-        </StyledMenu>
-      );
-    }
+    return showEditOption ? (
+      <Tooltip
+        arrow
+        placement="top"
+        title={t('label.edit-entity', { entity: t('label.lineage') })}>
+        <StyledIconButton
+          color={isEditMode ? 'primary' : 'default'}
+          data-testid="edit-lineage"
+          size="large"
+          onClick={onLineageEditClick}>
+          <EditIcon />
+        </StyledIconButton>
+      </Tooltip>
+    ) : null;
+  }, [
+    hasEditAccess,
+    deleted,
+    platformView,
+    entityType,
+    isEditMode,
+    onLineageEditClick,
+    t,
+  ]);
 
-    const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-      if (showEditOption) {
-        event.stopPropagation();
-        setSettingsAnchorEl(event.currentTarget);
-      } else {
-        setDialogVisible(true);
-      }
+  const settingsButton = useMemo(() => {
+    const handleSettingsClick = () => {
+      setDialogVisible(true);
     };
 
     return (
-      <>
-        <StyledIconButton
-          data-testid="lineage-config"
-          size="large"
-          onClick={handleClick}>
-          <SettingsOutlined />
-        </StyledIconButton>
-
-        {menu}
-      </>
+      <StyledIconButton
+        data-testid="lineage-config"
+        size="large"
+        onClick={handleSettingsClick}>
+        <SettingsOutlined />
+      </StyledIconButton>
     );
-  }, [
-    activeTab,
-    settingsAnchorEl,
-    lineageConfig,
-    isEditMode,
-    onLineageEditClick,
-    deleted,
-    hasEditAccess,
-    platformView,
-    entityType,
-  ]);
+  }, []);
 
   return (
     <div>
@@ -462,6 +423,8 @@ const CustomControls: FC<{
               </Button>{' '}
             </>
           )}
+
+          {lineageEditButton}
           <Tooltip
             arrow
             placement="top"

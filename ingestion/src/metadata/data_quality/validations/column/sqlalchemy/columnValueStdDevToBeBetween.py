@@ -12,27 +12,18 @@
 """
 Validator for column value stddev to be between test case
 """
+from typing import List, Optional
 
-from typing import Any, Dict, List, Optional
-
-from sqlalchemy import Column, String, case, func, literal, select
+from sqlalchemy import Column
 
 from metadata.data_quality.validations.base_test_handler import (
-    DIMENSION_FAILED_COUNT_KEY,
-    DIMENSION_IMPACT_SCORE_KEY,
-    DIMENSION_OTHERS_LABEL,
     DIMENSION_TOTAL_COUNT_KEY,
     DIMENSION_VALUE_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValueStdDevToBeBetween import (
     BaseColumnValueStdDevToBeBetweenValidator,
 )
-from metadata.data_quality.validations.impact_score import (
-    DEFAULT_TOP_DIMENSIONS,
-    get_impact_score_expression,
-)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
-    DIMENSION_GROUP_LABEL,
     SQAValidatorMixin,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
@@ -88,70 +79,33 @@ class ColumnValueStdDevToBeBetweenValidator(
         dimension_results = []
 
         try:
-            # ==================== PASS 1: Top N Dimensions ====================
+            row_count_expr = Metrics.ROW_COUNT().fn()
+            stddev_expr = Metrics.STDDEV(column).fn()
+
             metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: Metrics.ROW_COUNT().fn(),
-                Metrics.STDDEV.name: Metrics.STDDEV(column).fn(),
+                DIMENSION_TOTAL_COUNT_KEY: row_count_expr,
+                Metrics.STDDEV.name: stddev_expr,
             }
 
-            def build_stddev_final(cte):
-                """For top N: use pre-computed stddev. For Others: return None."""
-                return case(
-                    [
-                        (
-                            getattr(cte.c, DIMENSION_GROUP_LABEL)
-                            != DIMENSION_OTHERS_LABEL,
-                            func.max(getattr(cte.c, Metrics.STDDEV.name)),
-                        )
-                    ],
-                    else_=None,
+            failed_count_builder = (
+                lambda cte, row_count_expr: self._get_validation_checker(
+                    test_params
+                ).build_agg_level_violation_sqa(
+                    [getattr(cte.c, Metrics.STDDEV.name)], row_count_expr
                 )
-
-            failed_count_builder = self._get_validation_checker(
-                test_params
-            ).get_sqa_failed_rows_builder(
-                {Metrics.STDDEV.name: Metrics.STDDEV.name},
-                DIMENSION_TOTAL_COUNT_KEY,
             )
 
-            result_rows = self._execute_with_others_aggregation_statistical(
-                dimension_col,
-                metric_expressions,
-                failed_count_builder,
-                final_metric_builders={
-                    Metrics.STDDEV.name: build_stddev_final,
-                },
-                top_dimensions_count=DEFAULT_TOP_DIMENSIONS,
+            normalized_dimension = self._get_normalized_dimension_expression(
+                dimension_col
             )
 
-            # ==================== PASS 2: Recompute "Others" Stddev ====================
-            # Convert immutable RowMapping objects to mutable dicts
-            result_rows = [dict(row) for row in result_rows]
+            result_rows = self._run_dimensional_validation_query(
+                source=self.runner.dataset,
+                dimension_expr=normalized_dimension,
+                metric_expressions=metric_expressions,
+                failed_count_builder=failed_count_builder,
+            )
 
-            # Separate top N dimensions from "Others" row
-            top_n_rows = [
-                row
-                for row in result_rows
-                if row[DIMENSION_VALUE_KEY] != DIMENSION_OTHERS_LABEL
-            ]
-
-            has_others = len(top_n_rows) < len(result_rows)
-
-            # Recompute "Others" only if it existed in Pass 1
-            if has_others:
-                if recomputed_others := self._compute_others_stddev(
-                    column,
-                    dimension_col,
-                    failed_count_builder,
-                    top_n_rows,
-                ):
-                    result_rows = top_n_rows + [recomputed_others]
-                else:
-                    result_rows = top_n_rows
-            else:
-                result_rows = top_n_rows
-
-            # ==================== Process Results ====================
             for row in result_rows:
                 stddev_value = row.get(Metrics.STDDEV.name)
 
@@ -184,114 +138,3 @@ class ColumnValueStdDevToBeBetweenValidator(
             logger.debug("Full error details: ", exc_info=True)
 
         return dimension_results
-
-    def _compute_others_stddev(
-        self,
-        column: Column,
-        dimension_col: Column,
-        failed_count_builder,
-        top_dimension_values: List[Dict[str, Any]],
-    ) -> Optional[Dict[str, Any]]:
-        """Recompute stddev and metrics for "Others" dimension group.
-
-        Uses two-pass approach: Pass 1 computed top N dimensions, this computes
-        "Others" by rerunning stddev on all rows NOT in top N dimensions.
-
-        Args:
-            column: The column being validated
-            dimension_col: The dimension column to group by
-            failed_count_builder: SQL expression builder for failed count (from checker)
-            result_rows: Results from Pass 1 WITHOUT "Others" row (only top N dimensions)
-
-        Returns:
-            New "Others" row dict with recomputed metrics, or None if computation failed
-        """
-        # Extract top N dimension values (result_rows no longer contains "Others")
-
-        # If no top dimensions to exclude, cannot compute "Others"
-        if not top_dimension_values:
-            return None
-
-        try:
-            # Cast dimension column to VARCHAR and normalize it (same as Pass 1)
-            # This ensures type compatibility when comparing with string top_dimension_values
-            dimension_col_as_string = func.cast(dimension_col, String)
-            normalized_dimension = case(
-                [
-                    (dimension_col.is_(None), literal("NULL")),
-                    (func.upper(dimension_col_as_string) == "NULL", literal("NULL")),
-                ],
-                else_=dimension_col_as_string,
-            )
-
-            # Compute stddev directly on base table with WHERE filter
-            stddev_expr = Metrics.STDDEV(column).fn()
-            total_count_expr = Metrics.ROW_COUNT().fn()
-
-            # Create stats subquery with WHERE filter for "Others" group
-            # Query: SELECT STDDEV(col), COUNT(*) FROM table WHERE dimension NOT IN (top_N)
-            # Extract just the dimension values from the top N result rows
-            top_dimension_value_list = [
-                row[DIMENSION_VALUE_KEY] for row in top_dimension_values
-            ]
-            stats_subquery = (
-                select(
-                    [
-                        stddev_expr.label(Metrics.STDDEV.name),
-                        total_count_expr.label(DIMENSION_TOTAL_COUNT_KEY),
-                    ]
-                )
-                .select_from(self.runner.dataset)
-                .where(normalized_dimension.notin_(top_dimension_value_list))
-            ).alias("others_stats")
-
-            # Apply failed_count builder to stats subquery (reused from Pass 1)
-            failed_count_expr = failed_count_builder(stats_subquery)
-
-            # Calculate impact score in SQL (same expression as Pass 1)
-            total_count_col = getattr(stats_subquery.c, DIMENSION_TOTAL_COUNT_KEY)
-            impact_score_expr = get_impact_score_expression(
-                failed_count_expr, total_count_col
-            )
-
-            # Final query: stddev, total_count, failed_count, impact_score
-            # All computed in SQL just like Pass 1
-            others_query = select(
-                [
-                    getattr(stats_subquery.c, Metrics.STDDEV.name),
-                    total_count_col,
-                    failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY),
-                    impact_score_expr.label(DIMENSION_IMPACT_SCORE_KEY),
-                ]
-            ).select_from(stats_subquery)
-
-            result = self.runner.session.execute(others_query).fetchone()
-
-            if result:
-                others_stddev, total_count, failed_count, impact_score = result
-
-                logger.debug(
-                    "Recomputed 'Others' (SQL): stddev=%s, failed=%d/%d, impact=%.3f",
-                    others_stddev,
-                    failed_count,
-                    total_count,
-                    impact_score,
-                )
-
-                # Return new "Others" row with SQL-computed values
-                return {
-                    DIMENSION_VALUE_KEY: DIMENSION_OTHERS_LABEL,
-                    Metrics.STDDEV.name: others_stddev,
-                    DIMENSION_TOTAL_COUNT_KEY: total_count,
-                    DIMENSION_FAILED_COUNT_KEY: failed_count,
-                    DIMENSION_IMPACT_SCORE_KEY: impact_score,
-                }
-
-            return None
-
-        except Exception as exc:
-            logger.warning(
-                "Failed to recompute 'Others' stddev, will be excluded: %s", exc
-            )
-            logger.debug("Full error details: ", exc_info=True)
-            return None

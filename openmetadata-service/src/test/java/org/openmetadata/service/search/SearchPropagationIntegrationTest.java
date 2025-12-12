@@ -22,11 +22,13 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
@@ -41,6 +43,7 @@ import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.domains.DataProductResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -641,5 +644,136 @@ public class SearchPropagationIntegrationTest extends OpenMetadataApplicationTes
     // while others (description, tags at schema level) don't
     LOG.info(
         "Search propagation metrics test completed - conditional propagation in search layer working as expected");
+  }
+
+  @Test
+  @Order(9)
+  void testOwnerPropagationFromDomainToSubdomain() throws IOException, InterruptedException {
+    LOG.info("Testing owner propagation from parent domain to subdomain in search index");
+
+    CreateUser createDomainOwner =
+        new CreateUser()
+            .withName("test_domain_owner_propagation")
+            .withEmail("test_domain_owner_propagation@openmetadata.org")
+            .withDisplayName("Test Domain Owner for Propagation");
+    User domainOwner = userResourceTest.createEntity(createDomainOwner, ADMIN_AUTH_HEADERS);
+
+    CreateDomain createParentDomain =
+        new CreateDomain()
+            .withName("test_parent_domain_propagation")
+            .withDisplayName("Test Parent Domain for Propagation")
+            .withDescription("Parent domain to test owner propagation")
+            .withDomainType(CreateDomain.DomainType.AGGREGATE);
+    Domain parentDomain = domainResourceTest.createEntity(createParentDomain, ADMIN_AUTH_HEADERS);
+
+    CreateDomain createSubDomain =
+        new CreateDomain()
+            .withName("test_subdomain_propagation")
+            .withDisplayName("Test Subdomain for Propagation")
+            .withDescription("Subdomain to test owner propagation from parent")
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withParent(parentDomain.getFullyQualifiedName());
+    Domain subDomain = domainResourceTest.createEntity(createSubDomain, ADMIN_AUTH_HEADERS);
+
+    simulateWork(2000);
+
+    EntityReference ownerRef =
+        new EntityReference()
+            .withId(domainOwner.getId())
+            .withType("user")
+            .withName(domainOwner.getName())
+            .withFullyQualifiedName(domainOwner.getFullyQualifiedName());
+
+    String jsonPatch =
+        JsonUtils.pojoToJson(
+            List.of(Map.of("op", "add", "path", "/owners", "value", List.of(ownerRef))));
+
+    Domain patchedParentDomain =
+        domainResourceTest.patchEntity(
+            parentDomain.getId(), JsonUtils.readTree(jsonPatch), ADMIN_AUTH_HEADERS);
+
+    assertNotNull(patchedParentDomain.getOwners());
+    assertEquals(1, patchedParentDomain.getOwners().size());
+
+    simulateWork(3000);
+
+    WebTarget subDomainSearchTarget =
+        getResource("search/query")
+            .queryParam("q", "fullyQualifiedName:" + subDomain.getFullyQualifiedName())
+            .queryParam("index", "domain_search_index");
+
+    String subDomainSearchResponse =
+        TestUtils.get(subDomainSearchTarget, String.class, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        subDomainSearchResponse.contains(domainOwner.getId().toString()),
+        "Subdomain search result should contain owner ID propagated from parent domain");
+
+    LOG.info(
+        "Owner propagation from domain to subdomain test passed - owner propagated in search index");
+  }
+
+  @Test
+  @Order(10)
+  void testOwnerPropagationFromDomainToDataProduct() throws IOException, InterruptedException {
+    LOG.info("Testing owner propagation from domain to data product in search index");
+
+    CreateUser createDomainOwner =
+        new CreateUser()
+            .withName("test_domain_owner_dp_propagation")
+            .withEmail("test_domain_owner_dp_propagation@openmetadata.org")
+            .withDisplayName("Test Domain Owner for DP Propagation");
+    User domainOwner = userResourceTest.createEntity(createDomainOwner, ADMIN_AUTH_HEADERS);
+
+    CreateDomain createDomain =
+        new CreateDomain()
+            .withName("test_domain_dp_propagation")
+            .withDisplayName("Test Domain for DP Propagation")
+            .withDescription("Domain to test owner propagation to data product")
+            .withDomainType(CreateDomain.DomainType.AGGREGATE);
+    Domain domain = domainResourceTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+
+    EntityReference ownerRef =
+        new EntityReference()
+            .withId(domainOwner.getId())
+            .withType("user")
+            .withName(domainOwner.getName())
+            .withFullyQualifiedName(domainOwner.getFullyQualifiedName());
+
+    String jsonPatch =
+        JsonUtils.pojoToJson(
+            List.of(Map.of("op", "add", "path", "/owners", "value", List.of(ownerRef))));
+
+    Domain patchedDomain =
+        domainResourceTest.patchEntity(
+            domain.getId(), JsonUtils.readTree(jsonPatch), ADMIN_AUTH_HEADERS);
+
+    assertNotNull(patchedDomain.getOwners());
+    assertEquals(1, patchedDomain.getOwners().size());
+
+    DataProductResourceTest dataProductResourceTest = new DataProductResourceTest();
+    CreateDataProduct createDataProduct =
+        new CreateDataProduct()
+            .withName("test_data_product_propagation")
+            .withDisplayName("Test Data Product for Propagation")
+            .withDescription("Data product to test owner propagation from domain")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct =
+        dataProductResourceTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    simulateWork(3000);
+
+    WebTarget dataProductSearchTarget =
+        getResource("search/query")
+            .queryParam("q", "fullyQualifiedName:" + dataProduct.getFullyQualifiedName())
+            .queryParam("index", "data_product_search_index");
+
+    String dataProductSearchResponse =
+        TestUtils.get(dataProductSearchTarget, String.class, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        dataProductSearchResponse.contains(domainOwner.getId().toString()),
+        "Data product search result should contain owner ID propagated from domain");
+
+    LOG.info(
+        "Owner propagation from domain to data product test passed - owner propagated in search index");
   }
 }

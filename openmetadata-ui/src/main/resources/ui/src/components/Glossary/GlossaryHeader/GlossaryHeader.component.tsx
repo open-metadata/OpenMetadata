@@ -453,7 +453,7 @@ const GlossaryHeader = ({
         <>
           {glossaryTermStatus && glossaryTermStatus === EntityStatus.Approved && (
             <Dropdown
-              className="m-l-xs h-10"
+              className="m-l-xs"
               menu={{
                 items: addButtonContent,
               }}

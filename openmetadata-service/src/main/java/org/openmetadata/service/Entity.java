@@ -16,7 +16,7 @@ package org.openmetadata.service;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.resources.CollectionRegistry.PACKAGES;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -248,6 +248,7 @@ public final class Entity {
   public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
   public static final String TEST_CASE_RESULT = "testCaseResult";
   public static final String TEST_CASE_DIMENSION_RESULT = "testCaseDimensionResult";
+  public static final String PIPELINE_EXECUTION = "pipelineExecution";
   public static final String ENTITY_PROFILE = "entityProfile";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA =
       "webAnalyticEntityViewReportData";
@@ -617,6 +618,12 @@ public final class Entity {
     return entityRepository;
   }
 
+  /** Check if an entity type has a registered repository */
+  public static boolean hasEntityRepository(@NonNull String entityType) {
+    return ENTITY_REPOSITORY_MAP.containsKey(entityType)
+        || ENTITY_TS_REPOSITORY_MAP.containsKey(entityType);
+  }
+
   public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>
       getEntityTimeSeriesRepository(@NonNull String entityType) {
     EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> entityTimeSeriesRepository =
@@ -787,7 +794,7 @@ public final class Entity {
         if (columnTag == null) {
           c.setTags(new ArrayList<>());
         } else {
-          c.setTags(addDerivedTags(columnTag));
+          c.setTags(addDerivedTagsGracefully(columnTag));
         }
       } else {
         c.setTags(c.getTags());

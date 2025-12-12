@@ -49,24 +49,23 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
+import ResizableLeftPanels from '../../common/ResizablePanels/ResizableLeftPanels';
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
+import '../../ExploreV1/exploreV1.less';
 
 interface DomainTreeViewProps {
   searchQuery?: string;
   filters?: Record<string, string[]>;
-  onDomainMutated?: () => void;
   refreshToken?: number;
   openAddDomainDrawer?: () => void;
 }
 
-const TREE_CONTAINER_MIN_WIDTH = 320;
 const INITIAL_PAGE_SIZE = 15;
 const SCROLL_TRIGGER_THRESHOLD = 200;
 
 const DomainTreeView = ({
   searchQuery,
   filters,
-  onDomainMutated,
   refreshToken = 0,
   openAddDomainDrawer,
 }: DomainTreeViewProps) => {
@@ -191,11 +190,12 @@ const DomainTreeView = ({
     (
       domains: Domain[],
       resetExpandedItems = false,
-      domainFqn?: string | undefined
+      domainFqn?: string | undefined,
+      shouldLoadChildren = true
     ) => {
       const firstDomain = selectDomain(domains, resetExpandedItems, domainFqn);
 
-      if ((firstDomain?.childrenCount || 0) > 0) {
+      if ((firstDomain?.childrenCount || 0) > 0 && shouldLoadChildren) {
         loadDomains(firstDomain.fullyQualifiedName as string);
       }
     },
@@ -335,11 +335,8 @@ const DomainTreeView = ({
         return {
           ...domainData,
           children: isAppend
-            ? [
-                ...(domainData.children ?? []),
-                ...(newChildren as unknown as EntityReference[]),
-              ]
-            : (newChildren as unknown as EntityReference[]),
+            ? [...(domainData.children ?? []), ...newChildren]
+            : newChildren,
         } as unknown as EntityReference;
       }
 
@@ -353,6 +350,32 @@ const DomainTreeView = ({
             isAppend
           ),
         } as unknown as EntityReference;
+      }
+
+      return domain;
+    });
+  };
+
+  const updateDomainInHierarchy = (
+    domains: Domain[],
+    updatedDomain: Domain
+  ): Domain[] => {
+    return domains.map((domain) => {
+      if (domain.id === updatedDomain.id) {
+        return {
+          ...updatedDomain,
+          children: domain.children,
+        };
+      }
+
+      if (domain.children?.length) {
+        return {
+          ...domain,
+          children: updateDomainInHierarchy(
+            domain.children as unknown as Domain[],
+            updatedDomain
+          ) as unknown as EntityReference[],
+        };
       }
 
       return domain;
@@ -391,17 +414,14 @@ const DomainTreeView = ({
           },
         }));
 
-        setHierarchy((prev) => {
+        setHierarchy((prev): Domain[] => {
           const updated = prev.map((domain) => {
             if (domain.fullyQualifiedName === parentFqn) {
               return {
                 ...domain,
                 children: isLoadMore
-                  ? [
-                      ...(domain.children ?? []),
-                      ...(children as unknown as EntityReference[]),
-                    ]
-                  : (children as unknown as EntityReference[]),
+                  ? [...(domain.children ?? []), ...children]
+                  : children,
               };
             }
 
@@ -420,7 +440,7 @@ const DomainTreeView = ({
             return domain;
           });
 
-          return updated;
+          return updated as Domain[];
         });
       } catch (error) {
         handleError(error);
@@ -539,7 +559,7 @@ const DomainTreeView = ({
       return;
     }
     await loadDomains(selectedFqn ?? undefined);
-  }, [loadDomains, onDomainMutated, selectedFqn, searchDomain, searchQuery]);
+  }, [loadDomains, selectedFqn, searchDomain, searchQuery]);
 
   const handleDomainUpdate = useCallback(
     async (updatedData: Domain) => {
@@ -561,6 +581,8 @@ const DomainTreeView = ({
         if (response.fullyQualifiedName) {
           setSelectedFqn(response.fullyQualifiedName);
         }
+
+        setHierarchy((prev) => updateDomainInHierarchy(prev, response));
 
         await refreshAll();
       } catch (error) {
@@ -602,7 +624,7 @@ const DomainTreeView = ({
 
       const result = removeDomain(prev);
 
-      applySelection(result, false, parentDomainFqn);
+      applySelection(result, false, parentDomainFqn, false);
 
       return result;
     });
@@ -627,7 +649,6 @@ const DomainTreeView = ({
             }
           : prev
       );
-      onDomainMutated?.();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -636,7 +657,7 @@ const DomainTreeView = ({
         })
       );
     }
-  }, [currentUserId, onDomainMutated, selectedDomain, t]);
+  }, [currentUserId, selectedDomain, t]);
 
   const unFollowDomain = useCallback(async () => {
     if (!selectedDomain?.id || !currentUserId) {
@@ -659,7 +680,6 @@ const DomainTreeView = ({
             }
           : prev
       );
-      onDomainMutated?.();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -668,7 +688,7 @@ const DomainTreeView = ({
         })
       );
     }
-  }, [currentUserId, onDomainMutated, selectedDomain, t]);
+  }, [currentUserId, selectedDomain, t]);
 
   const isFollowing = useMemo(() => {
     if (!selectedDomain?.followers?.length || !currentUserId) {
@@ -696,6 +716,12 @@ const DomainTreeView = ({
 
   const handleNavigate = useCallback(
     (path: string) => {
+      if (path.includes('/versions/')) {
+        navigate(path);
+
+        return;
+      }
+
       const regex = /^\/domain\/([^/]+)(?:\/([^/]+))?/;
       const match = regex.exec(path);
       if (match) {
@@ -754,8 +780,9 @@ const DomainTreeView = ({
                 <EntityAvatar entity={node} size={24} variant="rounded" />
                 <Typography
                   sx={{
-                    color: 'text.primary',
-                  }}>
+                    color: theme.palette.allShades?.gray?.[800],
+                  }}
+                  variant="body2">
                   {getEntityName(node)}
                 </Typography>
                 {hasChildren && (
@@ -848,6 +875,7 @@ const DomainTreeView = ({
     if (selectedDomain) {
       return (
         <DomainDetails
+          isTreeView
           activeTab={activeTab}
           domain={selectedDomain}
           handleFollowingClick={handleFollowingToggle}
@@ -911,19 +939,19 @@ const DomainTreeView = ({
             '--tree-item-center': '22px',
             '& .MuiTreeItem-content': {
               borderRadius: 1,
-              gap: 3,
+              gap: 2,
               p: 0,
-              mb: 1.5,
+              mb: 2,
               display: 'flex',
               alignItems: 'center',
               position: 'relative',
               '&::before': {
                 content: '""',
                 position: 'absolute',
-                left: '-20px',
+                left: '-24px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                width: '12px',
+                width: '16px',
                 height: '1px',
                 background: theme.palette.allShades?.gray?.[200],
                 zIndex: 0,
@@ -954,9 +982,9 @@ const DomainTreeView = ({
               '&::before': {
                 content: '""',
                 position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: '22px',
+                left: '-4.5px',
+                top: '-24px',
+                bottom: '24px',
                 width: '1px',
                 background: theme.palette.allShades?.gray?.[200],
                 zIndex: 0,
@@ -969,7 +997,10 @@ const DomainTreeView = ({
               },
 
             '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:empty)': {
-              '&:hover, &.Mui-selected': {
+              '&:hover': {
+                backgroundColor: theme.palette.action.hover,
+              },
+              '&.Mui-selected': {
                 backgroundColor: theme.palette.allShades?.blue?.[50],
               },
             },
@@ -980,7 +1011,7 @@ const DomainTreeView = ({
                   backgroundColor: 'transparent !important',
                 },
                 '&:hover .MuiTreeItem-label': {
-                  backgroundColor: '#0000000A',
+                  backgroundColor: theme.palette.action.hover,
                   borderRadius: '8px',
                 },
                 '&.Mui-selected .MuiTreeItem-label': {
@@ -990,12 +1021,21 @@ const DomainTreeView = ({
               },
             'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg))':
               {
-                pl: '36px !important',
+                pl: '32px !important',
               },
             'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg)) li .MuiTreeItem-content::before':
               {
-                left: '-35px',
-                width: '28px',
+                left: '-36px',
+                width: '32px',
+              },
+            'li[style*="--TreeView-itemDepth:"] .MuiTreeItem-content::before': {
+              borderBottom: `1px solid ${BORDER_COLOR}`,
+              backgroundColor: 'transparent',
+            },
+            'li[style*="--TreeView-itemDepth:"] .MuiCollapse-vertical::before':
+              {
+                borderLeft: `1px solid ${BORDER_COLOR}`,
+                backgroundColor: 'transparent',
               },
             'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]):not([style*="--TreeView-itemDepth: 1"]) .MuiTreeItem-content::before':
               {
@@ -1006,6 +1046,7 @@ const DomainTreeView = ({
               {
                 borderLeft: `1px dashed ${BORDER_COLOR}`,
                 backgroundColor: 'transparent',
+                bottom: '24px',
               },
           }}
           onExpandedItemsChange={handleExpandedChange}
@@ -1052,37 +1093,41 @@ const DomainTreeView = ({
   }
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        gap: 3,
-        minHeight: 480,
-      }}>
-      <Box
-        ref={scrollContainerRef}
-        sx={{
-          width: TREE_CONTAINER_MIN_WIDTH,
-          borderRight: `1px solid ${theme.palette.allShades?.gray?.[200]}`,
-          pr: 3,
-          pt: 3,
-          mr: 1,
-          overflowY: 'auto',
-          maxHeight: 'calc(80vh - 160px)',
-        }}
-        onScroll={handleScroll}>
-        {hierarchySection}
-      </Box>
-
-      <Box
-        sx={{
-          flex: 1,
-          overflowY: 'auto',
-          maxHeight: 'calc(80vh - 160px)',
-          pt: 3,
-        }}>
-        {domainSection}
-      </Box>
-    </Box>
+    <ResizableLeftPanels
+      firstPanel={{
+        className: 'domain-tree-panel border-right border-gray-200',
+        minWidth: 280,
+        flex: 0.25,
+        children: (
+          <Box
+            ref={scrollContainerRef}
+            sx={{
+              pt: 4.5,
+              pr: 3,
+              overflowY: 'auto',
+              maxHeight: 'calc(80vh - 160px)',
+            }}
+            onScroll={handleScroll}>
+            {hierarchySection}
+          </Box>
+        ),
+      }}
+      secondPanel={{
+        className: 'domain-details-panel',
+        minWidth: 600,
+        flex: 0.75,
+        children: (
+          <Box
+            sx={{
+              pt: 3,
+              overflowY: 'auto',
+              maxHeight: 'calc(80vh - 160px)',
+            }}>
+            {domainSection}
+          </Box>
+        ),
+      }}
+    />
   );
 };
 

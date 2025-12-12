@@ -33,7 +33,11 @@ import {
 import { getCurrentMillis } from '../../utils/dateTime';
 import { visitEntityPage } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
+import {
+  deleteTestCase,
+  verifyIncidentBreadcrumbsFromTablePageRedirect,
+  visitDataQualityTab,
+} from '../../utils/testCases';
 import { test } from '../fixtures/pages';
 
 const table1 = new TableClass();
@@ -269,6 +273,17 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.getByRole('button', { name: 'Cancel' }).click();
   });
 
+  await test.step(
+    'Redirect to IncidentPage and verify breadcrumb',
+    async () => {
+      await verifyIncidentBreadcrumbsFromTablePageRedirect(
+        page,
+        table1,
+        NEW_TABLE_TEST_CASE.name
+      );
+    }
+  );
+
   await test.step('Delete', async () => {
     await deleteTestCase(page, NEW_TABLE_TEST_CASE.name);
   });
@@ -428,6 +443,17 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
     await page.locator('button').getByText('Cancel').click();
   });
+
+  await test.step(
+    'Redirect to IncidentPage and verify breadcrumb',
+    async () => {
+      await verifyIncidentBreadcrumbsFromTablePageRedirect(
+        page,
+        table1,
+        NEW_COLUMN_TEST_CASE.name
+      );
+    }
+  );
 
   await test.step('Delete', async () => {
     await deleteTestCase(page, NEW_COLUMN_TEST_CASE.name);
@@ -1229,6 +1255,25 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
     // Apply domain globally
     await page.getByTestId('domain-dropdown').click();
+
+    // Wait for the domain select dropdown to be visible
+    await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+      state: 'visible',
+    });
+
+    // Search for the domain and wait for API response
+    const domainSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        domain.responseData.name
+      )}*&index=domain_search_index*`
+    );
+
+    await page
+      .getByTestId('domain-selectable-tree')
+      .getByTestId('searchbar')
+      .fill(domain.responseData.name);
+
+    await domainSearchResponse;
 
     await page
       .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)

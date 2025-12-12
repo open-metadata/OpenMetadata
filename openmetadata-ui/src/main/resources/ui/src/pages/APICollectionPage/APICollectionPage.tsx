@@ -167,7 +167,6 @@ const APICollectionPage: FunctionComponent = () => {
     try {
       setIsAPICollectionLoading(true);
       const response = await getApiCollectionByFQN(decodedAPICollectionFQN, {
-         
         fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
         include: Include.All,
       });
@@ -381,7 +380,11 @@ const APICollectionPage: FunctionComponent = () => {
     apiCollection,
   ]);
 
-  const { editCustomAttributePermission, viewAllPermission } = useMemo(
+  const {
+    editCustomAttributePermission,
+    viewAllPermission,
+    viewCustomPropertiesPermission,
+  } = useMemo(
     () => ({
       editTagsPermission:
         getPrioritizedEditPermission(
@@ -404,8 +407,12 @@ const APICollectionPage: FunctionComponent = () => {
           PermissionOperation.EditCustomFields
         ) && !apiCollection.deleted,
       viewAllPermission: apiCollectionPermission.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        apiCollectionPermission,
+        PermissionOperation.ViewCustomFields
+      ),
     }),
-    [apiCollectionPermission, apiCollection, getPrioritizedEditPermission]
+    [apiCollectionPermission, apiCollection]
   );
 
   const handleAPICollectionUpdate = async (updatedData: APICollection) => {
@@ -428,6 +435,7 @@ const APICollectionPage: FunctionComponent = () => {
       handleFeedCount,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       apiEndpointCount,
       labelMap: tabLabelMap,
     });
@@ -448,6 +456,7 @@ const APICollectionPage: FunctionComponent = () => {
     editCustomAttributePermission,
     viewAllPermission,
     apiEndpointCount,
+    viewCustomPropertiesPermission,
   ]);
 
   const updateVote = async (data: QueryVote, id: string) => {

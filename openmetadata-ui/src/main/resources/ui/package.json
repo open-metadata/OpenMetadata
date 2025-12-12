@@ -23,8 +23,8 @@
     "test:watch": "jest --passWithNoTests --watch",
     "test:coverage": "jest --passWithNoTests --coverage",
     "test:cov-summary": "jest --passWithNoTests --coverage --coverageReporters json-summary",
-    "lint": "eslint \"./src/**/*.{js,jsx,ts,tsx,json}\"",
-    "lint:fix": "eslint './src/**/*.{js,jsx,ts,tsx,json}' --fix",
+    "lint": "NODE_OPTIONS='--max-old-space-size=8192' eslint \"./src/**/*.{js,jsx,ts,tsx,json}\"",
+    "lint:fix": "NODE_OPTIONS='--max-old-space-size=8192' eslint './src/**/*.{js,jsx,ts,tsx,json}' --fix",
     "pretty": "prettier . --config './.prettierrc.yaml' --ignore-path './.prettierignore'  --write",
     "build-check": "yarn run js-antlr && yarn run parse-schema",
     "commit-check": "yarn run pretty && yarn run build",
@@ -260,6 +260,7 @@
     "dompurify": "3.2.4",
     "on-headers": "1.1.0",
     "form-data": "3.0.4",
-    "tar-fs": "2.1.4"
+    "tar-fs": "2.1.4",
+    "js-yaml": "4.1.1"
   }
 }

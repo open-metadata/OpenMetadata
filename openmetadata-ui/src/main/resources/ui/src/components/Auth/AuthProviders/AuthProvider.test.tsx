@@ -308,7 +308,6 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-try-expect
       expect(error).toEqual(mockError);
     }
   });
@@ -339,7 +338,6 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-try-expect
       expect(error).toEqual(mockError);
     }
   });
@@ -370,7 +368,6 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-try-expect
       expect(error).toEqual(mockError);
     }
   });
@@ -402,9 +399,8 @@ describe('Test axios response interceptor', () => {
     try {
       await errorHandler?.(mockError);
     } catch (error) {
-      // eslint-disable-next-line jest/no-try-expect
       expect(error).toEqual(mockError);
-      // eslint-disable-next-line jest/no-try-expect
+
       expect(mockRefreshToken).toHaveBeenCalledTimes(0);
     }
   });

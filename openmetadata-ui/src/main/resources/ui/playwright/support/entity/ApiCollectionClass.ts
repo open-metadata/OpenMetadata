@@ -258,7 +258,7 @@ export class ApiCollectionClass extends EntityClass {
     );
 
     const apiCollectionsResponse = page.waitForResponse(
-      `/api/v1/apiCollections/name/*${this.entity}?*`
+      `/api/v1/apiCollections/name/*${this.entity.name}?*`
     );
     await page.getByTestId(this.entity.name).click();
     await apiCollectionsResponse;

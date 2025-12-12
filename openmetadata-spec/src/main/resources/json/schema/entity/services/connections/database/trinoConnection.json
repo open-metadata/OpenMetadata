@@ -141,11 +141,6 @@
         "title": "Supports Data Diff Extraction.",
         "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
-    "supportsQueryRunner": {
-      "title": "Supports Query Runner",
-      "$ref": "../connectionBasicType.json#/definitions/supportsQueryRunner",
-      "default": true
-    },
     "queryHistoryTable": {
       "title": "Query History Table",
       "description": "Table name to fetch the query history.",

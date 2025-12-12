@@ -22,16 +22,16 @@ import { EntityType } from '../enums/entity.enum';
 import { ServiceConnectionFilterPatternFields } from '../enums/ServiceConnection.enum';
 
 type KeyValuesProps = {
-  obj: Record<string, any>;
-  schemaPropertyObject: Record<string, any>;
-  schema: Record<string, any>;
+  obj: Record<string, unknown>;
+  schemaPropertyObject: Record<string, unknown>;
+  schema: Record<string, unknown>;
   serviceCategory: string;
 };
 
 // Renders a basic input field with label and optional tooltip
 const renderInputField = (
   key: string,
-  value: any,
+  value: unknown,
   description?: string,
   format?: string,
   title?: string
@@ -81,7 +81,7 @@ const renderInputField = (
 // Renders filter pattern fields
 const renderFilterPattern = (
   key: string,
-  value: any,
+  value: unknown,
   description?: string,
   title?: string
 ) => {
@@ -124,159 +124,6 @@ const renderFilterPattern = (
       </Row>
     </Col>
   );
-};
-
-// Handles special service type configurations
-const handleSpecialServiceConfig = (
-  serviceType: string,
-  key: string,
-  value: any,
-  schemaPropertyObject: Record<string, any>,
-  schema: Record<string, any>,
-  serviceCategory: string
-): ReactNode | null => {
-  // Pipeline service - Airflow connection
-  if (
-    serviceType === EntityType.PIPELINE_SERVICE &&
-    key === 'connection' &&
-    value.type?.toLowerCase() === 'airflow'
-  ) {
-    const airflowSchema = schemaPropertyObject[key].oneOf.find(
-      (item: { title: string }) => item.title === `${value.type}Connection`
-    )?.properties;
-
-    return (
-      airflowSchema &&
-      getKeyValues({
-        obj: value,
-        schemaPropertyObject: airflowSchema,
-        schema,
-        serviceCategory,
-      })
-    );
-  }
-
-  // Database service - GCP credentials
-  if (serviceType === EntityType.DATABASE_SERVICE && key === 'credentials') {
-    const gcpSchema = schemaPropertyObject[key].definitions.gcpCredentialsPath;
-
-    return getKeyValues({
-      obj: value,
-      schemaPropertyObject: gcpSchema,
-      schema,
-      serviceCategory,
-    });
-  }
-
-  // Metadata service - Security config
-  if (serviceType === EntityType.METADATA_SERVICE && key === 'securityConfig') {
-    const jwtSchema = schemaPropertyObject[key].oneOf.find(
-      (item: { title: string }) => item.title === JWT_CONFIG
-    )?.properties;
-
-    return (
-      jwtSchema &&
-      getKeyValues({
-        obj: value,
-        schemaPropertyObject: jwtSchema,
-        schema,
-        serviceCategory,
-      })
-    );
-  }
-
-  // Dashboard service - GitHub credentials
-  if (
-    serviceType === EntityType.DASHBOARD_SERVICE &&
-    key === 'githubCredentials'
-  ) {
-    const githubSchema = schemaPropertyObject[key].oneOf.find(
-      (item: { title: string }) => item.title === 'GitHubCredentials'
-    )?.properties;
-
-    return (
-      githubSchema &&
-      getKeyValues({
-        obj: value,
-        schemaPropertyObject: githubSchema,
-        schema,
-        serviceCategory,
-      })
-    );
-  }
-
-  return null;
-};
-
-// Handles database service config source
-const handleDatabaseConfigSource = (
-  key: string,
-  value: any,
-  schemaPropertyObject: Record<string, any>,
-  schema: Record<string, any>,
-  serviceCategory: string
-): ReactNode | null => {
-  if (!isObject(value.securityConfig)) {
-    return null;
-  }
-
-  if (value.securityConfig.gcpConfig) {
-    const gcpConfigSchema = isObject(value.securityConfig.gcpConfig)
-      ? get(
-          schema,
-          'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
-          {}
-        )
-      : get(
-          schema,
-          'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath',
-          {}
-        );
-
-    return getKeyValues({
-      obj: isObject(value.securityConfig.gcpConfig)
-        ? value.securityConfig.gcpConfig
-        : value,
-      schemaPropertyObject: gcpConfigSchema,
-      schema,
-      serviceCategory,
-    });
-  }
-
-  const internalRef = '$ref';
-  const oneOf = 'oneOf';
-
-  if (
-    Object.keys(schemaPropertyObject[key]).includes(oneOf) &&
-    (value.securityConfig?.awsAccessKeyId ||
-      value.securityConfig?.awsSecretAccessKey)
-  ) {
-    return getKeyValues({
-      obj: value.securityConfig,
-      schemaPropertyObject: get(
-        schema,
-        'definitions.S3Config.properties.securityConfig.properties',
-        {}
-      ),
-      schema,
-      serviceCategory,
-    });
-  }
-
-  if (Object.keys(schemaPropertyObject[key]).includes(internalRef)) {
-    const definition = schemaPropertyObject[key][internalRef]
-      .split('/')
-      .splice(2);
-
-    return getKeyValues({
-      obj: value,
-      schemaPropertyObject: schema.definitions[definition],
-      schema,
-      serviceCategory,
-    });
-  }
-
-  return null;
 };
 
 export const getKeyValues = ({
@@ -359,4 +206,157 @@ export const getKeyValues = ({
   } catch {
     return <ErrorPlaceHolder className="border-default border-radius-sm" />;
   }
+};
+
+// Handles special service type configurations
+const handleSpecialServiceConfig = (
+  serviceType: string,
+  key: string,
+  value: unknown,
+  schemaPropertyObject: Record<string, unknown>,
+  schema: Record<string, unknown>,
+  serviceCategory: string
+): ReactNode | null => {
+  // Pipeline service - Airflow connection
+  if (
+    serviceType === EntityType.PIPELINE_SERVICE &&
+    key === 'connection' &&
+    value.type?.toLowerCase() === 'airflow'
+  ) {
+    const airflowSchema = schemaPropertyObject[key].oneOf.find(
+      (item: { title: string }) => item.title === `${value.type}Connection`
+    )?.properties;
+
+    return (
+      airflowSchema &&
+      getKeyValues({
+        obj: value,
+        schemaPropertyObject: airflowSchema,
+        schema,
+        serviceCategory,
+      })
+    );
+  }
+
+  // Database service - GCP credentials
+  if (serviceType === EntityType.DATABASE_SERVICE && key === 'credentials') {
+    const gcpSchema = schemaPropertyObject[key].definitions.gcpCredentialsPath;
+
+    return getKeyValues({
+      obj: value,
+      schemaPropertyObject: gcpSchema,
+      schema,
+      serviceCategory,
+    });
+  }
+
+  // Metadata service - Security config
+  if (serviceType === EntityType.METADATA_SERVICE && key === 'securityConfig') {
+    const jwtSchema = schemaPropertyObject[key].oneOf.find(
+      (item: { title: string }) => item.title === JWT_CONFIG
+    )?.properties;
+
+    return (
+      jwtSchema &&
+      getKeyValues({
+        obj: value,
+        schemaPropertyObject: jwtSchema,
+        schema,
+        serviceCategory,
+      })
+    );
+  }
+
+  // Dashboard service - GitHub credentials
+  if (
+    serviceType === EntityType.DASHBOARD_SERVICE &&
+    key === 'githubCredentials'
+  ) {
+    const githubSchema = schemaPropertyObject[key].oneOf.find(
+      (item: { title: string }) => item.title === 'GitHubCredentials'
+    )?.properties;
+
+    return (
+      githubSchema &&
+      getKeyValues({
+        obj: value,
+        schemaPropertyObject: githubSchema,
+        schema,
+        serviceCategory,
+      })
+    );
+  }
+
+  return null;
+};
+
+// Handles database service config source
+const handleDatabaseConfigSource = (
+  key: string,
+  value: unknown,
+  schemaPropertyObject: Record<string, unknown>,
+  schema: Record<string, unknown>,
+  serviceCategory: string
+): ReactNode | null => {
+  if (!isObject(value.securityConfig)) {
+    return null;
+  }
+
+  if (value.securityConfig.gcpConfig) {
+    const gcpConfigSchema = isObject(value.securityConfig.gcpConfig)
+      ? get(
+          schema,
+          'definitions.GCPConfig.properties.securityConfig.definitions.GCPValues.properties',
+          {}
+        )
+      : get(
+          schema,
+          'definitions.GCPConfig.properties.securityConfig.definitions.gcpCredentialsPath',
+          {}
+        );
+
+    return getKeyValues({
+      obj: isObject(value.securityConfig.gcpConfig)
+        ? value.securityConfig.gcpConfig
+        : value,
+      schemaPropertyObject: gcpConfigSchema,
+      schema,
+      serviceCategory,
+    });
+  }
+
+  const internalRef = '$ref';
+  const oneOf = 'oneOf';
+
+  if (
+    Object.keys(schemaPropertyObject[key]).includes(oneOf) &&
+    (value.securityConfig?.awsAccessKeyId ||
+      value.securityConfig?.awsSecretAccessKey)
+  ) {
+    return getKeyValues({
+      obj: value.securityConfig,
+      schemaPropertyObject: get(
+        schema,
+        'definitions.S3Config.properties.securityConfig.properties',
+        {}
+      ),
+      schema,
+      serviceCategory,
+    });
+  }
+
+  if (Object.keys(schemaPropertyObject[key]).includes(internalRef)) {
+    const definition = schemaPropertyObject[key][internalRef]
+      .split('/')
+      .splice(2);
+
+    return getKeyValues({
+      obj: value,
+      schemaPropertyObject: schema.definitions[definition],
+      schema,
+      serviceCategory,
+    });
+  }
+
+  return null;
 };

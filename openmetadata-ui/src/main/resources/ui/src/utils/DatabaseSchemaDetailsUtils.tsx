@@ -40,7 +40,6 @@ import { getEntityImportPath } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { getTermQuery } from './SearchUtils';
 
- 
 export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const getDataBaseSchemaPageBaseTabs = ({
@@ -48,6 +47,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
   activeTab,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   storedProcedureCount,
   getEntityFeedCount,
   fetchDatabaseSchemaDetails,
@@ -135,7 +135,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
           className=""
           entityType={EntityType.DATABASE_SCHEMA}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
           isVersionView={false}
         />
       ),
