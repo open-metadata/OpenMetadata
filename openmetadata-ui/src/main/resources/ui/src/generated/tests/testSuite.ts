@@ -348,6 +348,10 @@ export interface ColumnTestSummaryDefinition {
  */
 export interface TagLabel {
     /**
+     * Timestamp when this tag was applied in ISO 8601 format
+     */
+    appliedAt?: Date;
+    /**
      * Description for the tag label.
      */
     description?: string;
