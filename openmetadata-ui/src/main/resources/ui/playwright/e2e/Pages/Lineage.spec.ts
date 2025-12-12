@@ -42,6 +42,7 @@ import {
   rearrangeNodes,
   removeColumnLineage,
   setupEntitiesForLineage,
+  toggleLineageFilters,
   verifyColumnLayerInactive,
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
@@ -873,6 +874,8 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
+    await toggleLineageFilters(page, table1Fqn);
+    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1015,6 +1018,8 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
+    await toggleLineageFilters(page, table1Fqn);
+    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1193,6 +1198,8 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
+    await toggleLineageFilters(page, table1Fqn);
+    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1251,6 +1258,8 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
+    await toggleLineageFilters(page, table1Fqn);
+    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1340,17 +1349,8 @@ test.describe.serial('Test pagination in column level lineage', () => {
       `[data-testid="lineage-node-${table2Fqn}"]`
     );
 
-    // First turn off both the filters
-    const table1FilterButton = table1Node.locator(
-      '[data-testid="lineage-filter-button"]'
-    );
-    await table1FilterButton.click();
-
-    const table2FilterButton = table2Node.locator(
-      '[data-testid="lineage-filter-button"]'
-    );
-    await table2FilterButton.click();
-    await page.waitForTimeout(500);
+    await toggleLineageFilters(page, table1Fqn);
+    await toggleLineageFilters(page, table2Fqn);
 
     await test.step('2. Verify edges visible and hidden for page1 of both the tables', async () => {
       const visibleEdges = [
