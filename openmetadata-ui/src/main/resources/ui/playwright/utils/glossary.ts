@@ -723,8 +723,8 @@ export const validateGlossaryTerm = async (
     await expect(page.locator(termSelector)).toContainText(term.name);
     await expect(page.locator(statusSelector)).toBeVisible();
 
-    // If status is Draft or In Review, then check for either or
-    if (status === 'Draft' || status === 'In Review') {
+    // If status is Draft, then check for either Draft or In Review
+    if (status === 'Draft') {
       await expect(page.locator(statusSelector)).toContainText(
         /Draft|In Review/
       );
