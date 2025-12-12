@@ -117,7 +117,7 @@ const AddQueryPage = () => {
       return table
         ? filter(options, ({ value }) => value !== table.id)
         : options;
-    } catch () {
+    } catch (error) {
       return [];
     }
   };
