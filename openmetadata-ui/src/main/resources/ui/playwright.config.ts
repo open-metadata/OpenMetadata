@@ -76,9 +76,7 @@ export default defineConfig({
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
       grepInvert: /data-insight/,
-      repeatEach: 10,
       teardown: 'entity-data-teardown',
-      testMatch: ['**/Pages/Users.spec.ts'],
       testIgnore: [
         '**/nightly/**',
         '**/DataAssetRulesEnabled.spec.ts',
