@@ -938,12 +938,18 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   public void addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds)
       throws IOException {
+    addTestCasesToLogicalTestSuite(testSuite, testCaseIds, ADMIN_AUTH_HEADERS);
+  }
+
+  public void addTestCasesToLogicalTestSuite(
+      TestSuite testSuite, List<UUID> testCaseIds, Map<String, String> authHeaders)
+      throws IOException {
     WebTarget target = getResource("dataQuality/testCases/logicalTestCases");
     CreateLogicalTestCases createLogicalTestCases =
         new CreateLogicalTestCases()
             .withTestSuiteId(testSuite.getId())
             .withTestCaseIds(testCaseIds);
-    TestUtils.put(target, createLogicalTestCases, Response.Status.OK, ADMIN_AUTH_HEADERS);
+    TestUtils.put(target, createLogicalTestCases, Response.Status.OK, authHeaders);
   }
 
   public void deleteBasicTestSuite(
@@ -1095,15 +1101,16 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // 5. Trigger an Elasticsearch index refresh for the test suite entity (simulating a reindex)
     postTriggerSearchIndexingApp(ADMIN_AUTH_HEADERS);
 
-    // Wait for reindexing to complete
-    Thread.sleep(5000);
+    // Wait for reindexing to complete by polling the app run status
+    TestUtils.waitForReindexCompletion(getResource(""), ADMIN_AUTH_HEADERS, 60000);
 
     // 6. Fetch the test suite again using the search endpoint (after reindex)
+    // Use retry logic to handle transient ES unavailability during index transition
     ResultList<TestSuite> testSuitesAfterReindex =
-        listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+        listEntitiesFromSearchWithRetry(queryParams, 10, 0, ADMIN_AUTH_HEADERS, 5, 2000);
     assertNotNull(testSuitesAfterReindex);
-    assertTrue(testSuitesAfterReindex.getData().size() > 0);
-    TestSuite testSuiteAfterReindex = testSuitesAfterReindex.getData().get(0);
+    assertTrue(!testSuitesAfterReindex.getData().isEmpty());
+    TestSuite testSuiteAfterReindex = testSuitesAfterReindex.getData().getFirst();
 
     // 6a. Verify test case results are still available via search endpoint after reindex
     ResultList<TestCaseResult> testCaseResultsAfterReindex =
@@ -1163,5 +1170,29 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         SecurityUtil.addHeaders(target, authHeaders)
             .post(jakarta.ws.rs.client.Entity.json(Map.of()));
     TestUtils.readResponse(response, Response.Status.OK.getStatusCode());
+  }
+
+  private ResultList<TestSuite> listEntitiesFromSearchWithRetry(
+      Map<String, String> queryParams,
+      int limit,
+      int offset,
+      Map<String, String> authHeaders,
+      int maxRetries,
+      long retryDelayMs)
+      throws IOException, InterruptedException {
+    HttpResponseException lastException = null;
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return listEntitiesFromSearch(queryParams, limit, offset, authHeaders);
+      } catch (HttpResponseException e) {
+        lastException = e;
+        if (e.getStatusCode() == 500 || e.getStatusCode() == 503) {
+          Thread.sleep(retryDelayMs);
+        } else {
+          throw e;
+        }
+      }
+    }
+    throw lastException;
   }
 }

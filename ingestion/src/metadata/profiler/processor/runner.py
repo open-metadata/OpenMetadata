@@ -126,6 +126,27 @@ class QueryRunner:
 
         return query
 
+    def _select_from_dataset(self, dataset: DeclarativeMeta, *entities, **kwargs):
+        """This method will use the sample data
+        and the partitioning logic if available otherwise it will use the raw table.
+
+        Args:
+            *entities: entities to select
+            **kwargs: kwargs to pass to the query
+        """
+        filter_ = get_query_filter_for_runner(kwargs)
+        group_by_ = get_query_group_by_for_runner(kwargs)
+
+        query = self._build_query(*entities, **kwargs).select_from(dataset)
+
+        if filter_ is not None:
+            query = query.filter(filter_)
+
+        if group_by_ is not None:
+            query = query.group_by(*group_by_)
+
+        return query
+
     def _select_from_user_query(self, *entities, **kwargs):
         """Use the user query to select data from the table
 

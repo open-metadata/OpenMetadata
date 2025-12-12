@@ -48,7 +48,7 @@ public class MlModelMockTest {
     expectedModel.setFullyQualifiedName("mlflow.customer-churn-predictor");
     expectedModel.setAlgorithm("XGBoost");
 
-    when(mockMlModelService.create(any(MlModel.class))).thenReturn(expectedModel);
+    when(mockMlModelService.create(any(CreateMlModel.class))).thenReturn(expectedModel);
 
     // Act
     MlModel result = org.openmetadata.sdk.entities.MlModel.create(createRequest);
@@ -57,7 +57,7 @@ public class MlModelMockTest {
     assertNotNull(result);
     assertEquals("customer-churn-predictor", result.getName());
     assertEquals("XGBoost", result.getAlgorithm());
-    verify(mockMlModelService).create(any(MlModel.class));
+    verify(mockMlModelService).create(any(CreateMlModel.class));
   }
 
   @Test

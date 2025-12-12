@@ -64,6 +64,7 @@ import {
   getDatabaseSchemaDetailsByFQN,
 } from '../rest/databaseAPI';
 import { getDataModelByFqn } from '../rest/dataModelsAPI';
+import { getDataProductByName } from '../rest/dataProductAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
 import { getMetricByFqn } from '../rest/metricsAPI';
 import { getUserAndTeamSearch } from '../rest/miscAPI';
@@ -183,6 +184,16 @@ export const getUpdateTagsPath = (
   return { pathname, search: searchParams.toString() };
 };
 
+export const getKnowledgeCenterPagePath = (
+  pageFQN: string,
+  tab: string,
+  subTab: string
+) => {
+  const encodedFqn = getEncodedFqn(pageFQN);
+
+  return `${ROUTES.KNOWLEDGE_CENTER_PAGE}/${encodedFqn}/${tab}/${subTab}`;
+};
+
 export const getTaskDetailPath = (task: Thread) => {
   const entityFqn = getEntityFQN(task.about) ?? '';
   const entityType = getEntityType(task.about) ?? '';
@@ -199,6 +210,12 @@ export const getTaskDetailPath = (task: Thread) => {
     [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(entityType)
   ) {
     return getGlossaryTermDetailsPath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+    return getKnowledgeCenterPagePath(
       entityFqn,
       EntityTabs.ACTIVITY_FEED,
       ActivityFeedTabs.TASKS
@@ -358,6 +375,7 @@ export const TASK_ENTITIES = [
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
   EntityType.METRIC,
+  EntityType.DATA_PRODUCT,
 ];
 
 export const getBreadCrumbList = (
@@ -506,6 +524,16 @@ export const getBreadCrumbList = (
       ];
     }
 
+    case EntityType.DATA_PRODUCT: {
+      return [
+        {
+          name: t('label.data-product-plural'),
+          url: ROUTES.DATA_PRODUCT,
+        },
+        activeEntity,
+      ];
+    }
+
     default:
       return [];
   }
@@ -606,6 +634,21 @@ export const fetchEntityDetail = (
       getSearchIndexDetailsByFQN(entityFQN)
         .then((res) => {
           setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    case EntityType.DATA_PRODUCT:
+      getDataProductByName(entityFQN, {
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.DOMAINS,
+          TabSpecificField.EXTENSION,
+        ].join(','),
+      })
+        .then((res) => {
+          setEntityData(res as EntityData);
         })
         .catch((err: AxiosError) => showErrorToast(err));
 

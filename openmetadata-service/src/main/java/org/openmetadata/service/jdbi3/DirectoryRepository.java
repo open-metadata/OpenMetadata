@@ -146,13 +146,71 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   public void clearFields(Directory directory, EntityUtil.Fields fields) {
     directory.withUsageSummary(
         fields.contains("usageSummary") ? directory.getUsageSummary() : null);
+    directory.withNumberOfFiles(
+        fields.contains("numberOfFiles") ? directory.getNumberOfFiles() : null);
+    directory.withNumberOfSubDirectories(
+        fields.contains("numberOfSubDirectories") ? directory.getNumberOfSubDirectories() : null);
   }
 
   @Override
   public void setFields(Directory directory, EntityUtil.Fields fields) {
     directory.withService(getService(directory));
     directory.withParent(getParentDirectory(directory));
-    directory.withChildren(fields.contains("children") ? getChildrenRefs(directory) : null);
+
+    // Calculate and set directory statistics
+    if (fields.contains("children")
+        || fields.contains("numberOfFiles")
+        || fields.contains("numberOfSubDirectories")
+        || fields.contains("totalSize")) {
+      List<EntityReference> children = getChildrenRefs(directory);
+      directory.withChildren(fields.contains("children") ? children : null);
+
+      // Calculate statistics from children
+      if (children != null && !children.isEmpty()) {
+        int fileCount = 0;
+        int dirCount = 0;
+        long totalSize = 0L;
+
+        for (EntityReference child : children) {
+          if (FILE.equals(child.getType())) {
+            fileCount++;
+            // Get file size if available
+            try {
+              org.openmetadata.schema.entity.data.File file =
+                  Entity.getEntity(child, "", Include.NON_DELETED);
+              if (file.getSize() != null) {
+                totalSize += file.getSize();
+              }
+            } catch (Exception e) {
+              // Ignore if file can't be loaded
+            }
+          } else if (DIRECTORY.equals(child.getType())) {
+            dirCount++;
+          } else if (SPREADSHEET.equals(child.getType())) {
+            fileCount++; // Count spreadsheets as files
+            try {
+              org.openmetadata.schema.entity.data.Spreadsheet spreadsheet =
+                  Entity.getEntity(child, "", Include.NON_DELETED);
+              if (spreadsheet.getSize() != null) {
+                totalSize += spreadsheet.getSize();
+              }
+            } catch (Exception e) {
+              // Ignore if spreadsheet can't be loaded
+            }
+          }
+        }
+
+        directory.withNumberOfFiles(fileCount);
+        directory.withNumberOfSubDirectories(dirCount);
+        // Convert long to Integer, checking for overflow
+        directory.withTotalSize(
+            totalSize > 0
+                ? (totalSize > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalSize)
+                : null);
+      }
+    } else {
+      directory.withChildren(null);
+    }
   }
 
   @Override

@@ -54,7 +54,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.EnumSet;
 import java.util.Objects;
-import java.util.Optional;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -80,9 +79,6 @@ import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
-import org.openmetadata.service.cache.CachedCollectionDAO;
-import org.openmetadata.service.cache.RedisCacheBundle;
-import org.openmetadata.service.cache.RelationshipCache;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -106,13 +102,13 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
+import org.openmetadata.service.monitoring.JettyMetricsIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -206,6 +202,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     this.environment = environment;
 
+    OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
+
     validateConfiguration(catalogConfig);
 
     // Instantiate incident severity classifier
@@ -241,8 +239,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
 
-    // Initialize Redis Cache if enabled
-    initializeCache(catalogConfig, environment);
+    // Instantiate JWT Token Generator
+    JWTTokenGenerator.getInstance()
+        .init(
+            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+            catalogConfig.getJwtTokenConfiguration());
 
     initializeWebsockets(catalogConfig, environment);
 
@@ -252,12 +253,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // init Entity Masker
     EntityMaskerFactory.createEntityMasker();
-
-    // Instantiate JWT Token Generator
-    JWTTokenGenerator.getInstance()
-        .init(
-            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
-            catalogConfig.getJwtTokenConfiguration());
 
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
@@ -276,7 +271,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             .buildValidatorFactory()
             .getValidator());
 
-    // Validate flyway Migrations
+    // Validate native migrations
     validateMigrations(jdbi, catalogConfig);
 
     // Register Authorizer
@@ -400,11 +395,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     SessionCookieConfig cookieConfig =
         Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
     cookieConfig.setHttpOnly(true);
-    cookieConfig.setSecure(isHttps(config));
+    cookieConfig.setSecure(
+        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie());
 
     // Get session expiry - use OIDC config if available, otherwise default
     int sessionExpiry = 604800; // Default 7 days in seconds
-    if (SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration() != null) {
+    if (SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration() != null
+        && SecurityConfigurationManager.getCurrentAuthConfig()
+                .getOidcConfiguration()
+                .getSessionExpiry()
+            >= 3600) {
       sessionExpiry =
           SecurityConfigurationManager.getCurrentAuthConfig()
               .getOidcConfiguration()
@@ -499,21 +499,20 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OMWebConfiguration webConfiguration,
       Environment environment) {
 
+    LOG.info("Registering Asset Servlet with basePath: {}", config.getBasePath());
+    LOG.info("Application Context Path: {}", environment.getApplicationContext().getContextPath());
+
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet =
         new OpenMetadataAssetServlet(
             config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
     environment.servlets().addServlet("static", assetServlet).addMapping("/*");
+
+    LOG.info("Asset Servlet registered with mapping: /*");
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
     CollectionDAO originalDAO = jdbi.onDemand(CollectionDAO.class);
-
-    // Wrap with caching decorator if cache is available
-    if (RelationshipCache.isAvailable()) {
-      LOG.info("Wrapping CollectionDAO with caching support");
-      return new CachedCollectionDAO(originalDAO);
-    }
 
     LOG.info("Using original CollectionDAO without caching");
     return originalDAO;
@@ -582,26 +581,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Add Micrometer bundle for Prometheus metrics
     bootstrap.addBundle(new org.openmetadata.service.monitoring.MicrometerBundle());
 
+    // Add Cache bundle for Redis/cache support
+    bootstrap.addBundle(new org.openmetadata.service.cache.CacheBundle());
+
     super.initialize(bootstrap);
   }
 
   private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf)
       throws IOException {
-    LOG.info("Validating Flyway migrations");
-    Optional<String> lastMigrated = Migration.lastMigrated(jdbi);
-    String maxMigration = Migration.lastMigrationFile(conf.getMigrationConfiguration());
-    if (lastMigrated.isEmpty()) {
-      throw new IllegalStateException(
-          "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/openmetadata-ops.sh migrate` at least once.");
-    }
-    if (lastMigrated.get().compareTo(maxMigration) < 0) {
-      throw new IllegalStateException(
-          "There are pending migrations to be run on the database."
-              + " Please backup your data and run `./bootstrap/openmetadata-ops.sh migrate`."
-              + " You can find more information on upgrading OpenMetadata at"
-              + " https://docs.open-metadata.org/deployment/upgrade ");
-    }
-
     LOG.info("Validating native migrations");
     ConnectionType connectionType =
         ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
@@ -611,6 +598,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             conf.getMigrationConfiguration().getNativePath(),
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
+            conf.getMigrationConfiguration().getFlywayPath(),
             conf,
             false);
     migrationWorkflow.loadMigrations();
@@ -843,6 +831,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 
+    // Register Jetty metrics for monitoring
+    JettyMetricsIntegration.registerJettyMetrics(environment);
+
     // RDF resources are now automatically registered via @Collection annotation
     if (config.getRdfConfiguration() != null
         && config.getRdfConfiguration().getEnabled() != null
@@ -866,6 +857,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     SocketAddressFilter socketAddressFilter;
     String pathSpec = "/api/v1/push/feed/*";
+
+    LOG.info("Initializing WebSockets");
+    LOG.info("WebSocket pathSpec: {}", pathSpec);
+    LOG.info(
+        "Application Context Path during WebSocket init: {}",
+        environment.getApplicationContext().getContextPath());
+
     if (catalogConfig.getAuthorizerConfiguration() != null) {
       socketAddressFilter =
           new SocketAddressFilter(
@@ -878,7 +876,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
-    environment.getApplicationContext().setContextPath("/");
     FilterHolder socketAddressFilterHolder = new FilterHolder();
     socketAddressFilterHolder.setFilter(socketAddressFilter);
     environment
@@ -901,24 +898,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
-    }
-  }
-
-  private void initializeCache(
-      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
-    if (catalogConfig.getCacheConfiguration() != null
-        && catalogConfig.getCacheConfiguration().isEnabled()) {
-      LOG.info("Initializing Redis cache");
-      try {
-        RedisCacheBundle cacheBundle = new RedisCacheBundle();
-        cacheBundle.run(catalogConfig, environment);
-        LOG.info("Redis cache initialized successfully");
-      } catch (Exception e) {
-        LOG.error("Failed to initialize Redis cache", e);
-        throw new RuntimeException("Failed to initialize Redis cache", e);
-      }
-    } else {
-      LOG.info("Redis cache is disabled");
     }
   }
 

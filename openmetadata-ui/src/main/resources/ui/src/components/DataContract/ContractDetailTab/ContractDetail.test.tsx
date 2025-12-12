@@ -26,6 +26,7 @@ import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
+import '../../../test/unit/mocks/mui.mock';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
@@ -39,7 +40,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => {
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return function MockErrorPlaceHolder({ type, children }: any) {
     return (
       <div data-testid="error-placeholder" data-type={type}>
@@ -61,6 +62,16 @@ jest.mock('../ContractExecutionChart/ContractExecutionChart.component', () => {
 
 jest.mock('../ContractQualityCard/ContractQualityCard.component', () => {
   return jest.fn().mockImplementation(() => <p>ContractQualityCard</p>);
+});
+
+jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
+  return function MockContractSecurityCard({ security }: any) {
+    return (
+      <div data-testid="contract-security-card">
+        ContractSecurityCard - {security?.dataClassification}
+      </div>
+    );
+  };
 });
 
 jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
@@ -85,9 +96,17 @@ jest.mock('../ContractYaml/ContractYaml.component', () => {
   };
 });
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
+jest.mock('../ContractSLACard/ContractSLA.component', () =>
+  jest
+    .fn()
+    .mockImplementation(({ contract }: any) => (
+      <div data-testid="contract-sla">SLA for {contract?.name}</div>
+    ))
+);
+
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockImplementation(() => {
-    return <div>RichTextEditorPreviewerNew</div>;
+    return <div>RichTextEditorPreviewerV1</div>;
   });
 });
 
@@ -124,6 +143,7 @@ jest.mock('react-i18next', () => ({
         'label.execution-summary': 'Execution Summary',
         'label.last-execution': 'Last Execution',
         'message.no-test-case-found': 'No test cases found',
+        'label.security': 'Security',
       };
 
       return translations[key] || key;
@@ -221,8 +241,7 @@ describe('ContractDetail', () => {
 
       expect(screen.getByText('Test Contract')).toBeInTheDocument();
       expect(screen.getByText('label.description')).toBeInTheDocument();
-
-      expect(screen.getAllByText('RichTextEditorPreviewerNew')).toHaveLength(2);
+      expect(screen.getByText('RichTextEditorPreviewerV1')).toBeInTheDocument();
     });
 
     it('should display contract actions', () => {
@@ -489,6 +508,83 @@ describe('ContractDetail', () => {
 
       // Semantic rules would be displayed
       expect(screen.getByText('Test Contract')).toBeInTheDocument();
+    });
+  });
+
+  describe('Contract Security', () => {
+    it('should display security section when contract has security data', () => {
+      const contractWithSecurity: DataContract = {
+        ...mockContract,
+        security: {
+          dataClassification: 'PII,Sensitive',
+          policies: [
+            {
+              accessPolicy: 'Read Only',
+              identities: ['user1@example.com'],
+              rowFilters: [],
+            },
+          ],
+        },
+      };
+
+      render(
+        <ContractDetail
+          contract={contractWithSecurity}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      // Check that the security card is rendered
+      expect(screen.getByTestId('security-card')).toBeInTheDocument();
+      expect(screen.getByTestId('contract-security-card')).toBeInTheDocument();
+
+      // Check the content
+      expect(
+        screen.getByText('ContractSecurityCard - PII,Sensitive')
+      ).toBeInTheDocument();
+    });
+
+    it('should not display security section when contract has no security data', () => {
+      render(
+        <ContractDetail
+          contract={mockContract}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(screen.queryByTestId('security-card')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('contract-security-card')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render security card even with empty dataClassification and policies', () => {
+      const contractWithEmptySecurity: DataContract = {
+        ...mockContract,
+        security: {
+          dataClassification: '',
+          policies: [],
+        },
+      };
+
+      render(
+        <ContractDetail
+          contract={contractWithEmptySecurity}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      // isEmpty returns false for objects with properties, even if values are empty
+      // So the security section will be displayed
+      expect(screen.getByTestId('security-card')).toBeInTheDocument();
+      expect(screen.getByTestId('contract-security-card')).toBeInTheDocument();
+      expect(screen.getByText('ContractSecurityCard -')).toBeInTheDocument();
     });
   });
 

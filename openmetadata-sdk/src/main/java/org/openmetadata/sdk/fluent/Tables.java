@@ -3,7 +3,10 @@ package org.openmetadata.sdk.fluent;
 import java.util.*;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
@@ -170,7 +173,7 @@ public final class Tables {
     }
 
     public TableFinder includeAll() {
-      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains", "dataProducts"));
       return this;
     }
 
@@ -293,6 +296,36 @@ public final class Tables {
 
     public FluentTable withDisplayName(String displayName) {
       table.setDisplayName(displayName);
+      modified = true;
+      return this;
+    }
+
+    public FluentTable withOwners(List<EntityReference> owners) {
+      table.setOwners(owners);
+      modified = true;
+      return this;
+    }
+
+    public FluentTable withTags(List<TagLabel> tags) {
+      table.setTags(tags);
+      modified = true;
+      return this;
+    }
+
+    public FluentTable withDomains(List<EntityReference> domain) {
+      table.setDomains(domain);
+      modified = true;
+      return this;
+    }
+
+    public FluentTable withDataProducts(List<EntityReference> dataProducts) {
+      table.setDataProducts(dataProducts);
+      modified = true;
+      return this;
+    }
+
+    public FluentTable withColumns(List<Column> columns) {
+      table.setColumns(columns);
       modified = true;
       return this;
     }
@@ -434,6 +467,7 @@ public final class Tables {
   public static final String SET = ColumnDataType.SET.value();
   public static final String GEOGRAPHY = ColumnDataType.GEOGRAPHY.value();
   public static final String HEIRARCHY = ColumnDataType.HEIRARCHY.value();
+  public static final String HIERARCHYID = ColumnDataType.HIERARCHYID.value();
   public static final String ENUM = ColumnDataType.ENUM.value();
   public static final String JSON = ColumnDataType.JSON.value();
   public static final String UUID = ColumnDataType.UUID.value();

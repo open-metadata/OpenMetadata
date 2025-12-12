@@ -3,6 +3,8 @@ package org.openmetadata.sdk.fluent;
 import java.util.*;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.collections.DatabaseSchemaCollection;
 
@@ -171,7 +173,7 @@ public final class DatabaseSchemas {
     }
 
     public DatabaseSchemaFinder includeAll() {
-      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains", "dataProducts"));
       return this;
     }
 
@@ -285,6 +287,12 @@ public final class DatabaseSchemas {
       return databaseSchema;
     }
 
+    public FluentDatabaseSchema withOwners(List<EntityReference> owners) {
+      databaseSchema.setOwners(owners);
+      modified = true;
+      return this;
+    }
+
     public FluentDatabaseSchema withDescription(String description) {
       databaseSchema.setDescription(description);
       modified = true;
@@ -293,6 +301,24 @@ public final class DatabaseSchemas {
 
     public FluentDatabaseSchema withDisplayName(String displayName) {
       databaseSchema.setDisplayName(displayName);
+      modified = true;
+      return this;
+    }
+
+    public FluentDatabaseSchema withTags(List<TagLabel> tags) {
+      databaseSchema.setTags(tags);
+      modified = true;
+      return this;
+    }
+
+    public FluentDatabaseSchema withDomains(List<EntityReference> domain) {
+      databaseSchema.setDomains(domain);
+      modified = true;
+      return this;
+    }
+
+    public FluentDatabaseSchema withDataProducts(List<EntityReference> dataProducts) {
+      databaseSchema.setDataProducts(dataProducts);
       modified = true;
       return this;
     }

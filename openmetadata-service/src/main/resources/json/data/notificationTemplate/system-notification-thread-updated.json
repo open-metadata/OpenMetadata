@@ -1,9 +1,0 @@
-{
-  "name": "system-notification-thread-updated",
-  "fullyQualifiedName": "system-notification-thread-updated",
-  "displayName": "Thread Updated Notification",
-  "description": "System default template for thread update notifications",
-  "provider": "system",
-  "templateSubject": "{{thread.type}} updated - {{entity.fullyQualifiedName}}",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}{{#if (eq thread.type 'Task')}}[{{publisherName}}] <b>@{{thread.updatedBy}}</b> posted update on the Task with Id: {{thread.task.id}} for Asset <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a><br/><b>Task Type:</b> {{thread.task.type}}<br/><b>Assignees:</b> {{#each thread.task.assignees}}@{{name}}{{#unless @last}}, {{/unless}}{{/each}}<br/><b>Current Status:</b> {{thread.task.status}}{{else if (eq thread.type 'Announcement')}}[{{publisherName}}] <b>@{{thread.updatedBy}}</b> posted an update on Announcement{{#if (eq event.eventType 'ENTITY_DELETED')}}<br/><b>Announcement Deleted:</b> {{thread.announcement.description}}{{else}}<br/><b>Description:</b> {{thread.announcement.description}}<br/><b>Started At:</b> {{formatDate thread.announcement.startTime}}<br/><b>Ends At:</b> {{formatDate thread.announcement.endTime}}{{/if}}{{else}}[{{publisherName}}] <b>@{{thread.updatedBy}}</b> posted update on Conversation for asset <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a><br/>{{thread.message}}{{/if}}{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
-}

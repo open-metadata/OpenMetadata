@@ -47,7 +47,7 @@ public class QueryMockTest {
     expectedQuery.setQuery("SELECT date, SUM(revenue) FROM sales GROUP BY date");
     expectedQuery.setFullyQualifiedName("queries.daily-revenue-report");
 
-    when(mockQueryService.create(any(Query.class))).thenReturn(expectedQuery);
+    when(mockQueryService.create(any(CreateQuery.class))).thenReturn(expectedQuery);
 
     // Act
     Query result = org.openmetadata.sdk.entities.Query.create(createRequest);
@@ -56,7 +56,7 @@ public class QueryMockTest {
     assertNotNull(result);
     assertEquals("daily-revenue-report", result.getName());
     assertEquals("SELECT date, SUM(revenue) FROM sales GROUP BY date", result.getQuery());
-    verify(mockQueryService).create(any(Query.class));
+    verify(mockQueryService).create(any(CreateQuery.class));
   }
 
   @Test

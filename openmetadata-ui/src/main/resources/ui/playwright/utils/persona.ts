@@ -13,6 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import { redirectToHomePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 
 export const updatePersonaDisplayName = async ({
@@ -111,4 +112,34 @@ export const removePersonaDefault = async (
 
   await removeDefaultConfirmationModal.getByText('Yes').click();
   await removeDefaultResponse;
+};
+
+export const navigateToPersonaWithPagination = async (
+  page: Page,
+  personaName: string,
+  click = true,
+  maxPages = 15
+) => {
+  for (let currentPage = 0; currentPage < maxPages; currentPage++) {
+    const locator = page.getByTestId(`persona-details-card-${personaName}`);
+
+    // Check if element is visible on current page
+    if (await locator.isVisible()) {
+      if (click) {
+        await locator.click();
+      }
+
+      return;
+    }
+
+    const nextBtn = page.locator('[data-testid="next"]');
+    await nextBtn.waitFor({ state: 'visible' });
+
+    const getPersonas = page.waitForResponse('/api/v1/personas*');
+    await nextBtn.click();
+    await getPersonas;
+
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
+  }
 };

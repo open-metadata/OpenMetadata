@@ -25,21 +25,7 @@ public class Dashboard extends org.openmetadata.schema.entity.data.Dashboard {
 
   // Static CRUD methods - Stripe style
   public static org.openmetadata.schema.entity.data.Dashboard create(CreateDashboard request) {
-    // Convert CreateDashboard to Dashboard entity
-    org.openmetadata.schema.entity.data.Dashboard dashboard =
-        new org.openmetadata.schema.entity.data.Dashboard();
-    dashboard.setName(request.getName());
-    dashboard.setDisplayName(request.getDisplayName());
-    dashboard.setDescription(request.getDescription());
-    dashboard.setOwners(request.getOwners());
-    dashboard.setProject(request.getProject());
-    dashboard.setExtension(request.getExtension());
-    dashboard.setSourceHash(request.getSourceHash());
-    dashboard.setLifeCycle(request.getLifeCycle());
-    dashboard.setSourceUrl(request.getSourceUrl());
-
-    return (org.openmetadata.schema.entity.data.Dashboard)
-        getClient().dashboards().create(dashboard);
+    return getClient().dashboards().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.Dashboard retrieve(String id) {

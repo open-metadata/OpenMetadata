@@ -48,8 +48,10 @@ import {
   PipelineService,
   PipelineServiceType,
 } from '../generated/entity/services/pipelineService';
+import { DatabaseServiceSearchSource } from '../interface/search.interface';
 import { ServicesType } from '../interface/service.interface';
 import { getEntityCount } from '../rest/miscAPI';
+import { searchService } from '../rest/serviceAPI';
 import {
   getEntityDeleteMessage,
   pluralize,
@@ -130,11 +132,11 @@ export const setServiceSchemaCount = (
   Promise.allSettled(promises)
     .then((results) => {
       let count = 0;
-      results.forEach((result) => {
+      for (const result of results) {
         if (result.status === PROMISE_STATE.FULFILLED) {
           count += result.value?.paging?.total || 0;
         }
-      });
+      }
       callback(count);
     })
     .catch((err: AxiosError) => showErrorToast(err));
@@ -151,11 +153,11 @@ export const setServiceTableCount = (
   Promise.allSettled(promises)
     .then((results) => {
       let count = 0;
-      results.forEach((result) => {
+      for (const result of results) {
         if (result.status === PROMISE_STATE.FULFILLED) {
           count += result.value?.paging?.total || 0;
         }
-      });
+      }
       callback(count);
     })
     .catch((err: AxiosError) => showErrorToast(err));
@@ -332,6 +334,31 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return GlobalSettingOptions.DATABASES;
+  }
+};
+
+export const getSearchIndexForService = (type: ServiceTypes): SearchIndex => {
+  switch (type) {
+    case ServiceCategory.DATABASE_SERVICES:
+      return SearchIndex.DATABASE;
+    case ServiceCategory.MESSAGING_SERVICES:
+      return SearchIndex.TOPIC;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return SearchIndex.DASHBOARD;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return SearchIndex.PIPELINE;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return SearchIndex.MLMODEL;
+    case ServiceCategory.STORAGE_SERVICES:
+      return SearchIndex.CONTAINER;
+    case ServiceCategory.SEARCH_SERVICES:
+      return SearchIndex.SEARCH_INDEX;
+    case ServiceCategory.API_SERVICES:
+      return SearchIndex.API_COLLECTION_INDEX;
+    case ServiceCategory.DRIVE_SERVICES:
+      return SearchIndex.DIRECTORY_SEARCH_INDEX;
+    default:
+      return SearchIndex.DATABASE;
   }
 };
 
@@ -581,4 +608,66 @@ export const getAddServiceEntityBreadcrumb = (
       activeTitle: true,
     },
   ];
+};
+
+export const getSearchIndexFromService = (serviceName: string): SearchIndex => {
+  const mapping: Partial<Record<string, SearchIndex>> = {
+    [ServiceCategory.DATABASE_SERVICES]: SearchIndex.DATABASE_SERVICE,
+    [ServiceCategory.DASHBOARD_SERVICES]: SearchIndex.DASHBOARD_SERVICE,
+    [ServiceCategory.MESSAGING_SERVICES]: SearchIndex.MESSAGING_SERVICE,
+    [ServiceCategory.PIPELINE_SERVICES]: SearchIndex.PIPELINE_SERVICE,
+    [ServiceCategory.ML_MODEL_SERVICES]: SearchIndex.ML_MODEL_SERVICE,
+    [ServiceCategory.STORAGE_SERVICES]: SearchIndex.STORAGE_SERVICE,
+    [ServiceCategory.SEARCH_SERVICES]: SearchIndex.SEARCH_SERVICE,
+    [ServiceCategory.API_SERVICES]: SearchIndex.API_SERVICE_INDEX,
+    [ServiceCategory.DRIVE_SERVICES]: SearchIndex.DRIVE_SERVICE,
+  };
+
+  return mapping[serviceName] ?? SearchIndex.DATABASE_SERVICE;
+};
+
+// Perform an exact search for services by name within a given service category
+export const searchServiceByExactName = async (
+  name: string,
+  serviceName: string
+) => {
+  try {
+    const {
+      hits: { hits },
+    } = await searchService({
+      search: name,
+      searchIndex: getSearchIndexFromService(serviceName),
+    });
+
+    const services = hits.map(
+      ({ _source }) => _source as DatabaseServiceSearchSource
+    );
+
+    return services;
+  } catch {
+    return [];
+  }
+};
+
+// Validate if a service name already exists in the given category
+export const validateServiceName = async (
+  name: string,
+  serviceName: string
+): Promise<string | null> => {
+  if (!name || !serviceName) {
+    return null;
+  }
+  const searchedServices = await searchServiceByExactName(name, serviceName);
+
+  const isServiceNamePresent = searchedServices.some(
+    (service) => service.name === name
+  );
+
+  if (isServiceNamePresent) {
+    return t('message.entity-already-exists', {
+      entity: t('label.name'),
+    });
+  }
+
+  return null;
 };

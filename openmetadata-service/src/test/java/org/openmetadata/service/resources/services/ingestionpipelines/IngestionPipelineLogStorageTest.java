@@ -17,11 +17,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import io.minio.BucketExistsArgs;
+import io.minio.ListObjectsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
-import jakarta.ws.rs.client.Entity;
+import io.minio.RemoveObjectArgs;
 import jakarta.ws.rs.client.WebTarget;
-import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -41,35 +41,21 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.logstorage.S3LogStorage;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import org.openmetadata.service.util.TestUtils;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
-@Testcontainers
 class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
 
-  private static final String MINIO_ACCESS_KEY = "minioadmin";
-  private static final String MINIO_SECRET_KEY = "minioadmin";
-  private static final String TEST_BUCKET = "pipeline-logs-test";
-
-  @Container
-  private static final GenericContainer<?> minioContainer =
-      new GenericContainer<>(DockerImageName.parse("minio/minio:latest"))
-          .withExposedPorts(9000)
-          .withEnv("MINIO_ROOT_USER", MINIO_ACCESS_KEY)
-          .withEnv("MINIO_ROOT_PASSWORD", MINIO_SECRET_KEY)
-          .withCommand("server", "/data")
-          .waitingFor(Wait.forHttp("/minio/health/live").forPort(9000));
+  static {
+    // Ensure MinIO is enabled for this test class
+    System.setProperty("enableMinio", "true");
+  }
 
   private static MinioClient minioClient;
   private static DatabaseService databaseService;
@@ -81,21 +67,21 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
 
   @BeforeEach
   void cleanupBeforeTest() throws Exception {
-    if (initialized && minioClient != null && TEST_BUCKET != null) {
+    if (initialized && minioClient != null && MINIO_BUCKET != null) {
       try {
         // Clean up any existing test data
         var objects =
             minioClient.listObjects(
-                io.minio.ListObjectsArgs.builder()
-                    .bucket(TEST_BUCKET)
+                ListObjectsArgs.builder()
+                    .bucket(MINIO_BUCKET)
                     .prefix("test-logs/")
                     .recursive(true)
                     .build());
 
         for (var object : objects) {
           minioClient.removeObject(
-              io.minio.RemoveObjectArgs.builder()
-                  .bucket(TEST_BUCKET)
+              RemoveObjectArgs.builder()
+                  .bucket(MINIO_BUCKET)
                   .object(object.get().objectName())
                   .build());
         }
@@ -105,14 +91,17 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     }
   }
 
-  @Test
   void setupTestData() throws Exception {
     if (initialized) {
       return;
     }
     TestUtils.simulateWork(2000);
-    minioEndpoint =
-        String.format("http://%s:%d", minioContainer.getHost(), minioContainer.getMappedPort(9000));
+
+    // Use the application's MinIO endpoint if available, otherwise fallback to localhost
+    minioEndpoint = getMinioEndpointForTests();
+    if (minioEndpoint == null) {
+      minioEndpoint = "http://localhost:9000";
+    }
     LOG.info("Connecting to MinIO at: {}", minioEndpoint);
 
     minioClient =
@@ -122,9 +111,9 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
             .build();
 
     try {
-      if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket(TEST_BUCKET).build())) {
-        minioClient.makeBucket(MakeBucketArgs.builder().bucket(TEST_BUCKET).build());
-        LOG.info("Created MinIO bucket: {}", TEST_BUCKET);
+      if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket(MINIO_BUCKET).build())) {
+        minioClient.makeBucket(MakeBucketArgs.builder().bucket(MINIO_BUCKET).build());
+        LOG.info("Created MinIO bucket: {}", MINIO_BUCKET);
       }
     } catch (Exception e) {
       LOG.error("Failed to create MinIO bucket", e);
@@ -142,8 +131,8 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     LogStorageConfiguration s3Config =
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
-            .withBucketName(TEST_BUCKET)
-            .withRegion("us-east-1")
+            .withBucketName(MINIO_BUCKET)
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
             .withPrefix("test-logs")
             .withAwsConfig(awsCreds);
 
@@ -204,6 +193,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     assertTrue(metrics.getS3ReadsCount() > initialReads, "S3 read count should increase");
   }
 
+  @Test
   void testStreamingEndpoint() throws Exception {
     setupTestData();
     if (testPipeline == null) {
@@ -211,37 +201,24 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
       return;
     }
 
-    String pipelineId = testPipeline.getId().toString();
+    String pipelineFQN = testPipeline.getFullyQualifiedName();
     String runId = UUID.randomUUID().toString();
 
     WebTarget streamTarget =
-        getResource("services/ingestionPipelines/" + pipelineId + "/logs/" + runId + "/stream");
+        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
 
     String logData = "Stream endpoint test log\n";
-    Response streamResponse =
-        streamTarget
-            .request(MediaType.TEXT_PLAIN)
-            .header("Authorization", ADMIN_AUTH_HEADERS.get("Authorization"))
-            .post(Entity.text(logData));
-
-    assertEquals(Response.Status.OK.getStatusCode(), streamResponse.getStatus());
+    Map<String, String> logPayload = Map.of("logs", logData);
+    TestUtils.post(
+        streamTarget, logPayload, Response.Status.OK.getStatusCode(), ADMIN_AUTH_HEADERS);
 
     // Give time for async processing
     TestUtils.simulateWork(2000);
 
     // Read logs back through REST endpoint
     WebTarget getTarget =
-        getResource("services/ingestionPipelines/" + pipelineId + "/logs/" + runId);
-    Response getResponse =
-        getTarget
-            .request(MediaType.APPLICATION_JSON)
-            .header("Authorization", ADMIN_AUTH_HEADERS.get("Authorization"))
-            .get();
-
-    assertEquals(Response.Status.OK.getStatusCode(), getResponse.getStatus());
-
-    Map<String, Object> result =
-        JsonUtils.readValue(getResponse.readEntity(String.class), Map.class);
+        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
+    Map<String, Object> result = TestUtils.get(getTarget, Map.class, ADMIN_AUTH_HEADERS);
     assertNotNull(result.get("logs"));
     assertTrue(result.get("logs").toString().contains("Stream endpoint test log"));
   }
@@ -261,8 +238,8 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     LogStorageConfiguration limitedConfig =
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
-            .withBucketName(TEST_BUCKET)
-            .withRegion("us-east-1")
+            .withBucketName(MINIO_BUCKET)
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
             .withAwsConfig(awsCreds)
             .withPrefix("limited-test")
             .withMaxConcurrentStreams(2); // Very low limit
@@ -271,10 +248,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
     Map<String, Object> initConfig = new HashMap<>();
     initConfig.put("config", limitedConfig);
     initConfig.put("metrics", metrics);
-    initConfig.put(
-        "endpoint",
-        String.format(
-            "http://%s:%d", minioContainer.getHost(), minioContainer.getMappedPort(9000)));
+    initConfig.put("endpoint", minioEndpoint);
     initConfig.put("accessKey", MINIO_ACCESS_KEY);
     initConfig.put("secretKey", MINIO_SECRET_KEY);
     limitedStorage.initialize(initConfig);
@@ -302,17 +276,17 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
   @AfterAll
   static void cleanup() throws Exception {
     // Clean up S3 bucket contents
-    if (minioClient != null && TEST_BUCKET != null) {
+    if (minioClient != null && MINIO_BUCKET != null) {
       try {
         // List and delete all objects in the test bucket
         var objects =
             minioClient.listObjects(
-                io.minio.ListObjectsArgs.builder().bucket(TEST_BUCKET).recursive(true).build());
+                io.minio.ListObjectsArgs.builder().bucket(MINIO_BUCKET).recursive(true).build());
 
         for (var object : objects) {
           minioClient.removeObject(
               io.minio.RemoveObjectArgs.builder()
-                  .bucket(TEST_BUCKET)
+                  .bucket(MINIO_BUCKET)
                   .object(object.get().objectName())
                   .build());
         }
@@ -468,7 +442,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
   private boolean checkS3ObjectExists(String key) {
     try {
       minioClient.statObject(
-          io.minio.StatObjectArgs.builder().bucket(TEST_BUCKET).object(key).build());
+          io.minio.StatObjectArgs.builder().bucket(MINIO_BUCKET).object(key).build());
       return true;
     } catch (Exception e) {
       return false;
@@ -499,7 +473,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName("non-existent-bucket")
-            .withRegion("us-east-1")
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
             .withPrefix("test-logs");
 
     S3LogStorage badStorage = new S3LogStorage();
@@ -579,6 +553,34 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
         assertTrue(allLogs.contains(expectedLog), "Log '" + expectedLog + "' should be present");
       }
     }
+  }
+
+  @Test
+  void testCloseLogStream() throws Exception {
+    setupTestData(); // Ensure setup has run
+    if (testPipeline == null) {
+      LOG.warn("Skipping close log stream test - pipeline not created");
+      return;
+    }
+    String pipelineFQN = testPipeline.getFullyQualifiedName();
+    UUID runId = UUID.randomUUID();
+
+    // First, write some logs to create an active stream
+    Map<String, Object> logData = Map.of("logs", "Test log content for close stream");
+    WebTarget writeTarget =
+        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId);
+    TestUtils.post(writeTarget, logData, Response.Status.OK.getStatusCode(), ADMIN_AUTH_HEADERS);
+
+    // Now close the stream
+    WebTarget closeTarget =
+        getResource("services/ingestionPipelines/logs/" + pipelineFQN + "/" + runId + "/close");
+    Map<String, Object> closeResponse =
+        TestUtils.post(
+            closeTarget, "", Map.class, Response.Status.OK.getStatusCode(), ADMIN_AUTH_HEADERS);
+
+    // Verify the response indicates success
+    assertTrue(closeResponse.containsKey("message"));
+    assertEquals("Log stream closed successfully", closeResponse.get("message"));
   }
 
   private static IngestionPipeline createTestPipeline() throws IOException {

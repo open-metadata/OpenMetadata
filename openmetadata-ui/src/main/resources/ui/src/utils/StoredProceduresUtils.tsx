@@ -10,14 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { get } from 'lodash';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { StoredProcedureCodeCard } from '../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard';
-import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
@@ -25,6 +28,11 @@ import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { t } from './i18next/LocalUtil';
 import { StoredProcedureDetailPageTabProps } from './StoredProcedureClassBase';
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 // eslint-disable-next-line max-len
 export const STORED_PROCEDURE_DEFAULT_FIELDS = `${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}, ${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
@@ -37,9 +45,11 @@ export const getStoredProcedureDetailsPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   getEntityFeedCount,
   fetchStoredProcedureDetails,
   handleFeedCount,
+  labelMap,
 }: StoredProcedureDetailPageTabProps) => {
   return [
     {
@@ -47,7 +57,7 @@ export const getStoredProcedureDetailsPageTabs = ({
         <TabsLabel
           data-testid={EntityTabs.CODE}
           id={EntityTabs.CODE}
-          name={t('label.code')}
+          name={get(labelMap, EntityTabs.CODE, t('label.code'))}
         />
       ),
       key: EntityTabs.CODE,
@@ -59,7 +69,11 @@ export const getStoredProcedureDetailsPageTabs = ({
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={t('label.activity-feed-and-task-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.ACTIVITY_FEED,
+            t('label.activity-feed-and-task-plural')
+          )}
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -78,22 +92,43 @@ export const getStoredProcedureDetailsPageTabs = ({
       ),
     },
     {
-      label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+      label: (
+        <TabsLabel
+          id={EntityTabs.LINEAGE}
+          name={get(labelMap, EntityTabs.LINEAGE, t('label.lineage'))}
+        />
+      ),
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={storedProcedure as SourceType}
-          entityType={EntityType.STORED_PROCEDURE}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={storedProcedure as SourceType}
+            entityType={EntityType.STORED_PROCEDURE}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
     },
     {
       label: (
         <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.CUSTOM_PROPERTIES,
+            t('label.custom-property-plural')
+          )}
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
@@ -101,7 +136,7 @@ export const getStoredProcedureDetailsPageTabs = ({
         <CustomPropertyTable<EntityType.STORED_PROCEDURE>
           entityType={EntityType.STORED_PROCEDURE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

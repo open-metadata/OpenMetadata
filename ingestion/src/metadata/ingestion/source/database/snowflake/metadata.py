@@ -20,6 +20,7 @@ import sqlalchemy.types as sqltypes
 import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT, StructuredType
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier, Token
 
@@ -93,10 +94,9 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASE_COMMENTS,
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_EXTERNAL_LOCATIONS,
-    SNOWFLAKE_GET_FUNCTIONS,
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
-    SNOWFLAKE_GET_STORED_PROCEDURES,
+    SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS,
     SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
     SNOWFLAKE_SESSION_TAG_QUERY,
@@ -557,18 +557,17 @@ class SnowflakeSource(
     def _get_table_names_and_types(
         self, schema_name: str, table_type: TableType = TableType.Regular
     ) -> List[TableNameAndType]:
-        table_type_to_params_map = {
-            TableType.Regular: {},
-            TableType.External: {"external_tables": True},
-            TableType.Transient: {"include_transient_tables": True},
-            TableType.Dynamic: {"dynamic_tables": True},
-        }
 
         snowflake_tables = self.inspector.get_table_names(
             schema=schema_name,
             incremental=self.incremental,
             account_usage=self.service_connection.accountUsageSchema,
-            **table_type_to_params_map[table_type],
+            include_views=self.source_config.includeViews,
+            **(
+                {"include_transient_tables": True}
+                if self.service_connection.includeTransientTables
+                else {}
+            ),
         )
 
         self.context.get_global().deleted_tables.extend(
@@ -586,7 +585,7 @@ class SnowflakeSource(
         )
 
         return [
-            TableNameAndType(name=table.name, type_=table_type)
+            TableNameAndType(name=table.name, type_=table.type_)
             for table in snowflake_tables.get_not_deleted()
         ]
 
@@ -629,21 +628,6 @@ class SnowflakeSource(
         logic on how to handle table types, e.g., external, foreign,...
         """
         table_list = self._get_table_names_and_types(schema_name)
-
-        table_list.extend(
-            self._get_table_names_and_types(schema_name, table_type=TableType.External)
-        )
-
-        table_list.extend(
-            self._get_table_names_and_types(schema_name, table_type=TableType.Dynamic)
-        )
-
-        if self.service_connection.includeTransientTables:
-            table_list.extend(
-                self._get_table_names_and_types(
-                    schema_name, table_type=TableType.Transient
-                )
-            )
 
         if self.service_connection.includeStreams:
             table_list.extend(self._get_stream_names_and_types(schema_name))
@@ -741,39 +725,6 @@ class SnowflakeSource(
             logger.error(f"Unable to get procedure source url: {exc}")
         return None
 
-    def _get_view_names_and_types(
-        self, schema_name: str, materialized_views: bool = False
-    ) -> List[TableNameAndType]:
-        table_type = (
-            TableType.MaterializedView if materialized_views else TableType.View
-        )
-
-        snowflake_views = self.inspector.get_view_names(
-            schema=schema_name,
-            incremental=self.incremental,
-            account_usage=self.service_connection.accountUsageSchema,
-            materialized_views=materialized_views,
-        )
-
-        self.context.get_global().deleted_tables.extend(
-            [
-                fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
-                    table_name=view.name,
-                )
-                for view in snowflake_views.get_deleted()
-            ]
-        )
-
-        return [
-            TableNameAndType(name=view.name, type_=table_type)
-            for view in snowflake_views.get_not_deleted()
-        ]
-
     def query_view_names_and_types(
         self, schema_name: str
     ) -> Iterable[TableNameAndType]:
@@ -785,12 +736,7 @@ class SnowflakeSource(
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., material views,...
         """
-        views = self._get_view_names_and_types(schema_name)
-        views.extend(
-            self._get_view_names_and_types(schema_name, materialized_views=True)
-        )
-
-        return views
+        return []
 
     def _get_stored_procedures_internal(
         self, query: str
@@ -822,9 +768,8 @@ class SnowflakeSource(
         """List Snowflake stored procedures"""
         if self.source_config.includeStoredProcedures:
             yield from self._get_stored_procedures_internal(
-                SNOWFLAKE_GET_STORED_PROCEDURES
+                SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS
             )
-            yield from self._get_stored_procedures_internal(SNOWFLAKE_GET_FUNCTIONS)
 
     def describe_procedure_definition(
         self, stored_procedure: SnowflakeStoredProcedure
@@ -948,17 +893,26 @@ class SnowflakeSource(
                     table_name = result[6].split(".")[-1]
                     # Can't fetch source of stream is source is dropped or no priviledge
                     if table_name == "No privilege or table dropped":
-                        logger.debug(
-                            f"Couldn't fetch columns of stream [{result and result[1]}],"
-                            f" due to error on source: {table_name}. Result: {result}"
+                        logger.warning(
+                            f"Couldn't fetch columns of stream [{result and result[1]}] "
+                            f"(schema: '{schema_name}', db: '{db_name}') due to error on"
+                            f" source: [{table_name}]. Result: {result}"
                         )
                         return []
             except Exception:
                 pass
 
-        columns = inspector.get_columns(
-            table_name, schema_name, table_type=table_type, db_name=db_name
-        )
+        try:
+            columns = inspector.get_columns(
+                table_name, schema_name, table_type=table_type, db_name=db_name
+            )
+        except sa_exc.NoSuchTableError:
+            logger.warning(
+                f"Table [{table_name}] (schema: '{schema_name}', db: '{db_name}') not found."
+                " Unable to fetch columns. Please check if the configured Snowflake user has"
+                " necessary grants on this table."
+            )
+            return []
 
         if table_type == TableType.Stream:
             columns = [*columns, *DEFAULT_STREAM_COLUMNS]

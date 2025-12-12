@@ -25,26 +25,7 @@ public class Container extends org.openmetadata.schema.entity.data.Container {
 
   // Static CRUD methods - Stripe style
   public static org.openmetadata.schema.entity.data.Container create(CreateContainer request) {
-    // Convert CreateContainer to Container entity
-    org.openmetadata.schema.entity.data.Container container =
-        new org.openmetadata.schema.entity.data.Container();
-    container.setName(request.getName());
-    container.setDisplayName(request.getDisplayName());
-    container.setDescription(request.getDescription());
-    container.setOwners(request.getOwners());
-    container.setParent(request.getParent());
-    container.setDataModel(request.getDataModel());
-    container.setPrefix(request.getPrefix());
-    container.setNumberOfObjects(request.getNumberOfObjects());
-    container.setSize(request.getSize());
-    container.setFileFormats(request.getFileFormats());
-    container.setExtension(request.getExtension());
-    container.setSourceHash(request.getSourceHash());
-    container.setLifeCycle(request.getLifeCycle());
-    container.setSourceUrl(request.getSourceUrl());
-
-    return (org.openmetadata.schema.entity.data.Container)
-        getClient().containers().create(container);
+    return getClient().containers().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.Container retrieve(String id) {

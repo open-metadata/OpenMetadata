@@ -25,14 +25,14 @@ public class WorkflowInstanceListener implements JavaDelegate {
 
       switch (eventName) {
         case "start" -> {
-          LOG.info(
+          LOG.debug(
               "[WORKFLOW_INSTANCE_START] Workflow: {}, ProcessInstance: {} - Creating workflow instance record",
               workflowName,
               processInstanceId);
           addWorkflowInstance(execution, workflowInstanceRepository);
         }
         case "end" -> {
-          LOG.info(
+          LOG.debug(
               "[WORKFLOW_INSTANCE_END] Workflow: {}, ProcessInstance: {} - Updating workflow instance status",
               workflowName,
               processInstanceId);
@@ -107,7 +107,7 @@ public class WorkflowInstanceListener implements JavaDelegate {
         workflowInstanceId,
         System.currentTimeMillis(),
         execution.getVariables());
-    LOG.info(
+    LOG.debug(
         "[WORKFLOW_INSTANCE_CREATED] Workflow: {}, InstanceId: {}, ProcessInstance: {} - Workflow instance record created successfully",
         workflowDefinitionName,
         workflowInstanceId,
@@ -128,7 +128,8 @@ public class WorkflowInstanceListener implements JavaDelegate {
     String status = "FINISHED"; // Default
     if (Boolean.TRUE.equals(variables.get(Workflow.FAILURE_VARIABLE))) {
       status = "FAILURE";
-    } else if (variables.containsKey(Workflow.EXCEPTION_VARIABLE)) {
+    } else if (variables.containsKey(Workflow.EXCEPTION_VARIABLE)
+        && variables.get(Workflow.EXCEPTION_VARIABLE) != null) {
       status = "EXCEPTION";
     }
     variables.put("status", status);
@@ -143,7 +144,7 @@ public class WorkflowInstanceListener implements JavaDelegate {
           workflowInstanceId,
           status);
     } else {
-      LOG.info(
+      LOG.debug(
           "[WORKFLOW_INSTANCE_COMPLETED] Workflow: {}, InstanceId: {}, Status: {} - Workflow completed successfully",
           workflowDefinitionName,
           workflowInstanceId,
@@ -152,6 +153,15 @@ public class WorkflowInstanceListener implements JavaDelegate {
   }
 
   private String getMainWorkflowDefinitionNameFromTrigger(String triggerWorkflowDefinitionName) {
-    return triggerWorkflowDefinitionName.replaceFirst("Trigger$", "");
+    // Handle PeriodicBatchEntityTrigger format: WorkflowNameTrigger-entityType
+    // Remove both the "Trigger" suffix and any entity type suffix
+    String withoutTrigger = triggerWorkflowDefinitionName.replaceFirst("Trigger(-.*)?$", "");
+
+    // If that didn't work, try just removing "Trigger" at the end
+    if (withoutTrigger.equals(triggerWorkflowDefinitionName)) {
+      withoutTrigger = triggerWorkflowDefinitionName.replaceFirst("Trigger$", "");
+    }
+
+    return withoutTrigger;
   }
 }

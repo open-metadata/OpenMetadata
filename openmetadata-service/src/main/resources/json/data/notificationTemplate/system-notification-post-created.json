@@ -1,9 +1,0 @@
-{
-  "name": "system-notification-post-created",
-  "fullyQualifiedName": "system-notification-post-created",
-  "displayName": "Post Created Notification",
-  "description": "System default template for new post/reply notifications",
-  "provider": "system",
-  "templateSubject": "New reply in {{thread.type}} - {{entity.fullyQualifiedName}}",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}{{#if (eq thread.type 'Task')}}[{{publisherName}}] <b>@{{thread.createdBy}}</b> posted a message on the Task with Id: {{thread.task.id}} for Asset <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a>{{#each thread.posts}}<br/><b>@{{from}}:</b> {{message}}{{/each}}{{else if (eq thread.type 'Announcement')}}[{{publisherName}}] <b>@{{thread.createdBy}}</b> posted a message on Announcement{{#each thread.posts}}<br/><b>@{{from}}:</b> {{message}}{{/each}}{{else}}[{{publisherName}}] <b>@{{thread.createdBy}}</b> posted a message on asset <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a>{{#each thread.posts}}<br/><b>@{{from}}:</b> {{message}}{{/each}}{{/if}}{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
-}

@@ -58,12 +58,8 @@ ALTER TABLE stored_procedure_entity
 ADD COLUMN databaseSchemaHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin
 GENERATED ALWAYS AS (SUBSTRING_INDEX(fqnHash, '.', 3)) STORED;
 
-ALTER TABLE stored_procedure_entity
-DROP INDEX idx_stored_procedure_entity_deleted_name_id;
-
 CREATE INDEX idx_stored_procedure_schema_listing
 ON stored_procedure_entity (deleted, databaseSchemaHash, name, id);
-
 
 -- Recognizer Feedback Storage
 -- Store user feedback on auto-applied tags to improve recognition accuracy
@@ -82,3 +78,6 @@ CREATE TABLE IF NOT EXISTS recognizer_feedback_entity (
     INDEX idx_feedback_status (status),
     INDEX idx_feedback_created (createdAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+ALTER TABLE tag_usage
+ADD COLUMN reason TEXT;

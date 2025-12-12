@@ -25,6 +25,7 @@
         <testcontainers.version>1.19.3</testcontainers.version>
         <jwt.version>4.4.0</jwt.version>
         <flyway.version>9.22.3</flyway.version>
+        <json.version>20240303</json.version>
     </properties>
 
     <dependencies>
@@ -76,6 +77,19 @@
             <groupId>io.socket</groupId>
             <artifactId>socket.io-client</artifactId>
             <version>2.1.1</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.json</groupId>
+                    <artifactId>json</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- org.json with security fixes (excluded from socket.io-client) -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>${json.version}</version>
         </dependency>
 
         <!-- Test Dependencies -->
@@ -224,15 +238,5 @@
         </profile>
     </profiles>
 
-    <!-- Maven Central Publishing -->
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-    </distributionManagement>
+    <!-- Maven Central Publishing - handled by central-publishing-maven-plugin in parent POM -->
 </project>

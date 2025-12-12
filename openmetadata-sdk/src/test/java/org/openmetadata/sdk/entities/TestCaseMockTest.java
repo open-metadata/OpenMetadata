@@ -51,21 +51,15 @@ public class TestCaseMockTest {
     expectedTestCase.setName("null-check-test");
     expectedTestCase.setFullyQualifiedName("quality-test-suite.null-check-test");
 
-    when(mockTestCaseService.create(any(TestCase.class))).thenReturn(expectedTestCase);
+    when(mockTestCaseService.create(any(CreateTestCase.class))).thenReturn(expectedTestCase);
 
     // Act
-    // Convert CreateTestCase to TestCase for the create method
-    TestCase testCaseEntity = new TestCase();
-    testCaseEntity.setName(createRequest.getName());
-    testCaseEntity.setDisplayName(createRequest.getDisplayName());
-    testCaseEntity.setDescription(createRequest.getDescription());
-
-    TestCase result = org.openmetadata.sdk.entities.TestCase.create(testCaseEntity);
+    TestCase result = org.openmetadata.sdk.entities.TestCase.create(createRequest);
 
     // Assert
     assertNotNull(result);
     assertEquals("null-check-test", result.getName());
-    verify(mockTestCaseService).create(any(TestCase.class));
+    verify(mockTestCaseService).create(any(CreateTestCase.class));
   }
 
   @Test

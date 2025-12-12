@@ -47,7 +47,7 @@ public class DashboardMockTest {
     expectedDashboard.setFullyQualifiedName("superset.sales_dashboard");
     expectedDashboard.setDisplayName("Sales Dashboard");
 
-    when(mockDashboardService.create(any(Dashboard.class))).thenReturn(expectedDashboard);
+    when(mockDashboardService.create(any(CreateDashboard.class))).thenReturn(expectedDashboard);
 
     // Act
     Dashboard result = org.openmetadata.sdk.entities.Dashboard.create(createRequest);
@@ -57,7 +57,7 @@ public class DashboardMockTest {
     assertEquals("sales_dashboard", result.getName());
     assertEquals("Sales Dashboard", result.getDisplayName());
     assertEquals("superset.sales_dashboard", result.getFullyQualifiedName());
-    verify(mockDashboardService).create(any(Dashboard.class));
+    verify(mockDashboardService).create(any(CreateDashboard.class));
   }
 
   @Test

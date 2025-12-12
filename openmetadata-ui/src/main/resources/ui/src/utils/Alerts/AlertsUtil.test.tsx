@@ -29,14 +29,13 @@ import {
 } from '../../generated/events/eventSubscription';
 import {
   mockExternalDestinationOptions,
-  mockNonTaskInternalDestinationOptions,
-  mockTaskInternalDestinationOptions,
   mockTypedEvent1,
   mockTypedEvent2,
   mockTypedEvent3,
   mockTypedEvent4,
 } from '../../mocks/AlertUtil.mock';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
+import { getTermQuery } from '../SearchUtils';
 import {
   getAlertActionTypeDisplayName,
   getAlertEventsFilterLabels,
@@ -74,8 +73,8 @@ jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
     )),
 }));
 
-jest.mock('../../rest/miscAPI', () => ({
-  searchData: jest.fn(),
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
 }));
 
 describe('AlertsUtil tests', () => {
@@ -227,18 +226,70 @@ describe('AlertsUtil tests', () => {
       'task'
     );
 
-    expect(resultTask).toHaveLength(2);
+    expect(resultTask).toHaveLength(3);
 
-    resultTask.map((result) =>
-      expect(
-        mockTaskInternalDestinationOptions.includes(
-          result.value as SubscriptionCategory
-        )
-      ).toBeTruthy()
+    const taskCategories = resultTask.map(
+      (result) => result.value as SubscriptionCategory
+    );
+
+    expect(taskCategories).toContain(SubscriptionCategory.Owners);
+    expect(taskCategories).toContain(SubscriptionCategory.Assignees);
+    expect(taskCategories).toContain(SubscriptionCategory.Mentions);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Followers);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Admins);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Users);
+    expect(taskCategories).not.toContain(SubscriptionCategory.Teams);
+  });
+
+  it('getFilteredDestinationOptions should return correct internal options for "conversation" source', () => {
+    const resultConversation = getFilteredDestinationOptions(
+      DESTINATION_DROPDOWN_TABS.internal,
+      'conversation'
+    );
+
+    expect(resultConversation).toHaveLength(2);
+
+    const conversationCategories = resultConversation.map(
+      (result) => result.value as SubscriptionCategory
+    );
+
+    expect(conversationCategories).toContain(SubscriptionCategory.Owners);
+    expect(conversationCategories).toContain(SubscriptionCategory.Mentions);
+    expect(conversationCategories).not.toContain(
+      SubscriptionCategory.Followers
+    );
+    expect(conversationCategories).not.toContain(SubscriptionCategory.Admins);
+    expect(conversationCategories).not.toContain(SubscriptionCategory.Users);
+    expect(conversationCategories).not.toContain(SubscriptionCategory.Teams);
+    expect(conversationCategories).not.toContain(
+      SubscriptionCategory.Assignees
     );
   });
 
-  it('getFilteredDestinationOptions should return correct internal options for non "task" source', () => {
+  it('getFilteredDestinationOptions should return correct internal options for "announcement" source', () => {
+    const resultAnnouncement = getFilteredDestinationOptions(
+      DESTINATION_DROPDOWN_TABS.internal,
+      'announcement'
+    );
+
+    expect(resultAnnouncement).toHaveLength(6);
+
+    const announcementCategories = resultAnnouncement.map(
+      (result) => result.value as SubscriptionCategory
+    );
+
+    expect(announcementCategories).toContain(SubscriptionCategory.Owners);
+    expect(announcementCategories).toContain(SubscriptionCategory.Followers);
+    expect(announcementCategories).toContain(SubscriptionCategory.Admins);
+    expect(announcementCategories).toContain(SubscriptionCategory.Users);
+    expect(announcementCategories).toContain(SubscriptionCategory.Teams);
+    expect(announcementCategories).toContain(SubscriptionCategory.Mentions);
+    expect(announcementCategories).not.toContain(
+      SubscriptionCategory.Assignees
+    );
+  });
+
+  it('getFilteredDestinationOptions should return correct internal options for default/other sources', () => {
     const resultContainer = getFilteredDestinationOptions(
       DESTINATION_DROPDOWN_TABS.internal,
       'container'
@@ -251,16 +302,17 @@ describe('AlertsUtil tests', () => {
     [resultContainer, resultTestSuite].forEach((results) => {
       expect(results).toHaveLength(5);
 
-      results.map((result) =>
-        expect(
-          mockNonTaskInternalDestinationOptions.includes(
-            result.value as Exclude<
-              SubscriptionCategory,
-              SubscriptionCategory.External | SubscriptionCategory.Assignees
-            >
-          )
-        ).toBeTruthy()
+      const defaultCategories = results.map(
+        (result) => result.value as SubscriptionCategory
       );
+
+      expect(defaultCategories).toContain(SubscriptionCategory.Owners);
+      expect(defaultCategories).toContain(SubscriptionCategory.Followers);
+      expect(defaultCategories).toContain(SubscriptionCategory.Admins);
+      expect(defaultCategories).toContain(SubscriptionCategory.Users);
+      expect(defaultCategories).toContain(SubscriptionCategory.Teams);
+      expect(defaultCategories).not.toContain(SubscriptionCategory.Assignees);
+      expect(defaultCategories).not.toContain(SubscriptionCategory.Mentions);
     });
   });
 });
@@ -275,15 +327,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'table_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'table_search_index',
+    });
   });
 
   it('should return correct fields for argumentType domainList', async () => {
@@ -295,15 +345,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'domain_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'domain_search_index',
+    });
   });
 
   it('should return correct fields for argumentType tableNameList', async () => {
@@ -320,15 +368,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'table_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'table_search_index',
+    });
   });
 
   it('should return correct fields for argumentType ownerNameList', async () => {
@@ -345,15 +391,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      'isBot:false',
-      '',
-      '',
-      ['team_search_index', 'user_search_index']
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: getTermQuery({ isBot: 'false' }),
+      searchIndex: ['team_search_index', 'user_search_index'],
+    });
   });
 
   it('should return correct fields for argumentType updateByUserList', async () => {
@@ -370,15 +414,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'user_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'user_search_index',
+    });
   });
 
   it('should return correct fields for argumentType userList', async () => {
@@ -390,15 +432,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      'isBot:false',
-      '',
-      '',
-      'user_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: getTermQuery({ isBot: 'false' }),
+      searchIndex: 'user_search_index',
+    });
   });
 
   it('should return correct fields for argumentType eventTypeList', async () => {
@@ -505,15 +545,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'test_suite_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'test_suite_search_index',
+    });
   });
 
   it('should not return select component for random argumentType', () => {

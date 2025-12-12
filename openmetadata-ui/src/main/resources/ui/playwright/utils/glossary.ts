@@ -204,7 +204,7 @@ export const addTeamAsReviewer = async (
   isSelectableInsideForm = false
 ) => {
   const teamsResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index&deleted=false&sort_field=displayName.keyword&sort_order=asc'
+    '/api/v1/search/query?q=&index=team_search_index&from=0&size=*&sort_field=displayName.keyword&sort_order=asc'
   );
 
   const teamsSearchResponse = page.waitForResponse(
@@ -343,7 +343,8 @@ export const verifyGlossaryDetails = async (
         page
           .getByTestId('glossary-right-panel-owner-link')
           .getByTestId('owner-label')
-      ).toContainText(owner.name);
+          .getByTestId(owner.name)
+      ).toBeVisible();
     }
   }
 
@@ -770,7 +771,7 @@ export const addAssetToGlossaryTerm = async (
 ) => {
   if (!hasExistingAssets) {
     await page.waitForSelector(
-      'text=Adding a new Asset is easy, just give it a spin!'
+      "text=Looks like you haven't added any data assets yet."
     );
   }
 
@@ -808,7 +809,6 @@ export const addAssetToGlossaryTerm = async (
   }
 
   await page.click('[data-testid="save-btn"]');
-  await checkAssetsCount(page, assets.length);
 };
 
 export const updateNameForGlossaryTerm = async (
@@ -1596,7 +1596,7 @@ export const checkGlossaryTermDetails = async (
 };
 
 export const setupGlossaryDenyPermissionTest = async (
-  apiContext: any,
+  apiContext: APIRequestContext,
   isGlossary?: boolean
 ) => {
   // Create all necessary resources

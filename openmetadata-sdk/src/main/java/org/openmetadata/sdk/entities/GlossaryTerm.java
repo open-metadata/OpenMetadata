@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
@@ -28,33 +27,7 @@ public class GlossaryTerm {
   // Static CRUD methods
   public static org.openmetadata.schema.entity.data.GlossaryTerm create(
       CreateGlossaryTerm request) {
-    // Convert CreateGlossaryTerm to GlossaryTerm
-    org.openmetadata.schema.entity.data.GlossaryTerm entity =
-        new org.openmetadata.schema.entity.data.GlossaryTerm();
-    entity.setName(request.getName());
-    if (request.getDisplayName() != null) {
-      entity.setDisplayName(request.getDisplayName());
-    }
-    if (request.getDescription() != null) {
-      entity.setDescription(request.getDescription());
-    }
-    if (request.getGlossary() != null) {
-      entity.setGlossary(
-          new EntityReference().withFullyQualifiedName(request.getGlossary()).withType("glossary"));
-    }
-    if (request.getParent() != null) {
-      entity.setParent(
-          new EntityReference()
-              .withFullyQualifiedName(request.getParent())
-              .withType("glossaryTerm"));
-    }
-    if (request.getOwners() != null) {
-      entity.setOwners(request.getOwners());
-    }
-    if (request.getTags() != null) {
-      entity.setTags(request.getTags());
-    }
-    return getClient().glossaryTerms().create(entity);
+    return getClient().glossaryTerms().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.GlossaryTerm retrieve(String id) {

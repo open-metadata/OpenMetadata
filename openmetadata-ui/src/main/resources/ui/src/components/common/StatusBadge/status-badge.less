@@ -27,7 +27,12 @@
   &.success {
     color: @green-10;
     background-color: @green-9;
-    border-color: @green-10;
+    border: 1px solid #ffffff;
+    font-weight: 500;
+    font-size: 12px;
+    line-height: 20px;
+    border-radius: @border-rad-md;
+    padding: @padding-xss @padding-xs;
   }
 
   &.stopped,
@@ -35,16 +40,48 @@
   &.failed {
     color: @red-10;
     background-color: @red-9;
-    border-color: @red-10;
+    font-weight: 500;
+    font-size: 12px;
+    line-height: 20px;
+    border: 1px solid #ffffff;
+    border-radius: @border-rad-md;
+    padding: @padding-xss @padding-xs;
   }
 
-  &.pending,
-  &.aborted {
+  &.warning,
+  &.pending {
     color: @yellow-11;
     background-color: @yellow-10;
-    border-color: @yellow-11;
+    border-color: @white;
   }
 
+  &.aborted {
+    color: #a84c3d;
+    background-color: @alert-warning-bg;
+    font-weight: 500;
+    font-size: 12px;
+    line-height: 20px;
+    border: 1px solid #ffffff;
+    border-radius: @border-rad-md;
+    padding: @padding-xss @padding-xs;
+  }
+
+  &.no-data {
+    color: @grey-400;
+    background-color: @grey-9;
+    border-radius: @border-rad-md;
+    padding: @padding-xss @padding-xs;
+    border: 1px solid #ffffff;
+    font-weight: 500;
+    font-size: 12px;
+    line-height: 20px;
+  }
+
+  &.acknowledged {
+    color: @blue-3;
+    background-color: @blue-1;
+    border-color: @white;
+  }
   &.running {
     color: @primary-heading-color;
     background-color: @primary-button-background;
@@ -53,9 +90,9 @@
 
   &.started,
   &.inReview {
-    color: @blue-21;
-    background-color: @blue-22;
-    border-color: @blue-21;
+    color: @purple-2;
+    background-color: @purple-1;
+    border-color: @white;
   }
 
   &.deprecated {

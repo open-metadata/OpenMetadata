@@ -45,7 +45,7 @@ public class PipelineMockTest {
     expectedPipeline.setFullyQualifiedName("airflow.etl_pipeline");
     expectedPipeline.setDisplayName("ETL Pipeline");
 
-    when(mockPipelineService.create(any(Pipeline.class))).thenReturn(expectedPipeline);
+    when(mockPipelineService.create(any(CreatePipeline.class))).thenReturn(expectedPipeline);
 
     // Act
     Pipeline result = org.openmetadata.sdk.entities.Pipeline.create(createRequest);
@@ -55,7 +55,7 @@ public class PipelineMockTest {
     assertEquals("etl_pipeline", result.getName());
     assertEquals("ETL Pipeline", result.getDisplayName());
     assertEquals("airflow.etl_pipeline", result.getFullyQualifiedName());
-    verify(mockPipelineService).create(any(Pipeline.class));
+    verify(mockPipelineService).create(any(CreatePipeline.class));
   }
 
   @Test

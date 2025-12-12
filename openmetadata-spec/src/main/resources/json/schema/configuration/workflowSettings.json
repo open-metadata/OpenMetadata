@@ -33,6 +33,16 @@
           "type": "integer",
           "default": 1296000000,
           "description": "The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids jobs that takes too long to run being retried while running."
+        },
+        "asyncJobAcquisitionInterval": {
+          "type": "integer",
+          "default": 60000,
+          "description": "The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls how often Flowable polls for new jobs."
+        },
+        "timerJobAcquisitionInterval": {
+          "type": "integer",
+          "default": 60000,
+          "description": "The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls how often Flowable polls for scheduled jobs."
         }
       },
       "additionalProperties": false
@@ -44,6 +54,27 @@
           "type": "integer",
           "default": 7,
           "description": "Cleans the Workflow Task that were finished, after given number of days."
+        },
+        "batchSize": {
+          "type": "integer",
+          "default": 1000,
+          "description": "Batch size used when cleaning up Flowable History data"
+        },
+        "timeCycleConfig": {
+          "type": "string",
+          "default": "0 0 0 ? * 1",
+          "description": "Cron expression used by Flowable's history cleaning job (setHistoryCleaningTimeCycleConfig). For example: '0 0 1 * * ?' runs daily at 01:00, '0 * * ? * *' runs every minute (testing only)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "runTimeCleanUpConfiguration": {
+      "type": "object",
+      "properties": {
+        "batchSize": {
+          "type": "integer",
+          "default": 500,
+          "description": "Batch size used when cleaning up Flowable Run Time data"
         }
       },
       "additionalProperties": false
@@ -56,6 +87,10 @@
     },
     "historyCleanUpConfiguration": {
       "$ref": "#/definitions/historyCleanUpConfiguration",
+      "description": "Used to set up the History CleanUp Settings."
+    },
+    "runTimeCleanUpConfiguration": {
+      "$ref": "#/definitions/runTimeCleanUpConfiguration",
       "description": "Used to set up the History CleanUp Settings."
     }
   },

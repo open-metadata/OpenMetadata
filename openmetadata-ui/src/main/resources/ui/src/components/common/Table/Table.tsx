@@ -227,9 +227,7 @@ const Table = <T extends Record<string, unknown>>(
   }, [isCustomizeColumnEnable, rest.columns, rest.staticVisibleColumns]);
 
   useEffect(() => {
-    if (!isCustomizeColumnEnable) {
-      setPropsColumns(rest.columns ?? []);
-    } else {
+    if (isCustomizeColumnEnable) {
       const filteredColumns = (rest.columns ?? []).filter(
         (item) =>
           columnDropdownSelections.includes(item.key as string) ||
@@ -237,6 +235,8 @@ const Table = <T extends Record<string, unknown>>(
       );
 
       setPropsColumns(getReorderedColumns(dropdownColumnList, filteredColumns));
+    } else {
+      setPropsColumns(rest.columns ?? []);
     }
   }, [
     isCustomizeColumnEnable,
@@ -273,8 +273,8 @@ const Table = <T extends Record<string, unknown>>(
                 {...searchProps}
                 removeMargin
                 placeholder={searchProps?.placeholder ?? t('label.search')}
-                searchValue={searchProps?.value}
-                typingInterval={searchProps?.searchDebounceTime ?? 500}
+                searchValue={searchProps?.searchValue}
+                typingInterval={searchProps?.typingInterval ?? 500}
                 onSearch={handleSearchAction}
               />
             </Col>
@@ -289,7 +289,7 @@ const Table = <T extends Record<string, unknown>>(
               {rest.extraTableFilters}
               {isCustomizeColumnEnable && (
                 <Dropdown
-                  className="custom-column-dropdown-menu text-primary"
+                  className="custom-column-dropdown-menu"
                   menu={menu}
                   open={isDropdownVisible}
                   placement="bottomRight"

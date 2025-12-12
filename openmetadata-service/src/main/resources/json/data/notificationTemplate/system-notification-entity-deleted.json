@@ -1,9 +1,0 @@
-{
-  "name": "system-notification-entity-deleted",
-  "fullyQualifiedName": "system-notification-entity-deleted",
-  "displayName": "Entity Deleted Notification",
-  "description": "System default template for entity permanent deletion notifications",
-  "provider": "system",
-  "templateSubject": "{{entity.entityType}} {{entity.name}} deleted",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}[{{publisherName}}] <b>{{event.userName}}</b> deleted {{entity.entityType}} {{entity.fullyQualifiedName}}{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
-}

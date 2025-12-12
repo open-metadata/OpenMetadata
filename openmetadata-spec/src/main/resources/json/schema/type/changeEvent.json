@@ -45,6 +45,10 @@
       "description": "Name of the user whose activity resulted in the change.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../type/basic.json#/definitions/impersonatedBy"
+    },
     "timestamp": {
       "description": "Timestamp when the change was made in Unix epoch time milliseconds.",
       "$ref": "basic.json#/definitions/timestamp"

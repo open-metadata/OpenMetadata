@@ -25,23 +25,7 @@ public class Pipeline extends org.openmetadata.schema.entity.data.Pipeline {
 
   // Static CRUD methods - Stripe style
   public static org.openmetadata.schema.entity.data.Pipeline create(CreatePipeline request) {
-    // Convert CreatePipeline to Pipeline entity
-    org.openmetadata.schema.entity.data.Pipeline pipeline =
-        new org.openmetadata.schema.entity.data.Pipeline();
-    pipeline.setName(request.getName());
-    pipeline.setDisplayName(request.getDisplayName());
-    pipeline.setDescription(request.getDescription());
-    pipeline.setOwners(request.getOwners());
-    pipeline.setTasks(request.getTasks());
-    pipeline.setStartDate(request.getStartDate());
-    pipeline.setConcurrency(request.getConcurrency());
-    pipeline.setPipelineLocation(request.getPipelineLocation());
-    pipeline.setExtension(request.getExtension());
-    pipeline.setSourceHash(request.getSourceHash());
-    pipeline.setLifeCycle(request.getLifeCycle());
-    pipeline.setSourceUrl(request.getSourceUrl());
-
-    return (org.openmetadata.schema.entity.data.Pipeline) getClient().pipelines().create(pipeline);
+    return getClient().pipelines().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.Pipeline retrieve(String id) {

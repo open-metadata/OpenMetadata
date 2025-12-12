@@ -56,7 +56,8 @@ public class DatabaseServiceMockTest {
     expectedService.setServiceType(CreateDatabaseService.DatabaseServiceType.Mysql);
     expectedService.setConnection(connection);
 
-    when(mockDatabaseServiceApi.create(any(DatabaseService.class))).thenReturn(expectedService);
+    when(mockDatabaseServiceApi.create(any(CreateDatabaseService.class)))
+        .thenReturn(expectedService);
 
     // Act
     DatabaseService result = org.openmetadata.sdk.entities.DatabaseService.create(createRequest);
@@ -65,7 +66,7 @@ public class DatabaseServiceMockTest {
     assertNotNull(result);
     assertEquals("test_mysql_service", result.getName());
     assertEquals(CreateDatabaseService.DatabaseServiceType.Mysql, result.getServiceType());
-    verify(mockDatabaseServiceApi).create(any(DatabaseService.class));
+    verify(mockDatabaseServiceApi).create(any(CreateDatabaseService.class));
   }
 
   @Test

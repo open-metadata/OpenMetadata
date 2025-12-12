@@ -49,7 +49,7 @@ public class ContainerMockTest {
     expectedContainer.setFullyQualifiedName("s3.data-lake-bucket");
     expectedContainer.setDisplayName("Data Lake Bucket");
 
-    when(mockContainerService.create(any(Container.class))).thenReturn(expectedContainer);
+    when(mockContainerService.create(any(CreateContainer.class))).thenReturn(expectedContainer);
 
     // Act
     Container result = org.openmetadata.sdk.entities.Container.create(createRequest);
@@ -58,7 +58,7 @@ public class ContainerMockTest {
     assertNotNull(result);
     assertEquals("data-lake-bucket", result.getName());
     assertEquals("Data Lake Bucket", result.getDisplayName());
-    verify(mockContainerService).create(any(Container.class));
+    verify(mockContainerService).create(any(CreateContainer.class));
   }
 
   @Test

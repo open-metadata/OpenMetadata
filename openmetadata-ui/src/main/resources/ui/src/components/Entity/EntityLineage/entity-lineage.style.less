@@ -50,8 +50,24 @@
 }
 
 .data-quality-failed-custom-node-header {
+  .custom-node-header-column-tracing {
+    border-color: @red-14;
+    color: @red-20;
+    .custom-node-column-label {
+      color: inherit;
+    }
+    .profiler-item {
+      color: black;
+    }
+  }
+}
+
+.data-quality-failed-custom-node-header {
   &.custom-node-header-normal {
     border: 1px solid @red-3;
+    .lineage-node-badge-container {
+      border-color: @red-3;
+    }
   }
 
   .react-flow__handle {
@@ -77,7 +93,7 @@
 
 .custom-node-column-lineage {
   background: @background-primary;
-  border: 1px solid;
+  border: 10px solid;
   border-radius: 4px;
 
   .custom-node-column-lineage-body {
@@ -88,7 +104,6 @@
 
     .custom-node-column-container {
       padding: 4px;
-      border-radius: 4px;
       position: relative;
     }
   }
@@ -242,12 +257,11 @@
 }
 
 .lineage-root {
-  border-radius: @border-rad-sm;
-  border: 1px solid @grey-15;
   position: relative;
+  height: 100%;
 
   .entity-panel-container {
-    right: 80px;
+    right: 16px;
     margin-top: 12px;
 
     .ant-drawer-content-wrapper {
@@ -278,25 +292,24 @@
   top: @om-navbar-height;
   left: @sidebar-width;
   width: calc(100% - @sidebar-width);
-  height: calc(100vh - @om-navbar-height);
 
   &.sidebar-collapsed {
-    left: calc(72px + @padding-md);
+    left: calc(72px + @padding-mlg);
     width: calc(100% - 72px - @size-xl);
   }
 
   &.sidebar-expanded {
-    left: calc(228px + @padding-md);
+    left: calc(228px + @padding-mlg);
     width: calc(100% - 228px - @size-xl);
   }
 
   .lineage-card {
     .ant-card-body {
-      height: calc(
-        100vh - @om-navbar-height - 120px;
-      ); // 120px for card header and breadcrumb
+      // Navbar - breadcrumb
+      height: calc(100vh - @om-navbar-height - 140px);
+      // 120px for card header and breadcrumb + bottom padding 20px
+      overflow-y: auto;
     }
-    overflow-y: scroll;
   }
 
   .entity-panel-container {
@@ -445,12 +458,23 @@
   animation: blink-red 1s infinite;
 }
 
-.react-flow__panel.left.bottom,
-.react-flow__panel.right.bottom {
-  bottom: 24px;
+.react-flow__panel.left {
+  &.edit-mode {
+    left: @lineage-sidebar-width;
+  }
+}
+.react-flow__panel.right {
+  right: 24px;
+}
+
+.react-flow__panel {
+  margin: 16px !important;
 }
 
 .react-flow__minimap {
+  &.bottom.right {
+    bottom: 60px;
+  }
   height: 150px;
   border: 1px solid @border-color;
   border-radius: 10px;

@@ -1,0 +1,185 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+.edit-icon {
+  cursor: pointer;
+  height: 20px;
+}
+.tags-section {
+  border-bottom: 0.6px solid @grey-15;
+  padding-bottom: 16px;
+  .tags-header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-left: 14px;
+    padding-right: 14px;
+
+    .tags-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: @grey-900;
+    }
+  }
+
+  .tags-content {
+    padding-left: 14px;
+    padding-right: 14px;
+
+    .tag-selector-display {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      cursor: pointer;
+
+      .selected-tags-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+
+        .selected-tag-chip {
+          background-color: @blue-29;
+          border: 1px solid @blue-30;
+          border-radius: 8px;
+          padding: 5px 6px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          height: 26px;
+          .tag-icon {
+            height: 12px;
+            width: 12px;
+            flex-shrink: 0;
+          }
+
+          .tag-name {
+            font-weight: 400;
+            font-size: 12px;
+            color: @tag-text;
+          }
+        }
+      }
+    }
+
+    .tags-display {
+      .tags-list {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        .tag-item {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 6px;
+          height: 26px;
+          border-radius: 8px;
+          background-color: @blue-29;
+          border: 1px solid @blue-30;
+          min-width: 0;
+
+          .tag-icon {
+            height: 12px;
+            width: 12px;
+            flex-shrink: 0;
+          }
+
+          .tag-name {
+            font-size: 12px;
+            font-weight: 400;
+            color: @tag-text;
+            text-overflow: ellipsis;
+          }
+        }
+
+        .show-more-tags-button {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0;
+          height: auto;
+          width: 100%;
+          background-color: transparent;
+          border: none;
+          color: @primary-7;
+          font-size: 12px;
+          font-weight: 400;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover {
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+          }
+        }
+      }
+    }
+
+    .no-data-placeholder {
+      color: @grey-500;
+      font-size: 12px;
+    }
+  }
+}
+
+.tags-select-container {
+  min-width: 450px;
+  width: 100%;
+
+  .tag-selector {
+    width: 100%;
+  }
+}
+
+.dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: @grey-100;
+  }
+
+  .dropdown-item-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .dropdown-item-name {
+      font-size: 14px;
+      color: @grey-11;
+    }
+  }
+}
+.tag-select-popover {
+  padding-bottom: 0;
+  width: 285px;
+  .ant-popover-inner {
+    border-radius: 16px;
+  }
+  .ant-list-sm .ant-list-item {
+    padding: 8px 12px;
+    align-items: center;
+  }
+  .ant-popover-inner-content {
+    padding: 8px 12px;
+    padding-bottom: 0;
+  }
+}

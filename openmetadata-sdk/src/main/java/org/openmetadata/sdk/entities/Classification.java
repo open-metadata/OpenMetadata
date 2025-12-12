@@ -27,17 +27,7 @@ public class Classification {
   // Static CRUD methods
   public static org.openmetadata.schema.entity.classification.Classification create(
       CreateClassification request) {
-    // Convert CreateClassification to Classification
-    org.openmetadata.schema.entity.classification.Classification entity =
-        new org.openmetadata.schema.entity.classification.Classification();
-    entity.setName(request.getName());
-    if (request.getDisplayName() != null) {
-      entity.setDisplayName(request.getDisplayName());
-    }
-    if (request.getDescription() != null) {
-      entity.setDescription(request.getDescription());
-    }
-    return getClient().classifications().create(entity);
+    return getClient().classifications().create(request);
   }
 
   public static org.openmetadata.schema.entity.classification.Classification retrieve(String id) {

@@ -35,6 +35,11 @@ export interface AuthenticationConfiguration {
      */
     enableSelfSignup?: boolean;
     /**
+     * Force secure flag on session cookies even when not using HTTPS directly. Enable this when
+     * running behind a proxy/load balancer that handles SSL termination.
+     */
+    forceSecureSessionCookie?: boolean;
+    /**
      * Jwt Principal Claim
      */
     jwtPrincipalClaims: string[];

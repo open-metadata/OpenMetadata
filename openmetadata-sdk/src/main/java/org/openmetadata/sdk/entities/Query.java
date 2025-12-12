@@ -25,20 +25,7 @@ public class Query extends org.openmetadata.schema.entity.data.Query {
 
   // Static CRUD methods - Stripe style
   public static org.openmetadata.schema.entity.data.Query create(CreateQuery request) {
-    // Convert CreateQuery to Query entity
-    org.openmetadata.schema.entity.data.Query query =
-        new org.openmetadata.schema.entity.data.Query();
-    query.setName(request.getName());
-    query.setDisplayName(request.getDisplayName());
-    query.setDescription(request.getDescription());
-    query.setOwners(request.getOwners());
-    query.setQuery(request.getQuery());
-    query.setQueryType(request.getQueryType());
-    query.setQueryDate(request.getQueryDate());
-    query.setDuration(request.getDuration());
-    query.setQueryUsedIn(request.getQueryUsedIn());
-
-    return (org.openmetadata.schema.entity.data.Query) getClient().queries().create(query);
+    return getClient().queries().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.Query retrieve(String id) {

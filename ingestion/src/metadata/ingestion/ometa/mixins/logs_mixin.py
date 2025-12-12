@@ -86,25 +86,26 @@ class OMetaLogsMixin:
                 log_batch["compressed"] = True
 
             # Send logs using the existing client
-            response = self.client.post(
+            self.client.post(
                 url,
                 data=json.dumps(log_batch),
             )
 
-            # The REST client returns None for successful requests with empty response body (HTTP 200 with no content)
-            # It also returns None on errors, but those are caught by the exception handler
-            # Since we're not in the exception handler, None here means successful upload with empty response
-            if response is None or response:
-                logger.debug(
-                    f"Successfully sent {log_batch['lineCount']} log lines for pipeline {pipeline_fqn}"
-                )
-                return True
-
-            logger.warning(f"Unexpected response from log upload: {response}")
-            return False
+            # The REST client returns None for successful requests with empty response body (HTTP 200/201/204)
+            # If we reach this point without an exception, the request was successful
+            logger.debug(
+                f"Successfully sent {log_batch['lineCount']} log lines for pipeline {pipeline_fqn}"
+            )
+            return True
 
         except Exception as e:
-            logger.error(f"Failed to send logs to S3 for pipeline {pipeline_fqn}: {e}")
+            line_count = log_content.count("\n") + 1
+            logger.error(
+                f"Failed to send logs to S3 for pipeline {pipeline_fqn}: {e}. "
+                f"Log batch size: {len(log_content)} chars, "
+                f"Lines: {line_count}, "
+                f"Compressed: {log_batch.get('compressed', False)}"
+            )
             return False
 
     def send_logs_batch(
@@ -113,102 +114,95 @@ class OMetaLogsMixin:
         run_id: UUID,
         log_content: str,
         enable_compression: bool = False,
+        max_retries: int = 3,
     ) -> dict:
         """
-        Send logs batch to S3 storage, handling both new and legacy approaches.
-
-        This method consolidates all log sending logic, including fallback
-        for backward compatibility.
+        Send logs batch to S3 storage via OpenMetadata server endpoint with retry logic.
 
         Args:
             pipeline_fqn: Fully qualified name of the ingestion pipeline
             run_id: Unique identifier for the pipeline run
             log_content: The log content to send
             enable_compression: Whether to compress logs before sending
+            max_retries: Maximum number of retry attempts
 
         Returns:
             dict: Metrics including lines sent and bytes sent
-
-        Raises:
-            Exception: If logs cannot be sent via any method
         """
         metrics = {"logs_sent": 0, "bytes_sent": 0}
 
-        try:
-            success = self.send_logs_to_s3(
-                pipeline_fqn=pipeline_fqn,
-                run_id=run_id,
-                log_content=log_content,
-                compress=enable_compression and len(log_content) > 10240,
-            )
+        for attempt in range(max_retries + 1):
+            try:
+                success = self.send_logs_to_s3(
+                    pipeline_fqn=pipeline_fqn,
+                    run_id=run_id,
+                    log_content=log_content,
+                    compress=enable_compression and len(log_content) > 10240,
+                )
 
-            if success:
-                # Update metrics
-                line_count = log_content.count("\n") + 1
-                metrics["logs_sent"] = line_count
-                metrics["bytes_sent"] = len(log_content)
+                if success:
+                    # Update metrics
+                    line_count = log_content.count("\n") + 1
+                    metrics["logs_sent"] = line_count
+                    metrics["bytes_sent"] = len(log_content)
 
-                logger.debug(f"Successfully shipped {line_count} log lines to server")
-                return metrics
+                    if attempt > 0:
+                        logger.info(
+                            f"Successfully shipped {line_count} log lines to server on attempt {attempt + 1}"
+                        )
+                    else:
+                        logger.debug(
+                            f"Successfully shipped {line_count} log lines to server"
+                        )
+                    return metrics
+                else:
+                    if attempt < max_retries:
+                        wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
+                        logger.warning(
+                            f"Failed to send logs for pipeline {pipeline_fqn}, "
+                            f"attempt {attempt + 1}/{max_retries + 1}. Retrying in {wait_time}s..."
+                        )
+                        time.sleep(wait_time)
+                    else:
+                        logger.error(
+                            f"Failed to send logs for pipeline {pipeline_fqn} after {max_retries + 1} attempts"
+                        )
 
-            # If send_logs_to_s3 fails, try fallback method
-            logger.warning("Primary log shipping failed, trying fallback method")
+            except Exception as e:
+                if attempt < max_retries:
+                    wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(
+                        f"Error sending logs batch for pipeline {pipeline_fqn}: {e}. "
+                        f"Attempt {attempt + 1}/{max_retries + 1}. Retrying in {wait_time}s..."
+                    )
+                    time.sleep(wait_time)
+                else:
+                    logger.error(
+                        f"Failed to send logs batch for pipeline {pipeline_fqn} after {max_retries + 1} attempts: {e}"
+                    )
 
-            # Build payload
-            log_batch = {
-                "logs": log_content,
-                "timestamp": int(time.time() * 1000),
-                "connectorId": f"{socket.gethostname()}-{os.getpid()}",
-                "compressed": False,
-                "lineCount": log_content.count("\n") + 1,
-            }
-
-            if enable_compression and len(log_content) > 10240:
-                compressed_data = gzip.compress(log_content.encode(UTF_8))
-                log_batch["logs"] = base64.b64encode(compressed_data).decode(UTF_8)
-                log_batch["compressed"] = True
-
-            # Use the metadata client's REST interface directly
-            self.client.post(
-                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}",
-                data=json.dumps(log_batch),
-            )
-
-            # Update metrics
-            metrics["logs_sent"] = log_batch["lineCount"]
-            metrics["bytes_sent"] = len(json.dumps(log_batch))
-
-            logger.debug(
-                f"Successfully shipped {log_batch['lineCount']} log lines to server"
-            )
-            return metrics
-
-        except Exception as e:
-            logger.error(f"Failed to send logs batch for pipeline {pipeline_fqn}: {e}")
         return metrics
 
     def create_log_stream(
         self,
         pipeline_fqn: str,
         run_id: UUID,
-    ) -> Optional[str]:
+    ) -> None:
         """
         Initialize a log stream for a pipeline run.
 
-        This method can be used to set up a log stream session with the server,
-        potentially getting a session ID or token for subsequent log shipments.
+        This method can be used to set up a log stream session with the server.
 
         Args:
             pipeline_fqn: Fully qualified name of the ingestion pipeline
             run_id: Unique identifier for the pipeline run
-
-        Returns:
-            Optional[str]: Stream session ID if applicable, None otherwise
         """
         try:
 
             # Initialize log stream with the server
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}/init"
+            url = (
+                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            )
 
             init_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
@@ -220,23 +214,15 @@ class OMetaLogsMixin:
                 data=json.dumps(init_data),
             )
 
-            # Return session ID if provided by the server
-            if response and isinstance(response, dict):
-                return response.get("sessionId")
-
-            return None
-
         except Exception as e:
             logger.warning(
                 f"Failed to initialize log stream for pipeline {pipeline_fqn}: {e}"
             )
-            return None
 
     def close_log_stream(
         self,
         pipeline_fqn: str,
         run_id: UUID,
-        session_id: Optional[str] = None,
     ) -> bool:
         """
         Close a log stream for a pipeline run.
@@ -247,7 +233,6 @@ class OMetaLogsMixin:
         Args:
             pipeline_fqn: Fully qualified name of the ingestion pipeline
             run_id: Unique identifier for the pipeline run
-            session_id: Optional session ID from create_log_stream
 
         Returns:
             bool: True if stream was closed successfully, False otherwise
@@ -260,9 +245,6 @@ class OMetaLogsMixin:
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
                 "timestamp": int(time.time() * 1000),
             }
-
-            if session_id:
-                close_data["sessionId"] = session_id
 
             self.client.post(
                 url,

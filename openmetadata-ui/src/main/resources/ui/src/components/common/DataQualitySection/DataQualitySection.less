@@ -1,0 +1,269 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+.data-quality-stats-container {
+  display: flex;
+  margin-bottom: 10px;
+  margin-right: 16px;
+  border-radius: 8px;
+  border: 1px solid @grey-15;
+  position: static;
+  top: 48px; // stick below the sticky tabs header
+  z-index: 2;
+  background: @white;
+  .data-quality-stat-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+
+    // Button reset styles for accessibility
+    background: none;
+    padding: 0;
+    font: inherit;
+    text-align: inherit;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+
+    .stat-count {
+      font-size: 13px;
+      font-weight: 600;
+      color: @grey-600;
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      font-weight: 400;
+      display: block;
+      color: @grey-600;
+    }
+
+    &.success-card {
+      &:hover {
+        .stat-count.success {
+          color: @green-10;
+          font-weight: 600;
+        }
+
+        .stat-label.success {
+          color: @green-10;
+        }
+      }
+      &.active {
+        background-color: @green-9;
+        border-radius: 6px;
+        .stat-count.success {
+          color: @green-10;
+          font-weight: 600;
+        }
+
+        .stat-label.success {
+          color: @green-10;
+        }
+      }
+    }
+
+    &.aborted-card {
+      &:hover {
+        .stat-count.aborted {
+          color: @yellow-11;
+          font-weight: 600;
+        }
+
+        .stat-label.aborted {
+          color: @yellow-11;
+        }
+      }
+      &.active {
+        background-color: @yellow-10;
+        border-radius: 6px;
+        .stat-count.aborted {
+          color: @yellow-11;
+          font-weight: 600;
+        }
+
+        .stat-label.aborted {
+          color: @yellow-11;
+        }
+      }
+    }
+
+    &.failed-card {
+      &:hover {
+        .stat-count.failed {
+          color: @red-10;
+          font-weight: 600;
+        }
+
+        .stat-label.failed {
+          color: @red-10;
+        }
+      }
+      &.active {
+        background-color: @red-9;
+        border-radius: 6px;
+        .stat-count.failed {
+          color: @red-10;
+          font-weight: 600;
+        }
+
+        .stat-label.failed {
+          color: @red-10;
+        }
+      }
+    }
+  }
+  .no-data-placeholder {
+    color: @grey-500;
+    font-size: 12px !important;
+  }
+}
+.tab-header-container {
+  gap: 4px;
+  display: flex;
+  align-items: center;
+  color: @grey-700;
+  &.active {
+    color: @primary-6;
+  }
+}
+.data-quality-tab-count {
+  background-color: @grey-9;
+  border: 1px solid @grey-15;
+  padding: 0px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  &.active {
+    background-color: @primary-6 !important;
+    border-color: @primary-6 !important;
+    color: @white !important;
+  }
+}
+
+.data-quality-badge {
+  border-radius: 6px;
+  padding: 0px;
+  width: 20px;
+  display: flex;
+  text-align: center;
+  margin-left: 8px;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid @grey-38;
+  background-color: @grey-9;
+}
+.data-quality-badge-text {
+  color: @grey-700;
+  font-size: 10px;
+  font-weight: 500;
+}
+.divider-color {
+  &.success {
+    border-color: @green-500;
+  }
+  &.aborted {
+    border-color: @alert-warning;
+  }
+  &.failed {
+    border-color: @red-15;
+  }
+}
+.data-quality-content {
+  .data-quality-header {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .data-quality-progress {
+    margin-bottom: 12px;
+
+    .data-quality-progress-segments {
+      display: flex;
+      height: 12px;
+      overflow: hidden;
+      background-color: @light-border-color;
+      border-radius: 2px;
+      .progress-segment {
+        height: 100%;
+        transition: width 0.3s ease;
+
+        &.success {
+          background-color: @green-500;
+        }
+
+        &.aborted {
+          background-color: @orange-8;
+          margin-left: 1px;
+          margin-right: 1px;
+        }
+
+        &.failed {
+          background-color: @red-22;
+        }
+      }
+    }
+  }
+
+  .data-quality-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      .legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+
+        &.success {
+          background-color: @green-500;
+        }
+
+        &.aborted {
+          background-color: @orange-8;
+        }
+
+        &.failed {
+          background-color: @red-22;
+        }
+      }
+
+      .legend-text {
+        font-weight: 500;
+      }
+      .legend-text-label {
+        color: @grey-700;
+        font-size: 13px;
+      }
+      .legend-text-value {
+        color: @grey-900;
+        font-size: 13px;
+      }
+    }
+  }
+}

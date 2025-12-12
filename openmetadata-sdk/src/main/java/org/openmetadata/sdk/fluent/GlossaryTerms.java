@@ -4,6 +4,7 @@ import java.util.*;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.collections.GlossaryTermCollection;
 
@@ -324,6 +325,12 @@ public final class GlossaryTerms {
 
     public FluentGlossaryTerm withDisplayName(String displayName) {
       glossaryTerm.setDisplayName(displayName);
+      modified = true;
+      return this;
+    }
+
+    public FluentGlossaryTerm withTags(List<TagLabel> tags) {
+      glossaryTerm.setTags(tags);
       modified = true;
       return this;
     }
