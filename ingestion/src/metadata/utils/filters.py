@@ -398,3 +398,18 @@ def filter_by_worksheet(
     :return: True for filtering, False otherwise
     """
     return _filter(worksheet_filter_pattern, worksheet_name)
+
+
+def filter_by_api_endpoint(
+    api_endpoint_filter_pattern: Optional[FilterPattern], api_endpoint_name: str
+) -> bool:
+    """
+    Return True if the API endpoint needs to be filtered, False otherwise
+
+    Include takes precedence over exclude
+
+    :param api_endpoint_filter_pattern: Model defining API endpoint filtering logic
+    :param api_endpoint_name: API endpoint name
+    :return: True for filtering, False otherwise
+    """
+    return _filter(api_endpoint_filter_pattern, api_endpoint_name)
