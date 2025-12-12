@@ -84,12 +84,14 @@ public class AppRepository extends EntityRepository<App> {
         org.openmetadata.service.apps.ApplicationHandler handler =
             org.openmetadata.service.apps.ApplicationHandler.getInstance();
         if (handler != null) {
-          App encryptedApp = handler.appWithEncryptedAppConfiguration(
-              entity, Entity.getCollectionDAO(), Entity.getSearchRepository());
+          App encryptedApp =
+              handler.appWithEncryptedAppConfiguration(
+                  entity, Entity.getCollectionDAO(), Entity.getSearchRepository());
           entity.setAppConfiguration(encryptedApp.getAppConfiguration());
         }
       } catch (Exception e) {
-        LOG.debug("Could not encrypt app configuration for {}: {}", entity.getName(), e.getMessage());
+        LOG.debug(
+            "Could not encrypt app configuration for {}: {}", entity.getName(), e.getMessage());
       }
     }
   }

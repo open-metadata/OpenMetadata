@@ -48,10 +48,11 @@ import org.quartz.SchedulerException;
 @Getter
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
-    protected Set<String> getFieldsToEncryptDecrypt() {
-        return Set.of();
-    }
-    protected CollectionDAO collectionDAO;
+  protected Set<String> getFieldsToEncryptDecrypt() {
+    return Set.of();
+  }
+
+  protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
 
@@ -195,21 +196,20 @@ public class AbstractNativeApplication implements NativeApplication {
     return appConfig;
   }
 
-    protected void decryptEncrypt(Map<String, Object> configMap, boolean encrypt) {
-        if (configMap == null || configMap.isEmpty()) {
-            return;
-        }
-        Fernet instance = Fernet.getInstance();
-        Set<String> fieldsToProcess = getFieldsToEncryptDecrypt();
-        for (Map.Entry<String, Object> entry : configMap.entrySet()) {
-            if (fieldsToProcess.contains(entry.getKey())
-                    && entry.getValue() instanceof String value) {
-                String updatedValue =
-                        encrypt ? instance.encryptIfApplies(value) : instance.decryptIfApplies(value);
-                configMap.put(entry.getKey(), updatedValue);
-            }
-        }
+  protected void decryptEncrypt(Map<String, Object> configMap, boolean encrypt) {
+    if (configMap == null || configMap.isEmpty()) {
+      return;
     }
+    Fernet instance = Fernet.getInstance();
+    Set<String> fieldsToProcess = getFieldsToEncryptDecrypt();
+    for (Map.Entry<String, Object> entry : configMap.entrySet()) {
+      if (fieldsToProcess.contains(entry.getKey()) && entry.getValue() instanceof String value) {
+        String updatedValue =
+            encrypt ? instance.encryptIfApplies(value) : instance.decryptIfApplies(value);
+        configMap.put(entry.getKey(), updatedValue);
+      }
+    }
+  }
 
   private void updateAppConfig(
       IngestionPipelineRepository repository,
