@@ -73,6 +73,7 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.llm.OpenAIConnection;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
@@ -85,6 +86,7 @@ import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
 import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.LLMConnection;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.schema.type.PipelineConnection;
@@ -192,6 +194,13 @@ public final class TestUtils {
           .withConfig(
               new RestConnection()
                   .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json")));
+
+  public static final LLMConnection OPENAI_CONNECTION =
+      new LLMConnection()
+          .withConfig(
+              new OpenAIConnection()
+                  .withApiKey("test-api-key")
+                  .withBaseURL("https://api.openai.com/v1"));
 
   public static final MetadataConnection AMUNDSEN_CONNECTION =
       new MetadataConnection()
