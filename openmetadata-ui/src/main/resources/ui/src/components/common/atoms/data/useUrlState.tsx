@@ -142,7 +142,7 @@ export const useUrlState = (
   const setPageSize = useCallback(
     (size: number) => {
       const updates: Record<string, string | null> = {
-        [pageSizeKey]: size !== defaultPageSize ? size.toString() : null,
+        [pageSizeKey]: size === defaultPageSize ? null : size.toString(),
         [pageKey]: '1', // Reset to first page when changing page size
       };
       updateUrlParams(updates);

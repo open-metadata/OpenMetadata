@@ -101,9 +101,7 @@ export interface ColumnConfig<T> {
   key: string;
   labelKey: string;
   render: string;
-  getValue?: (
-    entity: T
-  ) => ReactNode | string | number | boolean | null | undefined;
+  getValue?: (entity: T) => ReactNode | string | number | null;
   customRenderer?: string;
 }
 
