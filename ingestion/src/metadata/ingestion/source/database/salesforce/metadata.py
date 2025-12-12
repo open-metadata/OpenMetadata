@@ -160,43 +160,53 @@ class SalesforceSource(DatabaseServiceSource):
         Fetches them up using the context information and
         the inspector set when preparing the db.
 
+        Priority:
+        1. sobjectNames (array) - if specified, iterate over these
+        2. sobjectName (single) - if specified
+        3. All objects from describe()
+
+        tableFilterPattern is applied in ALL cases.
+
         :return: tables or views, depending on config
         """
         schema_name = self.context.get().database_schema
 
         try:
-            if self.service_connection.sobjectName:
-                table_name = self.standardize_table_name(
-                    schema_name, self.service_connection.sobjectName
-                )
-                yield table_name, TableType.Regular
+            object_names: List[str] = []
+
+            if self.service_connection.sobjectNames:
+                object_names = list(self.service_connection.sobjectNames)
+            elif self.service_connection.sobjectName:
+                object_names = [self.service_connection.sobjectName]
             else:
                 for salesforce_object in self.client.describe()["sobjects"]:
-                    table_name = salesforce_object["name"]
-                    table_name = self.standardize_table_name(schema_name, table_name)
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=self.context.get().database_schema,
-                        table_name=table_name,
-                    )
-                    if filter_by_table(
-                        self.config.sourceConfig.config.tableFilterPattern,
-                        (
-                            table_fqn
-                            if self.config.sourceConfig.config.useFqnForFiltering
-                            else table_name
-                        ),
-                    ):
-                        self.status.filter(
-                            table_fqn,
-                            "Table Filtered Out",
-                        )
-                        continue
+                    object_names.append(salesforce_object["name"])
 
-                    yield table_name, TableType.Regular
+            for table_name in object_names:
+                table_name = self.standardize_table_name(schema_name, table_name)
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                    table_name=table_name,
+                )
+                if filter_by_table(
+                    self.config.sourceConfig.config.tableFilterPattern,
+                    (
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name
+                    ),
+                ):
+                    self.status.filter(
+                        table_fqn,
+                        "Table Filtered Out",
+                    )
+                    continue
+
+                yield table_name, TableType.Regular
         except Exception as exc:
             self.status.failed(
                 StackTraceError(

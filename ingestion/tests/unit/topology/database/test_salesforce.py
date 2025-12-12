@@ -102,6 +102,71 @@ mock_salesforce_oauth_config = {
     },
 }
 
+mock_salesforce_multi_objects_config = {
+    "source": {
+        "type": "salesforce",
+        "serviceName": "local_salesforce_multi",
+        "serviceConnection": {
+            "config": {
+                "type": "Salesforce",
+                "username": "username",
+                "password": "password",
+                "securityToken": "securityToken",
+                "sobjectNames": ["Contact", "Account", "Lead"],
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "DatabaseMetadata",
+            }
+        },
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {},
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "salesforce"},
+        }
+    },
+}
+
+mock_salesforce_both_fields_config = {
+    "source": {
+        "type": "salesforce",
+        "serviceName": "local_salesforce_both",
+        "serviceConnection": {
+            "config": {
+                "type": "Salesforce",
+                "username": "username",
+                "password": "password",
+                "securityToken": "securityToken",
+                "sobjectName": "SingleObject",
+                "sobjectNames": ["Contact", "Account"],
+            }
+        },
+        "sourceConfig": {
+            "config": {
+                "type": "DatabaseMetadata",
+            }
+        },
+    },
+    "sink": {
+        "type": "metadata-rest",
+        "config": {},
+    },
+    "workflowConfig": {
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {"jwtToken": "salesforce"},
+        }
+    },
+}
+
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="salesforce_source",
@@ -558,3 +623,47 @@ class SalesforceUnitTest(TestCase):
         self.assertTrue(self.salesforce_source.ssl_manager.ca_file_path)
         self.assertTrue(self.salesforce_source.ssl_manager.cert_file_path)
         self.assertTrue(self.salesforce_source.ssl_manager.key_file_path)
+
+    @patch(
+        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
+    )
+    @patch("simple_salesforce.api.Salesforce")
+    def test_sobject_names_config(self, salesforce, test_connection) -> None:
+        """Test that sobjectNames array is properly parsed from config"""
+        test_connection.return_value = False
+        config = OpenMetadataWorkflowConfig.model_validate(
+            mock_salesforce_multi_objects_config
+        )
+        salesforce_source = SalesforceSource.create(
+            mock_salesforce_multi_objects_config["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+        self.assertEqual(
+            salesforce_source.service_connection.sobjectNames,
+            ["Contact", "Account", "Lead"],
+        )
+
+    @patch(
+        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
+    )
+    @patch("simple_salesforce.api.Salesforce")
+    def test_sobject_names_priority_over_sobject_name(
+        self, salesforce, test_connection
+    ) -> None:
+        """Test that sobjectNames takes priority over sobjectName when both are set"""
+        test_connection.return_value = False
+        config = OpenMetadataWorkflowConfig.model_validate(
+            mock_salesforce_both_fields_config
+        )
+        salesforce_source = SalesforceSource.create(
+            mock_salesforce_both_fields_config["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+        self.assertEqual(
+            salesforce_source.service_connection.sobjectNames,
+            ["Contact", "Account"],
+        )
+        self.assertEqual(
+            salesforce_source.service_connection.sobjectName,
+            "SingleObject",
+        )
