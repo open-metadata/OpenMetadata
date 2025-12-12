@@ -34,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -47,7 +48,10 @@ import org.quartz.SchedulerException;
 @Getter
 @Slf4j
 public class AbstractNativeApplication implements NativeApplication {
-  protected CollectionDAO collectionDAO;
+    protected Set<String> getFieldsToEncryptDecrypt() {
+        return Set.of();
+    }
+    protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
 
@@ -187,18 +191,37 @@ public class AbstractNativeApplication implements NativeApplication {
     return appConfig;
   }
 
+  protected Map<String, Object> encryptConfiguration(Map<String, Object> appConfig) {
+    return appConfig;
+  }
+
+    protected void decryptEncrypt(Map<String, Object> configMap, boolean encrypt) {
+        if (configMap == null || configMap.isEmpty()) {
+            return;
+        }
+        Fernet instance = Fernet.getInstance();
+        Set<String> fieldsToProcess = getFieldsToEncryptDecrypt();
+        for (Map.Entry<String, Object> entry : configMap.entrySet()) {
+            if (fieldsToProcess.contains(entry.getKey())
+                    && entry.getValue() instanceof String value) {
+                String updatedValue =
+                        encrypt ? instance.encryptIfApplies(value) : instance.decryptIfApplies(value);
+                configMap.put(entry.getKey(), updatedValue);
+            }
+        }
+    }
+
   private void updateAppConfig(
       IngestionPipelineRepository repository,
       Map<String, Object> appConfiguration,
       String updatedBy) {
-    Map<String, Object> decryptedConfig = decryptConfiguration(appConfiguration);
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
     ApplicationPipeline appPipeline =
         JsonUtils.convertValue(updated.getSourceConfig().getConfig(), ApplicationPipeline.class);
     IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
     updated.setSourceConfig(
-        updated.getSourceConfig().withConfig(appPipeline.withAppConfig(decryptedConfig)));
+        updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
     repository.update(null, original, updated, updatedBy);
   }
 

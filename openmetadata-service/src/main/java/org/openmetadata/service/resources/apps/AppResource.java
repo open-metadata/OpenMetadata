@@ -607,7 +607,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+     App app = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+     return ApplicationHandler.getInstance().appWithDecryptedAppConfiguration(
+             app, Entity.getCollectionDAO(), searchRepository
+     );
   }
 
   @GET
@@ -643,7 +646,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    App app = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+      return ApplicationHandler.getInstance().appWithDecryptedAppConfiguration(
+              app, Entity.getCollectionDAO(), searchRepository
+      );
   }
 
   @GET

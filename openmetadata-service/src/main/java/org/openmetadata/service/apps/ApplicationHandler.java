@@ -159,6 +159,42 @@ public class ApplicationHandler {
     }
   }
 
+  public App appWithDecryptedAppConfiguration(App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+    try {
+        Map<String, Object> decryptedAppConfig = runAppInit(app, daoCollection, searchRepository).decryptConfiguration(JsonUtils.getMap(app.getAppConfiguration()));
+        return app.withAppConfiguration(decryptedAppConfig);
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InvocationTargetException
+        | InstantiationException
+        | IllegalAccessException e) {
+      LOG.error("Failed to decrypt application configuration for {}", app.getName(), e);
+      throw AppException.byMessage(
+          app.getName(),
+          "decryptAppConfiguration",
+          e.getMessage(),
+          Response.Status.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  public App appWithEncryptedAppConfiguration(App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+    try {
+        Map<String, Object> encryptedAppConfig = runAppInit(app, daoCollection, searchRepository).encryptConfiguration(JsonUtils.getMap(app.getAppConfiguration()));
+        return app.withAppConfiguration(encryptedAppConfig);
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InvocationTargetException
+        | InstantiationException
+        | IllegalAccessException e) {
+      LOG.error("Failed to encrypt application configuration for {}", app.getName(), e);
+      throw AppException.byMessage(
+          app.getName(),
+          "encryptAppConfiguration",
+          e.getMessage(),
+          Response.Status.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   private void installEventSubscriptions(App app, String installedBy) {
     AppMarketPlaceDefinition definition = appMarketPlaceRepository.getDefinition(app);
     Map<String, EntityReference> eventSubscriptionsReferences =
