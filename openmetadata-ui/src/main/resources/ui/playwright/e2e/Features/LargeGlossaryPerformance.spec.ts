@@ -149,7 +149,17 @@ test.describe('Large Glossary Performance Tests', () => {
     const expandAllButton = page.getByTestId('expand-collapse-all-button');
 
     await expect(expandAllButton).toBeVisible();
-    await expect(expandAllButton).toContainText('Expand All');
+
+    // Ensure tree starts in collapsed state - if already expanded, collapse first
+    const buttonText = await expandAllButton.textContent();
+    if (buttonText?.includes('Collapse All')) {
+      await expandAllButton.click();
+      // Wait for the button text to change to "Expand All"
+      await expect(expandAllButton).toContainText('Expand All', {
+        timeout: 30000,
+      });
+      await page.waitForLoadState('networkidle');
+    }
 
     // Click to expand all
     await expandAllButton.click();
