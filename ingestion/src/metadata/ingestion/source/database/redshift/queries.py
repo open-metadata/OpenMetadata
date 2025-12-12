@@ -18,6 +18,87 @@ from typing import List
 from metadata.utils.profiler_utils import QueryResult
 from metadata.utils.time_utils import datetime_to_timestamp
 
+
+def get_redshift_queries(is_serverless: bool = False) -> dict:
+    """
+    Get the appropriate set of queries based on Redshift deployment type.
+    
+    Args:
+        is_serverless: True for Serverless, False for Provisioned
+        
+    Returns:
+        dict: Dictionary mapping query names to query strings
+    """
+    if is_serverless:
+        return {
+            "sql_statement": REDSHIFT_SERVERLESS_SQL_STATEMENT,
+            "test_queries": REDSHIFT_TEST_GET_SERVERLESS_QUERIES,
+            "table_changes": REDSHIFT_SERVERLESS_TABLE_CHANGES_QUERY,
+            "metrics_query": SERVERLESS_QUERY_METRICS,
+        }
+    else:
+        return {
+            "sql_statement": REDSHIFT_SQL_STATEMENT,
+            "test_queries": REDSHIFT_TEST_GET_QUERIES,
+            "table_changes": REDSHIFT_TABLE_CHANGES_QUERY,
+            "metrics_query": STL_QUERY,
+        }
+
+# Serverless-compatible query using SYS views
+REDSHIFT_SERVERLESS_SQL_STATEMENT = textwrap.dedent(
+    """
+  WITH
+  queries AS (
+    SELECT 
+          query_id,
+          user_id,
+          user_name,  
+          database_name,
+          query_text,
+          start_time,
+          end_time,
+          status
+      FROM SYS_QUERY_HISTORY
+     WHERE user_id > 1
+          {filters}
+          -- Filter out all automated & cursor queries
+          AND query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+          AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND user_id <> 1
+          AND status = 'success'
+          AND start_time >= '{start_time}'
+          AND end_time < '{end_time}'
+          LIMIT {result_limit}
+  ),
+  table_access AS (
+    -- Get table access information from query details
+    SELECT DISTINCT
+          qh.query_id,
+          qd.table_id,
+          sti.database AS database_name,
+          sti.schema AS schema_name
+      FROM queries qh
+          INNER JOIN SYS_QUERY_DETAIL qd ON qh.query_id = qd.query_id
+          INNER JOIN pg_catalog.svv_table_info sti ON qd.table_id = sti.table_id
+      WHERE qd.table_id IS NOT NULL
+  )
+  SELECT DISTINCT
+        q.user_id,
+        q.query_id,
+        RTRIM(q.user_name) AS user_name,
+        q.query_text,
+        ta.database_name,
+        ta.schema_name,
+        q.start_time,
+        q.end_time,
+        DATEDIFF(millisecond, q.start_time, q.end_time) AS duration,
+        CASE WHEN q.status = 'success' THEN 0 ELSE 1 END AS aborted
+    FROM queries AS q
+        LEFT JOIN table_access AS ta ON ta.query_id = q.query_id
+    ORDER BY q.end_time DESC
+"""
+)
+
 # Not able to use SYS_QUERY_HISTORY here. Few users not getting any results
 REDSHIFT_SQL_STATEMENT = textwrap.dedent(
     """
@@ -97,7 +178,7 @@ REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
       c.relkind
     FROM pg_catalog.pg_class c
     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-    WHERE (c.relkind IN ('r', 'S', 'f') {view_filter})
+    WHERE c.relkind = 'r'
       AND n.nspname = :schema
     UNION
     SELECT
@@ -237,38 +318,16 @@ SELECT
     has_table_privilege('stl_query', 'SELECT') as can_access_stl_query;
 """
 
+REDSHIFT_TEST_GET_SERVERLESS_QUERIES = """
+SELECT 
+    has_table_privilege('svv_table_info', 'SELECT') as can_access_svv_table_info,
+    has_table_privilege('SYS_QUERY_TEXT', 'SELECT') as can_access_sys_query_text,
+    has_table_privilege('SYS_QUERY_HISTORY', 'SELECT') as can_access_sys_query_history;
+"""
+
 
 REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"
 
-REDSHIFT_GET_ALL_CONSTRAINTS = """
-select 
-  n.nspname as "schema",
-  c.relname as "table_name",
-  t.contype as "constraint_type",
-  t.conkey,
-  pg_catalog.pg_get_constraintdef(t.oid, true)::varchar(512) as condef,
-  a.attname as "column_name"
-FROM pg_catalog.pg_class c
-LEFT JOIN pg_catalog.pg_namespace n
-  ON n.oid = c.relnamespace
-JOIN pg_catalog.pg_constraint t
-  ON t.conrelid = c.oid
-JOIN pg_catalog.pg_attribute a
-  ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
-WHERE n.nspname not like '^pg_' and schema=:schema
-UNION
-SELECT
-  s.schemaname AS "schema",
-  c.tablename AS "table_name",
-  'p' as "constraint_type",
-  null as conkey,
-  null as condef,
-  c.columnname as "column_name"
-FROM
-    svv_external_columns c
-    JOIN svv_external_schemas s ON s.schemaname = c.schemaname
-where 1 and schema=:schema;
-"""
 
 # Redshift views definitions only contains the select query
 # hence we are appending "create view <schema>.<table> as " to select query
@@ -414,6 +473,9 @@ WHERE status = 'success'
 ORDER BY end_time DESC
 """
 
+# Serverless version of table changes query (same as above since it already uses SYS views)
+REDSHIFT_SERVERLESS_TABLE_CHANGES_QUERY = REDSHIFT_TABLE_CHANGES_QUERY
+
 
 STL_QUERY = """
     with data as (
@@ -440,6 +502,30 @@ STL_QUERY = """
         "rows" != 0 AND
         DATE(data.starttime) >= CURRENT_DATE - 1
     GROUP BY 2,3,4,5
+    ORDER BY 5 DESC
+"""
+
+# Serverless-compatible query using SYS views for metrics
+SERVERLESS_QUERY_METRICS = """
+    SELECT
+        COUNT(*) AS "rows",
+        qh.database_name AS "database", 
+        COALESCE(
+            REGEXP_SUBSTR(qh.query_text, 'FROM\\s+(\\w+)\\.(\\w+)', 1, 1, 'i', 2),
+            'unknown'
+        ) AS "schema",
+        COALESCE(
+            REGEXP_SUBSTR(qh.query_text, 'FROM\\s+(\\w+)\\.(\\w+)\\.(\\w+)', 1, 1, 'i', 3),
+            REGEXP_SUBSTR(qh.query_text, 'FROM\\s+(\\w+)', 1, 1, 'i', 1),
+            'unknown'
+        ) AS "table",
+        DATE_TRUNC('second', qh.start_time) AS starttime
+    FROM SYS_QUERY_HISTORY qh
+    WHERE qh.database_name = '{database}'
+        AND qh.status = 'success'
+        AND (qh.query_type = 'INSERT' OR qh.query_type = 'DELETE' OR qh.query_type = 'UPDATE')
+        AND DATE(qh.start_time) >= CURRENT_DATE - 1
+    GROUP BY 2, 3, 4, 5
     ORDER BY 5 DESC
 """
 
