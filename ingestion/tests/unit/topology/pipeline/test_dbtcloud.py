@@ -1421,11 +1421,12 @@ class DBTCloudUnitTest(TestCase):
 
             # Test error case
             mock_post.side_effect = Exception("Test error")
-            error_models, error_seeds = self.dbtcloud.client.get_models_with_lineage(
+            error_models, error_seeds, error_sources = self.dbtcloud.client.get_models_with_lineage(
                 70403103936332, 70403110257794
             )
             self.assertIsNone(error_models)
             self.assertIsNone(error_seeds)
+            self.assertIsNone(error_sources)
 
     def test_get_jobs_generator_pattern(self):
         """
