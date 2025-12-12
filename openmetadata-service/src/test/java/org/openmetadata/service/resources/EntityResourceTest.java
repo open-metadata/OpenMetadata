@@ -2536,7 +2536,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TagLabel autoAppliedTag =
         new TagLabel()
             .withTagFQN("PII.Sensitive")
-            .withLabelType(TagLabel.LabelType.AUTOMATED)
+            .withLabelType(TagLabel.LabelType.GENERATED)
             .withState(TagLabel.State.SUGGESTED)
             .withSource(TagLabel.TagSource.CLASSIFICATION);
 
@@ -2582,7 +2582,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Create entity with auto-applied tag
     TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.GENERATED);
 
     CreateEntity create = createRequest(getEntityName(test));
     create.setTags(listOf(autoTag));
@@ -2623,7 +2623,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Create multiple entities with same auto-applied tag
     List<T> entities = new ArrayList<>();
     TagLabel autoTag =
-        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.AUTOMATED);
+        new TagLabel().withTagFQN("PII.Sensitive").withLabelType(TagLabel.LabelType.GENERATED);
 
     for (int i = 0; i < 3; i++) {
       CreateEntity create = createRequest(getEntityName(test) + i);
