@@ -18,6 +18,7 @@ from itertools import groupby
 from typing import (
     Any,
     Callable,
+    Dict,
     Iterable,
     List,
     Optional,
@@ -308,16 +309,24 @@ def apply_confidence_threshold(
 
 def explain_recognition_results(results: List[RecognizerResult]) -> str:
     """Builds a verbose explanation of the recognition results taking into account multiple values"""
-    grouped_results = groupby(
-        sorted(results, key=lambda r: r.recognition_metadata["recognizer_identifier"]),
-        key=lambda r: r.recognition_metadata["recognizer_identifier"],
+
+    def _get_getter(res: RecognizerResult) -> str:
+        return cast(Dict[str, str], res.recognition_metadata).get(
+            "recognizer_identifier", "unknown"
+        )
+
+    grouped_results: groupby[str, RecognizerResult] = groupby(
+        sorted(results, key=_get_getter),
+        key=_get_getter,
     )
 
     textual_explanation = ""
     for recognizer_identifier, group in grouped_results:
         group_list = list(group)
 
-        recognizer_name = group_list[0].recognition_metadata["recognizer_name"]
+        recognizer_name: str = cast(
+            Dict[str, str], group_list[0].recognition_metadata
+        ).get("recognizer_name", recognizer_identifier)
         results_count = len(group_list)
         results_score = sum(r.score for r in group_list) / results_count
         maybe_plural_time = "time" if results_count == 1 else "times"
@@ -330,8 +339,10 @@ def explain_recognition_results(results: List[RecognizerResult]) -> str:
         patterns_matched: Set[Tuple[str, float]] = set()
         for result in group_list:
             if (
-                result.analysis_explanation is None
-                or result.analysis_explanation.pattern is None
+                result.analysis_explanation
+                is None  # pyright: ignore[reportUnnecessaryComparison]
+                or result.analysis_explanation.pattern
+                is None  # pyright: ignore[reportUnnecessaryComparison]
             ):
                 continue
 
