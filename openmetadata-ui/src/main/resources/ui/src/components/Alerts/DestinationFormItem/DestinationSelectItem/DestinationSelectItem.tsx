@@ -42,11 +42,11 @@ import {
 import { useFqn } from '../../../../hooks/useFqn';
 import { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import {
-  getConfigHeaderArrayFromObject,
   getDestinationConfigField,
   getDestinationStatusAlertData,
   getFilteredDestinationOptions,
   getSubscriptionTypeOptions,
+  normalizeDestinationConfig,
 } from '../../../../utils/Alerts/AlertsUtil';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
@@ -83,15 +83,7 @@ function DestinationSelectItem({
         {
           type: destination.type,
           category: destination.category,
-          config: omitBy(
-            {
-              ...destination.config,
-              headers: getConfigHeaderArrayFromObject(
-                destination?.config?.headers
-              ),
-            },
-            isUndefined
-          ),
+          config: normalizeDestinationConfig(destination.config),
         }
       )
     );
@@ -425,7 +417,11 @@ function DestinationSelectItem({
                           {`${t('label.status')}:`}
                         </Typography.Text>
                         <Typography.Text className="font-medium text-sm m-l-xss">
-                          {`${destinationStatusDetails?.statusCode} ${statusLabel} ${destinationStatusDetails?.reason}`}
+                          {`${
+                            destinationStatusDetails?.statusCode
+                          } ${statusLabel} ${
+                            destinationStatusDetails?.reason ?? ''
+                          }`}
                         </Typography.Text>
                       </>
                     }
