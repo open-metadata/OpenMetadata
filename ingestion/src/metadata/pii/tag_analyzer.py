@@ -56,8 +56,10 @@ class TagAnalyzer:
         recognizers: list[EntityRecognizer] = []
 
         for recognizer in self.tag.recognizers or []:
-            if recognizer.target is not target or self.should_skip_recognizer(
-                recognizer.exceptionList or []
+            if (
+                recognizer.target is not target
+                or recognizer.enabled is False
+                or self.should_skip_recognizer(recognizer.exceptionList or [])
             ):
                 continue
 
@@ -107,7 +109,7 @@ class TagAnalyzer:
         if not results:
             return 0.0
 
-        return sum(r.score for r in results) / len(results)
+        return sum(r.score for r in results) / len(values)
 
     def analyze_column(self) -> float:
         recognizers = self.column_recognizers
@@ -122,3 +124,6 @@ class TagAnalyzer:
             return 0.0
 
         return sum(r.score for r in results) / len(results)
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} tag={self.tag.fullyQualifiedName}>"

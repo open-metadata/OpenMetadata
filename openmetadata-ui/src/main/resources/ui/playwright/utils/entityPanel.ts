@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -117,6 +117,8 @@ export const editTags = async (
     if (await updateBtn.isVisible()) {
       await updateBtn.click();
       await waitForPatchResponse(page);
+
+      await expect(page.getByText(/Tags updated successfully/i)).toBeVisible();
     }
   }
 };

@@ -14,6 +14,7 @@
 import { CloseOutlined } from '@mui/icons-material';
 import { Button, Card } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { get } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -111,8 +112,6 @@ export default function EntitySummaryPanel({
   );
 
   const id = useMemo(() => {
-    setIsPermissionLoading(true);
-
     return entityDetails?.details?.id ?? '';
   }, [entityDetails?.details?.id]);
 
@@ -220,7 +219,7 @@ export default function EntitySummaryPanel({
     } finally {
       setIsEntityDataLoading(false);
     }
-  }, [entityDetails?.details?.fullyQualifiedName, entityType]);
+  }, [entityDetails?.details?.fullyQualifiedName, entityType, entityFetchMap]);
 
   const fetchEntityTypeDetail = useCallback(async () => {
     if (!entityType || entityType === EntityType.KNOWLEDGE_PAGE) {
@@ -261,7 +260,14 @@ export default function EntitySummaryPanel({
     } finally {
       setIsLineageLoading(false);
     }
-  }, [entityDetails?.details?.fullyQualifiedName, entityType]);
+  }, [
+    entityDetails?.details?.fullyQualifiedName,
+    entityType,
+    upstreamDepth,
+    downstreamDepth,
+    nodesPerLayer,
+    pipelineViewMode,
+  ]);
 
   const updateEntityData = useCallback(
     (updatedData: Partial<EntityData>) => {
@@ -281,7 +287,7 @@ export default function EntitySummaryPanel({
         return newState;
       });
     },
-    [entityDetails.details, fetchEntityData]
+    [entityDetails.details]
   );
 
   const handleOwnerUpdate = useCallback(
@@ -372,7 +378,7 @@ export default function EntitySummaryPanel({
     } else if (activeTab === EntityRightPanelTab.OVERVIEW) {
       fetchEntityData();
     }
-  }, [activeTab, fetchEntityData, fetchEntityTypeDetail, fetchLineageData]);
+  }, [activeTab]);
 
   const viewPermission = useMemo(
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
@@ -600,7 +606,12 @@ export default function EntitySummaryPanel({
   };
 
   return (
-    <div className="entity-summary-panel-container">
+    <div
+      className={classNames('entity-summary-panel-container', {
+        explore: panelPath === 'explore',
+        lineage: panelPath === 'lineage',
+        'glossary-term-assets-tab': panelPath === 'glossary-term-assets-tab',
+      })}>
       {isSideDrawer && (
         <div className="d-flex items-center justify-between">
           <EntityTitleSection
@@ -620,7 +631,7 @@ export default function EntitySummaryPanel({
           />
         </div>
       )}
-      <div className="d-flex gap-2 w-full">
+      <div className="d-flex gap-2 w-full h-full">
         <Card
           bordered={false}
           className={`summary-panel-container ${
@@ -630,7 +641,7 @@ export default function EntitySummaryPanel({
             className={`content-area ${
               isSideDrawer ? 'drawer-content-area' : ''
             }`}
-            style={{ width: '80%', display: 'block' }}>
+            style={{ width: '100%', display: 'block' }}>
             {renderTabContent()}
           </Card>
         </Card>

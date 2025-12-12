@@ -48,6 +48,7 @@ class DBTCloudClient:
 
         self.job_ids = self.config.jobIds
         self.project_ids = self.config.projectIds
+        self.environment_ids = self.config.environmentIds
 
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(self.config.host),
@@ -72,6 +73,7 @@ class DBTCloudClient:
         self,
         job_id: str = None,
         project_id: str = None,
+        environment_id: str = None,
     ) -> Iterable[DBTJob]:
         """
         Fetch jobs for an account in dbt cloud
@@ -80,9 +82,17 @@ class DBTCloudClient:
 
         try:
             job_path = f"{job_id}/" if job_id else ""
-            project_path = f"?project_id={project_id}" if project_id else ""
+
+            # Build query string for filters
+            filters = []
+            if project_id:
+                filters.append(f"project_id={project_id}")
+            if environment_id:
+                filters.append(f"environment_id={environment_id}")
+            query_string = "?" + "&".join(filters) if filters else ""
+
             result = self.client.get(
-                f"/accounts/{self.config.accountId}/jobs/{job_path}{project_path}",
+                f"/accounts/{self.config.accountId}/jobs/{job_path}{query_string}",
                 data=query_params,
             )
 
@@ -101,7 +111,7 @@ class DBTCloudClient:
 
                     query_params["offset"] += query_params["limit"]
                     result = self.client.get(
-                        f"/accounts/{self.config.accountId}/jobs/{job_path}{project_path}",
+                        f"/accounts/{self.config.accountId}/jobs/{job_path}{query_string}",
                         data=query_params,
                     )
                     job_list_response = DBTJobList.model_validate(result)
@@ -110,7 +120,8 @@ class DBTCloudClient:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
-                f"Failed to get job info for project_id: `{project_id}` or job_id: `{job_id}` : {exc}"
+                f"Failed to get job info for project_id: `{project_id}`, "
+                f"environment_id: `{environment_id}` or job_id: `{job_id}` : {exc}"
             )
 
     def test_get_jobs(self) -> List[DBTJob]:
@@ -132,21 +143,31 @@ class DBTCloudClient:
         """
         List jobs for an account in dbt cloud using generator pattern.
         yields job one at a time for memory efficiency.
+
+        Filter priority:
+        1. If jobIds specified - fetch specific jobs directly (highest priority)
+        2. If projectIds and/or environmentIds specified - fetch by those filters
+        3. If nothing specified - fetch all jobs
         """
         try:
-            # case when job_ids are specified and project_ids are not
-            if self.job_ids and not self.project_ids:
+            # Case 1: jobIds specified - fetch specific jobs directly (highest priority)
+            if self.job_ids:
                 for job_id in self.job_ids:
                     yield from self._get_jobs(job_id=job_id)
-            # case when project_ids are specified or both are specified
-            elif self.project_ids:
-                for project_id in self.project_ids:
-                    for job in self._get_jobs(project_id=project_id):
-                        if self.job_ids:
-                            if str(job.id) in self.job_ids:
-                                yield job
-                        else:
-                            yield job
+
+            # Case 2: projectIds and/or environmentIds specified (no jobIds)
+            elif self.project_ids or self.environment_ids:
+                project_list = self.project_ids or [None]
+                env_list = self.environment_ids or [None]
+
+                for project_id in project_list:
+                    for environment_id in env_list:
+                        yield from self._get_jobs(
+                            project_id=project_id,
+                            environment_id=environment_id,
+                        )
+
+            # Case 3: No filters specified - fetch all jobs
             else:
                 yield from self._get_jobs()
         except Exception as exc:
@@ -265,4 +286,4 @@ class DBTCloudClient:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get models with lineage info: {exc}")
-        return None, None
+        return None, None, None
