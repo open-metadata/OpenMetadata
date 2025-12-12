@@ -39,3 +39,6 @@ src/jsons/connectionSchemas/
 
 # generated type
 src/generated
+
+# playwright tests
+playwright/
