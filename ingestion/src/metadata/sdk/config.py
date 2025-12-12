@@ -1,6 +1,7 @@
 """Configuration helpers for the OpenMetadata SDK."""
 from __future__ import annotations
 
+import os
 from typing import Optional
 
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
@@ -42,6 +43,43 @@ class OpenMetadataConfig:
     def builder(cls) -> "OpenMetadataConfigBuilder":
         """Create a configuration builder."""
         return OpenMetadataConfigBuilder()
+
+    @classmethod
+    def from_env(cls) -> "OpenMetadataConfig":
+        """Create configuration from environment variables.
+
+        Reads from:
+        - OPENMETADATA_HOST or OPENMETADATA_SERVER_URL: Server URL
+        - OPENMETADATA_JWT_TOKEN or OPENMETADATA_API_KEY: Authentication token
+        - OPENMETADATA_VERIFY_SSL: SSL verification (default: false)
+        - OPENMETADATA_CA_BUNDLE: CA bundle path
+        - OPENMETADATA_CLIENT_TIMEOUT: Client timeout in seconds (default: 30)
+        """
+        server_url = os.environ.get("OPENMETADATA_HOST") or os.environ.get(
+            "OPENMETADATA_SERVER_URL"
+        )
+        if not server_url:
+            raise ValueError(
+                "Server URL must be provided via 'OPENMETADATA_HOST' or "
+                + "'OPENMETADATA_SERVER_URL' environment variable"
+            )
+
+        jwt_token = os.environ.get("OPENMETADATA_JWT_TOKEN") or os.environ.get(
+            "OPENMETADATA_API_KEY"
+        )
+        verify_ssl = (
+            os.environ.get("OPENMETADATA_VERIFY_SSL", "false").lower() == "true"
+        )
+        ca_bundle = os.environ.get("OPENMETADATA_CA_BUNDLE")
+        client_timeout = int(os.environ.get("OPENMETADATA_CLIENT_TIMEOUT", "30"))
+
+        return cls(
+            server_url=server_url,
+            jwt_token=jwt_token,
+            verify_ssl=verify_ssl,
+            ca_bundle=ca_bundle,
+            client_timeout=client_timeout,
+        )
 
     def to_ometa_config(self) -> OpenMetadataJWTClientConfig:
         """Translate the SDK config into the ingestion client's config model."""

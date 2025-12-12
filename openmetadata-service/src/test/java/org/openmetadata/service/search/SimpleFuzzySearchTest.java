@@ -20,15 +20,52 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SimpleFuzzySearchTest extends OpenMetadataApplicationTest {
+
+  @BeforeAll
+  void setupSearchSettings() {
+    // Ensure search settings are initialized for the test
+    Settings storedSearchSettings =
+        Entity.getSystemRepository().getConfigWithKey(SettingsType.SEARCH_SETTINGS.toString());
+    if (storedSearchSettings == null) {
+      try {
+        List<String> jsonDataFiles =
+            EntityUtil.getJsonDataResources(".*json/data/settings/searchSettings.json$");
+        if (!jsonDataFiles.isEmpty()) {
+          String json =
+              CommonUtil.getResourceAsStream(
+                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+          Settings setting =
+              new Settings()
+                  .withConfigType(SettingsType.SEARCH_SETTINGS)
+                  .withConfigValue(JsonUtils.readValue(json, SearchSettings.class));
+          Entity.getSystemRepository().createNewSetting(setting);
+          LOG.info("Initialized search settings for test");
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to initialize search settings for test", e);
+      }
+    }
+  }
 
   @Test
   void testLongQueryDoesNotCauseClauseExplosion() {

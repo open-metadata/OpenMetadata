@@ -29,10 +29,10 @@ import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/Enti
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
 import {
-  entitySortingFields,
   SEARCH_INDEXING_APPLICATION,
   SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
+  entitySortingFields,
 } from '../../constants/explore.constants';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -45,9 +45,6 @@ import {
 } from '../../utils/ExploreUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
-import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
-import Loader from '../common/Loader/Loader';
-import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import {
   ExploreProps,
   ExploreQuickFilterField,
@@ -56,6 +53,9 @@ import {
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
+import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
+import Loader from '../common/Loader/Loader';
+import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import './exploreV1.less';
 
 const IndexNotFoundBanner = () => {
@@ -146,6 +146,17 @@ const ExploreV1: React.FC<ExploreProps> = ({
   );
 
   const { toggleModal, sqlQuery, onResetAllFilters } = useAdvanceSearch();
+
+  const translatedSortingFields = useMemo(() => {
+    const sortingFields =
+      tabsInfo[searchIndex as ExploreSearchIndex]?.sortingFields ??
+      entitySortingFields;
+
+    return sortingFields.map((field) => ({
+      ...field,
+      name: t(field.name),
+    }));
+  }, [searchIndex, t]);
 
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
@@ -365,10 +376,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                             />
                             <span className="sorting-dropdown-container">
                               <SortingDropDown
-                                fieldList={
-                                  tabsInfo[searchIndex as ExploreSearchIndex]
-                                    ?.sortingFields ?? entitySortingFields
-                                }
+                                fieldList={translatedSortingFields}
                                 handleFieldDropDown={onChangeSortValue}
                                 sortField={sortValue}
                               />
@@ -462,6 +470,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         },
                         ['description', 'displayName']
                       )}
+                      panelPath="explore"
                     />
                   </Col>
                 )}

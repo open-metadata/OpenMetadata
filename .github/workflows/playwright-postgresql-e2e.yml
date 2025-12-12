@@ -27,7 +27,7 @@ on:
       - 'openmetadata-dist/**'
       - 'docker/**'
       - '!docker/development/docker-compose.yml'
-      - '!docker/development/docker-compose-postgres.yml' 
+      - '!docker/development/docker-compose-postgres.yml'
 
 permissions:
   contents: read
@@ -92,9 +92,9 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.9"
+          python-version: "3.10"
           args: "-d postgresql"
-          ingestion_dependency: "playwright"
+          ingestion_dependency: "all"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -109,11 +109,36 @@ jobs:
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
-            npx playwright test --grep @ingestion --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+          if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
+            echo "🔹 Running DataAssetRules-only tests on shard 1"
+
+            # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
+            npx playwright test \
+              --project=setup \
+              --project=DataAssetRulesEnabled \
+              --project=DataAssetRulesDisabled
+
           else
-            npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
+            # Shards 2-6 handle chromium tests (5 workers total)
+            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
+            if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
+              echo "🔹 Running ingestion tests on chromium shard ${CHROMIUM_SHARD}/5"
+              npx playwright test \
+                --project=chromium \
+                --grep @ingestion \
+                --grep-invert @dataAssetRules \
+                --shard=${CHROMIUM_SHARD}/5
+                --workers=50%
+
+            else
+              echo "🔹 Running all other tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
+              npx playwright test \
+                --project=chromium \
+                --grep-invert @dataAssetRules \
+                --shard=${CHROMIUM_SHARD}/5
+            fi
           fi
+
         env:
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}

@@ -33,7 +33,7 @@ test.describe('Login flow should work properly', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
     const response = await page.request.get(
-      `/api/v1/users/name/${user.getUserName()}`
+      `/api/v1/users/name/${user.getUserDisplayName()}`
     );
 
     // reset token expiry to 4 hours

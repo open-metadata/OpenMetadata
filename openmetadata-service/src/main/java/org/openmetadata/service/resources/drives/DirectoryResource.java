@@ -76,7 +76,7 @@ import org.openmetadata.service.security.Authorizer;
 public class DirectoryResource extends EntityResource<Directory, DirectoryRepository> {
   public static final String COLLECTION_PATH = "v1/drives/directories/";
   static final String FIELDS =
-      "owners,children,parent,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers";
+      "owners,children,parent,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,numberOfFiles,numberOfSubDirectories,totalSize,directoryType";
   private final DirectoryMapper mapper = new DirectoryMapper();
 
   @Override
@@ -274,6 +274,27 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
     Directory directory =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, directory);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateDirectorys",
+      summary = "Bulk create or update directories",
+      description = "Create or update multiple directories in a single operation.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Bulk operation results"),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing"),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateDirectory> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH

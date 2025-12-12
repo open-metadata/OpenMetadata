@@ -42,6 +42,7 @@ class DbtMetaOpenmetadata(BaseModel):
     domain: Optional[str] = None
     glossary: Optional[List[str]] = None
     customProperties: Optional[Dict[str, Any]] = None
+    tags: Optional[List[str]] = None
 
 
 class DbtMeta(BaseModel):

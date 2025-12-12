@@ -13,6 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import { redirectToHomePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick } from './sidebar';
 
 export const updatePersonaDisplayName = async ({
@@ -113,7 +114,6 @@ export const removePersonaDefault = async (
   await removeDefaultResponse;
 };
 
-
 export const navigateToPersonaWithPagination = async (
   page: Page,
   personaName: string,
@@ -135,7 +135,11 @@ export const navigateToPersonaWithPagination = async (
     const nextBtn = page.locator('[data-testid="next"]');
     await nextBtn.waitFor({ state: 'visible' });
 
+    const getPersonas = page.waitForResponse('/api/v1/personas*');
     await nextBtn.click();
+    await getPersonas;
+
     await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
   }
 };

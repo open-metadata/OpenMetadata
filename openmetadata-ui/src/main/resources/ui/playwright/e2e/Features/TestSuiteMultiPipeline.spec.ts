@@ -35,7 +35,7 @@ test(
     await test.step('Create a new pipeline', async () => {
       await page.getByText('Data Observability').click();
       await page
-        .getByRole('menuitem', {
+        .getByRole('tab', {
           name: 'Table Profile',
         })
         .click();
@@ -60,7 +60,7 @@ test(
         state: 'detached',
       });
 
-      await page.getByRole('menuitem', { name: 'Data Quality' }).click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
       await page.getByRole('tab', { name: 'Pipeline' }).click();
       await page.getByTestId('add-pipeline-button').click();
 
@@ -195,7 +195,7 @@ test(
     );
     await table.visitEntityPage(page, table.entity.name);
     await page.getByText('Data Observability').click();
-    await page.getByRole('menuitem', { name: 'Data Quality' }).click();
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
 
     await page.getByRole('tab', { name: 'Pipeline' }).click();
     await page

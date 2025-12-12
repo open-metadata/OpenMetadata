@@ -18,7 +18,9 @@ public class SpreadsheetMapper implements EntityMapper<Spreadsheet, CreateSpread
             .withDriveFileId(create.getDriveFileId())
             .withSize(create.getSize())
             .withFileVersion(create.getFileVersion())
-            .withSourceUrl(create.getSourceUrl());
+            .withSourceUrl(create.getSourceUrl())
+            .withCreatedTime(create.getCreatedTime())
+            .withModifiedTime(create.getModifiedTime());
 
     // Set directory from parent if provided
     if (create.getParent() != null) {

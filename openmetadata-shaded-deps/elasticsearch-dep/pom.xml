@@ -16,14 +16,21 @@
              https://issues.apache.org/jira/browse/MSHADE-206 which makes it so
              the dependency reduced pom is not reflected in a multi-module build
              correctly. -->
+
+        <!-- Elasticsearch Java API Client -->
         <dependency>
-            <groupId>org.elasticsearch.client</groupId>
-            <artifactId>elasticsearch-rest-high-level-client</artifactId>
+            <groupId>co.elastic.clients</groupId>
+            <artifactId>elasticsearch-java</artifactId>
+            <version>8.11.0</version>
             <optional>true</optional>
             <exclusions>
                 <exclusion>
                     <groupId>org.yaml</groupId>
                     <artifactId>snakeyaml</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.parsson</groupId>
+                    <artifactId>parsson</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -121,6 +128,15 @@
                         <relocation>
                             <pattern>org.apache.lucene</pattern>
                             <shadedPattern>es.org.apache.lucene</shadedPattern>
+                        </relocation>
+                        <!-- New Elasticsearch Java API Client relocations -->
+                        <relocation>
+                            <pattern>co.elastic</pattern>
+                            <shadedPattern>es.co.elastic</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>co.elastic.clients</pattern>
+                            <shadedPattern>es.co.elastic.clients</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>META-INF/versions/9/org/apache/logging/log4j/</pattern>

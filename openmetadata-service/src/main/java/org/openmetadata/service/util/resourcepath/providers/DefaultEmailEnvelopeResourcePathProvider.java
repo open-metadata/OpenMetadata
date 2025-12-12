@@ -1,0 +1,33 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.util.resourcepath.providers;
+
+/**
+ * Default implementation of EmailEnvelopeResourcePathProvider.
+ * Provides the path to email envelope templates in the envelopes directory.
+ * Commercial versions can override this by providing higher priority implementations.
+ */
+public class DefaultEmailEnvelopeResourcePathProvider implements EmailEnvelopeResourcePathProvider {
+
+  @Override
+  public String getResourcePath() {
+    // Return the specific path for the email envelope template
+    return "json/data/notifications/envelopes/system-email-change-event-notification-envelope.json";
+  }
+
+  @Override
+  public int getPriority() {
+    return 0; // Lowest priority - other implementations can override
+  }
+}

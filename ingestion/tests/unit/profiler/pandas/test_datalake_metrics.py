@@ -232,7 +232,7 @@ class DatalakeMetricsTest(TestCase):
         )
         res = profiler.compute_metrics()._column_results
 
-        assert round(res.get(User.age.name).get(Metrics.STDDEV.name), 2) == 0.82
+        assert round(res.get(User.age.name).get(Metrics.STDDEV.name), 2) == 0.71
 
     def test_time(self):
         """

@@ -36,6 +36,7 @@ class AWSServices(Enum):
     GLUE = "glue"
     SAGEMAKER = "sagemaker"
     KINESIS = "kinesis"
+    FIREHOSE = "firehose"
     QUICKSIGHT = "quicksight"
     ATHENA = "athena"
     RDS = "rds"
@@ -232,6 +233,9 @@ class AWSClient:
 
     def get_kinesis_client(self):
         return self.get_client(AWSServices.KINESIS.value)
+
+    def get_firehose_client(self):
+        return self.get_client(AWSServices.FIREHOSE.value)
 
     def get_quicksight_client(self):
         return self.get_client(AWSServices.QUICKSIGHT.value)

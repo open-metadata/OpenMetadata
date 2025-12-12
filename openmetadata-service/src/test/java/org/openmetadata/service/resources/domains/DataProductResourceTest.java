@@ -1,10 +1,11 @@
 package org.openmetadata.service.resources.domains;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -12,6 +13,9 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.HashMap;
@@ -26,6 +30,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -37,6 +42,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataProductRepository;
@@ -46,6 +52,7 @@ import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResource.DataProductList;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
@@ -70,49 +77,47 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
 
   @Test
   void testDataProductAssets(TestInfo test) throws IOException {
-    // Create Data product with Table1 as the asset
-    CreateDataProduct create =
-        createRequest(getEntityName(test)).withAssets(List.of(TEST_TABLE1.getEntityReference()));
-    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
-    entityInDataProduct(TEST_TABLE1, product, true); // Table1 is part of data product
+    // Disable domain validation rule since TEST_TABLE1 may not have matching domain
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
 
-    TopicResourceTest topicTest = new TopicResourceTest();
-    Topic topic =
-        topicTest.createEntity(topicTest.createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+    try {
+      // Create Data product without assets
+      CreateDataProduct create = createRequest(getEntityName(test));
+      DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    // Version 0.2 - Add asset topic with PUT
-    create.withAssets(List.of(TEST_TABLE1.getEntityReference(), topic.getEntityReference()));
-    ChangeDescription change = getChangeDescription(product, MINOR_UPDATE);
-    fieldAdded(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
-    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    entityInDataProduct(topic, product, true); // topic is part of data product
+      // Add Table1 as asset using bulk API
+      DataProductRepository repository =
+          (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
+      BulkAssets addTable1 = new BulkAssets().withAssets(List.of(TEST_TABLE1.getEntityReference()));
+      repository.bulkAddAssets(product.getFullyQualifiedName(), addTable1);
+      entityInDataProduct(TEST_TABLE1, product, true); // Table1 is part of data product
 
-    // Version 0.3 - Remove asset topic with PUT
-    create.withAssets(List.of(TEST_TABLE1.getEntityReference()));
-    change = getChangeDescription(product, MINOR_UPDATE);
-    fieldDeleted(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
-    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    entityInDataProduct(topic, product, false); // topic is not part of data product
+      TopicResourceTest topicTest = new TopicResourceTest();
+      Topic topic =
+          topicTest.createEntity(topicTest.createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
 
-    // Add topic asset with PATCH.
-    // Version 0.2 - Changes from this PATCH is consolidated with the previous changes resulting in
-    // no change
-    String json = JsonUtils.pojoToJson(product);
-    change = getChangeDescription(product, MINOR_UPDATE);
-    fieldAdded(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
-    product.withAssets(List.of(TEST_TABLE1.getEntityReference(), topic.getEntityReference()));
-    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    entityInDataProduct(topic, product, true); // topic is part of data product
+      // Add topic asset using bulk API
+      BulkAssets addTopic = new BulkAssets().withAssets(List.of(topic.getEntityReference()));
+      repository.bulkAddAssets(product.getFullyQualifiedName(), addTopic);
+      entityInDataProduct(topic, product, true); // topic is part of data product
 
-    // Remove asset topic with PATCH
-    // Changes from this PATCH is consolidated with the previous changes resulting in removal of
-    // topic
-    json = JsonUtils.pojoToJson(product);
-    product.withAssets(List.of(TEST_TABLE1.getEntityReference()));
-    change = getChangeDescription(product, MINOR_UPDATE);
-    fieldDeleted(change, FIELD_ASSETS, listOf(topic.getEntityReference()));
-    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    entityInDataProduct(topic, product, false); // topic is not part of data product
+      // Remove topic asset using bulk API
+      BulkAssets removeTopic = new BulkAssets().withAssets(List.of(topic.getEntityReference()));
+      repository.bulkRemoveAssets(product.getFullyQualifiedName(), removeTopic);
+      entityInDataProduct(topic, product, false); // topic is not part of data product
+
+      // Add topic back using bulk API
+      repository.bulkAddAssets(product.getFullyQualifiedName(), addTopic);
+      entityInDataProduct(topic, product, true); // topic is part of data product
+
+      // Remove topic again using bulk API
+      repository.bulkRemoveAssets(product.getFullyQualifiedName(), removeTopic);
+      entityInDataProduct(topic, product, false); // topic is not part of data product
+    } finally {
+      // Re-enable the rule for other tests
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
   }
 
   @Test
@@ -240,13 +245,15 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
       assertEquals(3, result.getNumberOfRowsProcessed());
       assertEquals(3, result.getNumberOfRowsPassed());
 
-      // Verify all assets are added to the data product
-      product = getEntity(product.getId(), "assets", ADMIN_AUTH_HEADERS);
-      assertEquals(3, product.getAssets().size());
+      // Verify all assets are added to the data product using dedicated API
+      ResultList<EntityReference> assets =
+          dataProductRepository.getDataProductAssets(product.getId(), 100, 0);
+      assertEquals(3, assets.getPaging().getTotal());
+      assertEquals(3, assets.getData().size());
 
       // Verify each asset type is present
       List<String> assetTypes =
-          product.getAssets().stream()
+          assets.getData().stream()
               .map(EntityReference::getType)
               .sorted()
               .collect(Collectors.toList());
@@ -263,11 +270,12 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
       assertEquals(2, result.getNumberOfRowsProcessed());
       assertEquals(2, result.getNumberOfRowsPassed());
 
-      // Verify only table remains
-      product = getEntity(product.getId(), "assets", ADMIN_AUTH_HEADERS);
-      assertEquals(1, product.getAssets().size());
-      assertEquals("table", product.getAssets().get(0).getType());
-      assertEquals(TEST_TABLE1.getId(), product.getAssets().get(0).getId());
+      // Verify only table remains using dedicated API
+      assets = dataProductRepository.getDataProductAssets(product.getId(), 100, 0);
+      assertEquals(1, assets.getPaging().getTotal());
+      assertEquals(1, assets.getData().size());
+      assertEquals("table", assets.getData().get(0).getType());
+      assertEquals(TEST_TABLE1.getId(), assets.getData().get(0).getId());
     } finally {
       // Re-enable the rule for other tests
       EntityResourceTest.toggleRule(domainValidationRule, true);
@@ -361,8 +369,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         .withDescription(name)
         .withDomains(List.of(DOMAIN.getFullyQualifiedName()))
         .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
-        .withExperts(listOf(USER1.getFullyQualifiedName()))
-        .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
+        .withExperts(listOf(USER1.getFullyQualifiedName()));
   }
 
   public CreateDataProduct createRequestWithoutExpertsOwners(String name) {
@@ -370,8 +377,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         .withName(name)
         .withDescription(name)
         .withDomains(List.of(DOMAIN.getFullyQualifiedName()))
-        .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"))
-        .withAssets(TEST_TABLE1 != null ? listOf(TEST_TABLE1.getEntityReference()) : null);
+        .withStyle(new Style().withColor("#40E0D0").withIconURL("https://dataProductIcon"));
   }
 
   @Override
@@ -381,7 +387,6 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     assertEquals(
         request.getDomains().get(0), createdEntity.getDomains().get(0).getFullyQualifiedName());
     assertEntityReferenceNames(request.getExperts(), createdEntity.getExperts());
-    assertEntityReferences(request.getAssets(), createdEntity.getAssets());
     assertStyle(request.getStyle(), createdEntity.getStyle());
   }
 
@@ -391,7 +396,6 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     // Entity specific validation
     assertReference(expected.getDomains().get(0), updated.getDomains().get(0));
     assertEntityReferences(expected.getExperts(), updated.getExperts());
-    assertEntityReferences(expected.getAssets(), updated.getAssets());
   }
 
   @Override
@@ -402,7 +406,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
             ? getEntityByName(dataProduct.getFullyQualifiedName(), null, ADMIN_AUTH_HEADERS)
             : getEntity(dataProduct.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(getDataProduct.getOwners(), getDataProduct.getExperts());
-    String fields = "owners,domains,experts,assets,tags,followers";
+    String fields = "owners,domains,experts,tags,followers";
     getDataProduct =
         byName
             ? getEntityByName(getDataProduct.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -410,7 +414,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     // Fields requested are received
     assertReference(dataProduct.getDomains().get(0), getDataProduct.getDomains().get(0));
     assertEntityReferences(dataProduct.getExperts(), getDataProduct.getExperts());
-    assertEntityReferences(dataProduct.getAssets(), getDataProduct.getAssets());
+    // Note: assets field is not available in FIELDS - use dedicated paginated API instead
 
     // Checks for other owners, tags, and followers is done in the base class
     return getDataProduct;
@@ -627,5 +631,173 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
         EntityStatus.IN_REVIEW,
         retrievedDataProduct.getEntityStatus(),
         "Retrieved data product should maintain IN_REVIEW status");
+  }
+
+  @Test
+  void test_getDataProductAssetsAPI(TestInfo test) throws IOException {
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      CreateDataProduct create = createRequest(getEntityName(test));
+      DataProduct dataProduct = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+      TableResourceTest tableTest = new TableResourceTest();
+      Table table1 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
+      Table table2 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 2)), ADMIN_AUTH_HEADERS);
+      Table table3 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
+
+      DataProductRepository repository =
+          (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
+
+      BulkAssets bulkAssets =
+          new BulkAssets()
+              .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference()));
+      bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets);
+
+      ResultList<EntityReference> assets =
+          getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+
+      assertEquals(2, assets.getPaging().getTotal());
+      assertEquals(2, assets.getData().size());
+      assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+      assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+
+      ResultList<EntityReference> assetsByName =
+          getAssetsByName(dataProduct.getFullyQualifiedName(), 10, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(2, assetsByName.getPaging().getTotal());
+      assertEquals(2, assetsByName.getData().size());
+
+      ResultList<EntityReference> page1 = getAssets(dataProduct.getId(), 1, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(2, page1.getPaging().getTotal());
+      assertEquals(1, page1.getData().size());
+
+      ResultList<EntityReference> page2 = getAssets(dataProduct.getId(), 1, 1, ADMIN_AUTH_HEADERS);
+      assertEquals(2, page2.getPaging().getTotal());
+      assertEquals(1, page2.getData().size());
+      assertNotEquals(page1.getData().getFirst().getId(), page2.getData().getFirst().getId());
+
+      BulkAssets addTable3 = new BulkAssets().withAssets(List.of(table3.getEntityReference()));
+      bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable3);
+
+      ResultList<EntityReference> allAssets =
+          getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(3, allAssets.getPaging().getTotal());
+      assertEquals(3, allAssets.getData().size());
+
+      // Test bulk remove assets
+      BulkAssets removeTable1 = new BulkAssets().withAssets(List.of(table1.getEntityReference()));
+      bulkRemoveAssets(dataProduct.getFullyQualifiedName(), removeTable1);
+
+      // Verify table1 is removed
+      assets = getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(2, assets.getPaging().getTotal());
+      assertEquals(2, assets.getData().size());
+      assertTrue(assets.getData().stream().noneMatch(a -> a.getId().equals(table1.getId())));
+      assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+      assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+      // Test pagination after removal
+      page1 = getAssets(dataProduct.getId(), 1, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(2, page1.getPaging().getTotal());
+      assertEquals(1, page1.getData().size());
+
+      page2 = getAssets(dataProduct.getId(), 1, 1, ADMIN_AUTH_HEADERS);
+      assertEquals(2, page2.getPaging().getTotal());
+      assertEquals(1, page2.getData().size());
+      assertNotEquals(page1.getData().getFirst().getId(), page2.getData().getFirst().getId());
+
+      // Remove remaining assets
+      BulkAssets removeRemaining =
+          new BulkAssets()
+              .withAssets(List.of(table2.getEntityReference(), table3.getEntityReference()));
+      bulkRemoveAssets(dataProduct.getFullyQualifiedName(), removeRemaining);
+
+      // Verify all assets are removed
+      assets = getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(0, assets.getPaging().getTotal());
+      assertEquals(0, assets.getData().size());
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
+
+  private void bulkAddAssets(String dataProductName, BulkAssets request)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/" + dataProductName + "/assets/add");
+    TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  private void bulkRemoveAssets(String dataProductName, BulkAssets request)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/" + dataProductName + "/assets/remove");
+    TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_getAllDataProductsWithAssetsCount(TestInfo test) throws IOException {
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain domain = domainTest.createEntity(domainTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+      DataProduct dataProduct1 =
+          createEntity(
+              createRequest(getEntityName(test, 1))
+                  .withDomains(List.of(domain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+      DataProduct dataProduct2 =
+          createEntity(
+              createRequest(getEntityName(test, 2))
+                  .withDomains(List.of(domain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      TableResourceTest tableTest = new TableResourceTest();
+      Table table1 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 3)), ADMIN_AUTH_HEADERS);
+      Table table2 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 4)), ADMIN_AUTH_HEADERS);
+      Table table3 =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 5)), ADMIN_AUTH_HEADERS);
+
+      bulkAddAssets(
+          dataProduct1.getFullyQualifiedName(),
+          new BulkAssets()
+              .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference())));
+      bulkAddAssets(
+          dataProduct2.getFullyQualifiedName(),
+          new BulkAssets().withAssets(List.of(table3.getEntityReference())));
+
+      Map<String, Integer> assetsCount = getAllDataProductsWithAssetsCount();
+
+      assertNotNull(assetsCount);
+      assertEquals(
+          2,
+          assetsCount.get(dataProduct1.getFullyQualifiedName()),
+          "Data product 1 should have 2 assets");
+      assertEquals(
+          1,
+          assetsCount.get(dataProduct2.getFullyQualifiedName()),
+          "Data product 2 should have 1 asset");
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
+
+  private Map<String, Integer> getAllDataProductsWithAssetsCount() throws HttpResponseException {
+    WebTarget target = getResource("dataProducts/assets/counts");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
 }

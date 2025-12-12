@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
+import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -21,6 +22,7 @@ import {
   navigateToCustomizeLandingPage,
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const test = base;
 
@@ -165,8 +167,9 @@ test.describe('FeedWidget on landing page', () => {
     await titleLink.click();
     await page.waitForLoadState('networkidle');
 
-    // Verify navigation to explore
-    await expect(page.url()).toContain('/explore');
+    // Verify navigation to user activity feed
+    await expect(page.url()).toContain('/users/');
+    await expect(page.url()).toContain('/activity_feed/all');
   });
 
   test('feed body renders content or empty state', async ({ page }) => {
@@ -381,7 +384,7 @@ test.describe('FeedWidget on landing page', () => {
 test.describe('Mention notifications in Notification Box', () => {
   const adminUser = new UserClass();
   const user1 = new UserClass();
-  const entity = new TableClass();
+  const entity = EntityDataClass.table1;
 
   const test = base.extend<{
     adminPage: Page;
@@ -404,24 +407,40 @@ test.describe('Mention notifications in Notification Box', () => {
   test.beforeAll('Setup entities and users', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await user1.create(apiContext);
-      await entity.create(apiContext);
-    } finally {
-      await afterAction();
-    }
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
+    await user1.create(apiContext);
+    await afterAction();
   });
 
   test('Mention notification shows correct user details in Notification box', async ({
     adminPage,
     user1Page,
   }) => {
+    test.slow();
+
     await test.step(
       'Admin user creates a conversation on an entity',
       async () => {
         await entity.visitEntityPage(adminPage);
+        // Added a safety check on waiting for activity feed count to avoid missing feed
+        // Poll the activity feed tab count from the page until it's a valid non-negative number
+        let count = NaN;
+        const maxRetries = 30;
+        for (let i = 0; i < maxRetries && (isNaN(count) || count <= 0); i++) {
+          const countText = await adminPage
+            .getByRole('tab', { name: 'Activity Feeds & Tasks' })
+            .getByTestId('count')
+            .textContent();
+          count = Number(countText ?? '0');
+          if (isNaN(count) || count <= 0) {
+            // wait for 2s before querying again
+            await adminPage.waitForTimeout(2000);
+            await adminPage.reload();
+            await adminPage.waitForLoadState('networkidle');
+            await waitForAllLoadersToDisappear(adminPage);
+          }
+        }
 
         await adminPage.getByTestId('activity_feed').click();
         await adminPage.waitForLoadState('networkidle');
@@ -527,8 +546,7 @@ test.describe('Mention notifications in Notification Box', () => {
         const mentionsFeedResponse = adminPage.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/feed') &&
-            response.url().includes('filterType=MENTIONS') &&
-            response.url().includes('type=Conversation')
+            response.url().includes('filterType=MENTIONS')
         );
 
         await mentionsTab.click();

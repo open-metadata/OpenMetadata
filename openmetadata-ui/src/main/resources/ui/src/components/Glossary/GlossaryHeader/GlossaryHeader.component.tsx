@@ -71,10 +71,10 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
-import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 import './glossery-header.less';
 const GlossaryHeader = ({
@@ -432,7 +432,7 @@ const GlossaryHeader = ({
     if (!isGlossary) {
       const entityStatus = selectedData.entityStatus ?? EntityStatus.Approved;
 
-      return <GlossaryStatusBadge status={entityStatus} />;
+      return <EntityStatusBadge showDivider status={entityStatus} />;
     }
 
     return null;
@@ -442,7 +442,7 @@ const GlossaryHeader = ({
     if (permissions.Create || createGlossaryTermPermission) {
       return isGlossary ? (
         <Button
-          className="m-l-xs h-10"
+          className="m-l-xs"
           data-testid="add-new-tag-button-header"
           size="middle"
           type="primary"
@@ -453,7 +453,7 @@ const GlossaryHeader = ({
         <>
           {glossaryTermStatus && glossaryTermStatus === EntityStatus.Approved && (
             <Dropdown
-              className="m-l-xs h-10"
+              className="m-l-xs"
               menu={{
                 items: addButtonContent,
               }}

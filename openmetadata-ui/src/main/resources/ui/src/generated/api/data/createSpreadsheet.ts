@@ -15,6 +15,10 @@
  */
 export interface CreateSpreadsheet {
     /**
+     * Spreadsheet creation timestamp
+     */
+    createdTime?: number;
+    /**
      * List of fully qualified names of data products this entity is part of.
      */
     dataProducts?: string[];
@@ -50,6 +54,10 @@ export interface CreateSpreadsheet {
      * MIME type of the spreadsheet file
      */
     mimeType?: SpreadsheetMIMEType;
+    /**
+     * Last modification timestamp
+     */
+    modifiedTime?: number;
     /**
      * Name that identifies this spreadsheet.
      */
@@ -297,7 +305,29 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }

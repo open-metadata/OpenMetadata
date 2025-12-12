@@ -69,3 +69,12 @@
     }
   }
 }
+
+.asset-selection-space {
+  .ant-space-item {
+    &:has(> .asset-list-wrapper) {
+      flex: 1;
+      overflow-y: scroll;
+    }
+  }
+}
