@@ -96,7 +96,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
       </div>
     ),
   },
-  ...descriptionTableObject(),
+  ...descriptionTableObject<DatabaseSchema>(),
   ...ownerTableObject<DatabaseSchema>(),
   {
     title: t('label.usage'),
