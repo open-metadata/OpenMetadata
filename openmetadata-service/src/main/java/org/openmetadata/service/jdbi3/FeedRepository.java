@@ -149,6 +149,7 @@ public class FeedRepository {
     AFTER
   }
 
+  @Transaction
   public int getNextTaskId() {
     dao.feedDAO().updateTaskId();
     return dao.feedDAO().getTaskId();

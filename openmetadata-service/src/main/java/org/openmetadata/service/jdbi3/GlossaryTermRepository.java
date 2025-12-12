@@ -974,11 +974,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     EntityLink newAbout = new EntityLink(GLOSSARY_TERM, updated.getFullyQualifiedName());
 
     daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), original.getId().toString());
-
-    WorkflowInstanceRepository workflowInstanceRepository =
-        (WorkflowInstanceRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
-    workflowInstanceRepository.updateEntityLinks(about.getLinkString(), newAbout.getLinkString());
-
     List<EntityReference> childTerms =
         findTo(updated.getId(), GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
 

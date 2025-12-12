@@ -110,6 +110,10 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
     getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstance), workflowInstanceId);
   }
 
+  /**
+   * Marks a workflow instance as FAILED with the given reason.
+   * Preserves audit trail instead of deleting the instance.
+   */
   public void markInstanceAsFailed(UUID workflowInstanceId, String reason) {
     WorkflowInstance workflowInstance =
         JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
@@ -121,9 +125,5 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
             .withEndedAt(System.currentTimeMillis());
 
     getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedInstance), workflowInstanceId);
-  }
-
-  public void updateEntityLinks(String oldEntityLink, String newEntityLink) {
-    daoCollection.workflowInstanceTimeSeriesDAO().updateEntityLink(oldEntityLink, newEntityLink);
   }
 }
