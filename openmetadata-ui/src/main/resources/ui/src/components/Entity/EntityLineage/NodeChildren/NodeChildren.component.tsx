@@ -47,7 +47,7 @@ import {
 } from './NodeChildren.interface';
 
 interface CustomPaginatedListProps {
-  children: EntityChildren;
+  entityChildren: EntityChildren;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
   items: React.ReactNode[];
   nodeId?: string;
@@ -56,14 +56,14 @@ interface CustomPaginatedListProps {
 }
 
 const CustomPaginatedList = ({
-  children,
+  entityChildren,
   isOnlyShowColumnsWithLineageFilterActive,
   items,
   nodeId,
   page,
   setPage,
 }: CustomPaginatedListProps) => {
-  const currentNodeAllColumns = Object.values(children ?? {});
+  const currentNodeAllColumns = Object.values(entityChildren ?? {});
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
     useLineageProvider();
@@ -120,7 +120,8 @@ const CustomPaginatedList = ({
             i >= startIdx && i < endIdx
               ? 'inside-current-page-item'
               : 'outside-current-page-item'
-          }>
+          }
+        >
           {item}
         </div>
       );
@@ -172,6 +173,7 @@ const CustomPaginatedList = ({
           ? currentNodeAllPagesItems
           : currentNodeCurrentPageItems;
       }
+
       return updated;
     });
   }, [isOnlyShowColumnsWithLineageFilterActive, page]);
@@ -221,12 +223,14 @@ const CustomPaginatedList = ({
           direction="row"
           justifyContent="center"
           mt={2}
-          spacing={1}>
+          spacing={1}
+        >
           <IconButton
             data-testid="prev-btn"
             disabled={page === 1}
             size="small"
-            onClick={handlePrev}>
+            onClick={handlePrev}
+          >
             <ChevronLeftIcon />
           </IconButton>
 
@@ -238,7 +242,8 @@ const CustomPaginatedList = ({
             data-testid="next-btn"
             disabled={page === totalPages}
             size="small"
-            onClick={handleNext}>
+            onClick={handleNext}
+          >
             <ChevronRightIcon />
           </IconButton>
         </Stack>
@@ -316,14 +321,14 @@ const NodeChildren = ({
     );
   }, [node]);
 
-  const { children, childrenHeading } = useMemo(
+  const { children: entityChildren, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node]
   );
 
   const currentNodeAllColumns = useMemo(
-    () => Object.values(children ?? {}),
-    [children]
+    () => Object.values(entityChildren ?? {}),
+    [entityChildren]
   );
 
   const hasLineageInNestedChildren = useCallback(
@@ -409,7 +414,7 @@ const NodeChildren = ({
   );
 
   useEffect(() => {
-    if (!isEmpty(children)) {
+    if (!isEmpty(entityChildren)) {
       if (isOnlyShowColumnsWithLineageFilterActive) {
         setFilteredColumns(currentNodeColumnsWithLineage);
       } else {
@@ -528,7 +533,8 @@ const NodeChildren = ({
           className="lineage-collapse-column"
           defaultActiveKey={record.fullyQualifiedName}
           expandIcon={() => null}
-          key={record.fullyQualifiedName}>
+          key={record.fullyQualifiedName}
+        >
           <Panel header={headerContent} key={record.fullyQualifiedName ?? ''}>
             {result}
           </Panel>
@@ -602,14 +608,15 @@ const NodeChildren = ({
   ) {
     return (
       isChildrenListExpanded &&
-      !isEmpty(children) && (
+      !isEmpty(entityChildren) && (
         <div
           className={classNames(
             'column-container',
             selectedColumn && 'any-column-selected',
             isCreatingEdge && 'creating-edge'
           )}
-          data-testid="column-container">
+          data-testid="column-container"
+        >
           <div className="search-box">
             <Input
               data-testid="search-column-input"
@@ -626,7 +633,7 @@ const NodeChildren = ({
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
                   <CustomPaginatedList
-                    children={children}
+                    entityChildren={entityChildren}
                     isOnlyShowColumnsWithLineageFilterActive={
                       isOnlyShowColumnsWithLineageFilterActive
                     }
