@@ -47,60 +47,42 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { Glossary } from '../support/glossary/Glossary';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 
-const table = new TableClass();
-const topic = new TopicClass();
-const dashboard = new DashboardClass();
-const mlModel = new MlModelClass();
-const pipeline = new PipelineClass();
-const dashboardDataModel = new DashboardDataModelClass();
-const apiCollection = new ApiCollectionClass();
-const searchIndex = new SearchIndexClass();
-const container = new ContainerClass();
-const database = new DatabaseClass();
-const databaseSchema = new DatabaseSchemaClass();
-const storedProcedure = new StoredProcedureClass();
-const apiEndpoint = new ApiEndpointClass();
-const domain = new Domain();
-const glossary = new Glossary();
-const glossaryTerm = new GlossaryTerm();
-
 export const getCustomizeDetailsEntity = (
   type: ECustomizedDataAssets | ECustomizedGovernance
 ) => {
   switch (type) {
     case ECustomizedDataAssets.TABLE:
-      return table;
+      return new TableClass();
     case ECustomizedDataAssets.TOPIC:
-      return topic;
+      return new TopicClass();
     case ECustomizedDataAssets.DASHBOARD:
-      return dashboard;
+      return new DashboardClass();
     case ECustomizedDataAssets.ML_MODEL:
-      return mlModel;
+      return new MlModelClass();
     case ECustomizedDataAssets.PIPELINE:
-      return pipeline;
+      return new PipelineClass();
     case ECustomizedDataAssets.DASHBOARD_DATA_MODEL:
-      return dashboardDataModel;
+      return new DashboardDataModelClass();
     case ECustomizedDataAssets.API_COLLECTION:
-      return apiCollection;
+      return new ApiCollectionClass();
     case ECustomizedDataAssets.SEARCH_INDEX:
-      return searchIndex;
+      return new SearchIndexClass();
     case ECustomizedDataAssets.CONTAINER:
-      return container;
+      return new ContainerClass();
     case ECustomizedDataAssets.DATABASE:
-      return database;
+      return new DatabaseClass();
     case ECustomizedDataAssets.DATABASE_SCHEMA:
-      return databaseSchema;
+      return new DatabaseSchemaClass();
     case ECustomizedDataAssets.STORED_PROCEDURE:
-      return storedProcedure;
+      return new StoredProcedureClass();
     case ECustomizedDataAssets.API_ENDPOINT:
-      return apiEndpoint;
+      return new ApiEndpointClass();
     case ECustomizedGovernance.DOMAIN:
-      return domain;
+      return new Domain();
     case ECustomizedGovernance.GLOSSARY:
-      return glossary;
+      return new Glossary();
     case ECustomizedGovernance.GLOSSARY_TERM:
-      return glossaryTerm;
-
+      return new GlossaryTerm();
     default:
       throw new Error(`Invalid entity type: ${type}`);
   }
