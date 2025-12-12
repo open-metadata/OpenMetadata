@@ -920,6 +920,7 @@ class PowerbiSource(DashboardServiceSource):
                 parser = LineageParser(
                     parser_query, dialect=Dialect.SNOWFLAKE, timeout_seconds=30
                 )
+                query_hash = parser.query_hash
             except Exception as parser_exc:
                 logger.debug(f"LineageParser failed with error: {parser_exc}")
                 logger.debug(f"Failed query was: {parser_query[:200]}...")
@@ -927,11 +928,12 @@ class PowerbiSource(DashboardServiceSource):
 
             if parser.source_tables:
                 logger.debug(
-                    f"LineageParser found {len(parser.source_tables)} source table(s)"
+                    f"[{query_hash}] LineageParser found {len(parser.source_tables)} source table(s)"
                 )
                 for table in parser.source_tables:
+                    schema_name = table.schema if hasattr(table, "schema") else "N/A"
                     logger.debug(
-                        f"source table: {table.raw_name}, schema: {table.schema if hasattr(table, 'schema') else 'N/A'}"
+                        f"[{query_hash}] source table: {table.raw_name}, schema: {schema_name}"
                     )
                 lineage_tables_list = []
                 for source_table in parser.source_tables:

@@ -83,11 +83,13 @@ def parse_databricks_native_query_source(
             parser = LineageParser(
                 parser_query, dialect=Dialect.DATABRICKS, timeout_seconds=30
             )
+            query_hash = parser.query_hash
             if parser.query_parsing_success is False:
                 raise Exception(parser.query_parsing_failure_reason)
         except Exception as parser_exc:
+            hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
             logger.error(
-                f"LineageParser failed parsing query with error {parser_query[:200]} ",
+                f"{hash_prefix}LineageParser failed parsing query with error {parser_query[:200]} ",
                 exc_info=parser_exc,
             )
             return None
