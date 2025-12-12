@@ -72,7 +72,8 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
       className={classNames(
         'items-center entity-label-container',
         childrenCount > 0 ? 'with-footer' : ''
-      )}>
+      )}
+    >
       <Col className="d-flex items-center m-b-sm" flex="auto">
         <div className="d-flex entity-service-icon m-r-xs">
           {getServiceIcon(node)}
@@ -82,7 +83,8 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
             align="start"
             className="entity-header-name"
             direction="horizontal"
-            size={6}>
+            size={6}
+          >
             <Typography.Text className="m-b-0 d-flex text-left text-grey-muted node-service-type">
               {node.serviceType}
             </Typography.Text>
@@ -94,7 +96,8 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
           <Typography.Text
             className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
             data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}>
+            ellipsis={{ tooltip: true }}
+          >
             {getEntityName(node)}
           </Typography.Text>
         </Space>
@@ -181,6 +184,7 @@ const EntityFooter = ({
     () => getEntityChildrenAndLabel(node),
     [node.id]
   );
+  const { isEditMode } = useLineageProvider();
 
   const childrenCount = children.length;
 
@@ -218,7 +222,8 @@ const EntityFooter = ({
         )}
         data-testid="children-info-dropdown-btn"
         variant="outlined"
-        onClick={handleClickColumnInfoDropdown}>
+        onClick={handleClickColumnInfoDropdown}
+      >
         {childrenInfoDropdownLabel}
       </Button>
       <TestSuiteSummaryContainer node={node} />
@@ -228,7 +233,9 @@ const EntityFooter = ({
           isOnlyShowColumnsWithLineageFilterActive && 'active'
         )}
         data-testid="lineage-filter-button"
-        onClick={handleOnlyShowColumnsWithLineage}>
+        disabled={isEditMode}
+        onClick={handleOnlyShowColumnsWithLineage}
+      >
         <FilterIcon height={20} width={20} />
       </IconButton>
     </div>
