@@ -16,7 +16,7 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { addMultiOwner } from '../../utils/entity';
+import { addMultiOwner, assignTag, removeTag } from '../../utils/entity';
 import { removeReviewer } from '../../utils/glossary';
 
 test.use({
@@ -186,4 +186,121 @@ test.describe('Glossary Remove Operations', () => {
     ).toBeVisible();
   });
 
+  // G-U10: Remove tags from glossary
+  test('should add and remove tags from glossary', async ({ page }) => {
+    await glossary.visitEntityPage(page);
+    await page.waitForLoadState('networkidle');
+
+    const tagFqn = 'PersonalData.Personal';
+
+    // Add tag to glossary
+    await assignTag(
+      page,
+      'Personal',
+      'Add',
+      EntityTypeEndpoint.Glossary,
+      'KnowledgePanel.Tags',
+      tagFqn
+    );
+
+    // Verify tag is added
+    await expect(
+      page
+        .getByTestId('KnowledgePanel.Tags')
+        .getByTestId('tags-container')
+        .getByTestId(`tag-${tagFqn}`)
+    ).toBeVisible();
+
+    // Remove the tag
+    await removeTag(page, [tagFqn]);
+
+    // Verify tag is removed
+    await expect(
+      page
+        .getByTestId('KnowledgePanel.Tags')
+        .getByTestId('tags-container')
+        .getByTestId(`tag-${tagFqn}`)
+    ).not.toBeVisible();
+  });
+
+  // T-U17: Remove tags from glossary term
+  test('should add and remove tags from glossary term', async ({ page }) => {
+    await glossaryTerm.visitEntityPage(page);
+    await page.waitForLoadState('networkidle');
+
+    const tagFqn = 'PII.Sensitive';
+    const tagName = 'Sensitive';
+
+    // On glossary term page, tags are in the main content area, not KnowledgePanel
+    // Click add tag button in tags section
+    await page
+      .getByTestId('tags-container')
+      .getByTestId('add-tag')
+      .click();
+
+    // Wait for tag selector form
+    await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
+
+    // Search and select tag
+    const searchTags = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(tagName)}*`
+    );
+    await page.locator('#tagsForm_tags').fill(tagName);
+    await searchTags;
+
+    await page.getByTestId(`tag-${tagFqn}`).click();
+
+    // Wait for save button and click
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
+    );
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+    await page.getByTestId('saveAssociatedTag').click();
+
+    // Handle confirmation modal for glossary term tag updates
+    await expect(page.getByText('Would you like to proceed with updating the tags?')).toBeVisible();
+    const patchRequest = page.waitForResponse('/api/v1/glossaryTerms/*');
+    await page.getByRole('button', { name: 'Yes, confirm' }).click();
+    await patchRequest;
+
+    // Verify tag is added
+    await expect(
+      page.getByTestId('tags-container').getByTestId(`tag-${tagFqn}`)
+    ).toBeVisible();
+
+    // Remove the tag - click edit button
+    await page
+      .getByTestId('tags-container')
+      .getByTestId('edit-button')
+      .click();
+
+    // Remove tag by clicking the X icon
+    await page
+      .getByTestId(`selected-tag-${tagFqn}`)
+      .getByTestId('remove-tags')
+      .locator('svg')
+      .click();
+
+    // Save the changes
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
+    );
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+    await page.getByTestId('saveAssociatedTag').click();
+
+    // Handle confirmation modal for glossary term tag updates
+    await expect(page.getByText('Would you like to proceed with updating the tags?')).toBeVisible();
+    const patchRequest2 = page.waitForResponse('/api/v1/glossaryTerms/*');
+    await page.getByRole('button', { name: 'Yes, confirm' }).click();
+    await patchRequest2;
+
+    // Verify tag is removed
+    await expect(
+      page.getByTestId('tags-container').getByTestId(`tag-${tagFqn}`)
+    ).not.toBeVisible();
+  });
 });
