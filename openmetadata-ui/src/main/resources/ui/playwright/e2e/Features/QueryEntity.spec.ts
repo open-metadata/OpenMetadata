@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
@@ -19,7 +20,16 @@ import {
   descriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
-import { createQueryByTableName, queryFilters } from '../../utils/query';
+import {
+  selectActiveGlobalDomain,
+  selectAllDomainsFromDropdown,
+} from '../../utils/domain';
+import {
+  createQueryByTableName,
+  createQueryViaUI,
+  navigateToTableQueriesTab,
+  queryFilters,
+} from '../../utils/query';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -411,6 +421,112 @@ test('Verify Query Pagination', async ({ page, browser }) => {
   );
 
   await afterAction();
+});
+
+test.describe('Query Domain Filtering', () => {
+  const domainTable = new TableClass();
+  const domain1 = new Domain();
+  const domain2 = new Domain();
+  const query1Text = `SELECT * FROM domain1_query_${Date.now()}`;
+  const query2Text = `SELECT * FROM domain2_query_${Date.now() + 1}`;
+
+  test.beforeAll(async ({ browser }) => {
+    const { afterAction, apiContext } = await createNewPage(browser);
+    await domain1.create(apiContext);
+    await domain2.create(apiContext);
+    await domainTable.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { afterAction, apiContext } = await createNewPage(browser);
+    await domainTable.delete(apiContext);
+    await domain1.delete(apiContext);
+    await domain2.delete(apiContext);
+    await afterAction();
+  });
+
+  test('Queries should be filtered by active domain selection', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    await redirectToHomePage(page);
+
+    await test.step('Select Domain 1 and create Query 1', async () => {
+      await selectActiveGlobalDomain(page, domain1.responseData);
+      await createQueryViaUI({
+        page,
+        table: domainTable,
+        queryText: query1Text,
+        description: 'Query 1 with Domain 1',
+      });
+    });
+
+    await test.step('Select Domain 2 and create Query 2', async () => {
+      await selectActiveGlobalDomain(page, domain2.responseData);
+      await createQueryViaUI({
+        page,
+        table: domainTable,
+        queryText: query2Text,
+        description: 'Query 2 with Domain 2',
+      });
+    });
+
+    await test.step(
+      'With Domain 1 selected - only Query 1 visible',
+      async () => {
+        await selectActiveGlobalDomain(page, domain1.responseData);
+        await navigateToTableQueriesTab({ page, table: domainTable });
+
+        await expect(page.getByText(query1Text)).toBeVisible();
+        await expect(page.getByText(query2Text)).not.toBeVisible();
+
+        const queryTab1 = page.getByTestId('table_queries');
+        const countText1 = await queryTab1
+          .locator('[data-testid="count"]')
+          .textContent();
+
+        expect(parseInt(countText1 || '0', 10)).toBe(1);
+      }
+    );
+
+    await test.step(
+      'With Domain 2 selected - only Query 2 visible',
+      async () => {
+        await selectActiveGlobalDomain(page, domain2.responseData);
+        await navigateToTableQueriesTab({ page, table: domainTable });
+
+        await expect(page.getByText(query2Text)).toBeVisible();
+        await expect(page.getByText(query1Text)).not.toBeVisible();
+
+        const queryTab2 = page.getByTestId('table_queries');
+        const countText2 = await queryTab2
+          .locator('[data-testid="count"]')
+          .textContent();
+
+        expect(parseInt(countText2 || '0', 10)).toBe(1);
+      }
+    );
+
+    await test.step(
+      'With All Domains selected - both queries visible',
+      async () => {
+        await selectAllDomainsFromDropdown(page);
+        await navigateToTableQueriesTab({ page, table: domainTable });
+
+        await expect(page.getByText(query1Text)).toBeVisible();
+        await expect(page.getByText(query2Text)).toBeVisible();
+
+        const queryTab3 = page.getByTestId('table_queries');
+        const countText3 = await queryTab3
+          .locator('[data-testid="count"]')
+          .textContent();
+
+        expect(parseInt(countText3 || '0', 10)).toBeGreaterThanOrEqual(2);
+      }
+    );
+  });
 });
 
 test.afterAll(async ({ browser }) => {

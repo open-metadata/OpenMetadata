@@ -24,6 +24,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import {
+  DEFAULT_DOMAIN_VALUE,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
@@ -38,6 +39,7 @@ import { Table } from '../../generated/entity/data/table';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { postQuery } from '../../rest/queryAPI';
 import { searchQuery } from '../../rest/searchAPI';
@@ -67,6 +69,7 @@ const AddQueryPage = () => {
   const [initialOptions, setInitialOptions] = useState<DefaultOptionType[]>();
   const [isSaving, setIsSaving] = useState(false);
   const navigate = useNavigate();
+  const hasActiveDomain = useDomainStore.getState().activeDomain !== DEFAULT_DOMAIN_VALUE;
 
   const fetchEntityDetails = async () => {
     try {
@@ -114,7 +117,7 @@ const AddQueryPage = () => {
       return table
         ? filter(options, ({ value }) => value !== table.id)
         : options;
-    } catch (error) {
+    } catch () {
       return [];
     }
   };
@@ -146,6 +149,7 @@ const AddQueryPage = () => {
 
   const handleSubmit: FormProps['onFinish'] = async (values): Promise<void> => {
     setIsSaving(true);
+    const activeDomain = useDomainStore.getState().activeDomain;
     const updatedValues: CreateQuery = {
       ...values,
       description: isEmpty(description) ? undefined : description,
@@ -167,6 +171,10 @@ const AddQueryPage = () => {
       ],
       queryDate: getCurrentMillis(),
       service: getPartialNameFromFQN(datasetFQN, ['service']),
+      domains:
+        hasActiveDomain
+          ? [activeDomain]
+          : [],
     };
 
     try {

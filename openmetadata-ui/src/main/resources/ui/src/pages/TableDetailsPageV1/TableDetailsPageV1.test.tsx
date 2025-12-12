@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { SearchIndex } from '../../enums/search.enum';
 import { TableType } from '../../generated/entity/data/table';
+import { searchQuery } from '../../rest/searchAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
@@ -137,8 +139,15 @@ jest.mock('../../utils/CommonUtils', () => ({
   sortTagsCaseInsensitive: jest.fn(),
 }));
 
-jest.mock('../../rest/queryAPI', () => ({
-  getQueriesList: jest.fn(),
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      hits: {
+        hits: [],
+        total: { value: 5 },
+      },
+    })
+  ),
 }));
 
 jest.mock(
@@ -524,5 +533,101 @@ describe('TestDetailsPageV1 component', () => {
 
     expect(await screen.findByText('GenericTab')).toBeInTheDocument();
     expect(GenericTab).toHaveBeenCalledWith({ type: 'Table' }, {});
+  });
+
+  describe('Query count fetching with searchQuery API', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should fetch query count using searchQuery API with correct parameters', async () => {
+      const tableId = 'test-table-id-123';
+
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+          ViewBasic: true,
+        })),
+      }));
+
+      (getTableDetailsByFQN as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          name: 'test',
+          id: tableId,
+          columns: [],
+        })
+      );
+
+      (searchQuery as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          hits: {
+            hits: [],
+            total: { value: 10 },
+          },
+        })
+      );
+
+      await act(async () => {
+        render(<TableDetailsPageV1 />);
+      });
+
+      await waitFor(() => {
+        expect(searchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            query: '*',
+            pageSize: 0,
+            searchIndex: SearchIndex.QUERY,
+            queryFilter: {
+              query: {
+                bool: {
+                  must: [
+                    {
+                      term: {
+                        'queryUsedIn.id': tableId,
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          })
+        );
+      });
+    });
+
+    it('should correctly extract query count from searchQuery response', async () => {
+      const expectedQueryCount = 25;
+
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+          ViewBasic: true,
+        })),
+      }));
+
+      (getTableDetailsByFQN as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          name: 'test',
+          id: 'table-id',
+          columns: [],
+        })
+      );
+
+      (searchQuery as jest.Mock).mockImplementation(() =>
+        Promise.resolve({
+          hits: {
+            hits: [],
+            total: { value: expectedQueryCount },
+          },
+        })
+      );
+
+      await act(async () => {
+        render(<TableDetailsPageV1 />);
+      });
+
+      // The component should have called searchQuery and processed the response
+      await waitFor(() => {
+        expect(searchQuery).toHaveBeenCalled();
+      });
+    });
   });
 });

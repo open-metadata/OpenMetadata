@@ -806,6 +806,46 @@ export const verifyActiveDomainIsDefault = async (page: Page) => {
   );
 };
 
+export const selectActiveGlobalDomain = async (
+  page: Page,
+  domainData: { name: string; displayName: string; fullyQualifiedName?: string }
+) => {
+  const domainsResponse = page.waitForResponse('api/v1/domains/hierarchy?*');
+  await page.getByTestId('domain-dropdown').click();
+  await domainsResponse;
+
+  await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+    state: 'visible',
+  });
+
+  const domainSearchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      domainData.name
+    )}*&index=domain_search_index*`
+  );
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domainData.name);
+
+  await domainSearchResponse;
+
+  await page.getByTestId(`tag-${domainData.fullyQualifiedName}`).click();
+
+  await expect(page.getByTestId('domain-dropdown')).toContainText(
+    domainData.displayName
+  );
+};
+
+export const selectAllDomainsFromDropdown = async (page: Page) => {
+  await page.getByTestId('domain-dropdown').click();
+  await page.getByTestId('all-domains-selector').click();
+  await expect(page.getByTestId('domain-dropdown')).toContainText(
+    'All Domains'
+  );
+};
+
 /**
  * Sets up a complete environment for domain ownership testing
  * Creates user, policy, role, domain, data product and assigns ownership

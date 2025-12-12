@@ -65,10 +65,11 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
+import { SearchIndex } from '../../enums/search.enum';
 import { FeedCounts } from '../../interface/feed.interface';
 import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
-import { getQueriesList } from '../../rest/queryAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import {
   addFollower,
   getTableDetailsByFQN,
@@ -289,11 +290,25 @@ const TableDetailsPageV1: React.FC = () => {
       return;
     }
     try {
-      const response = await getQueriesList({
-        limit: 0,
-        entityId: tableDetails.id,
+      const response = await searchQuery({
+        query: '*',
+        pageSize: 0,
+        searchIndex: SearchIndex.QUERY,
+        queryFilter: {
+          query: {
+            bool: {
+              must: [
+                {
+                  term: {
+                    'queryUsedIn.id': tableDetails.id,
+                  },
+                },
+              ],
+            },
+          },
+        },
       });
-      setQueryCount(response.paging.total);
+      setQueryCount(response.hits.total.value ?? 0);
     } catch {
       setQueryCount(0);
     }
