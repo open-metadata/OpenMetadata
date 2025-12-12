@@ -83,6 +83,10 @@ export interface DatabaseService {
      */
     pipelines?: EntityReference[];
     /**
+     * Reviewers of this database service.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
      */
     serviceType: DatabaseServiceType;

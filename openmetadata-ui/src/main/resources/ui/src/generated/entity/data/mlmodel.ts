@@ -106,6 +106,10 @@ export interface Mlmodel {
      */
     owners?: EntityReference[];
     /**
+     * Reviewers of this ML Model.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Endpoint that makes the ML Model available, e.g,. a REST API serving the data or
      * computing predictions.
      */

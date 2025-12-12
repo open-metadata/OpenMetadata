@@ -123,6 +123,10 @@ export interface Container {
      */
     retentionPeriod?: string;
     /**
+     * Reviewers of this container.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to the storage service where this container is hosted in.
      */
     service: EntityReference;

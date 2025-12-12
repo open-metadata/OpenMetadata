@@ -160,6 +160,10 @@ export interface Table {
      */
     retentionPeriod?: string;
     /**
+     * Reviewers of this table.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Sample data for a table.
      */
     sampleData?: TableData;

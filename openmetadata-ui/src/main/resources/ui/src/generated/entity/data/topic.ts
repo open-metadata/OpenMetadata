@@ -118,6 +118,10 @@ export interface Topic {
      */
     retentionTime?: number;
     /**
+     * Reviewers of this topic.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Sample data for a topic.
      */
     sampleData?: TopicSampleData;
