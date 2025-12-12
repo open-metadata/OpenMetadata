@@ -12,8 +12,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
-import es.org.elasticsearch.index.query.QueryBuilder;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import jakarta.json.stream.JsonGenerator;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -41,6 +44,10 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Execution(ExecutionMode.CONCURRENT)
 class ElasticSearchRBACConditionEvaluatorTest {
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER =
+      new JacksonJsonpMapper(OBJECT_MAPPER);
 
   private RBACConditionEvaluator evaluator;
   private User mockUser;
@@ -126,13 +133,25 @@ class ElasticSearchRBACConditionEvaluatorTest {
     setupMockPolicies(expression, effect, List.of("All"));
   }
 
+  private String serializeQueryToJson(Query query) {
+    try {
+      StringWriter writer = new StringWriter();
+      JsonGenerator generator = JACKSON_JSONP_MAPPER.jsonProvider().createGenerator(writer);
+      query.serialize(generator, JACKSON_JSONP_MAPPER);
+      generator.close();
+      return writer.toString();
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to serialize Query to JSON", e);
+    }
+  }
+
   @Test
   void testIsOwner() {
     setupMockPolicies("isOwner()", "ALLOW");
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     assertTrue(generatedQuery.contains("owners.id"), "The query should contain 'owners.id'.");
     assertTrue(
@@ -145,8 +164,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     setupMockPolicies("!isOwner()", "DENY");
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     assertTrue(
         generatedQuery.contains("must_not"), "The query should contain 'must_not' for negation.");
@@ -163,8 +182,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     setupMockPolicies("matchAnyTag('PII.Sensitive', 'PersonalData.Personal')", "ALLOW");
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
     assertTrue(
@@ -181,8 +200,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "ALLOW");
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
     assertTrue(
@@ -202,8 +221,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "ALLOW");
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
@@ -247,13 +266,13 @@ class ElasticSearchRBACConditionEvaluatorTest {
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     domain.setName("Finance");
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
-    assertTrue(generatedQuery.contains("domain.id"), "The query should contain 'domain.id'.");
+    assertTrue(generatedQuery.contains("domains.id"), "The query should contain 'domains.id'.");
     assertTrue(
         generatedQuery.contains(domain.getId().toString()),
         "The query should contain the user's domain ID.");
@@ -272,7 +291,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     domain.setName("Finance");
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     EntityReference team = new EntityReference();
     team.setId(UUID.randomUUID());
@@ -280,16 +299,16 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    assertFieldExists(jsonContext, "$.bool.must[?(@.term['domain.id'])]", "domain.id");
+    assertFieldExists(jsonContext, "$.bool.must[?(@.term['domains.id'])]", "domains.id");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domain.id'].value=='" + domain.getId().toString() + "')]",
+        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
         "user's domain ID");
 
     assertFieldExists(
@@ -311,8 +330,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
@@ -331,8 +350,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     role.setName("DataConsumer");
     when(mockUser.getRoles()).thenReturn(List.of(role));
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     assertTrue(
         generatedQuery.contains("\"must_not\""), "The query should contain 'must_not' clause.");
@@ -354,8 +373,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     assertTrue(generatedQuery.contains("must_not"), "The query should contain 'must_not'.");
     assertTrue(
         generatedQuery.contains("match_all"), "The must_not clause should contain 'match_all'.");
@@ -370,7 +389,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     domain.setName("Technology");
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     EntityReference team = new EntityReference();
     team.setId(UUID.randomUUID());
@@ -378,10 +397,10 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
-    assertTrue(generatedQuery.contains("domain.id"), "The query should contain 'domain.id'.");
+    assertTrue(generatedQuery.contains("domains.id"), "The query should contain 'domains.id'.");
     assertTrue(
         generatedQuery.contains(domain.getId().toString()),
         "The query should contain the user's domain ID.");
@@ -395,13 +414,13 @@ class ElasticSearchRBACConditionEvaluatorTest {
   @Test
   void testConditionUserLacksDomain() {
     setupMockPolicies("hasDomain() && isOwner() && matchAnyTag('Public', 'Private')", "ALLOW");
-    when(mockUser.getDomain()).thenReturn(null);
+    when(mockUser.getDomains()).thenReturn(null);
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
     assertFieldExists(
-        jsonContext, "$.bool.must_not[?(@.exists.field=='domain.id')]", "must_not for domain.id");
+        jsonContext, "$.bool.must_not[?(@.exists.field=='domains.id')]", "must_not for domains.id");
 
     assertFieldExists(
         jsonContext,
@@ -429,8 +448,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     assertTrue(generatedQuery.contains("tags.tagFQN"), "The query should contain 'tags.tagFQN'.");
     assertTrue(generatedQuery.contains("Sensitive"), "The query should contain 'Sensitive' tag.");
@@ -444,17 +463,10 @@ class ElasticSearchRBACConditionEvaluatorTest {
         count.incrementAndGet();
         countBoolQueries(node.get("bool"), count);
       } else {
-        node.fields()
-            .forEachRemaining(
-                entry -> {
-                  countBoolQueries(entry.getValue(), count);
-                });
+        node.fields().forEachRemaining(entry -> countBoolQueries(entry.getValue(), count));
       }
     } else if (node.isArray()) {
-      node.forEach(
-          element -> {
-            countBoolQueries(element, count);
-          });
+      node.forEach(element -> countBoolQueries(element, count));
     }
   }
 
@@ -470,7 +482,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     EntityReference team = new EntityReference();
     team.setId(UUID.randomUUID());
@@ -478,15 +490,15 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     assertFieldDoesNotExist(
         jsonContext, "$.bool.must[?(@.term['tags.tagFQN'])]", "matchAnyTag 'Confidential'");
     assertFieldDoesNotExist(
-        jsonContext, "$.bool.must[?(@.term['domain.id'])]", "hasDomain 'domain.id'");
+        jsonContext, "$.bool.must[?(@.term['domains.id'])]", "hasDomain 'domains.id'");
 
     assertFieldDoesNotExist(
         jsonContext, "$.bool.must_not[?(@.exists.field=='owners.id')]", "noOwner clause");
@@ -499,12 +511,12 @@ class ElasticSearchRBACConditionEvaluatorTest {
     setupMockPolicies(
         "!(matchAllTags('Sensitive', 'Internal') && (!hasDomain()) || isOwner())", "ALLOW");
 
-    when(mockUser.getDomain()).thenReturn(null); // User has no domain
+    when(mockUser.getDomains()).thenReturn(null); // User has no domain
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     assertFieldExists(
@@ -538,8 +550,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     // Evaluate condition
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     // The user does not have the 'Analyst' role and is not in 'Finance' team.
     // The condition '!hasAnyRole('Viewer') && !inAnyTeam('Finance')' evaluates to true.
@@ -558,7 +570,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
     // Mock user domain
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     // Mock user teams
     EntityReference team1 = new EntityReference();
@@ -576,12 +588,12 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     // Evaluate condition
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     // Assertions
     assertTrue(
-        generatedQuery.contains("\"domain.id\""), "The query should contain 'domain.id' term.");
+        generatedQuery.contains("\"domains.id\""), "The query should contain 'domains.id' term.");
     assertTrue(
         generatedQuery.contains("\"owners.id\""), "The query should contain 'owners.id' term.");
     assertFalse(
@@ -601,7 +613,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
     EntityReference userRef = new EntityReference();
@@ -610,13 +622,13 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getEntityReference()).thenReturn(userRef);
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     assertFieldExists(
-        jsonContext, "$.bool.should[?(@.bool.must[?(@.term['domain.id'])])]", "domain.id");
+        jsonContext, "$.bool.should[?(@.bool.must[?(@.term['domains.id'])])]", "domains.id");
 
     assertFieldExists(
         jsonContext,
@@ -652,8 +664,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
     // Assertions
     // Assert that the `hasAnyRole` check results in `match_all` since the user has 'DataSteward'
@@ -699,7 +711,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
     EntityReference userRef = new EntityReference();
@@ -709,10 +721,10 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     // Evaluate condition
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
-    assertFieldExists(jsonContext, "$.bool.must[?(@.term['domain.id'])]", "domain.id");
+    assertFieldExists(jsonContext, "$.bool.must[?(@.term['domains.id'])]", "domains.id");
 
     assertFieldExists(
         jsonContext,
@@ -736,18 +748,18 @@ class ElasticSearchRBACConditionEvaluatorTest {
   @Test
   void testNotHasDomainWhenUserHasNoDomain() {
     setupMockPolicies("!hasDomain() && isOwner()", "ALLOW");
-    when(mockUser.getDomain()).thenReturn(null);
+    when(mockUser.getDomains()).thenReturn(null);
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.must_not[?(@.exists.field=='domain.id')]",
+        "$.bool.must_not[0].bool.must_not[?(@.exists.field=='domains.id')]",
         "must_not for hasDomain");
     assertFieldExists(
         jsonContext,
@@ -765,8 +777,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getRoles()).thenReturn(List.of(role));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
@@ -786,11 +798,11 @@ class ElasticSearchRBACConditionEvaluatorTest {
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     domain.setName("Technology");
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
@@ -807,8 +819,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
         jsonContext, "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['domain.id'].value=='" + domain.getId().toString() + "')]",
-        "domain.id");
+        "$.bool.must[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
+        "domains.id");
   }
 
   @Test
@@ -831,8 +843,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
@@ -886,18 +898,18 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['domain.id'].value=='"
+        "$.bool.should[0].bool.must[?(@.term['domains.id'].value=='"
             + domain.getId().toString()
             + "')]",
         "user's domain ID");
@@ -931,16 +943,16 @@ class ElasticSearchRBACConditionEvaluatorTest {
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     domain.setName("Operations");
-    when(mockUser.getDomain()).thenReturn(domain);
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['domain.id'].value=='"
+        "$.bool.should[0].bool.must[?(@.term['domains.id'].value=='"
             + domain.getId().toString()
             + "')]",
         "user's domain ID");
@@ -968,8 +980,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getId()).thenReturn(userId);
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     assertTrue(generatedQuery.contains("match_all"), "The query should contain 'match_all'");
   }
 
@@ -985,8 +997,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getId()).thenReturn(userId);
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     assertTrue(generatedQuery.contains("owners.id"), "The query should contain 'owner.id'");
     assertTrue(
@@ -1002,8 +1014,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getId()).thenReturn(userId);
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     assertFieldExists(
@@ -1051,8 +1063,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     when(mockUser.getTeams()).thenReturn(List.of(team1, team2));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     assertFieldExists(
@@ -1088,8 +1100,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
 
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     assertFalse(
@@ -1196,8 +1208,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
         List.of(List.of(MetadataOperation.VIEW_ALL)));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     assertFieldExists(
@@ -1232,8 +1244,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
         List.of(List.of(MetadataOperation.VIEW_ALL)));
 
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
     assertFieldExists(

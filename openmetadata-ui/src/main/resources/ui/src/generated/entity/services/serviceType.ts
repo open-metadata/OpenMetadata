@@ -17,10 +17,13 @@ export enum ServiceType {
     API = "Api",
     Dashboard = "Dashboard",
     Database = "Database",
+    Drive = "Drive",
+    Llm = "LLM",
     Messaging = "Messaging",
     Metadata = "Metadata",
     MlModel = "MlModel",
     Pipeline = "Pipeline",
     Search = "Search",
+    Security = "Security",
     Storage = "Storage",
 }

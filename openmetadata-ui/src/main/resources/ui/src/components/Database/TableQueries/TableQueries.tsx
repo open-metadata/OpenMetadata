@@ -25,7 +25,10 @@ import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
+import {
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
+} from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import {
@@ -123,6 +126,15 @@ const TableQueries: FC<TableQueriesProp> = ({
     [sortQuery.order]
   );
 
+  const translatedQuerySortOptions = useMemo(
+    () =>
+      QUERY_SORT_OPTIONS.map((option) => ({
+        ...option,
+        name: t(option.name),
+      })),
+    [t]
+  );
+
   const {
     currentPage,
     handlePageChange,
@@ -131,7 +143,7 @@ const TableQueries: FC<TableQueriesProp> = ({
     paging,
     handlePagingChange,
     showPagination,
-  } = usePaging(PAGE_SIZE);
+  } = usePaging(PAGE_SIZE_BASE);
 
   const { getEntityPermission, permissions } = usePermissionProvider();
 
@@ -428,10 +440,11 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const pagingHandler = (currentPage: number) => {
+  const pagingHandler = (currentPage: number, pageSize: number) => {
     fetchFilteredQueries({
       pageNumber: currentPage,
     });
+    handlePageSizeChange(pageSize);
   };
 
   const handleSortFieldChange = (value: string) => {
@@ -475,7 +488,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   const addButton = (
     <Tooltip
       placement="top"
-      title={!permissions?.query.Create && NO_PERMISSION_FOR_ACTION}>
+      title={!permissions?.query.Create && t(NO_PERMISSION_FOR_ACTION)}>
       <Button
         data-testid="add-query-btn"
         disabled={!permissions?.query.Create}
@@ -610,7 +623,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                     </Space>
                     <Space size={16}>
                       <SortingDropDown
-                        fieldList={QUERY_SORT_OPTIONS}
+                        fieldList={translatedQuerySortOptions}
                         handleFieldDropDown={handleSortFieldChange}
                         sortField={sortQuery.field}
                       />
@@ -651,10 +664,8 @@ const TableQueries: FC<TableQueriesProp> = ({
                           current={currentPage}
                           data-testid="query-pagination"
                           pageSize={pageSize}
-                          pageSizeOptions={[10, 25, 50]}
                           total={paging.total}
                           onChange={pagingHandler}
-                          onShowSizeChange={handlePageSizeChange}
                         />
                       </Col>
                     )}

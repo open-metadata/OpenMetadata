@@ -27,7 +27,7 @@ public class GenericBackgroundWorker implements Managed {
   }
 
   @Override
-  public void start() throws Exception {
+  public void start() {
     LOG.info("Starting background job worker");
     Thread workerThread = new Thread(this::runWorker, "background-job-worker");
     workerThread.setDaemon(true);
@@ -35,7 +35,7 @@ public class GenericBackgroundWorker implements Managed {
   }
 
   @Override
-  public void stop() throws Exception {
+  public void stop() {
     running = false;
   }
 

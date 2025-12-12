@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/addTermsAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AddTermsAction",
+  "description": "Apply Glossary Terms to the selected assets.",
+  "type": "object",
+  "definitions": {
+    "addTermsActionType": {
+      "description": "Add Terms action type.",
+      "type": "string",
+      "enum": ["AddTermsAction"],
+      "default": "AddTermsAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/addTermsActionType",
+      "default": "AddTermsAction"
+    },
+    "terms": {
+      "description": "Glossary Terms to apply",
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/tagLabel.json"
+      }
+    },
+    "applyToChildren": {
+      "title": "Apply to Children",
+      "description": "Apply terms to the children of the selected assets that match the criteria. E.g., columns, tasks, topic fields,...",
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      },
+      "default": null
+    },
+    "overwriteMetadata": {
+      "title": "Overwrite Metadata",
+      "description": "Update terms even if they are already defined in the asset. By default, incoming terms are merged with the existing ones.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["type", "terms"],
+  "additionalProperties": false
+}

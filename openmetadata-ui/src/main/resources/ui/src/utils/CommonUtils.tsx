@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,8 +12,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/ban-types */
-
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -24,6 +23,7 @@ import {
   isNull,
   isString,
   isUndefined,
+  round,
   toLower,
   toNumber,
 } from 'lodash';
@@ -32,33 +32,28 @@ import {
   ExtraInfo,
   RecentlySearched,
   RecentlySearchedData,
-  RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
 import { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
-import { reactLocalStorage } from 'reactjs-localstorage';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import {
-  imageTypes,
-  LOCALSTORAGE_RECENTLY_SEARCHED,
-  LOCALSTORAGE_RECENTLY_VIEWED,
-} from '../constants/constants';
+import { imageTypes } from '../constants/constants';
 import { BASE_COLORS } from '../constants/DataInsight.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
-import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
+import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import { FeedCounts } from '../interface/feed.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
+import brandClassBase from './BrandData/BrandClassBase';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
-import { t } from './i18next/LocalUtil';
+import i18n, { t } from './i18next/LocalUtil';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { showErrorToast } from './ToastUtils';
 
@@ -235,42 +230,86 @@ export const getCountBadge = (
 };
 
 export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
-  const recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_VIEWED
-  ) as RecentlyViewed;
+  const currentUser = useApplicationStore.getState().currentUser;
+  let recentlyViewed: RecentlyViewedData[] = [];
 
-  if (recentlyViewed?.data) {
-    return recentlyViewed.data;
+  if (currentUser) {
+    const { preferences } = usePersistentStorage.getState();
+    recentlyViewed = get(preferences, [currentUser.name, 'recentlyViewed'], []);
   }
 
-  return [];
+  return recentlyViewed;
 };
 
 export const setRecentlyViewedData = (
   recentData: Array<RecentlyViewedData>
 ): void => {
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_VIEWED, {
-    data: recentData,
-  });
+  const currentUser = useApplicationStore.getState().currentUser;
+  if (!currentUser) {
+    return;
+  }
+  const { setUserPreference } = usePersistentStorage.getState();
+  setUserPreference(currentUser.name, { recentlyViewed: recentData });
+};
+
+export const addToRecentViewed = (eData: RecentlyViewedData): void => {
+  const entityData = { ...eData, timestamp: Date.now() };
+  const currentUser = useApplicationStore.getState().currentUser;
+  let recentlyViewed: RecentlyViewedData[] = [];
+  if (!currentUser) {
+    recentlyViewed = [];
+  } else {
+    const { preferences } = usePersistentStorage.getState();
+    recentlyViewed = get(preferences, [currentUser.name, 'recentlyViewed'], []);
+  }
+
+  let newData = [...recentlyViewed];
+  if (recentlyViewed) {
+    const arrData = recentlyViewed
+      .filter((item) => item.fqn !== entityData.fqn)
+      .sort(arraySorterByKey<RecentlyViewedData>('timestamp', true));
+    arrData.unshift(entityData);
+
+    if (arrData.length > 8) {
+      arrData.pop();
+    }
+    newData = arrData;
+  } else {
+    newData = [entityData];
+  }
+  setRecentlyViewedData(newData);
 };
 
 export const setRecentlySearchedData = (
   recentData: Array<RecentlySearchedData>
 ): void => {
-  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_SEARCHED, {
-    data: recentData,
-  });
+  const currentUser = useApplicationStore.getState().currentUser;
+  if (!currentUser) {
+    return;
+  }
+  const { setUserPreference } = usePersistentStorage.getState();
+  setUserPreference(currentUser.name, { recentlySearched: recentData });
 };
 
 export const addToRecentSearched = (searchTerm: string): void => {
   if (searchTerm.trim()) {
     const searchData = { term: searchTerm, timestamp: Date.now() };
-    const recentlySearch: RecentlySearched = reactLocalStorage.getObject(
-      LOCALSTORAGE_RECENTLY_SEARCHED
-    ) as RecentlySearched;
+    const currentUser = useApplicationStore.getState().currentUser;
+    let recentlySearched: RecentlySearchedData[] = [];
+    if (!currentUser) {
+      recentlySearched = [];
+    } else {
+      const { preferences } = usePersistentStorage.getState();
+      recentlySearched = get(
+        preferences,
+        [currentUser.name, 'recentlySearched'],
+        []
+      );
+    }
+
     let arrSearchedData: RecentlySearched['data'] = [];
-    if (recentlySearch?.data) {
-      const arrData = recentlySearch.data
+    if (recentlySearched && recentlySearched.length > 0) {
+      const arrData = recentlySearched
         // search term is not case-insensitive.
         .filter((item) => item.term !== searchData.term)
         .sort(arraySorterByKey<RecentlySearchedData>('timestamp', true));
@@ -285,29 +324,6 @@ export const addToRecentSearched = (searchTerm: string): void => {
     }
     setRecentlySearchedData(arrSearchedData);
   }
-};
-
-export const addToRecentViewed = (eData: RecentlyViewedData): void => {
-  const entityData = { ...eData, timestamp: Date.now() };
-  let recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
-    LOCALSTORAGE_RECENTLY_VIEWED
-  ) as RecentlyViewed;
-  if (recentlyViewed?.data) {
-    const arrData = recentlyViewed.data
-      .filter((item) => item.fqn !== entityData.fqn)
-      .sort(arraySorterByKey<RecentlyViewedData>('timestamp', true));
-    arrData.unshift(entityData);
-
-    if (arrData.length > 8) {
-      arrData.pop();
-    }
-    recentlyViewed.data = arrData;
-  } else {
-    recentlyViewed = {
-      data: [entityData],
-    };
-  }
-  setRecentlyViewedData(recentlyViewed.data);
 };
 
 export const errorMsg = (value: string) => {
@@ -388,8 +404,19 @@ export const getNameFromFQN = (fqn: string): string => {
   return arr[arr.length - 1];
 };
 
+export const getFirstAlphanumeric = (name: string): string => {
+  /**
+   * \p{L} → matches any kind of letter from any language (Latin, Cyrillic, Chinese, etc.).
+   * \p{N} → matches any kind of numeric digit (Arabic-Indic, Roman numerals, etc.).
+   * u flag → required for Unicode property escapes to work.
+   */
+  const match = name.match(/[\p{L}\p{N}]/u);
+
+  return match ? match[0].toLowerCase() : name.charAt(0).toLowerCase();
+};
+
 export const getRandomColor = (name: string) => {
-  const firstAlphabet = name.charAt(0).toLowerCase();
+  const firstAlphabet = getFirstAlphanumeric(name);
   // Convert the user's name to a numeric value
   let nameValue = 0;
   for (let i = 0; i < name.length; i++) {
@@ -514,7 +541,7 @@ export const getFeedCounts = async (
 };
 
 export const formatNumberWithComma = (number: number) => {
-  return new Intl.NumberFormat('en-US').format(number);
+  return new Intl.NumberFormat(i18n.language).format(number);
 };
 
 /**
@@ -562,10 +589,6 @@ export const getTeamsUser = (
   }
 
   return;
-};
-
-export const getEmptyPlaceholder = () => {
-  return <ErrorPlaceHolder size={SIZE.MEDIUM} />;
 };
 
 //  return the status like loading and success
@@ -645,6 +668,7 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
     return t('message.permanently-delete-metadata-and-dependents', {
       entityName: entity,
       dependents,
+      brandName: brandClassBase.getPageTitle(),
     });
   } else {
     return (
@@ -655,6 +679,7 @@ export const getEntityDeleteMessage = (entity: string, dependents: string) => {
         }
         values={{
           entityName: entity,
+          brandName: brandClassBase.getPageTitle(),
         }}
       />
     );
@@ -689,7 +714,7 @@ export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
       errorMessage = get(error, 'response.data.responseMessage', '');
     }
     if (!errorMessage) {
-      errorMessage = get(error, 'response.data', '');
+      errorMessage = get(error, 'response.data', '') as string;
       errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
     }
   }
@@ -742,6 +767,32 @@ export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
                 {
                   term: {
                     serviceType,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+};
+
+/**
+ * @param entityType key for quick filter (e.g., 'dataproduct', 'table', 'dashboard')
+ * @returns json filter query string for entity type
+ */
+export const getEntityTypeExploreQueryFilter = (entityType: string) => {
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    'entityType.keyword': entityType,
                   },
                 },
               ],
@@ -827,4 +878,48 @@ export const calculatePercentageFromValue = (
   percentageValue: number
 ) => {
   return (value * percentageValue) / 100;
+};
+
+/**
+ * Calculates percentage from numerator and denominator with safe division
+ * @param numerator - The numerator value
+ * @param denominator - The denominator value
+ * @param precision - Number of decimal places to round to (default: 1)
+ * @param format - If true, returns formatted string with % symbol (default: false)
+ * @returns Calculated percentage rounded to precision, or 0 if denominator is 0.
+ *          Returns string if format is true.
+ * @example
+ * calculatePercentage(25, 100) // returns 25.0
+ * calculatePercentage(1, 3, 2) // returns 33.33
+ * calculatePercentage(5, 0) // returns 0 (safe division)
+ * calculatePercentage(25, 100, 2, true) // returns "25%"
+ * calculatePercentage(1, 3, 2, true) // returns "33.33%"
+ */
+export const calculatePercentage = (
+  numerator: number,
+  denominator: number,
+  precision = 1,
+  format = false
+): number | string => {
+  if (denominator === 0) {
+    return format ? '0%' : 0;
+  }
+
+  const percentageValue = round((numerator / denominator) * 100, precision);
+
+  if (format) {
+    // Convert to string and remove trailing zeros
+    return `${parseFloat(percentageValue.toFixed(precision))}%`;
+  }
+
+  return percentageValue;
+};
+
+/**
+ * Check if the color is a linear gradient
+ * @param color - Color string
+ * @returns {boolean} - True if the color is a linear gradient, false otherwise
+ */
+export const isLinearGradient = (color: string) => {
+  return color.toLowerCase().includes('linear-gradient');
 };

@@ -21,6 +21,7 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -112,6 +113,28 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("id") String id,
       @Bind("json") String json);
 
+  /**
+   * Update entity with optimistic locking using version check.
+   * Returns the number of rows updated (0 if version mismatch, 1 if successful)
+   */
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = :json, <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE <table> SET json = (:json :: jsonb), <nameHashColumn> = :nameHashColumnValue "
+              + "WHERE id = :id AND (json->>'version')::text = :version",
+      connectionType = POSTGRES)
+  int updateWithVersion(
+      @Define("table") String table,
+      @Define("nameHashColumn") String nameHashColumn,
+      @BindFQN("nameHashColumnValue") String nameHashColumnValue,
+      @Bind("id") String id,
+      @Bind("json") String json,
+      @Bind("version") String version);
+
   default void updateFqn(String oldPrefix, String newPrefix) {
     LOG.info("Updating FQN for {} from {} to {}", getTableName(), oldPrefix, newPrefix);
     if (!getNameHashColumn().equals("fqnHash")) {
@@ -177,7 +200,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindList("names") List<String> names,
       @Define("cond") String cond);
 
-  @SqlQuery("SELECT count(<nameHashColumn>) FROM <table> <cond>")
+  @SqlQuery("SELECT count(*) FROM <table> <cond>")
   int listCount(
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
@@ -185,7 +208,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("cond") String cond);
 
   @ConnectionAwareSqlQuery(
-      value = "SELECT count(<nameHashColumn>) FROM <table> <mysqlCond>",
+      value = "SELECT count(*) FROM <table> <mysqlCond>",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value = "SELECT count(*) FROM <table> <postgresCond>",
@@ -251,9 +274,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("afterName") String afterName,
       @Bind("afterId") String afterId);
 
-  @ConnectionAwareSqlQuery(
-      value = "SELECT count(<nameHashColumn>) FROM <table>",
-      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table>", connectionType = MYSQL)
   @ConnectionAwareSqlQuery(value = "SELECT count(*) FROM <table>", connectionType = POSTGRES)
   int listTotalCount(
       @Define("table") String table, @Define("nameHashColumn") String nameHashColumn);
@@ -382,7 +403,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumnName,
       @Bind("limit") int limit);
 
-  @SqlQuery("SELECT json FROM <table> <cond> ORDER BY id LIMIT :limit OFFSET :offset")
+  @SqlQuery("SELECT json FROM <table> <cond> ORDER BY name, id LIMIT :limit OFFSET :offset")
   List<String> listAfter(
       @Define("table") String table,
       @BindMap Map<String, ?> params,
@@ -474,13 +495,28 @@ public interface EntityDAO<T extends EntityInterface> {
     if (CollectionUtils.isEmpty(ids)) {
       return List.of();
     }
-    return findByIds(
-            getTableName(),
-            ids.stream().map(UUID::toString).distinct().toList(),
-            getCondition(include))
-        .stream()
-        .map(pair -> jsonToEntity(pair.json, pair.id))
-        .toList();
+
+    List<String> distinctIds = ids.stream().map(UUID::toString).distinct().toList();
+    int maxChunkSize = 30000;
+
+    if (distinctIds.size() <= maxChunkSize) {
+      return findByIds(getTableName(), distinctIds, getCondition(include)).stream()
+          .map(pair -> jsonToEntity(pair.json, pair.id))
+          .toList();
+    }
+
+    List<T> allEntities = new ArrayList<>();
+    for (int i = 0; i < distinctIds.size(); i += maxChunkSize) {
+      int end = Math.min(i + maxChunkSize, distinctIds.size());
+      List<String> chunk = distinctIds.subList(i, end);
+      List<T> chunkEntities =
+          findByIds(getTableName(), chunk, getCondition(include)).stream()
+              .map(pair -> jsonToEntity(pair.json, pair.id))
+              .toList();
+      allEntities.addAll(chunkEntities);
+    }
+
+    return allEntities;
   }
 
   default T findEntityByName(String fqn) {
@@ -504,10 +540,28 @@ public interface EntityDAO<T extends EntityInterface> {
     if (CollectionUtils.isEmpty(entityFQNs)) {
       return List.of();
     }
+
     List<String> names = entityFQNs.stream().distinct().map(FullyQualifiedName::buildHash).toList();
-    return findByNames(getTableName(), getNameHashColumn(), names, getCondition(include)).stream()
-        .map(pair -> jsonToEntity(pair.json, pair.nameColumnHash))
-        .toList();
+    int maxChunkSize = 30000;
+
+    if (names.size() <= maxChunkSize) {
+      return findByNames(getTableName(), getNameHashColumn(), names, getCondition(include)).stream()
+          .map(pair -> jsonToEntity(pair.json, pair.nameColumnHash))
+          .toList();
+    }
+
+    List<T> allEntities = new ArrayList<>();
+    for (int i = 0; i < names.size(); i += maxChunkSize) {
+      int end = Math.min(i + maxChunkSize, names.size());
+      List<String> chunk = names.subList(i, end);
+      List<T> chunkEntities =
+          findByNames(getTableName(), getNameHashColumn(), chunk, getCondition(include)).stream()
+              .map(pair -> jsonToEntity(pair.json, pair.nameColumnHash))
+              .toList();
+      allEntities.addAll(chunkEntities);
+    }
+
+    return allEntities;
   }
 
   default T jsonToEntity(String json, Object identity) {

@@ -14,10 +14,11 @@
 package org.openmetadata.service.resources.lineage;
 
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.search.SearchUtils.getRequiredLineageFields;
 import static org.openmetadata.service.search.SearchUtils.isConnectedVia;
 
-import es.org.elasticsearch.action.search.SearchResponse;
+import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.dropwizard.jersey.PATCH;
 import io.dropwizard.jersey.errors.ErrorMessage;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,7 +55,9 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityLineage;
@@ -461,6 +464,205 @@ public class LineageResource {
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
+  @GET
+  @Path("/getPaginationInfo")
+  @Operation(
+      operationId = "getLineagePaginationInfo",
+      summary = "Get lineage pagination information",
+      description = "Get pagination information showing total entities per layer and across depth",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "pagination info response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = LineagePaginationInfo.class)))
+      })
+  public LineagePaginationInfo getLineagePaginationInfo(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") @DefaultValue("10000")
+          int upstreamDepth,
+      @Parameter(description = "downstreamDepth")
+          @QueryParam("downstreamDepth")
+          @DefaultValue("10000")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          @DefaultValue("false")
+          boolean deleted,
+      @Parameter(description = "entity type") @QueryParam("type") String entityType)
+      throws IOException {
+    return Entity.getSearchRepository()
+        .getLineagePaginationInfo(
+            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+  }
+
+  @GET
+  @Path("/exportByEntityCountAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "exportLineageByEntityCount",
+      summary = "Export lineage by entity count",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "export response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportMessage.class)))
+      })
+  public Response exportLineageByEntityCountAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn", required = true) @QueryParam("fqn") String fqn,
+      @Parameter(description = "Direction of lineage traversal", required = true)
+          @QueryParam("direction")
+          @Valid
+          LineageDirection direction,
+      @Parameter(description = "Starting offset for pagination (0-based)")
+          @QueryParam("from")
+          @DefaultValue("0")
+          @Min(0)
+          int from,
+      @Parameter(description = "Number of entities to return in this page")
+          @QueryParam("size")
+          @DefaultValue("10000")
+          int size,
+      @Parameter(
+              description = "Filter entities by specific node depth level (optional)",
+              required = true)
+          @QueryParam("nodeDepth")
+          Integer nodeDepth,
+      @Parameter(description = "Maximum depth to traverse in the specified direction")
+          @QueryParam("maxDepth")
+          @DefaultValue("10000")
+          int maxDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          @DefaultValue("false")
+          boolean deleted,
+      @Parameter(description = "entity type") @QueryParam("entityType") String entityType,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields) {
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            String csvData =
+                dao.exportByEntityCountCsvAsync(
+                    fqn,
+                    direction,
+                    from,
+                    size,
+                    nodeDepth,
+                    maxDepth,
+                    queryFilter,
+                    deleted,
+                    entityType,
+                    includeSourceFields);
+            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
+                jobId, securityContext, csvData);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendCsvExportFailedNotification(
+                jobId, securityContext, e.getMessage());
+          }
+        });
+    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  @GET
+  @Path("/getLineageByEntityCount")
+  @Operation(
+      operationId = "getLineageByEntityCount",
+      summary = "Get lineage with entity count based pagination",
+      description =
+          "Get lineage entities with pagination support, optionally filtered by node depth",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "lineage response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchLineageResult.class)))
+      })
+  public SearchLineageResult getLineageByEntityCount(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn", required = true) @QueryParam("fqn") String fqn,
+      @Parameter(description = "Direction of lineage traversal", required = true)
+          @QueryParam("direction")
+          @Valid
+          LineageDirection direction,
+      @Parameter(description = "Starting offset for pagination (0-based)")
+          @QueryParam("from")
+          @DefaultValue("0")
+          @Min(0)
+          int from,
+      @Parameter(description = "Number of entities to return in this page")
+          @QueryParam("size")
+          @DefaultValue("10000")
+          int size,
+      @Parameter(
+              description = "Filter entities by specific node depth level (optional)",
+              required = true)
+          @QueryParam("nodeDepth")
+          Integer nodeDepth,
+      @Parameter(description = "Maximum depth to traverse in the specified direction")
+          @QueryParam("maxDepth")
+          @DefaultValue("10000")
+          int maxDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          @DefaultValue("false")
+          boolean deleted,
+      @Parameter(description = "entity type") @QueryParam("entityType") String entityType,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields)
+      throws IOException {
+    if (nullOrEmpty(direction)) {
+      throw new IllegalArgumentException("Lineage Direction is required.");
+    }
+    return Entity.getSearchRepository()
+        .searchLineageByEntityCount(
+            new EntityCountLineageRequest()
+                .withFqn(fqn)
+                .withDirection(direction)
+                .withFrom(from)
+                .withSize(size)
+                .withNodeDepth(nodeDepth)
+                .withMaxDepth(maxDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withIsConnectedVia(isConnectedVia(entityType))
+                .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields)));
+  }
+
   @PUT
   @Operation(
       operationId = "addLineageEdge",
@@ -743,7 +945,7 @@ public class LineageResource {
     }
 
     @Override
-    public EntityReference getDomain() {
+    public List<EntityReference> getDomains() {
       return null;
     }
   }

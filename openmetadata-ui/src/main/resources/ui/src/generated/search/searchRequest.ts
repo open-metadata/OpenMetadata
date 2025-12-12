@@ -52,6 +52,11 @@ export interface SearchRequest {
      */
     from?: number;
     /**
+     * Include aggregations in the search response. Defaults to true. Set to false to skip
+     * aggregations for faster response times when only search results are needed.
+     */
+    includeAggregations?: boolean;
+    /**
      * Get only selected fields of the document body for each hit. Empty value will return all
      * fields
      */
@@ -82,6 +87,11 @@ export interface SearchRequest {
      * search_after=<val1>,<val2>,...
      */
     searchAfter?: any;
+    /**
+     * Enable semantic search using embeddings and RDF context. When true, combines vector
+     * similarity with traditional BM25 scoring.
+     */
+    semanticSearch?: boolean;
     /**
      * Size to limit the no.of results returned.
      */

@@ -62,7 +62,7 @@ test.describe('Soft Delete User Pagination', () => {
 
   test('Testing user API calls and pagination', async ({ page }) => {
     const expectedUrl =
-      '**/api/v1/users?isBot=false&fields=profile%2Cteams%2Croles&limit=25&isAdmin=false&include=deleted';
+      '**/api/v1/users?isBot=false&fields=profile%2Cteams%2Croles&limit=*&isAdmin=false&include=deleted';
 
     const deletedUserResponsePromise = page.waitForResponse(expectedUrl);
 
@@ -74,7 +74,7 @@ test.describe('Soft Delete User Pagination', () => {
 
     const nextButton = page.locator('[data-testid="next"]');
     const expectedUrlPattern =
-      /\/api\/v1\/users\?isBot=false&fields=profile%2Cteams%2Croles&limit=25&isAdmin=false&after=.*?&include=deleted/;
+      /\/api\/v1\/users\?isBot=false&fields=profile%2Cteams%2Croles&limit=.*&isAdmin=false&after=.*?&include=deleted/;
 
     const paginatedResponsePromise = page.waitForResponse((response) => {
       const url = response.url();

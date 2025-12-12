@@ -15,10 +15,12 @@ declare module 'Models' {
   import { EntityType } from '../enums/entity.enum';
   import { CreateDashboardService } from '../generated/api/services/createDashboardService';
   import { CreateDatabaseService } from '../generated/api/services/createDatabaseService';
+  import { CreateDriveService } from '../generated/api/services/createDriveService';
   import { CreateMessagingService } from '../generated/api/services/createMessagingService';
   import { CreateMlModelService } from '../generated/api/services/createMlModelService';
   import { CreatePipelineService } from '../generated/api/services/createPipelineService';
   import { CreateSearchService } from '../generated/api/services/createSearchService';
+  import { CreateSecurityService } from '../generated/api/services/createSecurityService';
   import { CreateStorageService } from '../generated/api/services/createStorageService';
   import { ChangeDescription } from '../generated/entity/data/dashboard';
   import { EntityReference } from '../generated/type/entityReference';
@@ -37,7 +39,9 @@ declare module 'Models' {
     | CreateDatabaseService
     | CreateMessagingService
     | CreateStorageService
-    | CreateSearchService;
+    | CreateSearchService
+    | CreateSecurityService
+    | CreateDriveService;
 
   export type EntityTags = {
     isRemovable?: boolean;
@@ -139,7 +143,9 @@ declare module 'Models' {
     | 'metadataServices'
     | 'storageServices'
     | 'searchServices'
-    | 'apiServices';
+    | 'apiServices'
+    | 'securityServices'
+    | 'driveServices';
 
   export type SearchDataFunctionType = {
     queryString: string;
@@ -192,6 +198,7 @@ declare module 'Models' {
 
   export type StepperStepType = {
     name: string;
+    nameData?: Record<string, string | number | boolean>;
     step: number;
   };
 
@@ -255,7 +262,14 @@ declare module 'Models' {
     | Mlmodel
     | Container;
 
-  export type DateFilterType = Record<string, { days: number; title: string }>;
+  export type DateFilterType = Record<
+    string,
+    {
+      days: number;
+      title: string;
+      titleData?: Record<string, string | number | boolean>;
+    }
+  >;
 
   export type TagFilterOptions = {
     text: string;

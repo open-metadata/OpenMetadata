@@ -13,14 +13,18 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { AIRFLOW_HYBRID } from '../../constants/constants';
 import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
+import { EntityType } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import * as serviceUtilClassBaseModule from '../../utils/ServiceUtilClassBase';
-import { getServiceRouteFromServiceType } from '../../utils/ServiceUtils';
+import {
+  getEntityTypeFromServiceCategory,
+  getServiceRouteFromServiceType,
+} from '../../utils/ServiceUtils';
 import AddServicePage from './AddServicePage.component';
 
 const mockParam = {
@@ -29,12 +33,10 @@ const mockParam = {
 
 const mockNavigate = jest.fn();
 
-const mockSetInlineAlertDetails = jest.fn();
-
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
     currentUser: { id: '1', name: 'test-user' },
-    setInlineAlertDetails: mockSetInlineAlertDetails,
+    setInlineAlertDetails: jest.fn(),
   }),
 }));
 
@@ -325,6 +327,7 @@ describe('AddServicePage', () => {
     });
 
     expect(postService).toHaveBeenCalled();
+    expect(triggerOnDemandApp).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/service/details/path');
   });
 
@@ -360,11 +363,10 @@ describe('AddServicePage', () => {
     expect(screen.getByText('Configure Service')).toBeInTheDocument();
   });
 
-  it.skip('should handle service creation failure', async () => {
-    (postService as jest.Mock).mockImplementation(() =>
-      Promise.reject('Some error')
+  it('should not trigger auto pilot application for security service', async () => {
+    (getEntityTypeFromServiceCategory as jest.Mock).mockReturnValue(
+      EntityType.SECURITY_SERVICE
     );
-
     await act(async () => {
       render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
     });
@@ -400,13 +402,12 @@ describe('AddServicePage', () => {
     });
 
     expect(postService).toHaveBeenCalled();
-    expect(mockSetInlineAlertDetails).toHaveBeenCalled();
+    expect(triggerOnDemandApp).not.toHaveBeenCalled();
   });
 
-  it('calls getExtraInfo when platform is Hybrid', () => {
+  it('calls getExtraInfo', () => {
     (useAirflowStatus as jest.Mock).mockReturnValue({
       ...baseAirflowMock,
-      platform: AIRFLOW_HYBRID,
     });
 
     const mockGetExtraInfo = serviceUtilClassBaseModule.default
@@ -414,18 +415,5 @@ describe('AddServicePage', () => {
     render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(mockGetExtraInfo).toHaveBeenCalled();
-  });
-
-  it('does not call getExtraInfo when platform is not Hybrid', () => {
-    (useAirflowStatus as jest.Mock).mockReturnValue({
-      ...baseAirflowMock,
-      platform: 'Argo',
-    });
-
-    const mockGetExtraInfo = serviceUtilClassBaseModule.default
-      .getExtraInfo as jest.Mock;
-    render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
-
-    expect(mockGetExtraInfo).not.toHaveBeenCalled();
   });
 });

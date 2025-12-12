@@ -13,6 +13,7 @@ Test Processor Class
 """
 
 import datetime
+import re
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -169,7 +170,7 @@ class PiiProcessorTest(TestCase):
             serviceName="test",
             sourceConfig=SourceConfig(
                 config=DatabaseServiceAutoClassificationPipeline(
-                    confidence=85,
+                    confidence=80,
                     enableAutoClassification=True,
                 )
             ),
@@ -181,54 +182,6 @@ class PiiProcessorTest(TestCase):
     pii_processor = PIIProcessor(
         config=workflow_config, metadata=OpenMetadata(server_config)
     )
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Prepare ingredients
-        """
-        service = CreateDatabaseServiceRequest(
-            name="test-service-table-patch",
-            serviceType=DatabaseServiceType.Mysql,
-            connection=DatabaseConnection(
-                config=MysqlConnection(
-                    username="username",
-                    authType=BasicAuth(
-                        password="password",
-                    ),
-                    hostPort="http://localhost:1234",
-                )
-            ),
-        )
-        service_entity = cls.metadata.create_or_update(data=service)
-
-        create_db = CreateDatabaseRequest(
-            name="test-db",
-            service=service_entity.fullyQualifiedName,
-        )
-
-        create_db_entity = cls.metadata.create_or_update(data=create_db)
-
-        create_schema = CreateDatabaseSchemaRequest(
-            name="test-schema",
-            database=create_db_entity.fullyQualifiedName,
-        )
-
-        create_schema_entity = cls.metadata.create_or_update(data=create_schema)
-
-        created_table = CreateTableRequest(
-            name="customers",
-            columns=[
-                Column(name="customer_id", dataType=DataType.INT),
-                Column(name="first_name", dataType=DataType.VARCHAR, dataLength=20),
-                Column(name="last_name", dataType=DataType.VARCHAR, dataLength=20),
-                Column(name="first_order", dataType=DataType.DATE),
-                Column(name="customer_email", dataType=DataType.VARCHAR, dataLength=20),
-                Column(name="number_of_orders", dataType=DataType.BIGINT),
-            ],
-            databaseSchema=create_schema_entity.fullyQualifiedName,
-        )
-        cls.table_entity = cls.metadata.create_or_update(data=created_table)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -310,3 +263,9 @@ class PiiProcessorTest(TestCase):
         for expected, updated in zip(EXPECTED_COLUMN_TAGS, updated_record.column_tags):
             self.assertEqual(expected.column_fqn, updated.column_fqn)
             self.assertEqual(expected.tag_label.tagFQN, updated.tag_label.tagFQN)
+            self.assertRegex(
+                updated.tag_label.reason,
+                expected_regex=re.compile(
+                    f"Chose {expected.tag_label.tagFQN.root} with a classification score of \d+([.,]?\d{{1,2}})?"
+                ),
+            )

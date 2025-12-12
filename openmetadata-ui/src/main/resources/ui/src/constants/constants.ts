@@ -15,7 +15,6 @@ import { CSSProperties } from 'react';
 import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
 import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
-import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { Status } from '../generated/entity/applications/appRunRecord';
 import i18n from '../utils/i18next/LocalUtil';
 import {
@@ -28,7 +27,7 @@ export const TEXT_BODY_COLOR = '#37352F';
 export const TEXT_GREY_MUTED = '#757575';
 export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
-export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
+export const GRAPH_BACKGROUND_COLOR = '#E9EAEB';
 export const GRAYED_OUT_COLOR = '#959595';
 export const BORDER_COLOR = '#0000001a';
 export const BLACK_COLOR = '#000000';
@@ -48,14 +47,17 @@ export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
+export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
 export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
+export const LINEAGE_CHILD_ITEMS_PER_PAGE = 5;
 export const TAG_LIST_SIZE = 3;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
+export const MAX_NAME_LENGTH = 256;
 export const INGESTION_PROGRESS_START_VAL = 20;
 export const INGESTION_PROGRESS_END_VAL = 80;
 export const DEPLOYED_PROGRESS_VAL = 100;
@@ -65,9 +67,17 @@ export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const ONE_HOUR_MS = 3600000; // 1 hour in milliseconds
+export const SCROLL_TRIGGER_THRESHOLD = 200;
+export const INITIAL_PAGING_STATE = {
+  offset: 0,
+  limit: PAGE_SIZE_BASE,
+  total: 0,
+};
+
 export const LAST_VERSION_FETCH_TIME_KEY = 'versionFetchTime';
-export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
-export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData_${COOKIE_VERSION}`;
+export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData`;
+export const LOCALSTORAGE_RECENTLY_SEARCHED = `recentlySearchedData`;
+export const VERSION = 'VERSION';
 export const REDIRECT_PATHNAME = 'redirectUrlPath';
 export const TERM_ADMIN = 'Admin';
 export const TERM_USER = 'User';
@@ -114,6 +124,7 @@ export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 export const LOG_ENTITY_TYPE = ':logEntityType';
 export const LOG_ENTITY_NAME = ':logEntityName';
 export const PLACEHOLDER_ACTION = ':action';
+export const PLACEHOLDER_ROUTE_DIMENSION_KEY = ':dimensionKey';
 
 export const pagingObject = { after: '', before: '', total: 0 };
 
@@ -142,6 +153,7 @@ export const ROUTES = {
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
   SETTINGS: `/settings`,
+  KNOWLEDGE_CENTER_PAGE: '/knowledge-center',
   SETTINGS_WITH_CATEGORY: `/settings/${PLACEHOLDER_SETTING_CATEGORY}`,
   SETTINGS_WITH_CATEGORY_FQN: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_FQN}`,
   SETTINGS_WITH_TAB: `/settings/${PLACEHOLDER_SETTING_CATEGORY}/${PLACEHOLDER_ROUTE_TAB}`,
@@ -167,6 +179,7 @@ export const ROUTES = {
   TAG_DETAILS: `/tags/${PLACEHOLDER_ROUTE_FQN}`,
   TAG_ITEM: `/tag/${PLACEHOLDER_ROUTE_FQN}`,
   TAG_ITEM_WITH_TAB: `/tag/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  TAG_ITEM_WITH_SUB_TAB: `/tag/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
   TAG_VERSION: `/tags/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   SIGNUP: '/signup',
   REGISTER: '/register',
@@ -206,9 +219,13 @@ export const ROUTES = {
   DOMAIN: '/domain',
   DOMAIN_DETAILS: `/domain/${PLACEHOLDER_ROUTE_FQN}`,
   DOMAIN_DETAILS_WITH_TAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  DOMAIN_DETAILS_WITH_SUBTAB: `/domain/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
   DOMAIN_VERSION: `/domain/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
 
   ADD_DOMAIN: '/domain/add',
+
+  DATA_PRODUCT: '/dataProduct',
+  ADD_DATA_PRODUCT: '/dataProduct/add',
 
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/glossary/add',
@@ -223,7 +240,6 @@ export const ROUTES = {
   BOTS_PROFILE: `/bots/${PLACEHOLDER_ROUTE_FQN}`,
 
   ADD_CUSTOM_PROPERTY: `/custom-properties/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/add-field`,
-  ADD_DATA_QUALITY_TEST_CASE: `/data-quality-test/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Query Routes
   QUERY_FULL_SCREEN_VIEW: `/query-view/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_QUERY_ID}`,
@@ -246,11 +262,11 @@ export const ROUTES = {
   TEST_SUITES_WITH_FQN: `/test-suites/${PLACEHOLDER_ROUTE_FQN}`,
   TEST_SUITES_ADD_INGESTION: `/test-suites/${PLACEHOLDER_ROUTE_FQN}/add-ingestion`,
   TEST_SUITES_EDIT_INGESTION: `/test-suites/${PLACEHOLDER_ROUTE_FQN}/edit-ingestion/${PLACEHOLDER_ROUTE_INGESTION_FQN}`,
-  ADD_TEST_SUITES: `/add-test-suites`,
 
   // data quality
   DATA_QUALITY: '/data-quality',
   DATA_QUALITY_WITH_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}`,
+  DATA_QUALITY_WITH_SUB_TAB: `/data-quality/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SUB_TAB}`,
 
   INCIDENT_MANAGER: '/incident-manager',
 
@@ -259,6 +275,8 @@ export const ROUTES = {
   TEST_CASE_DETAILS_WITH_TAB: `/test-case/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   TEST_CASE_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   TEST_CASE_DETAILS_WITH_TAB_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
+  TEST_CASE_DIMENSIONS: `/test-case/${PLACEHOLDER_ROUTE_FQN}/dimensions/${PLACEHOLDER_ROUTE_DIMENSION_KEY}`,
+  TEST_CASE_DIMENSIONS_WITH_TAB: `/test-case/${PLACEHOLDER_ROUTE_FQN}/dimensions/${PLACEHOLDER_ROUTE_DIMENSION_KEY}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // logs viewer
   LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs`,
@@ -275,6 +293,8 @@ export const ROUTES = {
   CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+  CHART_DETAILS: `/chart/${PLACEHOLDER_ROUTE_FQN}`,
+  CHART_DETAILS_WITH_TAB: `/chart/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 
   // Observability
   OBSERVABILITY: '/observability',
@@ -284,8 +304,9 @@ export const ROUTES = {
   EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Notification Alerts
-  NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
-  NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  NOTIFICATIONS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
+  NOTIFICATION_ALERT_LIST: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}`,
+  NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.ALERTS}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Metric Entity
@@ -298,6 +319,9 @@ export const ROUTES = {
   // Entity Bulk Edit
   BULK_EDIT_ENTITY: `/bulk/edit`,
   BULK_EDIT_ENTITY_WITH_FQN: `/bulk/edit/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Settings
+  SETTINGS_SSO: '/settings/sso',
 };
 
 export const SOCKET_EVENTS = {
@@ -308,11 +332,13 @@ export const SOCKET_EVENTS = {
   CSV_EXPORT_CHANNEL: 'csvExportChannel',
   SEARCH_INDEX_JOB_BROADCAST_CHANNEL: 'searchIndexJobStatus',
   DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
+  CACHE_WARMUP_JOB_BROADCAST_CHANNEL: 'cacheWarmupJobStatus',
   BULK_ASSETS_CHANNEL: 'bulkAssetsChannel',
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',
   DELETE_ENTITY_CHANNEL: 'deleteEntityChannel',
   MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
+  CHART_DATA_STREAM: 'chartDataStream',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -345,6 +371,12 @@ export const ENTITY_PATH = {
   query: 'query',
   testCases: 'testCase',
   domains: 'domain',
+  charts: 'chart',
+  directories: 'directory',
+  files: 'file',
+  spreadsheets: 'spreadsheet',
+  worksheets: 'worksheet',
+  dataProductsTab: 'dataProductsTab',
 };
 
 export const VALIDATION_MESSAGES = {
@@ -430,7 +462,13 @@ export const INITIAL_TABLE_FILTERS = {
   showDeletedTables: false,
 };
 
+export const INITIAL_CHART_FILTERS = {
+  showDeletedCharts: false,
+};
+
 export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
 
 export const BREADCRUMB_SEPARATOR = '/';
+
+export const FULLSCREEN_QUERY_PARAM_KEY = 'fullscreen';

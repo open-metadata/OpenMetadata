@@ -23,11 +23,13 @@ export interface CustomStorageConnection {
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
      */
-    sourcePythonClass?: string;
+    sourcePythonClass?:          string;
+    supportsMetadataExtraction?: boolean;
     /**
      * Custom storage service type
      */
     type: ServiceType;
+    [property: string]: any;
 }
 
 /**

@@ -105,7 +105,7 @@ describe('DashboardDetailsPage', () => {
 
     expect(getDashboardByFqn).toHaveBeenCalledWith('test-dashboard', {
       fields:
-        'domain,owners, followers, tags, charts,votes,dataProducts,extension,usageSummary',
+        'domains,owners, followers, tags, charts,votes,dataProducts,extension,usageSummary',
     });
 
     expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();

@@ -33,10 +33,10 @@ export interface TestDefinition {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?:     EntityReference;
+    domains?:    EntityReference[];
     entityType?: EntityType;
     /**
      * FullyQualifiedName same as `name`.
@@ -65,6 +65,11 @@ export interface TestDefinition {
     parameterDefinition?: TestCaseParameterDefinition[];
     provider?:            ProviderType;
     supportedDataTypes?:  DataType[];
+    /**
+     * List of services that this test definition supports. When empty, it implies all services
+     * are supported.
+     */
+    supportedServices?: string[];
     /**
      * When `true` indicates the test case supports dynamic assertions.
      */
@@ -162,23 +167,22 @@ export enum DataQualityDimensions {
     Completeness = "Completeness",
     Consistency = "Consistency",
     Integrity = "Integrity",
+    NoDimension = "NoDimension",
     SQL = "SQL",
     Uniqueness = "Uniqueness",
     Validity = "Validity",
 }
 
 /**
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
  * it belongs to.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owners of this TestCase definition.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -359,6 +363,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -423,7 +428,7 @@ export enum DataType {
  * This schema defines the platform where tests are defined and ran.
  */
 export enum TestPlatform {
-    Dbt = "DBT",
+    Dbt = "dbt",
     Deequ = "Deequ",
     GreatExpectations = "GreatExpectations",
     OpenMetadata = "OpenMetadata",

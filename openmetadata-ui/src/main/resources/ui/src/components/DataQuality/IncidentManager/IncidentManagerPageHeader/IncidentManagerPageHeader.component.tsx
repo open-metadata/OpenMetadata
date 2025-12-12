@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box } from '@mui/material';
 import { Divider, Skeleton, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { first, isUndefined, last } from 'lodash';
-import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -26,6 +26,7 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   EntityReference,
@@ -35,6 +36,7 @@ import {
   TestCaseResolutionStatus,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
+import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
   getListTestCaseIncidentByStateId,
@@ -48,14 +50,14 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import './incident-manager.less';
@@ -67,14 +69,15 @@ const IncidentManagerPageHeader = ({
   isVersionPage = false,
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
+  const { entityRules } = useEntityRules(EntityType.TABLE);
   const [activeTask, setActiveTask] = useState<Thread>();
   const [testCaseStatusData, setTestCaseStatusData] =
     useState<TestCaseResolutionStatus>();
   const [isLoading, setIsLoading] = useState(true);
   const { testCase: testCaseData, testCasePermission } = useTestCaseStore();
 
-  const { fqn } = useRequiredParams<{ fqn: string }>();
-  const decodedFqn = getDecodedFqn(fqn);
+  const { fqn: decodedFqn, dimensionKey } =
+    useRequiredParams<{ fqn: string; dimensionKey?: string }>();
   const {
     setActiveThread,
     entityThread,
@@ -106,7 +109,7 @@ const IncidentManagerPageHeader = ({
     [testCaseData]
   );
 
-  const handleSeverityUpdate = async (severity: Severities) => {
+  const handleSeverityUpdate = async (severity?: Severities) => {
     if (isUndefined(testCaseStatusData)) {
       return;
     }
@@ -231,11 +234,19 @@ const IncidentManagerPageHeader = ({
         }
       : {
           hasEditStatusPermission:
-            testCasePermission?.EditAll || testCasePermission?.EditStatus,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditStatus
+            ),
           hasEditOwnerPermission:
-            testCasePermission?.EditAll || testCasePermission?.EditOwners,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditOwners
+            ),
         };
-  }, [testCasePermission, isVersionPage]);
+  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
 
   const statusDetails = useMemo(() => {
     if (isLoading) {
@@ -290,9 +301,7 @@ const IncidentManagerPageHeader = ({
           />
         </Typography.Text>
         <Divider className="self-center m-x-sm" type="vertical" />
-        <Typography.Text
-          className="d-flex flex-col gap-2 text-xs whitespace-nowrap"
-          data-testid="assignee">
+        <Box data-testid="assignee">
           <OwnerLabel
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
@@ -307,7 +316,7 @@ const IncidentManagerPageHeader = ({
             })}
             onUpdate={handleAssigneeUpdate}
           />
-        </Typography.Text>
+        </Box>
         <Divider className="self-center m-x-sm" type="vertical" />
         <Typography.Text className="d-flex flex-col  gap-2 whitespace-nowrap">
           <Severity
@@ -327,6 +336,10 @@ const IncidentManagerPageHeader = ({
       <OwnerLabel
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
+        multiple={{
+          user: entityRules.canAddMultipleUserOwners,
+          team: entityRules.canAddMultipleTeamOwner,
+        }}
         ownerDisplayName={ownerDisplayName}
         owners={testCaseData?.owners ?? ownerRef}
         onUpdate={onOwnerUpdate}
@@ -343,19 +356,28 @@ const IncidentManagerPageHeader = ({
             <Link
               className="font-medium flex-center gap-2"
               data-testid="table-name"
-              to={{
-                pathname: getEntityDetailsPath(
-                  EntityType.TABLE,
-                  tableFqn,
-                  EntityTabs.PROFILER
-                ),
-                search: QueryString.stringify({
-                  activeTab: TableProfilerTab.DATA_QUALITY,
-                }),
-              }}>
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
+                tableFqn,
+                EntityTabs.PROFILER,
+                ProfilerTabPath.DATA_QUALITY
+              )}>
               {getNameFromFQN(tableFqn)}
               <InternalLinkIcon className="text-grey-muted" width="14px" />
             </Link>
+          </Typography.Text>
+        </>
+      )}
+      {dimensionKey && (
+        <>
+          <Divider className="self-center m-x-sm" type="vertical" />
+          <Typography.Text className="flex flex-col gap-3 text-xs whitespace-nowrap">
+            <span className="text-blue text-sm font-medium">
+              {t('label.dimension')}
+            </span>
+            <span className="font-medium" data-testid="dimension-key">
+              {dimensionKey}
+            </span>
           </Typography.Text>
         </>
       )}

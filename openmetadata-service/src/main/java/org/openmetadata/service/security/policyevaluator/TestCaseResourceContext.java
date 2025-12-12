@@ -64,9 +64,9 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityReference getDomain() {
+  public List<EntityReference> getDomains() {
     resolveEntity();
-    return entity == null ? null : entity.getDomain();
+    return entity == null ? null : entity.getDomains();
   }
 
   private EntityInterface resolveEntity() {
@@ -91,6 +91,9 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     }
     if (entityRepository.isSupportsTags()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
+    }
+    if (entityRepository.isSupportsDomains()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
     }
     return entityRepository.getByName(
         null, entityLink.getEntityFQN(), entityRepository.getFields(fields));

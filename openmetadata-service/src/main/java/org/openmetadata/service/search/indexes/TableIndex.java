@@ -14,15 +14,19 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.models.FlattenColumn;
 
-public record TableIndex(Table table) implements ColumnIndex {
+public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
   private static final Set<String> excludeFields =
       Set.of(
           "sampleData",
           "tableProfile",
           "joins",
           "changeDescription",
-          "votes",
-          "schemaDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel",
+          "tableProfilerConfig",
+          "profile",
+          "location",
+          "queries",
+          "tests",
+          "dataModel",
           "testSuite.changeDescription");
 
   @Override
@@ -64,6 +68,8 @@ public record TableIndex(Table table) implements ColumnIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("serviceType", table.getServiceType());
     doc.put("locationPath", table.getLocationPath());
     doc.put("schemaDefinition", table.getSchemaDefinition());
@@ -71,15 +77,16 @@ public record TableIndex(Table table) implements ColumnIndex {
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
     doc.put("upstreamLineage", SearchIndex.getLineageData(table.getEntityReference()));
     doc.put("processedLineage", table.getProcessedLineage());
-    doc.put("entityRelationship", SearchIndex.populateEntityRelationshipData(table));
+    doc.put(
+        "upstreamEntityRelationship", SearchIndex.populateUpstreamEntityRelationshipData(table));
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
-    doc.put("queries", table.getQueries());
     doc.put(
         "changeSummary",
         Optional.ofNullable(table.getChangeDescription())
             .map(ChangeDescription::getChangeSummary)
             .map(ChangeSummaryMap::getAdditionalProperties)
             .orElse(null));
+
     return doc;
   }
 

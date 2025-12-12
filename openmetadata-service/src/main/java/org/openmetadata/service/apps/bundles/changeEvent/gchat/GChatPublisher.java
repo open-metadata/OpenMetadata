@@ -16,37 +16,42 @@ package org.openmetadata.service.apps.bundles.changeEvent.gchat;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.G_CHAT;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
+import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.GChatMessageDecorator;
-import org.openmetadata.service.formatter.decorators.MessageDecorator;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.notifications.channels.NotificationMessage;
+import org.openmetadata.service.notifications.channels.gchat.GChatMessageV2;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
 @Slf4j
 public class GChatPublisher implements Destination<ChangeEvent> {
-  private final MessageDecorator<GChatMessage> gChatMessageMessageDecorator =
-      new GChatMessageDecorator();
+  private final HandlebarsNotificationMessageEngine messageEngine;
   private final Webhook webhook;
-  private Invocation.Builder target;
   private final Client client;
 
   @Getter private final SubscriptionDestination subscriptionDestination;
-
   private final EventSubscription eventSubscription;
 
   public GChatPublisher(
@@ -55,18 +60,12 @@ public class GChatPublisher implements Destination<ChangeEvent> {
       this.eventSubscription = eventSubscription;
       this.subscriptionDestination = subscriptionDestination;
       this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
-
-      // Build Client
-      client =
+      this.client =
           getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
-
-      // Build Target
-      if (webhook != null && webhook.getEndpoint() != null) {
-        String gChatWebhookURL = webhook.getEndpoint().toString();
-        if (!CommonUtil.nullOrEmpty(gChatWebhookURL)) {
-          target = client.target(gChatWebhookURL).request();
-        }
-      }
+      this.messageEngine =
+          new HandlebarsNotificationMessageEngine(
+              (NotificationTemplateRepository)
+                  Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
     } else {
       throw new IllegalArgumentException("GChat Alert Invoked with Illegal Type and Settings.");
     }
@@ -74,19 +73,31 @@ public class GChatPublisher implements Destination<ChangeEvent> {
 
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
-
     try {
-      GChatMessage gchatMessage =
-          gChatMessageMessageDecorator.buildOutgoingMessage(
-              getDisplayNameOrFqn(eventSubscription), event);
+      // Generate message using new Handlebars pipeline
+      NotificationMessage message =
+          messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
+      GChatMessageV2 gchatMessage = (GChatMessageV2) message;
+
+      // Convert to JSON
+      String json = JsonUtils.pojoToJsonIgnoreNull(gchatMessage);
+
+      // Resolve recipients using new RecipientResolver framework
+      RecipientResolver recipientResolver = new RecipientResolver();
+      Set<Recipient> recipients =
+          recipientResolver.resolveRecipients(event, subscriptionDestination, webhook);
+
+      // Convert type-agnostic Recipient objects to configured webhook requests
       List<Invocation.Builder> targets =
-          getTargetsForWebhookAlert(
-              webhook, subscriptionDestination.getCategory(), G_CHAT, client, event);
-      if (target != null) {
-        targets.add(target);
-      }
+          recipients.stream()
+              .filter(r -> r instanceof WebhookRecipient)
+              .map(r -> ((WebhookRecipient) r).getConfiguredRequest(client, json))
+              .filter(Objects::nonNull)
+              .toList();
+
+      // Send GChat message to each webhook target
       for (Invocation.Builder actionTarget : targets) {
-        postWebhookMessage(this, actionTarget, gchatMessage);
+        postWebhookMessage(this, actionTarget, json);
       }
     } catch (Exception e) {
       String message =
@@ -101,11 +112,11 @@ public class GChatPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendTestMessage() throws EventPublisherException {
     try {
-      GChatMessage gchatMessage = gChatMessageMessageDecorator.buildOutgoingTestMessage();
+      // Use legacy test message (unchanged)
+      GChatMessage gchatMessage = new GChatMessageDecorator().buildOutgoingTestMessage();
 
-      if (target != null) {
-        deliverTestWebhookMessage(this, target, gchatMessage);
-      }
+      deliverTestWebhookMessage(
+          this, getTarget(client, webhook, JsonUtils.pojoToJson(gchatMessage)), gchatMessage);
     } catch (Exception e) {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT, e.getMessage());

@@ -20,7 +20,7 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { TableProfilerTab } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import SingleColumnProfile from '../../components/Database/Profiler/TableProfiler/SingleColumnProfile';
 import TableProfilerChart from '../../components/Database/Profiler/TableProfiler/TableProfilerChart/TableProfilerChart';
 import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
@@ -107,12 +107,12 @@ const AddCustomMetricPage = () => {
       pathname: getEntityDetailsPath(
         EntityType.TABLE,
         entityFqn,
-        EntityTabs.PROFILER
+        EntityTabs.PROFILER,
+        isColumnMetric
+          ? ProfilerTabPath.COLUMN_PROFILE
+          : ProfilerTabPath.TABLE_PROFILE
       ),
       search: QueryString.stringify({
-        activeTab: isColumnMetric
-          ? TableProfilerTab.COLUMN_PROFILE
-          : TableProfilerTab.TABLE_PROFILE,
         activeColumnFqn,
       }),
     });
@@ -247,7 +247,7 @@ const AddCustomMetricPage = () => {
                     loading={isActionLoading}
                     type="primary"
                     onClick={() => form.submit()}>
-                    {t('label.submit')}
+                    {t('label.create')}
                   </Button>
                 </Space>
               </Col>

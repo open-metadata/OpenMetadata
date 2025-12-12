@@ -26,6 +26,15 @@
           "type": "string",
           "default": null
         },
+        "unstructuredFormats": {
+          "title": "Unstructured Schema Formats",
+          "description": "What's the schema formats for the container, eg. avro, parquet, csv.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
         "separator": {
           "title": "Separator",
           "description": "For delimited files such as CSV, what is the separator being used?",
@@ -46,10 +55,17 @@
             "$ref": "../../entity/data/table.json#/definitions/column"
           },
           "default": null
+        },
+        "depth": {
+          "title": "Depth",
+          "description": "Depth level in the storage path hierarchy where data files reside.",
+          "type": "integer",
+          "default": 0
         }
       },
       "required": [
-        "containerName" ,"dataPath"
+        "containerName",
+        "dataPath"
       ]
     }
   },
@@ -63,6 +79,8 @@
       "default": null
     }
   },
-  "required": ["entries"],
+  "required": [
+    "entries"
+  ],
   "additionalProperties": false
 }

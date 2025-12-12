@@ -356,6 +356,7 @@ class S3Source(StorageServiceSource):
                     if entry
                     and entry.get("Key")
                     and len(entry.get("Key").split("/")) > total_depth
+                    and "/_delta_log/" not in entry.get("Key")
                 }
                 for key in candidate_keys:
                     metadata_entry_copy = deepcopy(metadata_entry)
@@ -469,7 +470,10 @@ class S3Source(StorageServiceSource):
         candidate_keys = [
             entry["Key"]
             for entry in response
-            if entry and entry.get("Key") and not entry.get("Key").endswith("/")
+            if entry
+            and entry.get("Key")
+            and not entry.get("Key").endswith("/")
+            and "/_delta_log/" not in entry.get("Key")
         ]
         for key in candidate_keys:
             if self.is_valid_unstructured_file(metadata_entry.unstructuredFormats, key):
@@ -678,7 +682,10 @@ class S3Source(StorageServiceSource):
                 candidate_keys = [
                     entry["Key"]
                     for entry in response[S3_CLIENT_ROOT_RESPONSE]
-                    if entry and entry.get("Key") and not entry.get("Key").endswith("/")
+                    if entry
+                    and entry.get("Key")
+                    and not entry.get("Key").endswith("/")
+                    and "/_delta_log/" not in entry.get("Key")
                 ]
                 # pick a random key out of the candidates if any were returned
                 if candidate_keys:
@@ -716,11 +723,25 @@ class S3Source(StorageServiceSource):
         Method to get the source url of s3 bucket
         """
         try:
-            region = self.get_aws_bucket_region(bucket_name=bucket_name)
-            return (
-                f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}"
-                f"?region={region}&tab=objects"
+            # Check if custom console endpoint URL is configured (for external S3-compatible storage)
+            console_endpoint_url = getattr(
+                self.service_connection, "consoleEndpointURL", None
             )
+
+            # If no custom console endpoint, use AWS S3 console with region
+            if not console_endpoint_url:
+                region = self.get_aws_bucket_region(bucket_name=bucket_name)
+                return (
+                    f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}"
+                    f"?region={region}&tab=objects"
+                )
+
+            # For external S3-compatible storage, user provides the full base path
+            # (e.g., http://localhost:9001/browser/ for MinIO)
+            # We just append the bucket name
+            base_url = str(console_endpoint_url).rstrip("/")
+            return f"{base_url}/{bucket_name}/"
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")
@@ -731,12 +752,26 @@ class S3Source(StorageServiceSource):
         Method to get the source url of s3 bucket
         """
         try:
-            region = self.get_aws_bucket_region(bucket_name=bucket_name)
-            return (
-                f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}"
-                f"?region={region}&prefix={prefix}/"
-                f"&showversions=false"
+            # Check if custom console endpoint URL is configured (for external S3-compatible storage)
+            console_endpoint_url = getattr(
+                self.service_connection, "consoleEndpointURL", None
             )
+
+            # If no custom console endpoint, use AWS S3 console with region
+            if not console_endpoint_url:
+                region = self.get_aws_bucket_region(bucket_name=bucket_name)
+                return (
+                    f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}"
+                    f"?region={region}&prefix={prefix}/"
+                    f"&showversions=false"
+                )
+
+            # For external S3-compatible storage, user provides the full base path
+            # (e.g., http://localhost:9001/browser/ for MinIO)
+            # We just append the bucket name and prefix
+            base_url = str(console_endpoint_url).rstrip("/")
+            return f"{base_url}/{bucket_name}/{prefix}/"
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")

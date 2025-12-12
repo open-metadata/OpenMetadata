@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.CHART;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -25,7 +26,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
@@ -46,6 +50,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
+@Slf4j
 public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final String DASHBOARD_UPDATE_FIELDS = "charts,dataModels";
   private static final String DASHBOARD_PATCH_FIELDS = "charts,dataModels";
@@ -195,6 +200,144 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setDataModels(fields.contains("dataModels") ? dashboard.getDataModels() : null);
     dashboard.withUsageSummary(
         fields.contains("usageSummary") ? dashboard.getUsageSummary() : null);
+  }
+
+  // Override soft delete behavior to handle charts through HAS relation.
+  @Transaction
+  @Override
+  protected void deleteChildren(
+      UUID dashboardId, boolean recursive, boolean hardDelete, String updatedBy) {
+    super.deleteChildren(dashboardId, recursive, hardDelete, updatedBy);
+
+    // Load all charts linked to this dashboard
+    List<CollectionDAO.EntityRelationshipRecord> chartRecords =
+        daoCollection
+            .relationshipDAO()
+            .findTo(dashboardId, DASHBOARD, Relationship.HAS.ordinal(), CHART);
+    if (chartRecords.isEmpty()) {
+      return;
+    }
+
+    // Batch-load dashboard relationships for these charts
+    List<CollectionDAO.EntityRelationshipObject> dashboardRelationships =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                chartRecords.stream()
+                    .map(record -> record.getId().toString())
+                    .distinct()
+                    .collect(Collectors.toList()),
+                Relationship.HAS.ordinal(),
+                DASHBOARD);
+
+    Set<UUID> nonDeletedDashboards =
+        daoCollection
+            .dashboardDAO()
+            .findEntitiesByIds(
+                dashboardRelationships.stream()
+                    .map(rel -> UUID.fromString(rel.getFromId()))
+                    .distinct()
+                    .collect(Collectors.toList()),
+                Include.NON_DELETED)
+            .stream()
+            .map(Dashboard::getId)
+            .filter(id -> !id.equals(dashboardId)) // (excluding the current dashboard
+            .collect(Collectors.toSet());
+
+    // For deletion: get charts whose linked dashboards (excluding the current dashboard)
+    // have no other non‑deleted dashboards.
+    List<CollectionDAO.EntityRelationshipRecord> filteredChartRecordsToBeDeleted =
+        new ArrayList<>();
+
+    for (CollectionDAO.EntityRelationshipRecord record : chartRecords) {
+      UUID chartId = record.getId();
+      boolean hasOtherNonDeletedDashboard = false;
+
+      for (CollectionDAO.EntityRelationshipObject rel : dashboardRelationships) {
+        UUID relFromId = UUID.fromString(rel.getFromId());
+        UUID relToId = UUID.fromString(rel.getToId());
+        if (relToId.equals(chartId) && nonDeletedDashboards.contains(relFromId)) {
+          hasOtherNonDeletedDashboard = true;
+          break;
+        }
+      }
+
+      if (!hasOtherNonDeletedDashboard) {
+        filteredChartRecordsToBeDeleted.add(record);
+      }
+    }
+
+    deleteChildren(filteredChartRecordsToBeDeleted, hardDelete, updatedBy);
+  }
+
+  // Override restore behavior to handle charts through HAS relation.
+  @Transaction
+  @Override
+  protected void restoreChildren(UUID dashboardId, String updatedBy) {
+    super.restoreChildren(dashboardId, updatedBy);
+
+    // Load all charts linked to this dashboard
+    List<CollectionDAO.EntityRelationshipRecord> chartRecords =
+        daoCollection
+            .relationshipDAO()
+            .findTo(dashboardId, DASHBOARD, Relationship.HAS.ordinal(), CHART);
+    if (chartRecords.isEmpty()) {
+      return;
+    }
+
+    // Batch-load dashboard relationships for these charts
+    List<CollectionDAO.EntityRelationshipObject> dashboardRelationships =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                chartRecords.stream()
+                    .map(record -> record.getId().toString())
+                    .distinct()
+                    .collect(Collectors.toList()),
+                Relationship.HAS.ordinal(),
+                DASHBOARD);
+
+    Set<UUID> deletedDashboards =
+        daoCollection
+            .dashboardDAO()
+            .findEntitiesByIds(
+                dashboardRelationships.stream()
+                    .map(rel -> UUID.fromString(rel.getFromId()))
+                    .distinct()
+                    .collect(Collectors.toList()),
+                Include.DELETED)
+            .stream()
+            .map(Dashboard::getId)
+            .filter(id -> !id.equals(dashboardId)) // (excluding the current dashboard
+            .collect(Collectors.toSet());
+
+    // For restore: get charts whose linked dashboards (excluding the current dashboard)
+    // are all non‑deleted.
+    List<CollectionDAO.EntityRelationshipRecord> filteredChartRecordsToBeRestored =
+        new ArrayList<>();
+
+    for (CollectionDAO.EntityRelationshipRecord chartRecord : chartRecords) {
+      UUID chartId = chartRecord.getId();
+      boolean hasOtherDeletedDashboard = false;
+
+      for (CollectionDAO.EntityRelationshipObject relationship : dashboardRelationships) {
+        UUID relFromId = UUID.fromString(relationship.getFromId());
+        UUID relToId = UUID.fromString(relationship.getToId());
+        if (relToId.equals(chartId) && deletedDashboards.contains(relFromId)) {
+          hasOtherDeletedDashboard = true;
+          break;
+        }
+      }
+
+      if (!hasOtherDeletedDashboard) {
+        filteredChartRecordsToBeRestored.add(chartRecord);
+      }
+    }
+
+    for (CollectionDAO.EntityRelationshipRecord record : filteredChartRecordsToBeRestored) {
+      LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
+      Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+    }
   }
 
   @Override

@@ -22,10 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remove.svg';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { ExportTypes } from '../../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
@@ -43,9 +40,8 @@ import { User } from '../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { Paging } from '../../../../../generated/type/paging';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
-import { SearchResponse } from '../../../../../interface/search.interface';
 import { ImportType } from '../../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
-import { searchData } from '../../../../../rest/miscAPI';
+import { searchQuery } from '../../../../../rest/searchAPI';
 import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
@@ -54,6 +50,7 @@ import {
   getEntityReferenceFromEntity,
 } from '../../../../../utils/EntityUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
+import { getTermQuery } from '../../../../../utils/SearchUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -87,7 +84,8 @@ export const UserTab = ({
     handlePageSizeChange,
     handlePagingChange,
     showPagination,
-  } = usePaging(PAGE_SIZE_MEDIUM);
+    pagingCursor,
+  } = usePaging();
 
   const usersList = useMemo(() => {
     return users.map((item) =>
@@ -138,22 +136,18 @@ export const UserTab = ({
 
   const searchUsers = (text: string, currentPage: number) => {
     setIsLoading(true);
-    searchData(
-      text,
-      currentPage,
+    searchQuery({
+      query: text,
+      pageNumber: currentPage,
       pageSize,
-      `(teams.id:${currentTeam?.id})`,
-      '',
-      '',
-      SearchIndex.USER
-    )
+      queryFilter: getTermQuery({ 'teams.id': currentTeam?.id }),
+      searchIndex: SearchIndex.USER,
+    })
       .then((res) => {
-        const data = formatUsersResponse(
-          (res.data as SearchResponse<SearchIndex.USER>).hits.hits
-        );
+        const data = formatUsersResponse(res.hits.hits);
         setUsers(data);
         handlePagingChange({
-          total: res.data.hits.total.value,
+          total: res.hits.total.value,
         });
       })
       .catch(() => {
@@ -170,10 +164,14 @@ export const UserTab = ({
       handlePageChange(currentPage);
       searchUsers(searchText, currentPage);
     } else if (cursorType) {
-      handlePageChange(currentPage);
       getCurrentTeamUsers(currentTeam.name, {
         [cursorType]: paging[cursorType],
       });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
   };
 
@@ -192,9 +190,16 @@ export const UserTab = ({
   };
 
   useEffect(() => {
-    getCurrentTeamUsers(currentTeam.name);
-    handlePageChange(INITIAL_PAGING_VALUE);
-  }, [currentTeam, pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      getCurrentTeamUsers(currentTeam.name, {
+        [cursorType]: cursorValue,
+      });
+    } else {
+      getCurrentTeamUsers(currentTeam.name);
+    }
+  }, [currentTeam, pageSize, pagingCursor]);
 
   const isTeamDeleted = useMemo(
     () => currentTeam.deleted ?? false,
@@ -425,7 +430,7 @@ export const UserTab = ({
           placeholder: t('label.search-for-type', {
             type: t('label.user-lowercase'),
           }),
-          value: searchText,
+          searchValue: searchText,
           typingInterval: 500,
           onSearch: handleUsersSearchAction,
         }}

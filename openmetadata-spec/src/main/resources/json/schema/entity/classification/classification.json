@@ -2,6 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/classification/classification.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Classification",
+  "$comment": "@om-entity-type",
   "description": "A `Classification` entity contains hierarchical terms called tags used for categorizing and classifying data assets and other entities.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.classification.Classification",
@@ -43,6 +44,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to the classification.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -77,13 +82,51 @@
       "type" : "boolean",
       "default" : "false"
     },
-    "domain" : {
-      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "owners": {
       "description": "Owners of this Classification.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this tag.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "entityStatus": {
+      "description": "Status of the tag.",
+      "$ref": "../../type/status.json"
+    },
+    "autoClassificationConfig": {
+      "description": "Configuration for automatic classification behavior",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Whether automatic classification is enabled for this classification",
+          "type": "boolean",
+          "default": false
+        },
+        "conflictResolution": {
+          "description": "Strategy for resolving conflicts when multiple tags match",
+          "type": "string",
+          "enum": ["highest_confidence", "highest_priority", "most_specific"],
+          "default": "highest_confidence"
+        },
+        "minimumConfidence": {
+          "description": "Minimum confidence score required to apply a tag",
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.6
+        },
+        "requireExplicitMatch": {
+          "description": "Only apply tags when recognizers explicitly match (no default tagging)",
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": ["id", "name", "description"],

@@ -33,6 +33,8 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import jakarta.annotation.Priority;
+import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.MultivaluedMap;
@@ -53,7 +55,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
@@ -66,12 +68,14 @@ import org.openmetadata.service.security.saml.JwtTokenCacheManager;
 
 @Slf4j
 @Provider
+@Priority(Priorities.AUTHENTICATION)
 public class JwtFilter implements ContainerRequestFilter {
   public static final String EMAIL_CLAIM_KEY = "email";
   public static final String USERNAME_CLAIM_KEY = "username";
   public static final String AUTHORIZATION_HEADER = "Authorization";
   public static final String TOKEN_PREFIX = "Bearer";
   public static final String BOT_CLAIM = "isBot";
+  public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   private JwkProvider jwkProvider;
@@ -88,6 +92,8 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/system/config/authorizer",
           "v1/system/config/customUiThemePreference",
           "v1/system/config/auth",
+          "v1/system/config/rdf",
+          "v1/system/health",
           "v1/users/signup",
           "v1/system/version",
           "v1/users/registrationConfirmation",
@@ -137,6 +143,7 @@ public class JwtFilter implements ContainerRequestFilter {
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
     this.enforcePrincipalDomain = enforcePrincipalDomain;
+    this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
   }
 
   @SneakyThrows
@@ -156,12 +163,26 @@ public class JwtFilter implements ContainerRequestFilter {
     String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
     String email =
         findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+    boolean isBotUser = isBot(claims);
 
-    // Check Validations
-    checkValidationsForToken(claims, tokenFromHeader, userName);
+    // Check for impersonation header - authorization will be checked later
+    String impersonateUser = requestContext.getHeaderString("X-Impersonate-User");
+    String impersonatedBy = null;
 
-    // Setting Security Context
-    // Setting Security Context
+    if (impersonateUser != null && !impersonateUser.isEmpty()) {
+      // Only bots can impersonate
+      if (!isBotUser) {
+        throw new AuthorizationException("Only bot users can impersonate other users");
+      }
+
+      // Set impersonatedBy to the bot's name
+      impersonatedBy = userName;
+      // Switch userName to the target user for SecurityContext
+      userName = impersonateUser;
+    }
+
+    checkValidationsForToken(claims, tokenFromHeader, userName, impersonatedBy);
+
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
     CatalogSecurityContext catalogSecurityContext =
@@ -169,13 +190,22 @@ public class JwtFilter implements ContainerRequestFilter {
             catalogPrincipal,
             scheme,
             SecurityContext.DIGEST_AUTH,
-            getUserRolesFromClaims(claims, isBot(claims)));
+            getUserRolesFromClaims(claims, isBotUser),
+            isBotUser,
+            impersonatedBy);
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     requestContext.setSecurityContext(catalogSecurityContext);
+
+    // Set impersonatedBy in thread-local context
+    if (impersonatedBy != null) {
+      ImpersonationContext.setImpersonatedBy(impersonatedBy);
+    } else {
+      ImpersonationContext.clear();
+    }
   }
 
   public void checkValidationsForToken(
-      Map<String, Claim> claims, String tokenFromHeader, String userName) {
+      Map<String, Claim> claims, String tokenFromHeader, String userName, String impersonatedBy) {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
 
@@ -189,7 +219,9 @@ public class JwtFilter implements ContainerRequestFilter {
         enforcePrincipalDomain);
 
     // Validate Bot token matches what was created in OM
-    if (isBot(claims)) {
+    // Skip validation for impersonation tokens - they are generated dynamically and not stored in
+    // cache
+    if (impersonatedBy == null && isBot(claims)) {
       validateBotToken(tokenFromHeader, userName);
     }
 
@@ -246,24 +278,23 @@ public class JwtFilter implements ContainerRequestFilter {
   protected static String extractToken(MultivaluedMap<String, String> headers) {
     LOG.debug("Request Headers:{}", headers);
     String source = headers.getFirst(AUTHORIZATION_HEADER);
-    if (nullOrEmpty(source)) {
-      throw AuthenticationException.getTokenNotPresentException();
-    }
-    // Extract the bearer token
-    if (source.startsWith(TOKEN_PREFIX)) {
-      return source.substring(TOKEN_PREFIX.length() + 1);
-    }
-    throw AuthenticationException.getTokenNotPresentException();
+    return extractTokenFromString(source);
   }
 
   public static String extractToken(String tokenFromHeader) {
     LOG.debug("Request Token:{}", tokenFromHeader);
-    if (nullOrEmpty(tokenFromHeader)) {
+    return extractTokenFromString(tokenFromHeader);
+  }
+
+  private static String extractTokenFromString(String tokenString) {
+    if (nullOrEmpty(tokenString)) {
       throw AuthenticationException.getTokenNotPresentException();
     }
-    // Extract the bearer token
-    if (tokenFromHeader.startsWith(TOKEN_PREFIX)) {
-      return tokenFromHeader.substring(TOKEN_PREFIX.length() + 1);
+    if (tokenString.startsWith(TOKEN_PREFIX)) {
+      if (tokenString.length() <= TOKEN_PREFIX.length() + 1) {
+        throw AuthenticationException.getTokenNotPresentException();
+      }
+      return tokenString.substring(TOKEN_PREFIX.length() + 1);
     }
     throw AuthenticationException.getTokenNotPresentException();
   }
@@ -310,10 +341,12 @@ public class JwtFilter implements ContainerRequestFilter {
     String email =
         findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
+    boolean isBotUser = isBot(claims);
     return new CatalogSecurityContext(
         catalogPrincipal,
         "https",
         SecurityContext.DIGEST_AUTH,
-        getUserRolesFromClaims(claims, isBot(claims)));
+        getUserRolesFromClaims(claims, isBotUser),
+        isBotUser);
   }
 }

@@ -13,24 +13,21 @@
 
 package org.openmetadata.service.apps.bundles.changeEvent.generic;
 
-import static org.openmetadata.common.utils.CommonUtil.calculateHMAC;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
+import static org.openmetadata.service.util.SubscriptionUtil.getTarget;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
-import jakarta.ws.rs.client.WebTarget;
 import java.net.UnknownHostException;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -39,9 +36,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
+import org.openmetadata.service.notifications.recipients.context.WebhookRecipient;
 
 @Slf4j
 public class GenericPublisher implements Destination<ChangeEvent> {
@@ -76,105 +73,57 @@ public class GenericPublisher implements Destination<ChangeEvent> {
 
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
-    long attemptTime = System.currentTimeMillis();
     try {
       String eventJson = JsonUtils.pojoToJson(event);
-      Invocation.Builder target = getTarget();
 
-      prepareHeaders(target, eventJson);
-      postWebhookMessage(this, target, eventJson, webhook.getHttpMethod());
+      // Resolve recipients using new RecipientResolver framework
+      RecipientResolver recipientResolver = new RecipientResolver();
+      Set<Recipient> recipients =
+          recipientResolver.resolveRecipients(event, subscriptionDestination, webhook);
 
-      sendActionsToTargets(event);
+      // Convert type-agnostic Recipient objects to configured webhook requests
+      List<Invocation.Builder> targets =
+          recipients.stream()
+              .filter(r -> r instanceof WebhookRecipient)
+              .map(r -> ((WebhookRecipient) r).getConfiguredRequest(client, eventJson))
+              .filter(Objects::nonNull)
+              .toList();
 
+      // Send webhook message to each target
+      for (Invocation.Builder actionTarget : targets) {
+        postWebhookMessage(this, actionTarget, eventJson);
+      }
     } catch (Exception ex) {
-      handleException(attemptTime, event, ex);
+      // Handle UnknownHostException with specific logging
+      if (ex.getCause() instanceof UnknownHostException) {
+        String message =
+            String.format(
+                "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
+                subscriptionDestination.getId(), webhook.getEndpoint());
+        LOG.warn(message);
+        setErrorStatus(System.currentTimeMillis(), 400, "UnknownHostException");
+      }
+
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
     }
   }
 
   @Override
   public void sendTestMessage() throws EventPublisherException {
-    long attemptTime = System.currentTimeMillis();
     try {
-      Invocation.Builder target = getTarget();
-      prepareHeaders(target, TEST_MESSAGE_JSON);
+      Invocation.Builder target = getTarget(client, webhook, TEST_MESSAGE_JSON);
       deliverTestWebhookMessage(this, target, TEST_MESSAGE_JSON, webhook.getHttpMethod());
-
     } catch (Exception ex) {
-      handleException(attemptTime, ex);
-    }
-  }
-
-  private void sendActionsToTargets(ChangeEvent event) throws Exception {
-    List<Invocation.Builder> targets =
-        getTargetsForWebhookAlert(
-            webhook, subscriptionDestination.getCategory(), WEBHOOK, client, event);
-    String eventJson = JsonUtils.pojoToJson(event);
-
-    for (Invocation.Builder actionTarget : targets) {
-      postWebhookMessage(this, actionTarget, eventJson);
-    }
-  }
-
-  private void prepareHeaders(Invocation.Builder target, String json) {
-    if (!nullOrEmpty(webhook.getSecretKey())) {
-      String hmac =
-          "sha256=" + calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
-      target.header(RestUtil.SIGNATURE_HEADER, hmac);
-    }
-
-    Map<String, String> headers = webhook.getHeaders();
-    if (!nullOrEmpty(headers)) {
-      headers.forEach(target::header);
-    }
-  }
-
-  public static WebTarget addQueryParams(WebTarget target, Map<String, String> queryParams) {
-    if (!CommonUtil.nullOrEmpty(queryParams)) {
-      for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-        target = target.queryParam(entry.getKey(), entry.getValue());
-      }
-    }
-    return target;
-  }
-
-  private void handleException(long attemptTime, ChangeEvent event, Exception ex)
-      throws EventPublisherException {
-    handleCommonException(attemptTime, ex);
-    String message =
-        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, event, ex.getMessage());
-    LOG.error(message);
-    throw new EventPublisherException(
-        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage()),
-        Pair.of(subscriptionDestination.getId(), event));
-  }
-
-  private void handleException(long attemptTime, Exception ex) throws EventPublisherException {
-    handleCommonException(attemptTime, ex);
-    String message =
-        CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
-    LOG.error(message);
-    throw new EventPublisherException(message);
-  }
-
-  private void handleCommonException(long attemptTime, Exception ex)
-      throws EventPublisherException {
-    Throwable cause = ex.getCause();
-    if (cause instanceof UnknownHostException) {
       String message =
-          String.format(
-              "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
-              subscriptionDestination.getId(), webhook.getEndpoint());
-      LOG.warn(message);
-      setErrorStatus(attemptTime, 400, "UnknownHostException");
+          CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
+      LOG.error(message);
       throw new EventPublisherException(message);
     }
-  }
-
-  private Invocation.Builder getTarget() {
-    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
-    WebTarget target = client.target(webhook.getEndpoint());
-    target = addQueryParams(target, webhook.getQueryParams());
-    return SecurityUtil.addHeaders(target, authHeaders);
   }
 
   @Override
@@ -191,12 +140,5 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     if (client != null) {
       client.close();
     }
-  }
-
-  public static String decryptWebhookSecretKey(String encryptedSecretkey) {
-    if (Fernet.getInstance().isKeyDefined()) {
-      encryptedSecretkey = Fernet.getInstance().decryptIfApplies(encryptedSecretkey);
-    }
-    return encryptedSecretkey;
   }
 }

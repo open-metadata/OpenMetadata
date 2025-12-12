@@ -27,6 +27,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
+import { buildDomainFilter } from '../utils/elasticsearchQueryBuilder';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
@@ -88,7 +89,7 @@ export const getDataProductVersionData = async (
 
 export const fetchDataProductsElasticSearch = async (
   searchText: string,
-  domainFQN: string,
+  domainFQNs: string[],
   page: number
 ): Promise<{
   data: {
@@ -97,24 +98,15 @@ export const fetchDataProductsElasticSearch = async (
   }[];
   paging: Paging;
 }> => {
+  // Use the utility function to build the domain filter
+  const queryFilter = buildDomainFilter(domainFQNs);
+
   const res = await searchQuery({
     query: searchText,
     filters: '',
     pageNumber: page,
     pageSize: PAGE_SIZE,
-    queryFilter: {
-      query: {
-        bool: {
-          should: [
-            {
-              term: {
-                'domain.fullyQualifiedName': domainFQN,
-              },
-            },
-          ],
-        },
-      },
-    },
+    queryFilter,
     searchIndex: SearchIndex.DATA_PRODUCT,
   });
 
@@ -180,6 +172,14 @@ export const removeFollower = async (dataProductID: string, userId: string) => {
   const response = await APIClient.delete<{
     changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
   }>(`${BASE_URL}/${dataProductID}/followers/${userId}`);
+
+  return response.data;
+};
+
+export const getAllDataProductsWithAssetsCount = async () => {
+  const response = await APIClient.get<Record<string, number>>(
+    `${BASE_URL}/assets/counts`
+  );
 
   return response.data;
 };

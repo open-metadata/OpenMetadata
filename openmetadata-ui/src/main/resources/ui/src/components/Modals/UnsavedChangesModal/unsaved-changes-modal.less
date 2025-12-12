@@ -1,0 +1,85 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.unsaved-changes-modal-container {
+  .ant-modal-content {
+    .ant-modal-close {
+      .ant-modal-close-x {
+        margin-top: @size-md;
+        margin-right: @size-md;
+      }
+    }
+    border-radius: 16px;
+  }
+}
+
+.unsaved-changes-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: @size-md;
+}
+
+.unsaved-changes-modal-icon {
+  width: @size-2xl;
+  height: @size-2xl;
+  border-radius: 50%;
+  background-color: #fef0c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  .anticon {
+    font-size: @size-lg;
+    color: #dc6803;
+  }
+}
+
+.unsaved-changes-modal-content {
+  flex: 1;
+}
+
+.unsaved-changes-modal-title {
+  margin-bottom: 0 !important;
+  color: @grey-900 !important;
+}
+
+.unsaved-changes-modal-description {
+  color: @grey-600 !important;
+}
+
+.unsaved-changes-modal-actions {
+  margin-top: @size-2xl;
+  display: flex;
+  justify-content: space-between;
+  gap: @size-sm;
+
+  .ant-btn {
+    padding: @size-xs @size-md;
+    height: auto;
+    border-radius: @border-rad-xs;
+    font-weight: @font-semibold;
+    font-size: @size-md;
+    line-height: 1.5;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .unsaved-changes-modal-discard {
+    color: @grey-800;
+    font-weight: @font-medium;
+  }
+}

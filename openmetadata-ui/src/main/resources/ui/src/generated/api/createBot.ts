@@ -28,9 +28,9 @@ export interface CreateBot {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Bot belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Name of the bot.
      */

@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Divider, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { isEmpty, isUndefined, startCase, toString } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
@@ -26,6 +26,7 @@ import { useParams } from 'react-router-dom';
 import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-suggestions.svg';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   TagLabel,
@@ -34,11 +35,13 @@ import {
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { updateTestCaseById } from '../../../../rest/testAPI';
 import {
+  getComputeRowCountDiffDisplay,
   getEntityVersionByField,
   getEntityVersionTags,
   getParameterValueDiffDisplay,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
+import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../../utils/TableUtils';
 import { createTagObject } from '../../../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -84,14 +87,25 @@ const TestCaseResultTab = () => {
       : {
           hasEditPermission: testCasePermission?.EditAll,
           hasEditDescriptionPermission:
-            testCasePermission?.EditAll || testCasePermission?.EditDescription,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditDescription
+            ),
           hasEditTagsPermission:
-            testCasePermission?.EditAll || testCasePermission?.EditTags,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditTags
+            ),
           hasEditGlossaryTermsPermission:
-            testCasePermission?.EditAll ||
-            testCasePermission?.EditGlossaryTerms,
+            testCasePermission &&
+            getPrioritizedEditPermission(
+              testCasePermission,
+              Operation.EditGlossaryTerms
+            ),
         };
-  }, [testCasePermission, isVersionPage]);
+  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
 
   const { withSqlParams, withoutSqlParams } = useMemo(() => {
     const params = testCaseData?.parameterValues ?? [];
@@ -197,6 +211,21 @@ const TestCaseResultTab = () => {
       )
     : getTagsWithoutTier(testCaseData?.tags ?? []);
 
+  const computeRowCountDisplay = useMemo(() => {
+    if (isVersionPage) {
+      return getComputeRowCountDiffDisplay(
+        testCaseData?.changeDescription as ChangeDescription,
+        testCaseData?.computePassedFailedRowCount
+      );
+    }
+
+    return toString(testCaseData?.computePassedFailedRowCount);
+  }, [
+    testCaseData?.changeDescription,
+    testCaseData?.computePassedFailedRowCount,
+    isVersionPage,
+  ]);
+
   const testCaseParams = useMemo(() => {
     if (isVersionPage) {
       return getParameterValueDiffDisplay(
@@ -285,6 +314,29 @@ const TestCaseResultTab = () => {
               {testCaseParams}
             </Space>
           </Col>
+          {!isUndefined(testCaseData?.computePassedFailedRowCount) && (
+            <Col data-testid="computed-row-count-container" span={24}>
+              <Space direction="vertical" size="small">
+                <Space align="center" size={8}>
+                  <Typography.Text className="right-panel-label">
+                    {t('label.compute-row-count')}
+                  </Typography.Text>
+                  {hasEditPermission && !isVersionPage && (
+                    <EditIconButton
+                      newLook
+                      data-testid="edit-compute-row-count-icon"
+                      size="small"
+                      title={t('label.edit-entity', {
+                        entity: t('label.compute-row-count'),
+                      })}
+                      onClick={() => setIsParameterEdit(true)}
+                    />
+                  )}
+                </Space>
+                <Typography.Text>{computeRowCountDisplay}</Typography.Text>
+              </Space>
+            </Col>
+          )}
 
           {!isUndefined(withSqlParams) && !isVersionPage ? (
             <Col>

@@ -1,8 +1,11 @@
 package org.openmetadata.service.monitoring;
 
+import static org.openmetadata.service.monitoring.MetricUtils.normalizeUri;
+
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
+import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
@@ -15,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class RequestLatencyContext {
   private static final String ENDPOINT = "endpoint";
+  private static final String METHOD = "method";
   private static final ThreadLocal<RequestContext> requestContext = new ThreadLocal<>();
 
   // Request-level timers
@@ -45,18 +49,40 @@ public class RequestLatencyContext {
   /**
    * Start tracking a new request
    */
-  public static void startRequest(String endpoint) {
-    RequestContext context = new RequestContext(endpoint);
+  public static void startRequest(String endpoint, String method) {
+    // Normalize method to uppercase to ensure consistency
+    String normalizedMethod = method.toUpperCase();
+    RequestContext context = new RequestContext(endpoint, normalizedMethod);
     requestContext.set(context);
-
-    requestTimers.computeIfAbsent(
-        endpoint,
-        k ->
-            Timer.builder("request.latency.total")
-                .tag(ENDPOINT, endpoint)
-                .description("Total request latency")
-                .publishPercentileHistogram()
-                .register(Metrics.globalRegistry));
+    String normalizedEndpoint = normalizeUri(endpoint);
+    String timerKey = normalizedEndpoint + "|" + normalizedMethod;
+    Timer timer =
+        requestTimers.computeIfAbsent(
+            timerKey,
+            k ->
+                Timer.builder("request.latency.total")
+                    .tag(ENDPOINT, normalizedEndpoint)
+                    .tag(METHOD, normalizedMethod)
+                    .description("Total request latency")
+                    .publishPercentileHistogram(true)
+                    .minimumExpectedValue(Duration.ofMillis(1))
+                    .maximumExpectedValue(Duration.ofSeconds(60))
+                    .serviceLevelObjectives(
+                        Duration.ofMillis(10),
+                        Duration.ofMillis(50),
+                        Duration.ofMillis(100),
+                        Duration.ofMillis(200),
+                        Duration.ofMillis(500),
+                        Duration.ofSeconds(1),
+                        Duration.ofSeconds(2),
+                        Duration.ofSeconds(5),
+                        Duration.ofSeconds(10))
+                    .register(Metrics.globalRegistry));
+    LOG.debug(
+        "Created/retrieved timer for endpoint: {}, method: {}, timer: {}",
+        normalizedEndpoint,
+        normalizedMethod,
+        timer);
     context.requestTimerSample = Timer.start(Metrics.globalRegistry);
     context.internalTimerStartNanos = System.nanoTime();
   }
@@ -128,12 +154,21 @@ public class RequestLatencyContext {
     RequestContext context = requestContext.get();
     if (context == null) return;
 
+    String normalizedEndpoint = normalizeUri(context.endpoint);
+    String timerKey = normalizedEndpoint + "|" + context.method;
     try {
       // Stop request timer
       if (context.requestTimerSample != null) {
-        Timer requestTimer = requestTimers.get(context.endpoint);
+        Timer requestTimer = requestTimers.get(timerKey);
         if (requestTimer != null) {
           context.totalTime = context.requestTimerSample.stop(requestTimer);
+        } else {
+          LOG.warn(
+              "Request timer not found for endpoint: {}, method: {}, timerKey: {}, available keys: {}",
+              normalizedEndpoint,
+              context.method,
+              timerKey,
+              requestTimers.keySet());
         }
       }
 
@@ -145,47 +180,94 @@ public class RequestLatencyContext {
       // This gives us the total DB time for THIS request
       Timer dbTimer =
           databaseTimers.computeIfAbsent(
-              context.endpoint,
+              timerKey,
               k ->
                   Timer.builder("request.latency.database")
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
+                      .tag(METHOD, context.method)
                       .description("Total database latency per request")
-                      .publishPercentileHistogram()
+                      .publishPercentileHistogram(true)
+                      .minimumExpectedValue(Duration.ofMillis(1))
+                      .maximumExpectedValue(Duration.ofSeconds(30))
+                      .serviceLevelObjectives(
+                          Duration.ofMillis(5),
+                          Duration.ofMillis(10),
+                          Duration.ofMillis(25),
+                          Duration.ofMillis(50),
+                          Duration.ofMillis(100),
+                          Duration.ofMillis(250),
+                          Duration.ofMillis(500),
+                          Duration.ofSeconds(1),
+                          Duration.ofSeconds(2))
                       .register(Metrics.globalRegistry));
-      dbTimer.record(context.dbTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      if (context.dbTime > 0) {
+        dbTimer.record(context.dbTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      }
 
       // Record total search time for THIS request
       Timer searchTimer =
           searchTimers.computeIfAbsent(
-              context.endpoint,
+              timerKey,
               k ->
                   Timer.builder("request.latency.search")
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
+                      .tag(METHOD, context.method)
                       .description("Total search latency per request")
-                      .publishPercentileHistogram()
+                      .publishPercentileHistogram(true)
+                      .minimumExpectedValue(Duration.ofMillis(1))
+                      .maximumExpectedValue(Duration.ofSeconds(30))
+                      .serviceLevelObjectives(
+                          Duration.ofMillis(5),
+                          Duration.ofMillis(10),
+                          Duration.ofMillis(25),
+                          Duration.ofMillis(50),
+                          Duration.ofMillis(100),
+                          Duration.ofMillis(250),
+                          Duration.ofMillis(500),
+                          Duration.ofSeconds(1),
+                          Duration.ofSeconds(2))
                       .register(Metrics.globalRegistry));
-      searchTimer.record(context.searchTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      if (context.searchTime > 0) {
+        searchTimer.record(context.searchTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      }
 
       // Record internal processing time for THIS request
       Timer internalTimer =
           internalTimers.computeIfAbsent(
-              context.endpoint,
+              timerKey,
               k ->
                   Timer.builder("request.latency.internal")
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
+                      .tag(METHOD, context.method)
                       .description("Internal processing latency per request")
-                      .publishPercentileHistogram()
+                      .publishPercentileHistogram(true)
+                      .minimumExpectedValue(Duration.ofMillis(1))
+                      .maximumExpectedValue(Duration.ofSeconds(10))
+                      .serviceLevelObjectives(
+                          Duration.ofMillis(1),
+                          Duration.ofMillis(5),
+                          Duration.ofMillis(10),
+                          Duration.ofMillis(25),
+                          Duration.ofMillis(50),
+                          Duration.ofMillis(100),
+                          Duration.ofMillis(250),
+                          Duration.ofMillis(500),
+                          Duration.ofSeconds(1))
                       .register(Metrics.globalRegistry));
-      internalTimer.record(context.internalTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      if (context.internalTime > 0) {
+        internalTimer.record(context.internalTime, java.util.concurrent.TimeUnit.NANOSECONDS);
+      }
 
       // Record operation counts as distribution summaries to get avg/max/percentiles
       if (context.dbOperationCount > 0) {
-        Metrics.summary("request.operations.database", ENDPOINT, context.endpoint)
+        Metrics.summary(
+                "request.operations.database", ENDPOINT, normalizedEndpoint, METHOD, context.method)
             .record(context.dbOperationCount);
       }
 
       if (context.searchOperationCount > 0) {
-        Metrics.summary("request.operations.search", ENDPOINT, context.endpoint)
+        Metrics.summary(
+                "request.operations.search", ENDPOINT, normalizedEndpoint, METHOD, context.method)
             .record(context.searchOperationCount);
       }
 
@@ -195,26 +277,29 @@ public class RequestLatencyContext {
         double searchPercent = (context.searchTime * 100.0) / totalNanos;
         double internalPercent = (context.internalTime * 100.0) / totalNanos;
 
-        // Get or create percentage holder for this endpoint
+        // Get or create percentage holder for this endpoint and method
         PercentageHolder holder =
             percentageHolders.computeIfAbsent(
-                context.endpoint,
+                timerKey,
                 k -> {
                   PercentageHolder newHolder = new PercentageHolder();
 
                   // Register gauges that read from the atomic references
                   Gauge.builder("request.percentage.database", newHolder.databasePercent::get)
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
+                      .tag(METHOD, context.method)
                       .description("Percentage of request time spent in database operations")
                       .register(Metrics.globalRegistry);
 
                   Gauge.builder("request.percentage.search", newHolder.searchPercent::get)
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
+                      .tag(METHOD, context.method)
                       .description("Percentage of request time spent in search operations")
                       .register(Metrics.globalRegistry);
 
                   Gauge.builder("request.percentage.internal", newHolder.internalPercent::get)
-                      .tag(ENDPOINT, context.endpoint)
+                      .tag(ENDPOINT, normalizedEndpoint)
+                      .tag(METHOD, context.method)
                       .description("Percentage of request time spent in internal processing")
                       .register(Metrics.globalRegistry);
 
@@ -249,6 +334,7 @@ public class RequestLatencyContext {
   @Getter
   private static class RequestContext {
     final String endpoint;
+    final String method;
     Timer.Sample requestTimerSample;
     long internalTimerStartNanos = 0;
 
@@ -260,8 +346,9 @@ public class RequestLatencyContext {
     int dbOperationCount = 0;
     int searchOperationCount = 0;
 
-    RequestContext(String endpoint) {
+    RequestContext(String endpoint, String method) {
       this.endpoint = endpoint;
+      this.method = method;
     }
   }
 }

@@ -34,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
@@ -42,7 +43,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
-import org.quartz.UnableToInterruptJobException;
 
 @Getter
 @Slf4j
@@ -124,7 +124,6 @@ public class AbstractNativeApplication implements NativeApplication {
   /**
    * Validate the configuration of the application. This method is called before the application is
    * triggered.
-   * @param config
    */
   protected void validateConfig(Map<String, Object> config) {
     LOG.warn("validateConfig is not implemented for this application. Skipping validation.");
@@ -184,22 +183,28 @@ public class AbstractNativeApplication implements NativeApplication {
     }
   }
 
+  protected Map<String, Object> decryptConfiguration(Map<String, Object> appConfig) {
+    return appConfig;
+  }
+
   private void updateAppConfig(
       IngestionPipelineRepository repository,
       Map<String, Object> appConfiguration,
       String updatedBy) {
+    Map<String, Object> decryptedConfig = decryptConfiguration(appConfiguration);
     String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
     IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
     ApplicationPipeline appPipeline =
         JsonUtils.convertValue(updated.getSourceConfig().getConfig(), ApplicationPipeline.class);
     IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
     updated.setSourceConfig(
-        updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
+        updated.getSourceConfig().withConfig(appPipeline.withAppConfig(decryptedConfig)));
     repository.update(null, original, updated, updatedBy);
   }
 
   private void createAndBindIngestionPipeline(
       IngestionPipelineRepository ingestionPipelineRepository, Map<String, Object> config) {
+    Map<String, Object> decryptedConfig = decryptConfiguration(config);
     MetadataServiceRepository serviceEntityRepository =
         (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
     EntityReference service =
@@ -218,7 +223,7 @@ public class AbstractNativeApplication implements NativeApplication {
                     .withConfig(
                         new ApplicationPipeline()
                             .withSourcePythonClass(this.getApp().getSourcePythonClass())
-                            .withAppConfig(config)
+                            .withAppConfig(decryptedConfig)
                             .withAppPrivateConfig(this.getApp().getPrivateConfiguration())))
             .withAirflowConfig(
                 new AirflowConfig()
@@ -267,7 +272,11 @@ public class AbstractNativeApplication implements NativeApplication {
   public void execute(JobExecutionContext jobExecutionContext) {
     // This is the part of the code that is executed by the scheduler
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
-    App jobApp = collectionDAO.applicationDAO().findEntityByName(appName);
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    App jobApp =
+        appRepository.getByName(
+            null, appName, appRepository.getFields("bot"), Include.NON_DELETED, true);
+    ;
     ApplicationHandler.getInstance().setAppRuntimeProperties(jobApp);
     jobApp.setAppConfiguration(
         JsonUtils.getMapFromJson(
@@ -334,13 +343,15 @@ public class AbstractNativeApplication implements NativeApplication {
   }
 
   @Override
-  public void interrupt() throws UnableToInterruptJobException {
-    LOG.info("Interrupting the job for app: {}", this.app.getName());
+  public void interrupt() {
+    String appName = (this.app != null) ? this.app.getName() : "unknown";
+    LOG.info("Interrupting the job for app: {}", appName);
     stop();
   }
 
   protected void stop() {
-    LOG.info("Default stop behavior for app: {}", this.app.getName());
+    String appName = (this.app != null) ? this.app.getName() : "unknown";
+    LOG.info("Default stop behavior for app: {}", appName);
     // Default implementation: no-op or generic cleanup logic
   }
 }

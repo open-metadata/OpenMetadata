@@ -67,6 +67,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "service": {
       "description": "Link to the messaging cluster/service where this topic is hosted in.",
       "$ref": "../../type/entityReference.json"
@@ -162,9 +166,9 @@
       "description": "Source URL of topic.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain" : {
-      "description": "Domain the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Topic belongs to. When not set, the Topic inherits the domain from the messaging service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts" : {
       "description": "List of data products this entity is part of.",
@@ -186,6 +190,10 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "entityStatus": {
+      "description": "Status of the Topic.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "partitions", "service"],

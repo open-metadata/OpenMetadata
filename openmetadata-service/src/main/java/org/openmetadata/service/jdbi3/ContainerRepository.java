@@ -10,10 +10,12 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.STORAGE_SERVICE;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +35,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
@@ -40,7 +43,6 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.storages.ContainerResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 
 public class ContainerRepository extends EntityRepository<Container> {
   private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
@@ -102,18 +104,31 @@ public class ContainerRepository extends EntityRepository<Container> {
     if (!fields.contains(FIELD_TAGS) || containers == null || containers.isEmpty()) {
       return;
     }
-    // Filter containers that have data models and use bulk tag fetching
-    List<Container> containersWithDataModels =
-        containers.stream()
-            .filter(c -> c.getDataModel() != null)
-            .collect(java.util.stream.Collectors.toList());
 
-    if (!containersWithDataModels.isEmpty()) {
-      bulkPopulateEntityFieldTags(
-          containersWithDataModels,
-          entityType,
-          c -> c.getDataModel().getColumns(),
-          Container::getFullyQualifiedName);
+    // First, fetch container-level tags (important for search indexing)
+    List<String> entityFQNs = containers.stream().map(Container::getFullyQualifiedName).toList();
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+    for (Container container : containers) {
+      container.setTags(
+          addDerivedTagsGracefully(
+              tagsMap.getOrDefault(container.getFullyQualifiedName(), Collections.emptyList())));
+    }
+
+    // Then, if dataModel field is requested, also fetch data model column tags
+    if (fields.contains("dataModel")) {
+      // Filter containers that have data models and use bulk tag fetching
+      List<Container> containersWithDataModels =
+          containers.stream()
+              .filter(c -> c.getDataModel() != null)
+              .collect(java.util.stream.Collectors.toList());
+
+      if (!containersWithDataModels.isEmpty()) {
+        bulkPopulateEntityFieldTags(
+            containersWithDataModels,
+            entityType,
+            c -> c.getDataModel().getColumns(),
+            Container::getFullyQualifiedName);
+      }
     }
   }
 

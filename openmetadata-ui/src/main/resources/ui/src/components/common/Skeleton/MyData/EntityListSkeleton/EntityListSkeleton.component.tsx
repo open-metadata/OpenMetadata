@@ -23,10 +23,14 @@ const EntityListSkeleton = ({
   loading,
   children,
   dataLength = DEFAULT_SKELETON_DATA_LENGTH,
+  skeletonContainerStyle,
   ...props
 }: EntityListSkeletonProps) => {
   return loading ? (
-    <div className="m-t-md" data-testid="entity-list-skeleton">
+    <div
+      className="m-t-md"
+      data-testid="entity-list-skeleton"
+      style={skeletonContainerStyle}>
       {getSkeletonMockData(dataLength).map(() => (
         <LabelCountSkeleton
           active

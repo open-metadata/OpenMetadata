@@ -42,10 +42,18 @@ export interface Chart {
      */
     displayName?: string;
     /**
-     * Domain the Chart belongs to. The Chart inherits domain from the dashboard service it
+     * Domains the Chart belongs to. The Chart inherits domain from the dashboard service it
      * belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Status of the Chart.
+     */
+    entityStatus?: EntityStatus;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
     /**
      * Followers of this chart.
      */
@@ -62,6 +70,10 @@ export interface Chart {
      * Unique identifier that identifies a chart instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -165,6 +177,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -219,9 +235,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -296,13 +334,19 @@ export enum ChartType {
     Area = "Area",
     Bar = "Bar",
     BoxPlot = "BoxPlot",
+    Gauge = "Gauge",
+    Graph = "Graph",
+    Heatmap = "Heatmap",
     Histogram = "Histogram",
     Line = "Line",
+    Map = "Map",
     Other = "Other",
     Pie = "Pie",
+    SANKey = "SanKey",
     Scatter = "Scatter",
     Table = "Table",
     Text = "Text",
+    Timeline = "Timeline",
 }
 
 /**
@@ -317,9 +361,6 @@ export enum ChartType {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the Chart belongs to. The Chart inherits domain from the dashboard service it
- * belongs to.
  *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
@@ -366,6 +407,21 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the Chart.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -421,6 +477,8 @@ export interface AccessDetails {
 export enum DashboardServiceType {
     CustomDashboard = "CustomDashboard",
     DomoDashboard = "DomoDashboard",
+    Grafana = "Grafana",
+    Hex = "Hex",
     Lightdash = "Lightdash",
     Looker = "Looker",
     Metabase = "Metabase",
@@ -435,6 +493,7 @@ export enum DashboardServiceType {
     Sigma = "Sigma",
     Superset = "Superset",
     Tableau = "Tableau",
+    ThoughtSpot = "ThoughtSpot",
 }
 
 /**

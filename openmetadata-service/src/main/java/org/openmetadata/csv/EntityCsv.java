@@ -264,6 +264,27 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return getOwners(printer, csvRecord, fieldNumber, EntityCsv::invalidReviewer);
   }
 
+  public List<EntityReference> getDomains(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+      throws IOException {
+    if (!processRecord) {
+      return null;
+    }
+    String domainsRecord = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(domainsRecord)) {
+      return null;
+    }
+    List<String> domains = listOrEmpty(CsvUtil.fieldToStrings(domainsRecord));
+    List<EntityReference> refs = new ArrayList<>();
+    for (String domain : domains) {
+      EntityReference domainRef =
+          getEntityReference(printer, csvRecord, fieldNumber, Entity.DOMAIN, domain);
+      if (domainRef != null) {
+        refs.add(domainRef);
+      }
+    }
+    return refs;
+  }
+
   /** Owner field is in entityName format */
   public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
       throws IOException {
@@ -1048,8 +1069,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
     Database database;
     try {
       database =
-          Entity.getEntityByName(
-              DATABASE, dbFQN, "name,displayName,fullyQualifiedName,service", Include.NON_DELETED);
+          Entity.getEntityByNameWithExcludedFields(
+              DATABASE,
+              dbFQN,
+              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
+              Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       LOG.warn("Database not found: {}. Handling based on dryRun mode.", dbFQN);
       if (importResult.getDryRun()) {
@@ -1066,10 +1090,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
     String schemaFqn = FullyQualifiedName.add(dbFQN, csvRecord.get(0));
     try {
       schema =
-          Entity.getEntityByName(
+          Entity.getEntityByNameWithExcludedFields(
               DATABASE_SCHEMA,
               schemaFqn,
-              "name,displayName,fullyQualifiedName",
+              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
               Include.NON_DELETED);
     } catch (Exception ex) {
       LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
@@ -1102,7 +1126,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withDomains(getDomains(printer, csvRecord, 10))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1148,8 +1172,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     try {
       table =
-          Entity.getEntityByName(
-              TABLE, tableFqn, "name,displayName,fullyQualifiedName,columns", Include.NON_DELETED);
+          Entity.getEntityByNameWithExcludedFields(
+              TABLE,
+              tableFqn,
+              "name,displayName,description,owners,tags,glossaryTerms,tiers,certification,retentionPeriod,sourceUrl,domains,extension,updatedAt,updatedBy",
+              Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       // Table not found, create a new one
 
@@ -1185,7 +1212,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withDomains(getDomains(printer, csvRecord, 10))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1277,7 +1304,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withTags(tagLabels)
         .withCertification(certification)
         .withSourceUrl(csvRecord.get(9))
-        .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+        .withDomains(getDomains(printer, csvRecord, 10))
         .withStoredProcedureCode(storedProcedureCode)
         .withExtension(getExtension(printer, csvRecord, 11));
 

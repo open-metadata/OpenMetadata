@@ -21,6 +21,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
+import '../../../../../test/unit/mocks/mui.mock';
 import ColumnProfileTable from './ColumnProfileTable';
 
 jest.mock('../../../../common/Table/Table', () =>
@@ -49,6 +50,7 @@ jest.mock('../../../../common/SummaryCard/SummaryCard.component', () => ({
 
 jest.mock('../../../../../utils/CommonUtils', () => ({
   formatNumberWithComma: jest.fn(),
+  getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => fqn),
 }));
 jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
   return jest
@@ -78,6 +80,13 @@ jest.mock('../../../../common/TestIndicator/TestIndicator', () => {
 jest.mock('../TableProfilerProvider', () => ({
   useTableProfiler: jest.fn().mockImplementation(() => ({
     tableProfiler: MOCK_TABLE,
+    permissions: {
+      EditAll: true,
+      EditTests: true,
+      EditDataProfile: true,
+      ViewDataProfile: true,
+      ViewAll: true,
+    },
   })),
 }));
 

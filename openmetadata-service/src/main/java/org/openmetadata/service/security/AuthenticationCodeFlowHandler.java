@@ -5,8 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
 import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
-import static org.openmetadata.service.security.SecurityUtil.getClaimOrObject;
-import static org.openmetadata.service.security.SecurityUtil.getFirstMatchJwtClaim;
+import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
@@ -76,9 +75,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -95,7 +96,9 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.UserUtil;
 import org.pac4j.core.context.HttpConstants;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.core.util.CommonHelper;
@@ -109,7 +112,7 @@ import org.pac4j.oidc.config.PrivateKeyJWTClientAuthnMethodConfig;
 import org.pac4j.oidc.credentials.OidcCredentials;
 
 @Slf4j
-public class AuthenticationCodeFlowHandler {
+public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final Collection<ClientAuthenticationMethod> SUPPORTED_METHODS =
       Arrays.asList(
           ClientAuthenticationMethod.CLIENT_SECRET_POST,
@@ -121,17 +124,31 @@ public class AuthenticationCodeFlowHandler {
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
   public static final String REDIRECT_URI_KEY = "redirectUri";
-  private final OidcClient client;
-  private final List<String> claimsOrder;
-  private final Map<String, String> claimsMapping;
-  private final String serverUrl;
-  private final ClientAuthentication clientAuthentication;
-  private final String principalDomain;
-  private final int tokenValidity;
-  private final String maxAge;
-  private final String promptType;
 
-  public AuthenticationCodeFlowHandler(
+  private static class Holder {
+    private static AuthenticationCodeFlowHandler instance;
+
+    private static void initialize(
+        AuthenticationConfiguration authenticationConfiguration,
+        AuthorizerConfiguration authorizerConfiguration) {
+      instance =
+          new AuthenticationCodeFlowHandler(authenticationConfiguration, authorizerConfiguration);
+    }
+  }
+
+  private OidcClient client;
+  private List<String> claimsOrder;
+  private Map<String, String> claimsMapping;
+  private String serverUrl;
+  private ClientAuthentication clientAuthentication;
+  private String principalDomain;
+  private int tokenValidity;
+  private String maxAge;
+  private String promptType;
+  private AuthenticationConfiguration authenticationConfiguration;
+  private AuthorizerConfiguration authorizerConfiguration;
+
+  private AuthenticationCodeFlowHandler(
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConfiguration) {
     // Assert oidcConfig and Callback Url
@@ -143,9 +160,44 @@ public class AuthenticationCodeFlowHandler {
         "ServerUrl", authenticationConfiguration.getOidcConfiguration().getServerUrl());
 
     // Build Required Params
+    this.authenticationConfiguration = authenticationConfiguration;
+    this.authorizerConfiguration = authorizerConfiguration;
+    initializeFields();
+  }
+
+  public static AuthenticationCodeFlowHandler getInstance(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {
+    if (Holder.instance == null) {
+      synchronized (AuthenticationCodeFlowHandler.class) {
+        if (Holder.instance == null) {
+          Holder.initialize(authenticationConfiguration, authorizerConfiguration);
+        }
+      }
+    }
+    return Holder.instance;
+  }
+
+  public static AuthenticationCodeFlowHandler getInstance() {
+    if (Holder.instance == null) {
+      throw new IllegalStateException(
+          "AuthenticationCodeFlowHandler is not initialized. Call getInstance() with configuration first.");
+    }
+    return Holder.instance;
+  }
+
+  public synchronized void updateConfiguration(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {
+    this.authenticationConfiguration = authenticationConfiguration;
+    this.authorizerConfiguration = authorizerConfiguration;
+    initializeFields();
+  }
+
+  private void initializeFields() {
     this.client = buildOidcClient(authenticationConfiguration.getOidcConfiguration());
     client.setCallbackUrl(authenticationConfiguration.getOidcConfiguration().getCallbackUrl());
-    this.clientAuthentication = getClientAuthentication(client.getConfiguration());
+
     this.serverUrl = authenticationConfiguration.getOidcConfiguration().getServerUrl();
     this.claimsOrder = authenticationConfiguration.getJwtPrincipalClaims();
     this.claimsMapping =
@@ -157,6 +209,7 @@ public class AuthenticationCodeFlowHandler {
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
+    this.clientAuthentication = getClientAuthentication(client.getConfiguration());
   }
 
   private OidcClient buildOidcClient(OidcClientConfig clientConfig) {
@@ -679,18 +732,59 @@ public class AuthenticationCodeFlowHandler {
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
 
     String redirectUri = (String) httpSession.getAttribute(SESSION_REDIRECT_URI);
+    User user = getOrCreateOidcUser(userName, email);
+    Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
 
-    String storedUserStr =
-        Entity.getCollectionDAO().userDAO().findUserByNameAndEmail(userName, email);
-    if (storedUserStr != null) {
-      User user = JsonUtils.readValue(storedUserStr, User.class);
-      Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
-    }
     String url =
         String.format(
             "%s?id_token=%s&email=%s&name=%s",
             redirectUri, credentials.getIdToken().getParsedString(), email, userName);
     response.sendRedirect(url);
+  }
+
+  private User getOrCreateOidcUser(String userName, String email) {
+    try {
+      String storedUserStr =
+          Entity.getCollectionDAO().userDAO().findUserByNameAndEmail(userName, email);
+      if (storedUserStr != null) {
+        User user = JsonUtils.readValue(storedUserStr, User.class);
+
+        boolean shouldBeAdmin = getAdminPrincipals().contains(userName);
+
+        LOG.info(
+            "OIDC login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
+            userName,
+            email,
+            shouldBeAdmin,
+            user.getIsAdmin());
+        LOG.info("Admin principals list: {}", getAdminPrincipals());
+
+        if (shouldBeAdmin && !Boolean.TRUE.equals(user.getIsAdmin())) {
+          LOG.info("Updating user {} to admin based on adminPrincipals", userName);
+          user.setIsAdmin(true);
+          UserUtil.addOrUpdateUser(user);
+        }
+        return user;
+      }
+    } catch (Exception e) {
+      LOG.debug("User not found, will create new user: {}", userName);
+    }
+
+    if (authenticationConfiguration.getEnableSelfSignup()) {
+      boolean isAdmin = getAdminPrincipals().contains(userName);
+      LOG.info("Creating new OIDC user - Username: {}, Should be admin: {}", userName, isAdmin);
+      LOG.info("Admin principals list: {}", getAdminPrincipals());
+
+      String domain = email.split("@")[1];
+      User newUser =
+          UserUtil.user(userName, domain, userName).withIsAdmin(isAdmin).withIsEmailVerified(true);
+      return UserUtil.addOrUpdateUser(newUser);
+    }
+    throw new AuthenticationException("User not found and self-signup is disabled");
+  }
+
+  private Set<String> getAdminPrincipals() {
+    return new HashSet<>(authorizerConfiguration.getAdminPrincipals());
   }
 
   private void renewOidcCredentials(HttpSession httpSession, OidcCredentials credentials) {
@@ -745,8 +839,7 @@ public class AuthenticationCodeFlowHandler {
             Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
             claims.putAll(storedCredentials.getIdToken().getJWTClaimsSet().getClaims());
 
-            String username =
-                SecurityUtil.findUserNameFromClaims(claimsMapping, claimsOrder, claims);
+            String username = findUserNameFromClaims(claimsMapping, claimsOrder, claims);
             User user = Entity.getEntityByName(Entity.USER, username, "id", Include.NON_DELETED);
 
             // Create a JWT here
@@ -833,31 +926,6 @@ public class AuthenticationCodeFlowHandler {
       throw new TechnicalException("Exception while refreshing Azure AD token", e);
     } finally {
       HttpUtils.closeConnection(connection);
-    }
-  }
-
-  public static String findUserNameFromClaims(
-      Map<String, String> jwtPrincipalClaimsMapping,
-      List<String> jwtPrincipalClaimsOrder,
-      Map<String, ?> claims) {
-    if (!nullOrEmpty(jwtPrincipalClaimsMapping)) {
-      // We have a mapping available so we will use that
-      String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
-      String userNameClaimValue = getClaimOrObject(claims.get(usernameClaim));
-      if (!nullOrEmpty(userNameClaimValue)) {
-        return userNameClaimValue;
-      } else {
-        throw new AuthenticationException("Invalid JWT token, 'username' claim is not present");
-      }
-    } else {
-      String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
-      String userName;
-      if (jwtClaim.contains("@")) {
-        userName = jwtClaim.split("@")[0];
-      } else {
-        userName = jwtClaim;
-      }
-      return userName;
     }
   }
 
@@ -975,5 +1043,45 @@ public class AuthenticationCodeFlowHandler {
     }
     LOG.debug("Token response successful");
     return (OIDCTokenResponse) response;
+  }
+
+  public static void validateConfig(
+      AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
+    try {
+      // Create a temporary handler just for validation
+      AuthenticationCodeFlowHandler tempHandler =
+          new AuthenticationCodeFlowHandler(authConfig, authzConfig);
+
+      // Validate required configurations
+      CommonHelper.assertNotNull("OidcConfiguration", authConfig.getOidcConfiguration());
+      CommonHelper.assertNotBlank(
+          "CallbackUrl", authConfig.getOidcConfiguration().getCallbackUrl());
+      CommonHelper.assertNotBlank("ServerUrl", authConfig.getOidcConfiguration().getServerUrl());
+
+      // Use the temporary handler's client to validate
+      if (tempHandler.client == null) {
+        throw new IllegalArgumentException("Failed to initialize OIDC client");
+      }
+
+      // Validate provider metadata
+      OIDCProviderMetadata providerMetadata =
+          tempHandler.client.getConfiguration().findProviderMetadata();
+      if (providerMetadata == null) {
+        throw new IllegalArgumentException("Failed to retrieve provider metadata from server URL");
+      }
+
+      // Validate required endpoints
+      if (providerMetadata.getAuthorizationEndpointURI() == null) {
+        throw new IllegalArgumentException("Authorization endpoint not found in provider metadata");
+      }
+
+      if (providerMetadata.getTokenEndpointURI() == null) {
+        throw new IllegalArgumentException("Token endpoint not found in provider metadata");
+      }
+
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          "OIDC configuration validation failed: " + e.getMessage(), e);
+    }
   }
 }

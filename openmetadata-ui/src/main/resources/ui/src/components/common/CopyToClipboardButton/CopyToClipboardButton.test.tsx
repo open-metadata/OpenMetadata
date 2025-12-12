@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import CopyToClipboardButton from './CopyToClipboardButton';
+import { CopyToClipboardButton } from './CopyToClipboardButton';
 
 const clipboardWriteTextMock = jest.fn();
 const clipboardMock = {
@@ -30,6 +30,12 @@ const callBack = jest.fn();
 
 Object.defineProperty(window.navigator, 'clipboard', {
   value: clipboardMock,
+  writable: true,
+});
+
+// Set secure context to true by default
+Object.defineProperty(window, 'isSecureContext', {
+  value: true,
   writable: true,
 });
 
@@ -45,7 +51,7 @@ describe('Test CopyToClipboardButton Component', () => {
     render(<CopyToClipboardButton copyText={value} onCopy={callBack} />);
 
     await act(async () => {
-      fireEvent.click(screen.getByTestId('copy-secret'));
+      await fireEvent.click(screen.getByTestId('copy-secret'));
     });
 
     expect(callBack).toHaveBeenCalled();
@@ -57,14 +63,10 @@ describe('Test CopyToClipboardButton Component', () => {
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('copy-secret'));
+      fireEvent.mouseOver(screen.getByTestId('copy-secret'));
     });
 
-    fireEvent.mouseOver(screen.getByTestId('copy-secret'));
-    jest.advanceTimersByTime(1000);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('copy-success')).toBeInTheDocument();
-    });
+    expect(await screen.findByTestId('copy-success')).toBeInTheDocument();
   });
 
   it('Should have copied text in clipboard', async () => {
@@ -94,5 +96,14 @@ describe('Test CopyToClipboardButton Component', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('copy-success')).not.toBeInTheDocument();
     });
+  });
+
+  it('Should render MUI IconButton with correct props', () => {
+    render(<CopyToClipboardButton copyText={value} position="top" />);
+
+    const iconButton = screen.getByTestId('copy-secret');
+
+    expect(iconButton).toBeInTheDocument();
+    expect(iconButton).toHaveClass('h-8 m-l-md relative flex-center');
   });
 });

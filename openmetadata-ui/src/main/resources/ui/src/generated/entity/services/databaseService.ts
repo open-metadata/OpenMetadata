@@ -38,9 +38,9 @@ export interface DatabaseService {
      */
     displayName?: string;
     /**
-     * Domain the Database service belongs to.
+     * Domains the Database service belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Followers of this entity.
      */
@@ -57,6 +57,10 @@ export interface DatabaseService {
      * Unique identifier of this database service instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -174,7 +178,7 @@ export interface FieldChange {
  * Database Connection.
  */
 export interface DatabaseConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -215,6 +219,8 @@ export interface DatabaseConnection {
  * Oracle Database Connection Config
  *
  * Postgres Database Connection Config
+ *
+ * TimescaleDB Database Connection Config
  *
  * Presto Database Connection Config
  *
@@ -268,8 +274,12 @@ export interface DatabaseConnection {
  * Cockroach Database Connection Config
  *
  * SSAS Metadata Database Connection Config
+ *
+ * Epic FHIR Connection Config
+ *
+ * ServiceNow Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Billing Project ID
      */
@@ -320,6 +330,8 @@ export interface ConfigClass {
      *
      * Host and port of the source service.
      *
+     * Host and port of the TimescaleDB service.
+     *
      * Host and port of the Presto service.
      *
      * Host and port of the Redshift service.
@@ -347,11 +359,19 @@ export interface ConfigClass {
      * Host and port of the Azure Synapse service.
      *
      * Host and port of the Cockrooach service.
+     *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
      */
-    hostPort?:                string;
+    hostPort?: string;
+    /**
+     * Option to include policy tags as part of column description.
+     */
+    includePolicyTags?:       boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource categories
      */
     schemaFilterPattern?: FilterPattern;
     /**
@@ -380,6 +400,8 @@ export interface ConfigClass {
     supportsUsageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
+     *
+     * Regex to include/exclude FHIR resource types
      */
     tableFilterPattern?: FilterPattern;
     /**
@@ -406,6 +428,9 @@ export interface ConfigClass {
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
+     * as the database name.
      */
     databaseName?: string;
     /**
@@ -426,8 +451,9 @@ export interface ConfigClass {
      * This parameter determines the mode of authentication for connecting to Azure Synapse
      * using ODBC. If 'Active Directory Password' is selected, you need to provide the password.
      * If 'Active Directory Integrated' is selected, password is not required as it uses the
-     * logged-in user's credentials. This mode is useful for establishing secure and seamless
-     * connections with Azure Synapse.
+     * logged-in user's credentials. If 'Active Directory Service Principal' is selected, you
+     * need to provide clientId, clientSecret and tenantId. This mode is useful for establishing
+     * secure and seamless connections with Azure Synapse.
      */
     authenticationMode?: any[] | boolean | number | null | AuthenticationModeObject | string;
     /**
@@ -459,6 +485,9 @@ export interface ConfigClass {
      *
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
+     *
+     * Ingest data from all databases in TimescaleDB. You can use databaseFilterPattern on top
+     * of this.
      *
      * Ingest data from all databases in Redshift. You can use databaseFilterPattern on top of
      * this.
@@ -495,7 +524,7 @@ export interface ConfigClass {
      *
      * Password to connect to Redshift.
      *
-     * Password to connect to the Salesforce.
+     * Password to connect to Salesforce.
      *
      * Password to connect to SingleStore.
      *
@@ -520,6 +549,8 @@ export interface ConfigClass {
      * Password to connect to Exasol.
      *
      * Password
+     *
+     * Password to connect to ServiceNow.
      */
     password?: string;
     /**
@@ -557,14 +588,17 @@ export interface ConfigClass {
      * Username to connect to Postgres. This user should have privileges to read all the
      * metadata in Postgres.
      *
+     * Username to connect to TimescaleDB. This user should have privileges to read all the
+     * metadata in TimescaleDB.
+     *
      * Username to connect to Presto. This user should have privileges to read all the metadata
      * in Postgres.
      *
      * Username to connect to Redshift. This user should have privileges to read all the
      * metadata in Redshift.
      *
-     * Username to connect to the Salesforce. This user should have privileges to read all the
-     * metadata in Redshift.
+     * Username to connect to Salesforce. This user should have privileges to read all the
+     * metadata in Salesforce.
      *
      * Username to connect to SingleStore. This user should have privileges to read all the
      * metadata in MySQL.
@@ -611,6 +645,9 @@ export interface ConfigClass {
      * metadata in Cockroach.
      *
      * Username
+     *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
      */
     username?: string;
     /**
@@ -643,6 +680,12 @@ export interface ConfigClass {
      */
     secure?: boolean;
     /**
+     * Choose between different authentication types for Databricks.
+     *
+     * Choose Auth Config Type.
+     */
+    authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
@@ -666,10 +709,6 @@ export interface ConfigClass {
      * Table name to fetch the query history.
      */
     queryHistoryTable?: string;
-    /**
-     * Generated Token to connect to Databricks.
-     */
-    token?: string;
     /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */
@@ -708,21 +747,33 @@ export interface ConfigClass {
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
     /**
-     * Authentication mode to connect to Impala.
+     * SSL Configuration details.
+     *
+     * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+     * client certificate, and private key for mutual TLS authentication.
      */
-    authMechanism?: AuthMechanismEnum;
+    sslConfig?: Config;
     /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     *
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
     /**
-     * Choose Auth Config Type.
+     * Authentication mode to connect to Impala.
      */
-    authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
+    authMechanism?: AuthMechanismEnum;
     /**
-     * SSL Configuration details.
+     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
+     * between the client and server will be encrypted.
      */
-    sslConfig?: Config;
+    encrypt?: boolean;
+    /**
+     * Trust the server certificate without validation. Set to false in production to validate
+     * server certificates against the certificate authority.
+     */
+    trustServerCertificate?: boolean;
     /**
      * Use slow logs to extract lineage.
      */
@@ -743,6 +794,8 @@ export interface ConfigClass {
     oracleConnectionType?: OracleConnectionType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
+     *
+     * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
     sslMode?:            SSLMode;
@@ -757,6 +810,18 @@ export interface ConfigClass {
      */
     verify?: string;
     /**
+     * Salesforce Consumer Key (Client ID) for OAuth 2.0 authentication. This is obtained from
+     * your Salesforce Connected App configuration. Required along with Consumer Secret for
+     * OAuth authentication.
+     */
+    consumerKey?: string;
+    /**
+     * Salesforce Consumer Secret (Client Secret) for OAuth 2.0 authentication. This is obtained
+     * from your Salesforce Connected App configuration. Required along with Consumer Key for
+     * OAuth authentication.
+     */
+    consumerSecret?: string;
+    /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
      */
     organizationId?: string;
@@ -769,7 +834,7 @@ export interface ConfigClass {
      */
     salesforceDomain?: string;
     /**
-     * Salesforce Security Token.
+     * Salesforce Security Token for username/password authentication.
      */
     securityToken?: string;
     /**
@@ -825,6 +890,10 @@ export interface ConfigClass {
      */
     snowflakePrivatekeyPassphrase?: string;
     /**
+     * Snowflake source host for the Snowflake account.
+     */
+    snowflakeSourceHost?: string;
+    /**
      * Snowflake warehouse.
      */
     warehouse?: string;
@@ -854,6 +923,8 @@ export interface ConfigClass {
     apiHost?: string;
     /**
      * Client ID for DOMO
+     *
+     * Azure Application (client) ID for service principal authentication.
      */
     clientId?: string;
     /**
@@ -937,6 +1008,14 @@ export interface ConfigClass {
     paginationLimit?: number;
     verifySSL?:       VerifySSL;
     /**
+     * Azure Application client secret for service principal authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Directory (tenant) ID for service principal authentication.
+     */
+    tenantId?: string;
+    /**
      * Client SSL/TLS settings.
      */
     tls?: SSLTLSSettings;
@@ -944,6 +1023,25 @@ export interface ConfigClass {
      * HTTP Link for SSAS ACCESS
      */
     httpConnection?: string;
+    /**
+     * Base URL of the Epic FHIR server
+     */
+    fhirServerUrl?: string;
+    /**
+     * FHIR specification version (R4, STU3, DSTU2)
+     */
+    fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
+    [property: string]: any;
 }
 
 /**
@@ -973,6 +1071,16 @@ export enum AuthMechanismEnum {
 }
 
 /**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
@@ -983,7 +1091,34 @@ export enum AuthMechanismEnum {
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  */
-export interface AuthConfigurationType {
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
     /**
      * Password to connect to source.
      */
@@ -1143,6 +1278,7 @@ export interface AuthenticationModeObject {
 export enum Authentication {
     ActiveDirectoryIntegrated = "ActiveDirectoryIntegrated",
     ActiveDirectoryPassword = "ActiveDirectoryPassword",
+    ActiveDirectoryServicePrincipal = "ActiveDirectoryServicePrincipal",
 }
 
 /**
@@ -1669,6 +1805,10 @@ export interface GCPCredentials {
  * Regex to only include/exclude schemas that matches the pattern.
  *
  * Regex to only include/exclude tables that matches the pattern.
+ *
+ * Regex to include/exclude FHIR resource categories
+ *
+ * Regex to include/exclude FHIR resource types
  */
 export interface FilterPattern {
     /**
@@ -1679,6 +1819,15 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
+}
+
+/**
+ * FHIR specification version (R4, STU3, DSTU2)
+ */
+export enum FHIRVersion {
+    Dstu2 = "DSTU2",
+    R4 = "R4",
+    Stu3 = "STU3",
 }
 
 /**
@@ -1705,7 +1854,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: HiveMetastoreConnectionDetailsAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -1797,7 +1946,7 @@ export interface HiveMetastoreConnectionDetails {
  *
  * Azure Database Connection Config
  */
-export interface HiveMetastoreConnectionDetailsAuthConfigurationType {
+export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
@@ -1897,6 +2046,9 @@ export enum HiveMetastoreConnectionDetailsScheme {
  * Client SSL configuration
  *
  * SSL Configuration details.
+ *
+ * SSL/TLS certificate configuration for client authentication. Provide CA certificate,
+ * client certificate, and private key for mutual TLS authentication.
  *
  * OpenMetadata Client configured to validate SSL certificates.
  */
@@ -2052,6 +2204,7 @@ export enum ConfigType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     Greenplum = "Greenplum",
@@ -2072,11 +2225,13 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
@@ -2103,8 +2258,6 @@ export enum VerifySSL {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Domain the Database service belongs to.
  *
  * The ingestion agent responsible for executing the ingestion pipeline.
  */
@@ -2173,6 +2326,7 @@ export enum DatabaseServiceType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     Greenplum = "Greenplum",
@@ -2194,11 +2348,13 @@ export enum DatabaseServiceType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
@@ -2232,6 +2388,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -2287,9 +2447,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**

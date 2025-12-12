@@ -16,40 +16,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
-import { getEntityName } from '../../../utils/EntityUtils';
-import Fqn from '../../../utils/Fqn';
 import DomainSelectablTreeNew from '../DomainSelectableTree/DomainSelectableTreeNew';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
-
-export const DomainListItemRenderer = (props: EntityReference) => {
-  const isSubDomain = Fqn.split(props.fullyQualifiedName ?? '').length > 1;
-  const fqn = `(${props.fullyQualifiedName ?? ''})`;
-
-  return (
-    <div className="d-flex items-center gap-2">
-      <DomainIcon
-        color={DE_ACTIVE_COLOR}
-        height={20}
-        name="folder"
-        width={20}
-      />
-      <div className="d-flex items-center w-max-400">
-        <Typography.Text ellipsis>{getEntityName(props)}</Typography.Text>
-        {isSubDomain && (
-          <Typography.Text
-            ellipsis
-            className="m-l-xss text-xs"
-            type="secondary">
-            {fqn}
-          </Typography.Text>
-        )}
-      </div>
-    </div>
-  );
-};
 
 const DomainSelectableListNew = ({
   hasPermission,
@@ -139,7 +109,7 @@ const DomainSelectableListNew = ({
               </div>
 
               <Typography.Text className="user-profile-edit-popover-card-title">
-                {t('label.domain')}
+                {t('label.domain-plural')}
               </Typography.Text>
             </div>
             <DomainSelectablTreeNew
@@ -164,7 +134,7 @@ const DomainSelectableListNew = ({
         {hasPermission && (
           <Tooltip
             title={t('label.edit-entity', {
-              entity: t('label.domain'),
+              entity: t('label.domain-plural'),
             })}>
             <EditIcon
               className="cursor-pointer"

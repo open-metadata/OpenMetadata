@@ -92,7 +92,7 @@ logger = ingestion_logger()
 UNITY_CATALOG_TAG = "UNITY CATALOG TAG"
 UNITY_CATALOG_TAG_CLASSIFICATION = "UNITY CATALOG TAG CLASSIFICATION"
 
-
+# pylint: disable=protected-access
 class UnitycatalogSource(
     ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource
 ):
@@ -193,15 +193,15 @@ class UnitycatalogSource(
         Prepare a database request and pass it to the sink
         """
         catalog = self.client.catalogs.get(database_name)
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=database_name,
-                service=self.context.get().database_service,
-                owners=self.get_owner_ref(catalog.owner),
-                description=catalog.comment,
-                tags=self.get_database_tag_labels(database_name),
-            )
+        database_request = CreateDatabaseRequest(
+            name=database_name,
+            service=self.context.get().database_service,
+            owners=self.get_owner_ref(catalog.owner),
+            description=catalog.comment,
+            tags=self.get_database_tag_labels(database_name),
         )
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_database_schema_names(self) -> Iterable[str]:
         """
@@ -247,22 +247,22 @@ class UnitycatalogSource(
         schema = self.client.schemas.get(
             full_name=f"{self.context.get().database}.{schema_name}"
         )
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-                description=schema.comment,
-                owners=self.get_owner_ref(schema.owner),
-                tags=self.get_schema_tag_labels(schema_name),
-            )
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
+            ),
+            description=schema.comment,
+            owners=self.get_owner_ref(schema.owner),
+            tags=self.get_schema_tag_labels(schema_name),
         )
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
 
     def get_tables_name_and_type(self) -> Iterable[Tuple[str, str]]:
         """
@@ -306,6 +306,8 @@ class UnitycatalogSource(
                 if table.table_type:
                     if table.table_type.value.lower() == TableType.View.value.lower():
                         table_type: TableType = TableType.View
+                    if table.table_type.value.lower() == "materialized_view":
+                        table_type: TableType = TableType.MaterializedView
                     elif (
                         table.table_type.value.lower()
                         == TableType.External.value.lower()
@@ -425,9 +427,13 @@ class UnitycatalogSource(
                 database_name=table_fqn_list[0],
                 service_name=self.context.get().database_service,
             )
-            if referred_table_fqn:
+
+            # Check if the referred table exists in OpenMetadata before adding constraint
+            referred_table = self.metadata.get_by_name(
+                entity=Table, fqn=referred_table_fqn
+            )
+            if referred_table:
                 for parent_column in column.parent_columns:
-                    # pylint: disable=protected-access
                     col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
                     if col_fqn:
                         referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
@@ -563,7 +569,7 @@ class UnitycatalogSource(
                             yield from get_ometa_tag_and_classification(
                                 tag_fqn=FullyQualifiedEntityName(
                                     fqn._build(*tag_fqn_builder(tag))
-                                ),  # pylint: disable=protected-access
+                                ),
                                 tags=[tag.tag_value],
                                 classification_name=tag.tag_name,
                                 tag_description=UNITY_CATALOG_TAG,
@@ -617,7 +623,7 @@ class UnitycatalogSource(
                             yield from get_ometa_tag_and_classification(
                                 tag_fqn=FullyQualifiedEntityName(
                                     fqn._build(*tag_fqn_builder(tag))
-                                ),  # pylint: disable=protected-access
+                                ),
                                 tags=[tag.tag_value],
                                 classification_name=tag.tag_name,
                                 tag_description=UNITY_CATALOG_TAG,

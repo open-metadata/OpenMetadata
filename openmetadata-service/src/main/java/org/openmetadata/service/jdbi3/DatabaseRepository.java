@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
@@ -84,7 +85,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put("name", this::fetchAndSetService);
     fieldFetchers.put("databaseSchemas", this::fetchAndSetDatabaseSchemas);
     fieldFetchers.put(DATABASE_PROFILER_CONFIG, this::fetchAndSetDatabaseProfilerConfigs);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
@@ -150,7 +150,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
     List<DatabaseSchema> schemas =
         schemaRepository.listAllForCSV(
-            schemaRepository.getFields("owners,tags,domain,extension"),
+            schemaRepository.getFields("owners,tags,domains,extension"),
             database.getFullyQualifiedName());
     schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
 
@@ -322,17 +322,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     daoCollection.entityExtensionDAO().delete(databaseId, DATABASE_PROFILER_CONFIG_EXTENSION);
     clearFieldsInternal(database, Fields.EMPTY_FIELDS);
     return database;
-  }
-
-  private void fetchAndSetService(List<Database> entities, Fields fields) {
-    if (entities == null || entities.isEmpty() || (!fields.contains("name"))) {
-      return;
-    }
-
-    EntityReference service = getContainer(entities.get(0).getId());
-    for (Database database : entities) {
-      database.setService(service);
-    }
   }
 
   private Map<UUID, List<EntityReference>> batchFetchDatabaseSchemas(List<Database> databases) {
@@ -513,7 +502,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
         List<Table> tables =
             tableRepository.listAllForCSV(
-                tableRepository.getFields("owners,tags,domain,extension,columns"),
+                tableRepository.getFields("owners,tags,domains,extension,columns"),
                 schema.getFullyQualifiedName());
 
         // Add tables and their columns
@@ -530,7 +519,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
             (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
         List<StoredProcedure> storedProcedures =
             spRepository.listAllForCSV(
-                spRepository.getFields("owners,tags,domain,extension,storedProcedureCode"),
+                spRepository.getFields("owners,tags,domains,extension,storedProcedureCode"),
                 schema.getFullyQualifiedName());
 
         // Add stored procedures
@@ -564,11 +553,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
       Object sourceUrl = EntityUtil.getEntityField(entity, "sourceUrl");
       addField(recordList, retentionPeriod == null ? "" : retentionPeriod.toString());
       addField(recordList, sourceUrl == null ? "" : sourceUrl.toString());
-      String domain =
-          entity.getDomain() == null || Boolean.TRUE.equals(entity.getDomain().getInherited())
-              ? ""
-              : entity.getDomain().getFullyQualifiedName();
-      addField(recordList, domain);
+      addDomains(recordList, entity.getDomains());
       addExtension(recordList, entity.getExtension());
       // Add entityType and fullyQualifiedName
       if (recursive) {
@@ -616,7 +601,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       if (csvRecord == null) {
-        throw new IllegalArgumentException("Invalid Csv");
+        return; // Error has already been logged by getNextRecord, just skip this record
       }
 
       // Get entityType and fullyQualifiedName if provided
@@ -677,7 +662,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withCertification(certification)
           .withRetentionPeriod(csvRecord.get(8))
           .withSourceUrl(csvRecord.get(9))
-          .withDomain(getEntityReference(printer, csvRecord, 10, Entity.DOMAIN))
+          .withDomains(getDomains(printer, csvRecord, 10))
           .withExtension(getExtension(printer, csvRecord, 11));
       if (processRecord) {
         createEntity(printer, csvRecord, schema, DATABASE_SCHEMA);

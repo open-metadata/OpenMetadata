@@ -11,19 +11,20 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { isEmpty, omit } from 'lodash';
+import { get, isEmpty, omit } from 'lodash';
 import { EntityTags } from 'Models';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import ContainerChildren from '../components/Container/ContainerChildren/ContainerChildren';
 import { ContainerWidget } from '../components/Container/ContainerWidget/ContainerWidget';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import Lineage from '../components/Lineage/Lineage.component';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import {
@@ -35,6 +36,11 @@ import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ContainerDetailPageTabProps } from './ContainerDetailsClassBase';
 import { t } from './i18next/LocalUtil';
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 const getUpdatedContainerColumnTags = (
   containerColumn: Column,
@@ -116,7 +122,7 @@ export const updateContainerColumnDescription = (
 };
 
 // eslint-disable-next-line max-len
-export const ContainerFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.FOLLOWERS},${TabSpecificField.DATAMODEL}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+export const ContainerFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.FOLLOWERS},${TabSpecificField.DATAMODEL}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const getContainerDetailPageTabs = ({
   isDataModelEmpty,
@@ -124,6 +130,7 @@ export const getContainerDetailPageTabs = ({
   editLineagePermission,
   editCustomAttributePermission,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
@@ -209,15 +216,25 @@ export const getContainerDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
             entity={containerData as SourceType}
             entityType={EntityType.CONTAINER}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
+    },
+    {
+      label: (
+        <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
     },
     {
       label: (
@@ -231,7 +248,7 @@ export const getContainerDetailPageTabs = ({
         <CustomPropertyTable<EntityType.CONTAINER>
           entityType={EntityType.CONTAINER}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },

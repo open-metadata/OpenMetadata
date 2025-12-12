@@ -25,6 +25,10 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { restoreUser } from '../../../rest/userAPI';
+import {
+  EXTENSION_POINTS,
+  TabContribution,
+} from '../../../utils/ExtensionPointTypes';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -45,6 +49,7 @@ import {
   AssetsOfEntity,
 } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import ProfileSectionUserDetailsCard from '../../ProfileCard/ProfileSectionUserDetailsCard.component';
+import { useApplicationsProvider } from '../Applications/ApplicationsProvider/ApplicationsProvider';
 import AccessTokenCard from './AccessTokenCard/AccessTokenCard.component';
 import UserProfilePersonas from './UserProfilePersona/UserProfilePersona.component';
 import { Props, UserPageTabs } from './Users.interface';
@@ -59,13 +64,16 @@ const Users = ({
   queryFilters,
   updateUserDetails,
 }: Props) => {
-  const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } =
-    useRequiredParams<{ tab: UserPageTabs; subTab: ActivityFeedTabs }>();
+  const { tab: activeTab = UserPageTabs.ACTIVITY, subTab } = useRequiredParams<{
+    tab: UserPageTabs;
+    subTab: ActivityFeedTabs;
+  }>();
   const { fqn: decodedUsername } = useFqn();
   const { isAdminUser } = useAuth();
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { currentUser } = useApplicationStore();
+  const { extensionRegistry } = useApplicationsProvider();
   const [currentTab, setCurrentTab] = useState<UserPageTabs>(activeTab);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
@@ -120,7 +128,7 @@ const Users = ({
 
   const tabDataRender = useCallback(
     (props: {
-      queryFilter: string;
+      queryFilter: string | Record<string, unknown>;
       type: AssetsOfEntity;
       noDataPlaceholder: AssetNoDataPlaceholderProps;
     }) => (
@@ -161,7 +169,12 @@ const Users = ({
       setCurrentTab(UserPageTabs.TASK);
     }
   }, [subTab]);
-  const tabs = useMemo(
+  const tabs: Array<{
+    label: JSX.Element;
+    key: string;
+    children: JSX.Element;
+    disabled?: boolean;
+  }> = useMemo(
     () => [
       {
         label: (
@@ -287,6 +300,62 @@ const Users = ({
     ]
   );
 
+  // Get plugin-contributed tabs
+  const pluginTabs: Array<{
+    label: React.ReactNode;
+    key: string;
+    children: JSX.Element;
+  }> = useMemo(() => {
+    const extensionContext = {
+      userData,
+      isLoggedInUser,
+      username: decodedUsername,
+    };
+
+    return extensionRegistry
+      .getContributions<TabContribution>(EXTENSION_POINTS.PROFILE_TABS)
+      .filter((tab) => {
+        // Apply condition if provided
+        if (tab.condition) {
+          return tab.condition(extensionContext);
+        }
+
+        return !tab.isHidden;
+      })
+      .map((tab) => {
+        const TabComponent = tab.component;
+
+        return {
+          label:
+            typeof tab.label === 'string' ? (
+              <TabsLabel
+                id={tab.key}
+                isActive={currentTab === tab.key}
+                name={tab.label}
+              />
+            ) : (
+              tab.label
+            ),
+          key: tab.key,
+          children: <TabComponent {...extensionContext} />,
+        };
+      });
+  }, [
+    extensionRegistry,
+    userData,
+    isLoggedInUser,
+    decodedUsername,
+    currentTab,
+  ]);
+
+  // Combine core tabs with plugin tabs
+  const allTabs: Array<{
+    label: React.ReactNode;
+    key: string;
+    children: JSX.Element;
+    disabled?: boolean;
+  }> = useMemo(() => [...tabs, ...pluginTabs], [tabs, pluginTabs]);
+
   const handleRestoreUser = useCallback(async () => {
     try {
       await restoreUser(userData.id);
@@ -320,7 +389,7 @@ const Users = ({
             />
             <DomainLabelNew
               multiple
-              domain={userData?.domains}
+              domains={userData?.domains ?? []}
               entityFqn={userData.fullyQualifiedName ?? ''}
               entityId={userData.id ?? ''}
               entityType={EntityType.USER}
@@ -347,10 +416,10 @@ const Users = ({
             activeKey={currentTab}
             className="tabs-new m-b-xs"
             data-testid="tabs"
-            items={tabs.map((tab) => ({
+            items={allTabs.map((tab) => ({
               key: tab.key,
               label: tab.label,
-              disabled: tab.disabled,
+              disabled: 'disabled' in tab ? (tab.disabled as boolean) : false,
             }))}
             renderTabBar={(props, DefaultTabBar) => (
               <DefaultTabBar {...props} />
@@ -359,7 +428,7 @@ const Users = ({
           />
           <Row className="users-tabs-container" gutter={[16, 16]}>
             <Col span={24}>
-              {tabs.find((tab) => tab.key === currentTab)?.children}
+              {allTabs.find((tab) => tab.key === currentTab)?.children}
             </Col>
           </Row>
         </Col>

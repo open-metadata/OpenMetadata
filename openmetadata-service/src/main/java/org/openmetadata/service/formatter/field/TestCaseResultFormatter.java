@@ -12,13 +12,13 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.util.ResultList;
 
 public class TestCaseResultFormatter extends DefaultFieldFormatter {
   public static final String TEST_RESULT_FIELD = "testCaseResult";

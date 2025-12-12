@@ -28,6 +28,7 @@ from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import (
     find_in_iter,
     get_formatted_entity_name,
@@ -49,7 +50,7 @@ DictConfigurator.configure = configure
 logger = ingestion_logger()
 
 # max lineage parsing wait in second when using specific dialect
-LINEAGE_PARSING_TIMEOUT = 10
+LINEAGE_PARSING_TIMEOUT = 30
 
 
 class LineageParser:
@@ -77,7 +78,10 @@ class LineageParser:
             self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
         )
         if self.masked_query is None:
-            self.masked_query = mask_query(self._clean_query, parser=self.parser)
+            self.masked_query = (
+                mask_query(self._clean_query, parser=self.parser, parser_required=True)
+                or self._clean_query
+            )
 
     @cached_property
     def involved_tables(self) -> Optional[List[Table]]:
@@ -88,16 +92,22 @@ class LineageParser:
         :return: List of involved tables
         """
         try:
+            logger.debug(f"[UsageSink] Source tables: {self.source_tables}")
+            logger.debug(f"[UsageSink] Intermediate tables: {self.intermediate_tables}")
+            logger.debug(f"[UsageSink] Target tables: {self.target_tables}")
+
             return list(
                 set(self.source_tables)
                 .union(set(self.intermediate_tables))
                 .union(set(self.target_tables))
             )
+
         except SQLLineageException as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Cannot extract source table information from query [{self.masked_query or self.query}]: {exc}"
             )
+
             return None
 
     @cached_property
@@ -172,13 +182,37 @@ class LineageParser:
     def table_aliases(self) -> Dict[str, str]:
         """
         Prepare a dictionary in the shape of {alias: table_name} from
-        the parser tables
+        the parser tables, with detailed logging for debugging.
         :return: alias dict
         """
-        return {
+        # Check if involved_tables is present
+        if not self.involved_tables:
+            logger.debug(
+                "[UsageSink] No involved tables found — alias map will be empty."
+            )
+            return {}
+
+        # Log raw involved tables for inspection
+        logger.debug(
+            f"[UsageSink] Involved tables before alias mapping: {[str(t) for t in self.involved_tables]}"
+        )
+
+        # Log alias/name pairs for each table
+        logger.debug(
+            f"[UsageSink] Table alias-name pairs: {[(t.alias, str(t)) for t in self.involved_tables]}"
+        )
+
+        # Build the alias dictionary
+        alias_map = {
             table.alias: str(table).replace("<default>.", "")
             for table in self.involved_tables
+            if getattr(table, "alias", None)  # Only include if alias is not None
         }
+
+        # Log the final computed alias map
+        logger.debug(f"[UsageSink] Final computed alias map: {alias_map}")
+
+        return alias_map
 
     def get_table_name_from_list(
         self,
@@ -195,6 +229,11 @@ class LineageParser:
         :return: table name from parser info
         """
         tables = self.clean_table_list
+        logger.debug(
+            f"[UsageSink] Searching for table '{table_name}' "
+            f"in schema '{schema_name}', database '{database_name}', "
+            f"within tables list: {tables}"
+        )
         table = find_in_iter(element=table_name, container=tables)
         if table:
             return table
@@ -222,8 +261,15 @@ class LineageParser:
         :param identifier: comparison identifier
         :return: table name and column name from the identifier
         """
+        logger.debug(f"[DEBUG] Raw identifier object: {identifier!r}")
+        logger.debug(f"[DEBUG] Identifier type: {type(identifier)}")
+        logger.debug(f"[DEBUG] Identifier value: {getattr(identifier, 'value', None)}")
+
         aliases = self.table_aliases
+        logger.debug(f"[DEBUG] Current table aliases: {aliases}")
+
         values = identifier.value.split(".")
+        logger.debug(f"[DEBUG] Split identifier values: {values}")
 
         if len(values) > 4:
             logger.debug(f"Invalid comparison element from identifier: {identifier}")
@@ -232,6 +278,12 @@ class LineageParser:
         database_name, schema_name, table_or_alias, column_name = (
             [None] * (4 - len(values))
         ) + values
+
+        logger.debug(
+            f"[DEBUG] Parsed components => "
+            f"database_name={database_name}, schema_name={schema_name}, "
+            f"table_or_alias={table_or_alias}, column_name={column_name}"
+        )
 
         if not table_or_alias or not column_name:
             logger.debug(
@@ -407,8 +459,21 @@ class LineageParser:
         if insensitive_match(clean_query, "^COPY.*"):
             return None
 
+        # Filter out CREATE TRIGGER statements - they don't provide lineage information
+        if insensitive_match(
+            clean_query, r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+"
+        ):
+            return None
+
+        # Filter out CREATE FUNCTION/PROCEDURE statements - they don't provide lineage information
+        if insensitive_match(
+            clean_query, r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\s+"
+        ):
+            return None
+
         return clean_query.strip()
 
+    @calculate_execution_time(context="EvaluateBestParser")
     def _evaluate_best_parser(
         self, query: str, dialect: Dialect, timeout_seconds: int
     ) -> Optional[LineageRunner]:
@@ -475,7 +540,6 @@ class LineageParser:
             logger.debug(f"Failed to parse query with sqlparse & sqlfluff: {query}")
             return lr_sqlfluff if lr_sqlfluff else None
 
-        self.masked_query = mask_query(self._clean_query, parser=lr_sqlparser)
         logger.debug(
             f"Using sqlparse for lineage parsing for query: {self.masked_query or self.query}"
         )

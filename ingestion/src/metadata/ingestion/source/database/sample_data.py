@@ -40,10 +40,18 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.generated.schema.api.data.createDataContract import (
+    CreateDataContractRequest,
+)
+from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
+from metadata.generated.schema.api.data.createFile import CreateFileRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
+)
+from metadata.generated.schema.api.data.createSpreadsheet import (
+    CreateSpreadsheetRequest,
 )
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -53,10 +61,14 @@ from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.data.createWorksheet import CreateWorksheetRequest
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.api.services.createDriveService import (
+    CreateDriveServiceRequest,
 )
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
@@ -74,6 +86,7 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.mlmodel import (
     FeatureSource,
     MlFeature,
@@ -95,6 +108,9 @@ from metadata.generated.schema.entity.data.table import (
     TableProfile,
 )
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
+from metadata.generated.schema.entity.datacontract.dataContractResult import (
+    DataContractResult,
+)
 from metadata.generated.schema.entity.policies.policy import Policy
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
@@ -108,6 +124,10 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
+)
+from metadata.generated.schema.entity.services.driveService import DriveService
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.mlmodelService import MlModelService
@@ -131,7 +151,9 @@ from metadata.generated.schema.type.entityLineage import (
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
+from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
@@ -172,7 +194,7 @@ NUM_SERVICES = 1
 DATABASES_PER_SERVICE = 5
 SCHEMAS_PER_DATABASE = 5
 TABLES_PER_SCHEMA = 10
-COLUMNS_PER_TABLE = 50
+COLUMNS_PER_TABLE = 200
 NUM_THREADS = 10
 BATCH_SIZE = 10
 COLUMNS = [
@@ -458,6 +480,18 @@ class SampleDataSource(
         self.pipeline_service = self.metadata.get_service_or_create(
             entity=PipelineService, config=WorkflowSource(**self.pipeline_service_json)
         )
+
+        # Load DBT Cloud service
+        self.dbtcloud_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/pipelines/dbtcloud_service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.dbtcloud_service = self.metadata.get_service_or_create(
+            entity=PipelineService, config=WorkflowSource(**self.dbtcloud_service_json)
+        )
         self.lineage = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/lineage/lineage.json",
@@ -491,6 +525,18 @@ class SampleDataSource(
             config=WorkflowSource(**self.model_service_json),
         )
 
+        self.sagemaker_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/models_sagemaker/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.sagemaker_service = self.metadata.get_service_or_create(
+            entity=MlModelService,
+            config=WorkflowSource(**self.sagemaker_service_json),
+        )
+
         self.storage_service_json = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/storage/service.json",
@@ -507,6 +553,14 @@ class SampleDataSource(
         self.models = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/models/models.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+
+        self.sagemaker_models = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/models_sagemaker/models.json",
                 "r",
                 encoding=UTF_8,
             )
@@ -531,6 +585,13 @@ class SampleDataSource(
         self.pipeline_status = json.load(
             open(  # pylint: disable=consider-using-with
                 sample_data_folder + "/pipelines/pipelineStatus.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.table_pipeline_observability = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/pipelines/tablePipelineObservability.json",
                 "r",
                 encoding=UTF_8,
             )
@@ -666,6 +727,99 @@ class SampleDataSource(
             )
         )
 
+        # Load data contracts sample data
+        try:
+            self.data_contracts = json.load(
+                open(
+                    sample_data_folder + "/dataContracts/dataContracts.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.data_contract_results = json.load(
+                open(
+                    sample_data_folder + "/dataContracts/dataContractResults.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+        except FileNotFoundError:
+            logger.warning("Data contracts sample data not found, skipping...")
+            self.data_contracts = {"dataContracts": []}
+            self.data_contract_results = {"dataContractResults": []}
+
+        # Load drive sample data
+        try:
+            logger.info(f"Loading drive sample data from {sample_data_folder}/drives/")
+            self.drive_service_json = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/service.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            logger.info(f"Drive service JSON: {self.drive_service_json}")
+            logger.info("Creating drive service...")
+
+            # Check if service already exists
+            try:
+                self.drive_service = self.metadata.get_by_name(
+                    entity=DriveService, fqn=self.drive_service_json["name"]
+                )
+                logger.info(f"Drive service already exists: {self.drive_service.name}")
+            except Exception:
+                # Create the service using direct API call
+                drive_service_request = CreateDriveServiceRequest(
+                    **self.drive_service_json
+                )
+
+                # Use the direct API endpoint
+                resp = self.metadata.client.put(
+                    path="/services/driveServices",
+                    data=drive_service_request.model_dump_json(),
+                )
+
+                self.drive_service = DriveService(**resp)
+                logger.info(f"Created drive service: {self.drive_service.name}")
+            self.directories = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/directories.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.files = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/files.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.spreadsheets = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/spreadsheets.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.worksheets = json.load(
+                open(  # pylint: disable=consider-using-with
+                    sample_data_folder + "/drives/worksheets.json",
+                    "r",
+                    encoding=UTF_8,
+                )
+            )
+            self.has_drive_data = True
+            logger.info(
+                f"Successfully loaded drive data: {len(self.directories)} directories, {len(self.files)} files, {len(self.spreadsheets)} spreadsheets, {len(self.worksheets)} worksheets"
+            )
+        except Exception as exc:
+            import traceback
+
+            logger.warning(f"Drive sample data not found: {exc}")
+            logger.debug(f"Traceback: {traceback.format_exc()}")
+            self.has_drive_data = False
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -686,7 +840,9 @@ class SampleDataSource(
         yield from self.ingest_domains()
         yield from self.ingest_teams()
         yield from self.ingest_users()
+        yield from self.ingest_drives()
         yield from self.ingest_tables()
+        self.ingest_tables_sample_data()
         yield from self.ingest_glue()
         yield from self.ingest_mysql()
         yield from self.ingest_stored_procedures()
@@ -698,6 +854,7 @@ class SampleDataSource(
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
         yield from self.ingest_pipeline_status()
+        yield from self.ingest_table_pipeline_observability()
         yield from self.ingest_mlmodels()
         yield from self.ingest_containers()
         yield from self.ingest_search_indexes()
@@ -713,11 +870,147 @@ class SampleDataSource(
         yield from self.ingest_ometa_api_service()
         self.modify_column_descriptions()
         yield from self.process_service_batch()
+        yield from self.ingest_data_contracts()
+        yield from self.ingest_sagemaker_models()
 
     def ingest_domains(self):
 
         domain_request = CreateDomainRequest(**self.domain)
         yield Either(right=domain_request)
+
+    def ingest_data_contracts(self) -> Iterable[Either[CreateDataContractRequest]]:
+        """
+        Ingest sample data contracts and their results
+        """
+        try:
+            for contract_data in self.data_contracts.get("dataContracts", []):
+                try:
+                    # Create the data contract request
+                    table_fqn = contract_data.pop("tableFQN", None)
+                    contract_data["entity"] = {
+                        "id": self.metadata.get_by_name(
+                            entity=Table, fqn=table_fqn
+                        ).id.root,
+                        "type": "table",
+                    }
+                    quality_expectations = contract_data.pop(
+                        "qualityExpectations", None
+                    )
+                    if quality_expectations:
+                        contract_data["qualityExpectations"] = [
+                            {
+                                "id": self.metadata.get_by_name(
+                                    entity=TestCase, fqn=expectation, fields=["*"]
+                                ).id.root,
+                                "type": "testCase",
+                            }
+                            for expectation in quality_expectations
+                        ]
+                    data_contract_request = CreateDataContractRequest(**contract_data)
+                    yield Either(right=data_contract_request)
+
+                    # Ingest associated results
+                    yield from self._ingest_data_contract_results(table_fqn)
+
+                except ValidationError as err:
+                    logger.warning(
+                        f"Failed to create data contract {contract_data.get('name', 'unknown')}: {err}"
+                    )
+                    yield Either(
+                        left=StackTraceError(
+                            name="DataContract",
+                            error=f"Failed to create data contract: {err}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+                except Exception as err:
+                    logger.warning(
+                        f"Unexpected error creating data contract {contract_data.get('name', 'unknown')}: {err}"
+                    )
+                    yield Either(
+                        left=StackTraceError(
+                            name="DataContract",
+                            error=f"Unexpected error: {err}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+
+        except Exception as err:
+            logger.warning(f"Failed to ingest data contracts: {err}")
+            yield Either(
+                left=StackTraceError(
+                    name="DataContract",
+                    error=f"Failed to ingest data contracts: {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _ingest_data_contract_results(self, table_fqn: str):
+        """
+        Ingest results for a specific data contract following test case results pattern
+        """
+        try:
+            # Find contract results by name
+            contract_results_data = None
+            for contract_result in self.data_contract_results.get(
+                "dataContractResults", []
+            ):
+                if contract_result.get("table_fqn") == table_fqn:
+                    contract_results_data = contract_result
+                    break
+
+            if not contract_results_data:
+                logger.debug(f"No results found for contract {table_fqn}")
+                return
+
+            table_fqn = contract_results_data.pop("table_fqn")
+            contract_fqn = contract_results_data.pop("dataContractFQN")
+            try:
+                contract = self.metadata.get_by_name(
+                    entity=DataContract, fqn=contract_fqn
+                )
+                if not contract:
+                    logger.warning(f"Could not find data contract {contract_fqn}")
+                    return
+            except Exception as e:
+                logger.warning(f"Could not retrieve data contract {contract_fqn}: {e}")
+                return
+
+            # Create results with timestamps going back in time (similar to test case results)
+            for days, result_data in enumerate(
+                contract_results_data.get("results", [])
+            ):
+                try:
+                    # Generate timestamp going back in days
+                    timestamp = Timestamp(
+                        int((datetime.now() - timedelta(days=days)).timestamp() * 1000)
+                    )
+
+                    # Create the DataContractResult with generated timestamp and contract FQN
+                    result = DataContractResult(
+                        dataContractFQN=contract_fqn,
+                        timestamp=timestamp,
+                        contractExecutionStatus=result_data["contractExecutionStatus"],
+                        result=result_data["result"],
+                        executionTime=result_data.get("executionTime"),
+                        schemaValidation=result_data.get("schemaValidation"),
+                        semanticsValidation=result_data.get("semanticsValidation"),
+                        qualityValidation=result_data.get("qualityValidation"),
+                    )
+
+                    yield Either(right=result)
+
+                except ValidationError as err:
+                    logger.warning(
+                        f"Failed to create data contract result for {table_fqn}: {err}"
+                    )
+                except Exception as err:
+                    logger.warning(
+                        f"Unexpected error creating data contract result for {table_fqn}: {err}"
+                    )
+
+        except Exception as err:
+            logger.warning(f"Failed to ingest results for contract {table_fqn}: {err}")
 
     def modify_column_descriptions(self):
         """
@@ -782,6 +1075,179 @@ class SampleDataSource(
 
             yield Either(right=team_to_ingest)
 
+    def ingest_drives(self) -> Iterable[Either[Entity]]:
+        """Ingest Sample Drive data"""
+        logger.info(
+            f"Starting drive ingestion, has_drive_data: {getattr(self, 'has_drive_data', False)}"
+        )
+        if not getattr(self, "has_drive_data", False):
+            logger.warning("No drive data to ingest")
+            return
+            yield  # Make this a generator that yields nothing
+
+        # Create directories first, building references as we go
+        directory_refs = {}
+
+        for directory_data in self.directories:
+            directory_request = CreateDirectoryRequest(
+                name=directory_data["name"],
+                displayName=directory_data.get("displayName"),
+                description=directory_data.get("description"),
+                service=self.drive_service.fullyQualifiedName.root,
+                path=directory_data.get("path"),
+                directoryType=directory_data.get("directoryType"),
+                isShared=directory_data.get("isShared", False),
+                numberOfFiles=directory_data.get("numberOfFiles"),
+                numberOfSubDirectories=directory_data.get("numberOfSubDirectories"),
+                totalSize=directory_data.get("totalSize"),
+                tags=directory_data.get("tags", []),
+                owners=directory_data.get("owners", []),
+            )
+
+            # Handle parent directory reference
+            if directory_data.get("parent"):
+                parent_name = directory_data["parent"]
+                if parent_name in directory_refs:
+                    directory_request.parent = FullyQualifiedEntityName(
+                        root=directory_refs[parent_name]
+                    )
+                else:
+                    directory_request.parent = FullyQualifiedEntityName(
+                        f"{self.drive_service.fullyQualifiedName.root}.{parent_name}"
+                    )
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/directories", data=directory_request.model_dump_json()
+                )
+                logger.debug(f"Created directory: {directory_data['name']}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to create directory {directory_data['name']}: {e}"
+                )
+
+            # Store the FQN for later reference
+            # Build FQN manually since Directory FQN builder is not implemented
+            if directory_data.get("parent"):
+                parent_path = directory_data["parent"].replace(".", "/")
+                directory_fqn = f"{self.drive_service.fullyQualifiedName.root}.{parent_path}.{directory_data['name']}"
+            else:
+                directory_fqn = f"{self.drive_service.fullyQualifiedName.root}.{directory_data['name']}"
+            directory_refs[directory_data["name"]] = directory_fqn
+
+        # Create files
+        for file_data in self.files:
+            file_request = CreateFileRequest(
+                name=file_data["name"],
+                displayName=file_data.get("displayName"),
+                description=file_data.get("description"),
+                service=self.drive_service.fullyQualifiedName.root,
+                directory=(
+                    directory_refs.get(file_data["directory"])
+                    if file_data.get("directory")
+                    else None
+                ),
+                fileType=file_data.get("fileType"),
+                mimeType=file_data.get("mimeType"),
+                fileExtension=file_data.get("fileExtension"),
+                path=file_data.get("path"),
+                size=file_data.get("size"),
+                checksum=file_data.get("checksum"),
+                webViewLink=file_data.get("webViewLink"),
+                downloadLink=file_data.get("downloadLink"),
+                isShared=file_data.get("isShared", False),
+                fileVersion=file_data.get("fileVersion"),
+                sourceUrl=file_data.get("webViewLink"),
+                tags=file_data.get("tags", []),
+                owners=file_data.get("owners", []),
+            )
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/files", data=file_request.model_dump_json()
+                )
+                logger.debug(f"Created file: {file_data['name']}")
+            except Exception as e:
+                logger.warning(f"Failed to create file {file_data['name']}: {e}")
+
+        # Create spreadsheets
+        spreadsheet_refs = {}
+
+        for spreadsheet_data in self.spreadsheets:
+            # Build the request without parent first
+            spreadsheet_request_dict = {
+                "name": spreadsheet_data["name"],
+                "displayName": spreadsheet_data.get("displayName"),
+                "description": spreadsheet_data.get("description"),
+                "service": self.drive_service.fullyQualifiedName,
+                "path": spreadsheet_data.get("path"),
+                "size": spreadsheet_data.get("size"),
+                "sourceUrl": spreadsheet_data.get("sourceUrl"),
+                "tags": spreadsheet_data.get("tags", []),
+                "owners": spreadsheet_data.get("owners", []),
+            }
+
+            # Skip parent for now as it requires entity reference
+            # TODO: Add parent reference once directories are created and we can get their IDs
+
+            spreadsheet_request = CreateSpreadsheetRequest(**spreadsheet_request_dict)
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/spreadsheets",
+                    data=spreadsheet_request.model_dump_json(),
+                )
+                logger.debug(f"Created spreadsheet: {spreadsheet_data['name']}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to create spreadsheet {spreadsheet_data['name']}: {e}"
+                )
+
+            # Store FQN for worksheet references
+            # Build FQN manually - spreadsheets use simple FQN without directory path
+            spreadsheet_fqn = f"{self.drive_service.fullyQualifiedName.root}.{spreadsheet_data['name']}"
+            spreadsheet_refs[spreadsheet_data["name"]] = spreadsheet_fqn
+            logger.debug(
+                f"Stored spreadsheet ref: {spreadsheet_data['name']} -> {spreadsheet_fqn}"
+            )
+
+        # Create worksheets
+        for worksheet_data in self.worksheets:
+            spreadsheet_fqn = spreadsheet_refs.get(worksheet_data["spreadsheet"])
+            logger.debug(
+                f"Creating worksheet {worksheet_data['name']} for spreadsheet {worksheet_data['spreadsheet']} -> {spreadsheet_fqn}"
+            )
+
+            if not spreadsheet_fqn:
+                logger.warning(
+                    f"Spreadsheet {worksheet_data['spreadsheet']} not found in refs"
+                )
+                continue
+
+            worksheet_request = CreateWorksheetRequest(
+                name=worksheet_data["name"],
+                displayName=worksheet_data.get("displayName"),
+                description=worksheet_data.get("description"),
+                spreadsheet=spreadsheet_fqn,
+                columns=worksheet_data.get("columns", []),
+                isHidden=worksheet_data.get("isHidden", False),
+                tags=worksheet_data.get("tags", []),
+            )
+
+            # Use direct API call instead of yielding since suffix mapping is missing
+            try:
+                resp = self.metadata.client.put(
+                    path="/drives/worksheets", data=worksheet_request.model_dump_json()
+                )
+                logger.debug(f"Created worksheet: {worksheet_data['name']}")
+            except Exception as e:
+                logger.warning(
+                    f"Failed to create worksheet {worksheet_data['name']}: {e}"
+                )
+
     def ingest_mysql(self) -> Iterable[Either[Entity]]:
         """Ingest Sample Data for mysql database source including ER diagrams metadata"""
 
@@ -831,7 +1297,7 @@ class SampleDataSource(
                 tableConstraints=table.get("tableConstraints"),
                 tableType=table["tableType"],
                 sourceUrl=table.get("sourceUrl"),
-                domain="TestDomain",
+                domains=["TestDomain"],
             )
             yield Either(right=table_request)
 
@@ -975,6 +1441,14 @@ class SampleDataSource(
 
             yield Either(right=table_and_db)
 
+    def ingest_tables_sample_data(self) -> Iterable[Either[Entity]]:
+        """Ingest Sample Tables Sample Data"""
+        db_fqn = f"sample_data.{self.database['name']}"
+        db = self.metadata.get_by_name(entity=Database, fqn=db_fqn)
+        schema = self.metadata.get_by_name(
+            entity=DatabaseSchema, fqn=f"{db_fqn}.{self.database_schema['name']}"
+        )
+        for table in self.tables["tables"]:
             if table.get("sampleData"):
                 table_fqn = fqn.build(
                     self.metadata,
@@ -982,7 +1456,7 @@ class SampleDataSource(
                     service_name=self.database_service.name.root,
                     database_name=db.name.root,
                     schema_name=schema.name.root,
-                    table_name=table_and_db.name.root,
+                    table_name=table.get("name"),
                 )
 
                 table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
@@ -1334,13 +1808,22 @@ class SampleDataSource(
                 owners = self.metadata.get_reference_by_email(
                     email=pipeline.get("owners")
                 )
+
+            # Determine which service to use
+            service_name = pipeline.get("service")
+            service_fqn = (
+                self.dbtcloud_service.fullyQualifiedName
+                if service_name == "sample_dbtcloud"
+                else self.pipeline_service.fullyQualifiedName
+            )
+
             pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
                 description=pipeline["description"],
                 sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
-                service=self.pipeline_service.fullyQualifiedName,
+                service=service_fqn,
                 owners=owners,
                 scheduleInterval=pipeline.get("scheduleInterval"),
             )
@@ -1366,16 +1849,117 @@ class SampleDataSource(
             yield Either(right=lineage)
 
     def ingest_pipeline_status(self) -> Iterable[Either[OMetaPipelineStatus]]:
-        """Ingest sample pipeline status"""
-
+        """
+        Ingest sample pipeline status records with timestamps evenly distributed across 15 days.
+        Maintains original execution durations and ensures valid runtime calculations.
+        Generates executionId if not present in the sample data.
+        """
+        all_statuses = []
         for status_data in self.pipeline_status:
             pipeline_fqn = status_data["pipeline"]
             for status in status_data["pipelineStatus"]:
-                status["timestamp"] = time.time_ns() // 1_000_000
+                all_statuses.append(
+                    {
+                        "pipeline_fqn": pipeline_fqn,
+                        "status": status,
+                        "original_timestamp": status.get("timestamp", 0),
+                    }
+                )
+
+        all_statuses.sort(key=lambda x: x["original_timestamp"])
+
+        target_span_ms = 15 * 24 * 60 * 60 * 1000
+        current_time_ms = time.time_ns() // 1_000_000
+        target_start_time = current_time_ms - target_span_ms
+
+        total_records = len(all_statuses)
+        if total_records > 1:
+            interval = target_span_ms / (total_records - 1)
+        else:
+            interval = 0
+
+        for index, status_item in enumerate(all_statuses):
+            status = status_item["status"]
+            pipeline_fqn = status_item["pipeline_fqn"]
+            original_timestamp = status_item["original_timestamp"]
+            original_end_time = status.get("endTime")
+
+            new_timestamp = int(target_start_time + (index * interval))
+            status["timestamp"] = new_timestamp
+
+            if original_end_time is not None and original_timestamp > 0:
+                duration = original_end_time - original_timestamp
+                if duration > 0:
+                    status["endTime"] = new_timestamp + duration
+                else:
+                    status["endTime"] = new_timestamp + random.randint(600000, 16200000)
+            elif original_end_time is None and status.get("executionStatus") not in [
+                "Pending",
+                "Skipped",
+            ]:
+                status["endTime"] = new_timestamp + random.randint(600000, 16200000)
+
+            if not status.get("executionId"):
+                random_suffix = "".join(
+                    random.choices(string.ascii_lowercase + string.digits, k=6)
+                )
+                status["executionId"] = f"run_{index + 1:03d}_{random_suffix}"
+
+            yield Either(
+                right=OMetaPipelineStatus(
+                    pipeline_fqn=pipeline_fqn,
+                    pipeline_status=PipelineStatus(**status),
+                )
+            )
+
+    def ingest_table_pipeline_observability(self) -> Iterable[Either]:
+        """Ingest table pipeline observability data"""
+
+        for table_data in self.table_pipeline_observability.get("tables", []):
+            table_fqn = table_data["tableFqn"]
+
+            try:
+                table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                if not table:
+                    continue
+
+                pipeline_observability_list = []
+                for obs_data in table_data.get("pipelineObservability", []):
+                    pipeline_fqn = obs_data.get("pipeline")
+                    if isinstance(pipeline_fqn, str):
+                        pipeline = self.metadata.get_by_name(
+                            entity=Pipeline, fqn=pipeline_fqn
+                        )
+                        if pipeline:
+                            pipeline_obs = PipelineObservability(
+                                pipeline=EntityReference(
+                                    id=pipeline.id.root
+                                    if hasattr(pipeline.id, "root")
+                                    else pipeline.id,
+                                    type="pipeline",
+                                    fullyQualifiedName=pipeline.fullyQualifiedName.root
+                                    if hasattr(pipeline.fullyQualifiedName, "root")
+                                    else str(pipeline.fullyQualifiedName),
+                                ),
+                                scheduleInterval=obs_data.get("scheduleInterval"),
+                                startTime=obs_data.get("startTime"),
+                                endTime=obs_data.get("endTime"),
+                                lastRunTime=obs_data.get("lastRunTime"),
+                                lastRunStatus=obs_data.get("lastRunStatus"),
+                            )
+                            pipeline_observability_list.append(pipeline_obs)
+
+                if pipeline_observability_list:
+                    self.metadata.add_pipeline_observability(
+                        table.id, pipeline_observability_list
+                    )
+
+            except Exception as exc:
                 yield Either(
-                    right=OMetaPipelineStatus(
-                        pipeline_fqn=pipeline_fqn,
-                        pipeline_status=PipelineStatus(**status),
+                    left=StackTraceError(
+                        name=table_fqn,
+                        error=f"Failed to ingest pipeline observability: {exc}",
+                        stackTrace=traceback.format_exc(),
                     )
                 )
 
@@ -1409,8 +1993,13 @@ class SampleDataSource(
 
     def ingest_mlmodels(self) -> Iterable[Either[CreateMlModelRequest]]:
         """
-        Convert sample model data into a Model Entity
-        to feed the metastore
+        Convert MLflow sample model data into MlModel entities
+        Reflects only the metadata that MLflow connector actually extracts:
+        - Registered Models and Model Versions
+        - Hyperparameters from run.data.params
+        - ML Features from model signature
+        - ML Store (storage location)
+        - Source URL to MLflow UI
         """
 
         for model in self.models:
@@ -1433,7 +2022,7 @@ class SampleDataSource(
                     mlStore=(
                         MlStore(
                             storage=model["mlStore"]["storage"],
-                            imageRepository=model["mlStore"]["imageRepository"],
+                            imageRepository=model["mlStore"].get("imageRepository"),
                         )
                         if model.get("mlStore")
                         else None
@@ -1451,6 +2040,49 @@ class SampleDataSource(
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error ingesting MlModel [{model}]: {exc}")
+
+    def ingest_sagemaker_models(self) -> Iterable[Either[CreateMlModelRequest]]:
+        """
+        Convert SageMaker sample model data into MlModel entities
+        Reflects EXACTLY what SageMaker connector actually extracts:
+        - Model name only
+        - Algorithm (set to default 'mlmodel')
+        - ML Store (S3 storage + ECR image repository)
+
+        NOTE: Tags, description, displayName are NOT extracted by the connector
+        even though _get_tags() method exists (it's never called).
+        """
+
+        for model in self.sagemaker_models:
+            try:
+                # Fetch linked dashboard
+                mlmodel_fqn = model["dashboard"]
+                dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=mlmodel_fqn)
+
+                if not dashboard:
+                    raise InvalidSampleDataException(
+                        f"Cannot find {mlmodel_fqn} in Sample Dashboards"
+                    )
+
+                # SageMaker connector only extracts: name, algorithm, mlStore, service
+                model_ev = CreateMlModelRequest(
+                    name=model["name"],
+                    algorithm=model["algorithm"],
+                    dashboard=dashboard.fullyQualifiedName.root,
+                    mlStore=(
+                        MlStore(
+                            storage=model["mlStore"]["storage"],
+                            imageRepository=model["mlStore"].get("imageRepository"),
+                        )
+                        if model.get("mlStore")
+                        else None
+                    ),
+                    service=self.sagemaker_service.fullyQualifiedName,
+                )
+                yield Either(right=model_ev)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error ingesting SageMaker MlModel [{model}]: {exc}")
 
     def ingest_containers(self) -> Iterable[Either[CreateContainerRequest]]:
         """
@@ -2070,9 +2702,27 @@ class SampleDataSource(
 
             # Create with minimal required fields
             try:
+                owner = self.metadata.get_by_name(User, "admin")
                 table_request = Either(
                     right=CreateTableRequest(
-                        name=table_name, databaseSchema=schema_fqn, columns=COLUMNS
+                        name=table_name,
+                        databaseSchema=schema_fqn,
+                        columns=COLUMNS,
+                        description=random.choice(
+                            [f"This is {table_name} description.", None]
+                        ),
+                        owners=(
+                            random.choice(
+                                [
+                                    EntityReferenceList(
+                                        [EntityReference(id=owner.id, type="user")]
+                                    ),
+                                    None,
+                                ]
+                            )
+                            if owner
+                            else None
+                        ),
                     )
                 )
                 yield table_request

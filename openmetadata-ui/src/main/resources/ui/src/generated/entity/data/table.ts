@@ -24,6 +24,20 @@ export interface Table {
      */
     columns: Column[];
     /**
+     * Compression algorithm/codec used. Examples: LZ4, ZSTD, Snappy, Gorilla, Delta, etc.
+     * Database-specific values allowed.
+     */
+    compressionCodec?: string;
+    /**
+     * Indicates whether compression is enabled on this table. Applicable for databases that
+     * support compression like Snowflake, TimescaleDB, ClickHouse, BigQuery, Redshift, etc.
+     */
+    compressionEnabled?: boolean;
+    /**
+     * Compression strategy configuration including segment/partition/order keys
+     */
+    compressionStrategy?: CompressionStrategy;
+    /**
      * List of Custom Metrics registered for a table.
      */
     customMetrics?: CustomMetric[];
@@ -58,10 +72,14 @@ export interface Table {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
+    /**
+     * Status of the Table.
+     */
+    entityStatus?: EntityStatus;
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -86,6 +104,10 @@ export interface Table {
      * Unique identifier of this table instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -114,6 +136,11 @@ export interface Table {
      * Owners of this table.
      */
     owners?: EntityReference[];
+    /**
+     * Pipeline observability information for the table. Multiple pipelines can process the same
+     * table.
+     */
+    pipelineObservability?: PipelineObservability[];
     /**
      * Processed lineage for the table
      */
@@ -241,6 +268,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -295,9 +326,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -477,6 +530,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -605,12 +659,11 @@ export interface CustomMetric {
  *
  * Reference to database schema that contains this table.
  *
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
- * it belongs to.
- *
  * User, Pipeline, Query that created,updated or accessed the data asset
  *
  * Reference to the Location that contains this table.
+ *
+ * Reference to the pipeline that processes this data asset.
  *
  * Link to Database service this table is hosted in.
  *
@@ -665,6 +718,10 @@ export interface EntityReference {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
+    /**
+     * Cardinality distribution showing top categories with an 'Others' bucket.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
      */
@@ -784,6 +841,29 @@ export interface ColumnProfile {
 }
 
 /**
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
+}
+
+/**
  * Profiling results of a Custom Metric.
  */
 export interface CustomMetricProfile {
@@ -809,6 +889,41 @@ export interface HistogramClass {
 }
 
 /**
+ * Compression strategy configuration including segment/partition/order keys
+ */
+export interface CompressionStrategy {
+    /**
+     * Compression level (1-9) for codecs that support it
+     */
+    compressionLevel?: number;
+    /**
+     * Type of compression: AUTOMATIC (Snowflake/BigQuery), MANUAL (Redshift), POLICY_BASED
+     * (TimescaleDB)
+     */
+    compressionType?: CompressionType;
+    /**
+     * Columns defining sort order within compressed blocks (TimescaleDB order-by, ClickHouse
+     * order by)
+     */
+    orderColumns?: string[];
+    /**
+     * Columns used for segmenting/partitioning compressed data (TimescaleDB segment-by,
+     * ClickHouse partition key)
+     */
+    segmentColumns?: string[];
+}
+
+/**
+ * Type of compression: AUTOMATIC (Snowflake/BigQuery), MANUAL (Redshift), POLICY_BASED
+ * (TimescaleDB)
+ */
+export enum CompressionType {
+    Automatic = "AUTOMATIC",
+    Manual = "MANUAL",
+    PolicyBased = "POLICY_BASED",
+}
+
+/**
  * This captures information about how the table is modeled. Currently only DBT model is
  * supported.
  *
@@ -821,6 +936,11 @@ export interface DataModel {
      * from `schema.yaml`.
      */
     columns?: Column[];
+    /**
+     * The DBT project name that served as the source for ingesting this table's metadata and
+     * lineage information.
+     */
+    dbtSourceProject?: string;
     /**
      * Description of the Table from the model.
      */
@@ -865,11 +985,27 @@ export enum ModelType {
 }
 
 /**
+ * Status of the Table.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
  * File format in case of file/datalake tables.
  */
 export enum FileFormat {
     Avro = "avro",
     CSV = "csv",
+    CSVGz = "csv.gz",
     JSON = "json",
     JSONGz = "json.gz",
     JSONZip = "json.zip",
@@ -968,6 +1104,82 @@ export interface AccessDetails {
 }
 
 /**
+ * This schema defines pipeline observability data that can be associated with data assets
+ * to track pipeline execution information.
+ */
+export interface PipelineObservability {
+    /**
+     * End time of the pipeline schedule.
+     */
+    endTime?: number;
+    /**
+     * Status of the last pipeline execution.
+     */
+    lastRunStatus?: LastRunStatus;
+    /**
+     * Timestamp of the last pipeline execution.
+     */
+    lastRunTime?: number;
+    /**
+     * Reference to the pipeline that processes this data asset.
+     */
+    pipeline: EntityReference;
+    /**
+     * Schedule interval for the pipeline in cron format.
+     */
+    scheduleInterval?: null | string;
+    /**
+     * Type of pipeline service
+     */
+    serviceType?: PipelineServiceType;
+    /**
+     * Start time of the pipeline schedule.
+     */
+    startTime?: number;
+}
+
+/**
+ * Status of the last pipeline execution.
+ */
+export enum LastRunStatus {
+    Failed = "Failed",
+    Pending = "Pending",
+    Running = "Running",
+    Skipped = "Skipped",
+    Successful = "Successful",
+}
+
+/**
+ * Type of pipeline service
+ *
+ * Type of pipeline service - Airflow or Prefect.
+ */
+export enum PipelineServiceType {
+    Airbyte = "Airbyte",
+    Airflow = "Airflow",
+    CustomPipeline = "CustomPipeline",
+    DBTCloud = "DBTCloud",
+    Dagster = "Dagster",
+    DataFactory = "DataFactory",
+    DatabricksPipeline = "DatabricksPipeline",
+    DomoPipeline = "DomoPipeline",
+    Fivetran = "Fivetran",
+    Flink = "Flink",
+    GluePipeline = "GluePipeline",
+    KafkaConnect = "KafkaConnect",
+    KinesisFirehose = "KinesisFirehose",
+    Matillion = "Matillion",
+    Nifi = "Nifi",
+    OpenLineage = "OpenLineage",
+    Snowplow = "Snowplow",
+    Spark = "Spark",
+    Spline = "Spline",
+    Ssis = "SSIS",
+    Stitch = "Stitch",
+    Wherescape = "Wherescape",
+}
+
+/**
  * Latest Data profile for a table.
  *
  * This schema defines the type to capture the table's data profile.
@@ -1061,6 +1273,7 @@ export enum DatabaseServiceType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     Greenplum = "Greenplum",
@@ -1082,11 +1295,13 @@ export enum DatabaseServiceType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
@@ -1209,6 +1424,11 @@ export interface TableProfilerConfig {
      */
     sampleDataCount?:    number;
     samplingMethodType?: SamplingMethodType;
+    /**
+     * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+     * other engines.
+     */
+    sparkTableProfilerConfig?: SparkTableProfilerConfig;
     [property: string]: any;
 }
 
@@ -1273,6 +1493,38 @@ export enum PartitionIntervalUnit {
     Hour = "HOUR",
     Month = "MONTH",
     Year = "YEAR",
+}
+
+/**
+ * Table Specific configuration for Profiling it with a Spark Engine. It is ignored for
+ * other engines.
+ */
+export interface SparkTableProfilerConfig {
+    /**
+     * When reading big tables from sources, we optimize the reading by partitioning the data.
+     * This configuration is responsible for it.
+     */
+    partitioning?: Partitioning;
+}
+
+/**
+ * When reading big tables from sources, we optimize the reading by partitioning the data.
+ * This configuration is responsible for it.
+ */
+export interface Partitioning {
+    /**
+     * Lower bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    lowerBound?: string;
+    /**
+     * Column to partition on. It should be a date, timestamp or integer column. It is important
+     * for the data to be reasonably equally distributed across the partitions.
+     */
+    partitionColumn: string;
+    /**
+     * Upper bound of the partition range. If not provided, it will be fetched from the source.
+     */
+    upperBound?: string;
 }
 
 /**

@@ -154,7 +154,7 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
           />
         ) : (
           <span className="d-flex gap-1 items-center" data-testid="owner-link">
-            {t('label.no-entity', { entity: t('label.domain') })}
+            {t('label.no-entity', { entity: t('label.domain-plural') })}
           </span>
         );
       }

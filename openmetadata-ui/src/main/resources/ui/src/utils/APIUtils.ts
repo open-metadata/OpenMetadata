@@ -85,7 +85,7 @@ export const formatDataProductResponse = (
       type: d._source.entityType,
       id: d._source.id,
       href: d._source.href,
-      domain: d._source.domain,
+      domains: d._source.domains,
       experts: d._source.experts,
       owners: d._source.owners,
     };

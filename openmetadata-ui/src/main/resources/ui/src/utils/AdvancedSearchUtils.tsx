@@ -24,6 +24,7 @@ import React from 'react';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
@@ -33,7 +34,10 @@ import {
   LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
-import { EntityFields } from '../enums/AdvancedSearch.enum';
+import {
+  EntityFields,
+  EntityReferenceFields,
+} from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
@@ -55,7 +59,7 @@ import { t } from './i18next/LocalUtil';
 import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
 
-export const getDropDownItems = (index: string) => {
+export const getDropDownItems = (index: string): ExploreQuickFilterField[] => {
   return searchClassBase.getDropDownItems(index);
 };
 
@@ -377,18 +381,16 @@ export const getTreeConfig = ({
   searchOutputType,
   searchIndex,
   isExplorePage,
-  tierOptions,
 }: {
   searchOutputType: SearchOutputType;
   searchIndex: SearchIndex | SearchIndex[];
-  tierOptions: Promise<ListValues>;
   isExplorePage: boolean;
 }) => {
   const index = isArray(searchIndex) ? searchIndex : [searchIndex];
 
   return searchOutputType === SearchOutputType.ElasticSearch
-    ? advancedSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage)
-    : jsonLogicSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage);
+    ? advancedSearchClassBase.getQbConfigs(index, isExplorePage)
+    : jsonLogicSearchClassBase.getQbConfigs(index, isExplorePage);
 };
 
 export const formatQueryValueBasedOnType = (
@@ -438,6 +440,54 @@ export const getEmptyJsonTree = (
               operator: null,
               value: [],
               valueSrc: ['value'],
+            },
+          },
+        },
+      },
+    },
+  };
+};
+
+/**
+ * Creates an empty JSON tree structure specifically optimized for QueryBuilderWidget
+ * This structure allows easy addition of groups and rules
+ */
+export const getEmptyJsonTreeForQueryBuilder = (
+  defaultField: string = EntityReferenceFields.OWNERS,
+  subField = 'fullyQualifiedName'
+): OldJsonTree => {
+  const uuid1 = QbUtils.uuid();
+  const uuid2 = QbUtils.uuid();
+  const uuid3 = QbUtils.uuid();
+
+  return {
+    id: uuid1,
+    type: 'group',
+    properties: {
+      conjunction: 'AND',
+      not: false,
+    },
+    children1: {
+      [uuid2]: {
+        type: 'rule_group',
+        id: uuid2,
+        properties: {
+          conjunction: 'AND',
+          not: false,
+          mode: 'some',
+          field: defaultField,
+          fieldSrc: 'field',
+        },
+        children1: {
+          [uuid3]: {
+            type: 'rule',
+            id: uuid3,
+            properties: {
+              field: `${defaultField}.${subField}`,
+              operator: 'select_equals',
+              value: [],
+              valueSrc: ['value'],
+              fieldSrc: 'field',
             },
           },
         },

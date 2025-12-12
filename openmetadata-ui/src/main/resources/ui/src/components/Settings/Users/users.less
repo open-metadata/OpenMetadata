@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/variables.less');
+@import '../../../styles/variables.less';
 
 .roles-container {
   display: flex;
@@ -63,7 +63,6 @@
   }
 
   .summary-panel-container {
-    height: @profile-entity-details-tab-height;
     padding: 20px;
     border-radius: 12px;
     background-color: @white;
@@ -80,7 +79,6 @@
 }
 
 .summary-panel-container {
-  height: @profile-entity-details-tab-height;
   border-radius: 12px;
   border: 1px solid #eaecf5;
   background-color: @white;
@@ -221,9 +219,13 @@
 }
 
 .default-persona-text {
-  padding-left: 26px;
-  color: @primary-heading-color;
-  font-size: 14px;
+  .chip-tag-link {
+    color: @primary-heading-color;
+  }
+
+  .no-data-chip-placeholder {
+    margin-top: 0;
+  }
 }
 
 .no-default-persona-text {

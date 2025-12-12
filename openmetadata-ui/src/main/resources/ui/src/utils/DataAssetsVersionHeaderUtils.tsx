@@ -20,8 +20,9 @@ import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAsset
 import { DATA_ASSET_ICON_DIMENSION } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
+import { Chart } from '../generated/entity/data/chart';
 import { Dashboard } from '../generated/entity/data/dashboard';
-import { Metric } from '../generated/entity/data/metric';
+import { Metric, UnitOfMeasurement } from '../generated/entity/data/metric';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Topic } from '../generated/entity/data/topic';
 import { ChangeDescription } from '../generated/entity/type';
@@ -173,6 +174,12 @@ export const getDataAssetsVersionHeaderInfo = (
         changeDescription
       );
 
+    case EntityType.CHART:
+      return getExtraInfoSourceUrl(
+        currentVersionData as Chart,
+        changeDescription
+      );
+
     case EntityType.METRIC: {
       const metricDetails = currentVersionData as Metric;
 
@@ -188,6 +195,17 @@ export const getDataAssetsVersionHeaderInfo = (
         toString(metricDetails.unitOfMeasurement)
       );
 
+      const customUnitOfMeasurement = getEntityVersionByField(
+        changeDescription,
+        'customUnitOfMeasurement',
+        toString(metricDetails.customUnitOfMeasurement)
+      );
+
+      const displayUnitOfMeasurement =
+        unitOfMeasurement === UnitOfMeasurement.Other && customUnitOfMeasurement
+          ? customUnitOfMeasurement
+          : unitOfMeasurement;
+
       const granularity = getEntityVersionByField(
         changeDescription,
         'granularity',
@@ -202,10 +220,10 @@ export const getDataAssetsVersionHeaderInfo = (
               value={metricType}
             />
           )}
-          {!isEmpty(unitOfMeasurement) && (
+          {!isEmpty(displayUnitOfMeasurement) && (
             <VersionExtraInfoLabel
               label={t('label.unit-of-measurement')}
-              value={unitOfMeasurement}
+              value={displayUnitOfMeasurement}
             />
           )}
           {!isEmpty(granularity) && (

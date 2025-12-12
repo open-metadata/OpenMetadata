@@ -74,6 +74,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
   public static Table TABLE;
   public static Table TABLE2;
   public static Table TABLE_NESTED;
+  public static Table TABLE_DEEPLY_NESTED;
 
   public static Table TABLE_WITHOUT_OWNER;
   public static String TABLE_LINK;
@@ -82,6 +83,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
   public static String TABLE_COLUMN1_LINK;
   public static String TABLE_COLUMN2_LINK;
   public static String TABLE_NESTED_LINK;
+  public static String TABLE_DEEPLY_NESTED_LINK;
   public static List<Column> COLUMNS;
   public static User USER;
   public static String USER_LINK;
@@ -142,6 +144,32 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     TABLE_NESTED = TABLE_RESOURCE_TEST.createAndCheckEntity(createTableNested, ADMIN_AUTH_HEADERS);
     TABLE_NESTED_LINK =
         String.format("<#E::table::%s::columns::c.d>", TABLE_NESTED.getFullyQualifiedName());
+
+    // Create deeply nested table with 4 levels: level1 -> level2 -> level3 -> level4
+    Column level4 = getColumn("level4", INT, USER_ADDRESS_TAG_LABEL);
+    Column level3 =
+        getColumn("level3", STRUCT, USER_ADDRESS_TAG_LABEL)
+            .withChildren(new ArrayList<>(singletonList(level4)));
+    Column level2 =
+        getColumn("level2", STRUCT, USER_ADDRESS_TAG_LABEL)
+            .withChildren(new ArrayList<>(singletonList(level3)));
+    Column level1 =
+        getColumn("level1", STRUCT, USER_ADDRESS_TAG_LABEL)
+            .withChildren(new ArrayList<>(singletonList(level2)));
+
+    CreateTable createTableDeeplyNested =
+        TABLE_RESOURCE_TEST
+            .createRequest(test)
+            .withColumns(new ArrayList<>(singletonList(level1)))
+            .withName("table_with_deeply_nested_suggestion")
+            .withTableConstraints(null);
+
+    TABLE_DEEPLY_NESTED =
+        TABLE_RESOURCE_TEST.createAndCheckEntity(createTableDeeplyNested, ADMIN_AUTH_HEADERS);
+    TABLE_DEEPLY_NESTED_LINK =
+        String.format(
+            "<#E::table::%s::columns::level1.level2.level3.level4>",
+            TABLE_DEEPLY_NESTED.getFullyQualifiedName());
 
     COLUMNS =
         Collections.singletonList(
@@ -603,6 +631,29 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   @Order(8)
+  void put_acceptSuggestionDeeplyNested_200(TestInfo test) throws IOException {
+    CreateSuggestion create = create().withEntityLink(TABLE_DEEPLY_NESTED_LINK);
+    Suggestion suggestion = createSuggestion(create, USER_AUTH_HEADERS);
+    Assertions.assertEquals(create.getEntityLink(), suggestion.getEntityLink());
+
+    // When accepting the suggestion, the deeply nested column level1.level2.level3.level4 should
+    // have the Updated Description
+    acceptSuggestion(suggestion.getId(), USER_AUTH_HEADERS);
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table table =
+        tableResourceTest.getEntity(TABLE_DEEPLY_NESTED.getId(), "columns", USER_AUTH_HEADERS);
+
+    // Navigate through the 4 levels: level1 -> level2 -> level3 -> level4
+    Column level1 = table.getColumns().get(0);
+    Column level2 = level1.getChildren().get(0);
+    Column level3 = level2.getChildren().get(0);
+    Column level4 = level3.getChildren().get(0);
+
+    assertEquals("Update description", level4.getDescription());
+  }
+
+  @Test
+  @Order(9)
   void put_acceptAllColumnSuggestionsManyColumns_200(TestInfo test) throws IOException {
 
     List<Column> columns = new ArrayList<>();

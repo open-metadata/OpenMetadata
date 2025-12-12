@@ -22,10 +22,12 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.getSearchIndexField;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -204,9 +206,23 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     if (!fields.contains(FIELD_TAGS) || searchIndexes == null || searchIndexes.isEmpty()) {
       return;
     }
-    // Use bulk tag fetching to avoid N+1 queries
-    bulkPopulateEntityFieldTags(
-        searchIndexes, entityType, SearchIndex::getFields, SearchIndex::getFullyQualifiedName);
+
+    // First, fetch searchIndex-level tags (important for search indexing)
+    List<String> entityFQNs =
+        searchIndexes.stream().map(SearchIndex::getFullyQualifiedName).toList();
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+    for (SearchIndex searchIndex : searchIndexes) {
+      searchIndex.setTags(
+          addDerivedTagsGracefully(
+              tagsMap.getOrDefault(searchIndex.getFullyQualifiedName(), Collections.emptyList())));
+    }
+
+    // Then, if fields are requested, also fetch field-level tags
+    if (fields.contains("fields")) {
+      // Use bulk tag fetching to avoid N+1 queries
+      bulkPopulateEntityFieldTags(
+          searchIndexes, entityType, SearchIndex::getFields, SearchIndex::getFullyQualifiedName);
+    }
   }
 
   @Override

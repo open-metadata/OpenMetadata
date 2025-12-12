@@ -19,6 +19,7 @@ on:
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-dist/**"
       - "openmetadata-clients/**"
+      - "openmetadata-sdk/**"
       - "common/**"
       - "pom.xml"
       - "yarn.lock"

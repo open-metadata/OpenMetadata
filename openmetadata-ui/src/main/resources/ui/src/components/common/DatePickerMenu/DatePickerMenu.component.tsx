@@ -13,6 +13,7 @@
 
 import { CloseCircleOutlined } from '@ant-design/icons';
 import { Button, Dropdown, MenuProps, Space } from 'antd';
+import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType, DateRangeObject } from 'Models';
@@ -32,6 +33,8 @@ import {
   getDaysCount,
   getTimestampLabel,
 } from '../../../utils/DatePickerMenuUtils';
+import { getPopupContainer } from '../../../utils/formUtils';
+import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import MyDatePicker from '../DatePicker/DatePicker';
 import './date-picker-menu.less';
 
@@ -42,6 +45,7 @@ interface DatePickerMenuProps {
   options?: DateFilterType;
   allowCustomRange?: boolean;
   handleSelectedTimeRange?: (value: string) => void;
+  size?: SizeType;
 }
 
 const DatePickerMenu = ({
@@ -51,9 +55,32 @@ const DatePickerMenu = ({
   handleSelectedTimeRange,
   options,
   allowCustomRange = true,
+  size,
 }: DatePickerMenuProps) => {
+  const { t } = useTranslation();
+  const translatedProfileFilterRange = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => [
+        key,
+        {
+          ...value,
+          title: translateWithNestedKeys(value.title, value.titleData),
+        },
+      ])
+    );
+  }, [t]);
+
+  const translatedDefaultRange = useMemo(() => {
+    return {
+      ...DEFAULT_SELECTED_RANGE,
+      title: translateWithNestedKeys(
+        DEFAULT_SELECTED_RANGE.title,
+        DEFAULT_SELECTED_RANGE.titleData
+      ),
+    };
+  }, [t]);
   const { menuOptions, defaultOptions } = useMemo(() => {
-    const defaultOptions = pick(DEFAULT_SELECTED_RANGE, ['title', 'key']);
+    const defaultOptions = pick(translatedDefaultRange, ['title', 'key']);
 
     if (defaultDateRange?.key) {
       defaultOptions.key = defaultDateRange.key;
@@ -65,20 +92,19 @@ const DatePickerMenu = ({
       ) {
         defaultOptions.title = options[defaultDateRange.key].title;
       } else if (
-        !isUndefined(PROFILER_FILTER_RANGE[defaultDateRange.key]?.title)
+        !isUndefined(translatedProfileFilterRange[defaultDateRange.key]?.title)
       ) {
         defaultOptions.title =
-          PROFILER_FILTER_RANGE[defaultDateRange.key].title;
+          translatedProfileFilterRange[defaultDateRange.key].title;
       }
     }
 
     return {
-      menuOptions: options ?? PROFILER_FILTER_RANGE,
+      menuOptions: options ?? translatedProfileFilterRange,
       defaultOptions,
     };
   }, [options]);
 
-  const { t } = useTranslation();
   // State to display the label for selected range value
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
     defaultOptions.title
@@ -95,9 +121,9 @@ const DatePickerMenu = ({
     dateStrings: [string, string]
   ) => {
     if (values) {
-      const startTs = (values[0]?.startOf('day').valueOf() ?? 0) * 1000;
+      const startTs = values[0]?.startOf('day').valueOf() ?? 0;
 
-      const endTs = (values[1]?.endOf('day').valueOf() ?? 0) * 1000;
+      const endTs = values[1]?.endOf('day').valueOf() ?? 0;
 
       const daysCount = getDaysCount(dateStrings[0], dateStrings[1]);
 
@@ -185,6 +211,7 @@ const DatePickerMenu = ({
   return (
     <Dropdown
       destroyPopupOnHide
+      getPopupContainer={getPopupContainer}
       menu={{
         items,
         triggerSubMenuAction: 'click',
@@ -194,7 +221,7 @@ const DatePickerMenu = ({
       open={isMenuOpen}
       trigger={['click']}
       onOpenChange={(value) => setIsMenuOpen(value)}>
-      <Button data-testid="date-picker-menu">
+      <Button data-testid="date-picker-menu" size={size}>
         <Space align="center" size={8}>
           {selectedTimeRange}
           <DropdownIcon className="align-middle" height={14} width={14} />

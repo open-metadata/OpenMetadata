@@ -82,7 +82,10 @@ describe('PersonaDetailsCard Component', () => {
     const personaCardTitle = await screen.findByText('John Doe');
     fireEvent.click(personaCardTitle);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/settings/persona/john-doe');
+    expect(mockNavigate).toHaveBeenCalledWith({
+      hash: '#customize-ui',
+      pathname: '/settings/persona/john-doe',
+    });
   });
 
   it('should not navigate when persona.fullyQualifiedName is missing', async () => {

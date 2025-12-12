@@ -38,6 +38,7 @@ import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
+import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
@@ -99,6 +100,9 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -111,7 +115,9 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.RevokePersonalTokenRequest;
 import org.openmetadata.schema.auth.RevokeTokenRequest;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType;
 import org.openmetadata.schema.entity.teams.Persona;
@@ -131,6 +137,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -138,9 +145,12 @@ import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
+import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.auth.UserActivityTracker;
@@ -149,7 +159,7 @@ import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.PasswordUtil;
-import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.RdfTestUtils;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
@@ -798,6 +808,206 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
+  void test_userCanBeFetchedAfterPersonaDeletion(TestInfo test) throws IOException {
+    // This test verifies that users can still be fetched after a persona is properly deleted
+    // Our preDelete hook should clean up the relationships
+    PersonaResourceTest personaResourceTest = new PersonaResourceTest();
+
+    // Create a persona
+    CreatePersona createPersona =
+        personaResourceTest.createRequest(test).withName("persona-to-delete");
+    Persona persona = personaResourceTest.createEntity(createPersona, ADMIN_AUTH_HEADERS);
+
+    // Create a user with this persona assigned and as default
+    CreateUser createUser =
+        createRequest(test)
+            .withPersonas(listOf(persona.getEntityReference()))
+            .withDefaultPersona(persona.getEntityReference());
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Add persona preferences
+    PersonaPreferences preferences =
+        new PersonaPreferences()
+            .withPersonaId(persona.getId())
+            .withPersonaName(persona.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#FF5733"));
+
+    String json = JsonUtils.pojoToJson(user);
+    user.setPersonaPreferences(listOf(preferences));
+    ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
+    fieldUpdated(change, "personaPreferences", emptyList(), listOf(preferences));
+    user = patchEntityAndCheck(user, json, authHeaders(user.getName()), MINOR_UPDATE, change);
+
+    // Verify the user has the persona
+    User userWithPersona =
+        getEntity(user.getId(), "personas,defaultPersona,personaPreferences", ADMIN_AUTH_HEADERS);
+    assertEquals(1, userWithPersona.getPersonas().size());
+    assertEquals(persona.getId(), userWithPersona.getPersonas().get(0).getId());
+    assertNotNull(userWithPersona.getDefaultPersona());
+    assertEquals(persona.getId(), userWithPersona.getDefaultPersona().getId());
+    assertEquals(1, userWithPersona.getPersonaPreferences().size());
+
+    // Delete the persona - this should trigger preDelete to clean up relationships
+    personaResourceTest.deleteEntity(persona.getId(), ADMIN_AUTH_HEADERS);
+
+    // Now fetch the user with all persona-related fields
+    // This should NOT throw an error - the preDelete should have cleaned up relationships
+    User finalUser = user;
+    User userAfterPersonaDeletion =
+        assertDoesNotThrow(
+            () ->
+                getEntity(
+                    finalUser.getId(),
+                    "personas,defaultPersona,personaPreferences",
+                    ADMIN_AUTH_HEADERS),
+            "Should be able to fetch user after persona deletion");
+
+    // The personas list should be empty since the relationships were cleaned up
+    assertTrue(
+        userAfterPersonaDeletion.getPersonas() == null
+            || userAfterPersonaDeletion.getPersonas().isEmpty(),
+        "Personas should be empty after persona deletion and relationship cleanup");
+
+    // Default persona should be null or system default (not the deleted persona)
+    if (userAfterPersonaDeletion.getDefaultPersona() != null) {
+      assertNotEquals(
+          persona.getId(),
+          userAfterPersonaDeletion.getDefaultPersona().getId(),
+          "Default persona should not reference the deleted persona");
+    }
+
+    // User should still be functional - can be updated
+    String jsonAfter = JsonUtils.pojoToJson(userAfterPersonaDeletion);
+    userAfterPersonaDeletion.setDisplayName("User still works after persona deletion");
+    ChangeDescription changeAfter = getChangeDescription(userAfterPersonaDeletion, MINOR_UPDATE);
+    fieldAdded(changeAfter, "displayName", "User still works after persona deletion");
+    User updatedUser =
+        patchEntityAndCheck(
+            userAfterPersonaDeletion, jsonAfter, ADMIN_AUTH_HEADERS, MINOR_UPDATE, changeAfter);
+    assertEquals("User still works after persona deletion", updatedUser.getDisplayName());
+
+    // User should be able to be assigned a new persona without issues
+    CreatePersona createPersona2 =
+        personaResourceTest.createRequest(test, 2).withName("new-persona-after-delete");
+    Persona persona2 = personaResourceTest.createEntity(createPersona2, ADMIN_AUTH_HEADERS);
+
+    String jsonWithNewPersona = JsonUtils.pojoToJson(updatedUser);
+    updatedUser.setPersonas(listOf(persona2.getEntityReference()));
+    ChangeDescription changeNewPersona = getChangeDescription(updatedUser, MINOR_UPDATE);
+    fieldAdded(changeNewPersona, "personas", listOf(persona2.getEntityReference()));
+    User userWithNewPersona =
+        patchEntityAndCheck(
+            updatedUser, jsonWithNewPersona, ADMIN_AUTH_HEADERS, MINOR_UPDATE, changeNewPersona);
+    assertEquals(1, userWithNewPersona.getPersonas().size());
+    assertEquals(persona2.getId(), userWithNewPersona.getPersonas().get(0).getId());
+  }
+
+  @Test
+  void test_personaDeletion_cleansUpAllRelationships(TestInfo test) throws IOException {
+    // Create personas
+    PersonaResourceTest personaResourceTest = new PersonaResourceTest();
+    CreatePersona createPersona1 =
+        personaResourceTest.createRequest(test).withName("persona-to-delete-1");
+    Persona persona1 = personaResourceTest.createEntity(createPersona1, ADMIN_AUTH_HEADERS);
+
+    CreatePersona createPersona2 =
+        personaResourceTest.createRequest(test).withName("persona-to-keep");
+    Persona persona2 = personaResourceTest.createEntity(createPersona2, ADMIN_AUTH_HEADERS);
+
+    // Create multiple users with the personas
+    // User 1: Has persona1 as assigned persona
+    CreateUser createUser1 =
+        createRequest(test, 1).withPersonas(listOf(persona1.getEntityReference()));
+    User user1 = createEntity(createUser1, ADMIN_AUTH_HEADERS);
+
+    // User 2: Has both personas, with persona1 as default
+    CreateUser createUser2 =
+        createRequest(test, 2)
+            .withPersonas(listOf(persona1.getEntityReference(), persona2.getEntityReference()))
+            .withDefaultPersona(persona1.getEntityReference());
+    User user2 = createEntity(createUser2, ADMIN_AUTH_HEADERS);
+
+    // User 3: Has persona1 with preferences
+    CreateUser createUser3 =
+        createRequest(test, 3).withPersonas(listOf(persona1.getEntityReference()));
+    User user3 = createEntity(createUser3, ADMIN_AUTH_HEADERS);
+
+    // Add persona preferences for user3
+    PersonaPreferences preferences =
+        new PersonaPreferences()
+            .withPersonaId(persona1.getId())
+            .withPersonaName(persona1.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#FF5733"));
+
+    String json3 = JsonUtils.pojoToJson(user3);
+    user3.setPersonaPreferences(listOf(preferences));
+    ChangeDescription change3 = getChangeDescription(user3, MINOR_UPDATE);
+    fieldUpdated(change3, "personaPreferences", emptyList(), listOf(preferences));
+    user3 = patchEntityAndCheck(user3, json3, authHeaders(user3.getName()), MINOR_UPDATE, change3);
+
+    // Verify initial state
+    User user1WithPersona = getEntity(user1.getId(), "personas", ADMIN_AUTH_HEADERS);
+    assertEquals(1, user1WithPersona.getPersonas().size());
+    assertEquals(persona1.getId(), user1WithPersona.getPersonas().get(0).getId());
+
+    User user2WithPersona = getEntity(user2.getId(), "personas,defaultPersona", ADMIN_AUTH_HEADERS);
+    assertEquals(2, user2WithPersona.getPersonas().size());
+    assertNotNull(user2WithPersona.getDefaultPersona());
+    assertEquals(persona1.getId(), user2WithPersona.getDefaultPersona().getId());
+
+    User user3WithPreferences =
+        getEntity(user3.getId(), "personas,personaPreferences", ADMIN_AUTH_HEADERS);
+    assertEquals(1, user3WithPreferences.getPersonas().size());
+    assertNotNull(user3WithPreferences.getPersonaPreferences());
+    assertEquals(1, user3WithPreferences.getPersonaPreferences().size());
+
+    // Delete persona1
+    personaResourceTest.deleteEntity(persona1.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify relationships are cleaned up
+    // User 1: Should have no personas
+    User user1AfterDelete = getEntity(user1.getId(), "personas", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        user1AfterDelete.getPersonas() == null || user1AfterDelete.getPersonas().isEmpty(),
+        "User1 should have no personas after persona1 deletion");
+
+    // User 2: Should only have persona2, no default persona
+    User user2AfterDelete = getEntity(user2.getId(), "personas,defaultPersona", ADMIN_AUTH_HEADERS);
+    assertEquals(1, user2AfterDelete.getPersonas().size());
+    assertEquals(persona2.getId(), user2AfterDelete.getPersonas().get(0).getId());
+    // Default persona should either be null or system default (not persona1)
+    if (user2AfterDelete.getDefaultPersona() != null) {
+      assertNotEquals(
+          persona1.getId(),
+          user2AfterDelete.getDefaultPersona().getId(),
+          "Default persona should not be the deleted persona1");
+    }
+
+    // User 3: Should have no personas, preferences should still exist but won't cause issues
+    User user3AfterDelete = getEntity(user3.getId(), "personas", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        user3AfterDelete.getPersonas() == null || user3AfterDelete.getPersonas().isEmpty(),
+        "User3 should have no personas after persona1 deletion");
+
+    // All users should still be updatable
+    String json1 = JsonUtils.pojoToJson(user1AfterDelete);
+    user1AfterDelete.setDisplayName("User1 updated after persona deletion");
+    ChangeDescription change1 = getChangeDescription(user1AfterDelete, MINOR_UPDATE);
+    fieldAdded(change1, "displayName", "User1 updated after persona deletion");
+    User user1Updated =
+        patchEntityAndCheck(user1AfterDelete, json1, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change1);
+    assertEquals("User1 updated after persona deletion", user1Updated.getDisplayName());
+
+    String json2 = JsonUtils.pojoToJson(user2AfterDelete);
+    user2AfterDelete.setDisplayName("User2 updated after persona deletion");
+    ChangeDescription change2 = getChangeDescription(user2AfterDelete, MINOR_UPDATE);
+    fieldAdded(change2, "displayName", "User2 updated after persona deletion");
+    User user2Updated =
+        patchEntityAndCheck(user2AfterDelete, json2, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change2);
+    assertEquals("User2 updated after persona deletion", user2Updated.getDisplayName());
+  }
+
+  @Test
   void patch_userAuthorizationTests(TestInfo test) throws IOException {
     //
     // A user can update many attributes for himself. These tests validate what is allowed and not
@@ -1028,36 +1238,41 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         BAD_REQUEST,
         "Header image must be a valid HTTP or HTTPS URL");
 
-    // Test 7: User cannot set preferences for persona not assigned to them
-    CreatePersona createPersona2 =
-        personaResourceTest.createRequest(test, 2).withName("data-analyst-test");
-    Persona persona2 = personaResourceTest.createEntity(createPersona2, ADMIN_AUTH_HEADERS);
+    // Test 8: User with no personas can set preferences for system default persona
+    // First, create a system default persona
+    CreatePersona createSystemDefaultPersona =
+        personaResourceTest
+            .createRequest(test, 8)
+            .withName("system-default-test")
+            .withDefault(true);
+    Persona systemDefaultPersona =
+        personaResourceTest.createEntity(createSystemDefaultPersona, ADMIN_AUTH_HEADERS);
 
-    var unassignedPersonaPreferences =
-        new PersonaPreferences()
-            .withPersonaId(persona2.getId())
-            .withPersonaName(persona2.getName())
-            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#FF5733"));
-
-    String json6 = JsonUtils.pojoToJson(user);
-    user.setPersonaPreferences(listOf(unassignedPersonaPreferences));
-
-    assertResponse(
-        () -> patchEntity(user.getId(), json6, user, authHeaders(user.getName())),
-        BAD_REQUEST,
-        "Persona with ID " + persona2.getId() + " is not assigned to this user");
-
-    // Test 8: User with no personas cannot set preferences
     CreateUser create3 = createRequest(test, 3);
     User user3 = createEntity(create3, ADMIN_AUTH_HEADERS);
 
-    String json7 = JsonUtils.pojoToJson(user3);
-    user3.setPersonaPreferences(listOf(preferencesWithoutImage));
+    // User should be able to set preferences for system default persona even with no assigned
+    // personas
+    PersonaPreferences systemDefaultPref =
+        new PersonaPreferences()
+            .withPersonaId(systemDefaultPersona.getId())
+            .withPersonaName(systemDefaultPersona.getName())
+            .withLandingPageSettings(new LandingPageSettings().withHeaderColor("#BA24D5"));
 
-    assertResponse(
-        () -> patchEntity(user3.getId(), json7, user3, authHeaders(user3.getName())),
-        BAD_REQUEST,
-        "User has no personas assigned. Cannot set persona preferences.");
+    String json7 = JsonUtils.pojoToJson(user3);
+    user3.setPersonaPreferences(listOf(systemDefaultPref));
+
+    ChangeDescription change7 = getChangeDescription(user3, MINOR_UPDATE);
+    fieldUpdated(change7, "personaPreferences", emptyList(), listOf(systemDefaultPref));
+    User user3Updated =
+        patchEntityAndCheck(user3, json7, authHeaders(user3.getName()), MINOR_UPDATE, change7);
+
+    // Verify preferences were saved for system default persona
+    assertNotNull(user3Updated.getPersonaPreferences());
+    assertEquals(1, user3Updated.getPersonaPreferences().size());
+    PersonaPreferences savedSystemPref = user3Updated.getPersonaPreferences().getFirst();
+    assertEquals(systemDefaultPersona.getId(), savedSystemPref.getPersonaId());
+    assertEquals("#BA24D5", savedSystemPref.getLandingPageSettings().getHeaderColor());
 
     // Test 9: Remove persona preferences for a specific persona
     // First, let's set up a user with multiple personas and preferences
@@ -1232,7 +1447,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     assertEquals(create.getDescription(), entity.getDescription());
     assertEquals(
         JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
-    assertOwners(create.getOwners(), entity.getOwners());
+    assertReferenceList(create.getOwners(), entity.getOwners());
     assertEquals(updatedBy, entity.getUpdatedBy());
   }
 
@@ -1677,12 +1892,12 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Create a user without domain and ensure it inherits domain from the parent
     CreateUser create = createRequest(test).withTeams(listOf(team.getId()));
-    assertDomainInheritance(create, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(create, DOMAIN.getEntityReference());
   }
 
-  public User assertDomainInheritance(CreateUser createRequest, EntityReference expectedDomain)
-      throws IOException {
-    User entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+  public User assertSingleDomainInheritance(
+      CreateUser createRequest, EntityReference expectedDomain) throws IOException {
+    User entity = createEntity(createRequest.withDomains(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
@@ -2145,7 +2360,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void test_botActivityNotTracked() throws HttpResponseException, InterruptedException {
+  void test_botActivityNotTracked() throws HttpResponseException {
     // Test that bot activity is not tracked
     // We'll use a simple approach: update a bot user's activity time directly
     // and verify it doesn't show in online users (assuming the query filters out bots)
@@ -2257,5 +2472,355 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     UserList onlineUsers = TestUtils.get(onlineTarget, UserList.class, ADMIN_AUTH_HEADERS);
     assertNotNull(onlineUsers);
     assertNotNull(onlineUsers.getData());
+  }
+
+  @Test
+  void testUserRdfRelationships(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create team first
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    CreateTeam createTeam = teamResourceTest.createRequest(test);
+    Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    // Create user with team membership
+    CreateUser createUser =
+        createRequest(test)
+            .withTeams(listOf(team.getId()))
+            .withRoles(listOf(DATA_STEWARD_ROLE.getId()));
+
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Verify user exists in RDF
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Verify team membership (user is member of team)
+    // Note: In RDF, this is usually stored as team HAS user, not user memberOf team
+    // But we can check if the relationship exists either way
+
+    // Users don't have owners or tags by default, but we can test if added
+    if (user.getOwners() != null && !user.getOwners().isEmpty()) {
+      RdfTestUtils.verifyOwnerInRdf(user.getFullyQualifiedName(), user.getOwners().get(0));
+    }
+
+    if (user.getTags() != null && !user.getTags().isEmpty()) {
+      RdfTestUtils.verifyTagsInRdf(user.getFullyQualifiedName(), user.getTags());
+    }
+  }
+
+  @Test
+  void testUserRdfSoftDeleteAndRestore(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create user
+    CreateUser createUser = createRequest(test);
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Verify user exists
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Soft delete the user
+    deleteEntity(user.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify user still exists in RDF after soft delete
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Restore the user
+    User restored =
+        restoreEntity(new RestoreEntity().withId(user.getId()), Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify user still exists after restore
+    RdfTestUtils.verifyEntityInRdf(restored, RdfUtils.getRdfType("user"));
+  }
+
+  @Test
+  void testUserRdfHardDelete(TestInfo test) throws IOException {
+    if (!RdfTestUtils.isRdfEnabled()) {
+      LOG.info("RDF not enabled, skipping test");
+      return;
+    }
+
+    // Create user
+    CreateUser createUser = createRequest(test);
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Verify user exists
+    RdfTestUtils.verifyEntityInRdf(user, RdfUtils.getRdfType("user"));
+
+    // Hard delete the user
+    deleteEntity(user.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify user no longer exists in RDF after hard delete
+    RdfTestUtils.verifyEntityNotInRdf(user.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_loginWithDeletedUpdatedByUser_200_ok(TestInfo test) throws HttpResponseException {
+    // Create an admin user to update another user
+    String username = "tempAdmin";
+    Map<String, String> TEMP_ADMIN_AUTH_HEADERS = authHeaders(username + "@open-metadata.org");
+    User adminUser =
+        createEntity(createRequest("tempAdmin").withIsAdmin(true), TEMP_ADMIN_AUTH_HEADERS);
+
+    // Create a target user that will be updated by the admin
+    User targetUser =
+        createEntity(
+            createRequest(test)
+                .withName("targetUser")
+                .withDisplayName("Target User")
+                .withEmail("targetuser@email.com")
+                .withIsBot(false)
+                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+                .withPassword("Test@1234")
+                .withConfirmPassword("Test@1234"),
+            TEMP_ADMIN_AUTH_HEADERS);
+
+    assertEquals(adminUser.getName(), targetUser.getUpdatedBy());
+
+    // Delete the admin user who updated the target user
+    deleteEntity(adminUser.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify admin user is deleted
+    assertResponse(
+        () -> getEntity(adminUser.getId(), ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        CatalogExceptionMessage.entityNotFound(Entity.USER, adminUser.getId()));
+
+    // Try to login with the target user - this should not throw an exception
+    // even though the updatedBy user (adminUser) has been deleted
+    LoginRequest loginRequest =
+        new LoginRequest()
+            .withEmail("targetuser@email.com")
+            .withPassword(encodePassword("Test@1234"));
+
+    // This login should succeed without throwing an exception
+    // The bug fix ensures that when updateUserLastLoginTime is called,
+    // it handles the case where the updatedBy user no longer exists
+    JwtResponse jwtResponse =
+        TestUtils.post(
+            getResource("users/login"),
+            loginRequest,
+            JwtResponse.class,
+            OK.getStatusCode(),
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(jwtResponse);
+    assertNotNull(jwtResponse.getAccessToken());
+
+    // Verify the target user still has the deleted admin user name in updatedBy
+    User loggedInUser = getEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(adminUser.getName(), loggedInUser.getUpdatedBy());
+
+    // Clean up
+    deleteEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_getUserAssetsAPI(TestInfo test) throws IOException {
+    Team team = TEAM_TEST.createEntity(TEAM_TEST.createRequest(test), ADMIN_AUTH_HEADERS);
+    User user =
+        createEntity(createRequest(test, 1).withTeams(List.of(team.getId())), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    CreateTable createTable1 =
+        tableTest
+            .createRequest(getEntityName(test, 2))
+            .withOwners(List.of(user.getEntityReference()));
+    Table table1 = tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableTest
+            .createRequest(getEntityName(test, 3))
+            .withOwners(List.of(team.getEntityReference()));
+    Table table2 = tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 =
+        tableTest
+            .createRequest(getEntityName(test, 4))
+            .withOwners(List.of(user.getEntityReference()));
+    Table table3 = tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    // Test getting assets by user ID
+    ResultList<EntityReference> assets = getAssets(user.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertTrue(assets.getPaging().getTotal() >= 3);
+    assertTrue(assets.getData().size() >= 3);
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    // Test getting assets by user name
+    ResultList<EntityReference> assetsByName =
+        getAssetsByName(user.getName(), 10, 0, ADMIN_AUTH_HEADERS);
+    assertTrue(assetsByName.getPaging().getTotal() >= 3);
+    assertTrue(assetsByName.getData().size() >= 3);
+
+    // Test pagination - page 1
+    ResultList<EntityReference> page1 = getAssets(user.getId(), 2, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getData().size());
+
+    // Test pagination - page 2
+    ResultList<EntityReference> page2 = getAssets(user.getId(), 2, 2, ADMIN_AUTH_HEADERS);
+    assertFalse(page2.getData().isEmpty());
+  }
+
+  @Test
+  void test_userAssetsAndAssetsCountWithAssetInheritance(TestInfo test) throws IOException {
+    // Tests assets API includes parent entity and all child entities when owner is assigned
+    // Create a new isolated team for this test to ensure no interference from other tests
+    CreateTeam createTeam =
+        TEAM_TEST.createRequest(getEntityName(test) + "_" + UUID.randomUUID()).withTeamType(GROUP);
+    Team team = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    User user =
+        createEntity(createRequest(test, 1).withTeams(List.of(team.getId())), ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    TableResourceTest tableTest = new TableResourceTest();
+
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest.createRequest(getEntityName(test, 2)).withOwners(null), ADMIN_AUTH_HEADERS);
+
+    Table table1 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 3))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withOwners(null),
+            ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 4))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withOwners(null),
+            ADMIN_AUTH_HEADERS);
+
+    String json = JsonUtils.pojoToJson(schema);
+    schema.withOwners(List.of(user.getEntityReference()));
+    schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
+
+    ResultList<EntityReference> assets = getAssets(user.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3, assets.getData().size(), "User should have 1 schema + 2 inherited tables from schema");
+    assertEquals(3, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(schema.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+  }
+
+  @Test
+  void test_versionConsolidationWithDeletedDomains(TestInfo test) throws IOException {
+    // Test the fix for version consolidation issue when domain is deleted between user updates
+    // Reproduces the scenario: user created with domain -> domain deleted -> user updated within 10
+    // mins
+
+    DomainResourceTest domainTest = new DomainResourceTest();
+
+    // Step 1: Create a test domain
+    CreateDomain createDomain = domainTest.createRequest(getEntityName(test) + "_domain");
+    Domain testDomain = domainTest.createEntity(createDomain, ADMIN_AUTH_HEADERS);
+    assertNotNull(testDomain);
+
+    // Step 2: Create a user with the test domain
+    CreateUser createUser =
+        createRequest(getEntityName(test)).withDomains(List.of(testDomain.getFullyQualifiedName()));
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+    assertEquals(1, user.getDomains().size());
+    assertEquals(testDomain.getId(), user.getDomains().get(0).getId());
+
+    // Step 3: Make an initial update to create version history (simulate displayName edit)
+    String originalName = user.getDisplayName();
+    String json = JsonUtils.pojoToJson(user);
+    user.setDisplayName(originalName + " Updated");
+    User updatedUser = patchEntity(user.getId(), json, user, ADMIN_AUTH_HEADERS);
+    assertEquals(originalName + " Updated", updatedUser.getDisplayName());
+
+    // Step 4: Delete the domain (simulates domain deletion while user still references it)
+    domainTest.deleteEntity(testDomain.getId(), ADMIN_AUTH_HEADERS);
+
+    // Step 5: Update user again within consolidation window (< 10 minutes)
+    // This should trigger version consolidation which will try to load previous version
+    // containing the deleted domain reference
+    String finalJson = JsonUtils.pojoToJson(updatedUser);
+    final String expectedDisplayName = originalName + " Updated Again";
+    updatedUser.setDisplayName(expectedDisplayName);
+    final User userToUpdate = updatedUser;
+
+    // Before our fix: This would throw EntityNotFoundException during consolidation
+    // After our fix: This should succeed by filtering out the deleted domain
+    assertDoesNotThrow(
+        () -> {
+          User finalUser =
+              patchEntity(userToUpdate.getId(), finalJson, userToUpdate, ADMIN_AUTH_HEADERS);
+          assertEquals(expectedDisplayName, finalUser.getDisplayName());
+
+          // Verify domains are cleaned up during consolidation
+          User userWithDomains = getEntity(finalUser.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+          // Domain should be automatically removed since it was deleted
+          assertTrue(
+              userWithDomains.getDomains() == null || userWithDomains.getDomains().isEmpty(),
+              "Deleted domain should be automatically removed during version consolidation");
+        });
+  }
+
+  @Test
+  void test_versionConsolidationWithDeletedTeams(TestInfo test) throws IOException {
+    // Test the fix for version consolidation issue when team is deleted between user updates
+    // Reproduces the scenario: user created with team -> team deleted -> user updated within 10
+    // mins
+
+    // Step 1: Create a test team
+    CreateTeam createTeam = TEAM_TEST.createRequest(getEntityName(test) + "_team");
+    Team testTeam = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    assertNotNull(testTeam);
+
+    // Step 2: Create a user with the test team
+    CreateUser createUser = createRequest(getEntityName(test)).withTeams(List.of(testTeam.getId()));
+    User user = createEntity(createUser, ADMIN_AUTH_HEADERS);
+    // Organization team plus our test team
+    assertTrue(user.getTeams().size() >= 1);
+    assertTrue(user.getTeams().stream().anyMatch(team -> team.getId().equals(testTeam.getId())));
+
+    // Step 3: Make an initial update to create version history (simulate displayName edit)
+    String originalName = user.getDisplayName();
+    String json = JsonUtils.pojoToJson(user);
+    user.setDisplayName(originalName + " Updated");
+    User updatedUser = patchEntity(user.getId(), json, user, ADMIN_AUTH_HEADERS);
+    assertEquals(originalName + " Updated", updatedUser.getDisplayName());
+
+    // Step 4: Delete the team (simulates team deletion while user still references it)
+    TEAM_TEST.deleteEntity(testTeam.getId(), ADMIN_AUTH_HEADERS);
+
+    // Step 5: Update user again within consolidation window (< 10 minutes)
+    // This should trigger version consolidation which will try to load previous version
+    // containing the deleted team reference
+    String finalJson = JsonUtils.pojoToJson(updatedUser);
+    final String expectedDisplayName = originalName + " Updated Again";
+    updatedUser.setDisplayName(expectedDisplayName);
+    final User userToUpdate = updatedUser;
+
+    // Before our fix: This would throw EntityNotFoundException during consolidation
+    // After our fix: This should succeed by filtering out the deleted team
+    assertDoesNotThrow(
+        () -> {
+          User finalUser =
+              patchEntity(userToUpdate.getId(), finalJson, userToUpdate, ADMIN_AUTH_HEADERS);
+          assertEquals(expectedDisplayName, finalUser.getDisplayName());
+
+          // Verify teams are cleaned up during consolidation
+          User userWithTeams = getEntity(finalUser.getId(), "teams", ADMIN_AUTH_HEADERS);
+          // Deleted team should be automatically removed
+          assertFalse(
+              userWithTeams.getTeams().stream()
+                  .anyMatch(team -> team.getId().equals(testTeam.getId())),
+              "Deleted team should be automatically removed during version consolidation");
+        });
   }
 }

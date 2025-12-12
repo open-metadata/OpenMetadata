@@ -17,18 +17,23 @@ import { isEmpty } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ServiceCategory } from '../../../../enums/service.enum';
-import { App } from '../../../../generated/entity/applications/app';
+import {
+  App,
+  EntityReference,
+} from '../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 
-interface ApplicationConfigurationProps {
+export interface ApplicationConfigurationProps {
   appData: App | AppMarketPlaceDefinition;
   isLoading: boolean;
   jsonSchema: RJSFSchema;
-  onConfigSave: (data: IChangeEvent) => void;
+  onConfigSave: (
+    data: IChangeEvent & { ingestionRunner?: EntityReference }
+  ) => void;
   onCancel?: () => void;
 }
 
@@ -55,12 +60,13 @@ const ApplicationConfiguration = ({
 
   const formPanel = (
     <FormBuilder
+      capitalizeOptionLabel
       useSelectWidget
       cancelText={t('label.back')}
       formData={appData?.appConfiguration ?? {}}
       hideCancelButton={!onCancel}
       isLoading={isLoading}
-      okText={t('label.submit')}
+      okText={t('label.save')}
       schema={jsonSchema}
       serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
       uiSchema={UiSchema}

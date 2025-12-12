@@ -64,8 +64,10 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
+  await page.waitForLoadState('networkidle');
+
   await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
+    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
     { state: 'detached' }
   );
 
@@ -81,7 +83,7 @@ export const visitClassificationPage = async (
   await fetchTags;
   await page.waitForLoadState('networkidle');
   await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
+    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
     { state: 'detached' }
   );
 };
@@ -183,6 +185,11 @@ export const removeAssetsFromTag = async (
   await assetsRemoveRes;
 
   await page.waitForLoadState('networkidle');
+  await page.reload();
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
   await checkAssetsCount(page, 0);
 };
 
@@ -226,8 +233,8 @@ export const setupAssetsForTag = async (page: Page) => {
 };
 
 export async function submitForm(page: Page) {
-  await page.locator('button[type="submit"]').scrollIntoViewIfNeeded();
-  await page.locator('button[type="submit"]').click();
+  await page.getByRole('button', { name: 'Save' }).scrollIntoViewIfNeeded();
+  await page.getByRole('button', { name: 'Save' }).click();
 }
 
 export async function validateForm(page: Page) {
@@ -282,14 +289,12 @@ export const addTagToTableColumn = async (
     tagName,
     tagFqn,
     tagDisplayName,
-    tableId,
     columnNumber,
     rowName,
   }: {
     tagName: string;
     tagFqn: string;
     tagDisplayName: string;
-    tableId: string;
     columnNumber: number;
     rowName: string;
   }
@@ -304,11 +309,7 @@ export const addTagToTableColumn = async (
     page.locator('[data-testid="tag-selector"] > .ant-select-selector')
   ).toContainText(tagDisplayName);
 
-  const saveAssociatedTag = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'PATCH' &&
-      response.url().includes(`/api/v1/tables/${tableId}`)
-  );
+  const saveAssociatedTag = page.waitForResponse(`/api/v1/columns/name/**`);
   await page.click('[data-testid="saveAssociatedTag"]');
   await saveAssociatedTag;
 
@@ -494,7 +495,22 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.click(
     '[data-testid="modal-container"] [data-testid="add-domain"]'
   );
+
+  const searchDomain = adminPage.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.responseData.name)}*`
+  );
+
   await adminPage
-    .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
-    .click();
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.responseData.name);
+
+  await searchDomain;
+
+  // Wait for the tag element to be visible and ensure page is still valid
+  const tagSelector = adminPage.getByTestId(
+    `tag-${domain.responseData.fullyQualifiedName}`
+  );
+  await tagSelector.waitFor({ state: 'visible' });
+  await tagSelector.click();
 };

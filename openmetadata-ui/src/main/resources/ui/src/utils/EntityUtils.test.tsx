@@ -90,6 +90,11 @@ jest.mock('../components/common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn(),
 }));
 
+jest.mock('../components/common/DomainLabel/DomainLabel.component', () => ({
+  __esModule: true,
+  DomainLabel: jest.fn(),
+}));
+
 jest.mock('../components/common/QueryCount/QueryCount.component', () => ({
   __esModule: true,
   default: jest.fn(),
@@ -114,6 +119,7 @@ jest.mock('./TagsUtils', () => ({
 jest.mock('./CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((value) => value),
+  formatNumberWithComma: jest.fn().mockImplementation((value) => value),
 }));
 jest.mock('./DataInsightUtils', () => ({
   getDataInsightPathWithFqn: jest.fn(),
@@ -320,15 +326,15 @@ describe('EntityUtils unit tests', () => {
       { text: null, searchText: 'test', expected: '' },
       { text: 'mockText', searchText: null, expected: 'mockText' },
       { text: null, searchText: null, expected: '' },
-      { text: 0 as any, searchText: '', expected: 0 },
-      { text: false as any, searchText: '', expected: false },
+      { text: 0, searchText: '', expected: 0 },
+      { text: false, searchText: '', expected: false },
     ];
 
     it.each(falsyTestCases)(
       'should return expected when text or searchText is null or falsy',
       ({ text, searchText, expected }) => {
         const result = highlightSearchText(
-          text ?? undefined,
+          (text as string) ?? undefined,
           searchText ?? undefined
         );
 

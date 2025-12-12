@@ -114,8 +114,22 @@ jest.mock('./useGlossary.store', () => ({
     setGlossaryFunctionRef: jest.fn(),
     termsLoading: false,
     setTermsLoading: jest.fn(),
+    glossaryChildTerms: [],
+    setGlossaryChildTerms: jest.fn(),
+    insertNewGlossaryTermToChildTerms: jest.fn(),
   })),
 }));
+
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
 
 const mockProps: GlossaryV1Props = {
   selectedData: mockedGlossaries[0],

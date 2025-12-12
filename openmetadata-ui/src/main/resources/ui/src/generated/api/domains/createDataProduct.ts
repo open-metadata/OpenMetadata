@@ -27,9 +27,9 @@ export interface CreateDataProduct {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the Domain the DataProduct belongs to.
+     * Fully qualified names of the Domains the DataProduct belongs to.
      */
-    domain: string;
+    domains: string[];
     /**
      * List of user/login names of users who are experts in this DataProduct.
      */
@@ -50,7 +50,11 @@ export interface CreateDataProduct {
      * Owners of this DataProduct.
      */
     owners?: EntityReference[];
-    style?:  Style;
+    /**
+     * User references of the reviewers for this DataProduct.
+     */
+    reviewers?: EntityReference[];
+    style?:     Style;
     /**
      * Tags for this Data Product.
      */
@@ -123,9 +127,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -156,6 +182,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

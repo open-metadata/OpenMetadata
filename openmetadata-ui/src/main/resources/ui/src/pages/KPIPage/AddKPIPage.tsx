@@ -47,6 +47,7 @@ import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import { getDisabledDates } from '../../utils/DataInsightUtils';
 import { getField } from '../../utils/formUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   filterChartOptions,
   getDataInsightChartForKPI,
@@ -76,7 +77,7 @@ const AddKPIPage = () => {
       });
 
       setKpiList(response.data);
-    } catch (err) {
+    } catch {
       setKpiList([]);
     }
   };
@@ -171,6 +172,15 @@ const AddKPIPage = () => {
     fetchKpiList();
   }, []);
 
+  const translatedKPIBreadcrumb = useMemo(
+    () =>
+      ADD_KPI_BREADCRUMB.map((option) => ({
+        ...option,
+        name: translateWithNestedKeys(option.name, option.nameData),
+      })),
+    [t]
+  );
+
   return (
     <ResizablePanels
       className="content-height-with-resizable-panel"
@@ -182,7 +192,7 @@ const AddKPIPage = () => {
           <div data-testid="add-kpi-container">
             <TitleBreadcrumb
               className="m-t-0 my-4"
-              titleLinks={ADD_KPI_BREADCRUMB}
+              titleLinks={translatedKPIBreadcrumb}
             />
             <Typography.Paragraph
               className="text-base"
@@ -373,7 +383,7 @@ const AddKPIPage = () => {
                   htmlType="submit"
                   loading={isCreatingKPI}
                   type="primary">
-                  {t('label.submit')}
+                  {t('label.create')}
                 </Button>
               </Space>
             </Form>

@@ -14,6 +14,7 @@ export enum EntityTypeEndpoint {
   API_COLLECTION = 'apiCollections',
   API_ENDPOINT = 'apiEndpoints',
   ApiService = 'services/apiServices',
+  Chart = 'charts',
   Container = 'containers',
   DATA_PRODUCT = 'dataProducts',
   Dashboard = 'dashboards',
@@ -37,6 +38,7 @@ export enum EntityTypeEndpoint {
   SearchIndex = 'searchIndexes',
   SearchService = 'services/searchServices',
   StorageService = 'services/storageServices',
+  DriveService = 'services/driveServices',
   StoreProcedure = 'storedProcedures',
   Table = 'tables',
   Teams = 'teams',
@@ -45,6 +47,10 @@ export enum EntityTypeEndpoint {
   User = 'users',
   Classification = 'classifications',
   Tag = 'tags',
+  Directory = 'drives/directories',
+  File = 'drives/files',
+  Spreadsheet = 'drives/spreadsheets',
+  Worksheet = 'drives/worksheets',
 }
 
 export type EntityDataType = {
@@ -72,6 +78,8 @@ export enum ENTITY_PATH {
   'apiEndpoints' = 'apiEndpoint',
   'dataProducts' = 'dataProduct',
   'metrics' = 'metric',
+  charts = 'chart',
+  dataProductsTab = 'dataProductsTab',
 }
 
 export type ResponseDataType = {
@@ -116,4 +124,12 @@ export interface EntityReference {
   fullyQualifiedName?: string;
   href?: string;
   inherited?: boolean;
+}
+
+export interface ServiceEntity {
+  name: string;
+  serviceType: string;
+  connection: {
+    config: Record<string, unknown>;
+  };
 }

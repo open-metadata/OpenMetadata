@@ -58,8 +58,10 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.limits.Limits;
@@ -67,17 +69,19 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.SchemaFieldExtractor;
 
 @Path("/v1/metadata/types")
 @Tag(
     name = "Metadata",
     description =
-        "These APIs are for adding new `Types` to OpenMetadata and use those `Types` to "
-            + "extend the metadata of an entity with custom properties.")
+        "These APIs are for managing custom property definitions in OpenMetadata. Use these APIs to "
+            + "create custom properties with predefined data types (String, Integer, Date, etc.) that "
+            + "extend entity metadata. Note: This does not support creating new custom data types - "
+            + "only custom properties using existing OpenMetadata data types.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "types")
@@ -251,6 +255,23 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    // For custom property requests on entity types, authorize on the entity type (e.g., "table")
+    // instead of on the Type resource
+    Fields fields = getFields(fieldsParam);
+    if (fields.getFieldList().contains("customProperties")) {
+      try {
+        if (Entity.entityHasField(name, Entity.FIELD_EXTENSION)) {
+          OperationContext operationContext =
+              new OperationContext(name, MetadataOperation.VIEW_CUSTOM_FIELDS);
+          ResourceContext<?> resourceContext = new ResourceContext<>(name);
+          authorizer.authorize(securityContext, operationContext, resourceContext);
+          return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
+        }
+      } catch (EntityNotFoundException e) {
+        // Not a valid entity type supporting customProperties, fall through to standard Type
+        // authorization
+      }
+    }
     return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
   }
 
@@ -311,12 +332,17 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @POST
   @Operation(
       operationId = "createType",
-      summary = "Create a type",
-      description = "Create a new type.",
+      summary = "Create a custom property definition",
+      description =
+          "Create a new custom property definition that can be applied to entities. "
+              + "This creates a property template using existing OpenMetadata data types "
+              + "(String, Integer, Date, Enum, etc.). The created property can then be used to "
+              + "extend metadata for data assets like tables, dashboards, and pipelines. "
+              + "Note: This does not create new data types - only custom property definitions.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The type",
+            description = "The custom property definition",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -538,6 +564,48 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                   + entityType
                   + ". Exception: "
                   + e.getMessage())
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/name/{entityType}/customProperties")
+  @Operation(
+      operationId = "getCustomPropertiesByEntityType",
+      summary = "Get custom properties for an entity type",
+      description = "Get custom properties defined for a specific entity type by name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of custom properties for the entity type",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CustomProperty.class))),
+        @ApiResponse(responseCode = "404", description = "Entity type {entityType} is not found")
+      })
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getCustomPropertiesByEntityType(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the entity type", schema = @Schema(type = "string"))
+          @PathParam("entityType")
+          String entityType,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    try {
+      Fields fieldsParam = new Fields(Set.of("customProperties"));
+      Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
+      List<CustomProperty> customProperties = listOrEmpty(typeEntity.getCustomProperties());
+      return Response.ok(customProperties).type(MediaType.APPLICATION_JSON).build();
+    } catch (Exception e) {
+      LOG.error("Error fetching custom properties for entity type: {}", entityType, e);
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity("Entity type '" + entityType + "' not found or has no custom properties")
           .build();
     }
   }

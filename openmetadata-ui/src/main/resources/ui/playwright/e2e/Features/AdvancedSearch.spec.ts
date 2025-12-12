@@ -10,14 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test from '@playwright/test';
+
+import { COMMON_TIER_TAG } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
   FIELDS,
   OPERATOR,
@@ -25,39 +27,32 @@ import {
   runRuleGroupTestsWithNonExistingValue,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { assignTier } from '../../utils/entity';
+import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
-
-const creationConfig: EntityDataClassCreationConfig = {
-  table: true,
-  topic: true,
-  dashboard: true,
-  mlModel: true,
-  pipeline: true,
-  dashboardDataModel: true,
-  apiCollection: true,
-  searchIndex: true,
-  container: true,
-  entityDetails: true,
-};
+import { test } from '../fixtures/pages';
 
 const user = new UserClass();
 const table = new TableClass(undefined, 'Regular');
 let glossaryEntity: Glossary;
+const table1 = new TableClass();
+const table2 = new TableClass();
+const topic1 = new TopicClass();
+const topic2 = new TopicClass();
 
 test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
-  // use the admin user to login
-  test.use({ storageState: 'playwright/.auth/admin.json' });
-
-  let searchCriteria: Record<string, any> = {};
+  let searchCriteria: Record<string, Array<string>> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
-    const { page, apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
+    await Promise.allSettled([
+      table1.create(apiContext),
+      table2.create(apiContext),
+      topic1.create(apiContext),
+      topic2.create(apiContext),
+    ]);
     glossaryEntity = new Glossary(undefined, [
       {
         id: user.responseData.id,
@@ -72,9 +67,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await glossaryTermEntity.create(apiContext);
     await table.create(apiContext);
 
-    // Add Owner & Tag to the table
-    await EntityDataClass.table1.visitEntityPage(page);
-    await EntityDataClass.table1.patch({
+    // Add Owner & Tag and domain to the table
+    await table1.patch({
       apiContext,
       patchData: [
         {
@@ -94,7 +88,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         },
         {
           op: 'add',
-          path: '/domain',
+          path: '/domains/0',
           value: {
             id: EntityDataClass.domain1.responseData.id,
             type: 'domain',
@@ -105,8 +99,24 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
     });
 
-    await EntityDataClass.table2.visitEntityPage(page);
-    await EntityDataClass.table2.patch({
+    // Add data product to the table 1
+    await table1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/dataProducts/0',
+          value: {
+            id: EntityDataClass.dataProduct1.responseData.id,
+            type: 'dataProduct',
+            name: EntityDataClass.dataProduct1.responseData.name,
+            displayName: EntityDataClass.dataProduct1.responseData.displayName,
+          },
+        },
+      ],
+    });
+
+    await table2.patch({
       apiContext,
       patchData: [
         {
@@ -126,7 +136,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         },
         {
           op: 'add',
-          path: '/domain',
+          path: '/domains/0',
           value: {
             id: EntityDataClass.domain2.responseData.id,
             type: 'domain',
@@ -137,120 +147,148 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
     });
 
+    // Add data product to the table 2
+    await table2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/dataProducts/0',
+          value: {
+            id: EntityDataClass.dataProduct3.responseData.id,
+            type: 'dataProduct',
+            name: EntityDataClass.dataProduct3.responseData.name,
+            displayName: EntityDataClass.dataProduct3.responseData.displayName,
+          },
+        },
+      ],
+    });
+
     // Add Tier To the topic 1
-    await EntityDataClass.topic1.visitEntityPage(page);
-    await assignTier(
-      page,
-      EntityDataClass.tierTag1.data.displayName,
-      EntityDataClass.topic1.endpoint
-    );
+    await topic1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            name: COMMON_TIER_TAG[0].name,
+            tagFQN: COMMON_TIER_TAG[0].fullyQualifiedName,
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+      ],
+    });
 
     // Add Tier To the topic 2
-    await EntityDataClass.topic2.visitEntityPage(page);
-    await assignTier(
-      page,
-      EntityDataClass.tierTag2.data.displayName,
-      EntityDataClass.topic2.endpoint
-    );
+    await topic2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            name: COMMON_TIER_TAG[1].name,
+            tagFQN: COMMON_TIER_TAG[1].fullyQualifiedName,
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+      ],
+    });
 
     // Update Search Criteria here
     searchCriteria = {
       'owners.displayName.keyword': [
-        EntityDataClass.user1.getUserName(),
-        EntityDataClass.user2.getUserName(),
+        EntityDataClass.user1.getUserDisplayName(),
+        EntityDataClass.user2.getUserDisplayName(),
       ],
       'tags.tagFQN': ['PersonalData.Personal', 'PII.None'],
       'tier.tagFQN': [
-        EntityDataClass.tierTag1.responseData.fullyQualifiedName,
-        EntityDataClass.tierTag2.responseData.fullyQualifiedName,
+        COMMON_TIER_TAG[0].fullyQualifiedName,
+        COMMON_TIER_TAG[1].fullyQualifiedName,
       ],
       'service.displayName.keyword': [
-        EntityDataClass.table1.service.name,
-        EntityDataClass.table2.service.name,
+        table1.serviceResponseData.name,
+        table2.serviceResponseData.name,
       ],
       'database.displayName.keyword': [
-        EntityDataClass.table1.database.name,
-        EntityDataClass.table2.database.name,
+        table1.databaseResponseData.name,
+        table2.databaseResponseData.name,
       ],
       'databaseSchema.displayName.keyword': [
-        EntityDataClass.table1.schema.name,
-        EntityDataClass.table2.schema.name,
+        table1.schemaResponseData.name,
+        table2.schemaResponseData.name,
       ],
       'columns.name.keyword': [
-        EntityDataClass.table1.entity.columns[2].name,
-        EntityDataClass.table2.entity.columns[3].name,
+        table1.entityResponseData.columns[2].name,
+        table2.entityResponseData.columns[3].name,
       ],
       'displayName.keyword': [
-        EntityDataClass.table1.entity.displayName,
-        EntityDataClass.table2.entity.displayName,
+        table1.entityResponseData.displayName,
+        table2.entityResponseData.displayName,
       ],
       serviceType: [
-        EntityDataClass.table1.service.serviceType,
-        EntityDataClass.topic1.service.serviceType,
+        table1.serviceResponseData.serviceType,
+        topic1.serviceResponseData.serviceType,
       ],
       'messageSchema.schemaFields.name.keyword': [
-        EntityDataClass.topic1.entity.messageSchema.schemaFields[0].name,
-        EntityDataClass.topic2.entity.messageSchema.schemaFields[1].name,
+        topic1.entityResponseData?.messageSchema.schemaFields[0].name,
+        topic2.entityResponseData?.messageSchema.schemaFields[1].name,
       ],
       'dataModel.columns.name.keyword': [
-        EntityDataClass.container1.entity.dataModel.columns[0].name,
-        EntityDataClass.container2.entity.dataModel.columns[1].name,
+        EntityDataClass.container1.entityResponseData.dataModel.columns[0].name,
+        EntityDataClass.container2.entityResponseData.dataModel.columns[1].name,
       ],
       dataModelType: [
-        EntityDataClass.dashboard1.dataModel.dataModelType,
-        EntityDataClass.dashboard2.dataModel.dataModelType,
+        EntityDataClass.dashboard1.dataModelResponseData.dataModelType,
+        EntityDataClass.dashboard2.dataModelResponseData.dataModelType,
       ],
       'fields.name.keyword': [
-        EntityDataClass.searchIndex1.entity.fields[1].name,
-        EntityDataClass.searchIndex2.entity.fields[3].name,
+        EntityDataClass.searchIndex1.entityResponseData.fields[1].name,
+        EntityDataClass.searchIndex2.entityResponseData.fields[3].name,
       ],
       'tasks.displayName.keyword': [
-        EntityDataClass.pipeline1.entity.tasks[0].displayName,
-        EntityDataClass.pipeline2.entity.tasks[1].displayName,
+        EntityDataClass.pipeline1.entityResponseData.tasks[0].displayName,
+        EntityDataClass.pipeline2.entityResponseData.tasks[1].displayName,
       ],
-      'domain.displayName.keyword': [
-        EntityDataClass.domain1.data.displayName,
-        EntityDataClass.domain2.data.displayName,
+      'domains.displayName.keyword': [
+        EntityDataClass.domain1.responseData.displayName,
+        EntityDataClass.domain2.responseData.displayName,
       ],
       'responseSchema.schemaFields.name.keyword': [
-        EntityDataClass.apiCollection1.apiEndpoint.responseSchema
+        EntityDataClass.apiCollection1.apiEndpointResponseData.responseSchema
           .schemaFields[0].name,
-        EntityDataClass.apiCollection2.apiEndpoint.responseSchema
+        EntityDataClass.apiCollection2.apiEndpointResponseData.responseSchema
           .schemaFields[1].name,
       ],
       'requestSchema.schemaFields.name.keyword': [
-        EntityDataClass.apiCollection1.apiEndpoint.requestSchema.schemaFields[0]
-          .name,
-        EntityDataClass.apiCollection2.apiEndpoint.requestSchema.schemaFields[1]
-          .name,
+        EntityDataClass.apiCollection1.apiEndpointResponseData.requestSchema
+          .schemaFields[0].name,
+        EntityDataClass.apiCollection2.apiEndpointResponseData.requestSchema
+          .schemaFields[1].name,
       ],
       'name.keyword': [
-        EntityDataClass.table1.entity.name,
-        EntityDataClass.table2.entity.name,
+        table1.entityResponseData.name,
+        table2.entityResponseData.name,
       ],
       'project.keyword': [
-        EntityDataClass.dashboardDataModel1.entity.project,
-        EntityDataClass.dashboardDataModel2.entity.project,
+        EntityDataClass.dashboardDataModel1.entityResponseData.project,
+        EntityDataClass.dashboardDataModel2.entityResponseData.project,
       ],
-      status: ['Approved', 'In Review'],
+      entityStatus: ['Approved', 'In Review'],
       tableType: [table.entity.tableType, 'MaterializedView'],
       'charts.displayName.keyword': [
-        EntityDataClass.dashboard1.charts.displayName,
-        EntityDataClass.dashboard2.charts.displayName,
+        EntityDataClass.dashboard1.chartsResponseData.displayName,
+        EntityDataClass.dashboard2.chartsResponseData.displayName,
+      ],
+      'dataProducts.displayName.keyword': [
+        EntityDataClass.dataProduct1.responseData.displayName,
+        EntityDataClass.dataProduct3.responseData.displayName,
       ],
     };
 
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
-    await glossaryEntity.delete(apiContext);
-    await user.delete(apiContext);
-    await table.delete(apiContext);
     await afterAction();
   });
 

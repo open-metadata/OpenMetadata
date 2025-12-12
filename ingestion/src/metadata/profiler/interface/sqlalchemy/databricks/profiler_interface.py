@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     DataType,
     SystemProfile,
+    TableType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
@@ -51,6 +52,11 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         *args,
         **kwargs,
     ) -> List[SystemProfile]:
+        if self.table_entity.tableType in (TableType.View, TableType.MaterializedView):
+            logger.debug(
+                f"Skipping {metrics.name()} metric for view {runner.table_name}"
+            )
+            return []
         logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
         self.system_metrics_class = cast(
             Type[DatabricksSystemMetricsComputer], self.system_metrics_class
@@ -79,10 +85,28 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
             result += "`.`".join(splitted_result)
         return result
 
+    def visit_table(self, *args, **kwargs):
+        result = super(  # pylint: disable=bad-super-call
+            HiveCompiler, self
+        ).visit_table(*args, **kwargs)
+        # Handle table references with hyphens in database/schema names
+        # Format: `database`.`schema`.`table` for Unity Catalog/Databricks
+        if "." in result and not result.startswith("`"):
+            parts = result.split(".")
+            quoted_parts = []
+            for part in parts:
+                if "-" in part and not (part.startswith("`") and part.endswith("`")):
+                    quoted_parts.append(f"`{part}`")
+                else:
+                    quoted_parts.append(part)
+            result = ".".join(quoted_parts)
+        return result
+
     def __init__(self, service_connection_config, **kwargs):
         super().__init__(service_connection_config=service_connection_config, **kwargs)
         self.set_catalog(self.session)
         HiveCompiler.visit_column = DatabricksProfilerInterface.visit_column
+        HiveCompiler.visit_table = DatabricksProfilerInterface.visit_table
 
     def _get_struct_columns(self, columns: List[OMColumn], parent: str):
         """Get struct columns"""

@@ -27,7 +27,6 @@ import {
 } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
-import { PAGE_SIZE } from '../constants/constants';
 import {
   ES_EXCEPTION_SHARDS_FAILED,
   FAILED_TO_FIND_INDEX_ERROR,
@@ -55,7 +54,7 @@ import {
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import { getCountBadge } from './CommonUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
-import { t } from './i18next/LocalUtil';
+import { t, translateWithNestedKeys } from './i18next/LocalUtil';
 import { escapeESReservedCharacters } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -98,7 +97,10 @@ export const getParseValueFromLocation = (
         label: !customLabel
           ? value
           : t('label.no-entity', {
-              entity: dataCategory.label,
+              entity: translateWithNestedKeys(
+                dataCategory.label,
+                dataCategory.labelKeyOptions
+              ),
             }),
       });
     }
@@ -201,6 +203,52 @@ export const extractTermKeys = (objects: QueryFieldInterface[]): string[] => {
   return termKeys;
 };
 
+export const getExploreQueryFilterMust = (data: ExploreQuickFilterField[]) => {
+  const must = [] as Array<QueryFieldInterface>;
+
+  // Mapping the selected advanced search quick filter dropdown values
+  // to form a queryFilter to pass as a search parameter
+  data.forEach((filter) => {
+    if (!isEmpty(filter.value)) {
+      const should = [] as Array<QueryFieldInterface>;
+
+      // Convert entityType to entityType.keyword for exact term matching in queries
+      const queryFieldKey =
+        filter.key === EntityFields.ENTITY_TYPE
+          ? EntityFields.ENTITY_TYPE_KEYWORD
+          : filter.key;
+
+      const shouldLowerCase = filter.key === EntityFields.ENTITY_TYPE;
+
+      filter.value?.forEach((filterValue) => {
+        const termValue = shouldLowerCase
+          ? filterValue.key.toLowerCase()
+          : filterValue.key;
+
+        const term = {
+          [queryFieldKey]: termValue,
+        };
+
+        if (filterValue.key === NULL_OPTION_KEY) {
+          should.push({
+            bool: {
+              must_not: { exists: { field: queryFieldKey } },
+            },
+          });
+        } else {
+          should.push({ term });
+        }
+      });
+
+      if (should.length > 0) {
+        must.push({ bool: { should } });
+      }
+    }
+  });
+
+  return must;
+};
+
 export const getSubLevelHierarchyKey = (
   isDatabaseHierarchy = false,
   filterField?: ExploreQuickFilterField[],
@@ -234,39 +282,6 @@ export const getSubLevelHierarchyKey = (
     bucket: bucketMapping[key as DatabaseFields] ?? EntityFields.SERVICE_TYPE,
     queryFilter,
   };
-};
-
-export const getExploreQueryFilterMust = (data: ExploreQuickFilterField[]) => {
-  const must = [] as Array<QueryFieldInterface>;
-
-  // Mapping the selected advanced search quick filter dropdown values
-  // to form a queryFilter to pass as a search parameter
-  data.forEach((filter) => {
-    if (!isEmpty(filter.value)) {
-      const should = [] as Array<QueryFieldInterface>;
-      filter.value?.forEach((filterValue) => {
-        const term = {
-          [filter.key]: filterValue.key,
-        };
-
-        if (filterValue.key === NULL_OPTION_KEY) {
-          should.push({
-            bool: {
-              must_not: { exists: { field: filter.key } },
-            },
-          });
-        } else {
-          should.push({ term });
-        }
-      });
-
-      if (should.length > 0) {
-        must.push({ bool: { should } });
-      }
-    }
-  });
-
-  return must;
 };
 
 export const updateTreeData = (
@@ -348,11 +363,12 @@ export const getAggregationOptions = async (
   key: string,
   value: string,
   filter: string,
-  isIndependent: boolean
+  isIndependent: boolean,
+  deleted = false
 ) => {
   return isIndependent
     ? postAggregateFieldOptions(index, key, value, filter)
-    : getAggregateFieldOptions(index, key, value, filter);
+    : getAggregateFieldOptions(index, key, value, filter, undefined, deleted);
 };
 
 export const updateTreeDataWithCounts = (
@@ -400,7 +416,7 @@ export const isElasticsearchError = (error: unknown): boolean => {
     return false;
   }
 
-  const data = axiosError.response.data as Record<string, any>;
+  const data = axiosError.response.data as Record<string, unknown>;
   const message = data.message as string;
 
   return (
@@ -415,6 +431,7 @@ export const isElasticsearchError = (error: unknown): boolean => {
  */
 export const parseSearchParams = (
   search: string,
+  globalPageSize: number,
   queryFilter?: Record<string, unknown>
 ) => {
   const parsedSearch = Qs.parse(
@@ -441,7 +458,7 @@ export const parseSearchParams = (
   const size =
     isString(parsedSearch.size) && !isNaN(Number.parseInt(parsedSearch.size))
       ? Number.parseInt(parsedSearch.size)
-      : PAGE_SIZE;
+      : globalPageSize;
 
   const stringifiedQueryFilter = isEmpty(queryFilter)
     ? ''
@@ -620,7 +637,7 @@ export const fetchEntityData = async ({
           pageNumber: page,
           pageSize: size,
           includeDeleted: showDeleted,
-          excludeSourceFields: ['columns'],
+          excludeSourceFields: ['columns', 'queries', 'columnNames'],
         };
 
         try {
@@ -652,7 +669,7 @@ export const fetchEntityData = async ({
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
-        excludeSourceFields: ['columns'],
+        excludeSourceFields: ['columns', 'queries', 'columnNames'],
       };
 
       try {

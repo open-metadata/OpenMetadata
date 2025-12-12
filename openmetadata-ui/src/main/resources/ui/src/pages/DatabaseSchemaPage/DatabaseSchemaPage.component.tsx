@@ -56,6 +56,7 @@ import {
 } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -82,7 +83,11 @@ import {
 import databaseSchemaClassBase from '../../utils/DatabaseSchemaClassBase';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -166,8 +171,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const viewDatabaseSchemaPermission = useMemo(
     () =>
-      databaseSchemaPermission.ViewAll || databaseSchemaPermission.ViewBasic,
-    [databaseSchemaPermission?.ViewAll, databaseSchemaPermission?.ViewBasic]
+      getPrioritizedViewPermission(
+        databaseSchemaPermission,
+        PermissionOperation.ViewBasic
+      ),
+    [databaseSchemaPermission]
   );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -192,7 +200,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             TabSpecificField.OWNERS,
             TabSpecificField.USAGE_SUMMARY,
             TabSpecificField.TAGS,
-            TabSpecificField.DOMAIN,
+            TabSpecificField.DOMAINS,
             TabSpecificField.VOTES,
             TabSpecificField.EXTENSION,
             TabSpecificField.FOLLOWERS,
@@ -423,15 +431,23 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     fetchTableCount();
   }, [filters.showDeletedTables]);
 
-  const { editCustomAttributePermission, viewAllPermission } = useMemo(
+  const {
+    editCustomAttributePermission,
+    viewAllPermission,
+    viewCustomPropertiesPermission,
+  } = useMemo(
     () => ({
       editCustomAttributePermission:
-        (databaseSchemaPermission.EditAll ||
-          databaseSchemaPermission.EditCustomFields) &&
-        !databaseSchema.deleted,
+        getPrioritizedEditPermission(
+          databaseSchemaPermission,
+          PermissionOperation.EditCustomFields
+        ) && !databaseSchema.deleted,
       viewAllPermission: databaseSchemaPermission.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        databaseSchemaPermission,
+        PermissionOperation.ViewCustomFields
+      ),
     }),
-
     [databaseSchemaPermission, databaseSchema]
   );
 
@@ -474,6 +490,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       activeTab,
       editCustomAttributePermission,
       viewAllPermission,
+      viewCustomPropertiesPermission,
       databaseSchemaPermission,
       storedProcedureCount,
       getEntityFeedCount,
@@ -495,6 +512,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     editCustomAttributePermission,
     tableCount,
     viewAllPermission,
+    viewCustomPropertiesPermission,
     storedProcedureCount,
     databaseSchemaPermission,
     handleExtensionUpdate,

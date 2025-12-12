@@ -67,6 +67,8 @@ interface TaskFeedCardProps {
   onUpdateEntityDetails?: () => void;
   isForFeedTab?: boolean;
   isOpenInDrawer?: boolean;
+  hideCardBorder?: boolean;
+  isFeedWidget?: boolean;
 }
 
 const TaskFeedCard = ({
@@ -77,6 +79,7 @@ const TaskFeedCard = ({
   onUpdateEntityDetails,
   isForFeedTab = false,
   isOpenInDrawer = false,
+  hideCardBorder = false,
 }: TaskFeedCardProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -136,7 +139,7 @@ const TaskFeedCard = ({
             <Typography.Text className="m-r-xss task-details-id">{`#${taskDetails.id} `}</Typography.Text>
 
             <Typography.Text className="m-r-xss  m-r-xss task-details-entity-link">
-              {TASK_TYPES[taskDetails.type]}
+              {t(TASK_TYPES[taskDetails.type])}
             </Typography.Text>
 
             {taskColumnName}
@@ -249,7 +252,7 @@ const TaskFeedCard = ({
       <div
         className={classNames(className, 'task-feed-card-v1-new', {
           active: isActive,
-          'no-bg-border': isOpenInDrawer,
+          'no-bg-border': hideCardBorder,
         })}
         data-testid="task-feed-card">
         <Row
@@ -356,8 +359,6 @@ const TaskFeedCard = ({
                       : ''
                   }`}>
                   <OwnerLabel
-                    isAssignee
-                    avatarSize={24}
                     isCompactView={false}
                     owners={feed?.task?.assignees}
                     showLabel={false}

@@ -44,6 +44,7 @@ import {
 } from '../../enums/entity.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
+import { Operation } from '../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
@@ -65,7 +66,10 @@ import {
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -75,8 +79,10 @@ const APICollectionVersionPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { version, tab } =
-    useRequiredParams<{ version: string; tab: string }>();
+  const { version, tab } = useRequiredParams<{
+    version: string;
+    tab: string;
+  }>();
 
   const { fqn: decodedEntityFQN } = useFqn();
 
@@ -108,7 +114,7 @@ const APICollectionVersionPage = () => {
 
   const [apiEndpoints, setAPIEndpoints] = useState<Array<APIEndpoint>>([]);
 
-  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domains } =
     useMemo(
       () =>
         getBasicEntityInfoFromVersionData(
@@ -123,6 +129,14 @@ const APICollectionVersionPage = () => {
     [collectionPermissions]
   );
 
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        collectionPermissions,
+        Operation.ViewCustomFields
+      ),
+    [collectionPermissions]
+  );
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
     useMemo(
       () =>
@@ -130,9 +144,9 @@ const APICollectionVersionPage = () => {
           currentVersionData?.changeDescription as ChangeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [currentVersionData?.changeDescription, owners, tier, domain]
+      [currentVersionData?.changeDescription, owners, tier, domains]
     );
 
   const init = useCallback(async () => {
@@ -297,7 +311,7 @@ const APICollectionVersionPage = () => {
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -333,14 +347,14 @@ const APICollectionVersionPage = () => {
             isVersionView
             entityType={EntityType.API_COLLECTION}
             hasEditAccess={false}
-            hasPermission={viewVersionPermission}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
     [
       tags,
-      domain,
+      domains,
       description,
       currentVersionData,
       apiEndpoints,

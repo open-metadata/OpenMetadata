@@ -34,6 +34,10 @@ export interface TestSuite {
      */
     connection?: TestSuiteConnection;
     /**
+     * Reference to the data contract that this test suite is associated with.
+     */
+    dataContract?: EntityReference;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -46,10 +50,10 @@ export interface TestSuite {
      */
     displayName?: string;
     /**
-     * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
+     * Domains the test Suite belongs to. When not set, the test Suite inherits the domain from
      * the table it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * DEPRECATED in 1.6.2: Use 'basic'
      */
@@ -75,6 +79,10 @@ export interface TestSuite {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Link to the ingestion pipeline that ingested this entity.
+     */
+    ingestionRunner?: EntityReference;
+    /**
      * Indicates if the test suite is inherited from a parent entity.
      */
     inherited?: boolean;
@@ -90,6 +98,10 @@ export interface TestSuite {
      * References to pipelines deployed for this Test Suite to execute the tests.
      */
     pipelines?: EntityReference[];
+    /**
+     * List of reviewers for this entity.
+     */
+    reviewers?: EntityReference[];
     /**
      * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
      */
@@ -136,17 +148,19 @@ export interface TestSuite {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
+ * Reference to the data contract that this test suite is associated with.
+ *
+ * Domains the test Suite belongs to. When not set, the test Suite inherits the domain from
  * the table it belongs to.
- *
- * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
- *
- * Owners of this TestCase definition.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
+ *
+ * Link to the ingestion pipeline that ingested this entity.
  */
 export interface EntityReference {
     /**
@@ -358,6 +372,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -412,9 +430,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 export interface TestCaseResultSummaryObject {

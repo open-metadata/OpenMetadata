@@ -1,5 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.HashMap;
 import java.util.Map;
 import org.openmetadata.schema.tests.TestCase;
@@ -30,7 +32,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     // denormalize the parent relationships for search
     EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
     TestCase testCase =
-        Entity.getEntityOrNull(testCaseReference, "testSuite,domain,tags,owners", Include.ALL);
+        Entity.getEntityOrNull(testCaseReference, "testSuite,domains,tags,owners", Include.ALL);
     if (testCase == null) return;
     testCase =
         new TestCase()
@@ -40,11 +42,17 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
             .withDescription(testCase.getDescription())
             .withDisplayName(testCase.getDisplayName())
             .withDeleted(testCase.getDeleted())
-            .withDomain(testCase.getDomain())
+            .withDomains(testCase.getDomains())
             .withTags(testCase.getTags())
             .withEntityFQN(testCase.getEntityFQN())
             .withOwners(testCase.getOwners());
     doc.put("testCase", testCase);
+
+    // Promote inherited domains to top level for standard domain filtering
+    if (!nullOrEmpty(testCase.getDomains())) {
+      doc.put("domains", getEntitiesWithDisplayName(testCase.getDomains()));
+    }
+
     TestSuite testSuite = Entity.getEntityOrNull(testCase.getTestSuite(), "", Include.ALL);
     if (testSuite == null) return;
     doc.put("testSuite", testSuite.getEntityReference());

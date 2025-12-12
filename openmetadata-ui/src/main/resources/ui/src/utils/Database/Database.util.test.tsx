@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useNavigate } from 'react-router-dom';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
@@ -38,11 +39,11 @@ jest.mock(
   })
 );
 
-const mockNavigate = jest.fn();
-
 jest.mock('react-router-dom', () => ({
-  useNavigate: mockNavigate,
+  useNavigate: jest.fn(),
 }));
+
+const mockNavigate = jest.fn();
 
 jest.mock('../../utils/TableColumn.util', () => ({
   ownerTableObject: jest.fn().mockReturnValue([
@@ -65,6 +66,11 @@ jest.mock('../../utils/TableColumn.util', () => ({
 }));
 
 describe('Database Util', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+  });
+
   describe('getQueryFilterForDatabase', () => {
     it('should return the correct query filter', () => {
       const serviceType = 'mysql';
@@ -101,7 +107,7 @@ describe('Database Util', () => {
 
   describe('Database Util - DatabaseFields', () => {
     it('should have the correct fields', () => {
-      const expectedFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+      const expectedFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
 
       expect(DatabaseFields).toEqual(expectedFields);
     });

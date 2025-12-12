@@ -37,3 +37,15 @@ export const NAME_FIELD_RULES: Rule[] = [
     message: i18n.t('message.entity-name-validation'),
   },
 ];
+
+export const DISPLAY_NAME_FIELD_RULES: Rule[] = [
+  {
+    min: 1,
+    max: 128,
+    message: i18n.t('message.entity-size-in-between', {
+      entity: i18n.t('label.display-name'),
+      min: 1,
+      max: 128,
+    }),
+  },
+];

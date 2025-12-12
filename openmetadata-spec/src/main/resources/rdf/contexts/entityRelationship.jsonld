@@ -1,0 +1,108 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "EntityRelationship": "om:EntityRelationship",
+      "fromId": {
+        "@id": "om:relationshipFrom",
+        "@type": "@id"
+      },
+      "fromEntity": {
+        "@id": "om:fromEntity",
+        "@type": "@id"
+      },
+      "fromFQN": {
+        "@id": "om:fromFQN",
+        "@type": "xsd:string"
+      },
+      "toId": {
+        "@id": "om:relationshipTo",
+        "@type": "@id"
+      },
+      "toEntity": {
+        "@id": "om:toEntity",
+        "@type": "@id"
+      },
+      "toFQN": {
+        "@id": "om:toFQN",
+        "@type": "xsd:string"
+      },
+      "relationshipType": {
+        "@id": "om:hasRelationshipType",
+        "@type": "xsd:string"
+      },
+      "relation": {
+        "@id": "om:relationValue",
+        "@type": "xsd:integer"
+      },
+      "contains": {
+        "@id": "om:contains",
+        "@type": "@id"
+      },
+      "createdBy": {
+        "@id": "prov:wasGeneratedBy",
+        "@type": "@id"
+      },
+      "uses": {
+        "@id": "prov:used",
+        "@type": "@id"
+      },
+      "owns": {
+        "@id": "om:owns",
+        "@type": "@id"
+      },
+      "parentOf": {
+        "@id": "om:parentOf",
+        "@type": "@id"
+      },
+      "childOf": {
+        "@id": "om:childOf",
+        "@type": "@id"
+      },
+      "relatedTo": {
+        "@id": "om:relatedTo",
+        "@type": "@id"
+      },
+      "appliedTo": {
+        "@id": "om:appliedTo",
+        "@type": "@id"
+      },
+      "testedBy": {
+        "@id": "om:testedBy",
+        "@type": "@id"
+      },
+      "mentionedIn": {
+        "@id": "om:mentionedIn",
+        "@type": "@id"
+      },
+      "reacts": {
+        "@id": "om:reacts",
+        "@type": "@id"
+      },
+      "voted": {
+        "@id": "om:voted",
+        "@type": "@id"
+      },
+      "follows": {
+        "@id": "om:follows",
+        "@type": "@id"
+      },
+      "upstream": {
+        "@id": "prov:wasDerivedFrom",
+        "@type": "@id"
+      },
+      "downstream": {
+        "@id": "prov:wasInfluencedBy",
+        "@type": "@id"
+      },
+      "joinedWith": {
+        "@id": "om:joinedWith",
+        "@type": "@id"
+      },
+      "processedBy": {
+        "@id": "prov:wasGeneratedBy",
+        "@type": "@id"
+      }
+    }
+  ]
+}

@@ -61,16 +61,23 @@ class ProfilerSource(ProfilerSourceInterface):
     Base class for the profiler source
     """
 
+    @inject
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
         database: Database,
         ometa_client: OpenMetadata,
         global_profiler_configuration: ProfilerConfiguration,
+        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,
     ):
+        if profiler_config_class is None:
+            raise DependencyNotFoundError(
+                "ProfilerProcessorConfig class not found. Please ensure the ProfilerProcessorConfig is properly registered."
+            )
+
         self.config = config
         self.service_conn_config = self._copy_service_config(config, database)
-        self.profiler_config = ProfilerProcessorConfig.model_validate(
+        self.profiler_config = profiler_config_class.model_validate(
             config.processor.model_dump().get("config")
         )
         self.ometa_client = ometa_client

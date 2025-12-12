@@ -6,12 +6,12 @@ In this section, we provide guides and references to use the Airflow connector.
 
 We support different approaches to extracting metadata from Airflow:
 1. **Airflow Connector**: which we will configure in this section and requires access to the underlying database.
-2. **Airflow Lineage Backend**: which can be configured in your Airflow instance. You can read more about the Lineage Backend [here](https://docs.open-metadata.org/connectors/pipeline/airflow/lineage-backend).
-3. **Airflow Lineage Operator**: To send metadata directly from your Airflow DAGs. You can read more about the Lineage Operator [here](https://docs.open-metadata.org/connectors/pipeline/airflow/lineage-operator).
+2. **Airflow Lineage Backend**: which can be configured in your Airflow instance. You can read more about the Lineage Backend <a href="https://docs.open-metadata.org/connectors/pipeline/airflow/lineage-backend" target="_blank">here</a>.
+3. **Airflow Lineage Operator**: To send metadata directly from your Airflow DAGs. You can read more about the Lineage Operator <a href="https://docs.open-metadata.org/connectors/pipeline/airflow/lineage-operator" target="_blank">here</a>.
 
 From the OpenMetadata UI, you have access to the strategy number 1.
 
-You can find further information on the Airflow connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/airflow).
+You can find further information on the Airflow connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/airflow" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -31,9 +31,9 @@ $$
 $$section
 ### Metadata Database Connection $(id="connection")
 
-Select your underlying database connection. We support the [official](https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html) backends from Airflow.
+Select your underlying database connection. We support the <a href="https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html" target="_blank">official</a> backends from Airflow.
 
-Note that the **Backend Connection** is only used to extract metadata from a DAG running directly in your instance, for example to get the metadata out of [GCS Composer](https://docs.open-metadata.org/connectors/pipeline/airflow/gcp).
+Note that the **Backend Connection** is only used to extract metadata from a DAG running directly in your instance, for example to get the metadata out of <a href="https://docs.open-metadata.org/connectors/pipeline/airflow/gcp" target="_blank">GCS Composer</a>.
 
 $$
 
@@ -124,7 +124,7 @@ $$
 $$section
 ### AWS Access Key ID $(id="awsAccessKeyId")
 
-When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
+When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests (<a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html" target="_blank">docs</a>).
 
 Access keys consist of two parts:
 1. An access key ID (for example, `AKIAIOSFODNN7EXAMPLE`),
@@ -132,7 +132,7 @@ Access keys consist of two parts:
 
 You must use both the access key ID and secret access key together to authenticate your requests.
 
-You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)
+You can find further information on how to manage your access keys <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html" target="_blank">here</a>
 $$
 
 $$section
@@ -144,11 +144,11 @@ $$
 $$section
 ### AWS Region $(id="awsRegion")
 
-Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
+Each AWS Region is a separate geographic area in which AWS clusters data centers (<a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html" target="_blank">docs</a>).
 
 As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
 
-Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials).
+Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials <a href="https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials" target="_blank">here</a>.
 $$
 
 $$section
@@ -156,7 +156,7 @@ $$section
 
 If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID and AWS Secrets Access Key. Also, these will include an AWS Session Token.
 
-You can find more information on [Using temporary credentials with AWS resources](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html).
+You can find more information on <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html" target="_blank">Using temporary credentials with AWS resources</a>.
 $$
 
 $$section
@@ -164,7 +164,7 @@ $$section
 
 To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the default endpoint for each service in an AWS Region. But you can specify an alternate endpoint for your API requests.
 
-Find more information on [AWS service endpoints](https://docs.aws.amazon.com/general/latest/gr/rande.html).
+Find more information on <a href="https://docs.aws.amazon.com/general/latest/gr/rande.html" target="_blank">AWS service endpoints</a>.
 $$
 
 $$section
@@ -174,7 +174,7 @@ A named profile is a collection of settings and credentials that you can apply t
 
 You can inform this field if you'd like to use a profile other than `default`.
 
-Find here more information about [Named profiles for the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html).
+Find here more information about <a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html" target="_blank">Named profiles for the AWS CLI</a>.
 $$
 
 $$section
@@ -186,7 +186,7 @@ A user who wants to access a role in a different account must also have permissi
 
 This is a required field if you'd like to `AssumeRole`.
 
-Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
+Find more information on <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html" target="_blank">AssumeRole</a>.
 $$
 
 $$section
@@ -196,7 +196,7 @@ An identifier for the assumed role session. Use the role session name to uniquel
 
 By default, we'll use the name `OpenMetadataSession`.
 
-Find more information about the [Role Session Name](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session.).
+Find more information about the <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session." target="_blank">Role Session Name</a>.
 $$
 
 $$section
@@ -204,7 +204,7 @@ $$section
 
 The source identity specified by the principal that is calling the `AssumeRole` operation. You can use source identity information in AWS CloudTrail logs to determine who took actions with a role.
 
-Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
+Find more information about <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity" target="_blank">Source Identity</a>.
 $$
 
 ## Azure Auth Config
@@ -219,7 +219,7 @@ $$section
 ### Client Secret $(id="clientSecret")
 To get the client secret, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for this connection.
 4. Under `Manage`, select `Certificates & secrets`.
@@ -234,7 +234,7 @@ $$section
 
 To get the tenant ID, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Power BI.
 4. From the `Overview` section, copy the `Directory (tenant) ID`.
@@ -256,7 +256,7 @@ $$section
 ### Scopes $(id="scopes")
 
 To let OM use the Trino Auth APIs using your Azure AD app, you'll need to add the scope
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Trino.
 4. From the `Expose an API` section, copy the `Application ID URI`
@@ -339,7 +339,7 @@ Password to connect to Postgres.
 
 ### AWS Access Key ID $(id="awsAccessKeyId")
 
-When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
+When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests (<a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html" target="_blank">docs</a>).
 
 Access keys consist of two parts:
 1. An access key ID (for example, `AKIAIOSFODNN7EXAMPLE`),
@@ -347,7 +347,7 @@ Access keys consist of two parts:
 
 You must use both the access key ID and secret access key together to authenticate your requests.
 
-You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)
+You can find further information on how to manage your access keys <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html" target="_blank">here</a>
 $$
 
 $$section
@@ -359,11 +359,11 @@ Secret access key (for example, `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`).
 
 ### AWS Region $(id="awsRegion")
 
-Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
+Each AWS Region is a separate geographic area in which AWS clusters data centers (<a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html" target="_blank">docs</a>).
 
 As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
 
-Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials).
+Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials <a href="https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials" target="_blank">here</a>.
 
 
 
@@ -371,7 +371,7 @@ Note that the AWS Region is the only required parameter when configuring a conne
 
 If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID and AWS Secrets Access Key. Also, these will include an AWS Session Token.
 
-You can find more information on [Using temporary credentials with AWS resources](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html).
+You can find more information on <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html" target="_blank">Using temporary credentials with AWS resources</a>.
 
 
 
@@ -379,7 +379,7 @@ You can find more information on [Using temporary credentials with AWS resources
 
 To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the default endpoint for each service in an AWS Region. But you can specify an alternate endpoint for your API requests.
 
-Find more information on [AWS service endpoints](https://docs.aws.amazon.com/general/latest/gr/rande.html).
+Find more information on <a href="https://docs.aws.amazon.com/general/latest/gr/rande.html" target="_blank">AWS service endpoints</a>.
 
 
 
@@ -389,7 +389,7 @@ A named profile is a collection of settings and credentials that you can apply t
 
 You can inform this field if you'd like to use a profile other than `default`.
 
-Find here more information about [Named profiles for the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html).
+Find here more information about <a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html" target="_blank">Named profiles for the AWS CLI</a>.
 
 
 
@@ -401,7 +401,7 @@ A user who wants to access a role in a different account must also have permissi
 
 This is a required field if you'd like to `AssumeRole`.
 
-Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
+Find more information on <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html" target="_blank">AssumeRole</a>.
 
 
 
@@ -411,7 +411,7 @@ An identifier for the assumed role session. Use the role session name to uniquel
 
 By default, we'll use the name `OpenMetadataSession`.
 
-Find more information about the [Role Session Name](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session.).
+Find more information about the <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session." target="_blank">Role Session Name</a>.
 
 
 
@@ -419,7 +419,7 @@ Find more information about the [Role Session Name](https://docs.aws.amazon.com/
 
 The source identity specified by the principal that is calling the `AssumeRole` operation. You can use source identity information in AWS CloudTrail logs to determine who took actions with a role.
 
-Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
+Find more information about <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity" target="_blank">Source Identity</a>.
 
 
 ## Azure Auth Config
@@ -434,7 +434,7 @@ This is a unique identifier for the service account. To fetch this key, look for
 ### Client Secret $(id="clientSecret")
 To get the client secret, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for this connection.
 4. Under `Manage`, select `Certificates & secrets`.
@@ -448,7 +448,7 @@ To get the client secret, follow these steps:
 
 To get the tenant ID, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Power BI.
 4. From the `Overview` section, copy the `Directory (tenant) ID`.
@@ -470,7 +470,7 @@ Key Vault Name
 ### Scopes $(id="scopes")
 
 To let OM use the Trino Auth APIs using your Azure AD app, you'll need to add the scope
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Trino.
 4. From the `Expose an API` section, copy the `Application ID URI`

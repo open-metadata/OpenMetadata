@@ -24,10 +24,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_MEDIUM,
-} from '../../constants/constants';
+import { INITIAL_PAGING_VALUE } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -36,10 +33,11 @@ import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getOnlineUsers, OnlineUsersQueryParams } from '../../rest/userAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { commonUserDetailColumns } from '../../utils/Users.util';
 
@@ -57,7 +55,7 @@ const OnlineUsersPage = () => {
     pageSize,
     paging,
     showPagination,
-  } = usePaging(PAGE_SIZE_MEDIUM);
+  } = usePaging();
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -119,19 +117,16 @@ const OnlineUsersPage = () => {
     async (value: string) => {
       setIsDataLoading(true);
       try {
-        // For search, we still need to use searchData API and filter client-side
+        // For search, we still need to use searchQuery API and filter client-side
         // as the online users endpoint doesn't support search yet
-        const res = await searchData(
-          value,
-          currentPage,
+        const res = await searchQuery({
+          query: value,
+          pageNumber: currentPage,
           pageSize,
-          'isBot:false',
-          '',
-          '',
-          SearchIndex.USER,
-          false
-        );
-        const data = res.data.hits.hits.map(({ _source }) => _source);
+          queryFilter: getTermQuery({ isBot: 'false' }),
+          searchIndex: SearchIndex.USER,
+        });
+        const data = res.hits.hits.map(({ _source }) => _source);
 
         // Filter users based on lastLoginTime
         const onlineUsers = data.filter((user: User) => {
@@ -263,7 +258,12 @@ const OnlineUsersPage = () => {
         </Col>
 
         <Col span={24}>
-          <PageHeader data={PAGE_HEADERS.ONLINE_USERS} />
+          <PageHeader
+            data={{
+              header: t(PAGE_HEADERS.ONLINE_USERS.header),
+              subHeader: t(PAGE_HEADERS.ONLINE_USERS.subHeader),
+            }}
+          />
         </Col>
 
         <Col span={24}>
@@ -292,9 +292,9 @@ const OnlineUsersPage = () => {
                 <FilterTablePlaceHolder
                   placeholderText={
                     searchValue
-                      ? t('message.no-entity-found-for-query', {
+                      ? t('message.no-entity-found-for-name', {
                           entity: t('label.user-lowercase'),
-                          query: searchValue,
+                          name: searchValue,
                         })
                       : t('message.no-online-users-found')
                   }
@@ -307,7 +307,7 @@ const OnlineUsersPage = () => {
               placeholder: `${t('label.search-for-type', {
                 type: t('label.user'),
               })}...`,
-              value: searchValue,
+              searchValue: searchValue,
               typingInterval: 400,
               onSearch: handleSearch,
             }}

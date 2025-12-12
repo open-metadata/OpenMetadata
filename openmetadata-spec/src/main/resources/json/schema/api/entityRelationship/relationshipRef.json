@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/api/entityRelationship/relationshipRef.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RelationshipRef",
+  "description": "Relationship Reference to an Entity.",
+  "javaType": "org.openmetadata.schema.api.entityRelationship.RelationshipRef",
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this entity instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName of the entity.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "fqnHash": {
+      "description": "FullyQualifiedName Hash of the entity.",
+      "type": "string"
+    },
+    "type": {
+      "description": "Type of the entity.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+} 

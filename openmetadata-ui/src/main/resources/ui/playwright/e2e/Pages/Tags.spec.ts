@@ -101,7 +101,7 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
-test.fixme('Classification Page', async ({ page }) => {
+test('Classification Page', async ({ page }) => {
   test.slow();
 
   await test.step('Should render basic elements on page', async () => {
@@ -140,13 +140,9 @@ test.fixme('Classification Page', async ({ page }) => {
 
     await page.click('[data-testid="manage-button"]');
 
-    const fetchTags = page.waitForResponse(
-      `/api/v1/tags?fields=usageCount&parent=${classification.responseData.name}*`
-    );
     const disabledTag = page.waitForResponse('/api/v1/classifications/*');
     await page.click('[data-testid="enable-disable-title"]');
     await disabledTag;
-    await fetchTags;
 
     await expect(
       page.locator(
@@ -158,9 +154,21 @@ test.fixme('Classification Page', async ({ page }) => {
       page.locator('[data-testid="add-new-tag-button"]')
     ).toBeDisabled();
 
-    await expect(
-      page.locator('[data-testid="no-data-placeholder"]')
-    ).toBeVisible();
+    // Verify that the "Add Domain" and "Add Owner" icon buttons are not visible
+    // on both the Classification and Tag pages when Classification is disabled.
+
+    await expect(page.getByTestId('add-domain')).not.toBeVisible();
+    await expect(page.getByTestId('add-owner')).not.toBeVisible();
+
+    await page.getByTestId(tag.responseData.name).click();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(page.getByTestId('disabled')).toBeVisible();
+    await expect(page.getByTestId('add-domain')).not.toBeVisible();
+    await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
     // Check if the disabled Classification tag is not visible in the table
     await table.visitEntityPage(page);
@@ -210,6 +218,21 @@ test.fixme('Classification Page', async ({ page }) => {
         `[data-testid="classification-${classification.responseData.name}"] [data-testid="disabled"]`
       )
     ).not.toBeVisible();
+
+    // Verify that the "Add Domain" and "Add Owner" icon buttons are visible
+    // on both the Classification and Tag pages when Classification is enabled.
+    await expect(page.getByTestId('add-domain')).toBeVisible();
+    await expect(page.getByTestId('add-owner')).toBeVisible();
+
+    await page.getByTestId(tag.responseData.name).click();
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(page.getByTestId('disabled')).not.toBeVisible();
+    await expect(page.getByTestId('add-domain')).toBeVisible();
+    await expect(page.getByTestId('add-owner')).toBeVisible();
 
     /* This code test will be fix in this PR  https://github.com/open-metadata/OpenMetadata/pull/18333  */
     // await table.visitEntityPage(page);
@@ -289,6 +312,26 @@ test.fixme('Classification Page', async ({ page }) => {
     );
   });
 
+  await test.step('Verify classification term count', async () => {
+    // Find the classification in the left panel and verify term count
+    const classificationElement = page
+      .locator(`[data-testid="side-panel-classification"]`)
+      .filter({ hasText: NEW_CLASSIFICATION.displayName });
+
+    // Check if term count is displayed as (1) since we created one tag
+    await expect(classificationElement).toContainText(
+      `${NEW_CLASSIFICATION.displayName}1`
+    );
+
+    // Click on the classification to verify
+    await classificationElement.click();
+
+    // Verify the tag is listed
+    await expect(page.locator('[data-testid="table"]')).toContainText(
+      NEW_TAG.name
+    );
+  });
+
   await test.step(`Assign tag to table`, async () => {
     await table.visitEntityPage(page);
     const { name, displayName } = NEW_TAG;
@@ -297,7 +340,6 @@ test.fixme('Classification Page', async ({ page }) => {
       tagName: name,
       tagFqn,
       tagDisplayName: displayName,
-      tableId: table.entityResponseData?.['id'],
       columnNumber: 0,
       rowName: `${table.entity?.columns[0].name} numeric`,
     });
@@ -336,7 +378,7 @@ test.fixme('Classification Page', async ({ page }) => {
       await clickOutside(page);
 
       const suggestTag = page.waitForResponse(
-        'api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index*'
+        'api/v1/search/query?q=*&index=tag_search_index*'
       );
       await page.click('[data-testid="tag-selector"]');
       await page.keyboard.type(tag);
@@ -358,9 +400,12 @@ test.fixme('Classification Page', async ({ page }) => {
           response.url().includes('/api/v1/feed/tasks/') &&
           response.url().includes('/resolve')
       );
-      await page.click(
+
+      const acceptButton = page.locator(
         '.ant-btn-compact-first-item:has-text("Accept Suggestion")'
       );
+      await acceptButton.waitFor({ state: 'visible' });
+      await acceptButton.click();
       await acceptSuggestion;
       await page.click('[data-testid="table"]');
 
@@ -369,6 +414,12 @@ test.fixme('Classification Page', async ({ page }) => {
       );
       await page.reload();
       await databaseSchemasPage;
+
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await expect(
         page.locator('[data-testid="tags-container"]')
@@ -423,6 +474,28 @@ test.fixme('Classification Page', async ({ page }) => {
     await expect(page.locator('[data-testid="table"]')).not.toContainText(
       NEW_TAG.name
     );
+
+    // Verify term count is now 0 after deleting the tag
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await page.waitForSelector('[data-testid="side-panel-classification"]', {
+      state: 'visible',
+    });
+
+    // Find the classification and verify term count is 0
+    const classificationElement = page
+      .locator(`[data-testid="side-panel-classification"]`)
+      .filter({ hasText: NEW_CLASSIFICATION.displayName });
+
+    // Check if term count is displayed as (0) since we deleted the tag
+    await expect(classificationElement).toContainText(
+      `${NEW_CLASSIFICATION.displayName}0`
+    );
   });
 
   await test.step('Remove classification', async () => {
@@ -445,7 +518,6 @@ test.fixme('Classification Page', async ({ page }) => {
     await page.click('[data-testid="confirm-button"]');
     await deleteClassification;
 
-    await user1.visitPage(page);
     await page.waitForLoadState('networkidle');
 
     await expect(
@@ -505,9 +577,76 @@ test('Search tag using classification display name should work', async ({
   ).toBeVisible();
 });
 
+test('Verify system classification term counts', async ({ page }) => {
+  const classificationsResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/classifications') &&
+      response.url().includes('fields=termCount')
+  );
+
+  const getTags = page.waitForResponse('/api/v1/tags*');
+  await sidebarClick(page, SidebarItem.TAGS);
+  await getTags;
+
+  await classificationsResponse;
+
+  await page.waitForSelector('[data-testid="side-panel-classification"]', {
+    state: 'visible',
+  });
+
+  // Get all classification elements
+  const classificationElements = await page
+    .locator('[data-testid="side-panel-classification"]')
+    .all();
+
+  // Find and verify Tier classification
+  let tierFound = false;
+  let piiFound = false;
+
+  for (const element of classificationElements) {
+    const text = await element.textContent();
+    const filterCountText = await element
+      .getByTestId('filter-count')
+      .textContent();
+    const filterCount = parseInt(filterCountText?.trim() || '0', 10);
+    if (text?.includes('Tier') && filterCount > 0) {
+      tierFound = true;
+    }
+    if (text?.includes('PII') && filterCount > 0) {
+      piiFound = true;
+    }
+  }
+
+  expect(tierFound).toBeTruthy();
+  expect(piiFound).toBeTruthy();
+
+  // Alternative: verify specific classifications have the expected count
+  const tierElement = page
+    .locator('[data-testid="side-panel-classification"]')
+    .filter({ hasText: 'Tier' });
+
+  const tierCountText = await tierElement
+    .getByTestId('filter-count')
+    .textContent();
+  const tierCount = parseInt(tierCountText?.trim() || '0');
+
+  expect(tierCount).toBeGreaterThanOrEqual(5);
+
+  const piiElement = page
+    .locator('[data-testid="side-panel-classification"]')
+    .filter({ hasText: 'PII' });
+
+  const piiCountText = await piiElement
+    .getByTestId('filter-count')
+    .textContent();
+  const piiCount = parseInt(piiCountText?.trim() || '0');
+
+  expect(piiCount).toBeGreaterThanOrEqual(3);
+});
+
 test('Verify Owner Add Delete', async ({ page }) => {
   await classification1.visitPage(page);
-  const OWNER1 = user1.getUserName();
+  const OWNER1 = user1.getUserDisplayName();
 
   await addMultiOwner({
     page,
@@ -523,10 +662,11 @@ test('Verify Owner Add Delete', async ({ page }) => {
   await page.waitForLoadState('networkidle');
 
   await expect(
-    page.locator(`[data-testid="tag-owner-name"]`).getByTestId(OWNER1)
+    page.locator(`[data-testid="owner-link"]`).getByTestId(OWNER1)
   ).toBeVisible();
 
   await classification1.visitPage(page);
+
   await page.waitForLoadState('networkidle');
 
   await removeOwner({

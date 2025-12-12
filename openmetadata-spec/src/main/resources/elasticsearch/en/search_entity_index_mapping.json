@@ -39,6 +39,14 @@
           "filter": [
             "lowercase"
           ]
+        },
+        "om_compound_analyzer": {
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "compound_word_delimiter_graph",
+            "flatten_graph"
+          ]
         }
       },
       "filter": {
@@ -49,6 +57,18 @@
         "word_delimiter_filter": {
           "type": "word_delimiter",
           "preserve_original": true
+        },
+        "compound_word_delimiter_graph": {
+          "type": "word_delimiter_graph",
+          "generate_word_parts": true,
+          "generate_number_parts": true,
+          "split_on_case_change": true,
+          "split_on_numerics": true,
+          "catenate_words": false,
+          "catenate_numbers": false,
+          "catenate_all": false,
+          "preserve_original": true,
+          "stem_english_possessive": true
         }
       }
     }
@@ -70,6 +90,10 @@
           "ngram": {
             "type": "text",
             "analyzer": "om_ngram"
+          },
+          "compound": {
+            "type": "text",
+            "analyzer": "om_compound_analyzer"
           }
         }
       },
@@ -89,9 +113,17 @@
             "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           },
+          "actualCase": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
           "ngram": {
             "type": "text",
             "analyzer": "om_ngram"
+          },
+          "compound": {
+            "type": "text",
+            "analyzer": "om_compound_analyzer"
           }
         }
       },
@@ -105,6 +137,7 @@
         "properties": {
           "tagFQN": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "text": {
                 "type": "text",
@@ -125,6 +158,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "fields": {
         "properties": {
@@ -239,10 +280,115 @@
         "type": "text"
       },
       "entityType": {
-        "type": "keyword"
+        "type": "keyword",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
       },
       "upstreamLineage": {
-        "type": "object"
+        "properties": {
+          "fromEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "toEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "pipeline": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "columns": {
+            "properties": {
+              "fromColumns": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "toColumn": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "docId": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 512
+              }
+            }
+          }
+        }
       },
       "service": {
         "properties": {
@@ -279,7 +425,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -373,10 +526,14 @@
       "deleted": {
         "type": "boolean"
       },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "lifeCycle": {
         "type": "object"
       },
-      "domain": {
+      "domains": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -456,6 +613,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -535,6 +693,15 @@
       },
       "indexType": {
         "type": "text"
+      },
+      "fqnHash": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 512
+          }
+        }
       }
     }
   }

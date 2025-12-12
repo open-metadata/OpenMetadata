@@ -56,8 +56,6 @@ public class EntityLifecycleEventDispatcher {
   /**
    * Register a new lifecycle event handler.
    * Handlers are automatically sorted by priority after registration.
-   *
-   * @param handler The handler to register
    */
   public synchronized void registerHandler(EntityLifecycleEventHandler handler) {
     if (handler == null) {
@@ -86,9 +84,6 @@ public class EntityLifecycleEventDispatcher {
 
   /**
    * Unregister a lifecycle event handler by name.
-   *
-   * @param handlerName The name of the handler to remove
-   * @return true if handler was found and removed
    */
   public synchronized boolean unregisterHandler(String handlerName) {
     boolean removed = handlers.removeIf(h -> h.getHandlerName().equals(handlerName));
@@ -109,9 +104,6 @@ public class EntityLifecycleEventDispatcher {
 
   /**
    * Dispatch entity created event to all applicable handlers.
-   *
-   * @param entity The entity that was created
-   * @param subjectContext The security context
    */
   public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
     if (entity == null) return;
@@ -126,10 +118,6 @@ public class EntityLifecycleEventDispatcher {
 
   /**
    * Dispatch entity updated event to all applicable handlers.
-   *
-   * @param entity The entity that was updated
-   * @param changeDescription Description of changes
-   * @param subjectContext The security context
    */
   public void onEntityUpdated(
       EntityInterface entity, ChangeDescription changeDescription, SubjectContext subjectContext) {
@@ -146,9 +134,6 @@ public class EntityLifecycleEventDispatcher {
 
   /**
    * Dispatch entity updated event to all applicable handlers.
-   *
-   * @param entityReference The reference for the entity that was updated
-   * @param subjectContext The security context
    */
   public void onEntityUpdated(EntityReference entityReference, SubjectContext subjectContext) {
     if (entityReference == null) return;
@@ -163,9 +148,6 @@ public class EntityLifecycleEventDispatcher {
 
   /**
    * Dispatch entity deleted event to all applicable handlers.
-   *
-   * @param entity The entity that was deleted
-   * @param subjectContext The security context
    */
   public void onEntityDeleted(EntityInterface entity, SubjectContext subjectContext) {
     if (entity == null) return;
@@ -180,10 +162,6 @@ public class EntityLifecycleEventDispatcher {
 
   /**
    * Dispatch entity soft deleted or restored event to all applicable handlers.
-   *
-   * @param entity The entity that was soft deleted or restored
-   * @param isDeleted true if soft deleted, false if restored
-   * @param subjectContext The security context
    */
   public void onEntitySoftDeletedOrRestored(
       EntityInterface entity, boolean isDeleted, SubjectContext subjectContext) {

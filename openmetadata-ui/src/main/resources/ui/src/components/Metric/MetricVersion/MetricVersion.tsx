@@ -20,12 +20,14 @@ import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/metric';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -50,7 +52,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
-  domain,
+  domains,
 }: MetricVersionProp) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -66,9 +68,9 @@ const MetricVersion: FC<MetricVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   useEffect(() => {
@@ -108,6 +110,15 @@ const MetricVersion: FC<MetricVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        entityPermissions,
+        Operation.ViewCustomFields
+      ),
+    [entityPermissions]
+  );
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -138,7 +149,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -170,12 +181,12 @@ const MetricVersion: FC<MetricVersionProp> = ({
             isVersionView
             entityType={EntityType.METRIC}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [description, currentVersionData, entityPermissions, tags]
+    [description, currentVersionData, viewCustomPropertiesPermission, tags]
   );
 
   return (

@@ -42,22 +42,19 @@ import {
   LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
   ONE_HOUR_MS,
+  ROUTES,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { AsyncDeleteWebsocketResponse } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import {
-  BackgroundJob,
-  EnumCleanupArgs,
-  JobType,
-} from '../../generated/jobs/backgroundJob';
+import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
@@ -86,7 +83,6 @@ import DomainSelectableList from '../common/DomainSelectableList/DomainSelectabl
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
-import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
@@ -112,13 +108,25 @@ const NavBar = () => {
   const [hasMentionNotification, setHasMentionNotification] =
     useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('Task');
-  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
-  const [version, setVersion] = useState<string>();
+  const { appVersion: version, setAppVersion } = useApplicationStore();
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
   const {
     preferences: { isSidebarCollapsed, language },
     setPreference,
   } = useCurrentUserPreferences();
+
+  // Check if current route is home page
+  const isHomePage = useMemo(() => {
+    const pathname = location.pathname;
+
+    return pathname === ROUTES.MY_DATA;
+  }, [location.pathname]);
+
+  const isTourPage = useMemo(() => {
+    const pathname = location.pathname;
+
+    return pathname.includes(ROUTES.TOUR);
+  }, [location.pathname]);
 
   const fetchOMVersion = async () => {
     try {
@@ -130,7 +138,8 @@ const NavBar = () => {
         expires: new Date(Date.now() + ONE_HOUR_MS),
       });
 
-      setVersion(res.version);
+      // Remove -SNAPSHOT from the version
+      setAppVersion(res.version.replace('-SNAPSHOT', ''));
     } catch (err) {
       showErrorToast(
         err as AxiosError,
@@ -150,12 +159,6 @@ const NavBar = () => {
       return <Component key={key} />;
     });
   }, []);
-
-  const handleSupportClick = ({ key }: MenuInfo): void => {
-    if (key === HELP_ITEMS_ENUM.WHATS_NEW) {
-      setIsFeatureModalOpen(true);
-    }
-  };
 
   const { socket } = useWebSocketConnector();
 
@@ -241,7 +244,7 @@ const NavBar = () => {
         const { jobArgs, status, jobType } = backgroundJobData;
 
         if (jobType === JobType.CustomPropertyEnumCleanup) {
-          const enumCleanupArgs = jobArgs as EnumCleanupArgs;
+          const enumCleanupArgs = jobArgs;
           if (!enumCleanupArgs.entityType) {
             showErrorToast(
               {
@@ -273,11 +276,11 @@ const NavBar = () => {
       icon: Logo,
     });
     notification.onclick = () => {
-      const isChrome = window.navigator.userAgent.indexOf('Chrome');
+      const isChrome = globalThis.navigator.userAgent.indexOf('Chrome');
       // Applying logic to open a new window onclick of browser notification from chrome
       // As it does not open the concerned tab by default.
       if (isChrome > -1) {
-        window.open(path);
+        globalThis.open(path);
       } else {
         navigate(path);
       }
@@ -310,7 +313,7 @@ const NavBar = () => {
       const now = Date.now();
 
       if (lastFetchTime) {
-        const timeSinceLastFetch = now - parseInt(lastFetchTime);
+        const timeSinceLastFetch = now - Number.parseInt(lastFetchTime);
         if (timeSinceLastFetch < ONE_HOUR_MS) {
           // Less than 1 hour since last fetch, skip API call
           return;
@@ -318,6 +321,7 @@ const NavBar = () => {
       }
 
       const newVersion = await getVersion();
+      const cleanedVersion = newVersion.version?.replace('-SNAPSHOT', '');
 
       // Update the cache timestamp
       cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
@@ -325,7 +329,7 @@ const NavBar = () => {
       });
 
       // Compare version only if version is set previously to have fair comparison
-      if (version && version !== newVersion.version) {
+      if (version && version !== cleanedVersion) {
         setShowVersionMissMatchAlert(true);
       }
     };
@@ -431,8 +435,6 @@ const NavBar = () => {
     navigate(0);
   }, []);
 
-  const handleModalCancel = useCallback(() => setIsFeatureModalOpen(false), []);
-
   return (
     <>
       <Header>
@@ -460,43 +462,49 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            <GlobalSearchBar />
-            <DomainSelectableList
-              hasPermission
-              showAllDomains
-              popoverProps={{
-                open: isDomainDropdownOpen,
-                onOpenChange: (open) => {
-                  setIsDomainDropdownOpen(open);
-                },
-              }}
-              selectedDomain={activeDomainEntityRef}
-              wrapInButton={false}
-              onCancel={() => setIsDomainDropdownOpen(false)}
-              onUpdate={handleDomainChange}>
-              <Button
-                className={classNames(
-                  'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
-                  {
-                    'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
-                  }
-                )}
-                data-testid="domain-dropdown"
-                onClick={() => setIsDomainDropdownOpen(!isDomainDropdownOpen)}>
-                <DomainIcon
-                  className="d-flex"
-                  height={20}
-                  name="domain"
-                  width={20}
-                />
-                <Typography.Text ellipsis className="domain-text">
-                  {activeDomainEntityRef
-                    ? getEntityName(activeDomainEntityRef)
-                    : activeDomain}
-                </Typography.Text>
-                <DropDownIcon width={12} />
-              </Button>
-            </DomainSelectableList>
+            {!isHomePage && !isTourPage && (
+              <>
+                <GlobalSearchBar />
+                <DomainSelectableList
+                  hasPermission
+                  showAllDomains
+                  popoverProps={{
+                    open: isDomainDropdownOpen,
+                    onOpenChange: (open) => {
+                      setIsDomainDropdownOpen(open);
+                    },
+                  }}
+                  selectedDomain={activeDomainEntityRef}
+                  wrapInButton={false}
+                  onCancel={() => setIsDomainDropdownOpen(false)}
+                  onUpdate={handleDomainChange}>
+                  <Button
+                    className={classNames(
+                      'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium m-l-md',
+                      {
+                        'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
+                      }
+                    )}
+                    data-testid="domain-dropdown"
+                    onClick={() =>
+                      setIsDomainDropdownOpen(!isDomainDropdownOpen)
+                    }>
+                    <DomainIcon
+                      className="d-flex"
+                      height={20}
+                      name="domain"
+                      width={20}
+                    />
+                    <Typography.Text ellipsis className="domain-text">
+                      {activeDomainEntityRef
+                        ? getEntityName(activeDomainEntityRef)
+                        : activeDomain}
+                    </Typography.Text>
+                    <DropDownIcon width={12} />
+                  </Button>
+                </DomainSelectableList>
+              </>
+            )}
           </div>
 
           <div className="flex-center gap-5 nav-bar-side-items">
@@ -520,6 +528,7 @@ const NavBar = () => {
               className="cursor-pointer"
               dropdownRender={() => (
                 <NotificationBox
+                  activeTab={activeTab}
                   hasMentionNotification={hasMentionNotification}
                   hasTaskNotification={hasTaskNotification}
                   onMarkMentionsNotificationRead={
@@ -552,7 +561,6 @@ const NavBar = () => {
             <Dropdown
               menu={{
                 items: getHelpDropdownItems(version),
-                onClick: handleSupportClick,
               }}
               overlayStyle={{ width: 175 }}
               placement="bottomRight"
@@ -569,12 +577,6 @@ const NavBar = () => {
           </div>
         </div>
       </Header>
-      <WhatsNewModal
-        header={`${t('label.whats-new')}!`}
-        visible={isFeatureModalOpen}
-        onCancel={handleModalCancel}
-      />
-
       {showVersionMissMatchAlert && (
         <Alert
           showIcon

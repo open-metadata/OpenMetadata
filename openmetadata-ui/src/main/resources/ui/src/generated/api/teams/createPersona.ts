@@ -28,10 +28,10 @@ export interface CreatePersona {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Persona belongs to.
      */
-    domain?: string;
-    name:    string;
+    domains?: string[];
+    name:     string;
     /**
      * Optional IDs of users that are going to assign a Persona.
      */

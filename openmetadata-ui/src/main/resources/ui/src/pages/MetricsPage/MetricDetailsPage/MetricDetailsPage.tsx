@@ -33,6 +33,7 @@ import { ClientErrors } from '../../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Metric } from '../../../generated/entity/data/metric';
+import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import {
@@ -47,7 +48,10 @@ import {
   getEntityMissingError,
 } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -81,13 +85,22 @@ const MetricDetailsPage = () => {
     try {
       const res = await saveUpdatedMetricData(updatedData);
 
-      setMetricDetails((previous) => {
-        return {
+      if (key === 'unitOfMeasurement') {
+        setMetricDetails((previous) => ({
           ...previous,
           version: res.version,
-          ...(key ? { [key]: res[key] } : res),
-        };
-      });
+          unitOfMeasurement: res.unitOfMeasurement,
+          customUnitOfMeasurement: res.customUnitOfMeasurement,
+        }));
+      } else {
+        setMetricDetails((previous) => {
+          return {
+            ...previous,
+            version: res.version,
+            ...(key ? { [key]: res[key] } : res),
+          };
+        });
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -120,11 +133,12 @@ const MetricDetailsPage = () => {
           TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
           TabSpecificField.DATA_PRODUCTS,
           TabSpecificField.VOTES,
           TabSpecificField.EXTENSION,
           TabSpecificField.RELATED_METRICS,
+          TabSpecificField.REVIEWERS,
         ].join(','),
       });
       const { id, fullyQualifiedName } = res;
@@ -227,6 +241,7 @@ const MetricDetailsPage = () => {
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
           TabSpecificField.VOTES,
+          TabSpecificField.REVIEWERS,
         ].join(','),
       });
       setMetricDetails(details);
@@ -249,7 +264,7 @@ const MetricDetailsPage = () => {
   }, [metricFqn]);
 
   useEffect(() => {
-    if (metricPermissions.ViewAll || metricPermissions.ViewBasic) {
+    if (getPrioritizedViewPermission(metricPermissions, Operation.ViewBasic)) {
       fetchMetricDetail(metricFqn);
     }
   }, [metricPermissions, metricFqn]);

@@ -22,9 +22,14 @@ import {
   TagSource,
 } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../../utils/PermissionsUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
@@ -56,8 +61,8 @@ const DocumentationTab = ({
   const {
     editDescriptionPermission,
     editCustomAttributePermission,
-    viewAllPermission,
     editTagsPermission,
+    viewCustomPropertiesPermission,
     editGlossaryTermsPermission,
   } = useMemo(() => {
     if (isVersionsView) {
@@ -71,28 +76,33 @@ const DocumentationTab = ({
       };
     }
 
-    const editDescription = permissions?.EditDescription;
-
-    const editOwner = permissions?.EditOwners;
-
-    const editAll = permissions?.EditAll;
-
-    const editCustomAttribute = permissions?.EditCustomFields;
-
-    const viewAll = permissions?.ViewAll;
-
-    const editTags = permissions?.EditTags;
-
-    const editGlossaryTerms = permissions?.EditGlossaryTerms;
-
     return {
-      editDescriptionPermission: editAll || editDescription,
-      editOwnerPermission: editAll || editOwner,
-      editAllPermission: editAll,
-      editCustomAttributePermission: editAll || editCustomAttribute,
-      editTagsPermission: editAll || editTags,
-      editGlossaryTermsPermission: editAll || editGlossaryTerms,
-      viewAllPermission: viewAll,
+      editDescriptionPermission: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditDescription
+      ),
+      editOwnerPermission: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditOwners
+      ),
+      editAllPermission: permissions?.EditAll,
+      editCustomAttributePermission: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditCustomFields
+      ),
+      editTagsPermission: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditTags
+      ),
+      editGlossaryTermsPermission: getPrioritizedEditPermission(
+        permissions,
+        Operation.EditGlossaryTerms
+      ),
+      viewAllPermission: permissions?.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        permissions,
+        Operation.ViewCustomFields
+      ),
     };
   }, [permissions, isVersionsView, resourceType]);
 
@@ -129,16 +139,21 @@ const DocumentationTab = ({
 
   return (
     <ResizablePanels
-      className="h-full domain-height-with-resizable-panel"
+      className="h-full domain-height-with-resizable-panel no-right-panel-splitter"
       firstPanel={{
-        className: 'domain-resizable-panel-container',
+        className:
+          'domain-resizable-panel-container left-panel-documentation-tab',
         children: (
           <DescriptionV1
             removeBlur
             wrapInCard
             description={description}
             entityName={getEntityName(domain)}
-            entityType={EntityType.DOMAIN}
+            entityType={
+              type === DocumentationEntity.DOMAIN
+                ? EntityType.DOMAIN
+                : EntityType.DATA_PRODUCT
+            }
             hasEditAccess={editDescriptionPermission}
             showCommentsIcon={false}
             onDescriptionUpdate={onDescriptionUpdate}
@@ -156,7 +171,7 @@ const DocumentationTab = ({
               newLook
               displayType={DisplayType.READ_MORE}
               entityFqn={domain.fullyQualifiedName}
-              entityType={EntityType.DOMAIN}
+              entityType={resourceType}
               permission={editTagsPermission}
               selectedTags={domain.tags ?? []}
               showTaskHandler={false}
@@ -170,7 +185,7 @@ const DocumentationTab = ({
               newLook
               displayType={DisplayType.READ_MORE}
               entityFqn={domain.fullyQualifiedName}
-              entityType={EntityType.DOMAIN}
+              entityType={resourceType}
               permission={editGlossaryTermsPermission}
               selectedTags={domain.tags ?? []}
               showTaskHandler={false}
@@ -189,7 +204,7 @@ const DocumentationTab = ({
                 isRenderedInRightPanel
                 entityType={EntityType.DATA_PRODUCT}
                 hasEditAccess={Boolean(editCustomAttributePermission)}
-                hasPermission={Boolean(viewAllPermission)}
+                hasPermission={Boolean(viewCustomPropertiesPermission)}
                 maxDataCap={5}
               />
             )}
@@ -197,7 +212,7 @@ const DocumentationTab = ({
         ),
         ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
         className:
-          'entity-resizable-right-panel-container domain-resizable-panel-container',
+          'entity-resizable-right-panel-container domain-resizable-panel-container right-panel-documentation-tab',
       }}
     />
   );

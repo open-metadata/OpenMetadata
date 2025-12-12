@@ -106,15 +106,17 @@ export const PIPELINE_DUMMY_DATA: Pipeline = {
   serviceType: PipelineServiceType.Airflow,
   deleted: false,
   scheduleInterval: '5 * * * *',
-  domain: {
-    id: '6b440596-144b-417b-b7ee-95cf0b0d7de4',
-    type: 'domain',
-    name: 'Version -1.6.2 Domain',
-    fullyQualifiedName: '"Version -1.6.2 Domain"',
-    description: '<p>Version -1.6.2 Domain</p>',
-    displayName: 'Version -1.6.2 Domain',
-    inherited: true,
-  },
+  domains: [
+    {
+      id: '6b440596-144b-417b-b7ee-95cf0b0d7de4',
+      type: 'domain',
+      name: 'Version -1.6.2 Domain',
+      fullyQualifiedName: '"Version -1.6.2 Domain"',
+      description: '<p>Version -1.6.2 Domain</p>',
+      displayName: 'Version -1.6.2 Domain',
+      inherited: true,
+    },
+  ],
   votes: {
     upVotes: 0,
     downVotes: 0,

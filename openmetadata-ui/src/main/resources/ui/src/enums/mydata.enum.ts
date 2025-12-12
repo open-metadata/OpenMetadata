@@ -20,3 +20,10 @@ export enum FeedFilter {
   ASSIGNED_TO = 'ASSIGNED_TO',
   OWNER_OR_FOLLOWS = 'OWNER_OR_FOLLOWS',
 }
+
+export enum MyTaskFilter {
+  ALL = 'ALL',
+  ASSIGNED_TO = 'ASSIGNED_TO',
+  MENTIONS = 'MENTIONS',
+  OWNER_OR_FOLLOWS = 'OWNER_OR_FOLLOWS',
+}

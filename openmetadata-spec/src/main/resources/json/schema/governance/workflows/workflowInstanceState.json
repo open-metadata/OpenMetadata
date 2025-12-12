@@ -29,6 +29,10 @@
         "name": {
           "$ref": "../../type/basic.json#/definitions/entityName"
         },
+        "displayName": {
+          "description": "Display name of the workflow stage node.",
+          "type": "string"
+        },
         "startedAt": {
           "description": "Timestamp on which the workflow instance stage started.",
           "$ref": "../../type/basic.json#/definitions/timestamp"

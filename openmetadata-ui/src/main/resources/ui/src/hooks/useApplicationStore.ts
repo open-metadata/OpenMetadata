@@ -19,20 +19,19 @@ import { UIThemePreference } from '../generated/configuration/uiThemePreference'
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import { ApplicationStore } from '../interface/store.interface';
-import { getOidcToken } from '../utils/LocalStorageUtils';
+import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
-
-export const OM_SESSION_KEY = 'om-session';
 
 export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   isApplicationLoading: false,
+  isAuthenticating: true, // Loading until auth state is determined
   theme: getThemeConfig(),
   applicationConfig: {
     customTheme: getThemeConfig(),
   } as UIThemePreference,
   currentUser: undefined,
   newUser: undefined,
-  isAuthenticated: Boolean(getOidcToken()),
+  isAuthenticated: false,
   authConfig: undefined,
   authorizerConfig: undefined,
   isSigningUp: false,
@@ -45,12 +44,49 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   inlineAlertDetails: undefined,
   applications: [],
   appPreferences: {},
+  appVersion: undefined,
+  rdfEnabled: false,
+
+  initializeAuthState: async () => {
+    try {
+      let token = '';
+
+      if ('serviceWorker' in navigator && 'indexedDB' in window) {
+        try {
+          token = await getOidcToken();
+        } catch {
+          try {
+            // Wait for the service worker to be ready before getting the token
+            const { waitForServiceWorkerReady } = await import(
+              '../utils/SwMessenger'
+            );
+            await waitForServiceWorkerReady();
+            token = await getOidcToken();
+          } catch {
+            token = '';
+          }
+        }
+      } else {
+        token = '';
+      }
+
+      set({
+        isAuthenticated: Boolean(token),
+        isAuthenticating: false,
+      });
+    } catch {
+      set({
+        isAuthenticated: false,
+        isAuthenticating: false,
+      });
+    }
+  },
 
   setInlineAlertDetails: (inlineAlertDetails) => {
     set({ inlineAlertDetails });
   },
 
-  setSelectedPersona: (persona: EntityReference) => {
+  setSelectedPersona: (persona: EntityReference | undefined) => {
     set({ selectedPersona: persona });
   },
 
@@ -58,14 +94,13 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     set({ applicationConfig: config, theme: config.customTheme });
   },
   setCurrentUser: (user) => {
-    const { personas, defaultPersona } = user;
-    // Update selected Persona to fetch the customized pages
-    if (defaultPersona && personas?.find((p) => p.id === defaultPersona.id)) {
-      set({ selectedPersona: defaultPersona });
-    }
+    const { defaultPersona } = user;
 
     // Update the current user
-    set({ currentUser: user });
+    set({
+      currentUser: user,
+      selectedPersona: defaultPersona,
+    });
   },
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => {
     set({ authConfig });
@@ -98,7 +133,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
     const { personas, defaultPersona } = user;
     const { selectedPersona } = get();
     // Update selected Persona to fetch the customized pages
-    if (defaultPersona && personas?.find((p) => p.id === defaultPersona.id)) {
+    if (defaultPersona) {
       set({ selectedPersona: defaultPersona });
     }
     // Update selected Persona if Persona is not in the list of personas
@@ -148,5 +183,11 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setApplicationsName: (applications: string[]) => {
     set({ applications: applications });
+  },
+  setAppVersion: (version: string) => {
+    set({ appVersion: version });
+  },
+  setRdfEnabled: (enabled: boolean) => {
+    set({ rdfEnabled: enabled });
   },
 }));

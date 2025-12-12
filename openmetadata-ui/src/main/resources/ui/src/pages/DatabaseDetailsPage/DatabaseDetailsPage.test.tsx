@@ -275,6 +275,26 @@ jest.mock(
   })
 );
 
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 describe('Test DatabaseDetails page', () => {
   it('Component should render', async () => {
     const { container } = render(<DatabaseDetailsPage />, {
@@ -289,7 +309,7 @@ describe('Test DatabaseDetails page', () => {
     );
 
     expect(getDatabaseDetailsByFQN).toHaveBeenCalledWith('bigquery.shopify', {
-      fields: 'owners,tags,domain,votes,extension,dataProducts,followers',
+      fields: 'owners,tags,domains,votes,extension,dataProducts,followers',
       include: 'all',
     });
     expect(entityHeader).toBeInTheDocument();

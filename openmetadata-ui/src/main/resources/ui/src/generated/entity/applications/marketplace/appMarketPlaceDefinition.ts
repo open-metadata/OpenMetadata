@@ -19,6 +19,11 @@ export interface AppMarketPlaceDefinition {
      */
     agentType?: AgentType;
     /**
+     * If true, multiple instances of this app can run concurrently. This is useful for apps
+     * like QueryRunner that support parallel executions with different configurations.
+     */
+    allowConcurrentExecution?: boolean;
+    /**
      * Allow users to configure the app from the UI. If `false`, the `configure` step will be
      * hidden.
      */
@@ -69,10 +74,10 @@ export interface AppMarketPlaceDefinition {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Event subscriptions that will be created when the application is installed.
      */
@@ -93,6 +98,10 @@ export interface AppMarketPlaceDefinition {
      * Unique identifier of this application.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -136,6 +145,10 @@ export interface AppMarketPlaceDefinition {
      */
     supportEmail?: string;
     /**
+     * If the app support execution through the external runner.
+     */
+    supportsIngestionRunner?: boolean;
+    /**
      * If the app run can be interrupted as part of the execution.
      */
     supportsInterrupt?: boolean;
@@ -146,7 +159,7 @@ export interface AppMarketPlaceDefinition {
     /**
      * Tags associated with the entity.
      */
-    tags?: TagLabel[];
+    tags?: TagElement[];
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -169,6 +182,8 @@ export interface AppMarketPlaceDefinition {
  */
 export enum AgentType {
     CollateAI = "CollateAI",
+    CollateAIQualityAgent = "CollateAIQualityAgent",
+    CollateAITierAgent = "CollateAITierAgent",
     Metadata = "Metadata",
 }
 
@@ -177,14 +192,16 @@ export enum AgentType {
  *
  * Configuration for the Automator External Application.
  *
- * This schema defines the Slack App Token Configuration
+ * This schema defines the Slack App Information
+ *
+ * Configuration for the Collate AI Quality Agent.
  *
  * No configuration needed to instantiate the Data Insights Pipeline. The logic is handled
  * in the backend.
  *
  * Search Indexing App.
  *
- * Configuration for the Collate AI Quality Agent.
+ * Cache Warmup Application Configuration.
  *
  * Configuration for the AutoPilot Application.
  */
@@ -197,6 +214,8 @@ export interface CollateAIAppConfig {
     filter?: string;
     /**
      * Patch the description if it is empty, instead of raising a suggestion
+     *
+     * Patch the tier if it is empty, instead of raising a suggestion
      */
     patchIfEmpty?: boolean;
     /**
@@ -217,14 +236,35 @@ export interface CollateAIAppConfig {
      */
     botToken?: string;
     /**
+     * Client Id of the Application
+     */
+    clientId?: string;
+    /**
+     * Client Secret of the Application.
+     */
+    clientSecret?: string;
+    /**
+     * Signing Secret of the Application. Confirm that each request comes from Slack by
+     * verifying its unique signature.
+     */
+    signingSecret?: string;
+    /**
      * User Token
      */
-    userToken?:             string;
+    userToken?: string;
+    /**
+     * Whether the suggested tests should be active or not upon suggestion
+     *
+     * Whether the AutoPilot Workflow should be active or not.
+     */
+    active?:                boolean;
     backfillConfiguration?: BackfillConfiguration;
     /**
      * Maximum number of events processed at a time (Default 100).
      *
      * Maximum number of events sent in a batch (Default 100).
+     *
+     * Number of entities to process in each batch.
      */
     batchSize?:           number;
     moduleConfiguration?: ModuleConfiguration;
@@ -243,10 +283,14 @@ export interface CollateAIAppConfig {
     autoTune?: boolean;
     /**
      * Number of threads to use for reindexing
+     *
+     * Number of parallel threads for processing entities and warming cache.
      */
     consumerThreads?: number;
     /**
      * List of Entities to Reindex
+     *
+     * List of entity types to warm up in cache. Use 'all' to warm up all entity types.
      */
     entities?: string[];
     /**
@@ -275,6 +319,8 @@ export interface CollateAIAppConfig {
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
+     *
+     * Internal queue size for entity processing pipeline.
      */
     queueSize?: number;
     /**
@@ -286,11 +332,9 @@ export interface CollateAIAppConfig {
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
-     * Whether the suggested tests should be active or not upon suggestion
-     *
-     * Whether the AutoPilot Workflow should be active or not.
+     * Force cache warmup even if another instance is detected (use with caution).
      */
-    active?: boolean;
+    force?: boolean;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
@@ -302,6 +346,16 @@ export interface CollateAIAppConfig {
      */
     changeEventRetentionPeriod?: number;
     /**
+     * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
+     * months).
+     */
+    profileDataRetentionPeriod?: number;
+    /**
+     * Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for
+     * two months).
+     */
+    testCaseResultsRetentionPeriod?: number;
+    /**
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
@@ -312,15 +366,25 @@ export interface CollateAIAppConfig {
  * Action to take on those entities. E.g., propagate description through lineage, auto
  * tagging, etc.
  *
+ * Apply Classification Tags to the selected assets.
+ *
+ * Remove Classification Tags Action Type
+ *
+ * Apply Glossary Terms to the selected assets.
+ *
+ * Remove Glossary Terms Action Type
+ *
+ * Add domains to the selected assets.
+ *
+ * Remove domains from the selected assets.
+ *
  * Apply Tags to the selected assets.
  *
- * Remove Tags Action Type
- *
- * Add an owner to the selected assets.
+ * Add a Custom Property to the selected assets.
  *
  * Remove Owner Action Type
  *
- * Add a Custom Property to the selected assets.
+ * Add an owner to the selected assets.
  *
  * Add Test Cases to the selected assets.
  *
@@ -346,6 +410,12 @@ export interface Action {
      * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      *
+     * Apply terms to the children of the selected assets that match the criteria. E.g.,
+     * columns, tasks, topic fields,...
+     *
+     * Remove terms from the children of the selected assets. E.g., columns, tasks, topic
+     * fields,...
+     *
      * Apply the description to the children of the selected assets that match the criteria.
      * E.g., columns, tasks, topic fields,...
      *
@@ -361,8 +431,11 @@ export interface Action {
      * Update tags even if they are already defined in the asset. By default, incoming tags are
      * merged with the existing ones.
      *
-     * Update the domain even if it is defined in the asset. By default, we will only apply the
-     * domain to assets without domain.
+     * Update terms even if they are already defined in the asset. By default, incoming terms
+     * are merged with the existing ones.
+     *
+     * Update the domains even if they are defined in the asset. By default, we will only apply
+     * the domains to assets without domains.
      *
      * Update the description even if they are already defined in the asset. By default, we'll
      * only add the descriptions to assets without the description set.
@@ -389,11 +462,11 @@ export interface Action {
      */
     overwriteMetadata?: boolean;
     /**
-     * Tags to apply
+     * Classification Tags to apply (source must be 'Classification')
      *
-     * Tags to remove
+     * Classification Tags to remove (source must be 'Classification')
      */
-    tags?: TagLabel[];
+    tags?: TagElement[];
     /**
      * Application Type
      */
@@ -401,17 +474,27 @@ export interface Action {
     /**
      * Remove tags from all the children and parent of the selected assets.
      *
+     * Remove terms from all the children and parent of the selected assets.
+     *
      * Remove descriptions from all the children and parent of the selected assets.
      */
     applyToAll?: boolean;
     /**
      * Remove tags by its label type
+     *
+     * Remove terms by its label type
      */
     labels?: LabelElement[];
     /**
-     * Domain to apply
+     * Glossary Terms to apply
+     *
+     * Glossary Terms to remove
      */
-    domain?: EntityReference;
+    terms?: TagElement[];
+    /**
+     * Domains to apply
+     */
+    domains?: EntityReference[];
     /**
      * Description to apply
      */
@@ -425,7 +508,7 @@ export interface Action {
     /**
      * tier to apply
      */
-    tier?: TagLabel;
+    tier?: TagElement;
     /**
      * Test Cases to apply
      */
@@ -457,9 +540,9 @@ export interface Action {
      */
     propagateDescription?: boolean;
     /**
-     * Propagate domain from the parent through lineage
+     * Propagate domains from the parent through lineage
      */
-    propagateDomain?: boolean;
+    propagateDomains?: boolean;
     /**
      * Propagate glossary terms through lineage
      */
@@ -480,25 +563,38 @@ export interface Action {
      * Propagate tier from the parent
      */
     propagateTier?: boolean;
+    /**
+     * Number of levels to propagate lineage. If not set, it will propagate to all levels.
+     */
+    propagationDepth?: number;
+    /**
+     * Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources
+     * with no parents). 'DATA_ASSET' calculates depth relative to each data asset being
+     * processed, ensuring each asset only receives metadata from nodes within the specified
+     * number of hops upstream.
+     */
+    propagationDepthMode?: PropagationDepthMode;
+    /**
+     * List of configurations to stop propagation based on conditions
+     */
+    propagationStopConfigs?: PropagationStopConfig[];
 }
 
 /**
- * Domain to apply
- *
- * This schema defines the EntityReference type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
- *
- * Owners to apply
+ * Domains to apply
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
- * it belongs to.
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Optional custom notification template for this subscription. When not set, system default
+ * template will be used. Only USER templates can be assigned.
  */
 export interface EntityReference {
     /**
@@ -545,6 +641,8 @@ export interface EntityReference {
 
 /**
  * Remove tags by its label type
+ *
+ * Remove terms by its label type
  */
 export enum LabelElement {
     Automated = "Automated",
@@ -553,21 +651,79 @@ export enum LabelElement {
 }
 
 /**
+ * Mode for calculating propagation depth. 'ROOT' calculates depth from root nodes (sources
+ * with no parents). 'DATA_ASSET' calculates depth relative to each data asset being
+ * processed, ensuring each asset only receives metadata from nodes within the specified
+ * number of hops upstream.
+ */
+export enum PropagationDepthMode {
+    DataAsset = "DATA_ASSET",
+    Root = "ROOT",
+}
+
+/**
+ * Configuration to stop lineage propagation based on conditions
+ */
+export interface PropagationStopConfig {
+    /**
+     * The metadata attribute to check for stopping propagation
+     */
+    metadataAttribute: MetadataAttribute;
+    /**
+     * List of attribute values that will stop propagation when any of them is matched
+     */
+    value: Array<TagLabel | string>;
+}
+
+/**
+ * The metadata attribute to check for stopping propagation
+ */
+export enum MetadataAttribute {
+    Description = "description",
+    Domains = "domains",
+    GlossaryTerms = "glossaryTerms",
+    Owner = "owner",
+    Tags = "tags",
+    Tier = "tier",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  *
  * tier to apply
+ *
+ * Domains to apply
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Optional custom notification template for this subscription. When not set, system default
+ * template will be used. Only USER templates can be assigned.
  */
 export interface TagLabel {
     /**
      * Description for the tag label.
+     *
+     * Optional description of entity.
      */
     description?: string;
     /**
      * Display Name that identifies this tag.
+     *
+     * Display Name that identifies this entity.
      */
     displayName?: string;
     /**
      * Link to the tag resource.
+     *
+     * Link to the entity resource.
      */
     href?: string;
     /**
@@ -577,22 +733,52 @@ export interface TagLabel {
      * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
      * used to determine the tag label.
      */
-    labelType: LabelTypeEnum;
+    labelType?: LabelTypeEnum;
     /**
      * Name of the tag or glossary term.
+     *
+     * Name of the entity instance.
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
-    source: TagSource;
+    source?: TagSource;
     /**
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state:  State;
-    style?: Style;
-    tagFQN: string;
+    state?:  State;
+    style?:  Style;
+    tagFQN?: string;
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id?: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type?: string;
 }
 
 /**
@@ -637,9 +823,78 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
+}
+
+/**
+ * This schema defines the type for labeling an entity with a Tag.
+ *
+ * tier to apply
+ */
+export interface TagElement {
+    /**
+     * Description for the tag label.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this tag.
+     */
+    displayName?: string;
+    /**
+     * Link to the tag resource.
+     */
+    href?: string;
+    /**
+     * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+     * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+     * relationship (see Classification.json for more details). 'Propagated` indicates a tag
+     * label was propagated from upstream based on lineage. 'Automated' is used when a tool was
+     * used to determine the tag label.
+     */
+    labelType: LabelTypeEnum;
+    /**
+     * Name of the tag or glossary term.
+     */
+    name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
+     * Label is from Tags or Glossary.
+     */
+    source: TagSource;
+    /**
+     * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     */
+    state:  State;
+    style?: Style;
+    tagFQN: string;
 }
 
 /**
@@ -654,7 +909,7 @@ export interface TestCaseDefinitions {
     /**
      * Tags to apply
      */
-    tags?: TagLabel[];
+    tags?: TagElement[];
     /**
      * Fully qualified name of the test definition.
      */
@@ -687,9 +942,13 @@ export interface TestCaseParameterValue {
  *
  * Add Tags action type.
  *
- * Remove Tags Action Type.
+ * Remove Classification Tags Action Type.
  *
- * Add Owner Action Type.
+ * Add Terms action type.
+ *
+ * Remove Terms Action Type.
+ *
+ * Add Domain Action Type.
  *
  * Remove Domain Action Type
  *
@@ -706,6 +965,8 @@ export interface TestCaseParameterValue {
  * Add Test Case Action Type.
  *
  * Remove Test Case Action Type
+ *
+ * Add Owner Action Type.
  *
  * Remove Owner Action Type
  *
@@ -726,6 +987,7 @@ export enum ActionType {
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
     AddTagsAction = "AddTagsAction",
+    AddTermsAction = "AddTermsAction",
     AddTestCaseAction = "AddTestCaseAction",
     AddTierAction = "AddTierAction",
     LineagePropagationAction = "LineagePropagationAction",
@@ -736,6 +998,7 @@ export enum ActionType {
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
     RemoveTagsAction = "RemoveTagsAction",
+    RemoveTermsAction = "RemoveTermsAction",
     RemoveTestCaseAction = "RemoveTestCaseAction",
     RemoveTierAction = "RemoveTierAction",
 }
@@ -866,6 +1129,7 @@ export interface Resource {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -877,8 +1141,10 @@ export enum SearchIndexMappingLanguage {
 export enum Type {
     AutoPilotApplication = "AutoPilotApplication",
     Automator = "Automator",
+    CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
     CollateAIQualityAgent = "CollateAIQualityAgent",
+    CollateAITierAgent = "CollateAITierAgent",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
     SearchIndexing = "SearchIndexing",
@@ -987,9 +1253,9 @@ export interface CreateEventSubscription {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Event Subscription belongs to.
      */
-    domain?: string;
+    domains?: string[];
     /**
      * Is the alert enabled.
      */
@@ -1002,6 +1268,11 @@ export interface CreateEventSubscription {
      * Name that uniquely identifies this Alert.
      */
     name: string;
+    /**
+     * Optional custom notification template for this subscription. When not set, system default
+     * template will be used. Only USER templates can be assigned.
+     */
+    notificationTemplate?: EntityReference;
     /**
      * Owners of this Alert.
      */
@@ -1042,6 +1313,11 @@ export interface Destination {
     category: SubscriptionCategory;
     config?:  Webhook;
     /**
+     * Maximum depth for downstream stakeholder notification traversal. If null, traverses
+     * without depth limit (with cycle protection).
+     */
+    downstreamDepth?: number | null;
+    /**
      * Is the subscription enabled.
      */
     enabled?: boolean;
@@ -1049,6 +1325,12 @@ export interface Destination {
      * Unique identifier that identifies this Event Subscription.
      */
     id?: string;
+    /**
+     * Enable notification of downstream entity stakeholders. When true, notifications will
+     * traverse lineage to include stakeholders of entities that consume data from the affected
+     * entity.
+     */
+    notifyDownstream?: boolean;
     /**
      * Read timeout in seconds. (Default 12s).
      */

@@ -56,7 +56,7 @@ import {
   updatePost,
   updateThread,
 } from '../rest/feedsAPI';
-import { searchData } from '../rest/miscAPI';
+import { searchQuery } from '../rest/searchAPI';
 import {
   getEntityPlaceHolder,
   getPartialNameFromFQN,
@@ -78,6 +78,8 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from './ProfilerUtils';
+import { getSanitizeContent } from './sanitize.utils';
+import { getTermQuery } from './SearchUtils';
 import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -148,6 +150,10 @@ export const buildMentionLink = (entityType: string, entityFqn: string) => {
     const classificationFqn = Fqn.split(entityFqn);
 
     return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
+  } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+    return `${document.location.protocol}//${
+      document.location.host
+    }/knowledge-center/${getEncodedFqn(entityFqn)}`;
   }
 
   return `${document.location.protocol}//${
@@ -162,16 +168,16 @@ export async function suggestions(
   if (mentionChar === '@') {
     let atValues = [];
 
-    const data = await searchData(
-      searchTerm ?? '',
-      1,
-      5,
-      'isBot:false',
-      'displayName.keyword',
-      'asc',
-      [SearchIndex.USER, SearchIndex.TEAM]
-    );
-    const hits = data.data.hits.hits;
+    const data = await searchQuery({
+      query: searchTerm ?? '',
+      pageNumber: 1,
+      pageSize: 5,
+      queryFilter: getTermQuery({ isBot: 'false' }),
+      sortField: 'displayName.keyword',
+      sortOrder: 'asc',
+      searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+    });
+    const hits = data.hits.hits;
 
     atValues = await Promise.all(
       hits.map(async (hit) => {
@@ -199,16 +205,15 @@ export async function suggestions(
     return atValues as MentionSuggestionsItem[];
   } else {
     let hashValues = [];
-    const data = await searchData(
-      searchTerm ?? '',
-      1,
-      5,
-      '',
-      'displayName.keyword',
-      'asc',
-      SearchIndex.DATA_ASSET
-    );
-    const hits = data.data.hits.hits;
+    const data = await searchQuery({
+      query: searchTerm ?? '',
+      pageNumber: 1,
+      pageSize: 5,
+      sortField: 'displayName.keyword',
+      sortOrder: 'asc',
+      searchIndex: SearchIndex.DATA_ASSET,
+    });
+    const hits = data.hits.hits;
 
     hashValues = hits.map((hit) => {
       const entityType = hit._source.entityType;
@@ -329,7 +334,7 @@ export const getBackendFormat = (message: string) => {
     updatedMessage = updatedMessage.replaceAll(h, entityLink);
   });
 
-  return updatedMessage;
+  return getSanitizeContent(updatedMessage);
 };
 
 export const getFrontEndFormat = (message: string) => {
@@ -343,7 +348,7 @@ export const getFrontEndFormat = (message: string) => {
     updatedMessage = updatedMessage.replaceAll(m, markdownLink);
   });
 
-  return updatedMessage;
+  return getSanitizeContent(updatedMessage);
 };
 
 export const getUpdatedThread = (id: string) => {
@@ -497,18 +502,23 @@ export const updateThreadData = async (
   }
 };
 
-export const prepareFeedLink = (entityType: string, entityFQN: string) => {
+export const prepareFeedLink = (
+  entityType: string,
+  entityFQN: string,
+  subTab?: string
+) => {
   const withoutFeedEntities = [
     EntityType.WEBHOOK,
-    EntityType.GLOSSARY,
-    EntityType.GLOSSARY_TERM,
     EntityType.TYPE,
+    EntityType.KNOWLEDGE_PAGE,
   ];
 
   const entityLink = entityUtilClassBase.getEntityLink(entityType, entityFQN);
 
   if (!withoutFeedEntities.includes(entityType as EntityType)) {
-    return `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
+    const activityFeedLink = `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
+
+    return subTab ? `${activityFeedLink}/${subTab}` : activityFeedLink;
   } else {
     return entityLink;
   }

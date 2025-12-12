@@ -26,6 +26,7 @@ import { checkPermission } from '../../../../utils/PermissionsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import '../incident-manager.style.less';
+import InlineSeverity from './InlineSeverity.component';
 import { SeverityProps } from './Severity.interface';
 import SeverityModal from './SeverityModal.component';
 
@@ -35,6 +36,7 @@ const Severity = ({
   hasPermission,
   newLook = false,
   headerName,
+  isInline = false,
 }: SeverityProps) => {
   const { t } = useTranslation();
   const [isEditSeverity, setIsEditSeverity] = useState<boolean>(false);
@@ -56,6 +58,17 @@ const Severity = ({
     },
     [onSubmit]
   );
+
+  if (isInline) {
+    return (
+      <InlineSeverity
+        hasEditPermission={hasEditPermission}
+        severity={severity}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
   if (headerName) {
     return (
       <div className="flex flex-col gap-3">
@@ -110,18 +123,17 @@ const Severity = ({
           NO_DATA_PLACEHOLDER
         )}
         {onSubmit && hasEditPermission && (
-          <Tooltip
+          <EditIconButton
+            newLook
+            className="flex-center"
+            data-testid="edit-severity-icon"
+            disabled={!hasEditPermission}
+            size="small"
             title={t('label.edit-entity', {
               entity: t('label.severity'),
-            })}>
-            <EditIconButton
-              data-testid="edit-severity-icon"
-              icon={<EditIcon width="14px" />}
-              newLook={newLook}
-              size="small"
-              onClick={onEditSeverity}
-            />
-          </Tooltip>
+            })}
+            onClick={onEditSeverity}
+          />
         )}
       </Space>
 

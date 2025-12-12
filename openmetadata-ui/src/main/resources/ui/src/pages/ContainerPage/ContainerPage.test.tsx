@@ -204,6 +204,8 @@ jest.mock('../../utils/EntityUtils', () => ({
 
 jest.mock('../../utils/PermissionsUtils', () => ({
   DEFAULT_ENTITY_PERMISSION: {},
+  getPrioritizedEditPermission: jest.fn().mockReturnValue(true),
+  getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../utils/StringsUtils', () => ({
@@ -242,11 +244,43 @@ jest.mock('../../hoc/LimitWrapper', () => {
   return jest.fn().mockImplementation(({ children }) => <>{children}</>);
 });
 
+jest.mock(
+  '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
+  () => ({
+    useRuleEnforcementProvider: jest.fn().mockImplementation(() => ({
+      fetchRulesForEntity: jest.fn(),
+      getRulesForEntity: jest.fn(),
+      getEntityRuleValidation: jest.fn(),
+    })),
+  })
+);
+
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
 describe('Container Page Component', () => {
+  beforeEach(() => {
+    const { getPrioritizedEditPermission, getPrioritizedViewPermission } =
+      jest.requireMock('../../utils/PermissionsUtils');
+    getPrioritizedEditPermission.mockReturnValue(true);
+    getPrioritizedViewPermission.mockReturnValue(true);
+  });
+
   it('should show error-placeholder, if not have view permission', async () => {
     mockGetEntityPermissionByFqn.mockResolvedValueOnce({
       ViewBasic: false,
     });
+
+    const { getPrioritizedViewPermission } = jest.requireMock(
+      '../../utils/PermissionsUtils'
+    );
+    getPrioritizedViewPermission.mockReturnValue(false);
 
     render(<ContainerPage />);
 
@@ -279,7 +313,7 @@ describe('Container Page Component', () => {
             'tags',
             'followers',
             'extension',
-            'domain',
+            'domains',
             'dataProducts',
             'votes',
           ],
@@ -327,7 +361,7 @@ describe('Container Page Component', () => {
             'tags',
             'followers',
             'extension',
-            'domain',
+            'domains',
             'dataProducts',
             'votes',
           ],
@@ -340,7 +374,7 @@ describe('Container Page Component', () => {
 
     const tabs = screen.getAllByRole('tab');
 
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(6);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('DescriptionV1')).toBeVisible();
     expect(screen.getByText('ContainerDataModel')).toBeVisible();

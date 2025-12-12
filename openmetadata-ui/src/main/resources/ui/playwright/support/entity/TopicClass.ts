@@ -24,76 +24,33 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class TopicClass extends EntityClass {
-  service = {
-    name: `pw-messaging-service-${uuid()}`,
-    serviceType: 'Kafka',
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Kafka',
-        bootstrapServers: 'Bootstrap Servers',
-        saslUsername: 'admin',
-        saslPassword: 'admin',
-        saslMechanism: 'PLAIN',
-        supportsMetadataExtraction: true,
-      },
-    },
+        type: string;
+        bootstrapServers: string;
+        saslUsername: string;
+        saslPassword: string;
+        saslMechanism: string;
+        supportsMetadataExtraction: boolean;
+      };
+    };
   };
-  private topicName = `pw-topic-${uuid()}`;
-
-  children = [
-    {
-      name: `default${uuid()}`,
-      dataType: 'RECORD',
-      tags: [],
-      children: [
-        {
-          name: `name${uuid()}`,
-          dataType: 'RECORD',
-          tags: [],
-          children: [
-            {
-              name: 'first_name',
-              dataType: 'STRING',
-              description: 'Description for schema field first_name',
-              tags: [],
-            },
-            {
-              name: 'last_name',
-              dataType: 'STRING',
-              tags: [],
-            },
-          ],
-        },
-        {
-          name: 'age',
-          dataType: 'INT',
-          tags: [],
-        },
-        {
-          name: 'club_name',
-          dataType: 'STRING',
-          tags: [],
-        },
-      ],
-    },
-    {
-      name: `secondary${uuid()}`,
-      dataType: 'RECORD',
-      tags: [],
-      children: [],
-    },
-  ];
-
-  entity = {
-    name: this.topicName,
-    service: this.service.name,
+  private topicName: string;
+  children: unknown[];
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
+    description: string;
     messageSchema: {
-      schemaText: `{"type":"object","required":["name","age","club_name"],"properties":{"name":{"type":"object","required":["first_name","last_name"],
-    "properties":{"first_name":{"type":"string"},"last_name":{"type":"string"}}},"age":{"type":"integer"},"club_name":{"type":"string"}}}`,
-      schemaType: 'JSON',
-      schemaFields: this.children,
-    },
-    partitions: 128,
+      schemaText: string;
+      schemaType: string;
+      schemaFields: unknown[];
+    };
+    partitions: number;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -102,12 +59,88 @@ export class TopicClass extends EntityClass {
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Topic);
-    this.service.name = name ?? this.service.name;
     this.type = 'Topic';
     this.childrenTabId = 'schema';
-    this.childrenSelectorId = this.children[0].name;
     this.serviceCategory = SERVICE_TYPE.Messaging;
     this.serviceType = ServiceTypes.MESSAGING_SERVICES;
+
+    const serviceName = name ?? `pw-messaging-service-${uuid()}`;
+    this.topicName = `pw-topic-entity-class-${uuid()}`;
+
+    this.service = {
+      name: serviceName,
+      serviceType: 'Kafka',
+      connection: {
+        config: {
+          type: 'Kafka',
+          bootstrapServers: 'Bootstrap Servers',
+          saslUsername: 'admin',
+          saslPassword: 'admin',
+          saslMechanism: 'PLAIN',
+          supportsMetadataExtraction: true,
+        },
+      },
+    };
+
+    this.children = [
+      {
+        name: `default${uuid()}`,
+        dataType: 'RECORD',
+        tags: [],
+        children: [
+          {
+            name: `name${uuid()}`,
+            dataType: 'RECORD',
+            tags: [],
+            children: [
+              {
+                name: 'first_name',
+                dataType: 'STRING',
+                description: 'Description for schema field first_name',
+                tags: [],
+              },
+              {
+                name: 'last_name',
+                dataType: 'STRING',
+                tags: [],
+              },
+            ],
+          },
+          {
+            name: 'age',
+            dataType: 'INT',
+            tags: [],
+          },
+          {
+            name: 'club_name',
+            dataType: 'STRING',
+            tags: [],
+          },
+        ],
+      },
+      {
+        name: `secondary${uuid()}`,
+        dataType: 'RECORD',
+        tags: [],
+        children: [],
+      },
+    ];
+
+    this.entity = {
+      name: this.topicName,
+      displayName: this.topicName,
+      service: this.service.name,
+      description: `Description for ${this.topicName}`,
+      messageSchema: {
+        schemaText: `{"type":"object","required":["name","age","club_name"],"properties":{"name":{"type":"object","required":["first_name","last_name"],
+    "properties":{"first_name":{"type":"string"},"last_name":{"type":"string"}}},"age":{"type":"integer"},"club_name":{"type":"string"}}}`,
+        schemaType: 'JSON',
+        schemaFields: this.children,
+      },
+      partitions: 128,
+    };
+
+    this.childrenSelectorId = this.children[0]['name'];
   }
 
   async create(apiContext: APIRequestContext) {
@@ -154,18 +187,28 @@ export class TopicClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+  }
+
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.entity.name}`,
+      dataTestId: `${
+        this.entityResponseData.service.name ?? this.service.name
+      }-${this.entityResponseData.name ?? this.entity.name}`,
     });
   }
 

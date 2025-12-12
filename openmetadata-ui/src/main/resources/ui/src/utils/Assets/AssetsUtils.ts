@@ -14,6 +14,10 @@ import { Operation } from 'fast-json-patch';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { Directory } from '../../generated/entity/data/directory';
+import { File } from '../../generated/entity/data/file';
+import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
+import { Worksheet } from '../../generated/entity/data/worksheet';
 import { ListParams } from '../../interface/API.interface';
 import {
   getApiCollectionByFQN,
@@ -23,6 +27,7 @@ import {
   getApiEndPointByFQN,
   patchApiEndPoint,
 } from '../../rest/apiEndpointsAPI';
+import { getChartByFqn, patchChartDetails } from '../../rest/chartsAPI';
 import {
   getDashboardByFqn,
   patchDashboardDetails,
@@ -38,6 +43,10 @@ import {
   patchDataModelDetails,
 } from '../../rest/dataModelsAPI';
 import { getDomainByName, patchDomains } from '../../rest/domainAPI';
+import {
+  getDriveAssetByFqn,
+  patchDriveAssetDetails,
+} from '../../rest/driveAPI';
 import {
   getGlossariesByName,
   getGlossaryTermByFQN,
@@ -87,6 +96,8 @@ export const getAPIfromSource = (
       return patchTableDetails;
     case EntityType.DASHBOARD:
       return patchDashboardDetails;
+    case EntityType.CHART:
+      return patchChartDetails;
     case EntityType.MLMODEL:
       return patchMlModelDetails;
     case EntityType.PIPELINE:
@@ -125,6 +136,18 @@ export const getAPIfromSource = (
       return patchMetric;
     case EntityType.DOMAIN:
       return patchDomains;
+    case EntityType.DIRECTORY:
+      return (id: string, data: Operation[]) =>
+        patchDriveAssetDetails<Directory>(id, data, EntityType.DIRECTORY);
+    case EntityType.FILE:
+      return (id: string, data: Operation[]) =>
+        patchDriveAssetDetails<File>(id, data, EntityType.FILE);
+    case EntityType.SPREADSHEET:
+      return (id: string, data: Operation[]) =>
+        patchDriveAssetDetails<Spreadsheet>(id, data, EntityType.SPREADSHEET);
+    case EntityType.WORKSHEET:
+      return (id: string, data: Operation[]) =>
+        patchDriveAssetDetails<Worksheet>(id, data, EntityType.WORKSHEET);
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -133,6 +156,8 @@ export const getAPIfromSource = (
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
     case EntityType.API_SERVICE:
+    case EntityType.SECURITY_SERVICE:
+    case EntityType.DRIVE_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -152,6 +177,8 @@ export const getEntityAPIfromSource = (
       return getTableDetailsByFQN;
     case EntityType.DASHBOARD:
       return getDashboardByFqn;
+    case EntityType.CHART:
+      return getChartByFqn;
     case EntityType.MLMODEL:
       return getMlModelByFQN;
     case EntityType.PIPELINE:
@@ -190,6 +217,38 @@ export const getEntityAPIfromSource = (
       return getMetricByFqn;
     case EntityType.DOMAIN:
       return getDomainByName;
+    case EntityType.DIRECTORY:
+      return (fqn: string, params?: ListParams) =>
+        getDriveAssetByFqn<Directory>(
+          fqn,
+          EntityType.DIRECTORY,
+          params?.fields,
+          params?.include
+        );
+    case EntityType.FILE:
+      return (fqn: string, params?: ListParams) =>
+        getDriveAssetByFqn<File>(
+          fqn,
+          EntityType.FILE,
+          params?.fields,
+          params?.include
+        );
+    case EntityType.SPREADSHEET:
+      return (fqn: string, params?: ListParams) =>
+        getDriveAssetByFqn<Spreadsheet>(
+          fqn,
+          EntityType.SPREADSHEET,
+          params?.fields,
+          params?.include
+        );
+    case EntityType.WORKSHEET:
+      return (fqn: string, params?: ListParams) =>
+        getDriveAssetByFqn<Worksheet>(
+          fqn,
+          EntityType.WORKSHEET,
+          params?.fields,
+          params?.include
+        );
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -198,6 +257,8 @@ export const getEntityAPIfromSource = (
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
     case EntityType.API_SERVICE:
+    case EntityType.SECURITY_SERVICE:
+    case EntityType.DRIVE_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 

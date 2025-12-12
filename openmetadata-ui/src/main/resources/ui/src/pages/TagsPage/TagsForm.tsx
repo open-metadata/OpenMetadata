@@ -13,6 +13,7 @@
 
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Modal, Space, Typography } from 'antd';
+import { isArray } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
@@ -27,6 +28,7 @@ import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/tests/testCase';
 import { useDomainStore } from '../../hooks/useDomainStore';
+import { useEntityRules } from '../../hooks/useEntityRules';
 import {
   FieldProp,
   FieldTypes,
@@ -53,8 +55,9 @@ const TagsForm = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
-  const selectedDomain = Form.useWatch<EntityReference | undefined>(
-    'domain',
+  const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
+  const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
+    'domains',
     form
   );
 
@@ -112,55 +115,65 @@ const TagsForm = ({
     [isEditing, isClassification, permissions]
   );
 
-  const ownerField: FieldProp = {
-    name: 'owners',
-    id: 'root/owner',
-    required: false,
-    label: t('label.owner-plural'),
-    type: FieldTypes.USER_TEAM_SELECT,
-    props: {
-      hasPermission: true,
-      children: (
-        <Button
-          data-testid="add-owner"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
-      multiple: { user: true, team: false },
-    },
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    formItemProps: {
-      valuePropName: 'owners',
-      trigger: 'onUpdate',
-    },
-  };
+  const ownerField: FieldProp = useMemo(
+    () => ({
+      name: 'owners',
+      id: 'root/owner',
+      required: false,
+      label: t('label.owner-plural'),
+      type: FieldTypes.USER_TEAM_SELECT,
+      props: {
+        hasPermission: true,
+        children: (
+          <Button
+            data-testid="add-owner"
+            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            size="small"
+            type="primary"
+          />
+        ),
+        multiple: {
+          user: entityRules.canAddMultipleUserOwners,
+          team: entityRules.canAddMultipleTeamOwner,
+        },
+      },
+      formItemLayout: FormItemLayout.HORIZONTAL,
+      formItemProps: {
+        valuePropName: 'owners',
+        trigger: 'onUpdate',
+      },
+    }),
+    [entityRules]
+  );
 
-  const domainField: FieldProp = {
-    name: 'domain',
-    id: 'root/domain',
-    required: false,
-    label: t('label.domain'),
-    type: FieldTypes.DOMAIN_SELECT,
-    props: {
-      selectedDomain: activeDomainEntityRef,
-      children: (
-        <Button
-          data-testid="add-domain"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
-    },
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    formItemProps: {
-      valuePropName: 'selectedDomain',
-      trigger: 'onUpdate',
-      initialValue: activeDomainEntityRef,
-    },
-  };
+  const domainField: FieldProp = useMemo(
+    () => ({
+      name: 'domains',
+      id: 'root/domains',
+      required: false,
+      label: t('label.domain-plural'),
+      type: FieldTypes.DOMAIN_SELECT,
+      props: {
+        selectedDomain: activeDomainEntityRef,
+        children: (
+          <Button
+            data-testid="add-domain"
+            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            size="small"
+            type="primary"
+          />
+        ),
+        multiple: entityRules.canAddMultipleDomains,
+      },
+      formItemLayout: FormItemLayout.HORIZONTAL,
+      formItemProps: {
+        valuePropName: 'selectedDomain',
+        trigger: 'onUpdate',
+        initialValue: activeDomainEntityRef,
+      },
+    }),
+    [entityRules.canAddMultipleDomains]
+  );
 
   const formFields: FieldProp[] = [
     {
@@ -292,7 +305,11 @@ const TagsForm = ({
       setSaving(true);
       const submitData = {
         ...data,
-        domain: selectedDomain?.fullyQualifiedName,
+        domains: selectedDomain
+          ? (isArray(selectedDomain) ? selectedDomain : [selectedDomain])?.map(
+              (domain) => domain.fullyQualifiedName
+            )
+          : undefined,
       };
       await onSubmit(submitData);
       form.setFieldsValue(DEFAULT_FORM_VALUE);
@@ -352,7 +369,7 @@ const TagsForm = ({
             {getField(domainField)}
             {selectedDomain && (
               <DomainLabel
-                domain={selectedDomain}
+                domains={selectedDomain}
                 entityFqn=""
                 entityId=""
                 entityType={

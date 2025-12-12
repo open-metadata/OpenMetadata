@@ -70,6 +70,7 @@ from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.owner_utils import get_owner_from_config
 from metadata.utils.tag_utils import get_tag_label
 
 logger = ingestion_logger()
@@ -135,6 +136,7 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["databaseSchema"],
+        post_process=["mark_databases_as_deleted"],
     )
     databaseSchema: Annotated[
         TopologyNode, Field(description="Database Schema Node")
@@ -158,7 +160,11 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["table", "stored_procedure"],
-        post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
+        post_process=[
+            "mark_schemas_as_deleted",
+            "mark_tables_as_deleted",
+            "mark_stored_procedures_as_deleted",
+        ],
         threads=True,
     )
     table: Annotated[
@@ -217,6 +223,8 @@ class DatabaseServiceSource(
     config: WorkflowSource
     database_source_state: Set = set()
     stored_procedure_source_state: Set = set()
+    database_entity_source_state: Set = set()
+    schema_entity_source_state: Set = set()
     # Big union of types we want to fetch dynamically
     service_connection: DatabaseConnection.model_fields["config"].annotation
 
@@ -494,6 +502,64 @@ class DatabaseServiceSource(
 
         self.stored_procedure_source_state.add(table_fqn)
 
+    def register_record_database_request(
+        self, database_request: CreateDatabaseRequest
+    ) -> None:
+        """
+        Mark the database record as scanned and update the database_entity_source_state
+        """
+        database_fqn = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.context.get().database_service,
+            database_name=database_request.name.root,
+        )
+
+        self.database_entity_source_state.add(database_fqn)
+
+    def register_record_schema_request(
+        self, schema_request: CreateDatabaseSchemaRequest
+    ) -> None:
+        """
+        Mark the schema record as scanned and update the schema_entity_source_state
+        """
+        schema_fqn = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.context.get().database_service,
+            database_name=self.context.get().database,
+            schema_name=schema_request.name.root,
+        )
+
+        self.schema_entity_source_state.add(schema_fqn)
+
+    def _get_filtered_database_names(
+        self, return_fqn: bool = False, add_to_status: bool = True
+    ) -> Iterable[str]:
+        """
+        Get filtered database names based on the database filter pattern
+        """
+        database_names_iterable = getattr(
+            self, "get_database_names_raw", self.get_database_names
+        )()
+        for database_name in database_names_iterable:
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,
+                database_name=database_name,
+            )
+            if filter_by_schema(
+                self.source_config.databaseFilterPattern,
+                database_fqn
+                if self.source_config.useFqnForFiltering
+                else database_name,
+            ):
+                if add_to_status:
+                    self.status.filter(database_fqn, "Database Filtered Out")
+                continue
+            yield database_fqn if return_fqn else database_name
+
     def _get_filtered_schema_names(
         self, return_fqn: bool = False, add_to_status: bool = True
     ) -> Iterable[str]:
@@ -514,12 +580,121 @@ class DatabaseServiceSource(
                 continue
             yield schema_fqn if return_fqn else schema_name
 
+    def get_database_owner_ref(
+        self, database_name: str
+    ) -> Optional[EntityReferenceList]:
+        """
+        Get owner for database entity using ownerConfig.
+
+        Resolution order:
+        1. ownerConfig (with topology-based configuration)
+
+        Args:
+            database_name: Name of the database
+
+        Returns:
+            EntityReferenceList with owner or None
+        """
+        try:
+            # Priority 1: Use ownerConfig if configured
+            if (
+                hasattr(self.source_config, "ownerConfig")
+                and self.source_config.ownerConfig
+            ):
+                owner_ref = get_owner_from_config(
+                    metadata=self.metadata,
+                    owner_config=self.source_config.ownerConfig,
+                    entity_type="database",
+                    entity_name=database_name,
+                    parent_owner=None,  # Database is top level
+                )
+                if owner_ref:
+                    return owner_ref
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error processing owner for database {database_name}: {exc}"
+            )
+
+        return None
+
+    def get_schema_owner_ref(self, schema_name: str) -> Optional[EntityReferenceList]:
+        """
+        Get owner for schema entity using ownerConfig.
+
+        Resolution order:
+        1. ownerConfig (with topology-based configuration and inheritance)
+
+        Args:
+            schema_name: Name of the schema
+
+        Returns:
+            EntityReferenceList with owner or None
+        """
+        try:
+            # Read database_owner directly from context
+            parent_owner = getattr(self.context.get(), "database_owner", None)
+
+            schema_fqn = f"{self.context.get().database}.{schema_name}"
+
+            if (
+                hasattr(self.source_config, "ownerConfig")
+                and self.source_config.ownerConfig
+            ):
+                owner_ref = get_owner_from_config(
+                    metadata=self.metadata,
+                    owner_config=self.source_config.ownerConfig,
+                    entity_type="databaseSchema",
+                    entity_name=schema_fqn,
+                    parent_owner=parent_owner,
+                )
+                if owner_ref and owner_ref.root:
+                    return owner_ref
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for schema {schema_name}: {exc}")
+
+        return None
+
     @calculate_execution_time()
     def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
         """
-        Method to process the table owners
+        Get owner for table entity using ownerConfig.
+
+        Resolution order:
+        1. ownerConfig (with topology-based configuration and inheritance)
+        2. Source system owner (if includeOwners is enabled)
+
+        Args:
+            table_name: Name of the table
+
+        Returns:
+            EntityReferenceList with owner or None
         """
         try:
+            # Prioritize schema_owner, fallback to database_owner for inheritance
+            parent_owner = getattr(self.context.get(), "schema_owner", None)
+            if not parent_owner:
+                parent_owner = getattr(self.context.get(), "database_owner", None)
+
+            table_fqn = f"{self.context.get().database}.{self.context.get().database_schema}.{table_name}"
+
+            if (
+                hasattr(self.source_config, "ownerConfig")
+                and self.source_config.ownerConfig
+            ):
+                owner_ref = get_owner_from_config(
+                    metadata=self.metadata,
+                    owner_config=self.source_config.ownerConfig,
+                    entity_type="table",
+                    entity_name=table_fqn,
+                    parent_owner=parent_owner,
+                )
+                if owner_ref and owner_ref.root:
+                    return owner_ref
+
             if self.source_config.includeOwners and hasattr(
                 self.inspector, "get_table_owner"
             ):
@@ -584,6 +759,89 @@ class DatabaseServiceSource(
                     mark_deleted_entity=self.source_config.markDeletedStoredProcedures,
                     params={"databaseSchema": schema_fqn},
                 )
+
+    def mark_databases_as_deleted(self):
+        """
+        Use the current inspector to mark databases as deleted
+        """
+        if self.source_config.markDeletedDatabases:
+            logger.info(
+                f"Mark Deleted Databases set to True. Processing service [{self.context.get().database_service}]"
+            )
+
+            # We need to include ALL databases from the source in the source state
+            # This includes both processed databases and all databases (filtered-in and filtered-out)
+            # to ensure we mark as deleted any databases that were previously ingested but are now
+            # filtered out, as well as any databases that were processed in this run
+            all_database_fqns = set()
+
+            # Get all databases from the source (both filtered-in and filtered-out)
+            for database_name in self._get_filtered_database_names():
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=database_name,
+                )
+                all_database_fqns.add(database_fqn)
+
+            # Combine the processed databases with all databases from source
+            complete_db_source_state = self.database_entity_source_state.union(
+                all_database_fqns
+            )
+
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=Database,
+                entity_source_state=complete_db_source_state,
+                mark_deleted_entity=self.source_config.markDeletedDatabases,
+                params={"service": self.context.get().database_service},
+            )
+
+    def mark_schemas_as_deleted(self):
+        """
+        Use the current inspector to mark schemas as deleted
+        """
+        if not self.context.get().__dict__.get("database"):
+            raise ValueError(
+                "No Database found in the context. We cannot run the schema deletion."
+            )
+
+        if self.source_config.markDeletedSchemas:
+            logger.info(
+                f"Mark Deleted Schemas set to True. Processing database [{self.context.get().database}]"
+            )
+
+            # Build the database FQN to use as parameter
+            database_fqn = fqn.build(
+                self.metadata,
+                entity_type=Database,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+            )
+
+            # Get all filtered-in schema FQNs to create a complete source state
+            # We need to include both processed schemas and filtered schemas in the source state
+            # to ensure we mark as deleted any schemas that were previously ingested but are now
+            # filtered out, as well as any schemas that were processed in this run
+            filtered_schema_fqns = set()
+            for schema_name in self._get_filtered_schema_names(
+                return_fqn=True, add_to_status=False
+            ):
+                filtered_schema_fqns.add(schema_name)
+
+            # Combine the processed schemas with filtered schemas
+            complete_source_state = self.schema_entity_source_state.union(
+                filtered_schema_fqns
+            )
+
+            yield from delete_entity_from_source(
+                metadata=self.metadata,
+                entity_type=DatabaseSchema,
+                entity_source_state=complete_source_state,
+                mark_deleted_entity=self.source_config.markDeletedSchemas,
+                params={"database": database_fqn},
+            )
 
     def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
         """

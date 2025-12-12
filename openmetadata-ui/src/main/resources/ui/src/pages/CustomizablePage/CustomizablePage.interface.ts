@@ -16,6 +16,9 @@ import { Layout } from 'react-grid-layout';
 export interface WidgetConfig
   extends Pick<Layout, 'i' | 'x' | 'y' | 'h' | 'w' | 'static' | 'isDraggable'> {
   children?: WidgetConfig[];
+  config?: {
+    [key: string]: any;
+  };
   data?: {
     page: {
       layout: Array<WidgetConfig>;
@@ -28,4 +31,7 @@ export interface WidgetCommonProps {
   isEditView?: boolean;
   widgetKey: string;
   handleRemoveWidget?: (widgetKey: string) => void;
+  handleLayoutUpdate?: (layout: Layout[]) => void;
+  handleSaveLayout?: (layout: WidgetConfig[]) => Promise<void>;
+  currentLayout?: Array<WidgetConfig>;
 }

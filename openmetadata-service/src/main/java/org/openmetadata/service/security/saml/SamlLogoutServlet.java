@@ -24,7 +24,6 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -36,6 +35,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
  * This Servlet initiates a login and sends a login request to the IDP. After a successful processing it redirects user
@@ -44,31 +44,32 @@ import org.openmetadata.service.security.JwtFilter;
 @WebServlet("/api/v1/saml/logout")
 @Slf4j
 public class SamlLogoutServlet extends HttpServlet {
-  private final JwtFilter jwtFilter;
-  private final List<String> jwtPrincipalClaims;
-  private final Map<String, String> jwtPrincipalClaimsMapping;
 
-  public SamlLogoutServlet(
-      AuthenticationConfiguration authenticationConfiguration,
-      AuthorizerConfiguration authorizerConf) {
-    jwtFilter = new JwtFilter(authenticationConfiguration, authorizerConf);
-    this.jwtPrincipalClaims = authenticationConfiguration.getJwtPrincipalClaims();
-    this.jwtPrincipalClaimsMapping =
-        listOrEmpty(authenticationConfiguration.getJwtPrincipalClaimsMapping()).stream()
-            .map(s -> s.split(":"))
-            .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+  public SamlLogoutServlet() {
+    // No constructor dependencies - fetch configuration dynamically
   }
 
   @Override
   protected void doGet(
-      final HttpServletRequest httpServletRequest, final HttpServletResponse httpServletResponse)
-      throws IOException {
+      final HttpServletRequest httpServletRequest, final HttpServletResponse httpServletResponse) {
     try {
       LOG.debug("Performing application logout");
       HttpSession session = httpServletRequest.getSession(false);
       String token = JwtFilter.extractToken(httpServletRequest.getHeader("Authorization"));
       if (session != null) {
         LOG.debug("Invalidating the session for logout");
+
+        // Get configuration dynamically
+        AuthenticationConfiguration authConfig =
+            SecurityConfigurationManager.getCurrentAuthConfig();
+        AuthorizerConfiguration authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
+        JwtFilter jwtFilter = new JwtFilter(authConfig, authzConfig);
+        List<String> jwtPrincipalClaims = authConfig.getJwtPrincipalClaims();
+        Map<String, String> jwtPrincipalClaimsMapping =
+            listOrEmpty(authConfig.getJwtPrincipalClaimsMapping()).stream()
+                .map(s -> s.split(":"))
+                .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+
         Map<String, Claim> claims = jwtFilter.validateJwtAndGetClaims(token);
         String userName =
             findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);

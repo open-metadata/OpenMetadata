@@ -2,10 +2,14 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -24,13 +28,13 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.AppException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.apps.AppResource;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class AppRepository extends EntityRepository<App> {
@@ -48,6 +52,7 @@ public class AppRepository extends EntityRepository<App> {
         UPDATE_FIELDS);
     supportsSearch = false;
     quoteFqn = true;
+    fieldFetchers.put("bot", this::fetchAndSetBotUser);
   }
 
   @Override
@@ -147,15 +152,48 @@ public class AppRepository extends EntityRepository<App> {
   @Override
   public void storeEntity(App entity, boolean update) {
     List<EntityReference> ownerRefs = entity.getOwners();
+    EntityReference bot = entity.getBot();
     entity.withOwners(null);
+    entity.withBot(null);
     store(entity, update);
     entity.withOwners(ownerRefs);
+    entity.setBot(bot);
   }
 
   public EntityReference getBotUser(App application) {
     return application.getBot() != null
         ? application.getBot()
         : getToEntityRef(application.getId(), Relationship.CONTAINS, Entity.BOT, false);
+  }
+
+  public void fetchAndSetBotUser(List<App> apps, EntityUtil.Fields fields) {
+    if (apps == null || apps.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(true, apps, batchFetchBots(apps), App::setBot);
+  }
+
+  private Map<UUID, EntityReference> batchFetchBots(List<App> apps) {
+    var botsMap = new HashMap<UUID, EntityReference>();
+    if (apps == null || apps.isEmpty()) {
+      return botsMap;
+    }
+
+    // Single batch query to get all bots relationships
+    var records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(apps), Relationship.CONTAINS.ordinal(), Entity.BOT);
+
+    // Group bots by ID
+    records.forEach(
+        record -> {
+          var appId = UUID.fromString(record.getFromId());
+          var botRef = getEntityReferenceById(Entity.BOT, UUID.fromString(record.getToId()), ALL);
+          botsMap.put(appId, botRef);
+        });
+
+    return botsMap;
   }
 
   @Override
@@ -171,7 +209,8 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  protected void postDelete(App entity) {
+  protected void postDelete(App entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     // Delete the status stored in the app extension
     // Note that we don't want to delete the LIMITS, since we want to keep them
     // between different app installations
@@ -201,7 +240,12 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public AppRunRecord getLatestAppRuns(App app) {
-    return getLatestExtensionById(app, AppRunRecord.class, AppExtension.ExtensionType.STATUS);
+    return getLatestExtensionById(app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, null);
+  }
+
+  public AppRunRecord getLatestAppRuns(App app, UUID service) {
+    return getLatestExtensionById(
+        app, AppRunRecord.class, AppExtension.ExtensionType.STATUS, service);
   }
 
   public AppRunRecord getLatestAppRunsAfterStartTime(App app, long startTime) {
@@ -350,11 +394,11 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   public <T> T getLatestExtensionById(
-      App app, Class<T> clazz, AppExtension.ExtensionType extensionType) {
+      App app, Class<T> clazz, AppExtension.ExtensionType extensionType, UUID service) {
     List<String> result =
         daoCollection
             .appExtensionTimeSeriesDao()
-            .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString());
+            .listAppExtension(app.getId().toString(), 1, 0, extensionType.toString(), service);
     if (nullOrEmpty(result)) {
       throw AppException.byExtension(extensionType);
     }

@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore" schemaVersion="2.3" id="CV_STAR_JOIN" applyPrivilegeType="SQL_ANALYTIC_PRIVILEGE" defaultClient="$$client$$" defaultLanguage="$$language$$" hierarchiesSQLEnabled="false" translationRelevant="true" visibility="reportingEnabled" calculationScenarioType="TREE_BASED" dataCategory="CUBE" enforceSqlExecution="false" executionSemantic="UNDEFINED">
+  <origin/>
+  <descriptions defaultDescription="CV_STAR_JOIN_label"/>
+  <metadata changedAt="2025-08-16 18:36:07.36"/>
+  <localVariables/>
+  <variableMappings/>
+  <informationModelLayout relativeWidthScenario="27"/>
+  <dataSources>
+    <DataSource id="CV_ORDERS" type="CALCULATION_VIEW">
+      <viewAttributes allViewAttributes="true"/>
+      <resourceUri>/my-package/calculationviews/CV_ORDERS</resourceUri>
+    </DataSource>
+    <DataSource id="CV_AGGREGATED_ORDERS" type="CALCULATION_VIEW">
+      <viewAttributes allViewAttributes="true"/>
+      <resourceUri>/my-package/calculationviews/CV_AGGREGATED_ORDERS</resourceUri>
+    </DataSource>
+  </dataSources>
+  <calculationViews>
+    <calculationView xsi:type="Calculation:ProjectionView" id="Projection_1">
+      <descriptions/>
+      <viewAttributes>
+        <viewAttribute id="TOTAL_AMOUNT"/>
+        <viewAttribute id="PRICE"/>
+        <viewAttribute id="QUANTITY"/>
+        <viewAttribute id="CUSTOMER_ID"/>
+        <viewAttribute id="ORDER_ID"/>
+      </viewAttributes>
+      <calculatedViewAttributes>
+        <calculatedViewAttribute datatype="DECIMAL" id="TOTAL_PROJ_1" length="34" expressionLanguage="COLUMN_ENGINE">
+          <formula>&quot;QUANTITY&quot; * &quot;PRICE&quot;</formula>
+        </calculatedViewAttribute>
+      </calculatedViewAttributes>
+      <input node="#CV_ORDERS">
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL_AMOUNT" source="TOTAL_AMOUNT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRICE" source="PRICE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="QUANTITY" source="QUANTITY"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CUSTOMER_ID" source="CUSTOMER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="ORDER_ID" source="ORDER_ID"/>
+      </input>
+    </calculationView>
+    <calculationView xsi:type="Calculation:ProjectionView" id="Projection_2">
+      <descriptions/>
+      <viewAttributes>
+        <viewAttribute id="ORDER_ID"/>
+        <viewAttribute id="CUSTOMER_ID"/>
+        <viewAttribute id="QUANTITY"/>
+        <viewAttribute id="PRICE"/>
+        <viewAttribute id="TOTAL"/>
+      </viewAttributes>
+      <calculatedViewAttributes/>
+      <input node="#CV_AGGREGATED_ORDERS">
+        <mapping xsi:type="Calculation:AttributeMapping" target="ORDER_ID" source="ORDER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CUSTOMER_ID" source="CUSTOMER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="QUANTITY" source="QUANTITY"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRICE" source="PRICE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL" source="TOTAL"/>
+      </input>
+    </calculationView>
+    <calculationView xsi:type="Calculation:JoinView" id="Join_1" joinOrder="OUTSIDE_IN" joinType="inner">
+      <descriptions/>
+      <viewAttributes>
+        <viewAttribute id="ORDER_ID"/>
+        <viewAttribute id="CUSTOMER_ID"/>
+        <viewAttribute id="QUANTITY"/>
+        <viewAttribute id="PRICE"/>
+        <viewAttribute id="TOTAL"/>
+        <viewAttribute id="ORDER_ID_1"/>
+        <viewAttribute id="CUSTOMER_ID_1"/>
+        <viewAttribute id="QUANTITY_1"/>
+        <viewAttribute id="PRICE_1"/>
+        <viewAttribute id="TOTAL_AMOUNT"/>
+        <viewAttribute id="TOTAL_PROJ_1"/>
+      </viewAttributes>
+      <calculatedViewAttributes>
+        <calculatedViewAttribute datatype="DECIMAL" id="TOTAL_JOIN" length="34" expressionLanguage="COLUMN_ENGINE">
+          <formula>&quot;QUANTITY&quot; * &quot;PRICE&quot;</formula>
+        </calculatedViewAttribute>
+      </calculatedViewAttributes>
+      <input node="#Projection_2">
+        <mapping xsi:type="Calculation:AttributeMapping" target="ORDER_ID" source="ORDER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CUSTOMER_ID" source="CUSTOMER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="QUANTITY" source="QUANTITY"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRICE" source="PRICE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL" source="TOTAL"/>
+      </input>
+      <input node="#Projection_1">
+        <mapping xsi:type="Calculation:AttributeMapping" target="ORDER_ID_1" source="ORDER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="CUSTOMER_ID_1" source="CUSTOMER_ID"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="QUANTITY_1" source="QUANTITY"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRICE_1" source="PRICE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL_AMOUNT" source="TOTAL_AMOUNT"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="TOTAL_PROJ_1" source="TOTAL_PROJ_1"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="ORDER_ID" source="ORDER_ID"/>
+      </input>
+      <joinAttribute name="ORDER_ID"/>
+    </calculationView>
+  </calculationViews>
+  <logicalModel id="Join_1">
+    <descriptions/>
+    <attributes>
+      <attribute id="TOTAL_AMOUNT" order="8" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="TOTAL_AMOUNT_label"/>
+        <keyMapping columnObjectName="Join_1" columnName="TOTAL_AMOUNT"/>
+      </attribute>
+      <attribute id="CUSTOMER_ID$local">
+        <descriptions defaultDescription="CUSTOMER_ID"/>
+        <keyMapping columnObjectName="Join_1" columnName="CUSTOMER_ID"/>
+      </attribute>
+    </attributes>
+    <calculatedAttributes>
+      <calculatedAttribute id="TOTAL_STAR_JOIN" hidden="false" order="9" semanticType="empty" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="TOTAL_STAR_JOIN"/>
+        <keyCalculation datatype="DECIMAL" expressionLanguage="COLUMN_ENGINE" length="34">
+          <formula>&quot;QUANTITY&quot; * &quot;PRICE&quot;</formula>
+        </keyCalculation>
+      </calculatedAttribute>
+    </calculatedAttributes>
+    <privateDataFoundation>
+      <tableProxies/>
+      <joins/>
+      <layout>
+        <shapes/>
+      </layout>
+    </privateDataFoundation>
+    <baseMeasures>
+      <measure id="ORDER_ID_1" order="1" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="ORDER_ID"/>
+        <measureMapping columnObjectName="Join_1" columnName="ORDER_ID"/>
+      </measure>
+      <measure id="CUSTOMER_ID_1" order="2" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="CUSTOMER_ID"/>
+        <measureMapping columnObjectName="Join_1" columnName="CUSTOMER_ID"/>
+      </measure>
+      <measure id="QUANTITY_1" order="3" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="QUANTITY"/>
+        <measureMapping columnObjectName="Join_1" columnName="QUANTITY"/>
+      </measure>
+      <measure id="TOTAL" order="4" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="TOTAL_label"/>
+        <measureMapping columnObjectName="Join_1" columnName="TOTAL"/>
+      </measure>
+      <measure id="ORDER_ID_1_1" order="5" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="ORDER_ID"/>
+        <measureMapping columnObjectName="Join_1" columnName="ORDER_ID_1"/>
+      </measure>
+      <measure id="CUSTOMER_ID_1_1" order="6" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="CUSTOMER_ID"/>
+        <measureMapping columnObjectName="Join_1" columnName="CUSTOMER_ID_1"/>
+      </measure>
+      <measure id="QUANTITY_1_1" order="7" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="QUANTITY"/>
+        <measureMapping columnObjectName="Join_1" columnName="QUANTITY_1"/>
+      </measure>
+      <measure id="TOTAL_JOIN" order="10" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="TOTAL_JOIN"/>
+        <measureMapping columnObjectName="Join_1" columnName="TOTAL_JOIN"/>
+      </measure>
+      <measure id="TOTAL_PROJ_1" order="11" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="TOTAL_PROJ_1"/>
+        <measureMapping columnObjectName="Join_1" columnName="TOTAL_PROJ_1"/>
+      </measure>
+      <measure id="PRICE_1" order="12" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="PRICE"/>
+        <measureMapping columnObjectName="Join_1" columnName="PRICE"/>
+      </measure>
+      <measure id="PRICE_1_1" order="13" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="PRICE"/>
+        <measureMapping columnObjectName="Join_1" columnName="PRICE_1"/>
+      </measure>
+    </baseMeasures>
+    <calculatedMeasures/>
+    <restrictedMeasures/>
+    <localDimensions/>
+    <sharedDimensions>
+      <logicalJoin associatedObjectUri="/my-package/calculationviews/CV_ORDER_DIM">
+        <attributes>
+          <attributeRef>#CUSTOMER_ID$local</attributeRef>
+        </attributes>
+        <associatedAttributeNames>
+          <attributeName>CUSTOMER_ID</attributeName>
+        </associatedAttributeNames>
+        <properties joinOperator="Equal" joinType="referential"/>
+        <associatedAttributeFeatures/>
+      </logicalJoin>
+    </sharedDimensions>
+  </logicalModel>
+  <layout>
+    <shapes>
+      <shape expanded="true" modelObjectName="Output" modelObjectNameSpace="MeasureGroup">
+        <upperLeftCorner x="40" y="85"/>
+        <rectangleSize/>
+      </shape>
+      <shape modelObjectName="Join_1" modelObjectNameSpace="StarJoinViewNodeInput" modelObjectType="repository">
+        <upperLeftCorner x="138" y="52"/>
+      </shape>
+      <shape modelObjectName="/my-package/calculationviews/CV_ORDER_DIM" modelObjectNameSpace="StarJoinViewNodeSharedCV" modelObjectType="repository">
+        <upperLeftCorner x="501" y="60"/>
+      </shape>
+      <shape expanded="true" modelObjectName="Projection_1" modelObjectNameSpace="CalculationView">
+        <upperLeftCorner x="-10" y="310"/>
+        <rectangleSize height="-1" width="-1"/>
+      </shape>
+      <shape expanded="true" modelObjectName="Projection_2" modelObjectNameSpace="CalculationView">
+        <upperLeftCorner x="140" y="310"/>
+        <rectangleSize height="-1" width="-1"/>
+      </shape>
+      <shape expanded="true" modelObjectName="Join_1" modelObjectNameSpace="CalculationView">
+        <upperLeftCorner x="40" y="210"/>
+        <rectangleSize height="-1" width="-1"/>
+      </shape>
+    </shapes>
+  </layout>
+</Calculation:scenario>

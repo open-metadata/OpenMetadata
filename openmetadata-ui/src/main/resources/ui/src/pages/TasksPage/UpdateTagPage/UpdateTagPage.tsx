@@ -319,7 +319,7 @@ const UpdateTag = () => {
                       htmlType="submit"
                       loading={isLoading}
                       type="primary">
-                      {t('label.submit')}
+                      {t('label.save')}
                     </Button>
                   </Space>
                 </Form.Item>

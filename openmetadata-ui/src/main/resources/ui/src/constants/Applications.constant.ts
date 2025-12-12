@@ -12,15 +12,17 @@
  */
 
 import { StepperStepType } from 'Models';
-import i18n from '../utils/i18next/LocalUtil';
 
 export const STEPS_FOR_APP_INSTALL: Array<StepperStepType> = [
   {
-    name: i18n.t('label.detail-plural'),
+    name: 'label.detail-plural',
     step: 1,
   },
-  { name: i18n.t('label.configure'), step: 2 },
-  { name: i18n.t('label.schedule'), step: 3 },
+  { name: 'label.configure', step: 2 },
+  { name: 'label.schedule', step: 3 },
 ];
 
 export const AUTO_PILOT_APP_NAME = 'AutoPilotApplication';
+export const COLLATE_DOCUMENTATION_APP_NAME = 'CollateAIApplication';
+export const COLLATE_DATA_QUALITY_APP_NAME = 'CollateAIQualityAgentApplication';
+export const COLLATE_AUTO_TIER_APP_NAME = 'CollateAITierAgentApplication';

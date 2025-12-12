@@ -29,6 +29,7 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/dashboard';
 import { MlFeature } from '../../../generated/entity/data/mlmodel';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
@@ -36,6 +37,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { getMlFeatureVersionData } from '../../../utils/MlModelVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -59,7 +61,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedMlModelName,
@@ -84,9 +86,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const mlFeaturesData = useMemo(
@@ -133,6 +135,15 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
+
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        entityPermissions,
+        Operation.ViewCustomFields
+      ),
+    [entityPermissions]
+  );
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -290,7 +301,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -322,12 +333,17 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             isVersionView
             entityType={EntityType.MLMODEL}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [description, mlFeaturesData, currentVersionData, entityPermissions]
+    [
+      description,
+      mlFeaturesData,
+      currentVersionData,
+      viewCustomPropertiesPermission,
+    ]
   );
 
   return (

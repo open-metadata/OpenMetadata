@@ -23,10 +23,10 @@ export interface CreateRole {
      */
     displayName?: string;
     /**
-     * Fully qualified name of the domain the Table belongs to.
+     * Fully qualified names of the domains the Role belongs to.
      */
-    domain?: string;
-    name:    string;
+    domains?: string[];
+    name:     string;
     /**
      * Policies that is attached to this role. At least one policy is required.
      */

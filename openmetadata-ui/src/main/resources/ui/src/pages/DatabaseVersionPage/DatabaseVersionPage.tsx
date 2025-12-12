@@ -37,6 +37,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { Database } from '../../generated/entity/data/database';
+import { Operation } from '../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
@@ -52,7 +53,10 @@ import {
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -81,7 +85,7 @@ function DatabaseVersionPage() {
     {} as EntityHistory
   );
 
-  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domains } =
     useMemo(
       () =>
         getBasicEntityInfoFromVersionData(
@@ -95,6 +99,14 @@ function DatabaseVersionPage() {
     () => servicePermissions.ViewAll || servicePermissions.ViewBasic,
     [servicePermissions]
   );
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        servicePermissions,
+        Operation.ViewCustomFields
+      ),
+    [servicePermissions]
+  );
 
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
     useMemo(
@@ -103,9 +115,9 @@ function DatabaseVersionPage() {
           currentVersionData.changeDescription as ChangeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [currentVersionData.changeDescription, owners, tier, domain]
+      [currentVersionData.changeDescription, owners, tier, domains]
     );
 
   const fetchResourcePermission = useCallback(async () => {
@@ -217,7 +229,7 @@ function DatabaseVersionPage() {
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={currentVersionData.dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -252,7 +264,7 @@ function DatabaseVersionPage() {
             isVersionView
             entityType={EntityType.DATABASE}
             hasEditAccess={false}
-            hasPermission={viewVersionPermission}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },

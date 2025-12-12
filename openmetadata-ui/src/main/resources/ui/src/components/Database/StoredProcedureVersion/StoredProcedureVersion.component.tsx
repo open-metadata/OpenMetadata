@@ -20,12 +20,14 @@ import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/table';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -44,7 +46,7 @@ const StoredProcedureVersion = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedTableName,
@@ -68,9 +70,9 @@ const StoredProcedureVersion = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const { tags, description, displayName } = useMemo(
@@ -107,6 +109,13 @@ const StoredProcedureVersion = ({
     );
   }, [currentVersionData]);
 
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -132,7 +141,7 @@ const StoredProcedureVersion = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -164,12 +173,12 @@ const StoredProcedureVersion = ({
             isVersionView
             entityType={EntityType.STORED_PROCEDURE}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [tags, description, currentVersionData, entityPermissions]
+    [tags, description, currentVersionData, viewCustomPropertiesPermission]
   );
 
   return (

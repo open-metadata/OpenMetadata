@@ -12,11 +12,18 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
+import { Domain } from '../support/domain/Domain';
+import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
-import { descriptionBox, toastNotification, uuid } from './common';
-import { addOwner } from './entity';
+import {
+  assignDomain,
+  descriptionBox,
+  toastNotification,
+  uuid,
+} from './common';
+import { addMultiOwner, addOwner } from './entity';
 import { validateFormNameFieldInput } from './form';
 import { settingClick } from './sidebar';
 
@@ -50,6 +57,11 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
   await page.locator('button[type="submit"]').click();
 
   await createTeamResponse;
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   return teamData;
 };
@@ -327,15 +339,17 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
   // Search and select the user
   await page
     .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
-    .fill(user.getUserName());
+    .fill(user.getUserDisplayName());
 
   await page
-    .locator(`[data-testid="selectable-list"] [title="${user.getUserName()}"]`)
+    .locator(
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+    )
     .click();
 
   await expect(
     page.locator(
-      `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
     )
   ).toHaveClass(/active/);
 
@@ -354,7 +368,7 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
 
 export const checkTeamTabCount = async (page: Page) => {
   const fetchResponse = page.waitForResponse(
-    '/api/v1/teams/name/*?fields=*childrenCount*include=all'
+    '/api/v1/teams?parentTeam=Organization&include=non-deleted&fields=**'
   );
 
   await settingClick(page, GlobalSettingOptions.TEAMS);
@@ -362,9 +376,150 @@ export const checkTeamTabCount = async (page: Page) => {
   const response = await fetchResponse;
   const jsonRes = await response.json();
 
+  const childrenCount = jsonRes.data?.length ?? 0;
+
   await expect(
     page.locator(
       '[data-testid="teams"] [data-testid="count"] [data-testid="filter-count"]'
     )
-  ).toContainText(jsonRes.childrenCount.toString());
+  ).toContainText(childrenCount.toString());
+};
+
+export const addEmailTeam = async (page: Page, email: string) => {
+  // Edit email
+  await page.locator('[data-testid="edit-email"]').click();
+  await page.locator('[data-testid="email-input"]').fill(email);
+
+  const saveEditEmailResponse = page.waitForResponse('/api/v1/teams/*');
+  await page.locator('[data-testid="save-edit-email"]').click();
+  await saveEditEmailResponse;
+
+  // Reload the page
+  await page.reload();
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  // Check for updated email
+  await expect(page.locator('[data-testid="email-value"]')).toContainText(
+    email
+  );
+};
+
+export const addUserTeam = async (
+  page: Page,
+  user: UserClass,
+  userName: string
+) => {
+  // Navigate to users tab and add new user
+  await page.locator('[data-testid="users"]').click();
+
+  const fetchUsersResponse = page.waitForResponse(
+    '/api/v1/users?limit=25&isBot=false'
+  );
+  await page.locator('[data-testid="add-new-user"]').click();
+  await fetchUsersResponse;
+
+  // Search and select the user
+  await page
+    .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
+    .fill(user.getUserDisplayName());
+
+  await page
+    .locator(
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+    )
+    .click();
+
+  await expect(
+    page.locator(
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+    )
+  ).toHaveClass(/active/);
+
+  const updateTeamResponse = page.waitForResponse('/api/v1/users*');
+
+  // Update the team with the new user
+  await page.locator('[data-testid="selectable-list-update-btn"]').click();
+  await updateTeamResponse;
+
+  // Verify the user is added to the team
+
+  await expect(
+    page.locator(`[data-testid="${userName.toLowerCase()}"]`)
+  ).toBeVisible();
+};
+
+export const executionOnOwnerTeam = async (
+  page: Page,
+  team: TeamClass,
+  data: {
+    domain: Domain;
+    email: string;
+    user: string;
+  }
+) => {
+  await team.visitTeamPage(page);
+
+  await expect(page.getByTestId('manage-button')).toBeVisible();
+
+  await expect(page.getByTestId('edit-team-subscription')).toBeVisible();
+  await expect(page.getByTestId('edit-team-type-icon')).toBeVisible();
+
+  await assignDomain(page, data.domain.responseData);
+
+  await addMultiOwner({
+    page,
+    ownerNames: [data.user],
+    activatorBtnDataTestId: 'edit-owner',
+    resultTestId: 'teams-info-header',
+    endpoint: EntityTypeEndpoint.Teams,
+    type: 'Users',
+    clearAll: false,
+  });
+
+  await addEmailTeam(page, data.email);
+
+  await page.getByTestId('add-placeholder-button').click();
+
+  const newTeamData = await createTeam(page);
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(
+    page.getByRole('cell', { name: newTeamData.displayName })
+  ).toBeVisible();
+};
+
+export const executionOnOwnerGroupTeam = async (
+  page: Page,
+  team: TeamClass,
+  data: {
+    domain: Domain;
+    email: string;
+    user: UserClass;
+    userName: string;
+  }
+) => {
+  await team.visitTeamPage(page);
+
+  await expect(
+    page.getByTestId('team-details-collapse').getByTestId('manage-button')
+  ).toBeVisible();
+
+  await expect(page.getByTestId('edit-team-subscription')).toBeVisible();
+  await expect(page.getByTestId('edit-team-type-icon')).not.toBeVisible();
+
+  await assignDomain(page, data.domain.responseData);
+
+  await addEmailTeam(page, data.email);
+
+  await addUserTeam(page, data.user, data.userName);
 };

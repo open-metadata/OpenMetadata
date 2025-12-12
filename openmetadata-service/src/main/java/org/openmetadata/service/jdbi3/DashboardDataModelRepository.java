@@ -17,9 +17,12 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
@@ -36,6 +39,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
@@ -45,7 +49,6 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
@@ -181,12 +184,26 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (!fields.contains(FIELD_TAGS) || dataModels == null || dataModels.isEmpty()) {
       return;
     }
-    // Use bulk tag fetching to avoid N+1 queries
-    bulkPopulateEntityFieldTags(
-        dataModels,
-        entityType,
-        DashboardDataModel::getColumns,
-        DashboardDataModel::getFullyQualifiedName);
+
+    // First, fetch entity-level tags (important for search indexing)
+    List<String> entityFQNs =
+        dataModels.stream().map(DashboardDataModel::getFullyQualifiedName).toList();
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+    for (DashboardDataModel dataModel : dataModels) {
+      dataModel.setTags(
+          addDerivedTagsGracefully(
+              tagsMap.getOrDefault(dataModel.getFullyQualifiedName(), Collections.emptyList())));
+    }
+
+    // Then, if columns field is requested, also fetch column-level tags
+    if (fields.contains("columns")) {
+      // Use bulk tag fetching to avoid N+1 queries
+      bulkPopulateEntityFieldTags(
+          dataModels,
+          entityType,
+          DashboardDataModel::getColumns,
+          DashboardDataModel::getFullyQualifiedName);
+    }
   }
 
   @Override
@@ -202,6 +219,9 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     for (DashboardDataModel dataModel : dataModels) {
       setDefaultFields(dataModel);
     }
+
+    fetchAndSetFields(dataModels, fields);
+    setInheritedFields(dataModels, fields);
 
     // Bulk fetch tags for columns if needed
     fetchAndSetColumnTags(dataModels, fields);
@@ -256,6 +276,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       DatabaseUtil.validateColumns(original.getColumns());
       updateColumns("columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
       recordChange("sql", original.getSql(), updated.getSql());
     }
@@ -264,21 +285,21 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   public ResultList<Column> getDataModelColumns(
       UUID dataModelId, int limit, int offset, String fieldsParam, Include include) {
     DashboardDataModel dataModel = find(dataModelId, include);
-    return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam);
+    return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam, include);
   }
 
   public ResultList<Column> getDataModelColumnsByFQN(
       String fqn, int limit, int offset, String fieldsParam, Include include) {
     DashboardDataModel dataModel = findByName(fqn, include);
-    return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam);
+    return getDataModelColumnsInternal(dataModel, limit, offset, fieldsParam, include);
   }
 
   private ResultList<Column> getDataModelColumnsInternal(
-      DashboardDataModel dataModel, int limit, int offset, String fieldsParam) {
+      DashboardDataModel dataModel, int limit, int offset, String fieldsParam, Include include) {
     // For paginated column access, we need to load the data model with columns
     // but we'll optimize the field loading to only process what we need
     DashboardDataModel fullDataModel =
-        get(null, dataModel.getId(), getFields(Set.of("columns")), Include.NON_DELETED, false);
+        get(null, dataModel.getId(), getFields(Set.of("columns")), include, false);
 
     List<Column> allColumns = fullDataModel.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {

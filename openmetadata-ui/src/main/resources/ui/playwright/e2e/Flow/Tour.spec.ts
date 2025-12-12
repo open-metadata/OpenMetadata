@@ -13,11 +13,42 @@
 import { expect, Page, test } from '@playwright/test';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const user = new UserClass();
 
+const waitForTourBadgeWithRetry = async (
+  page: Page,
+  maxAttempts = 3,
+  timeout = 10000
+) => {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await page.waitForSelector('[data-tour-elem="badge"]', {
+        state: 'visible',
+        timeout,
+      });
+
+      return; // Success
+    } catch (e) {
+      if (attempt < maxAttempts) {
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+        await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+      } else {
+        throw e;
+      }
+    }
+  }
+};
+
 const validateTourSteps = async (page: Page) => {
+  await page.waitForTimeout(1000);
+  await waitForTourBadgeWithRetry(page);
+
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('1');
 
   // step 1
@@ -31,7 +62,9 @@ const validateTourSteps = async (page: Page) => {
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('3');
 
   await page.getByTestId('searchBox').fill('dim_a');
-  await page.getByTestId('searchBox').press('Enter');
+  await page.getByTestId('searchBox').press('Enter', { delay: 500 });
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('4');
 
@@ -123,28 +156,56 @@ test.describe('Tour should work properly', () => {
 
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await user.login(page);
-    await redirectToHomePage(page);
   });
 
   test('Tour should work from help section', async ({ page }) => {
+    test.slow();
+
     await page.locator('[data-testid="help-icon"]').click();
     await page.getByRole('link', { name: 'Tour', exact: true }).click();
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
     await page.waitForURL('**/tour');
+
+    await page.waitForSelector('#feedWidgetData');
+
     await validateTourSteps(page);
   });
 
   test('Tour should work from welcome screen', async ({ page }) => {
+    await page
+      .getByTestId('whats-new-alert-card')
+      .locator('.whats-new-alert-close')
+      .click();
     await page.getByText('Take a product tour to get started!').click();
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
     await page.waitForURL('**/tour');
 
-    await validateTourSteps(page);
+    await page.waitForSelector('#feedWidgetData');
+    // Since the tour steps are already tested in the first test,
+    // here we only validate whether the tour is loading or not.
+    await waitForTourBadgeWithRetry(page);
   });
 
   test('Tour should work from URL directly', async ({ page }) => {
-    await expect(page.getByTestId('global-search-selector')).toBeVisible();
-
     await page.goto('/tour');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    const isWelcomeScreenVisible = await page
+      .getByTestId('welcome-screen')
+      .isVisible();
+
+    if (isWelcomeScreenVisible) {
+      await page.getByTestId('welcome-screen-close-btn').click();
+      await page.waitForLoadState('networkidle');
+    }
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
     await page.waitForURL('**/tour');
-    await validateTourSteps(page);
+
+    await page.waitForSelector('#feedWidgetData');
+    // Since the tour steps are already tested in the first test,
+    // here we only validate whether the tour is loading or not.
+    await waitForTourBadgeWithRetry(page);
   });
 });

@@ -43,10 +43,10 @@ export interface Policy {
      */
     displayName?: string;
     /**
-     * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+     * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
      * it belongs to.
      */
-    domain?: EntityReference;
+    domains?: EntityReference[];
     /**
      * Is the policy enabled.
      */
@@ -63,6 +63,10 @@ export interface Policy {
      * Unique identifier that identifies this Policy.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -176,8 +180,13 @@ export interface FieldChange {
 }
 
 /**
- * Domain the asset belongs to. When not set, the asset inherits the domain from the parent
+ * Domains the asset belongs to. When not set, the asset inherits the domain from the parent
  * it belongs to.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -186,13 +195,6 @@ export interface FieldChange {
  *
  * Location to which a policy is applied. This field is relevant only for `lifeCycle`
  * policies.
- *
- * Owners of this Policy.
- *
- * This schema defines the EntityReferenceList type used for referencing an entity.
- * EntityReference is used for capturing relationships from one entity to another. For
- * example, a table has an attribute called database of type EntityReference that captures
- * the relationship of a table `belongs to a` database.
  */
 export interface EntityReference {
     /**
@@ -298,9 +300,12 @@ export enum Effect {
  */
 export enum Operation {
     All = "All",
+    BulkCreate = "BulkCreate",
+    BulkUpdate = "BulkUpdate",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
     CreateScim = "CreateScim",
+    CreateTests = "CreateTests",
     Delete = "Delete",
     DeleteScim = "DeleteScim",
     DeleteTestCaseFailedRowsSample = "DeleteTestCaseFailedRowsSample",
@@ -331,12 +336,15 @@ export enum Operation {
     EditTests = "EditTests",
     EditTier = "EditTier",
     EditUsage = "EditUsage",
+    EditUserNotificationTemplate = "EditUserNotificationTemplate",
     EditUsers = "EditUsers",
     GenerateToken = "GenerateToken",
+    Impersonate = "Impersonate",
     Kill = "Kill",
     Trigger = "Trigger",
     ViewAll = "ViewAll",
     ViewBasic = "ViewBasic",
+    ViewCustomFields = "ViewCustomFields",
     ViewDataProfile = "ViewDataProfile",
     ViewProfilerGlobalConfiguration = "ViewProfilerGlobalConfiguration",
     ViewQueries = "ViewQueries",

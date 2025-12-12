@@ -25,6 +25,7 @@ import {
   Column,
   DashboardDataModel,
 } from '../../../../generated/entity/data/dashboardDataModel';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/schema';
 import { getPartialNameFromTableFQN } from '../../../../utils/CommonUtils';
 import {
@@ -33,6 +34,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
@@ -52,7 +54,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedDataModelName,
@@ -81,9 +83,9 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const columns: DashboardDataModel['columns'] = useMemo(() => {
@@ -131,6 +133,13 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
     );
   };
 
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -167,7 +176,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -199,12 +208,12 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
             isVersionView
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [description, columns, currentVersionData, entityPermissions]
+    [description, columns, currentVersionData, viewCustomPropertiesPermission]
   );
 
   return (

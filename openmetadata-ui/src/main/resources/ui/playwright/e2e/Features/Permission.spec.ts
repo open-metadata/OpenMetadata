@@ -138,7 +138,9 @@ test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await user.delete(apiContext);
   await role.delete(apiContext);
+  await role2.delete(apiContext);
   await policy.delete(apiContext);
+  await policy2.delete(apiContext);
   await table.delete(apiContext);
   await afterAction();
 });
@@ -250,24 +252,32 @@ test('Permissions', async ({ userPage, adminPage }) => {
     });
 
     await userPage.getByTestId('profiler').click();
+    await userPage.waitForLoadState('networkidle');
+    await userPage.waitForSelector("[data-testid='loader']", {
+      state: 'detached',
+    });
+
     const testCaseResponse = userPage.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/dataQuality/testCases/') &&
         response.request().method() === 'GET'
     );
-    await userPage
-      .getByTestId('profiler-tab-left-panel')
-      .getByText('Data Quality')
-      .click();
+
+    await userPage.getByRole('tab', { name: 'Data Quality' }).click();
     await testCaseResponse;
 
+    await userPage.getByTestId(`action-dropdown-${testCaseName}`).click();
+    const testDefinitionResponse = userPage.waitForResponse(
+      '/api/v1/dataQuality/testDefinitions/*'
+    );
     await userPage.getByTestId(`edit-${testCaseName}`).click();
-    await userPage.locator('#tableTestForm_displayName').clear();
-    await userPage.fill('#tableTestForm_displayName', 'Update_display_name');
+    await testDefinitionResponse;
+    await userPage.locator('[id="root\\/displayName"]').clear();
+    await userPage.fill('[id="root\\/displayName"]', 'Update_display_name');
     const saveTestResponse = userPage.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
-    await userPage.locator('.ant-modal-footer').getByText('Submit').click();
+    await userPage.getByTestId('update-btn').click();
     await saveTestResponse;
   });
 });

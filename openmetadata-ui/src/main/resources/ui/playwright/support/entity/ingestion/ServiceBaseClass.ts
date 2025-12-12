@@ -46,7 +46,7 @@ class ServiceBaseClass {
   protected entityName: string;
   protected shouldTestConnection: boolean;
   protected shouldAddIngestion: boolean;
-  protected shouldAddDefaultFilters: boolean;
+  public shouldAddDefaultFilters: boolean;
   protected entityFQN: string | null;
   public serviceResponseData: ResponseDataType = {} as ResponseDataType;
 
@@ -126,20 +126,15 @@ class ServiceBaseClass {
     await page.click('[data-testid="next-button"]');
 
     await page.waitForSelector('#name_help');
-    const nameHelp = await page.$eval('#name_help', (el) => el.textContent);
 
-    expect(nameHelp).toContain('Name is required');
+    await expect(page.locator('#name_help')).toHaveText('Name is required');
 
     // invalid name validation should work
     await page
       .locator('[data-testid="service-name"]')
       .fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
-    const nameHelpError = await page.$eval(
-      '#name_help',
-      (el) => el.textContent
-    );
 
-    expect(nameHelpError).toContain(NAME_VALIDATION_ERROR);
+    await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 
     await page.fill('[data-testid="service-name"]', serviceName);
 
@@ -397,21 +392,6 @@ class ServiceBaseClass {
     await page.waitForLoadState('networkidle');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
 
-    const pipelineStatus = await page
-      .locator(`[data-row-key*="${workflowData.name}"]`)
-      .getByTestId('pipeline-status')
-      .last()
-      .textContent();
-    // add logs to console for failed pipelines
-    if (pipelineStatus?.toLowerCase() === 'failed') {
-      const logsResponse = await apiContext
-        .get(`/api/v1/services/ingestionPipelines/logs/${workflowData.id}/last`)
-        .then((res) => res.json());
-
-      // eslint-disable-next-line no-console
-      console.log(logsResponse);
-    }
-
     await expect(
       page
         .locator(`[data-row-key*="${workflowData.name}"]`)
@@ -563,9 +543,21 @@ class ServiceBaseClass {
 
     // update description
     await page.click('[data-testid="edit-description"]');
-    await page.click(descriptionBox);
-    await page.fill(descriptionBox, '');
-    await page.fill(descriptionBox, description);
+    await page.waitForSelector(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      {
+        state: 'visible',
+      }
+    );
+    await page.click(`.description-markdown-editor:visible ${descriptionBox}`);
+    await page.fill(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      ''
+    );
+    await page.fill(
+      `.description-markdown-editor:visible ${descriptionBox}`,
+      description
+    );
 
     await page.click('[data-testid="save"]');
 
@@ -645,7 +637,9 @@ class ServiceBaseClass {
     if (this.serviceResponseData.fullyQualifiedName) {
       await executeWithRetry(async () => {
         await apiContext.delete(
-          `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+          `/api/v1/services/${getServiceCategoryFromService(
+            this.category
+          )}s/name/${encodeURIComponent(
             this.serviceResponseData.fullyQualifiedName
           )}?recursive=true&hardDelete=true`
         );

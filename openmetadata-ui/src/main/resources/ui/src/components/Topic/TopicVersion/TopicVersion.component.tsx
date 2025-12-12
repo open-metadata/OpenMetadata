@@ -20,12 +20,14 @@ import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/topic';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -53,7 +55,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
-  domain,
+  domains,
   dataProducts,
 }: TopicVersionProp) => {
   const { t } = useTranslation();
@@ -70,9 +72,9 @@ const TopicVersion: FC<TopicVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   useEffect(() => {
@@ -126,6 +128,15 @@ const TopicVersion: FC<TopicVersionProp> = ({
     );
   }, [changeDescription, currentVersionData]);
 
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        entityPermissions,
+        Operation.ViewCustomFields
+      ),
+    [entityPermissions]
+  );
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -154,7 +165,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -186,12 +197,18 @@ const TopicVersion: FC<TopicVersionProp> = ({
             isVersionView
             entityType={EntityType.TOPIC}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [description, currentVersionData, entityPermissions, schemaType, tags]
+    [
+      description,
+      currentVersionData,
+      viewCustomPropertiesPermission,
+      schemaType,
+      tags,
+    ]
   );
 
   return (

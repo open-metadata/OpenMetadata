@@ -319,7 +319,7 @@ export const TaskTabNew = ({
             <Typography.Text className="p-0 task-id text-sm task-details-id">{`#${taskDetails.id} `}</Typography.Text>
 
             <Typography.Text className="p-xss task-details">
-              {TASK_TYPES[taskDetails.type]}
+              {t(TASK_TYPES[taskDetails.type])}
             </Typography.Text>
 
             {taskColumnName}
@@ -975,7 +975,6 @@ export const TaskTabNew = ({
                 ) : (
                   <OwnerLabel
                     isAssignee
-                    avatarSize={24}
                     hasPermission={shouldEditAssignee}
                     isCompactView={false}
                     owners={taskThread?.task?.assignees}
@@ -1193,7 +1192,7 @@ export const TaskTabNew = ({
           okButtonProps={{
             loading: isActionLoading,
           }}
-          okText={t('label.submit')}
+          okText={t('label.save')}
           open={showEditTaskModel}
           title={`${t('label.resolve')} ${t('label.task')} #${taskDetails?.id}`}
           width={768}
@@ -1303,7 +1302,7 @@ export const TaskTabNew = ({
           okButtonProps={{
             loading: isActionLoading,
           }}
-          okText={t('label.submit')}
+          okText={t('label.save')}
           open={isEditAssignee}
           title={`${t('label.re-assign')} ${t('label.task')} #${
             taskDetails?.id

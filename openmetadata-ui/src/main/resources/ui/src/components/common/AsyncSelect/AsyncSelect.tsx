@@ -147,8 +147,10 @@ export const AsyncSelect = ({
   );
 
   useEffect(() => {
-    fetchOptions(searchText, 1);
-  }, [searchText]);
+    if (!restProps.disabled) {
+      fetchOptions(searchText, 1);
+    }
+  }, [searchText, restProps.disabled]);
 
   return (
     <Select

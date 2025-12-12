@@ -15,7 +15,7 @@ package org.openmetadata.service.resources.services;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.OK;
-import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
+import static org.apache.commons.lang3.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -437,7 +437,8 @@ public class DatabaseServiceResourceTest
     assertEquals("new-dsc2", updatedDb.getDescription());
     assertTrue(listOrEmpty(updatedDb.getOwners()).isEmpty(), "Owner should be cleared");
     assertTrue(listOrEmpty(updatedDb.getTags()).isEmpty(), "Tags should be empty after clearing");
-    assertNull(updatedDb.getDomain(), "Domain should be null after clearing");
+    assertTrue(
+        listOrEmpty(updatedDb.getDomains()).isEmpty(), "Domain should be null after clearing");
   }
 
   @Test

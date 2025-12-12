@@ -83,6 +83,13 @@ export enum ResourceEntity {
   API_SERVICE = 'apiService',
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
+  INGESTION_RUNNER = 'ingestionRunner',
+  DRIVE_SERVICE = 'driveService',
+  DIRECTORY = 'directory',
+  FILE = 'file',
+  SPREADSHEET = 'spreadsheet',
+  WORKSHEET = 'worksheet',
+  NOTIFICATION_TEMPLATE = 'notificationTemplate',
 }
 
 export interface PermissionContextType {

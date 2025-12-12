@@ -27,13 +27,12 @@ import IngestionStepper from '../../components/Settings/Services/Ingestion/Inges
 import ConnectionConfigForm from '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm';
 import FiltersConfigForm from '../../components/Settings/Services/ServiceConfig/FiltersConfigForm';
 import { AUTO_PILOT_APP_NAME } from '../../constants/Applications.constant';
-import { AIRFLOW_HYBRID } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
+  EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_DEFAULT_ERROR_MAP,
   STEPS_FOR_ADD_SERVICE,
 } from '../../constants/Services.constant';
-import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -43,6 +42,7 @@ import { postService } from '../../rest/serviceAPI';
 import { getServiceLogo } from '../../utils/CommonUtils';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   getAddServicePath,
   getServiceDetailsPath,
@@ -65,7 +65,6 @@ const AddServicePage = () => {
   const { serviceCategory } =
     useRequiredParams<{ serviceCategory: ServiceCategory }>();
   const { currentUser, setInlineAlertDetails } = useApplicationStore();
-  const { platform } = useAirflowStatus();
 
   const [showErrorMessage, setShowErrorMessage] = useState(
     SERVICE_DEFAULT_ERROR_MAP
@@ -84,6 +83,15 @@ const AddServicePage = () => {
   const [activeField, setActiveField] = useState<string>('');
 
   const slashedBreadcrumb = getAddServiceEntityBreadcrumb(serviceCategory);
+
+  const translatedSteps = useMemo(
+    () =>
+      STEPS_FOR_ADD_SERVICE.map((step) => ({
+        ...step,
+        name: translateWithNestedKeys(step.name, step.nameData),
+      })),
+    []
+  );
 
   const handleServiceTypeClick = (type: string) => {
     setShowErrorMessage({ ...showErrorMessage, serviceType: false });
@@ -188,7 +196,13 @@ const AddServicePage = () => {
     try {
       const serviceDetails = await postService(serviceCategory, configData);
 
-      await triggerTheAutoPilotApplication(serviceDetails);
+      if (
+        !EXCLUDE_AUTO_PILOT_SERVICE_TYPES.includes(
+          getEntityTypeFromServiceCategory(serviceCategory)
+        )
+      ) {
+        await triggerTheAutoPilotApplication(serviceDetails);
+      }
     } catch (error) {
       handleEntityCreationError({
         error: error as AxiosError,
@@ -248,7 +262,7 @@ const AddServicePage = () => {
 
           <IngestionStepper
             activeStep={activeServiceStep}
-            steps={STEPS_FOR_ADD_SERVICE}
+            steps={translatedSteps}
           />
           <div className="m-t-lg">
             {activeServiceStep === 1 && (
@@ -307,10 +321,8 @@ const AddServicePage = () => {
   );
 
   useEffect(() => {
-    if (platform === AIRFLOW_HYBRID) {
-      serviceUtilClassBase.getExtraInfo();
-    }
-  }, [platform]);
+    serviceUtilClassBase.getExtraInfo();
+  }, []);
 
   return (
     <ResizablePanels

@@ -11,6 +11,7 @@
 """
 Iceberg source methods.
 """
+import time
 import traceback
 from typing import Any, Iterable, Optional, Tuple
 
@@ -108,12 +109,12 @@ class IcebergSource(DatabaseServiceSource):
 
         Also, update the self.inspector value to the current db.
         """
-        yield Either(
-            right=CreateDatabaseRequest(
-                name=database_name,
-                service=self.context.get().database_service,
-            )
+        database_request = CreateDatabaseRequest(
+            name=database_name,
+            service=self.context.get().database_service,
         )
+        yield Either(right=database_request)
+        self.register_record_database_request(database_request=database_request)
 
     def get_database_schema_names(self) -> Iterable[str]:
         """
@@ -155,19 +156,56 @@ class IcebergSource(DatabaseServiceSource):
         From topology.
         Prepare a database request and pass it to the sink.
         """
-        yield Either(
-            right=CreateDatabaseSchemaRequest(
-                name=EntityName(schema_name),
-                database=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
-                        entity_type=Database,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                    )
-                ),
-            )
+        schema_request = CreateDatabaseSchemaRequest(
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
+            ),
         )
+        yield Either(right=schema_request)
+        self.register_record_schema_request(schema_request=schema_request)
+
+    def _load_iceberg_table(self, table_identifier: str):
+        """
+        load iceberg table properly with handling
+        network connection error
+        """
+        try:
+            from botocore.exceptions import EndpointConnectionError
+
+            # Add retry logic for transient network issues
+            max_retries = 3
+            retry_delay = 1
+
+            for attempt in range(max_retries):
+                try:
+                    table = self.iceberg.load_table(table_identifier)
+                    # Success, exit retry loop
+                    return table
+                except (OSError, EndpointConnectionError) as e:
+                    if "Couldn't resolve host name" in str(
+                        e
+                    ) or "NETWORK_CONNECTION" in str(e):
+                        if attempt < max_retries - 1:
+                            logger.warning(
+                                f"Network error loading table {table_identifier}, "
+                                f"retrying in {retry_delay} seconds (attempt {attempt + 1}/{max_retries}): {e}"
+                            )
+                            time.sleep(retry_delay)
+                            retry_delay *= 2  # Exponential backoff
+                        else:
+                            logger.warning(f"Maximum retries reached::: {exc}")
+                    else:
+                        logger.warning(f"Other error than host connection::: {exc}")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not load iceberg table properly {exc}")
+        return None
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
         """
@@ -178,9 +216,14 @@ class IcebergSource(DatabaseServiceSource):
 
         for table_identifier in self.iceberg.list_tables(namespace):
             try:
-                table = self.iceberg.load_table(table_identifier)
+                table = self._load_iceberg_table(table_identifier)
                 # extract table name from table identifier, which does not include catalog name
                 table_name = get_table_name_as_str(table_identifier)
+                if not table:
+                    logger.debug(
+                        f"iceberg Table could not be fetched for table name = {table_name}"
+                    )
+                    continue
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,

@@ -1,0 +1,195 @@
+{
+  "dataContractResults": [
+    {
+      "dataContractFQN": "sample_data.ecommerce_db.shopify.dim_customer.dataContract_dim_customer_schema_contract",
+      "table_fqn": "sample_data.ecommerce_db.shopify.dim_customer",
+      "results": [
+        {
+          "contractExecutionStatus": "Success",
+          "result": "All schema validations passed successfully",
+          "schemaValidation": {
+            "passed": 5,
+            "failed": 0,
+            "total": 5,
+            "failedFields": []
+          },
+          "executionTime": 1500
+        },
+        {
+          "contractExecutionStatus": "Failed",
+          "result": "Schema validation failed: missing required constraint on email field",
+          "schemaValidation": {
+            "passed": 4,
+            "failed": 1,
+            "total": 5,
+            "failedFields": ["email"]
+          },
+          "executionTime": 1200
+        },
+        {
+          "contractExecutionStatus": "Success",
+          "result": "Schema validation successful after fixing email field constraints",
+          "schemaValidation": {
+            "passed": 5,
+            "failed": 0,
+            "total": 5,
+            "failedFields": []
+          },
+          "executionTime": 1450
+        }
+      ]
+    },
+    {
+      "dataContractFQN": "sample_data.ecommerce_db.shopify.dim_location.dataContract_dim_location_semantics_contract",
+      "table_fqn": "sample_data.ecommerce_db.shopify.dim_location",
+      "results": [
+        {
+          "contractExecutionStatus": "Success",
+          "result": "All semantic validations passed",
+          "schemaValidation": {
+            "passed": 4,
+            "failed": 0,
+            "total": 4,
+            "failedFields": []
+          },
+          "semanticsValidation": {
+            "passed": 3,
+            "failed": 0,
+            "total": 3,
+            "failedRules": []
+          },
+          "executionTime": 1800
+        },
+        {
+          "contractExecutionStatus": "Failed",
+          "result": "Semantic validation failed: found invalid location data",
+          "schemaValidation": {
+            "passed": 4,
+            "failed": 0,
+            "total": 4,
+            "failedFields": []
+          },
+          "semanticsValidation": {
+            "passed": 2,
+            "failed": 1,
+            "total": 3,
+            "failedRules": [
+              {
+                "ruleName": "valid_location_name",
+                "reason": "Found 5 locations with empty or null names"
+              }
+            ]
+          },
+          "executionTime": 1950
+        },
+        {
+          "contractExecutionStatus": "PartialSuccess",
+          "result": "Partial success: location names fixed but some invalid IDs remain",
+          "schemaValidation": {
+            "passed": 4,
+            "failed": 0,
+            "total": 4,
+            "failedFields": []
+          },
+          "semanticsValidation": {
+            "passed": 2,
+            "failed": 1,
+            "total": 3,
+            "failedRules": [
+              {
+                "ruleName": "positive_location_id",
+                "reason": "Found 2 locations with negative or zero location_id"
+              }
+            ]
+          },
+          "executionTime": 1750
+        }
+      ]
+    },
+    {
+      "dataContractFQN": "sample_data.ecommerce_db.shopify.dim_address.dataContract_dim_address_comprehensive_contract",
+      "table_fqn": "sample_data.ecommerce_db.shopify.dim_address",
+      "results": [
+        {
+          "contractExecutionStatus": "Success",
+          "result": "All validations passed: schema, semantics, and quality expectations met",
+          "schemaValidation": {
+            "passed": 10,
+            "failed": 0,
+            "total": 10,
+            "failedFields": []
+          },
+          "semanticsValidation": {
+            "passed": 4,
+            "failed": 0,
+            "total": 4,
+            "failedRules": []
+          },
+          "qualityValidation": {
+            "passed": 3,
+            "failed": 0,
+            "total": 3,
+            "qualityScore": 95.8
+          },
+          "executionTime": 2800
+        },
+        {
+          "contractExecutionStatus": "Failed",
+          "result": "Multiple validation failures across schema, semantics, and quality checks",
+          "schemaValidation": {
+            "passed": 8,
+            "failed": 2,
+            "total": 10,
+            "failedFields": ["zip", "phone"]
+          },
+          "semanticsValidation": {
+            "passed": 3,
+            "failed": 1,
+            "total": 4,
+            "failedRules": [
+              {
+                "ruleName": "valid_zip_format",
+                "reason": "Found 23 addresses with invalid ZIP code format"
+              }
+            ]
+          },
+          "qualityValidation": {
+            "passed": 1,
+            "failed": 2,
+            "total": 3,
+            "qualityScore": 68.9
+          },
+          "executionTime": 3200
+        },
+        {
+          "contractExecutionStatus": "Running",
+          "result": "Validation in progress...",
+          "executionTime": 0
+        },
+        {
+          "contractExecutionStatus": "Success", 
+          "result": "All issues resolved: comprehensive validation successful",
+          "schemaValidation": {
+            "passed": 10,
+            "failed": 0,
+            "total": 10,
+            "failedFields": []
+          },
+          "semanticsValidation": {
+            "passed": 4,
+            "failed": 0,
+            "total": 4,
+            "failedRules": []
+          },
+          "qualityValidation": {
+            "passed": 3,
+            "failed": 0,
+            "total": 3,
+            "qualityScore": 94.2
+          },
+          "executionTime": 2900
+        }
+      ]
+    }
+  ]
+}

@@ -100,14 +100,16 @@ export const METRIC_DUMMY_DATA: Metric = {
     previousVersion: 0.5,
   },
   deleted: false,
-  domain: {
-    id: '635cf2af-5175-44e4-91f1-030beab290d5',
-    type: 'domain',
-    name: 'Marketing',
-    fullyQualifiedName: 'Marketing',
-    description: 'Marketing',
-    displayName: 'Marketing',
-  },
+  domains: [
+    {
+      id: '635cf2af-5175-44e4-91f1-030beab290d5',
+      type: 'domain',
+      name: 'Marketing',
+      fullyQualifiedName: 'Marketing',
+      description: 'Marketing',
+      displayName: 'Marketing',
+    },
+  ],
   dataProducts: [],
   votes: {
     upVotes: 0,

@@ -30,7 +30,10 @@
         "Lightdash",
         "MicroStrategy",
         "QlikCloud",
-        "Sigma"
+        "Sigma",
+        "ThoughtSpot",
+        "Grafana",
+        "Hex"
       ],
       "javaEnums": [
         {
@@ -80,6 +83,15 @@
         },
         {
           "name": "Sigma"
+        },
+        {
+          "name": "ThoughtSpot"
+        },
+        {
+          "name": "Grafana"
+        },
+        {
+          "name": "Hex"
         }
       ]
     },
@@ -141,6 +153,15 @@
             },
             {
               "$ref": "./connections/dashboard/sigmaConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/thoughtSpotConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/grafanaConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/hexConnection.json"
             }
           ]
         }
@@ -208,6 +229,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to the resource corresponding to this dashboard service.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -229,9 +254,9 @@
       "description": "List of data products this entity is part of.",
       "$ref" : "../../type/entityReferenceList.json"
     },
-    "domain" : {
-      "description": "Domain the Dashboard service belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains" : {
+      "description": "Domains the Dashboard service belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this entity.",

@@ -11,18 +11,25 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Menu, MenuProps, Row, Typography } from 'antd';
+import { DownOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useNavigate } from 'react-router-dom';
-import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
-import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
+import { useNavigate } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
-import { EntityType } from '../../enums/entity.enum';
+import TestCaseFormV1 from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1';
+import BundleSuiteForm from '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { TestCase } from '../../generated/tests/testCase';
+import { TestSuite } from '../../generated/tests/testSuite';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import {
+  getDataQualityPagePath,
+  getTestCaseDetailPagePath,
+  getTestSuitePath,
+} from '../../utils/RouterUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
@@ -34,121 +41,186 @@ const DataQualityPage = () => {
     useRequiredParams<{ tab: DataQualityPageTabs }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const menuItems: MenuProps['items'] = useMemo(() => {
-    const data = DataQualityClassBase.getLeftSideBar();
+  const { permissions } = usePermissionProvider();
+  const { testSuite: testSuitePermission } = permissions;
+
+  // Add state for modal open/close
+  const [isTestCaseModalOpen, setIsTestCaseModalOpen] = useState(false);
+  const [isBundleSuiteModalOpen, setIsBundleSuiteModalOpen] = useState(false);
+
+  // Add handlers for modal
+  const handleOpenTestCaseModal = () => {
+    setIsTestCaseModalOpen(true);
+  };
+
+  const handleCloseTestCaseModal = () => {
+    setIsTestCaseModalOpen(false);
+  };
+
+  const handleOpenBundleSuiteModal = () => {
+    setIsBundleSuiteModalOpen(true);
+  };
+
+  const handleCloseBundleSuiteModal = () => {
+    setIsBundleSuiteModalOpen(false);
+  };
+
+  const handleBundleSuiteSuccess = (testSuite: TestSuite) => {
+    if (testSuite.fullyQualifiedName) {
+      navigate(getTestSuitePath(testSuite.fullyQualifiedName));
+    }
+  };
+
+  const addButtonContent = useMemo(() => {
+    // Since we will be checking permissions during test case creation, based on table ownership and
+    // test case creation rights
+    const btn = [
+      {
+        label: t('label.test-case'),
+        key: '1',
+        onClick: handleOpenTestCaseModal,
+      },
+    ];
+
+    if (testSuitePermission?.Create) {
+      btn.push({
+        label: t('label.bundle-suite'),
+        key: '2',
+        onClick: handleOpenBundleSuiteModal,
+      });
+    }
+
+    return btn;
+  }, [permissions]);
+
+  const menuItems = useMemo(() => {
+    const data = DataQualityClassBase.getDataQualityTab();
 
     return data.map((value) => {
-      const SvgIcon = value.icon;
+      const Component = value.component;
 
       return {
         key: value.key,
-        label: (
-          <TabsLabel
-            description={value.description}
-            id={value.id}
-            name={value.label}
-          />
-        ),
-        icon: <SvgIcon {...value.iconProps} height={16} width={16} />,
+        label: <TabsLabel id={value.key} name={value.label} />,
+        children: <Component />,
       };
     });
   }, []);
 
-  const extraDropdownContent = useMemo(
-    () => DataQualityClassBase.getManageExtraOptions(activeTab),
+  const exportDataQualityDashboardButton = useMemo(
+    () => DataQualityClassBase.getExportDataQualityDashboardButton(activeTab),
     [activeTab]
   );
 
-  const handleTabChange: MenuProps['onClick'] = (event) => {
-    const activeKey = event.key;
+  const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       navigate(getDataQualityPagePath(activeKey as DataQualityPageTabs));
     }
   };
 
-  const renderTabComponent = useMemo(() => {
-    const currentTab = DataQualityClassBase.getDataQualityTab().find(
-      (tabItem) => tabItem.key === activeTab
-    );
-
-    if (!currentTab) {
-      return (
-        <Navigate
-          replace
-          to={getDataQualityPagePath(
-            DataQualityClassBase.getDefaultActiveTab()
-          )}
-        />
-      );
+  const handleFormSubmit = (testCase: TestCase) => {
+    if (testCase.fullyQualifiedName) {
+      navigate(getTestCaseDetailPagePath(testCase.fullyQualifiedName));
     }
-
-    const TabComponent = currentTab.component;
-
-    return <TabComponent />;
-  }, [activeTab]);
+  };
 
   return (
-    <div>
-      <ResizableLeftPanels
-        className="content-height-with-resizable-panel"
-        firstPanel={{
-          className: 'content-resizable-panel-container',
-          minWidth: 280,
-          flex: 0.13,
-          children: (
-            <LeftPanelCard id="data-quality">
-              <Menu
-                className="custom-menu custom-menu-with-description data-quality-page-left-panel-menu"
-                data-testid="tabs"
-                items={menuItems}
-                mode="inline"
-                selectedKeys={[
-                  activeTab ?? DataQualityClassBase.getDefaultActiveTab(),
-                ]}
-                onClick={handleTabChange}
-              />
-            </LeftPanelCard>
-          ),
-        }}
-        pageTitle={t('label.data-quality')}
-        secondPanel={{
-          children: (
-            <Card className="h-full overflow-y-auto">
-              <DataQualityProvider>
-                <Row data-testid="data-insight-container" gutter={[0, 16]}>
-                  <Col span={isEmpty(extraDropdownContent) ? 24 : 23}>
-                    <Typography.Title
-                      className="m-b-md"
-                      data-testid="page-title"
-                      level={5}>
-                      {t('label.data-quality')}
-                    </Typography.Title>
-                    <Typography.Paragraph
-                      className="text-grey-muted"
-                      data-testid="page-sub-title">
-                      {t('message.page-sub-header-for-data-quality')}
-                    </Typography.Paragraph>
-                  </Col>
-                  {isEmpty(extraDropdownContent) ? null : (
-                    <Col className="d-flex justify-end" span={1}>
-                      <ManageButton
-                        entityName={EntityType.TEST_CASE}
-                        entityType={EntityType.TEST_CASE}
-                        extraDropdownContent={extraDropdownContent}
-                      />
-                    </Col>
+    <DataQualityProvider>
+      <Row
+        className="data-quality-page m-b-md"
+        data-testid="data-insight-container"
+        gutter={[0, 16]}>
+        <Col span={24}>
+          <Card>
+            <Row>
+              <Col span={16}>
+                <PageHeader
+                  data={{
+                    header: t('label.data-quality'),
+                    subHeader: t('message.page-sub-header-for-data-quality'),
+                  }}
+                />
+              </Col>
+
+              <Col className="d-flex justify-end" span={8}>
+                {activeTab === DataQualityPageTabs.TEST_SUITES &&
+                  testSuitePermission?.Create && (
+                    <Button
+                      data-testid="add-test-suite-btn"
+                      type="primary"
+                      onClick={handleOpenBundleSuiteModal}>
+                      {t('label.add-a-entity', {
+                        entity: t('label.bundle-suite'),
+                      })}
+                    </Button>
                   )}
-                  <Col span={24}>{renderTabComponent}</Col>
-                </Row>
-              </DataQualityProvider>
-            </Card>
-          ),
-          className: 'content-resizable-panel-container',
-          minWidth: 800,
-          flex: 0.87,
-        }}
-      />
-    </div>
+                {activeTab === DataQualityPageTabs.TEST_CASES && (
+                  <Button
+                    data-testid="add-test-case-btn"
+                    type="primary"
+                    onClick={handleOpenTestCaseModal}>
+                    {t('label.add-a-entity', {
+                      entity: t('label.test-case'),
+                    })}
+                  </Button>
+                )}
+                {exportDataQualityDashboardButton}
+
+                {activeTab === DataQualityPageTabs.DASHBOARD &&
+                  !isEmpty(addButtonContent) && (
+                    <Dropdown
+                      className="m-l-md h-10"
+                      menu={{
+                        items: addButtonContent,
+                      }}
+                      placement="bottomRight"
+                      trigger={['click']}>
+                      <Button
+                        data-testid="data-quality-add-button-menu"
+                        type="primary">
+                        <Space>
+                          {t('label.add')}
+                          <DownOutlined />
+                        </Space>
+                      </Button>
+                    </Dropdown>
+                  )}
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+        <Col span={24}>
+          <Tabs
+            activeKey={activeTab}
+            className="tabs-new data-quality-page-tabs"
+            data-testid="tabs"
+            items={menuItems}
+            onChange={handleTabChange}
+          />
+        </Col>
+      </Row>
+      {isTestCaseModalOpen && (
+        <TestCaseFormV1
+          drawerProps={{
+            title: t('label.add-entity', {
+              entity: t('label.test-case'),
+            }),
+            open: isTestCaseModalOpen,
+          }}
+          onCancel={handleCloseTestCaseModal}
+          onFormSubmit={handleFormSubmit}
+        />
+      )}
+      {isBundleSuiteModalOpen && (
+        <BundleSuiteForm
+          drawerProps={{
+            open: isBundleSuiteModalOpen,
+          }}
+          onCancel={handleCloseBundleSuiteModal}
+          onSuccess={handleBundleSuiteSuccess}
+        />
+      )}
+    </DataQualityProvider>
   );
 };
 

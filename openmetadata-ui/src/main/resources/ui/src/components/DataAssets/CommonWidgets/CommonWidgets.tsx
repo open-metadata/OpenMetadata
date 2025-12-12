@@ -22,15 +22,18 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { Directory } from '../../../generated/entity/data/directory';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../../../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   EntityReference,
@@ -47,6 +50,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -54,6 +58,7 @@ import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import { DomainExpertWidget } from '../../Domain/DomainExpertsWidget/DomainExpertWidget';
 import { GlossaryUpdateConfirmationModal } from '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -68,7 +73,7 @@ interface GenericEntity
       | 'deleted'
       | 'description'
       | 'owners'
-      | 'domain'
+      | 'domains'
       | 'dataProducts'
       | 'extension'
       | 'tags'
@@ -87,7 +92,7 @@ export const CommonWidgets = ({
   entityType,
   showTaskHandler = true,
 }: CommonWidgetsProps) => {
-  const { data, type, onUpdate, permissions, isVersionView } =
+  const { data, type, entityRules, onUpdate, permissions, isVersionView } =
     useGenericContext<GenericEntity>();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
 
@@ -133,7 +138,7 @@ export const CommonWidgets = ({
     tags,
     deleted,
     owners,
-    domain,
+    domains,
     dataProducts,
     description,
     entityName,
@@ -176,7 +181,13 @@ export const CommonWidgets = ({
         return (data as unknown as Glossary).termCount === 0;
       case EntityType.DOMAIN:
       case EntityType.METRIC:
+      case EntityType.FILE:
+      case EntityType.WORKSHEET:
         return true;
+      case EntityType.DIRECTORY:
+        return isEmpty((data as unknown as Directory).children);
+      case EntityType.SPREADSHEET:
+        return isEmpty((data as unknown as Spreadsheet).worksheets);
       default:
         return false;
     }
@@ -188,7 +199,7 @@ export const CommonWidgets = ({
     editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
-    viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editDataProductPermission: permissions.EditAll && !deleted,
@@ -210,8 +221,11 @@ export const CommonWidgets = ({
         permissions.ViewAll ||
         permissions.ViewDataProfile ||
         permissions.ViewTests,
-      viewAllPermission: permissions.ViewAll,
       viewBasicPermission: permissions.ViewAll || permissions.ViewBasic,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        permissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [permissions, deleted]
   );
@@ -267,13 +281,19 @@ export const CommonWidgets = ({
     return (
       <DataProductsContainer
         newLook
-        activeDomain={domain as EntityReference}
+        activeDomains={domains}
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
+        multiple={entityRules.canAddMultipleDataProducts}
         onSave={handleDataProductsSave}
       />
     );
-  }, [dataProducts, domain, editDataProductPermission, handleDataProductsSave]);
+  }, [
+    dataProducts,
+    domains,
+    editDataProductPermission,
+    handleDataProductsSave,
+  ]);
 
   const tagsWidget = useMemo(() => {
     return (
@@ -307,6 +327,7 @@ export const CommonWidgets = ({
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
+        multiSelect={entityRules.canAddMultipleGlossaryTerm}
         permission={editGlossaryTermsPermission && !isVersionView}
         selectedTags={tags}
         showTaskHandler={showTaskHandler && !isVersionView}
@@ -329,6 +350,7 @@ export const CommonWidgets = ({
         showSuggestions
         wrapInCard
         description={description}
+        entityFullyQualifiedName={data?.fullyQualifiedName ?? ''}
         entityName={entityName}
         entityType={type}
         hasEditAccess={editDescriptionPermission}
@@ -338,7 +360,13 @@ export const CommonWidgets = ({
         showActions={!deleted}
         onDescriptionUpdate={async (value: string) => {
           if (value !== description) {
-            await onUpdate({ ...data, description: value });
+            await onUpdate(
+              {
+                ...data,
+                description: value === '' ? undefined : value, // To remove the entire value and should present with empty quotes
+              },
+              'description'
+            );
           }
         }}
       />
@@ -370,7 +398,7 @@ export const CommonWidgets = ({
           isRenderedInRightPanel
           entityType={entityType as EntityType.TABLE}
           hasEditAccess={Boolean(editCustomAttributePermission)}
-          hasPermission={Boolean(viewAllPermission)}
+          hasPermission={viewCustomPropertiesPermission}
           maxDataCap={5}
         />
       );
@@ -381,9 +409,14 @@ export const CommonWidgets = ({
     ) {
       return <ReviewerLabelV2<GenericEntity> />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
-      return <OwnerLabelV2<GenericEntity> />;
+      return <DomainExpertWidget />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
-      return <DomainLabelV2 showDomainHeading />;
+      return (
+        <DomainLabelV2
+          showDomainHeading
+          multiple={entityRules.canAddMultipleDomains}
+        />
+      );
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {
       return (
         <LeftPanelContainer

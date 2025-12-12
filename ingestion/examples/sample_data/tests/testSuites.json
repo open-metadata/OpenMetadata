@@ -400,11 +400,11 @@
                     "testDefinitionName": "columnValuesToBeBetween",
                     "parameterValues": [
                         {
-                            "name": "min",
+                            "name": "minValue",
                             "value": "90001"
                         },
                         {
-                            "name": "max",
+                            "name": "maxValue",
                             "value": "96162"
                         }
                     ],

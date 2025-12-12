@@ -1,0 +1,67 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/entityCountLineageRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EntityCountLineageRequest",
+  "description": "Request schema for getting lineage with entity count based pagination",
+  "javaType": "org.openmetadata.schema.api.lineage.EntityCountLineageRequest",
+  "type": "object",
+  "properties": {
+    "fqn": {
+      "description": "Entity Fqn to search lineage",
+      "type": "string"
+    },
+    "from": {
+      "description": "Starting offset for pagination (0-based)",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "size": {
+      "description": "Number of entities to return in this page",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 50
+    },
+    "nodeDepth": {
+      "description": "Filter entities by specific node depth level. Negative values for upstream (e.g., -1, -2), positive for downstream (1, 2), 0 for root entity",
+      "type": "integer",
+      "minimum": -10,
+      "maximum": 10
+    },
+    "direction": {
+      "$ref": "./lineageDirection.json",
+      "description": "Direction of lineage traversal (upstream or downstream)"
+    },
+    "maxDepth": {
+      "description": "Maximum depth to traverse in the specified direction",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "default": 3
+    },
+    "isConnectedVia": {
+      "description": "Connected Via",
+      "type": "boolean"
+    },
+    "queryFilter": {
+      "description": "Query Filter",
+      "type": "string"
+    },
+    "includeDeleted": {
+      "description": "Include deleted entities",
+      "type": "boolean",
+      "default": false
+    },
+    "includeSourceFields": {
+      "description": "Include source fields",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "required": ["fqn", "direction"],
+  "additionalProperties": false
+}

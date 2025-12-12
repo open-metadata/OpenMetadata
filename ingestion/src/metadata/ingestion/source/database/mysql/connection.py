@@ -16,7 +16,6 @@ from typing import Optional
 
 from sqlalchemy.engine import Engine
 
-from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
@@ -47,6 +46,7 @@ from metadata.ingestion.source.database.mysql.queries import (
     MYSQL_TEST_GET_QUERIES_SLOW_LOGS,
 )
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.credentials import get_azure_access_token
 
 
 class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
@@ -57,20 +57,8 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
         connection = self.service_connection
 
         if isinstance(connection.authType, AzureConfigurationSource):
-            if not connection.authType.azureConfig:
-                raise ValueError("Azure Config is missing")
-            azure_client = AzureClient(connection.authType.azureConfig).create_client()
-            if not connection.authType.azureConfig.scopes:
-                raise ValueError(
-                    "Azure Scopes are missing, please refer https://learn.microsoft.com/"
-                    "en-gb/azure/mysql/flexible-server/how-to-azure-ad#2---retrieve-micr"
-                    "osoft-entra-access-token and fetch the resource associated with it,"
-                    " for e.g. https://ossrdbms-aad.database.windows.net/.default"
-                )
-            access_token_obj = azure_client.get_token(
-                *connection.authType.azureConfig.scopes.split(",")
-            )
-            connection.authType = BasicAuth(password=access_token_obj.token)  # type: ignore
+            access_token = get_azure_access_token(connection.authType)
+            connection.authType = BasicAuth(password=access_token)  # type: ignore
         return create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=get_connection_url_common,

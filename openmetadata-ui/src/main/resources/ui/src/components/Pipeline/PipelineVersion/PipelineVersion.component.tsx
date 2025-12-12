@@ -23,6 +23,7 @@ import {
   ChangeDescription,
   Task,
 } from '../../../generated/entity/data/pipeline';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/schema';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -31,6 +32,7 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getUpdatedPipelineTasks } from '../../../utils/PipelineVersionUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
@@ -54,7 +56,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   currentVersionData,
   isVersionLoading,
   owners,
-  domain,
+  domains,
   dataProducts,
   tier,
   slashedPipelineName,
@@ -77,9 +79,9 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   const pipelineVersionTableData = useMemo(
@@ -179,6 +181,15 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const viewCustomPropertiesPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        entityPermissions,
+        Operation.ViewCustomFields
+      ),
+    [entityPermissions]
+  );
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -217,7 +228,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -249,7 +260,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
             isVersionView
             entityType={EntityType.PIPELINE}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
@@ -259,7 +270,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       tableColumn,
       pipelineVersionTableData,
       currentVersionData,
-      entityPermissions,
+      viewCustomPropertiesPermission,
       tags,
     ]
   );

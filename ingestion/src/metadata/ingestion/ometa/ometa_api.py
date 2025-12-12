@@ -15,7 +15,21 @@ models from the JSON schemas and provides a typed approach to
 working with OpenMetadata entities.
 """
 import traceback
-from typing import Dict, Generic, Iterable, List, Optional, Type, TypeVar, Union
+from collections import OrderedDict
+from collections.abc import Generator
+from itertools import chain
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Generic,
+    Iterable,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -28,24 +42,33 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 )
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.bulkOperationResult import (
+    BulkOperationResult,
+    Response,
+)
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
+from metadata.ingestion.models.topology import get_entity_hierarchy_depth
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
     OMetaCustomPropertyMixin,
 )
 from metadata.ingestion.ometa.mixins.dashboard_mixin import OMetaDashboardMixin
+from metadata.ingestion.ometa.mixins.data_contract_mixin import OMetaDataContractMixin
 from metadata.ingestion.ometa.mixins.data_insight_mixin import DataInsightMixin
 from metadata.ingestion.ometa.mixins.domain_mixin import OMetaDomainMixin
 from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
+from metadata.ingestion.ometa.mixins.logs_mixin import OMetaLogsMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.profile_mixin import OMetaProfileMixin
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
 from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
 from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
@@ -53,13 +76,20 @@ from metadata.ingestion.ometa.mixins.server_mixin import OMetaServerMixin
 from metadata.ingestion.ometa.mixins.service_mixin import OMetaServiceMixin
 from metadata.ingestion.ometa.mixins.suggestions_mixin import OMetaSuggestionsMixin
 from metadata.ingestion.ometa.mixins.table_mixin import OMetaTableMixin
+from metadata.ingestion.ometa.mixins.tag_glossary_mixin import OMetaTagGlossaryMixin
 from metadata.ingestion.ometa.mixins.tests_mixin import OMetaTestsMixin
 from metadata.ingestion.ometa.mixins.topic_mixin import OMetaTopicMixin
 from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.routes import ROUTES
-from metadata.ingestion.ometa.utils import get_entity_type, model_str, quote
+from metadata.ingestion.ometa.sse_client import SSEClient
+from metadata.ingestion.ometa.utils import (
+    decode_jwt_token,
+    get_entity_type,
+    model_str,
+    quote,
+)
 from metadata.utils.logger import ometa_logger
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.ssl_registry import get_verify_ssl_fn
@@ -102,6 +132,7 @@ class OpenMetadataSettings(BaseSettings):
 
 
 class OpenMetadata(
+    CSVMixin,
     OMetaPipelineMixin,
     OMetaMlModelMixin,
     OMetaTableMixin,
@@ -111,10 +142,12 @@ class OpenMetadata(
     ESMixin,
     OMetaServerMixin,
     OMetaDashboardMixin,
+    OMetaDataContractMixin,
     OMetaPatchMixin,
     OMetaTestsMixin,
     DataInsightMixin,
     OMetaIngestionPipelineMixin,
+    OMetaLogsMixin,
     OMetaUserMixin,
     OMetaQueryMixin,
     OMetaRolePolicyMixin,
@@ -122,6 +155,8 @@ class OpenMetadata(
     OMetaCustomPropertyMixin,
     OMetaSuggestionsMixin,
     OMetaDomainMixin,
+    OMetaProfileMixin,
+    OMetaTagGlossaryMixin,
     Generic[T, C],
 ):
     """
@@ -133,6 +168,7 @@ class OpenMetadata(
     """
 
     client: REST
+    sse_client: SSEClient
     _auth_provider: OpenMetadataAuthenticationProvider
     config: OpenMetadataConnection
 
@@ -145,6 +181,7 @@ class OpenMetadata(
         self,
         config: OpenMetadataConnection,
         raw_data: bool = False,
+        additional_client_config_arguments: Optional[Dict[str, Any]] = None,
     ):
         self.config = config
 
@@ -155,24 +192,52 @@ class OpenMetadata(
         ).get_secrets_manager()
 
         self._auth_provider = OpenMetadataAuthenticationProvider.create(self.config)
+        self.log_user_name_from_jwt_token()
 
         get_verify_ssl = get_verify_ssl_fn(self.config.verifySSL)
 
         extra_headers: Optional[dict[str, str]] = None
         if self.config.extraHeaders:
             extra_headers = self.config.extraHeaders.root
-        client_config: ClientConfig = ClientConfig(
+
+        client_config = ClientConfig(
             base_url=self.config.hostPort,
             api_version=self.config.apiVersion,
             auth_header="Authorization",
             extra_headers=extra_headers,
             auth_token=self._auth_provider.get_access_token,
             verify=get_verify_ssl(self.config.sslConfig),
+            **(additional_client_config_arguments or {}),
         )
+
         self.client = REST(client_config)
+        self.sse_client = SSEClient(client_config)
         self._use_raw_data = raw_data
         if self.config.enableVersionValidation:
             self.validate_versions()
+
+    def log_user_name_from_jwt_token(self) -> None:
+        """
+        Log user name from JWT token.
+        """
+        # Log user name from JWT token if authProvider is openmetadata
+        if (
+            self.config.authProvider
+            and self.config.authProvider.value == "openmetadata"
+        ):
+            try:
+                # Get the JWT token from the auth provider
+                jwt_token, _ = self._auth_provider.get_access_token()
+                if jwt_token:
+                    # Decode the JWT token to extract user information
+                    payload = decode_jwt_token(jwt_token)
+                    if payload:
+                        if payload.get("sub"):
+                            logger.debug(f"Authenticated user: {payload.get('sub')}")
+                        else:
+                            logger.debug("Could not extract user name from JWT token")
+            except Exception as e:
+                logger.debug(f"Error processing JWT token: {e}")
 
     @classmethod
     def from_env(cls) -> "OpenMetadata":
@@ -204,6 +269,9 @@ class OpenMetadata(
         if issubclass(entity, CreateBot):
             # Bots schemas don't live inside any subdirectory
             return None
+        if "events.api" in entity.__module__:
+            # EventSubscription entities are in events module, not entity.api
+            return "events"
         return entity.__module__.split(".")[-2]
 
     def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
@@ -256,13 +324,19 @@ class OpenMetadata(
             .replace("storedprocedure", "storedProcedure")
             .replace("ingestionpipeline", "ingestionPipeline")
             .replace("dataproduct", "dataProduct")
+            .replace("datacontract", "dataContract")
+            .replace("chatconversation", "chatConversation")
+            .replace("eventsubscription", "eventSubscription")
         )
         class_path = ".".join(
             filter(
                 None,
                 [
                     self.class_root,
-                    self.entity_path if not file_name.startswith("test") else None,
+                    self.entity_path
+                    if not file_name.startswith("test")
+                    and not file_name.startswith("eventSubscription")
+                    else None,
                     self.get_module_path(create),
                     self.update_file_name(create, file_name),
                 ],
@@ -292,7 +366,7 @@ class OpenMetadata(
         resp = fn(
             # this might be a regular pydantic model so we build the context manually
             self.get_suffix(entity),
-            data=data.model_dump_json(context={"mask_secrets": False}),
+            data=data.model_dump_json(context={"mask_secrets": False}, by_alias=True),
         )
         if not resp:
             raise EmptyPayloadException(
@@ -301,7 +375,22 @@ class OpenMetadata(
         return entity_class(**resp)
 
     def create_or_update(self, data: C) -> T:
-        """Run a PUT requesting via create request C"""
+        """
+        Run a PUT request via create request C.
+
+        Note: This method uses PUT operations with server-side business rules that may prevent
+        certain field overwrites across various entity types for data integrity reasons. If you
+        need to override existing metadata fields, consider using patch methods instead:
+
+        - For descriptions: Use patch_description(force=True)
+        - For general metadata: Use patch(override_metadata=True)
+
+        Args:
+            data: Create request object
+
+        Returns:
+            Updated or created entity
+        """
         return self._create(data=data, method="put")
 
     def create(self, data: C) -> T:
@@ -314,6 +403,7 @@ class OpenMetadata(
         fqn: Union[str, FullyQualifiedEntityName],
         fields: Optional[List[str]] = None,
         nullable: bool = True,
+        include: Optional[str] = None,
     ) -> Optional[T]:
         """
         Return entity by name or None
@@ -324,6 +414,7 @@ class OpenMetadata(
             path=f"name/{quote(fqn)}",
             fields=fields,
             nullable=nullable,
+            include=include,
         )
 
     def get_by_id(
@@ -349,6 +440,7 @@ class OpenMetadata(
         path: str,
         fields: Optional[List[str]] = None,
         nullable: bool = True,
+        include: Optional[str] = None,
     ) -> Optional[T]:
         """
         Generic GET operation for an entity
@@ -357,8 +449,11 @@ class OpenMetadata(
         :param fields: List of fields to return
         """
         fields_str = "?fields=" + ",".join(fields) if fields else ""
+        include = f"&include={include}" if include else ""
         try:
-            resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}")
+            resp = self.client.get(
+                f"{self.get_suffix(entity)}/{path}{fields_str}{include}"
+            )
             if not resp:
                 raise EmptyPayloadException(
                     f"Got an empty response when trying to GET from {self.get_suffix(entity)}/{path}{fields_str}"
@@ -413,6 +508,7 @@ class OpenMetadata(
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
         skip_on_failure: bool = False,
+        include: Optional[str] = None,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -423,8 +519,10 @@ class OpenMetadata(
         url_after = f"&after={after}" if after else ""
         url_before = f"&before={before}" if before else ""
         url_fields = f"&fields={','.join(fields)}" if fields else ""
+        url_include = f"&include={include}" if include else ""
         resp = self.client.get(
-            path=f"{suffix}{url_limit}{url_after}{url_before}{url_fields}", data=params
+            path=f"{suffix}{url_limit}{url_after}{url_before}{url_fields}{url_include}",
+            data=params,
         )
 
         if self._use_raw_data:
@@ -458,6 +556,7 @@ class OpenMetadata(
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
         skip_on_failure: bool = False,
+        include: Optional[str] = None,
     ) -> Iterable[T]:
         """
         Utility method that paginates over all EntityLists
@@ -476,6 +575,7 @@ class OpenMetadata(
             limit=limit,
             params=params,
             skip_on_failure=skip_on_failure,
+            include=include,
         )
         yield from entity_list.entities
 
@@ -488,6 +588,7 @@ class OpenMetadata(
                 params=params,
                 after=after,
                 skip_on_failure=skip_on_failure,
+                include=include,
             )
             yield from entity_list.entities
             after = entity_list.after
@@ -518,6 +619,14 @@ class OpenMetadata(
 
         return [entity(**p) for p in resp["data"]]
 
+    def stream(
+        self, method: str, path: str, data: None | dict[str, Any] = None
+    ) -> Generator[Any, Any, None]:
+        """
+        Stream an SSE response
+        """
+        yield from self.sse_client.stream(method, path, data)
+
     def delete(
         self,
         entity: Type[T],
@@ -539,6 +648,40 @@ class OpenMetadata(
         url += f"&hardDelete={str(hard_delete).lower()}"
         self.client.delete(url)
 
+    def restore(
+        self,
+        entity: Type[T],
+        entity_id: Union[str, basic.Uuid],
+    ) -> Optional[T]:
+        """
+        API call to restore a soft-deleted entity from entity ID
+
+        Args
+            entity (T): entity Type
+            entity_id (basic.Uuid): entity ID
+        Returns
+            Restored entity or None
+        """
+        try:
+            url = f"{self.get_suffix(entity)}/restore"
+            data = {"id": model_str(entity_id)}
+            resp = self.client.put(url, json=data)
+            if not resp:
+                raise EmptyPayloadException(
+                    f"Got an empty response when trying to restore {entity.__name__} with ID {entity_id}"
+                )
+            return entity(**resp)
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Failed to restore %s with ID %s. Error %s - %s",
+                entity.__name__,
+                entity_id,
+                err.status_code,
+                err,
+            )
+            return None
+
     def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
         """
         Compute an entity usage percentile
@@ -546,6 +689,143 @@ class OpenMetadata(
         entity_name = get_entity_type(entity)
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile %s", resp)
+
+    def _group_entities_by_type(
+        self, entities: List[Type[T]]
+    ) -> Dict[Type[T], List[Type[T]]]:
+        """Group entities by type so we can process them in the correct order when
+        creating the entities from bulk API.
+
+        Entities are sorted by their hierarchy depth to ensure parent entities
+        are created before their children (e.g., DatabaseService before Database,
+        Database before DatabaseSchema, etc.).
+
+        Args:
+            entities (List[Type[T]]): List of entities to group by type
+
+        Returns:
+            Dict[Type[T], List[Type[T]]]: Dictionary of entities grouped by type,
+            ordered by hierarchy depth
+        """
+
+        grouped: Dict[Type[T], List[Type[T]]] = {}
+
+        for entity in entities:
+            entity_class = type(entity)
+
+            if entity_class not in grouped:
+                grouped[entity_class] = []
+
+            grouped[entity_class].append(entity)
+
+        sorted_grouped = OrderedDict(
+            sorted(
+                grouped.items(),
+                key=lambda item: get_entity_hierarchy_depth(
+                    self.get_entity_from_create(item[0])
+                ),
+            )
+        )
+
+        return sorted_grouped
+
+    def _execute_bulk_operation(
+        self, entities: List[Type[T]], use_async: bool = False
+    ) -> BulkOperationResult:
+        """Execute a bulk operation for a list of entities.
+
+        Args:
+            entities (List[Type[T]]): List of entities to execute the bulk operation for
+            use_async (bool, optional): Use backend async processing (default: False)
+
+        Returns:
+            BulkOperationResult: Result containing success/failure details
+        """
+        type_ = type(entities[0])
+        data: list[str] = [
+            entity.model_dump(mode="json", exclude_unset=True, exclude_none=True)
+            for entity in entities
+        ]
+        url = f"{self.get_suffix(type_)}/bulk"
+        url += f"?async={str(use_async).lower()}"
+        try:
+            resp = self.client.put(url, json=data)
+        except Exception as exc:
+            logger.debug("Failed to execute bulk operation for %s: %s", type_, exc)
+            logger.debug(traceback.format_exc())
+            return BulkOperationResult(
+                numberOfRowsProcessed=0,
+                numberOfRowsFailed=len(entities),
+                successRequest=[],
+                failedRequest=[
+                    Response(
+                        request=None,
+                        message=str(exc),
+                        status=500,
+                    )
+                ],
+            )
+        return BulkOperationResult(**resp)
+
+    def bulk_create_or_update(
+        self, entities: List[Type[T]], use_async: bool = False
+    ) -> BulkOperationResult:
+        """Bulk create or update (PUT) multiple entities in a single API call.
+
+        Args:
+            entities (List[Type[T]]): List of entities to create or update
+            async (bool, optional): Use backend async processing (default: False)
+
+        Returns:
+            BulkOperationResult: Result containing success/failure details
+        """
+        bulk_ops_results: list[BulkOperationResult] = []
+        if not entities:
+            return BulkOperationResult(
+                numberOfRowsProcessed=0,
+                numberOfRowsFailed=0,
+                successRequest=[],
+                failedRequest=[],
+            )
+
+        type_idx = OrderedDict.fromkeys(map(type, entities))
+        if len(type_idx) > 1:
+            grouped = self._group_entities_by_type(entities)
+            for _, entities in grouped.items():
+                try:
+                    bulk_ops_results.append(
+                        self._execute_bulk_operation(entities, use_async)
+                    )
+                except Exception as exc:
+                    logger.debug("Failed to execute bulk operation: %s", exc)
+                    logger.debug(traceback.format_exc())
+        else:
+            bulk_ops_results.append(self._execute_bulk_operation(entities, use_async))
+
+        failed_rows = sum(result.numberOfRowsFailed.root for result in bulk_ops_results)
+        return BulkOperationResult(
+            status=basic.Status.success if not failed_rows else basic.Status.failure,
+            numberOfRowsProcessed=sum(
+                result.numberOfRowsProcessed.root for result in bulk_ops_results
+            ),
+            numberOfRowsFailed=sum(
+                result.numberOfRowsFailed.root for result in bulk_ops_results
+            ),
+            successRequest=list(
+                chain.from_iterable(
+                    result.successRequest
+                    for result in bulk_ops_results
+                    if result.successRequest is not None
+                )
+            ),
+            failedRequest=list(
+                chain.from_iterable(
+                    result.failedRequest
+                    for result in bulk_ops_results
+                    if result.failedRequest is not None
+                )
+            ),
+        )
 
     def health_check(self) -> bool:
         """

@@ -14,6 +14,7 @@
 import { Button, Col, Form, Row, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -80,8 +81,10 @@ import {
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
   prepareConstraintIcon,
+  pruneEmptyChildren,
   updateColumnInNestedStructure,
 } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -212,14 +215,14 @@ const SchemaTable = () => {
               fields: 'tags,customMetrics',
             });
 
-        setTableColumns(response.data || []);
+        setTableColumns(pruneEmptyChildren(response.data) || []);
         handlePagingChange(response.paging);
       } catch {
         // Set empty state if API fails
         setTableColumns([]);
         handlePagingChange({
           offset: 1,
-          limit: PAGE_SIZE_LARGE,
+          limit: pageSize,
           total: 0,
         });
       }
@@ -313,12 +316,15 @@ const SchemaTable = () => {
     field?: keyof Column
   ) => {
     const response = await updateTableColumn(columnFqn, column);
+    const cleanResponse = isEmpty(response.children)
+      ? omit(response, 'children')
+      : response;
 
     setTableColumns((prev) =>
       prev.map((col) =>
         col.fullyQualifiedName === columnFqn
           ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...response }
+            { ...omit(col, field ?? ''), ...cleanResponse }
           : col
       )
     );
@@ -328,14 +334,19 @@ const SchemaTable = () => {
 
   const handleEditColumnChange = async (columnDescription: string) => {
     if (!isUndefined(editColumn) && editColumn.fullyQualifiedName) {
-      await updateColumnDetails(
-        editColumn.fullyQualifiedName,
-        {
-          description: columnDescription,
-        },
-        'description'
-      );
-      setEditColumn(undefined);
+      try {
+        await updateColumnDetails(
+          editColumn.fullyQualifiedName,
+          {
+            description: columnDescription,
+          },
+          'description'
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setEditColumn(undefined);
+      }
     } else {
       setEditColumn(undefined);
     }
@@ -346,13 +357,17 @@ const SchemaTable = () => {
     editColumnTag: Column
   ) => {
     if (selectedTags && editColumnTag.fullyQualifiedName) {
-      await updateColumnDetails(
-        editColumnTag.fullyQualifiedName,
-        {
-          tags: selectedTags,
-        },
-        'tags'
-      );
+      try {
+        await updateColumnDetails(
+          editColumnTag.fullyQualifiedName,
+          {
+            tags: selectedTags,
+          },
+          'tags'
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
     }
   };
 
@@ -436,20 +451,24 @@ const SchemaTable = () => {
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
     ) {
-      await updateColumnDetails(
-        editColumnDisplayName.fullyQualifiedName,
-        {
-          displayName: displayName,
-          ...(isEmpty(constraint)
-            ? {
-                removeConstraint: true,
-              }
-            : { constraint }),
-        },
-        'displayName'
-      );
-
-      setEditColumnDisplayName(undefined);
+      try {
+        await updateColumnDetails(
+          editColumnDisplayName.fullyQualifiedName,
+          {
+            displayName: displayName,
+            ...(isEmpty(constraint)
+              ? {
+                  removeConstraint: true,
+                }
+              : { constraint }),
+          },
+          'displayName'
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setEditColumnDisplayName(undefined);
+      }
     } else {
       setEditColumnDisplayName(undefined);
     }
@@ -492,7 +511,7 @@ const SchemaTable = () => {
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
               </div>
-              {!isEmpty(displayName) ? (
+              {isEmpty(displayName) ? null : (
                 // It will render displayName fallback to name
                 <Typography.Text
                   className="m-b-0 d-block break-word"
@@ -501,7 +520,7 @@ const SchemaTable = () => {
                     highlightSearchText(getEntityName(record), searchText)
                   )}
                 </Typography.Text>
-              ) : null}
+              )}
 
               {editDisplayNamePermission && (
                 <Tooltip placement="right" title={t('label.edit')}>
@@ -621,6 +640,15 @@ const SchemaTable = () => {
     ]
   );
 
+  const constraintOptionsTranslated = useMemo(
+    () =>
+      COLUMN_CONSTRAINT_TYPE_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const additionalFieldsInEntityNameModal = (
     <Form.Item
       label={t('label.entity-type-plural', {
@@ -630,7 +658,7 @@ const SchemaTable = () => {
       <Select
         allowClear
         data-testid="constraint-type-select"
-        options={COLUMN_CONSTRAINT_TYPE_OPTIONS}
+        options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
             entity: t('label.constraint'),
@@ -675,7 +703,6 @@ const SchemaTable = () => {
         setSearchText(value);
         handlePageChange(1);
       },
-      onClear: () => setSearchText(''),
     }),
     [searchText, handlePageChange]
   );

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../../../styles/variables.less');
+@import '../../../styles/variables.less';
 
 .ant-tag.tag-chip {
   max-width: 100%;
@@ -37,11 +37,12 @@
 
 .ant-tag.tag-chip-content {
   width: max-content;
-  height: 30px;
+  max-width: 200px;
   margin: 0px;
   border: none;
-  padding: 0;
+  padding: 2px 0;
   background: @tag-background-color;
+  border-radius: @border-rad-xs;
 
   &.diff-added {
     background: @success-background-color;
@@ -52,7 +53,34 @@
     margin: inherit;
   }
 }
+.ant-tag.tag-chip-content.new-chip-style {
+  .ant-select-selection-item {
+    border: 1px solid @blue-30;
+    border-radius: @border-rad-xs;
+    background: @blue-29;
+    height: 30px;
+  }
 
+  .ant-select-selection-item {
+    display: flex;
+    align-items: center;
+  }
+  border: 1px solid @blue-30;
+  background: @blue-29;
+  border-radius: @border-rad-xs;
+  .tags-label {
+    color: @tag-text;
+    font-weight: @font-regular;
+  }
+}
+.ant-tag.tag-chip-content.new-chip-style-with-color {
+  border: 1px solid @blue-30;
+  border-radius: @border-rad-xs;
+  .tags-label {
+    color: @tag-text;
+    font-weight: @font-regular;
+  }
+}
 .ant-tag.tag-chip-add-button {
   padding: 3px 8px;
   background: @white;
@@ -63,8 +91,15 @@
 }
 
 .tags-label {
-  display: inline-block;
+  display: block;
   font-size: 12px;
   font-weight: 500;
   color: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-content-container {
+  min-width: 0;
 }

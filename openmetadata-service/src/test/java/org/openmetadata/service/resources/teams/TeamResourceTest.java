@@ -18,6 +18,7 @@ import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -58,6 +59,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
 
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.URI;
@@ -81,11 +83,14 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.policies.accessControl.Rule.Effect;
@@ -106,16 +111,18 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
+import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.teams.TeamResource.TeamHierarchyList;
 import org.openmetadata.service.resources.teams.TeamResource.TeamList;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -630,6 +637,38 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   }
 
   @Test
+  void test_listTeamsWithParentTeamAndIncludeParameter() throws IOException {
+    Team parentTeam =
+        createWithParents("parent-legal-test", DEPARTMENT, ORG_TEAM.getEntityReference());
+    Team childTeam1 =
+        createWithParents("child-legal-active", GROUP, parentTeam.getEntityReference());
+    Team childTeam2 =
+        createWithParents("child-legal-deleted", GROUP, parentTeam.getEntityReference());
+
+    deleteAndCheckEntity(childTeam2, true, false, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("parentTeam", parentTeam.getName());
+
+    queryParams.put("include", Include.ALL.value());
+    ResultList<Team> allTeams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(2, allTeams.getData().size(), "Should return both deleted and non-deleted teams");
+    assertEquals(2, allTeams.getPaging().getTotal());
+
+    queryParams.put("include", Include.NON_DELETED.value());
+    ResultList<Team> nonDeletedTeams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, nonDeletedTeams.getData().size(), "Should return only non-deleted team");
+    assertEquals(1, nonDeletedTeams.getPaging().getTotal());
+    assertEquals(childTeam1.getId(), nonDeletedTeams.getData().getFirst().getId());
+
+    queryParams.put("include", Include.DELETED.value());
+    ResultList<Team> deletedTeams = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(1, deletedTeams.getData().size(), "Should return only deleted team");
+    assertEquals(1, deletedTeams.getPaging().getTotal());
+    assertEquals(childTeam2.getId(), deletedTeams.getData().getFirst().getId());
+  }
+
+  @Test
   void put_patch_hierarchicalTeams() throws IOException {
     // Create hierarchy of business unit, division, and department under organization:
     // Organization -- has children --> [ bu1, bu2]
@@ -1010,12 +1049,12 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     // Create a children team without domain and ensure it inherits domain from the parent
     createTeam = createRequest("team1").withParents(listOf(team.getId()));
-    assertDomainInheritance(createTeam, DOMAIN.getEntityReference());
+    assertSingleDomainInheritance(createTeam, DOMAIN.getEntityReference());
   }
 
-  public Team assertDomainInheritance(CreateTeam createRequest, EntityReference expectedDomain)
-      throws IOException {
-    Team entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+  public Team assertSingleDomainInheritance(
+      CreateTeam createRequest, EntityReference expectedDomain) throws IOException {
+    Team entity = createEntity(createRequest.withDomains(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
@@ -1458,5 +1497,133 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         verifyNoDuplicateChildrenTeam(child);
       }
     }
+  }
+
+  @Test
+  void test_getTeamAssetsAPI(TestInfo test) throws IOException {
+    Team team = createEntity(createRequest(test).withTeamType(GROUP), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    CreateTable createTable1 =
+        tableTest
+            .createRequest(getEntityName(test, 1))
+            .withOwners(List.of(team.getEntityReference()));
+    Table table1 = tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableTest
+            .createRequest(getEntityName(test, 2))
+            .withOwners(List.of(team.getEntityReference()));
+    Table table2 = tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 =
+        tableTest
+            .createRequest(getEntityName(test, 3))
+            .withOwners(List.of(team.getEntityReference()));
+    Table table3 = tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    // Test getting assets by team ID
+    ResultList<EntityReference> assets = getAssets(team.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertTrue(assets.getPaging().getTotal() >= 3);
+    assertTrue(assets.getData().size() >= 3);
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    // Test getting assets by team name
+    ResultList<EntityReference> assetsByName =
+        getAssetsByName(team.getFullyQualifiedName(), 10, 0, ADMIN_AUTH_HEADERS);
+    assertTrue(assetsByName.getPaging().getTotal() >= 3);
+    assertTrue(assetsByName.getData().size() >= 3);
+
+    // Test pagination - page 1
+    ResultList<EntityReference> page1 = getAssets(team.getId(), 2, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getData().size());
+
+    // Test pagination - page 2
+    ResultList<EntityReference> page2 = getAssets(team.getId(), 2, 2, ADMIN_AUTH_HEADERS);
+    assertFalse(page2.getData().isEmpty());
+  }
+
+  @Test
+  void test_teamAssetsAndAssetsCountWithAssetInheritance(TestInfo test) throws IOException {
+    // Tests assets API includes parent entity and all child entities when owner is assigned
+    // Create a new isolated team for this test to ensure no interference from other tests
+    CreateTeam createTeam =
+        createRequest(getEntityName(test) + "_" + UUID.randomUUID()).withTeamType(GROUP);
+    Team team = createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    TableResourceTest tableTest = new TableResourceTest();
+
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest.createRequest(getEntityName(test, 1)).withOwners(null), ADMIN_AUTH_HEADERS);
+
+    Table table1 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 2))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withOwners(null),
+            ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 3))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withOwners(null),
+            ADMIN_AUTH_HEADERS);
+
+    String json = JsonUtils.pojoToJson(schema);
+    schema.withOwners(List.of(team.getEntityReference()));
+    schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
+
+    ResultList<EntityReference> assets = getAssets(team.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3, assets.getData().size(), "Team should have 1 schema + 2 inherited tables from schema");
+    assertEquals(3, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(schema.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+  }
+
+  @Test
+  void test_getAllTeamsWithAssetsCount(TestInfo test) throws IOException {
+    Team team1 = createEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    Team team2 = createEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table1 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 3))
+                .withOwners(List.of(team1.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 4))
+                .withOwners(List.of(team1.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+    Table table3 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 5))
+                .withOwners(List.of(team2.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
+
+    Map<String, Integer> assetsCount = getAllTeamsWithAssetsCount();
+
+    assertNotNull(assetsCount);
+    assertEquals(2, assetsCount.get(team1.getFullyQualifiedName()), "Team 1 should have 2 assets");
+    assertEquals(1, assetsCount.get(team2.getFullyQualifiedName()), "Team 2 should have 1 asset");
+  }
+
+  private Map<String, Integer> getAllTeamsWithAssetsCount() throws HttpResponseException {
+    WebTarget target = getResource("teams/assets/counts");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
 }

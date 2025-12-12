@@ -142,7 +142,7 @@ test.describe('Glossary Bulk Import Export', () => {
         // Update Reviewer
         await addMultiOwner({
           page,
-          ownerNames: [user3.getUserName()],
+          ownerNames: [user3.getUserDisplayName()],
           activatorBtnDataTestId: 'Add',
           resultTestId: 'glossary-reviewer-name',
           endpoint: EntityTypeEndpoint.Glossary,
@@ -164,9 +164,7 @@ test.describe('Glossary Bulk Import Export', () => {
         await page.waitForTimeout(500);
 
         // Adding some assertion to make sure that CSV loaded correctly
-        await expect(
-          page.locator('.InovuaReactDataGrid__header-layout')
-        ).toBeVisible();
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
         await expect(page.getByTestId('add-row-btn')).toBeVisible();
         await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
         await expect(
@@ -176,9 +174,12 @@ test.describe('Glossary Bulk Import Export', () => {
         await page.click('[data-testid="add-row-btn"]');
 
         // click on last row first cell
-        await page.click(
-          '.InovuaReactDataGrid__row--last > .InovuaReactDataGrid__row-cell-wrap > .InovuaReactDataGrid__cell--first'
-        );
+        const rows = await page.$$('.rdg-row');
+        const lastRow = rows[rows.length - 1];
+
+        const firstCell = await lastRow.$('.rdg-cell');
+        await firstCell?.click();
+
         // Click on first cell and edit
         await fillGlossaryRowDetails(
           {
@@ -207,15 +208,13 @@ test.describe('Glossary Bulk Import Export', () => {
           failed: '0',
         });
 
-        await page.waitForSelector('.InovuaReactDataGrid__header-layout', {
+        await page.waitForSelector('.rdg-header-row', {
           state: 'visible',
         });
 
         const rowStatus = ['Entity updated', 'Entity created'];
 
-        await expect(page.locator('[data-props-id="details"]')).toHaveText(
-          rowStatus
-        );
+        await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
 
         await page.getByRole('button', { name: 'Update' }).click();
         await page
@@ -250,5 +249,154 @@ test.describe('Glossary Bulk Import Export', () => {
         await deleteCreatedProperty(page, propertyName);
       }
     });
+  });
+
+  test('Check for Circular Reference in Glossary Import', async ({
+    page,
+    browser,
+  }) => {
+    const circularRefGlossary = new Glossary('Test CSV');
+
+    try {
+      await test.step(
+        'Create glossary for circular reference test',
+        async () => {
+          const { apiContext, afterAction } = await createNewPage(browser);
+
+          await circularRefGlossary.create(apiContext);
+          await afterAction();
+        }
+      );
+
+      await test.step('Import initial glossary terms', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, circularRefGlossary.data.displayName);
+
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="import-button-description"]');
+
+        const initialCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,
+,parent,parent,<p>parent</p>,,,,,,user:admin,Approved,,,
+${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin,Approved,,,`;
+
+        const initialCsvBlob = new Blob([initialCsvContent], {
+          type: 'text/csv',
+        });
+        const initialCsvFile = new File([initialCsvBlob], 'initial-terms.csv', {
+          type: 'text/csv',
+        });
+
+        const fileInput = page.getByTestId('upload-file-widget');
+
+        await fileInput?.setInputFiles([
+          {
+            name: initialCsvFile.name,
+            mimeType: initialCsvFile.type,
+            buffer: Buffer.from(await initialCsvFile.arrayBuffer()),
+          },
+        ]);
+
+        await page.waitForTimeout(500);
+
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
+
+        await page.getByRole('button', { name: 'Next' }).click();
+
+        const loader = page.locator(
+          '.inovua-react-toolkit-load-mask__background-layer'
+        );
+
+        await loader.waitFor({ state: 'hidden' });
+
+        await validateImportStatus(page, {
+          passed: '4',
+          processed: '4',
+          failed: '0',
+        });
+
+        await page.getByRole('button', { name: 'Update' }).click();
+        await page
+          .locator('.inovua-react-toolkit-load-mask__background-layer')
+          .waitFor({ state: 'detached' });
+
+        await toastNotification(
+          page,
+          `Glossaryterm ${circularRefGlossary.responseData.fullyQualifiedName} details updated successfully`
+        );
+      });
+
+      await test.step(
+        'Import CSV with circular reference and verify error',
+        async () => {
+          await sidebarClick(page, SidebarItem.GLOSSARY);
+          await selectActiveGlossary(
+            page,
+            circularRefGlossary.data.displayName
+          );
+
+          await page.click('[data-testid="manage-button"]');
+          await page.click('[data-testid="import-button-description"]');
+
+          const circularCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+${circularRefGlossary.data.name}.name1,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,
+,parent,parent,<p>parent</p>,,,,,,user:admin,Approved,,,
+${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin,Approved,,,`;
+
+          const circularCsvBlob = new Blob([circularCsvContent], {
+            type: 'text/csv',
+          });
+          const circularCsvFile = new File(
+            [circularCsvBlob],
+            'circular-reference.csv',
+            {
+              type: 'text/csv',
+            }
+          );
+
+          const fileInput = page.getByTestId('upload-file-widget');
+
+          await fileInput?.setInputFiles([
+            {
+              name: circularCsvFile.name,
+              mimeType: circularCsvFile.type,
+              buffer: Buffer.from(await circularCsvFile.arrayBuffer()),
+            },
+          ]);
+
+          await page.waitForTimeout(500);
+
+          await expect(page.locator('.rdg-header-row')).toBeVisible();
+
+          await page.getByRole('button', { name: 'Next' }).click();
+
+          const loader = page.locator(
+            '.inovua-react-toolkit-load-mask__background-layer'
+          );
+
+          await loader.waitFor({ state: 'hidden' });
+
+          await validateImportStatus(page, {
+            passed: '3',
+            processed: '4',
+            failed: '1',
+          });
+
+          const rows = await page.$$('.rdg-row');
+          const firstRow = rows[0];
+          const detailsCell = await firstRow.$('.rdg-cell-details');
+          const errorText = await detailsCell?.textContent();
+
+          expect(errorText).toContain(
+            "Invalid hierarchy: Term 'Test CSV.name1' cannot be its own parent"
+          );
+        }
+      );
+    } finally {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await circularRefGlossary.delete(apiContext);
+      await afterAction();
+    }
   });
 });

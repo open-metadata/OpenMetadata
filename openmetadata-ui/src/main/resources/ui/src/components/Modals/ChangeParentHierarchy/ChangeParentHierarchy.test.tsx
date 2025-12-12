@@ -19,13 +19,25 @@ import {
   screen,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { PageType } from '../../../generated/system/ui/page';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
 import ChangeParent from './ChangeParentHierarchy.component';
 
 const mockOnCancel = jest.fn();
 
 const mockProps = {
-  selectedData: mockedGlossaryTerms[0],
+  selectedData: {
+    ...mockedGlossaryTerms[0],
+    children: mockedGlossaryTerms[0].children?.map((child: any) => ({
+      id: child.id,
+      name: child.name,
+      displayName: child.displayName,
+      description: child.description,
+      fullyQualifiedName: child.fullyQualifiedName,
+      type: PageType.GlossaryTerm, // Required field for EntityReference
+      deleted: child.deleted || false,
+    })),
+  },
   onCancel: mockOnCancel,
 };
 
@@ -106,7 +118,7 @@ describe('Test ChangeParentHierarchy modal component', () => {
       render(<ChangeParent {...mockProps} />);
     });
 
-    const submitButton = await screen.findByText('label.submit');
+    const submitButton = await screen.findByText('label.save');
 
     expect(submitButton).toBeInTheDocument();
 

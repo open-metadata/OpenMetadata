@@ -15,6 +15,7 @@ import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../generated/entity/data/database';
+import { Directory } from '../../generated/entity/data/directory';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
@@ -31,4 +32,5 @@ export type ServicePageData =
   | DashboardDataModel
   | SearchIndexEntity
   | StoredProcedure
-  | APICollection;
+  | APICollection
+  | Directory;

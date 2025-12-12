@@ -33,7 +33,7 @@ test.describe('Login flow should work properly', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
     const response = await page.request.get(
-      `/api/v1/users/name/${user.getUserName()}`
+      `/api/v1/users/name/${user.getUserDisplayName()}`
     );
 
     // reset token expiry to 4 hours
@@ -61,6 +61,7 @@ test.describe('Login flow should work properly', () => {
 
   test('Signup and Login with signed up credentials', async ({ page }) => {
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(`/signin`);
 
@@ -85,15 +86,21 @@ test.describe('Login flow should work properly', () => {
     await expect(page.locator('#password')).toHaveAttribute('type', 'password');
 
     await page.locator('#confirmPassword').fill(CREDENTIALS.password);
+
+    const createUserResponse = page.waitForResponse(`/api/v1/users/signup`);
     // Click on create account button
     await page.getByRole('button', { name: 'Create Account' }).click();
+    await createUserResponse;
 
     await expect(page).toHaveURL(`/signin`);
 
     // Login with the created user
     await page.fill('#email', CREDENTIALS.email);
     await page.fill('#password', CREDENTIALS.password);
+    const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
     await page.locator('[data-testid="login"]').click();
+    await loginResponse;
+    await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(`/my-data`);
 
@@ -107,10 +114,13 @@ test.describe('Login flow should work properly', () => {
 
   test('Signin using invalid credentials', async ({ page }) => {
     await page.goto(`/signin`);
+    await page.waitForLoadState('networkidle');
     // Login with invalid email
     await page.fill('#email', invalidEmail);
     await page.fill('#password', CREDENTIALS.password);
+    const loginResponse = page.waitForResponse(`/api/v1/auth/login`);
     await page.locator('[data-testid="login"]').click();
+    await loginResponse;
 
     await expect(page.locator('[data-testid="alert-bar"]')).toHaveText(
       LOGIN_ERROR_MESSAGE
@@ -119,7 +129,9 @@ test.describe('Login flow should work properly', () => {
     // Login with invalid password
     await page.fill('#email', CREDENTIALS.email);
     await page.fill('#password', invalidPassword);
+    const loginResponse2 = page.waitForResponse(`/api/v1/auth/login`);
     await page.locator('[data-testid="login"]').click();
+    await loginResponse2;
 
     await expect(page.locator('[data-testid="alert-bar"]')).toHaveText(
       LOGIN_ERROR_MESSAGE
@@ -136,7 +148,7 @@ test.describe('Login flow should work properly', () => {
     // Enter email
     await page.locator('#email').fill(CREDENTIALS.email);
     // Click on Forgot button
-    await page.getByRole('button', { name: 'Submit' }).click();
+    await page.getByRole('button', { name: 'Send Login Link' }).click();
     await page.locator('[data-testid="go-back-button"]').click();
   });
 

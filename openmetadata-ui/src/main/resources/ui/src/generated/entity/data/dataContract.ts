@@ -23,6 +23,15 @@ export interface DataContract {
      */
     contractUpdates?: ContractUpdate[];
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when the data contract was
+     * created.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created the data contract.
+     */
+    createdBy?: string;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -47,6 +56,14 @@ export interface DataContract {
      */
     entity: EntityReference;
     /**
+     * Approval status of the data contract.
+     */
+    entityStatus?: EntityStatus;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Fully qualified name of the data contract.
      */
     fullyQualifiedName?: string;
@@ -58,6 +75,10 @@ export interface DataContract {
      * Unique identifier of this data contract instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Incremental change description of the entity.
      */
@@ -77,28 +98,39 @@ export interface DataContract {
     /**
      * Quality expectations defined in the data contract.
      */
-    qualityExpectations?: QualityExpectation[];
+    qualityExpectations?: EntityReference[];
     /**
      * User references of the reviewers for this data contract.
      */
     reviewers?: EntityReference[];
     /**
-     * Configuration for scheduling data contract validation checks.
-     */
-    scheduleConfig?: ScheduleConfig;
-    /**
      * Schema definition for the data contract.
      */
     schema?: Column[];
+    /**
+     * Security and access policy expectations defined in the data contract.
+     */
+    security?: ContractSecurity;
     /**
      * Semantics rules defined in the data contract.
      */
     semantics?: SemanticsRule[];
     /**
+     * Service Level Agreement expectations defined in the data contract.
+     */
+    sla?: ContractSLA;
+    /**
      * Source URL of the data contract.
      */
     sourceUrl?: string;
-    status?:    ContractStatus;
+    /**
+     * Terms of use for the data contract for both human and AI agents consumption.
+     */
+    termsOfUse?: string;
+    /**
+     * Reference to the test suite that contains tests related to this data contract.
+     */
+    testSuite?: EntityReference;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -190,6 +222,10 @@ export interface ContractUpdate {
      */
     changeDescription?: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Timestamp when the contract was updated.
      */
     timestamp: number;
@@ -218,7 +254,7 @@ export interface ContractUpdate {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Reference to a test case that enforces this quality expectation.
+ * Reference to the test suite that contains tests related to this data contract.
  */
 export interface EntityReference {
     /**
@@ -264,81 +300,40 @@ export interface EntityReference {
 }
 
 /**
+ * Approval status of the data contract.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
  * Latest validation result for this data contract.
  */
 export interface LatestResult {
     message?:   string;
     resultId?:  string;
-    status?:    Status;
+    status?:    ContractExecutionStatus;
     timestamp?: number;
 }
 
-export enum Status {
+/**
+ * Status of the data contract execution.
+ */
+export enum ContractExecutionStatus {
     Aborted = "Aborted",
     Failed = "Failed",
     PartialSuccess = "PartialSuccess",
     Queued = "Queued",
+    Running = "Running",
     Success = "Success",
-}
-
-/**
- * Quality expectation defined in the data contract.
- */
-export interface QualityExpectation {
-    /**
-     * Definition of the quality expectation.
-     */
-    definition: string;
-    /**
-     * Description of the quality expectation.
-     */
-    description?: string;
-    /**
-     * Name of the quality expectation.
-     */
-    name: string;
-    /**
-     * Reference to a test case that enforces this quality expectation.
-     */
-    testCase?: EntityReference;
-}
-
-/**
- * Configuration for scheduling data contract validation checks.
- */
-export interface ScheduleConfig {
-    /**
-     * Whether the scheduled validation is enabled.
-     */
-    enabled?: boolean;
-    /**
-     * End date for the scheduled validation.
-     */
-    endDate?: Date;
-    /**
-     * Number of retries on validation failure.
-     */
-    retries?: number;
-    /**
-     * Delay between retries in seconds.
-     */
-    retryDelay?: number;
-    /**
-     * Schedule interval for validation checks in cron format (e.g., '0 0 * * *' for daily).
-     */
-    scheduleInterval: string;
-    /**
-     * Start date for the scheduled validation.
-     */
-    startDate?: Date;
-    /**
-     * Timeout for validation execution in seconds.
-     */
-    timeout?: number;
-    /**
-     * Timezone for the scheduled validation.
-     */
-    timezone?: string;
 }
 
 /**
@@ -453,6 +448,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -570,6 +566,10 @@ export interface CustomMetric {
  * This schema defines the type to capture the table's column profile.
  */
 export interface ColumnProfile {
+    /**
+     * Cardinality distribution showing top categories with an 'Others' bucket.
+     */
+    cardinalityDistribution?: CardinalityDistribution;
     /**
      * Custom Metrics profile list bound to a column.
      */
@@ -689,6 +689,29 @@ export interface ColumnProfile {
 }
 
 /**
+ * Cardinality distribution showing top categories with an 'Others' bucket.
+ */
+export interface CardinalityDistribution {
+    /**
+     * Flag indicating that all values in the column are unique, so no distribution is
+     * calculated.
+     */
+    allValuesUnique?: boolean;
+    /**
+     * List of category names including 'Others'.
+     */
+    categories?: string[];
+    /**
+     * List of counts corresponding to each category.
+     */
+    counts?: number[];
+    /**
+     * List of percentages corresponding to each category.
+     */
+    percentages?: number[];
+}
+
+/**
  * Profiling results of a Custom Metric.
  */
 export interface CustomMetricProfile {
@@ -741,6 +764,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -796,9 +823,82 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
+}
+
+/**
+ * Security and access policy expectations defined in the data contract.
+ *
+ * Security and access policy expectations
+ */
+export interface ContractSecurity {
+    /**
+     * Expected data classification (e.g. Confidential, PII, etc.)
+     */
+    dataClassification?: string;
+    /**
+     * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+     */
+    policies?: Policy[];
+    [property: string]: any;
+}
+
+/**
+ * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+ */
+export interface Policy {
+    /**
+     * Reference to an access policy ID or name that should govern this data
+     */
+    accessPolicy?: string;
+    /**
+     * List of groups that are intended consumers of the data
+     */
+    identities?: string[];
+    /**
+     * List of filters that define what subset of the data is accessible to the consumers
+     */
+    rowFilters?: RowFilter[];
+    [property: string]: any;
+}
+
+/**
+ * Filter that defines what subset of the data is accessible to certain consumers
+ */
+export interface RowFilter {
+    /**
+     * Column to apply the filter
+     */
+    columnName?: string;
+    /**
+     * Values applied to the filter
+     */
+    values?: string[];
+    [property: string]: any;
 }
 
 /**
@@ -810,9 +910,26 @@ export interface SemanticsRule {
      */
     description: string;
     /**
+     * Indicates if the semantics rule is enabled.
+     */
+    enabled: boolean;
+    /**
+     * Type of the entity to which this semantics rule applies.
+     */
+    entityType?: string;
+    /**
+     * List of entities to ignore for this semantics rule.
+     */
+    ignoredEntities?: string[];
+    /**
+     * JSON Tree to represents rule in UI.
+     */
+    jsonTree?: string;
+    /**
      * Name of the semantics rule.
      */
-    name: string;
+    name:      string;
+    provider?: ProviderType;
     /**
      * Definition of the semantics rule.
      */
@@ -820,10 +937,136 @@ export interface SemanticsRule {
 }
 
 /**
- * Status of the data contract.
+ * Type of provider of an entity. Some entities are provided by the `system`. Some are
+ * entities created and provided by the `user`. Typically `system` provide entities can't be
+ * deleted and can only be disabled. Some apps such as AutoPilot create entities with
+ * `automation` provider type. These entities can be deleted by the user.
  */
-export enum ContractStatus {
-    Active = "Active",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
+export enum ProviderType {
+    Automation = "automation",
+    System = "system",
+    User = "user",
+}
+
+/**
+ * Service Level Agreement expectations defined in the data contract.
+ *
+ * Service Level Agreement expectations (timeliness, availability, etc.)
+ */
+export interface ContractSLA {
+    /**
+     * Time of day by which data is expected to be available (e.g. "09:00 UTC")
+     */
+    availabilityTime?: string;
+    /**
+     * Column that represents the refresh time of the data (if applicable)
+     */
+    columnName?: string;
+    /**
+     * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+     */
+    maxLatency?: MaximumLatency;
+    /**
+     * Expected frequency of data updates (e.g. every 1 day)
+     */
+    refreshFrequency?: RefreshFrequency;
+    /**
+     * How long the data is retained (if relevant)
+     */
+    retention?: DataRetentionPeriod;
+    /**
+     * Timezone for the availability time. UTC by default.
+     */
+    timezone?: Timezone;
+    [property: string]: any;
+}
+
+/**
+ * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
+ */
+export interface MaximumLatency {
+    unit:  MaxLatencyUnit;
+    value: number;
+    [property: string]: any;
+}
+
+export enum MaxLatencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Minute = "minute",
+}
+
+/**
+ * Expected frequency of data updates (e.g. every 1 day)
+ */
+export interface RefreshFrequency {
+    interval: number;
+    unit:     RefreshFrequencyUnit;
+    [property: string]: any;
+}
+
+export enum RefreshFrequencyUnit {
+    Day = "day",
+    Hour = "hour",
+    Month = "month",
+    Week = "week",
+    Year = "year",
+}
+
+/**
+ * How long the data is retained (if relevant)
+ */
+export interface DataRetentionPeriod {
+    period: number;
+    unit:   RetentionUnit;
+    [property: string]: any;
+}
+
+export enum RetentionUnit {
+    Day = "day",
+    Month = "month",
+    Week = "week",
+    Year = "year",
+}
+
+/**
+ * Timezone for the availability time. UTC by default.
+ */
+export enum Timezone {
+    GMT0000EuropeLondon = "GMT+00:00 (Europe/London)",
+    GMT0100AtlanticAzores = "GMT-01:00 (Atlantic/Azores)",
+    GMT0100EuropeParis = "GMT+01:00 (Europe/Paris)",
+    GMT0200AtlanticSouthGeorgia = "GMT-02:00 (Atlantic/South_Georgia)",
+    GMT0200EuropeAthens = "GMT+02:00 (Europe/Athens)",
+    GMT0230AtlanticNewfoundland = "GMT-02:30 (Atlantic/Newfoundland)",
+    GMT0300AmericaSaoPaulo = "GMT-03:00 (America/Sao Paulo)",
+    GMT0300AsiaIran = "GMT+03:00 (Asia/Iran)",
+    GMT0300EuropeMoscow = "GMT+03:00 (Europe/Moscow)",
+    GMT0400AmericaSantiago = "GMT-04:00 (America/Santiago)",
+    GMT0400AsiaDubai = "GMT+04:00 (Asia/Dubai)",
+    GMT0430AsiaAfghanistan = "GMT+04:30 (Asia/Afghanistan)",
+    GMT0500AmericaNewYork = "GMT-05:00 (America/New York)",
+    GMT0500AsiaKarachi = "GMT+05:00 (Asia/Karachi)",
+    GMT0530AsiaKolkata = "GMT+05:30 (Asia/Kolkata)",
+    GMT0545AsiaNepal = "GMT+05:45 (Asia/Nepal)",
+    GMT0600AmericaChicago = "GMT-06:00 (America/Chicago)",
+    GMT0600AsiaDhaka = "GMT+06:00 (Asia/Dhaka)",
+    GMT0600AsiaMyanmar = "GMT+06:00 (Asia/Myanmar)",
+    GMT0700AmericaDenver = "GMT-07:00 (America/Denver)",
+    GMT0700AsiaBangkok = "GMT+07:00 (Asia/Bangkok)",
+    GMT0800AmericaLosAngeles = "GMT-08:00 (America/Los Angeles)",
+    GMT0800AsiaShanghai = "GMT+08:00 (Asia/Shanghai)",
+    GMT0845AustraliaAustralianCentralWesternStandardTime = "GMT+08:45 (Australia/Australian Central Western Standard Time)",
+    GMT0900AmericaAnchorage = "GMT-09:00 (America/Anchorage)",
+    GMT0900AsiaTokyo = "GMT+09:00 (Asia/Tokyo)",
+    GMT0900AustraliaAdelaide = "GMT+09:00 (Australia/Adelaide)",
+    GMT0930PacificMarquesas = "GMT-09:30 (Pacific/Marquesas)",
+    GMT1000AustraliaSydney = "GMT+10:00 (Australia/Sydney)",
+    GMT1000PacificHonolulu = "GMT-10:00 (Pacific/Honolulu)",
+    GMT1030AustraliaLordHowe = "GMT+10:30 (Australia/Lord Howe)",
+    GMT1100PacificNiue = "GMT-11:00 (Pacific/Niue)",
+    GMT1100PacificNorfolk = "GMT+11:00 (Pacific/Norfolk)",
+    GMT1200PacificAuckland = "GMT+12:00 (Pacific/Auckland)",
+    GMT1300PacificTongatapu = "GMT+13:00 (Pacific/Tongatapu)",
+    GMT1400PacificKiritimati = "GMT+14:00 (Pacific/Kiritimati)",
 }

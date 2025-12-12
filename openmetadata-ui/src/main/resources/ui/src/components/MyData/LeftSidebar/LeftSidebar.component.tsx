@@ -30,8 +30,8 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { filterHiddenNavigationItems } from '../../../utils/CustomizaNavigation/CustomizeNavigation';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
+import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './left-sidebar.less';
-import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
 import LeftSidebarItem from './LeftSidebarItem.component';
 const { Sider } = Layout;
 
@@ -39,7 +39,8 @@ const LeftSidebar = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthProvider();
-  const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
+  const [isConfirmLogoutModalOpen, setIsConfirmLogoutModalOpen] =
+    useState(false);
   const {
     preferences: { isSidebarCollapsed },
   } = useCurrentUserPreferences();
@@ -65,11 +66,11 @@ const LeftSidebar = () => {
   }, [location.pathname]);
 
   const handleLogoutClick = useCallback(() => {
-    setShowConfirmLogoutModal(true);
+    setIsConfirmLogoutModalOpen(true);
   }, []);
 
-  const hideConfirmationModal = () => {
-    setShowConfirmLogoutModal(false);
+  const hideConfirmLogoutModal = () => {
+    setIsConfirmLogoutModalOpen(false);
   };
 
   const LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS: MenuProps['items'] = useMemo(
@@ -83,24 +84,47 @@ const LeftSidebar = () => {
     [handleLogoutClick]
   );
 
+  const { plugins = [] } = useApplicationsProvider();
+
+  const pluginSidebarActions = useMemo(() => {
+    return (
+      plugins
+        ?.flatMap((plugin) => plugin.getSidebarActions?.() ?? [])
+        .sort((a, b) => (a.index ?? 999) - (b.index ?? 999)) ?? []
+    );
+  }, [plugins]);
+
   const menuItems = useMemo(() => {
-    return [
-      ...sideBarItems.map((item) => {
-        return {
-          key: item.key,
-          icon: <Icon component={item.icon} />,
-          label: <LeftSidebarItem data={item} />,
-          children: item.children?.map((item: LeftSidebarItemType) => {
-            return {
-              key: item.key,
-              icon: <Icon component={item.icon} />,
-              label: <LeftSidebarItem data={item} />,
-            };
-          }),
-        };
-      }),
-    ];
-  }, [sideBarItems]);
+    const mergedItems = (() => {
+      const baseItems = [...sideBarItems];
+
+      pluginSidebarActions.forEach((pluginItem) => {
+        if (typeof pluginItem.index === 'number' && pluginItem.index >= 0) {
+          baseItems.splice(
+            Math.min(pluginItem.index, baseItems.length),
+            0,
+            pluginItem
+          );
+        } else {
+          baseItems.push(pluginItem);
+        }
+      });
+
+      return baseItems;
+    })();
+
+    // Map to menu structure
+    return mergedItems.map((item) => ({
+      key: item.key,
+      icon: <Icon component={item.icon} />,
+      label: <LeftSidebarItem data={item} />,
+      children: item.children?.map((child) => ({
+        key: child.key,
+        icon: <Icon component={child.icon} />,
+        label: <LeftSidebarItem data={child} />,
+      })),
+    }));
+  }, [sideBarItems, pluginSidebarActions]);
 
   const handleMenuClick: MenuProps['onClick'] = useCallback(() => {
     setOpenKeys([]);
@@ -166,23 +190,23 @@ const LeftSidebar = () => {
         </div>
       </div>
 
-      {showConfirmLogoutModal && (
+      {isConfirmLogoutModalOpen && (
         <Modal
           centered
           bodyStyle={{ textAlign: 'center' }}
           closable={false}
           closeIcon={null}
           footer={null}
-          open={showConfirmLogoutModal}
+          open={isConfirmLogoutModalOpen}
           width={360}
-          onCancel={hideConfirmationModal}>
+          onCancel={hideConfirmLogoutModal}>
           <Typography.Title level={5}>{t('label.logout')}</Typography.Title>
           <Typography.Text className="text-grey-muted">
             {t('message.logout-confirmation')}
           </Typography.Text>
 
           <div className="d-flex gap-2 w-full m-t-md justify-center">
-            <Button className="confirm-btn" onClick={hideConfirmationModal}>
+            <Button className="confirm-btn" onClick={hideConfirmLogoutModal}>
               {t('label.cancel')}
             </Button>
             <Button

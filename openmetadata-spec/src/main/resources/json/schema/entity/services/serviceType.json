@@ -8,13 +8,16 @@
   "enum": [
     "Dashboard",
     "Database",
+    "Drive",
     "Messaging",
     "Metadata",
     "MlModel",
     "Pipeline",
     "Storage",
     "Search",
-    "Api"
+    "Api",
+    "Security",
+    "LLM"
   ],
   "additionalProperties": false
 }

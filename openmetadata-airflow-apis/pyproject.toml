@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # since it helps us organize and isolate version management
 [project]
 name = "openmetadata_managed_apis"
-version = "1.8.0.0.dev0"
+version = "1.10.0.0.dev0"
 readme = "README.md"
 authors = [
     {name = "OpenMetadata Committers"}
@@ -17,8 +17,10 @@ requires-python = ">=3.9"
 dependencies = [
     "pendulum~=3.0",
     "apache-airflow>=2.2.2",
+    "apache-airflow-providers-fab>=1.0.0",
     "Flask==2.2.5",
     "Flask-Admin==1.6.0",
+    "packaging>=20.0",
 ]
 
 [project.optional-dependencies]

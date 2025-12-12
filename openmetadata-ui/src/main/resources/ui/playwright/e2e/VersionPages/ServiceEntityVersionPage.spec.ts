@@ -12,8 +12,19 @@
  */
 import { expect, Page, test as base } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
+import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -23,33 +34,19 @@ import {
 } from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
 
-const entityCreationConfig: EntityDataClassCreationConfig = {
-  apiService: true,
-  apiCollection: true,
-  databaseService: true,
-  dashboardService: true,
-  messagingService: true,
-  database: true,
-  databaseSchema: true,
-  mlmodelService: true,
-  pipelineService: true,
-  searchIndexService: true,
-  storageService: true,
-  entityDetails: true,
-};
-
 const entities = [
-  EntityDataClass.apiService,
-  EntityDataClass.apiCollection1,
-  EntityDataClass.databaseService,
-  EntityDataClass.dashboardService,
-  EntityDataClass.messagingService,
-  EntityDataClass.mlmodelService,
-  EntityDataClass.pipelineService,
-  EntityDataClass.searchIndexService,
-  EntityDataClass.storageService,
-  EntityDataClass.database,
-  EntityDataClass.databaseSchema,
+  new ApiServiceClass(),
+  new ApiCollectionClass(),
+  new DashboardServiceClass(),
+  new DatabaseServiceClass(),
+  new MessagingServiceClass(),
+  new MlmodelServiceClass(),
+  new PipelineServiceClass(),
+  new SearchIndexServiceClass(),
+  new StorageServiceClass(),
+  new DatabaseClass(),
+  new DatabaseSchemaClass(),
+  new DriveServiceClass(),
 ];
 
 // use the admin user to login
@@ -73,12 +70,8 @@ test.describe('Service Version pages', () => {
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
 
-    await EntityDataClass.preRequisitesForTests(
-      apiContext,
-      entityCreationConfig
-    );
-
     for (const entity of entities) {
+      await entity.create(apiContext);
       const domain = EntityDataClass.domain1.responseData;
       await entity.patch(apiContext, [
         {
@@ -108,13 +101,15 @@ test.describe('Service Version pages', () => {
         },
         {
           op: 'add',
-          path: '/domain',
-          value: {
-            id: domain.id,
-            type: 'domain',
-            name: domain.name,
-            description: domain.description,
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.id,
+              type: 'domain',
+              name: domain.name,
+              description: domain.description,
+            },
+          ],
         },
       ]);
     }
@@ -128,10 +123,6 @@ test.describe('Service Version pages', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);
 
-    await EntityDataClass.postRequisitesForTests(
-      apiContext,
-      entityCreationConfig
-    );
     await afterAction();
   });
 
@@ -177,7 +168,7 @@ test.describe('Service Version pages', () => {
 
       await test.step('should show owner changes', async () => {
         await page.locator('[data-testid="version-button"]').click();
-        const OWNER1 = EntityDataClass.user1.getUserName();
+        const OWNER1 = EntityDataClass.user1.getUserDisplayName();
 
         await addMultiOwner({
           page,

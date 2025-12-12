@@ -12,12 +12,14 @@
  */
 
 import { RowProps } from 'antd/lib/grid/row';
-import i18n from 'i18next';
 import { Margin } from 'recharts/types/util/types';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
-import { ChartFilter } from '../interface/data-insight.interface';
+import {
+  ChartFilter,
+  entitySummeryList,
+} from '../interface/data-insight.interface';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -80,46 +82,50 @@ export const WEB_CHARTS = [
 
 export const WEB_SUMMARY_LIST = [
   {
-    label: i18n.t('label.page-views-by-data-asset-plural'),
+    label: 'label.page-views-by-data-asset-plural',
     latest: 0,
     id: DataInsightChartType.PageViewsByEntities,
   },
   {
-    label: i18n.t('label.average-daily-active-users-on-the-platform'),
+    label: 'label.average-daily-active-users-on-the-platform',
     latest: 0,
     id: DataInsightChartType.DailyActiveUsers,
   },
 ];
 
-export const ENTITIES_SUMMARY_LIST = [
+export const ENTITIES_SUMMARY_LIST: Array<entitySummeryList> = [
   {
-    label: i18n.t('label.total-entity', {
-      entity: i18n.t('label.data-asset-plural'),
-    }),
+    label: 'label.total-entity',
+    labelData: {
+      entity: 'label.data-asset-plural',
+    },
     latest: 0,
     type: SystemChartType.TotalDataAssetsSummaryCard,
     id: SystemChartType.TotalDataAssets,
   },
   {
-    label: i18n.t('label.data-asset-plural-with-field', {
-      field: i18n.t('label.description'),
-    }),
+    label: 'label.data-asset-plural-with-field',
+    labelData: {
+      field: 'label.description',
+    },
     latest: 0,
     type: SystemChartType.DataAssetsWithDescriptionSummaryCard,
     id: SystemChartType.PercentageOfDataAssetWithDescription,
   },
   {
-    label: i18n.t('label.data-asset-plural-with-field', {
-      field: i18n.t('label.owner-plural'),
-    }),
+    label: 'label.data-asset-plural-with-field',
+    labelData: {
+      field: 'label.owner-plural',
+    },
     latest: 0,
     type: SystemChartType.DataAssetsWithOwnerSummaryCard,
     id: SystemChartType.PercentageOfDataAssetWithOwner,
   },
   {
-    label: i18n.t('label.total-entity', {
-      entity: i18n.t('label.data-assets-with-tier-plural'),
-    }),
+    label: 'label.total-entity',
+    labelData: {
+      entity: 'label.data-assets-with-tier-plural',
+    },
     latest: 0,
     type: SystemChartType.TotalDataAssetsWithTierSummaryCard,
     id: SystemChartType.TotalDataAssetsByTier,
@@ -155,5 +161,10 @@ export const BASE_COLORS = [
   '#F48FB1',
 ];
 
-export const KPI_WIDGET_GRAPH_COLORS = ['#5F5498', '#4E8C9C'];
+export const KPI_WIDGET_GRAPH_COLORS = [
+  '#7262F6',
+  '#6AD2FF',
+  '#2ED3B7',
+  '#E478FA',
+];
 export const KPI_WIDGET_GRAPH_BG_COLORS = ['#F4F2FF', '#ECFBFF'];

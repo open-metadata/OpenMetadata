@@ -6,6 +6,7 @@
   "description": "Status of the data contract execution.",
   "type": "string",
   "enum": [
+    "Running",
     "Success",
     "Failed",
     "PartialSuccess",
@@ -13,6 +14,9 @@
     "Queued"
   ],
   "javaEnums": [
+    {
+      "name": "Running"
+    },
     {
       "name": "Success"
     },

@@ -1,7 +1,7 @@
 {
   "name": "MyData",
   "displayName": "MyData",
-  "description": "MyData KnowledgePanel shows the list of Assets that is owned by User or User's Team.",
+  "description": "Shows recently viewed data assets for quick access and seamless continuation of work.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.MyData",
   "data": {

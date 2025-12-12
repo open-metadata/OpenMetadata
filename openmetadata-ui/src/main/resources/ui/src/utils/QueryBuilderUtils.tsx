@@ -515,7 +515,7 @@ interface ElasticsearchQuery {
   };
 }
 
-interface JsonLogic {
+export interface JsonLogic {
   [key: string]: any;
 }
 
@@ -834,7 +834,7 @@ export const addEntityTypeFilter = (
         must: [
           {
             term: {
-              entityType: entityType,
+              'entityType.keyword': entityType,
             },
           },
         ],
@@ -847,20 +847,91 @@ export const addEntityTypeFilter = (
 
 export const getEntityTypeAggregationFilter = (
   qFilter: QueryFilterInterface,
-  entityType: string
+  entityType: string | string[]
 ): QueryFilterInterface => {
   if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
     const firstMustBlock = (
       qFilter.query?.bool?.must as QueryFieldInterface[]
     )[0];
     if (firstMustBlock?.bool?.must) {
-      (firstMustBlock.bool.must as QueryFieldInterface[]).push({
-        term: {
-          entityType: entityType,
-        },
+      const entityTypes = Array.isArray(entityType) ? entityType : [entityType];
+      entityTypes.forEach((entityType) => {
+        (firstMustBlock?.bool?.must as QueryFieldInterface[])?.push({
+          term: {
+            'entityType.keyword': entityType,
+          },
+        });
       });
     }
   }
 
   return qFilter;
+};
+
+/**
+ * Migrates old JsonLogic format to new format for specific entity reference fields.
+ * @param jsonLogic The original JsonLogic object
+ * @returns The migrated JsonLogic object
+ */
+export const migrateJsonLogic = (
+  jsonLogic: Record<string, unknown>
+): Record<string, unknown> => {
+  const FIELD_MAPPING: Record<string, string> = {
+    [EntityReferenceFields.OWNERS]: 'fullyQualifiedName',
+    [EntityReferenceFields.REVIEWERS]: 'fullyQualifiedName',
+    [EntityReferenceFields.TAG]: 'tagFqn',
+  };
+
+  const isVarObject = (value: unknown): value is { var: string } => {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      'var' in value &&
+      typeof (value as Record<string, unknown>)['var'] === 'string'
+    );
+  };
+
+  const migrateNode = (node: JsonLogic): JsonLogic => {
+    if (node === null || typeof node !== 'object') {
+      return node;
+    }
+    if (!Array.isArray(node) && '!!' in node && isVarObject(node['!!'])) {
+      const varName = node['!!'].var;
+      const mappedField = FIELD_MAPPING[varName];
+      if (mappedField) {
+        return {
+          some: [{ var: varName }, { '!=': [{ var: mappedField }, null] }],
+        };
+      }
+    }
+    // Handle arrays
+    if (Array.isArray(node)) {
+      return node.map(migrateNode);
+    }
+    // Handle objects
+    const result: Record<string, JsonLogic> = {};
+    for (const key in node) {
+      result[key] = migrateNode(node[key] as JsonLogic);
+    }
+
+    return result;
+  };
+
+  return migrateNode(jsonLogic) as Record<string, unknown>;
+};
+
+export const getFieldsByKeys = (
+  keys: EntityReferenceFields[],
+  mapFields: Record<string, FieldOrGroup>
+): Record<string, FieldOrGroup> => {
+  const filteredFields: Record<string, FieldOrGroup> = {};
+
+  keys.forEach((key) => {
+    if (mapFields[key]) {
+      filteredFields[key] = mapFields[key];
+    }
+  });
+
+  return filteredFields;
 };

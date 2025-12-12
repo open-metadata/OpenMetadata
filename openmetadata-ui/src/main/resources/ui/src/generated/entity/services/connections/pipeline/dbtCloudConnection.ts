@@ -23,6 +23,10 @@ export interface DbtCloudConnection {
      */
     discoveryAPI: string;
     /**
+     * List of IDs of your DBT cloud environments separated by comma `,`
+     */
+    environmentIds?: string[];
+    /**
      * DBT cloud Access URL.
      */
     host: string;
@@ -41,7 +45,8 @@ export interface DbtCloudConnection {
     /**
      * List of IDs of your DBT cloud projects seperated by comma `,`
      */
-    projectIds?: string[];
+    projectIds?:                 string[];
+    supportsMetadataExtraction?: boolean;
     /**
      * Generated Token to connect to DBTCloud.
      */

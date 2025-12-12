@@ -135,7 +135,7 @@ class PowerBiMeasures(BaseModel):
     name: str
     expression: str
     description: Optional[str] = None
-    isHidden: bool
+    isHidden: Optional[bool] = False
 
 
 class PowerBITableSource(BaseModel):
@@ -302,3 +302,22 @@ class DataModelSchema(BaseModel):
 
     tables: Optional[List[PowerBiTable]] = None
     connectionFile: Optional[ConnectionFile] = None
+
+
+class ReportPage(BaseModel):
+    """
+    PowerBI report pages API response
+    single report Page object
+    """
+
+    name: str
+    displayName: Optional[str] = None
+
+
+class ReportPagesAPIResponse(BaseModel):
+    """
+    PowerBI report pages API response
+    """
+
+    odata_context: str = Field(alias="@odata.context")
+    value: Optional[List[ReportPage]] = None

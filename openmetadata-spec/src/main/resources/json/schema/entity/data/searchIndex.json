@@ -186,6 +186,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "service": {
       "description": "Link to the search cluster/service where this SearchIndex is hosted in.",
       "$ref": "../../type/entityReference.json"
@@ -254,9 +258,9 @@
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     },
-    "domain": {
-      "description": "Domain the SearchIndex belongs to. When not set, the SearchIndex inherits the domain from the messaging service it belongs to.",
-      "$ref": "../../type/entityReference.json"
+    "domains": {
+      "description": "Domains the SearchIndex belongs to. When not set, the SearchIndex inherits the domain from the messaging service it belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "dataProducts": {
       "description": "List of data products this entity is part of.",
@@ -278,6 +282,10 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "entityStatus": {
+      "description": "Status of the SearchIndex.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

@@ -19,12 +19,14 @@ import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/apiEndpoint';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -50,7 +52,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   backHandler,
   versionHandler,
   entityPermissions,
-  domain,
+  domains,
 }: APIEndpointVersionProp) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -66,9 +68,9 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
           changeDescription,
           owners,
           tier,
-          domain
+          domains
         ),
-      [changeDescription, owners, tier, domain]
+      [changeDescription, owners, tier, domains]
     );
 
   useEffect(() => {
@@ -108,6 +110,13 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -136,7 +145,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   newLook
-                  activeDomain={domain}
+                  activeDomains={domains}
                   dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />
@@ -168,12 +177,12 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
             isVersionView
             entityType={EntityType.API_ENDPOINT}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [description, currentVersionData, entityPermissions, tags]
+    [description, currentVersionData, viewCustomPropertiesPermission, tags]
   );
 
   return (

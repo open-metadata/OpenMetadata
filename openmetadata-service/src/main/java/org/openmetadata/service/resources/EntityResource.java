@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +39,9 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
+import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -46,20 +49,24 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.mapper.EntityMapper;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -76,7 +83,6 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -97,8 +103,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     this.authorizer = authorizer;
     this.limits = limits;
     addViewOperation(
-        "owners,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
+        "owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers", VIEW_BASIC);
     Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
+    Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
   }
 
   /** Method used for initializing a resource, such as creating default policies, roles, etc. */
@@ -122,7 +129,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Entity.withHref(uriInfo, entity.getExperts());
     Entity.withHref(uriInfo, entity.getReviewers());
     Entity.withHref(uriInfo, entity.getChildren());
-    Entity.withHref(uriInfo, entity.getDomain());
+    Entity.withHref(uriInfo, entity.getDomains());
     Entity.withHref(uriInfo, entity.getDataProducts());
     return entity;
   }
@@ -300,7 +307,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
-    entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    entity =
+        addHref(
+            uriInfo,
+            repository.create(
+                uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
@@ -315,7 +327,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-    entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    entity =
+        addHref(
+            uriInfo,
+            repository.create(
+                uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
@@ -325,12 +342,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
     MetadataOperation operation = createOrUpdateOperation(resourceContext);
     OperationContext operationContext = new OperationContext(entityType, operation);
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     if (operation == CREATE) {
       CreateResourceContext<T> createResourceContext =
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorize(securityContext, operationContext, createResourceContext);
-      entity = addHref(uriInfo, repository.create(uriInfo, entity));
+      entity =
+          addHref(
+              uriInfo,
+              repository.create(
+                  uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
     }
     resourceContext =
@@ -354,12 +376,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
     MetadataOperation operation = createOrUpdateOperation(resourceContext);
     OperationContext operationContext = new OperationContext(entityType, operation);
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     if (operation == CREATE) {
       CreateResourceContext<T> createResourceContext =
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-      entity = addHref(uriInfo, repository.create(uriInfo, entity));
+      entity =
+          addHref(
+              uriInfo,
+              repository.create(
+                  uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
@@ -387,14 +414,34 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       UUID id,
       JsonPatch patch,
       ChangeSource changeSource) {
+    // Get If-Match header from ThreadLocal set by ETagRequestFilter
+    String ifMatchHeader =
+        org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
+    return patchInternal(uriInfo, securityContext, id, patch, changeSource, ifMatchHeader);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
-            uriInfo, id, securityContext.getUserPrincipal().getName(), patch, changeSource);
+            uriInfo,
+            id,
+            securityContext.getUserPrincipal().getName(),
+            patch,
+            changeSource,
+            ifMatchHeader,
+            impersonatedBy);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -424,14 +471,34 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String fqn,
       JsonPatch patch,
       ChangeSource changeSource) {
+    // Get If-Match header from ThreadLocal set by ETagRequestFilter
+    String ifMatchHeader =
+        org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
+    return patchInternal(uriInfo, securityContext, fqn, patch, changeSource, ifMatchHeader);
+  }
+
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
     authorizer.authorize(
         securityContext,
         operationContext,
         getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
-            uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch, changeSource);
+            uriInfo,
+            fqn,
+            securityContext.getUserPrincipal().getName(),
+            patch,
+            changeSource,
+            ifMatchHeader,
+            impersonatedBy);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -481,7 +548,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, deleteResponse.entity());
           } catch (Exception e) {
             WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                jobId, securityContext, entity, e.getMessage());
+                jobId,
+                securityContext,
+                entity,
+                e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
 
@@ -519,7 +589,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<T> response =
-        repository.restoreEntity(securityContext.getUserPrincipal().getName(), entityType, id);
+        repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
     repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());
     LOG.info(
@@ -547,7 +617,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           } catch (Exception e) {
             LOG.error("Encountered Exception while exporting.", e);
             WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
@@ -598,7 +668,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, result);
           } catch (Exception e) {
             WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     BulkAssetsOperationResponse response =
@@ -648,7 +718,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, result);
           } catch (Exception e) {
             WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     BulkAssetsOperationResponse response =
@@ -663,10 +733,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     String jobId = UUID.randomUUID().toString();
+    CSVImportResponse responseEntity = new CSVImportResponse(jobId, "Import is in progress.");
+    Response response =
+        Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
         () -> {
           try {
+            WebsocketNotificationHandler.sendCsvImportStartedNotification(jobId, securityContext);
             CsvImportResult result =
                 importCsvInternal(securityContext, name, csv, dryRun, recursive);
             WebsocketNotificationHandler.sendCsvImportCompleteNotification(
@@ -674,11 +748,11 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           } catch (Exception e) {
             LOG.error("Encountered Exception while importing.", e);
             WebsocketNotificationHandler.sendCsvImportFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
-    CSVImportResponse response = new CSVImportResponse(jobId, "Import is in progress.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+
+    return response;
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name, boolean recursive)
@@ -750,12 +824,99 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return EntityUtil.getEntityReferences(entityType, fqns);
   }
 
+  protected Response bulkCreateOrUpdateAsync(UriInfo uriInfo, List<T> entities, String userName) {
+    repository
+        .submitAsyncBulkOperation(uriInfo, entities, userName)
+        .thenAccept(
+            result -> {
+              LOG.info(
+                  "Async bulk operation completed for {} {}: {} succeeded, {} failed",
+                  entities.size(),
+                  entityType,
+                  result.getNumberOfRowsPassed(),
+                  result.getNumberOfRowsFailed());
+            });
+
+    BulkOperationResult result = new BulkOperationResult();
+    result.setStatus(ApiStatus.SUCCESS);
+    result.setNumberOfRowsProcessed(entities.size());
+    result.setNumberOfRowsPassed(0);
+    result.setNumberOfRowsFailed(0);
+
+    return Response.accepted().entity(result).build();
+  }
+
+  protected Response bulkCreateOrUpdateSync(UriInfo uriInfo, List<T> entities, String userName) {
+    BulkOperationResult result = repository.bulkCreateOrUpdateEntities(uriInfo, entities, userName);
+    return Response.ok(result).build();
+  }
+
+  protected <C extends CreateEntity> Response processBulkRequest(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      List<C> createRequests,
+      EntityMapper<T, C> mapper,
+      boolean async) {
+
+    List<T> validEntities = new ArrayList<>();
+    List<BulkResponse> failedResponses = new ArrayList<>();
+
+    for (C createRequest : createRequests) {
+      try {
+        T entity =
+            mapper.createToEntity(createRequest, securityContext.getUserPrincipal().getName());
+        repository.prepareInternal(entity, false);
+        repository.setFullyQualifiedName(entity);
+        validEntities.add(entity);
+      } catch (Exception e) {
+        BulkResponse failedResponse = new BulkResponse();
+        failedResponse.setRequest(createRequest);
+        failedResponse.setMessage(e.getMessage());
+        failedResponse.setStatus(400);
+        failedResponses.add(failedResponse);
+      }
+    }
+
+    if (validEntities.isEmpty()) {
+      BulkOperationResult result = new BulkOperationResult();
+      result.setStatus(ApiStatus.FAILURE);
+      result.setNumberOfRowsProcessed(createRequests.size());
+      result.setNumberOfRowsPassed(0);
+      result.setNumberOfRowsFailed(createRequests.size());
+      result.setFailedRequest(failedResponses);
+      return Response.ok(result).build();
+    }
+
+    String userName = securityContext.getUserPrincipal().getName();
+    Response response;
+    if (async) {
+      response = bulkCreateOrUpdateAsync(uriInfo, validEntities, userName);
+    } else {
+      BulkOperationResult result =
+          repository.bulkCreateOrUpdateEntities(uriInfo, validEntities, userName);
+
+      if (!failedResponses.isEmpty()) {
+        result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+        result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + failedResponses.size());
+        result.setNumberOfRowsProcessed(createRequests.size());
+        if (result.getFailedRequest() == null) {
+          result.setFailedRequest(failedResponses);
+        } else {
+          result.getFailedRequest().addAll(failedResponses);
+        }
+      }
+      response = Response.ok(result).build();
+    }
+
+    return response;
+  }
+
   protected void addViewOperation(String fieldsParam, MetadataOperation operation) {
     String[] fields = fieldsParam.replace(" ", "").split(",");
     for (String field : fields) {
       if (allowedFields.contains(field)) {
         fieldsToViewOperations.put(field, operation);
-      } else if (!"owners,followers,votes,tags,extension,domain,dataProducts,experts"
+      } else if (!"owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers"
           .contains(field)) {
         // Some common fields for all the entities might be missing. Ignore it.
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));

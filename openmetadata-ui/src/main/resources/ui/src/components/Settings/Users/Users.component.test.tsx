@@ -43,23 +43,6 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
 }));
 
 jest.mock(
-  './UsersProfile/UserProfileDetails/UserProfileDetails.component',
-  () => {
-    return jest.fn().mockImplementation((props) => (
-      <div data-testid="user-profile-details">
-        <div>UserProfileDetails</div>
-        <button onClick={props.afterDeleteAction}>
-          AfterDeleteActionButton
-        </button>
-        <button onClick={props.updateUserDetails}>
-          UpdateUserDetailsButton
-        </button>
-      </div>
-    ));
-  }
-);
-
-jest.mock(
   './UsersProfile/UserProfileInheritedRoles/UserProfileInheritedRoles.component',
   () => {
     return jest.fn().mockReturnValue(<div>UserProfileInheritedRoles</div>);
@@ -135,6 +118,12 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
       name: 'test',
     },
   })),
+}));
+
+jest.mock('../Applications/ApplicationsProvider/ApplicationsProvider', () => ({
+  useApplicationsProvider: () => ({
+    extensionRegistry: { getContributions: jest.fn().mockReturnValue([]) },
+  }),
 }));
 
 jest.mock('../../PageLayoutV1/PageLayoutV1', () =>

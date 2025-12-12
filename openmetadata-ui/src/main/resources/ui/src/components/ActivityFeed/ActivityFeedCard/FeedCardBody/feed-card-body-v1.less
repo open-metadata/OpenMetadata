@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../../styles/variables.less');
+@import (reference) '../../../../styles/variables.less';
 
 .asset-info-card.explore-search-card {
   background-color: @grey-5;
@@ -50,6 +50,10 @@
   max-height: 400px;
   overflow-y: scroll;
   overflow-x: hidden;
+}
+.feed-widget-body {
+  padding: @size-sm @size-md;
+  margin-top: 10px;
 }
 
 .show-thread.description {

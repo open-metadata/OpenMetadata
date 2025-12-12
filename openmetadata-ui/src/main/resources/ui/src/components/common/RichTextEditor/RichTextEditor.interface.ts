@@ -12,6 +12,7 @@
  */
 
 import { HTMLAttributes } from 'react';
+import { ExtensionOptions } from '../../BlockEditor/BlockEditor.interface';
 
 export type TextVariant = 'white' | 'black';
 
@@ -24,6 +25,8 @@ export interface PreviewerProp {
   isDescriptionExpanded?: boolean;
   textVariant?: TextVariant;
   reducePreviewLineClass?: string;
+  maxLineLength?: string;
+  extensionOptions?: ExtensionOptions;
 }
 
 export type PreviewStyle = 'tab' | 'vertical';
@@ -36,6 +39,8 @@ export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   readonly?: boolean;
   onTextChange?: (value: string) => void;
   placeHolder?: string;
+  extensionOptions?: ExtensionOptions;
+  showMenu?: boolean;
 }
 
 export interface EditorContentRef {

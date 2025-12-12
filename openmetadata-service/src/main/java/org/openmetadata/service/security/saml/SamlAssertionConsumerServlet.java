@@ -18,13 +18,11 @@ import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.SE
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.onelogin.saml2.Auth;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,6 +39,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
@@ -53,18 +52,14 @@ import org.openmetadata.service.util.UserUtil;
 @Slf4j
 @WebServlet("/api/v1/saml/acs")
 public class SamlAssertionConsumerServlet extends HttpServlet {
-  private final AuthorizerConfiguration authorizerConfiguration;
-  private final Set<String> admins;
   private Auth auth;
 
-  public SamlAssertionConsumerServlet(AuthorizerConfiguration authorizerConfiguration) {
-    this.authorizerConfiguration = authorizerConfiguration;
-    admins = authorizerConfiguration.getAdminPrincipals();
+  public SamlAssertionConsumerServlet() {
+    // No constructor dependencies - fetch configuration dynamically
   }
 
   @Override
-  protected void doPost(HttpServletRequest request, HttpServletResponse response)
-      throws ServletException, IOException {
+  protected void doPost(HttpServletRequest request, HttpServletResponse response) {
     try {
       // Convert Jakarta servlet types to javax servlet types using Apache Felix wrappers
       javax.servlet.http.HttpServletRequest wrappedRequest = new HttpServletRequestWrapper(request);
@@ -125,7 +120,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                 .generateJWTToken(
                     username,
                     new HashSet<>(),
-                    admins.contains(username),
+                    getAdmins().contains(username),
                     email,
                     SamlSettingsHolder.getInstance().getTokenValidity(),
                     false,
@@ -171,5 +166,11 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
     response.setRefreshToken(newRefreshToken.getToken().toString());
     response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
     return response;
+  }
+
+  private Set<String> getAdmins() {
+    AuthorizerConfiguration authorizerConfiguration =
+        SecurityConfigurationManager.getCurrentAuthzConfig();
+    return authorizerConfiguration.getAdminPrincipals();
   }
 }

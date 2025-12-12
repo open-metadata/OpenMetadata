@@ -71,7 +71,7 @@ public class ColumnRepository {
 
     String parentFQN;
     try {
-      parentFQN = FullyQualifiedName.getParentFQN(columnFQN);
+      parentFQN = FullyQualifiedName.getParentEntityFQN(columnFQN, entityType);
     } catch (Exception e) {
       throw new IllegalArgumentException(
           String.format("Invalid column FQN format: %s. Error: %s", columnFQN, e.getMessage()), e);

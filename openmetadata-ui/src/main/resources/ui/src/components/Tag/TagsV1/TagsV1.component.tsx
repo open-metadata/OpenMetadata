@@ -15,6 +15,7 @@ import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
+import { ReactComponent as IconTagNew } from '../../../assets/svg/ic-tag-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { ReactComponent as IconTag } from '../../../assets/svg/tag.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -32,6 +33,7 @@ import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
 
 const TagsV1 = ({
+  hideIcon,
   tag,
   startWith,
   className,
@@ -42,6 +44,7 @@ const TagsV1 = ({
   tagType,
   size,
   isEditTags,
+  newLook,
 }: TagsV1Props) => {
   const color = useMemo(
     () => (isVersionPage ? undefined : tag.style?.color),
@@ -53,9 +56,20 @@ const TagsV1 = ({
     [tag.source]
   );
 
-  const startIcon = useMemo(
-    () =>
-      isGlossaryTag ? (
+  const startIcon = useMemo(() => {
+    if (newLook && !isGlossaryTag) {
+      return (
+        <IconTagNew
+          className="flex-shrink m-r-xss"
+          data-testid="tags-icon"
+          height={12}
+          name="tag-icon"
+          width={12}
+        />
+      );
+    }
+    if (isGlossaryTag) {
+      return (
         <IconTerm
           className="flex-shrink m-r-xss"
           data-testid="glossary-icon"
@@ -63,7 +77,9 @@ const TagsV1 = ({
           name="glossary-icon"
           width={12}
         />
-      ) : (
+      );
+    } else {
+      return (
         <IconTag
           className="flex-shrink m-r-xss"
           data-testid="tags-icon"
@@ -71,9 +87,9 @@ const TagsV1 = ({
           name="tag-icon"
           width={12}
         />
-      ),
-    [isGlossaryTag]
-  );
+      );
+    }
+  }, [isGlossaryTag]);
 
   const tagName = useMemo(
     () =>
@@ -105,30 +121,54 @@ const TagsV1 = ({
     [color]
   );
 
+  const tagChipStyleClass = useMemo(() => {
+    if (newLook && !tag.style?.color) {
+      return 'new-chip-style';
+    }
+    if (newLook && tag.style?.color) {
+      return 'new-chip-style-with-color';
+    }
+
+    return '';
+  }, [newLook, tag.style?.color]);
+
+  const renderIcon = useMemo(() => {
+    if (hideIcon) {
+      return null;
+    }
+
+    if (tag.style?.iconURL) {
+      return (
+        <img
+          className="m-r-xss"
+          data-testid="icon"
+          height={12}
+          src={tag.style.iconURL}
+          width={12}
+        />
+      );
+    }
+
+    return startIcon;
+  }, [hideIcon, tag.style?.iconURL, startIcon]);
+
   const tagContent = useMemo(
     () => (
-      <div className="d-flex w-full h-full">
+      <div className="d-flex w-full">
         {tagColorBar}
-        <div className="d-flex items-center p-x-xs w-full">
-          {tag.style?.iconURL ? (
-            <img
-              className="m-r-xss"
-              data-testid="icon"
-              height={12}
-              src={tag.style.iconURL}
-              width={12}
-            />
-          ) : (
-            startIcon
-          )}
-
-          <Typography.Paragraph
-            ellipsis
-            className="m-0 tags-label"
+        <div
+          className={classNames(
+            'd-flex items-center p-x-xs w-full tag-content-container',
+            tagChipStyleClass
+          )}>
+          {renderIcon}
+          <Typography.Text
+            className="m-0 tags-label text-truncate truncate w-max-full"
             data-testid={`tag-${tag.tagFQN}`}
+            ellipsis={{ tooltip: false }}
             style={{ color: tag.style?.color }}>
             {tagName}
-          </Typography.Paragraph>
+          </Typography.Text>
         </div>
       </div>
     ),
@@ -140,12 +180,14 @@ const TagsV1 = ({
       <Tag
         className={classNames(
           className,
+          'tag-chip tag-chip-content',
+          tagChipStyleClass,
           {
             'tag-highlight': Boolean(
               (tag as HighlightedTagLabel).isHighlighted
             ),
           },
-          'tag-chip tag-chip-content',
+
           size,
           'cursor-pointer'
         )}
@@ -173,11 +215,12 @@ const TagsV1 = ({
       <Tag
         className="tag-chip tag-chip-add-button"
         icon={<PlusIcon height={16} name="plus" width={16} />}>
-        <Typography.Paragraph
-          className="m-0 text-xs font-medium text-primary"
-          data-testid="add-tag">
+        <Typography.Text
+          className="m-0 text-xs font-medium text-primary text-truncate truncate w-max-full"
+          data-testid="add-tag"
+          ellipsis={{ tooltip: false }}>
           {getTagDisplay(tagName)}
-        </Typography.Paragraph>
+        </Typography.Text>
       </Tag>
     ),
     [tagName]

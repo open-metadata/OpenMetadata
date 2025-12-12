@@ -72,6 +72,10 @@
       "type": "string",
       "format": "date"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "type": "string"
+    },
     "dateTime": {
       "description": "Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.",
       "type": "string",
@@ -183,12 +187,29 @@
       "javaType": "org.openmetadata.schema.type.ApiStatus",
       "description": "State of an action over API.",
       "type" : "string",
-      "enum" : ["success", "failure", "aborted", "partialSuccess"]
+      "enum" : ["success", "failure", "aborted", "partialSuccess", "running"]
     },
     "sourceUrl" : {
       "description": "Source Url of the respective entity.",
       "type" : "string",
       "format": "url"
+    },
+    "coverImage": {
+      "description": "Cover image configuration for an entity. This is used to display a banner or header image for entities like Domain, Glossary, Data Product, etc.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.type.CoverImage",
+      "properties": {
+        "url": {
+          "description": "URL of the cover image.",
+          "type": "string",
+          "format": "url"
+        },
+        "position": {
+          "description": "Position of the cover image in CSS background-position format. Supports keywords (top, center, bottom) or pixel values (e.g., '20px 30px').",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "style": {
       "description": "UI Style is used to associate a color code and/or icon to entity to customize the look of that entity in UI.",
@@ -203,8 +224,72 @@
           "description": "An icon to associate with GlossaryTerm, Tag, Domain or Data Product.",
           "type" : "string",
           "format": "url"
+        },
+        "coverImage": {
+          "description": "Cover image configuration for the entity.",
+          "$ref": "#/definitions/coverImage"
         }
       },
+      "additionalProperties": false
+    },
+    "semanticsRule": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.SemanticsRule",
+      "description": "Semantics rule defined in the data contract.",
+      "properties": {
+        "name": {
+          "title": "Rule Name",
+          "description": "Name of the semantics rule.",
+          "type": "string"
+        },
+        "description": {
+          "title": "Rule Description",
+          "description": "Description of the semantics rule.",
+          "$ref": "#/definitions/markdown"
+        },
+        "rule": {
+          "title": "Rule Definition",
+          "description": "Definition of the semantics rule.",
+          "type": "string",
+          "outputType": "jsonlogic",
+          "format": "queryBuilder"
+        },
+        "enabled": {
+          "title": "Enabled",
+          "description": "Indicates if the semantics rule is enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "entityType": {
+          "title": "Entity Type",
+          "description": "Type of the entity to which this semantics rule applies.",
+          "type": "string",
+          "default": null
+        },
+        "ignoredEntities": {
+          "title": "Ignored Entities",
+          "description": "List of entities to ignore for this semantics rule.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "jsonTree": {
+          "title": "JSON Tree to represents rule in UI.",
+          "description": "JSON Tree to represents rule in UI.",
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/definitions/providerType"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "rule",
+        "enabled"
+      ],
       "additionalProperties": false
     }
   }

@@ -2,9 +2,9 @@ package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
@@ -13,16 +13,13 @@ import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import os.org.opensearch.action.search.SearchRequest;
-import os.org.opensearch.action.search.SearchResponse;
-import os.org.opensearch.index.query.QueryBuilder;
-import os.org.opensearch.index.query.RangeQueryBuilder;
-import os.org.opensearch.search.aggregations.Aggregation;
-import os.org.opensearch.search.aggregations.AggregationBuilders;
-import os.org.opensearch.search.aggregations.Aggregations;
-import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
-import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
-import os.org.opensearch.search.builder.SearchSourceBuilder;
+import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
+import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.client.opensearch._types.aggregations.CalendarInterval;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
+import os.org.opensearch.client.opensearch.core.SearchRequest;
+import os.org.opensearch.client.opensearch.core.SearchResponse;
 
 public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAggregatorInterface {
   public SearchRequest prepareSearchRequest(
@@ -30,49 +27,73 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
       long start,
       long end,
       List<FormulaHolder> formulas,
-      Map metricHolder)
+      Map metricHolder,
+      boolean live)
       throws IOException {
 
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
-    DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
-        AggregationBuilders.dateHistogram("1")
-            .field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
-            .calendarInterval(DateHistogramInterval.DAY);
+
+    Map<String, Aggregation> subAggregations = new HashMap<>();
     populateDateHistogram(
-        summaryCard.getMetrics().get(0).getFunction(),
-        summaryCard.getMetrics().get(0).getFormula(),
-        summaryCard.getMetrics().get(0).getField(),
-        summaryCard.getMetrics().get(0).getFilter(),
-        dateHistogramAggregationBuilder,
+        summaryCard.getMetrics().getFirst().getFunction(),
+        summaryCard.getMetrics().getFirst().getFormula(),
+        summaryCard.getMetrics().getFirst().getField(),
+        summaryCard.getMetrics().getFirst().getFilter(),
+        subAggregations,
+        "1",
         formulas);
 
-    QueryBuilder queryFilter = new RangeQueryBuilder("@timestamp").gte(start).lte(end);
+    Aggregation dateHistogramAgg =
+        Aggregation.of(
+            a ->
+                a.dateHistogram(
+                        dh ->
+                            dh.field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
+                                .calendarInterval(CalendarInterval.Day))
+                    .aggregations(subAggregations));
 
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
-    searchSourceBuilder.query(queryFilter);
-    searchSourceBuilder.size(0);
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            DataInsightSystemChartRepository.getDataInsightsSearchIndex());
-    searchRequest.source(searchSourceBuilder);
-    return searchRequest;
+    Map<String, Aggregation> aggregationsMap = new HashMap<>();
+    aggregationsMap.put("1", dateHistogramAgg);
+
+    SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder().size(0);
+
+    if (!live) {
+      Query rangeQuery =
+          Query.of(
+              q ->
+                  q.range(
+                      r ->
+                          r.field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
+                              .gte(JsonData.of(start))
+                              .lte(JsonData.of(end))));
+      searchRequestBuilder.query(rangeQuery);
+      searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
+    } else {
+      searchRequestBuilder.index(DataInsightSystemChartRepository.getLiveSearchIndex(null));
+    }
+
+    searchRequestBuilder.aggregations(aggregationsMap);
+    return searchRequestBuilder.build();
   }
 
   public DataInsightCustomChartResultList processSearchResponse(
       @NotNull DataInsightCustomChart diChart,
-      SearchResponse searchResponse,
+      SearchResponse<JsonData> searchResponse,
       List<FormulaHolder> formulas,
       Map metricHolder) {
     DataInsightCustomChartResultList resultList = new DataInsightCustomChartResultList();
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
-    List<Aggregation> aggregationList =
-        Optional.ofNullable(searchResponse.getAggregations())
-            .orElse(new Aggregations(new ArrayList<>()))
-            .asList();
+    Map<String, Aggregate> aggregationMap =
+        searchResponse.aggregations() != null ? searchResponse.aggregations() : new HashMap<>();
+
+    String formula = summaryCard.getMetrics().getFirst().getFormula();
+    // If formulas list is empty and formula is not null, populate it
+    if ((formulas == null || formulas.isEmpty()) && formula != null) {
+      formulas = OpenSearchDynamicChartAggregatorInterface.getFormulaList(formula);
+    }
+
     List<DataInsightCustomChartResult> results =
-        processAggregations(
-            aggregationList, summaryCard.getMetrics().get(0).getFormula(), null, formulas, null);
+        processAggregations(aggregationMap, formula, null, formulas, null);
 
     List<DataInsightCustomChartResult> finalResults = new ArrayList<>();
     for (int i = results.size() - 1; i >= 0; i--) {

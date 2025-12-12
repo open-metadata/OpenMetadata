@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -149,7 +150,14 @@ jest.mock(
 );
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
-  return jest.fn().mockImplementation(() => ({ pathname: '', hash: '' }));
+  return jest.fn().mockImplementation(() => ({
+    pathname: '/persona/testPersona',
+    hash: '#users',
+  }));
+});
+
+jest.mock('../../../rest/userAPI', () => {
+  return jest.fn().mockImplementation(() => Promise.resolve({}));
 });
 
 describe('PersonaDetailsPage', () => {
@@ -185,7 +193,9 @@ describe('PersonaDetailsPage', () => {
 
     const deleteBtn = await screen.findByTestId('delete-btn');
 
-    fireEvent.click(deleteBtn);
+    await act(async () => {
+      fireEvent.click(deleteBtn);
+    });
 
     expect(mockNavigate).toHaveBeenCalledWith('/settings/persona');
   });

@@ -33,12 +33,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
 public final class SecurityUtil {
@@ -49,6 +50,15 @@ public final class SecurityUtil {
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
     return principal == null ? null : principal.getName().split("[/@]")[0];
+  }
+
+  public static String getImpersonatedByUser(SecurityContext securityContext) {
+    if (securityContext instanceof CatalogSecurityContext catalogSecurityContext) {
+      return catalogSecurityContext.impersonatedUser() != null
+          ? getUserName(securityContext)
+          : null;
+    }
+    return null;
   }
 
   public static LoginConfiguration getLoginConfiguration() {
@@ -106,7 +116,10 @@ public final class SecurityUtil {
       String usernameClaim = jwtPrincipalClaimsMapping.get(USERNAME_CLAIM_KEY);
       String userNameClaimValue = getClaimOrObject(claims.get(usernameClaim));
       if (!nullOrEmpty(userNameClaimValue)) {
-        userName = userNameClaimValue;
+        userName =
+            userNameClaimValue.contains("@")
+                ? userNameClaimValue.split("@")[0]
+                : userNameClaimValue;
       } else {
         throw new AuthenticationException("Invalid JWT token, 'username' claim is not present");
       }

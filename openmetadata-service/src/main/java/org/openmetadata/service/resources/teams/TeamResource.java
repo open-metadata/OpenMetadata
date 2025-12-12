@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -72,7 +73,6 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/teams")
@@ -459,6 +459,83 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
   }
 
+  @GET
+  @Path("/{id}/assets")
+  @Operation(
+      operationId = "listTeamAssets",
+      summary = "List assets owned by this team",
+      description =
+          "Get a paginated list of assets that are owned by this team. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")
+      })
+  public Response listTeamAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getTeamAssets(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/assets")
+  @Operation(
+      operationId = "listTeamAssetsByName",
+      summary = "List assets owned by this team by fully qualified name",
+      description =
+          "Get a paginated list of assets that are owned by this team. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "Team for instance {fqn} is not found")
+      })
+  public Response listTeamAssetsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the team",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getTeamAssetsByName(fqn, limit, offset)).build();
+  }
+
   @PATCH
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -641,7 +718,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                     schema = @Schema(implementation = CSVExportResponse.class)))
       })
   public Response exportCsvAsync(
-      @Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
+      @Context SecurityContext securityContext, @PathParam("name") String name) {
     return exportCsvInternalAsync(securityContext, name, false);
   }
 
@@ -787,5 +864,24 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean dryRun,
       String csv) {
     return importCsvInternalAsync(securityContext, name, csv, dryRun, false);
+  }
+
+  @GET
+  @Path("/assets/counts")
+  @Operation(
+      operationId = "getAllTeamsWithAssetsCount",
+      summary = "Get all teams with their asset counts",
+      description =
+          "Get a map of team fully qualified names to their asset counts using search aggregation.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Map of team FQN to asset count",
+            content = @Content(mediaType = "application/json"))
+      })
+  public Response getAllTeamsWithAssetsCount(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    java.util.Map<String, Integer> result = repository.getAllTeamsWithAssetsCount();
+    return Response.ok(result).build();
   }
 }

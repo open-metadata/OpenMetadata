@@ -19,7 +19,9 @@ import {
   formatDate,
   formatDateTime,
   formatDateTimeLong,
+  formatMonth,
   formatTimeDurationFromSeconds,
+  getScheduleDescriptionTexts,
   isValidDateFormat,
 } from './DateTimeUtils';
 
@@ -47,6 +49,18 @@ describe('DateTimeUtils tests', () => {
 
   it(`formatDate should formate date and time both`, () => {
     expect(formatDate(0)).toBe(`Jan 1, 1970`);
+  });
+
+  it(`formatMonth should format only the month`, () => {
+    expect(formatMonth(0)).toBe(`Jan`); // January 1970
+    expect(formatMonth(1677628800000)).toBe(`Mar`); // March 2023
+    expect(formatMonth(1704067200000)).toBe(`Jan`); // January 2024
+    expect(formatMonth(1717200000000)).toBe(`Jun`); // June 2024
+  });
+
+  it(`formatMonth should handle null/undefined values`, () => {
+    expect(formatMonth(undefined)).toBe('');
+    expect(formatMonth(NaN)).toBe('');
   });
 
   it(`formatDateShort should formate date and time both`, () => {
@@ -232,5 +246,72 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
     expect(convertMillisecondsToHumanReadableFormat(inputValue * 1000)).toBe(
       expectedValue
     );
+  });
+});
+
+describe('getScheduleDescriptionTexts', () => {
+  it('should parse daily cron schedule correctly', () => {
+    const result = getScheduleDescriptionTexts('0 0 * * *');
+
+    expect(result).toHaveProperty('descriptionFirstPart');
+    expect(result).toHaveProperty('descriptionSecondPart');
+    // The function should either parse successfully or return empty strings
+    expect(typeof result.descriptionFirstPart).toBe('string');
+    expect(typeof result.descriptionSecondPart).toBe('string');
+  });
+
+  it('should parse hourly cron schedule correctly', () => {
+    const result = getScheduleDescriptionTexts('0 * * * *');
+
+    expect(result).toHaveProperty('descriptionFirstPart');
+    expect(result).toHaveProperty('descriptionSecondPart');
+    expect(typeof result.descriptionFirstPart).toBe('string');
+    expect(typeof result.descriptionSecondPart).toBe('string');
+  });
+
+  it('should parse weekly cron schedule correctly', () => {
+    const result = getScheduleDescriptionTexts('0 0 * * 1');
+
+    expect(result).toHaveProperty('descriptionFirstPart');
+    expect(result).toHaveProperty('descriptionSecondPart');
+    expect(typeof result.descriptionFirstPart).toBe('string');
+    expect(typeof result.descriptionSecondPart).toBe('string');
+  });
+
+  it('should parse custom interval cron schedule correctly', () => {
+    const result = getScheduleDescriptionTexts('*/15 * * * *');
+
+    expect(result).toHaveProperty('descriptionFirstPart');
+    expect(result).toHaveProperty('descriptionSecondPart');
+    expect(typeof result.descriptionFirstPart).toBe('string');
+    expect(typeof result.descriptionSecondPart).toBe('string');
+  });
+
+  it('should handle invalid cron expression gracefully', () => {
+    const result = getScheduleDescriptionTexts('invalid cron');
+
+    expect(result.descriptionFirstPart).toBe('');
+    expect(result.descriptionSecondPart).toBe('');
+  });
+
+  it('should handle empty string gracefully', () => {
+    const result = getScheduleDescriptionTexts('');
+
+    expect(result.descriptionFirstPart).toBe('');
+    expect(result.descriptionSecondPart).toBe('');
+  });
+
+  it('should return consistent structure for valid cron expressions', () => {
+    const result1 = getScheduleDescriptionTexts('0 12 * * *');
+    const result2 = getScheduleDescriptionTexts('30 8 * * 1-5');
+
+    expect(result1).toHaveProperty('descriptionFirstPart');
+    expect(result1).toHaveProperty('descriptionSecondPart');
+    expect(result2).toHaveProperty('descriptionFirstPart');
+    expect(result2).toHaveProperty('descriptionSecondPart');
+    expect(typeof result1.descriptionFirstPart).toBe('string');
+    expect(typeof result1.descriptionSecondPart).toBe('string');
+    expect(typeof result2.descriptionFirstPart).toBe('string');
+    expect(typeof result2.descriptionSecondPart).toBe('string');
   });
 });

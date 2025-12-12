@@ -14,8 +14,8 @@
 package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 
-import es.org.elasticsearch.action.search.SearchResponse;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -53,6 +53,9 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.CustomMetric;
@@ -63,14 +66,17 @@ import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.PipelineObservability;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -81,7 +87,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/tables")
 @Tag(
@@ -95,8 +100,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   private final TableMapper mapper = new TableMapper();
   public static final String COLLECTION_PATH = "v1/tables/";
   public static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,"
-          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
+      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
+          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash";
 
   @Override
   public Table addHref(UriInfo uriInfo, Table table) {
@@ -120,6 +125,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     addViewOperation("customMetrics", MetadataOperation.VIEW_TESTS);
     addViewOperation("testSuite", MetadataOperation.VIEW_TESTS);
+    addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
     return listOf(
         MetadataOperation.VIEW_TESTS,
         MetadataOperation.VIEW_QUERIES,
@@ -132,7 +138,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         MetadataOperation.EDIT_DATA_PROFILE,
         MetadataOperation.EDIT_SAMPLE_DATA,
         MetadataOperation.EDIT_LINEAGE,
-        MetadataOperation.EDIT_ENTITY_RELATIONSHIP);
+        MetadataOperation.EDIT_ENTITY_RELATIONSHIP,
+        MetadataOperation.CREATE_TESTS);
   }
 
   public static class TableList extends ResultList<Table> {
@@ -400,6 +407,39 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Valid CreateTable create) {
     Table table = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, table);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateTables",
+      summary = "Bulk create or update tables",
+      description =
+          "Create or update multiple tables in a single operation. "
+              + "Returns a BulkOperationResult with success/failure details for each table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk operation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateTable> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH
@@ -839,6 +879,191 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @PUT
+  @Path("/{id}/pipelineObservability")
+  @Operation(
+      operationId = "addPipelineObservability",
+      summary = "Add pipeline observability data",
+      description = "Add pipeline observability data to the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Table addPipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @RequestBody(
+              description = "Pipeline observability data",
+              required = true,
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema =
+                          @Schema(type = "array", implementation = PipelineObservability.class)))
+          List<PipelineObservability> pipelineObservability) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = repository.addPipelineObservability(id, pipelineObservability);
+    return addHref(uriInfo, table);
+  }
+
+  @GET
+  @Path("/{id}/pipelineObservability")
+  @Operation(
+      operationId = "getPipelineObservability",
+      summary = "Get pipeline observability data",
+      description = "Get pipeline observability data for the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of pipeline observability data",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(type = "array", implementation = PipelineObservability.class)))
+      })
+  public List<PipelineObservability> getPipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    return repository.getPipelineObservability(id);
+  }
+
+  @GET
+  @Path("/name/{fqn}/pipelineObservability")
+  @Operation(
+      operationId = "getPipelineObservabilityByFQN",
+      summary = "Get pipeline observability data by table FQN",
+      description = "Get pipeline observability data for the table using fully qualified name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of pipeline observability data",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(type = "array", implementation = PipelineObservability.class)))
+      })
+  public List<PipelineObservability> getPipelineObservabilityByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the table",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    return repository.getPipelineObservabilityByName(fqn);
+  }
+
+  @DELETE
+  @Path("/{id}/pipelineObservability")
+  @Operation(
+      operationId = "deletePipelineObservability",
+      summary = "Delete pipeline observability data",
+      description = "Delete pipeline observability data from the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Table deletePipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = repository.deletePipelineObservability(id);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
+  @Path("/{id}/pipelineObservability/{pipelineFqn}")
+  @Operation(
+      operationId = "addSinglePipelineObservability",
+      summary = "Add or update single pipeline observability data",
+      description =
+          "Add or update pipeline observability data for a specific pipeline on the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Table addSinglePipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Fully qualified name of the pipeline") @PathParam("pipelineFqn")
+          String pipelineFqn,
+      @RequestBody(
+              description = "Pipeline observability data",
+              required = true,
+              content =
+                  @Content(
+                      mediaType = "application/json",
+                      schema = @Schema(implementation = PipelineObservability.class)))
+          PipelineObservability pipelineObservability) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = repository.addSinglePipelineObservability(id, pipelineObservability);
+    return addHref(uriInfo, table);
+  }
+
+  @DELETE
+  @Path("/{id}/pipelineObservability/{pipelineFqn}")
+  @Operation(
+      operationId = "deleteSinglePipelineObservability",
+      summary = "Delete single pipeline observability data",
+      description = "Delete pipeline observability data for a specific pipeline from the table.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully update the Table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Table.class)))
+      })
+  public Table deleteSinglePipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the table", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Fully qualified name of the pipeline") @PathParam("pipelineFqn")
+          String pipelineFqn) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Table table = repository.deleteSinglePipelineObservability(id, pipelineFqn);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
   @Path("/{id}/tableProfilerConfig")
   @Operation(
       operationId = "addDataProfilerConfig",
@@ -950,12 +1175,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     ResourceContext<?> resourceContext = getResourceContextByName(fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     return Response.status(Response.Status.OK)
         .entity(
             JsonUtils.pojoToJson(
-                repository.getLatestTableProfile(fqn, authorizePII, includeColumnProfile)))
+                repository.getLatestTableProfile(
+                    fqn, includeColumnProfile, authorizer, securityContext)))
         .build();
   }
 
@@ -1043,8 +1268,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             fqn); // get table fqn for the resource context (vs column fqn)
     ResourceContext<?> resourceContext = getResourceContextByName(tableFqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
-    return repository.getColumnProfiles(fqn, startTs, endTs, authorizePII);
+    return repository.getColumnProfiles(fqn, startTs, endTs, authorizer, securityContext);
   }
 
   @GET
@@ -1378,7 +1602,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
 
     ResultList<org.openmetadata.schema.type.Column> result =
-        repository.getTableColumns(id, limitParam, offsetParam, fieldsParam, include);
+        repository.getTableColumns(
+            id, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1437,7 +1662,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
 
     ResultList<org.openmetadata.schema.type.Column> result =
-        repository.getTableColumnsByFQN(fqn, limitParam, offsetParam, fieldsParam, include);
+        repository.getTableColumnsByFQN(
+            fqn, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1456,9 +1682,9 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = SearchResponse.class)))
+                    schema = @Schema(implementation = SearchEntityRelationshipResult.class)))
       })
-  public Response searchEntityRelationship(
+  public SearchEntityRelationshipResult searchEntityRelationship(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
@@ -1473,11 +1699,101 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")
           @DefaultValue("false")
-          boolean deleted)
+          boolean deleted,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 1000")
+          @DefaultValue("1000")
+          @QueryParam("size")
+          int size)
       throws IOException {
+    if (fqn == null || fqn.trim().isEmpty()) {
+      throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
+    }
 
     return Entity.getSearchRepository()
-        .searchEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+        .searchEntityRelationship(
+            new SearchEntityRelationshipRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withLayerFrom(from)
+                .withLayerSize(size)
+                .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
+  }
+
+  @GET
+  @Path("/entityRelationship/{direction}")
+  @Operation(
+      operationId = "searchEntityRelationshipWithDirection",
+      summary = "Search entity relationship with Direction",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchEntityRelationshipResult.class)))
+      })
+  public SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "Direction", required = true, schema = @Schema(type = "string"))
+          @PathParam("direction")
+          EntityRelationshipDirection direction,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") @DefaultValue("3")
+          int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth") @DefaultValue("3")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          @DefaultValue("false")
+          boolean deleted,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields,
+      @Parameter(description = "From field to paginate the results, defaults to 0")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from,
+      @Parameter(description = "Size field to limit the no.of results returned, defaults to 1000")
+          @DefaultValue("1000")
+          @QueryParam("size")
+          int size)
+      throws IOException {
+    // Validate required FQN parameter
+    if (fqn == null || fqn.trim().isEmpty()) {
+      throw new IllegalArgumentException("FQN parameter is required and cannot be empty");
+    }
+
+    return Entity.getSearchRepository()
+        .searchEntityRelationshipWithDirection(
+            new SearchEntityRelationshipRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withDirection(direction)
+                .withLayerFrom(from)
+                .withLayerSize(size)
+                .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields)));
   }
 
   @GET
@@ -1531,7 +1847,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     ResultList<Column> result =
-        repository.searchTableColumnsById(id, query, limitParam, offsetParam, fieldsParam, include);
+        repository.searchTableColumnsById(
+            id, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
@@ -1592,7 +1909,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.searchTableColumnsByFQN(
-            fqn, query, limitParam, offsetParam, fieldsParam, include);
+            fqn, query, limitParam, offsetParam, fieldsParam, include, authorizer, securityContext);
     TableColumnList tableColumnList = new TableColumnList();
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());

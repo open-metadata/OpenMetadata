@@ -10,14 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, expect, Page, request } from '@playwright/test';
+import { Browser, expect, Locator, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
+import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+import { getToken as getTokenFromStorage } from './tokenStorage';
 
 export const uuid = () => randomUUID().split('-')[0];
+export const fullUuid = () => randomUUID();
 
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
@@ -39,10 +42,7 @@ export const NAME_MAX_LENGTH_VALIDATION_ERROR =
   'Name can be a maximum of 128 characters';
 
 export const getToken = async (page: Page) => {
-  return page.evaluate(
-    () =>
-      JSON.parse(localStorage.getItem('om-session') ?? '{}')?.oidcIdToken ?? ''
-  );
+  return await getTokenFromStorage(page);
 };
 
 export const getAuthContext = async (token: string) => {
@@ -56,16 +56,43 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
-export const redirectToHomePage = async (page: Page) => {
+export const redirectToHomePage = async (
+  page: Page,
+  waitForNetworkIdle = true
+) => {
   await page.goto('/');
   await page.waitForURL('**/my-data');
+  if (waitForNetworkIdle) {
+    await page.waitForLoadState('networkidle');
+  }
+};
+
+export const redirectToExplorePage = async (page: Page) => {
+  await page.goto('/explore');
+  await page.waitForURL('**/explore');
   await page.waitForLoadState('networkidle');
 };
 
 export const removeLandingBanner = async (page: Page) => {
-  const widgetResponse = page.waitForResponse('/api/v1/search/query?q=**');
-  await page.click('[data-testid="welcome-screen-close-btn"]');
-  await widgetResponse;
+  try {
+    const welcomePageCloseButton = await page
+      .waitForSelector('[data-testid="welcome-screen-close-btn"]', {
+        state: 'visible',
+        timeout: 5000,
+      })
+      .catch(() => {
+        // Do nothing if the welcome banner does not exist
+        return;
+      });
+
+    // Close the welcome banner if it exists
+    if (welcomePageCloseButton?.isVisible()) {
+      await welcomePageCloseButton.click();
+    }
+  } catch {
+    // Do nothing if the welcome banner does not exist
+    return;
+  }
 };
 
 export const createNewPage = async (browser: Browser) => {
@@ -73,7 +100,7 @@ export const createNewPage = async (browser: Browser) => {
   const page = await browser.newPage();
   await redirectToHomePage(page);
 
-  // get the token from localStorage
+  // get the token
   const token = await getToken(page);
 
   // create a new context with the token
@@ -100,6 +127,8 @@ export const getApiContext = async (page: Page) => {
   return { apiContext, afterAction };
 };
 
+const DASHBOARD_DATA_MODEL = 'DashboardDataModel';
+
 export const getEntityTypeSearchIndexMapping = (entityType: string) => {
   const entityMapping = {
     Table: 'table_search_index',
@@ -111,6 +140,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     SearchIndex: 'search_entity_search_index',
     ApiEndpoint: 'api_endpoint_search_index',
     Metric: 'metric_search_index',
+    [DASHBOARD_DATA_MODEL]: 'dashboard_data_model_search_index',
   };
 
   return entityMapping[entityType as keyof typeof entityMapping];
@@ -149,27 +179,87 @@ export const visitOwnProfilePage = async (page: Page) => {
   const userResponse = page.waitForResponse(
     '/api/v1/users/name/*?fields=*&include=all'
   );
-  await page.getByTestId('user-name').click();
+  await page.getByRole('link', { name: 'View Profile' }).click();
   await userResponse;
   await clickOutside(page);
 };
 
 export const assignDomain = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  checkSelectedDomain = true
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
+
   await page
     .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
     .fill(domain.name);
+
   await searchDomain;
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  // Wait for the tag element to be visible and ensure page is still valid
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await tagSelector.waitFor({ state: 'visible' });
+  await tagSelector.click();
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  if (checkSelectedDomain) {
+    await expect(page.getByTestId('domain-link')).toContainText(
+      domain.displayName
+    );
+  }
+};
+
+export const assignSingleSelectDomain = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+) => {
+  await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const searchDomain = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
+  );
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+
+  await searchDomain;
+
+  // Wait for the tag element to be visible and ensure page is still valid
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await tagSelector.waitFor({ state: 'visible' });
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await tagSelector.click();
+
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('domain-link')).toContainText(
     domain.displayName
@@ -189,7 +279,9 @@ export const updateDomain = async (
     .clear();
 
   const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
   );
   await page
     .getByTestId('domain-selectable-tree')
@@ -199,31 +291,111 @@ export const updateDomain = async (
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
-  await expect(page.getByTestId('domain-link')).toContainText(
-    domain.displayName
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
   );
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('header-domain-container')).toContainText('+1');
+
+  await page.getByTestId('header-domain-container').getByText('+1').hover();
+
+  await expect(
+    page.getByRole('menuitem', { name: domain.displayName })
+  ).toBeVisible();
 };
 
 export const removeDomain = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  showDashPlaceholder = true
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
+  const searchDomain = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
+  );
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+  await searchDomain;
+
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await tagSelector.waitFor({ state: 'visible' });
+  await tagSelector.click();
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('no-domain-text')).toContainText(
+    showDashPlaceholder ? '--' : 'No Domains'
+  );
+};
+
+export const removeSingleSelectDomain = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  showDashPlaceholder = true
+) => {
+  await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .clear();
+
+  const searchDomain = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
+  );
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+  await searchDomain;
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
 
-  await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
+  await patchReq;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('no-domain-text')).toContainText(
+    showDashPlaceholder ? '--' : 'No Domains'
+  );
 };
 
 export const assignDataProduct = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  dataProduct: {
+  dataProducts: {
     name: string;
     displayName: string;
     fullyQualifiedName?: string;
-  },
+  }[],
   action: 'Add' | 'Edit' = 'Add',
   parentId = 'KnowledgePanel.DataProducts'
 ) => {
@@ -233,26 +405,44 @@ export const assignDataProduct = async (
     .getByTestId(action === 'Add' ? 'add-data-product' : 'edit-button')
     .click();
 
-  const searchDataProduct = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
-  );
+  for (const dataProduct of dataProducts) {
+    const searchDataProduct = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes(encodeURIComponent(domain.name))
+    );
 
-  await page
-    .locator('[data-testid="data-product-selector"] input')
-    .fill(dataProduct.displayName);
-  await searchDataProduct;
-  await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
-
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
-
-  await page.getByTestId('saveAssociatedTag').click();
+    await page
+      .locator('[data-testid="data-product-selector"] input')
+      .fill(dataProduct.displayName);
+    await searchDataProduct;
+    await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
+  }
 
   await expect(
     page
-      .getByTestId(parentId)
-      .getByTestId('data-products-list')
-      .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
-  ).toBeVisible();
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
+    .click();
+  await patchReq;
+
+  for (const dataProduct of dataProducts) {
+    await expect(
+      page
+        .getByTestId(parentId)
+        .getByTestId('data-products-list')
+        .getByTestId(`data-product-${dataProduct.fullyQualifiedName}`)
+    ).toBeVisible();
+  }
 };
 
 export const removeDataProduct = async (
@@ -269,15 +459,29 @@ export const removeDataProduct = async (
     .getByTestId('edit-button')
     .click();
 
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   await page
     .getByTestId(`selected-tag-${dataProduct.fullyQualifiedName}`)
     .getByTestId('remove-tags')
     .locator('svg')
     .click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(
+    page
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
 
-  await page.getByTestId('saveAssociatedTag').click();
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+
+  await page
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
+    .click();
+  await patchReq;
 
   await expect(
     page
@@ -318,6 +522,23 @@ export const generateRandomUsername = (prefix = '') => {
   };
 };
 
+export const verifyDomainLinkInCard = async (
+  entityCard: Locator,
+  domain: Domain['responseData']
+) => {
+  const domainLink = entityCard.getByTestId('domain-link').filter({
+    hasText: domain.displayName,
+  });
+
+  await expect(domainLink).toBeVisible();
+  await expect(domainLink).toContainText(domain.displayName);
+
+  const href = await domainLink.getAttribute('href');
+
+  expect(href).toContain('/domain/');
+  await expect(domainLink).toBeEnabled();
+};
+
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
@@ -325,12 +546,16 @@ export const verifyDomainPropagation = async (
 ) => {
   await page.getByTestId('searchBox').fill(childFqnSearchTerm);
   await page.getByTestId('searchBox').press('Enter');
+  await page.waitForSelector(`[data-testid*="table-data-card"]`);
 
-  await expect(
-    page
-      .getByTestId(`table-data-card_${childFqnSearchTerm}`)
-      .getByTestId('domain-link')
-  ).toContainText(domain.displayName);
+  const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
+
+  await expect(entityCard).toBeVisible();
+
+  const domainLink = entityCard.getByTestId('domain-link').first();
+
+  await expect(domainLink).toBeVisible();
+  await expect(domainLink).toContainText(domain.displayName);
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
@@ -352,6 +577,10 @@ export const closeFirstPopupAlert = async (page: Page) => {
 export const reloadAndWaitForNetworkIdle = async (page: Page) => {
   await page.reload();
   await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
 
 /**
@@ -410,4 +639,174 @@ export const executeWithRetry = async <T>(
       }
     }
   }
+};
+
+export const readElementInListWithScroll = async (
+  page: Page,
+  locator: Locator,
+  hierarchyElementLocator: Locator
+) => {
+  const element = locator;
+
+  // Reset scroll position to top before starting pagination
+  await hierarchyElementLocator.hover();
+  await page.mouse.wheel(0, -99999);
+
+  await page.waitForTimeout(1000);
+
+  // Retry mechanism for pagination
+  let elementCount = await element.count();
+  let retryCount = 0;
+  const maxRetries = 10;
+
+  while (elementCount === 0 && retryCount < maxRetries) {
+    await hierarchyElementLocator.hover();
+    await page.mouse.wheel(0, 1000);
+    await page.waitForTimeout(500);
+
+    // Create fresh locator and check if the article is now visible after this retry
+    const freshArticle = locator;
+    const count = await freshArticle.count();
+
+    // Check if the article is now visible after this retry
+    elementCount = count;
+
+    // If we found the element, validate it and break out of the loop
+    if (count > 0) {
+      await expect(freshArticle).toBeVisible();
+
+      return; // Exit the function early since we found and validated the article
+    }
+
+    retryCount++;
+  }
+};
+
+export const testPaginationNavigation = async (
+  page: Page,
+  waitForLoadSelector?: string
+) => {
+  await page.waitForLoadState('networkidle');
+
+  if (waitForLoadSelector) {
+    await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
+  }
+
+  await waitForAllLoadersToDisappear(page);
+
+  const nextButton = page.locator('[data-testid="next"]');
+
+  const nextButtonCount = await nextButton.count();
+
+  if (nextButtonCount === 0) {
+    return;
+  }
+
+  const isNextButtonEnabled = await nextButton.isEnabled();
+
+  if (!isNextButtonEnabled) {
+    return;
+  }
+
+  await nextButton.click();
+
+  await page.waitForLoadState('networkidle');
+  await waitForAllLoadersToDisappear(page);
+
+  const currentUrl = page.url();
+  const urlObj = new URL(currentUrl);
+  const searchParams = urlObj.searchParams;
+
+  expect(searchParams.get('currentPage')).toBe('2');
+  expect(searchParams.get('cursorType')).toBe('after');
+
+  const afterValue = searchParams.get('cursorValue');
+
+  expect(afterValue).toBeTruthy();
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+
+  if (waitForLoadSelector) {
+    await page.waitForSelector(waitForLoadSelector, { state: 'visible' });
+  }
+
+  await waitForAllLoadersToDisappear(page);
+
+  const reloadedUrl = page.url();
+
+  expect(reloadedUrl).toBe(currentUrl);
+
+  const paginationText = page.locator('[data-testid="page-indicator"]');
+
+  await expect(paginationText).toBeVisible();
+
+  const paginationTextContent = await paginationText.textContent();
+
+  expect(paginationTextContent).toMatch(/2\s*of\s*\d+/);
+};
+
+export const testTableSorting = async (
+  page: Page,
+  columnHeader: string,
+  columnIndex = 0
+) => {
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  const header = page.locator(`th:has-text("${columnHeader}")`).first();
+  const visibleRowSelector = `tbody tr:not([aria-hidden="true"])`;
+
+  const getFirstCellValue = async () => {
+    const firstCell = page.locator(`${visibleRowSelector} td`).nth(columnIndex);
+    await firstCell.waitFor({ state: 'visible' });
+
+    return (await firstCell.textContent())?.trim();
+  };
+
+  const rowCount = await page.locator(visibleRowSelector).count();
+  if (rowCount <= 1) {
+    return;
+  }
+
+  const initialValue = await getFirstCellValue();
+
+  await header.click();
+  await waitForAllLoadersToDisappear(page);
+  await header.click();
+  await waitForAllLoadersToDisappear(page);
+
+  const afterFirstClickValue = await getFirstCellValue();
+
+  expect(afterFirstClickValue).not.toBe(initialValue);
+
+  await header.click();
+  await waitForAllLoadersToDisappear(page);
+
+  const afterSecondClickValue = await getFirstCellValue();
+
+  expect(afterSecondClickValue).not.toBe(afterFirstClickValue);
+};
+
+export const testTableSearch = async (
+  page: Page,
+  searchIndex: string,
+  searchTerm: string,
+  notVisibleText: string
+) => {
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  const waitForSearchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*index=${searchIndex}*`
+  );
+
+  await page.getByTestId('searchbar').fill(searchTerm);
+  await waitForSearchResponse;
+  await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('networkidle');
+
+  await expect(page.getByText(searchTerm).first()).toBeVisible();
+
+  await expect(page.getByText(notVisibleText).first()).not.toBeVisible();
 };

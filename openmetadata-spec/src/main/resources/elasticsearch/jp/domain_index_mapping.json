@@ -31,12 +31,32 @@
           "filter": [
             "lowercase"
           ]
+        },
+        "om_compound_analyzer": {
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "compound_word_delimiter_graph",
+            "flatten_graph"
+          ]
         }
       },
       "filter": {
         "om_stemmer": {
           "type": "stemmer",
           "name": "english"
+        },
+        "compound_word_delimiter_graph": {
+          "type": "word_delimiter_graph",
+          "generate_word_parts": true,
+          "generate_number_parts": true,
+          "split_on_case_change": true,
+          "split_on_numerics": true,
+          "catenate_words": false,
+          "catenate_numbers": false,
+          "catenate_all": false,
+          "preserve_original": true,
+          "stem_english_possessive": true
         }
       }
     }
@@ -53,7 +73,14 @@
         }
       },
       "domainType": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -67,6 +94,10 @@
           "ngram": {
             "type": "text",
             "analyzer": "om_ngram"
+          },
+          "compound": {
+            "type": "text",
+            "analyzer": "om_compound_analyzer"
           }
         }
       },
@@ -86,6 +117,10 @@
           "ngram": {
             "type": "text",
             "analyzer": "om_ngram"
+          },
+          "compound": {
+            "type": "text",
+            "analyzer": "om_compound_analyzer"
           }
         }
       },
@@ -108,7 +143,14 @@
         "type": "text"
       },
       "entityType": {
-        "type": "keyword"
+        "type": "keyword",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
       },
       "owners": {
         "properties": {
@@ -157,6 +199,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "experts": {
         "type": "keyword"
       },
@@ -184,6 +229,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {
