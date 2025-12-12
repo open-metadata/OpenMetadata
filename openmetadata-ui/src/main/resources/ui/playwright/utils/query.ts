@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import { TableClass } from '../support/entity/TableClass';
 import { ResponseDataWithServiceType } from '../support/entity/Entity.interface';
+import { descriptionBox } from './common';
 
 export const createQueryByTableName = async (data: {
   apiContext: APIRequestContext;
@@ -61,4 +63,69 @@ export const queryFilters = async ({
   );
   await page.click('[data-testid="update-btn"]');
   await queryResponse;
+};
+
+export const createQueryViaUI = async ({
+  page,
+  table,
+  queryText,
+  description,
+}: {
+  page: Page;
+  table: TableClass;
+  queryText: string;
+  description?: string;
+}) => {
+  await table.visitEntityPage(page);
+
+  const queryResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=query_search_index*'
+  );
+  await page.click('[data-testid="table_queries"]');
+  const tableResponse = page.waitForResponse(
+    '/api/v1/search/query?q=&index=table_search_index&from=0&size=*'
+  );
+  await queryResponse;
+  await page.click('[data-testid="add-query-btn"]');
+  await tableResponse;
+
+  await page
+    .getByTestId('code-mirror-container')
+    .getByRole('textbox')
+    .fill(queryText);
+
+  if (description) {
+    await page.click(descriptionBox);
+    await page.keyboard.type(description);
+  }
+
+  const createQueryResponse = page.waitForResponse('/api/v1/queries');
+  await page.click('[data-testid="save-btn"]');
+  await createQueryResponse;
+
+  await page.waitForURL('**/table_queries**');
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+  await expect(page.getByText(queryText)).toBeVisible();
+};
+
+export const navigateToTableQueriesTab = async ({
+  page,
+  table,
+}: {
+  page: Page;
+  table: TableClass;
+}) => {
+  await table.visitEntityPage(page);
+  const queryResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=query_search_index*'
+  );
+  await page.click('[data-testid="table_queries"]');
+  await queryResponse;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
