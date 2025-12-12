@@ -242,15 +242,29 @@ export class UserClass {
   }
 
   async logout(page: Page) {
+    await page.route('**/analytics/web/events/collect', (route) => {
+      route.abort();
+    });
+
     await page.getByRole('menuitem', { name: 'Logout' }).click();
 
-    const waitLogout = page.waitForResponse('/api/v1/users/logout');
+    const waitLogout = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/logout') &&
+        response.request().method() === 'POST'
+    );
+    const waitSigninNavigation = page.waitForURL('**/signin', {
+      timeout: 1000,
+    });
 
     await page.getByTestId('confirm-logout').click();
 
-    await waitLogout;
+    await Promise.all([waitLogout, waitSigninNavigation]);
 
-    // Confirm the signin redirection to ensure the token is cleared
-    await page.waitForURL('**/signin');
+    await page.waitForLoadState('networkidle');
+
+    await page.unroute('**/analytics/web/events/collect');
+
+    await page.waitForTimeout(300);
   }
 }
