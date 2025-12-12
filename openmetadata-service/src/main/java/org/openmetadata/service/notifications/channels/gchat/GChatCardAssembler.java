@@ -3,9 +3,16 @@ package org.openmetadata.service.notifications.channels.gchat;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.text.StringEscapeUtils;
+import org.commonmark.ext.gfm.tables.TableBlock;
+import org.commonmark.ext.gfm.tables.TableBody;
+import org.commonmark.ext.gfm.tables.TableCell;
+import org.commonmark.ext.gfm.tables.TableHead;
+import org.commonmark.ext.gfm.tables.TableRow;
 import org.commonmark.node.AbstractVisitor;
 import org.commonmark.node.BlockQuote;
 import org.commonmark.node.BulletList;
+import org.commonmark.node.CustomBlock;
+import org.commonmark.node.CustomNode;
 import org.commonmark.node.Document;
 import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.Heading;
@@ -23,6 +30,20 @@ final class GChatCardAssembler extends AbstractVisitor {
   List<GChatMessageV2.Section> sections = new ArrayList<>();
   List<GChatMessageV2.Widget> currentWidgets = new ArrayList<>();
   private final GChatMarkdownFormatter inline = new GChatMarkdownFormatter();
+
+  @Override
+  public void visit(CustomNode node) {
+    super.visit(node);
+  }
+
+  @Override
+  public void visit(CustomBlock block) {
+    if (block instanceof TableBlock) {
+      visitTable((TableBlock) block);
+    } else {
+      super.visit(block);
+    }
+  }
 
   @Override
   public void visit(Document document) {
@@ -148,6 +169,79 @@ final class GChatCardAssembler extends AbstractVisitor {
   @Override
   public void visit(Image image) {
     renderImageWidget(image);
+  }
+
+  private void visitTable(TableBlock table) {
+    flushCurrentSection();
+
+    List<String> headers = new ArrayList<>();
+    List<List<String>> bodyRows = new ArrayList<>();
+
+    for (Node child = table.getFirstChild(); child != null; child = child.getNext()) {
+      if (child instanceof TableHead) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            headers = extractTableRowCells((TableRow) row);
+            break;
+          }
+        }
+      } else if (child instanceof TableBody) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            bodyRows.add(extractTableRowCells((TableRow) row));
+          }
+        }
+      }
+    }
+
+    if (headers.isEmpty() && bodyRows.isEmpty()) return;
+
+    int colCount = headers.size();
+    for (List<String> row : bodyRows) colCount = Math.max(colCount, row.size());
+
+    if (colCount == 0) return;
+
+    if (headers.isEmpty()) {
+      headers = new ArrayList<>();
+      for (int i = 0; i < colCount; i++) {
+        headers.add("Column " + (i + 1));
+      }
+    }
+
+    int rowNum = 0;
+    for (List<String> row : bodyRows) {
+      if (rowNum > 0) {
+        currentWidgets.add(GChatMessageV2.Widget.divider());
+      }
+
+      StringBuilder rowLabel = new StringBuilder();
+      rowLabel.append("Row ").append(rowNum + 1);
+
+      StringBuilder rowText = new StringBuilder();
+      for (int i = 0; i < colCount; i++) {
+        String header = i < headers.size() ? headers.get(i) : "Column " + (i + 1);
+        String value = i < row.size() ? row.get(i) : "";
+        if (i > 0) rowText.append("\n");
+        rowText.append("*").append(escapeHtml(header)).append("*: ").append(escapeHtml(value));
+      }
+
+      currentWidgets.add(
+          GChatMessageV2.Widget.decoratedText(rowLabel.toString(), rowText.toString()));
+      rowNum++;
+    }
+
+    flushCurrentSection();
+  }
+
+  private List<String> extractTableRowCells(TableRow row) {
+    List<String> cells = new ArrayList<>();
+    for (Node cell = row.getFirstChild(); cell != null; cell = cell.getNext()) {
+      if (cell instanceof TableCell) {
+        String text = inline.renderInlineChildren(cell).trim();
+        cells.add(text.replace("\n", " "));
+      }
+    }
+    return cells;
   }
 
   void addParagraph(String raw) {

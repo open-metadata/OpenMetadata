@@ -10,10 +10,16 @@ import com.slack.api.model.block.composition.PlainTextObject;
 import java.util.ArrayList;
 import java.util.List;
 import org.commonmark.ext.gfm.strikethrough.Strikethrough;
+import org.commonmark.ext.gfm.tables.TableBlock;
+import org.commonmark.ext.gfm.tables.TableBody;
+import org.commonmark.ext.gfm.tables.TableCell;
+import org.commonmark.ext.gfm.tables.TableHead;
+import org.commonmark.ext.gfm.tables.TableRow;
 import org.commonmark.node.AbstractVisitor;
 import org.commonmark.node.BlockQuote;
 import org.commonmark.node.BulletList;
 import org.commonmark.node.Code;
+import org.commonmark.node.CustomBlock;
 import org.commonmark.node.CustomNode;
 import org.commonmark.node.Document;
 import org.commonmark.node.Emphasis;
@@ -45,6 +51,15 @@ final class SlackBlockAssembler extends AbstractVisitor {
       visit((Strikethrough) node);
     } else {
       super.visit(node);
+    }
+  }
+
+  @Override
+  public void visit(CustomBlock block) {
+    if (block instanceof TableBlock) {
+      visitTable((TableBlock) block);
+    } else {
+      super.visit(block);
     }
   }
 
@@ -245,6 +260,99 @@ final class SlackBlockAssembler extends AbstractVisitor {
     currentText.append("~");
     visitChildren(strikethrough);
     currentText.append("~");
+  }
+
+  private void visitTable(TableBlock table) {
+    flushCurrentText();
+
+    List<List<String>> headerRows = new ArrayList<>();
+    List<List<String>> bodyRows = new ArrayList<>();
+
+    for (Node child = table.getFirstChild(); child != null; child = child.getNext()) {
+      if (child instanceof TableHead) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            headerRows.add(extractTableRowCells((TableRow) row));
+          }
+        }
+      } else if (child instanceof TableBody) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            bodyRows.add(extractTableRowCells((TableRow) row));
+          }
+        }
+      }
+    }
+
+    int colCount = 0;
+    for (List<String> row : headerRows) colCount = Math.max(colCount, row.size());
+    for (List<String> row : bodyRows) colCount = Math.max(colCount, row.size());
+
+    if (colCount == 0) return;
+
+    int[] colWidths = new int[colCount];
+    for (int i = 0; i < colCount; i++) colWidths[i] = 3;
+
+    for (List<String> row : headerRows) {
+      for (int i = 0; i < row.size(); i++) {
+        colWidths[i] = Math.max(colWidths[i], Math.min(row.get(i).length(), 30));
+      }
+    }
+    for (List<String> row : bodyRows) {
+      for (int i = 0; i < row.size(); i++) {
+        colWidths[i] = Math.max(colWidths[i], Math.min(row.get(i).length(), 30));
+      }
+    }
+
+    StringBuilder tableStr = new StringBuilder();
+
+    if (!headerRows.isEmpty()) {
+      for (List<String> headerRow : headerRows) {
+        appendTableRow(tableStr, headerRow, colWidths, colCount);
+      }
+      tableStr.append("|");
+      for (int i = 0; i < colCount; i++) {
+        tableStr.append("-".repeat(colWidths[i] + 2)).append("|");
+      }
+      tableStr.append("\n");
+    }
+
+    for (List<String> row : bodyRows) {
+      appendTableRow(tableStr, row, colWidths, colCount);
+    }
+
+    String tableContent = tableStr.toString().trim();
+    if (!tableContent.isEmpty()) {
+      blocks.add(createCodeBlock(tableContent));
+    }
+  }
+
+  private List<String> extractTableRowCells(TableRow row) {
+    List<String> cells = new ArrayList<>();
+    for (Node cell = row.getFirstChild(); cell != null; cell = cell.getNext()) {
+      if (cell instanceof TableCell) {
+        String text = inline.renderInlineChildren(cell).trim();
+        cells.add(text.replace("|", "\\|").replace("\n", " "));
+      }
+    }
+    return cells;
+  }
+
+  private void appendTableRow(StringBuilder sb, List<String> cells, int[] colWidths, int colCount) {
+    sb.append("|");
+    for (int i = 0; i < colCount; i++) {
+      String cell = i < cells.size() ? cells.get(i) : "";
+      if (cell.length() > colWidths[i]) {
+        cell = cell.substring(0, colWidths[i] - 3) + "...";
+      }
+      sb.append(" ").append(padRight(cell, colWidths[i])).append(" |");
+    }
+    sb.append("\n");
+  }
+
+  private String padRight(String s, int width) {
+    if (s.length() >= width) return s;
+    return s + " ".repeat(width - s.length());
   }
 
   void flushCurrentText() {

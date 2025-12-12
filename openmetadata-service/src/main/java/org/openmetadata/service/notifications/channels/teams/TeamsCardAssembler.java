@@ -3,10 +3,16 @@ package org.openmetadata.service.notifications.channels.teams;
 import java.util.ArrayList;
 import java.util.List;
 import org.commonmark.ext.gfm.strikethrough.Strikethrough;
+import org.commonmark.ext.gfm.tables.TableBlock;
+import org.commonmark.ext.gfm.tables.TableBody;
+import org.commonmark.ext.gfm.tables.TableCell;
+import org.commonmark.ext.gfm.tables.TableHead;
+import org.commonmark.ext.gfm.tables.TableRow;
 import org.commonmark.node.AbstractVisitor;
 import org.commonmark.node.BlockQuote;
 import org.commonmark.node.BulletList;
 import org.commonmark.node.Code;
+import org.commonmark.node.CustomBlock;
 import org.commonmark.node.CustomNode;
 import org.commonmark.node.Document;
 import org.commonmark.node.Emphasis;
@@ -46,6 +52,15 @@ final class TeamsCardAssembler extends AbstractVisitor {
       visit((Strikethrough) node);
     } else {
       super.visit(node);
+    }
+  }
+
+  @Override
+  public void visit(CustomBlock block) {
+    if (block instanceof TableBlock) {
+      visitTable((TableBlock) block);
+    } else {
+      super.visit(block);
     }
   }
 
@@ -268,6 +283,86 @@ final class TeamsCardAssembler extends AbstractVisitor {
     currentText.append("~~");
     visitChildren(strikethrough);
     currentText.append("~~");
+  }
+
+  private void visitTable(TableBlock table) {
+    flushCurrentText();
+
+    List<String> headers = new ArrayList<>();
+    List<List<String>> bodyRows = new ArrayList<>();
+
+    for (Node child = table.getFirstChild(); child != null; child = child.getNext()) {
+      if (child instanceof TableHead) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            headers = extractTableRowCells((TableRow) row);
+            break;
+          }
+        }
+      } else if (child instanceof TableBody) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            bodyRows.add(extractTableRowCells((TableRow) row));
+          }
+        }
+      }
+    }
+
+    if (headers.isEmpty() && bodyRows.isEmpty()) return;
+
+    int colCount = headers.size();
+    for (List<String> row : bodyRows) colCount = Math.max(colCount, row.size());
+
+    if (colCount == 0) return;
+
+    if (headers.isEmpty()) {
+      headers = new ArrayList<>();
+      for (int i = 0; i < colCount; i++) {
+        headers.add("Column " + (i + 1));
+      }
+    }
+
+    int rowNum = 0;
+    for (List<String> row : bodyRows) {
+      if (rowNum > 0) {
+        body.add(
+            TeamsMessage.TextBlock.builder()
+                .type("TextBlock")
+                .text("")
+                .wrap(false)
+                .separator(true)
+                .build());
+      }
+
+      body.add(
+          TeamsMessage.TextBlock.builder()
+              .type("TextBlock")
+              .text("**Row " + (rowNum + 1) + "**")
+              .wrap(true)
+              .weight("Bolder")
+              .build());
+
+      List<TeamsMessage.Fact> facts = new ArrayList<>();
+      for (int i = 0; i < colCount; i++) {
+        String header = i < headers.size() ? headers.get(i) : "Column " + (i + 1);
+        String value = i < row.size() ? row.get(i) : "";
+        facts.add(TeamsMessage.Fact.builder().title(header).value(value).build());
+      }
+
+      body.add(TeamsMessage.FactSet.builder().type("FactSet").facts(facts).build());
+      rowNum++;
+    }
+  }
+
+  private List<String> extractTableRowCells(TableRow row) {
+    List<String> cells = new ArrayList<>();
+    for (Node cell = row.getFirstChild(); cell != null; cell = cell.getNext()) {
+      if (cell instanceof TableCell) {
+        String text = inline.renderInlineChildren(cell).trim();
+        cells.add(text.replace("\n", " "));
+      }
+    }
+    return cells;
   }
 
   void flushCurrentText() {
