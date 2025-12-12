@@ -153,6 +153,7 @@ let isColumnLayerActive = false;
 let isDataObservabilityLayerActive = false;
 let tracedColumns: string[] = [];
 let columnsHavingLineage: string[] = [];
+let isEditMode = false;
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn(() => ({
@@ -162,6 +163,9 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     },
     get columnsHavingLineage() {
       return columnsHavingLineage;
+    },
+    get isEditMode() {
+      return isEditMode;
     },
     pipelineStatus: {},
     nodes: [
@@ -220,6 +224,7 @@ describe('CustomNodeV1', () => {
     isDataObservabilityLayerActive = false;
     tracedColumns = [];
     columnsHavingLineage = [];
+    isEditMode = false;
     jest.clearAllMocks();
   });
 
@@ -560,7 +565,7 @@ describe('CustomNodeV1', () => {
     };
 
     describe('Column Filter', () => {
-      it('should only render columns with lineage when filter is activated', () => {
+      it('should only render columns with lineage when filter is on', () => {
         isColumnLayerActive = false;
         let visibleColumns = [];
         columnsHavingLineage = ['col0', 'col2', 'col5', 'col7', 'col10'];
@@ -611,7 +616,7 @@ describe('CustomNodeV1', () => {
         expect(screen.queryByText('1 / 3')).not.toBeInTheDocument();
       });
 
-      it('should enable the filter by default for node when column layer is activated', () => {
+      it('should turn on the filter when column layer is applied', () => {
         isColumnLayerActive = true;
         columnsHavingLineage = ['col0', 'col2', 'col5'];
 
@@ -633,6 +638,8 @@ describe('CustomNodeV1', () => {
         expect(screen.queryByTestId('prev-btn')).not.toBeInTheDocument();
         expect(screen.queryByTestId('next-btn')).not.toBeInTheDocument();
       });
+
+      it('should turn off the filter when column layer is removed', () => {});
 
       it('should maintain filter state when another layer is applied', () => {
         isColumnLayerActive = true;
@@ -661,6 +668,23 @@ describe('CustomNodeV1', () => {
         );
 
         expect(filterButtonAfterRerender).toHaveClass('active');
+      });
+
+      it('should disable turn off and disable the filter in edit mode', () => {
+        isColumnLayerActive = true;
+        isEditMode = true;
+        columnsHavingLineage = ['col0', 'col2', 'col5'];
+
+        render(
+          <ReactFlowProvider>
+            <CustomNodeV1Component {...mockNodeDataProps} />
+          </ReactFlowProvider>
+        );
+
+        const filterButton = screen.getByTestId('lineage-filter-button');
+
+        expect(filterButton).not.toHaveClass('active');
+        expect(filterButton).toBeDisabled();
       });
     });
 
@@ -734,6 +758,7 @@ describe('CustomNodeV1', () => {
         expect(screen.queryByText('col0')).not.toBeInTheDocument();
 
         clickFilterButton();
+
         /**
          * After filter button is deactivated asserting that all columns
          * are visible, none is hidden
