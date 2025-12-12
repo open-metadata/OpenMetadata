@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the Custom Database con
 
 Note that this connector is a wrapper for any Python class you create and add to the OpenMetadata ingestion image. The full idea around it is bringing you the tools to bring into OpenMetadata any source that is only available within your business/engineering context.
 
-You can learn more about Custom Connectors and see them in action in the following [Webinar](https://www.youtube.com/watch?v=fDUj30Ub9VE&ab_channel=OpenMetadata). Also, you can directly jump to the demo code [here](https://github.com/open-metadata/openmetadata-demo/tree/main/custom-connector).
+You can learn more about Custom Connectors and see them in action in the following <a href="https://www.youtube.com/watch?v=fDUj30Ub9VE&ab_channel=OpenMetadata" target="_blank">Webinar</a>. Also, you can directly jump to the demo code <a href="https://github.com/open-metadata/openmetadata-demo/tree/main/custom-connector" target="_blank">here</a>.
 
 ## Connection Details
 
@@ -26,7 +26,7 @@ If, for example, we want to run a piece of logic based on the value of a paramet
 business_unit = self.service_connection.connectionOptions.__root__.get("business_unit")
 ```
 
-You can find a full example of this implementation [here](https://github.com/open-metadata/openmetadata-demo/blob/main/custom-connector/connector/my_csv_connector.py#L91).
+You can find a full example of this implementation <a href="https://github.com/open-metadata/openmetadata-demo/blob/main/custom-connector/connector/my_csv_connector.py#L91" target="_blank">here</a>.
 
 $$
 

@@ -12,7 +12,7 @@ Each `Workflow` can be built by using `Steps` as lego pieces. Each of these piec
 on which operations we can expect to happen inside. Currently, the `BaseWorkflow` accepts any number of sequential `Steps`,
 each of them taking care of a specific part of the business logic.
 
-![base-workflow.steps.drawio.png](../../../../openmetadata-docs/images/readme/ingestion/base-workflow.steps.drawio.png)
+![base-workflow.steps.drawio.png](https://raw.githubusercontent.com/open-metadata/docs-v1/refs/heads/main/public/images/readme/ingestion/base-workflow.steps.drawio.png)
 
 We mainly have four types of steps, iterative steps and return steps:
 
@@ -130,6 +130,6 @@ the actual `right` response.
 
 > OBS: We can think of this `Workflow` execution as a `flatMap` implementation.
 
-![base-workflow.workflow.drawio.png](../../../../openmetadata-docs/images/readme/ingestion/base-workflow.workflow.drawio.png)
+![base-workflow.workflow.drawio.png](https://raw.githubusercontent.com/open-metadata/docs-v1/refs/heads/main/public/images/readme/ingestion/base-workflow.workflow.drawio.png)
 
 Note how in theory, we can keep building the steps together.

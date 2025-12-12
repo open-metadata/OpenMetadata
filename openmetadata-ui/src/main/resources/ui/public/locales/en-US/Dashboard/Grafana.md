@@ -9,7 +9,7 @@ To access the Grafana APIs and import dashboards and panels from Grafana into Op
 - Use a Service Account Token for authentication (token format typically starts with `glsa_`).
 - The token must have sufficient permissions to read dashboards, folders and datasources. Admin role is recommended for full coverage.
 
-You can find further information on the Grafana connector in the [docs](https://docs.open-metadata.org/connectors/dashboard/grafana).
+You can find further information on the Grafana connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/grafana" target="_blank">docs</a>.
 
 ## Connection Details
 

@@ -83,6 +83,11 @@ export interface EventSubscription {
      */
     name: string;
     /**
+     * Optional custom notification template for this subscription. When not set, system default
+     * template will be used. Only USER templates can be assigned.
+     */
+    notificationTemplate?: EntityReference;
+    /**
      * Owners of this Event Subscription.
      */
     owners?: EntityReference[];
@@ -201,6 +206,11 @@ export interface Destination {
     category: SubscriptionCategory;
     config?:  Webhook;
     /**
+     * Maximum depth for downstream stakeholder notification traversal. If null, traverses
+     * without depth limit (with cycle protection).
+     */
+    downstreamDepth?: number | null;
+    /**
      * Is the subscription enabled.
      */
     enabled?: boolean;
@@ -208,6 +218,12 @@ export interface Destination {
      * Unique identifier that identifies this Event Subscription.
      */
     id?: string;
+    /**
+     * Enable notification of downstream entity stakeholders. When true, notifications will
+     * traverse lineage to include stakeholders of entities that consume data from the affected
+     * entity.
+     */
+    notifyDownstream?: boolean;
     /**
      * Read timeout in seconds. (Default 12s).
      */
@@ -420,6 +436,9 @@ export enum SubscriptionType {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Optional custom notification template for this subscription. When not set, system default
+ * template will be used. Only USER templates can be assigned.
  */
 export interface EntityReference {
     /**

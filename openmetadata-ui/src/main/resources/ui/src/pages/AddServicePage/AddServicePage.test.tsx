@@ -33,12 +33,10 @@ const mockParam = {
 
 const mockNavigate = jest.fn();
 
-const mockSetInlineAlertDetails = jest.fn();
-
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockReturnValue({
     currentUser: { id: '1', name: 'test-user' },
-    setInlineAlertDetails: mockSetInlineAlertDetails,
+    setInlineAlertDetails: jest.fn(),
   }),
 }));
 

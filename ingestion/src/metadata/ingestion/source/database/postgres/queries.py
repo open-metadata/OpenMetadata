@@ -249,3 +249,25 @@ WHERE
     prokind = 'f'
     and pg_namespace.nspname = '{schema_name}';
 """
+
+TEST_COLUMN_METADATA = """
+SELECT COUNT(*) as count
+FROM pg_catalog.pg_attribute a
+LEFT JOIN pg_catalog.pg_description pgd ON (
+    pgd.objoid = a.attrelid AND pgd.objsubid = a.attnum)
+WHERE 1=0
+"""
+
+TEST_TABLE_COMMENTS = """
+SELECT COUNT(*) as count
+FROM pg_catalog.pg_class c
+LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_catalog.pg_description pgd ON pgd.objsubid = 0 AND pgd.objoid = c.oid
+WHERE 1=0
+"""
+
+TEST_INFORMATION_SCHEMA_COLUMNS = """
+SELECT COUNT(*) as count
+FROM information_schema.columns
+WHERE 1=0
+"""

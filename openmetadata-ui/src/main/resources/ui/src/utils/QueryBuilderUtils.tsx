@@ -834,7 +834,7 @@ export const addEntityTypeFilter = (
         must: [
           {
             term: {
-              entityType: entityType,
+              'entityType.keyword': entityType,
             },
           },
         ],
@@ -847,17 +847,20 @@ export const addEntityTypeFilter = (
 
 export const getEntityTypeAggregationFilter = (
   qFilter: QueryFilterInterface,
-  entityType: string
+  entityType: string | string[]
 ): QueryFilterInterface => {
   if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.must)) {
     const firstMustBlock = (
       qFilter.query?.bool?.must as QueryFieldInterface[]
     )[0];
     if (firstMustBlock?.bool?.must) {
-      (firstMustBlock.bool.must as QueryFieldInterface[]).push({
-        term: {
-          entityType: entityType,
-        },
+      const entityTypes = Array.isArray(entityType) ? entityType : [entityType];
+      entityTypes.forEach((entityType) => {
+        (firstMustBlock?.bool?.must as QueryFieldInterface[])?.push({
+          term: {
+            'entityType.keyword': entityType,
+          },
+        });
       });
     }
   }

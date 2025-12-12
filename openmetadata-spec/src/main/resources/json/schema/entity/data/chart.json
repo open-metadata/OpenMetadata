@@ -22,6 +22,7 @@
         "Scatter",
         "Text",
         "BoxPlot",
+        "SanKey",
         "Gauge",
         "Map",
         "Graph",
@@ -56,6 +57,9 @@
         },
         {
           "name": "BoxPlot"
+        },
+        {
+          "name": "SanKey"
         },
         {
           "name": "Gauge"
@@ -110,6 +114,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "chartType": {
       "$ref": "#/definitions/chartType"
@@ -197,6 +205,10 @@
       "description": "All the dashboards containing this chart.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
+    },
+    "entityStatus": {
+      "description": "Status of the Chart.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "service"],

@@ -1,0 +1,153 @@
+{
+  "@context": [
+    "./base.jsonld",
+    {
+      "TestDefinition": {
+        "@id": "om:TestDefinition",
+        "@type": "om:Entity"
+      },
+      "TestSuite": {
+        "@id": "om:TestSuite",
+        "@type": "om:Entity"
+      },
+      "TestCase": {
+        "@id": "om:TestCase",
+        "@type": "om:Entity"
+      },
+      "TestCaseResult": {
+        "@id": "om:TestCaseResult",
+        "@type": "om:Entity"
+      },
+      "TestCaseResolutionStatus": {
+        "@id": "om:TestCaseResolutionStatus",
+        "@type": "om:Entity"
+      },
+      "entityLink": {
+        "@id": "om:testsEntity",
+        "@type": "@id"
+      },
+      "entityFQN": {
+        "@id": "om:testsEntityFQN",
+        "@type": "xsd:string"
+      },
+      "testSuite": {
+        "@id": "om:belongsToTestSuite",
+        "@type": "@id"
+      },
+      "testDefinition": {
+        "@id": "om:hasTestDefinition",
+        "@type": "@id"
+      },
+      "parameterValues": {
+        "@id": "om:hasParameterValue",
+        "@type": "@json",
+        "@container": "@list"
+      },
+      "testCaseStatus": {
+        "@id": "om:hasTestCaseStatus",
+        "@type": "xsd:string"
+      },
+      "testCaseResult": {
+        "@id": "om:hasTestResult",
+        "@type": "@json"
+      },
+      "testResultValue": {
+        "@id": "om:hasResultValue",
+        "@type": "@json",
+        "@container": "@list"
+      },
+      "passedRows": {
+        "@id": "om:passedRows",
+        "@type": "xsd:integer"
+      },
+      "failedRows": {
+        "@id": "om:failedRows",
+        "@type": "xsd:integer"
+      },
+      "passedRowsPercentage": {
+        "@id": "om:passedRowsPercentage",
+        "@type": "xsd:double"
+      },
+      "failedRowsPercentage": {
+        "@id": "om:failedRowsPercentage",
+        "@type": "xsd:double"
+      },
+      "testSuiteType": {
+        "@id": "om:testSuiteType",
+        "@type": "xsd:string"
+      },
+      "testCases": {
+        "@id": "om:hasTestCase",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "executable": {
+        "@id": "om:isExecutable",
+        "@type": "xsd:boolean"
+      },
+      "executableEntityReference": {
+        "@id": "om:executableOn",
+        "@type": "@id"
+      },
+      "pipelines": {
+        "@id": "om:executedByPipeline",
+        "@type": "@id",
+        "@container": "@set"
+      },
+      "summary": {
+        "@id": "om:hasSummary",
+        "@type": "@json"
+      },
+      "testPlatform": {
+        "@id": "om:hasTestPlatform",
+        "@type": "xsd:string"
+      },
+      "testCaseType": {
+        "@id": "om:hasTestCaseType",
+        "@type": "xsd:string"
+      },
+      "supportedDataTypes": {
+        "@id": "om:supportsDataType",
+        "@type": "xsd:string",
+        "@container": "@set"
+      },
+      "testCaseParameterDefinition": {
+        "@id": "om:hasParameterDefinition",
+        "@type": "@json",
+        "@container": "@list"
+      },
+      "testCaseDescription": {
+        "@id": "om:hasTestCaseDescription",
+        "@type": "xsd:string"
+      },
+      "entityType": {
+        "@id": "om:appliesToEntityType",
+        "@type": "xsd:string"
+      },
+      "resolved": {
+        "@id": "om:isResolved",
+        "@type": "xsd:boolean"
+      },
+      "testCaseFailureReason": {
+        "@id": "om:hasFailureReason",
+        "@type": "xsd:string"
+      },
+      "testCaseFailureComment": {
+        "@id": "om:hasFailureComment",
+        "@type": "xsd:string"
+      },
+      "resolvedBy": {
+        "@id": "om:resolvedBy",
+        "@type": "@id"
+      },
+      "severity": {
+        "@id": "om:hasSeverity",
+        "@type": "xsd:string"
+      },
+      "incidentId": {
+        "@id": "om:hasIncidentId",
+        "@type": "xsd:string"
+      }
+    }
+  ]
+}

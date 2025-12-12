@@ -121,3 +121,9 @@ export const createMetric = async (data: CreateMetric) => {
 
   return response.data;
 };
+
+export const getCustomUnitsOfMeasurement = async () => {
+  const response = await APIClient.get<string[]>('/metrics/customUnits');
+
+  return response.data;
+};

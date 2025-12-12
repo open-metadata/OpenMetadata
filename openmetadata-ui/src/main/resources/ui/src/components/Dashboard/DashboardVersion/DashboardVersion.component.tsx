@@ -26,6 +26,7 @@ import {
   ChangeDescription,
   EntityReference,
 } from '../../../generated/entity/data/dashboard';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
@@ -33,6 +34,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -172,6 +174,13 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
+
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -241,12 +250,17 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
             isVersionView
             entityType={EntityType.DASHBOARD}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
     ],
-    [description, tableColumn, currentVersionData, entityPermissions]
+    [
+      description,
+      tableColumn,
+      currentVersionData,
+      viewCustomPropertiesPermission,
+    ]
   );
 
   return (

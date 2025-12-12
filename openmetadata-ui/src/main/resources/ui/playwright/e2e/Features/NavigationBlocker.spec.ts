@@ -78,27 +78,31 @@ test.describe('Navigation Blocker Tests', () => {
     ).toBeEnabled();
 
     // Try to navigate to another page by clicking a sidebar link
-    await adminPage.locator('[data-testid="app-bar-item-settings"]').click();
+    await adminPage
+      .locator(
+        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
+      )
+      .click();
 
     // Navigation blocker modal should appear
     await expect(adminPage.locator('.ant-modal')).toBeVisible();
     await expect(
       adminPage.locator(
-        '.ant-modal-title:has-text("Are you sure you want to leave?")'
+        '.unsaved-changes-modal-title:has-text("Unsaved changes")'
       )
     ).toBeVisible();
     await expect(
-      adminPage.locator(
-        'text=You have unsaved changes which will be discarded.'
-      )
+      adminPage.locator('text=Do you want to save or discard changes?')
     ).toBeVisible();
 
-    // Verify modal has Stay and Leave buttons
-    await expect(adminPage.locator('button:has-text("Stay")')).toBeVisible();
-    await expect(adminPage.locator('button:has-text("Leave")')).toBeVisible();
+    // Verify modal has Save and Discard buttons
+    await expect(
+      adminPage.locator('button:has-text("Save changes")')
+    ).toBeVisible();
+    await expect(adminPage.locator('button:has-text("Discard")')).toBeVisible();
   });
 
-  test('should stay on current page when "Stay" is clicked', async ({
+  test('should confirm navigation when "Save changes" is clicked', async ({
     adminPage,
   }) => {
     // Navigate to customize landing page
@@ -106,35 +110,50 @@ test.describe('Navigation Blocker Tests', () => {
       personaName: persona.responseData.name,
     });
 
-    const originalUrl = adminPage.url();
-
     // Make changes to trigger unsaved state
     await removeAndCheckWidget(adminPage, {
       widgetKey: 'KnowledgePanel.Following',
     });
 
     // Try to navigate away
-    await adminPage.locator('[data-testid="app-bar-item-settings"]').click();
+    await adminPage
+      .locator(
+        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
+      )
+      .click();
 
     // Modal should appear
     await expect(adminPage.locator('.ant-modal')).toBeVisible();
 
-    // Click "Stay" button
-    await adminPage.locator('button:has-text("Stay")').click();
+    // Click "Save changes" button (should save changes and then navigate)
+    const saveResponse = adminPage.waitForResponse('api/v1/docStore*');
+    await adminPage.locator('button:has-text("Save changes")').click();
 
-    // Modal should disappear
+    // Wait for save operation to complete
+    await saveResponse;
+
+    // Modal should disappear and navigate to settings
     await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
 
-    // Should remain on the same page
-    expect(adminPage.url()).toBe(originalUrl);
+    await adminPage.waitForLoadState('networkidle');
 
-    // Verify we're still on the customize page with our changes
+    // Should navigate to the settings page
+    expect(adminPage.url()).toContain('settings');
+
+    // Verify changes were saved by going back to customize page
+    await navigateToCustomizeLandingPage(adminPage, {
+      personaName: persona.responseData.name,
+    });
+
+    // Verify the widget was removed (changes were saved)
     await expect(
       adminPage.locator('[data-testid="KnowledgePanel.Following"]')
     ).not.toBeVisible();
+
+    // Verify save button is disabled (no unsaved changes)
     await expect(
       adminPage.locator('[data-testid="save-button"]')
-    ).toBeEnabled();
+    ).toBeDisabled();
   });
 
   test('should navigate to new page when "Leave" is clicked', async ({
@@ -153,13 +172,17 @@ test.describe('Navigation Blocker Tests', () => {
     });
 
     // Try to navigate to settings page
-    await adminPage.locator('[data-testid="app-bar-item-settings"]').click();
+    await adminPage
+      .locator(
+        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
+      )
+      .click();
 
     // Modal should appear
     await expect(adminPage.locator('.ant-modal')).toBeVisible();
 
-    // Click "Leave" button
-    await adminPage.locator('button:has-text("Leave")').click();
+    // Click "Discard" button (acts as "Leave")
+    await adminPage.locator('button:has-text("Discard")').click();
 
     // Modal should disappear
     await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
@@ -204,7 +227,11 @@ test.describe('Navigation Blocker Tests', () => {
     ).toBeDisabled();
 
     // Try to navigate away after saving
-    await adminPage.locator('[data-testid="app-bar-item-settings"]').click();
+    await adminPage
+      .locator(
+        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
+      )
+      .click();
 
     // Navigation should happen immediately without modal
     await adminPage.waitForLoadState('networkidle');
@@ -213,5 +240,48 @@ test.describe('Navigation Blocker Tests', () => {
 
     // Modal should not appear
     await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
+  });
+
+  test('should stay on current page and keep changes when X button is clicked', async ({
+    adminPage,
+  }) => {
+    // Navigate to customize landing page
+    await navigateToCustomizeLandingPage(adminPage, {
+      personaName: persona.responseData.name,
+    });
+
+    const originalUrl = adminPage.url();
+
+    // Make changes to trigger unsaved state
+    await removeAndCheckWidget(adminPage, {
+      widgetKey: 'KnowledgePanel.DataAssets',
+    });
+
+    // Try to navigate away
+    await adminPage
+      .locator(
+        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
+      )
+      .click();
+
+    // Modal should appear
+    await expect(adminPage.locator('.ant-modal')).toBeVisible();
+
+    // Click X button to close modal
+    await adminPage.locator('.ant-modal-close-x').click();
+
+    // Modal should disappear
+    await expect(adminPage.locator('.ant-modal')).not.toBeVisible();
+
+    // Should remain on the same page with unsaved changes
+    expect(adminPage.url()).toBe(originalUrl);
+
+    // Verify changes are still there and save button is enabled
+    await expect(
+      adminPage.locator('[data-testid="KnowledgePanel.DataAssets"]')
+    ).not.toBeVisible();
+    await expect(
+      adminPage.locator('[data-testid="save-button"]')
+    ).toBeEnabled();
   });
 });

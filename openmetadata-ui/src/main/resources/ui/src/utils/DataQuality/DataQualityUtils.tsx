@@ -10,8 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Card, Divider, Stack, Typography } from '@mui/material';
 import { t } from 'i18next';
-import { isArray, isNil, isUndefined, omit, omitBy } from 'lodash';
+import {
+  isArray,
+  isNil,
+  isUndefined,
+  omit,
+  omitBy,
+  startCase,
+  uniqBy,
+} from 'lodash';
+import { Surface } from 'recharts';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
 import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
@@ -34,9 +44,12 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
+import { DataInsightChartTooltipProps } from '../../interface/data-insight.interface';
 import { TableSearchSource } from '../../interface/search.interface';
 import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import { getEntryFormattedValue } from '../DataInsightUtils';
+import { formatDate } from '../date-time/DateTimeUtils';
 import { generateEntityLink } from '../TableUtils';
 
 /**
@@ -239,7 +252,7 @@ export const buildDataQualityDashboardFilters = (data: {
   if (filters?.entityFQN) {
     mustFilter.push({
       term: {
-        [isTableApi ? 'fullyQualifiedName.keyword' : 'entityFQN']:
+        [isTableApi ? 'fullyQualifiedName.keyword' : 'originEntityFQN']:
           filters.entityFQN,
       },
     });
@@ -287,6 +300,17 @@ export const buildDataQualityDashboardFilters = (data: {
     if (filters.testCaseType === TestCaseType.column) {
       mustFilter.push({ regexp: { entityLink: '.*::columns::.*' } });
     }
+  }
+
+  if (filters?.startTs && filters?.endTs && !isTableApi) {
+    mustFilter.push({
+      range: {
+        'testCaseResult.timestamp': {
+          gte: filters.startTs,
+          lte: filters.endTs,
+        },
+      },
+    });
   }
 
   // Add the deleted filter to the mustFilter array
@@ -346,3 +370,143 @@ export const TEST_LEVEL_OPTIONS: SelectionOption[] = [
     icon: <ColumnIcon />,
   },
 ];
+
+export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
+  const {
+    active,
+    dateTimeFormatter = formatDate,
+    isPercentage,
+    payload = [],
+    timeStampKey = 'timestampValue',
+    transformLabel = true,
+    valueFormatter,
+    displayDateInHeader = true,
+  } = props;
+
+  if (active && payload && payload.length) {
+    // we need to check if the xAxis is a date or not.
+    const timestamp = displayDateInHeader
+      ? dateTimeFormatter(payload[0].payload[timeStampKey] || 0)
+      : payload[0].payload[timeStampKey];
+
+    const payloadValue = uniqBy(payload, 'dataKey');
+
+    return (
+      <Card
+        sx={(theme) => ({
+          p: '10px',
+          bgcolor: theme.palette.allShades.white,
+        })}>
+        <Typography
+          sx={(theme) => ({
+            color: theme.palette.allShades.gray[900],
+            fontWeight: theme.typography.fontWeightMedium,
+            fontSize: theme.typography.pxToRem(12),
+          })}>
+          {timestamp}
+        </Typography>
+        <Divider
+          sx={(theme) => ({
+            my: 2,
+            borderStyle: 'dashed',
+            borderColor: theme.palette.allShades.gray[300],
+          })}
+        />
+        <Stack spacing={1}>
+          {payloadValue.map((entry, index) => {
+            const value = entry.value;
+
+            return (
+              <Box
+                className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
+                key={`item-${index}`}>
+                <span className="flex items-center">
+                  <Surface className="mr-2" height={14} version="1.1" width={4}>
+                    <rect fill={entry.color} height="14" rx="2" width="4" />
+                  </Surface>
+                  <Typography
+                    sx={(theme) => ({
+                      color: theme.palette.allShades.gray[700],
+                      fontSize: theme.typography.pxToRem(11),
+                    })}>
+                    {transformLabel
+                      ? startCase(entry.name ?? (entry.dataKey as string))
+                      : entry.name ?? (entry.dataKey as string)}
+                  </Typography>
+                </span>
+                <Typography
+                  sx={(theme) => ({
+                    color: theme.palette.allShades.gray[900],
+                    fontWeight: theme.typography.fontWeightMedium,
+                    fontSize: theme.typography.pxToRem(11),
+                  })}>
+                  {valueFormatter
+                    ? valueFormatter(value, entry.name ?? entry.dataKey)
+                    : getEntryFormattedValue(value, isPercentage)}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Stack>
+      </Card>
+    );
+  }
+
+  return null;
+};
+
+export type TestCaseCountByStatus = {
+  success: number;
+  failed: number;
+  aborted: number;
+  total: number;
+};
+
+export const aggregateTestResultsByEntity = (
+  data: Array<{
+    document_count: string;
+    entityFQN: string;
+    'testCaseResult.testCaseStatus': string;
+  }>
+): Record<string, TestCaseCountByStatus> => {
+  const overallTotal = {
+    failed: 0,
+    success: 0,
+    aborted: 0,
+    total: 0,
+  };
+
+  const entities = data.reduce((acc, item) => {
+    const entity = item.entityFQN;
+    const status = item['testCaseResult.testCaseStatus'] as
+      | 'failed'
+      | 'success'
+      | 'aborted';
+    const count = parseInt(item.document_count, 10);
+
+    // Initialize entity if not exists
+    if (!acc[entity]) {
+      acc[entity] = {
+        failed: 0,
+        success: 0,
+        aborted: 0,
+        total: 0,
+      };
+    }
+
+    // Add the count to the appropriate status for the entity
+    acc[entity][status] = (acc[entity][status] || 0) + count;
+    acc[entity].total += count;
+
+    // Also add to the overall total
+    overallTotal[status] = (overallTotal[status] || 0) + count;
+    overallTotal.total += count;
+
+    return acc;
+  }, {} as Record<string, Record<string, number>>);
+
+  return {
+    ...entities,
+    total: overallTotal,
+  };
+};

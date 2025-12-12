@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import ServiceRequirements from './ServiceDocPanel';
+import { render, screen, waitFor } from '@testing-library/react';
+import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { fetchMarkdownFile } from '../../../rest/miscAPI';
+import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
+import ServiceDocPanel from './ServiceDocPanel';
 
 jest.mock('../Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
@@ -25,34 +28,316 @@ jest.mock('../RichTextEditor/RichTextEditorPreviewer', () =>
     ))
 );
 
-jest.mock('../../../rest/miscAPI', () => ({
-  fetchMarkdownFile: jest
+jest.mock('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component', () =>
+  jest
     .fn()
-    .mockImplementation(() => Promise.resolve('markdown text')),
+    .mockReturnValue(
+      <div data-testid="entity-summary-panel">Entity Summary</div>
+    )
+);
+
+jest.mock('../../../rest/miscAPI', () => ({
+  fetchMarkdownFile: jest.fn(),
 }));
 
-const mockOnBack = jest.fn();
-const mockOnNext = jest.fn();
+jest.mock('../../../utils/ServiceUtils', () => ({
+  getActiveFieldNameForAppDocs: jest.fn(),
+}));
 
-const mockProps = {
-  serviceName: 'Test Service',
-  serviceType: 'Test Type',
-  onBack: mockOnBack,
-  onNext: mockOnNext,
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    i18n: {
+      language: 'en-US',
+    },
+  }),
+}));
+
+const mockFetchMarkdownFile = fetchMarkdownFile as jest.MockedFunction<
+  typeof fetchMarkdownFile
+>;
+const mockGetActiveFieldNameForAppDocs =
+  getActiveFieldNameForAppDocs as jest.MockedFunction<
+    typeof getActiveFieldNameForAppDocs
+  >;
+
+const mockScrollIntoView = jest.fn();
+const mockQuerySelector = jest.fn();
+const mockQuerySelectorAll = jest.fn();
+const mockSetAttribute = jest.fn();
+const mockRemoveAttribute = jest.fn();
+
+Object.defineProperty(window, 'requestAnimationFrame', {
+  writable: true,
+  value: jest.fn((callback: FrameRequestCallback) => callback(0)),
+});
+
+Object.defineProperty(document, 'querySelector', {
+  writable: true,
+  value: mockQuerySelector,
+});
+
+Object.defineProperty(document, 'querySelectorAll', {
+  writable: true,
+  value: mockQuerySelectorAll,
+});
+
+const createMockElement = (
+  setAttribute = mockSetAttribute,
+  removeAttribute = mockRemoveAttribute
+) => ({
+  scrollIntoView: mockScrollIntoView,
+  setAttribute,
+  removeAttribute,
+});
+
+const defaultProps = {
+  serviceName: 'mysql',
+  serviceType: 'DatabaseService',
 };
 
-describe('ServiceRequirements Component', () => {
-  it('Should render the requirements and action buttons', async () => {
-    await act(async () => {
-      render(<ServiceRequirements {...mockProps} />);
+const mockSelectedEntity = {
+  id: 'entity-1',
+  name: 'test-entity',
+  displayName: 'Test Entity',
+  serviceType: 'DatabaseService',
+};
+
+describe('ServiceDocPanel Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFetchMarkdownFile.mockResolvedValue('markdown content');
+    mockQuerySelectorAll.mockReturnValue([]);
+    mockQuerySelector.mockReturnValue(null);
+    mockGetActiveFieldNameForAppDocs.mockReturnValue(undefined);
+  });
+
+  describe('Core Functionality', () => {
+    it('should render component and fetch markdown content', async () => {
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('service-requirements')).toBeInTheDocument();
+        expect(screen.getByTestId('requirement-text')).toBeInTheDocument();
+        expect(mockFetchMarkdownFile).toHaveBeenCalledWith(
+          'en-US/DatabaseService/mysql.md'
+        );
+      });
     });
 
-    expect(screen.getByTestId('service-requirements')).toBeInTheDocument();
+    it('should show loader during fetch and hide when complete', async () => {
+      const pendingPromise = Promise.resolve('markdown content');
+      mockFetchMarkdownFile.mockReturnValue(pendingPromise);
 
-    const requirementTextElement = screen.getByTestId('requirement-text');
+      render(<ServiceDocPanel {...defaultProps} />);
 
-    expect(requirementTextElement).toBeInTheDocument();
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
 
-    expect(requirementTextElement).toHaveTextContent('markdown text');
+      await waitFor(() => {
+        expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should handle Api service type conversion', async () => {
+      render(<ServiceDocPanel serviceName="rest-api" serviceType="Api" />);
+
+      await waitFor(() => {
+        expect(mockFetchMarkdownFile).toHaveBeenCalledWith(
+          'en-US/ApiEntity/rest-api.md'
+        );
+      });
+    });
+
+    it('should fetch workflow documentation when isWorkflow is true', async () => {
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          isWorkflow
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockFetchMarkdownFile).toHaveBeenCalledWith(
+          'en-US/DatabaseService/workflows/metadata.md'
+        );
+      });
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle fetch failures gracefully', async () => {
+      mockFetchMarkdownFile.mockRejectedValue(new Error('Network error'));
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('requirement-text')).toHaveTextContent('');
+      });
+    });
+  });
+
+  describe('Field Highlighting', () => {
+    beforeEach(() => {
+      const mockElement = createMockElement();
+      mockQuerySelector.mockReturnValue(mockElement);
+      mockQuerySelectorAll.mockReturnValue([createMockElement()]);
+    });
+
+    it('should highlight and scroll to active field', async () => {
+      render(
+        <ServiceDocPanel {...defaultProps} activeField="root/database/name" />
+      );
+
+      await waitFor(() => {
+        expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="name"]');
+        expect(mockScrollIntoView).toHaveBeenCalledWith({
+          block: 'center',
+          behavior: 'smooth',
+          inline: 'center',
+        });
+        expect(mockSetAttribute).toHaveBeenCalledWith(
+          'data-highlighted',
+          'true'
+        );
+      });
+    });
+
+    it('should handle Applications service type with custom field processing', async () => {
+      mockGetActiveFieldNameForAppDocs.mockReturnValue('config.database');
+
+      render(
+        <ServiceDocPanel
+          activeField="root/config/database"
+          serviceName="app-service"
+          serviceType="Applications"
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockGetActiveFieldNameForAppDocs).toHaveBeenCalledWith(
+          'root/config/database'
+        );
+        expect(mockQuerySelector).toHaveBeenCalledWith(
+          '[data-id="config.database"]'
+        );
+      });
+    });
+
+    it('should clean up previous highlights before highlighting new element', async () => {
+      const previousElement = createMockElement();
+      const currentElement = createMockElement();
+
+      mockQuerySelectorAll.mockReturnValue([previousElement]);
+      mockQuerySelector.mockReturnValue(currentElement);
+
+      render(
+        <ServiceDocPanel {...defaultProps} activeField="root/database/host" />
+      );
+
+      await waitFor(() => {
+        expect(mockQuerySelectorAll).toHaveBeenCalledWith(
+          '[data-highlighted="true"]'
+        );
+        expect(previousElement.removeAttribute).toHaveBeenCalledWith(
+          'data-highlighted'
+        );
+        expect(currentElement.setAttribute).toHaveBeenCalledWith(
+          'data-highlighted',
+          'true'
+        );
+      });
+    });
+
+    it('should handle field names with special patterns', async () => {
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          activeField="root/database/items/0"
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="database"]');
+      });
+    });
+  });
+
+  describe('Entity Integration', () => {
+    it('should render EntitySummaryPanel when selectedEntity is provided', async () => {
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          selectedEntity={mockSelectedEntity}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('entity-summary-panel')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle complete integration with entity and highlighting', async () => {
+      const mockElement = createMockElement();
+      mockQuerySelector.mockReturnValue(mockElement);
+      mockGetActiveFieldNameForAppDocs.mockReturnValue('application.config');
+
+      render(
+        <ServiceDocPanel
+          activeField="root/application/config"
+          selectedEntity={mockSelectedEntity}
+          serviceName="custom-app"
+          serviceType="Applications"
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('entity-summary-panel')).toBeInTheDocument();
+        expect(screen.getByTestId('requirement-text')).toBeInTheDocument();
+        expect(mockGetActiveFieldNameForAppDocs).toHaveBeenCalledWith(
+          'root/application/config'
+        );
+        expect(mockQuerySelector).toHaveBeenCalledWith(
+          '[data-id="application.config"]'
+        );
+      });
+    });
+  });
+
+  describe('Props Updates', () => {
+    it('should refetch content when serviceName changes', async () => {
+      const { rerender } = render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockFetchMarkdownFile).toHaveBeenCalledTimes(1);
+      });
+
+      rerender(<ServiceDocPanel {...defaultProps} serviceName="postgres" />);
+
+      await waitFor(() => {
+        expect(mockFetchMarkdownFile).toHaveBeenCalledTimes(2);
+        expect(mockFetchMarkdownFile).toHaveBeenLastCalledWith(
+          'en-US/DatabaseService/postgres.md'
+        );
+      });
+    });
+
+    it('should update highlighting when activeField changes', async () => {
+      const mockElement = createMockElement();
+      mockQuerySelector.mockReturnValue(mockElement);
+
+      const { rerender } = render(
+        <ServiceDocPanel {...defaultProps} activeField="root/field1" />
+      );
+
+      await waitFor(() => {
+        expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="field1"]');
+      });
+
+      rerender(<ServiceDocPanel {...defaultProps} activeField="root/field2" />);
+
+      await waitFor(() => {
+        expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="field2"]');
+      });
+    });
   });
 });

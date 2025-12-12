@@ -3,9 +3,9 @@ In this section, we provide guides and references to use the DataFactory connect
 
 ## Requirements
 
-The Ingestion framework uses [Azure Data Factory APIs](https://learn.microsoft.com/en-us/rest/api/datafactory/v2) to connect to the Data Factory and fetch metadata.
+The Ingestion framework uses <a href="https://learn.microsoft.com/en-us/rest/api/datafactory/v2" target="_blank">Azure Data Factory APIs</a> to connect to the Data Factory and fetch metadata.
 
-You can find further information on the Azure Data Factory connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/datafactory).
+You can find further information on the Azure Data Factory connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/datafactory" target="_blank">docs</a>.
 
 
 ## Permissions
@@ -42,7 +42,7 @@ $$section
 ### Client ID $(id="clientId")
 To get the Client ID (also known as application ID), follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for this connection.
 4. From the Overview section, copy the `Application (client) ID`.
@@ -53,7 +53,7 @@ $$section
 ### Client Secret $(id="clientSecret")
 To get the client secret, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for this connection.
 4. Under `Manage`, select `Certificates & secrets`.
@@ -68,7 +68,7 @@ $$section
 
 To get the tenant ID, follow these steps:
 
-1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+1. Log into <a href="https://ms.portal.azure.com/#allservices" target="_blank">Microsoft Azure</a>.
 2. Search for `App registrations` and select the `App registrations link`.
 3. Select the `Azure AD` app you're using for Power BI.
 4. From the `Overview` section, copy the `Directory (tenant) ID`.

@@ -13,11 +13,11 @@ import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEvent> {
   public static final String COLLECTION_PATH = "/v1/analytics/web/events";

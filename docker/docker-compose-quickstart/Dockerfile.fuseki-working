@@ -1,0 +1,29 @@
+# Simple Fuseki build that works on ARM64
+FROM openjdk:17-slim
+
+# Set Fuseki version and paths
+ENV FUSEKI_VERSION=4.10.0
+ENV FUSEKI_HOME=/fuseki
+ENV FUSEKI_BASE=/fuseki
+
+# Create directories
+RUN mkdir -p ${FUSEKI_HOME}
+
+WORKDIR ${FUSEKI_HOME}
+
+# Download Fuseki using ADD (doesn't require wget)
+ADD https://archive.apache.org/dist/jena/binaries/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz /tmp/fuseki.tar.gz
+
+# Extract Fuseki
+RUN tar -xzf /tmp/fuseki.tar.gz --strip-components=1 -C ${FUSEKI_HOME} && \
+    rm /tmp/fuseki.tar.gz && \
+    mkdir -p ${FUSEKI_HOME}/run ${FUSEKI_HOME}/databases
+
+# JVM options
+ENV JVM_ARGS="-Xmx4g -Xms2g"
+
+# Expose port
+EXPOSE 3030
+
+# Start Fuseki
+CMD ["sh", "-c", "mkdir -p ${FUSEKI_HOME}/databases/openmetadata && exec ${FUSEKI_HOME}/fuseki-server --update --loc=${FUSEKI_HOME}/databases/openmetadata /openmetadata"]

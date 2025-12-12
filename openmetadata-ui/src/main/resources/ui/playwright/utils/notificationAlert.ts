@@ -39,11 +39,12 @@ import { sidebarClick } from './sidebar';
 export const visitNotificationAlertPage = async (page: Page) => {
   await redirectToHomePage(page);
   await sidebarClick(page, SidebarItem.SETTINGS);
+  await page.click('[data-testid="notifications"]');
   const getAlerts = page.waitForResponse('/api/v1/events/subscriptions?*');
   const getActivityFeedAlertDetails = page.waitForResponse(
     '/api/v1/events/subscriptions/name/ActivityFeedAlert?include=all'
   );
-  await page.click('[data-testid="notifications"]');
+  await page.click('[data-testid="notifications.alerts"]');
   await getAlerts;
   await getActivityFeedAlertDetails;
 };
@@ -224,7 +225,7 @@ export const editSingleFilterAlert = async ({
     category: 'Users',
     type: 'Email',
     typeId: 'User-select',
-    searchText: user1.getUserName(),
+    searchText: user1.getUserDisplayName(),
   });
 };
 

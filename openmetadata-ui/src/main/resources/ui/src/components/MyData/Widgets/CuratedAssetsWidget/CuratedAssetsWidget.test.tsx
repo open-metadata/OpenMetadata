@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import CuratedAssetsWidget from './CuratedAssetsWidget';
@@ -37,7 +38,9 @@ jest.mock('react-router-dom', () => ({
 
 // Mock utility functions
 jest.mock('../../../../utils/CuratedAssetsUtils', () => ({
-  getExploreURLWithFilters: jest.fn().mockReturnValue('/explore?filter=test'),
+  getExploreURLForAdvancedFilter: jest
+    .fn()
+    .mockReturnValue('/explore?filter=test'),
   getModifiedQueryFilterWithSelectedAssets: jest.fn().mockReturnValue({}),
   getTotalResourceCount: jest.fn().mockReturnValue(15),
 }));
@@ -144,8 +147,17 @@ jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest.fn().mockImplementation(({ markdown }) => <div>{markdown}</div>)
 );
 
+jest.mock('../../../common/CertificationTag/CertificationTag', () =>
+  jest
+    .fn()
+    .mockImplementation(({ certification }) => (
+      <div>{certification?.tagLabel?.tagFQN}</div>
+    ))
+);
+
 const mockHandleRemoveWidget = jest.fn();
 const mockHandleLayoutUpdate = jest.fn();
+const mockHandleSaveLayout = jest.fn();
 
 const mockEntityData = [
   {
@@ -158,6 +170,22 @@ const mockEntityData = [
     },
     description: 'Test description',
     updatedAt: '2023-01-01T00:00:00Z',
+    certification: {
+      expiryDate: 1758805135467,
+      appliedDate: 1756213135467,
+      tagLabel: {
+        tagFQN: 'Certification.Gold',
+        name: 'Gold',
+        labelType: 'Manual',
+        description: 'Gold certified Data Asset.',
+        style: {
+          color: '#FFCE00',
+          iconURL: 'GoldCertification.svg',
+        },
+        source: 'Classification',
+        state: 'Confirmed',
+      },
+    },
   },
 ];
 
@@ -166,6 +194,7 @@ const defaultProps = {
   handleRemoveWidget: mockHandleRemoveWidget,
   widgetKey: 'test-widget',
   handleLayoutUpdate: mockHandleLayoutUpdate,
+  handleSaveLayout: mockHandleSaveLayout,
   currentLayout: [
     {
       i: 'test-widget',
@@ -296,32 +325,48 @@ describe('CuratedAssetsWidget', () => {
     });
   });
 
-  it('calls handleLayoutUpdate with correct data when saving new widget', () => {
+  it('calls handleLayoutUpdate and handleSaveLayout when saving new widget', async () => {
     render(
       <CuratedAssetsWidget {...defaultProps} isEditView currentLayout={[]} />
     );
     fireEvent.click(screen.getByText('label.create'));
     fireEvent.click(screen.getByTestId('saveButton'));
 
-    expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
-      {
-        i: 'test-widget',
-        config: { title: 'Test Widget' },
-      },
-    ]);
+    await waitFor(() => {
+      expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
+        {
+          i: 'test-widget',
+          config: { title: 'Test Widget' },
+        },
+      ]);
+      expect(mockHandleSaveLayout).toHaveBeenCalledWith([
+        {
+          i: 'test-widget',
+          config: { title: 'Test Widget' },
+        },
+      ]);
+    });
   });
 
-  it('calls handleLayoutUpdate with updated config when editing existing widget', () => {
+  it('calls handleLayoutUpdate and handleSaveLayout when editing existing widget', async () => {
     render(<CuratedAssetsWidget {...defaultProps} isEditView />);
     fireEvent.click(screen.getByTestId('edit-widget-button'));
     fireEvent.click(screen.getByTestId('saveButton'));
 
-    expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
-      {
-        ...defaultProps.currentLayout[0],
-        config: { title: 'Test Widget' },
-      },
-    ]);
+    await waitFor(() => {
+      expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
+        {
+          ...defaultProps.currentLayout[0],
+          config: { title: 'Test Widget' },
+        },
+      ]);
+      expect(mockHandleSaveLayout).toHaveBeenCalledWith([
+        {
+          ...defaultProps.currentLayout[0],
+          config: { title: 'Test Widget' },
+        },
+      ]);
+    });
   });
 
   it('closes modal and resets data when cancel is clicked', () => {
@@ -360,6 +405,7 @@ describe('CuratedAssetsWidget', () => {
       expect(
         screen.getByTestId('Curated Assets-Test Entity')
       ).toBeInTheDocument();
+      expect(screen.getAllByText('Certification.Gold')).toHaveLength(1);
     });
   });
 
@@ -377,7 +423,7 @@ describe('CuratedAssetsWidget', () => {
         query: '',
         pageNumber: 1,
         pageSize: PAGE_SIZE_MEDIUM,
-        searchIndex: 'table',
+        searchIndex: SearchIndex.DATA_ASSET,
         sortField: 'updatedAt',
         sortOrder: 'desc',
         includeDeleted: false,

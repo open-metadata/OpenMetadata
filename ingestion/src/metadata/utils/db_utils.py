@@ -12,7 +12,7 @@
 """
 Helpers module for db sources
 """
-
+import time
 import traceback
 from typing import Iterable, List, Union
 
@@ -32,6 +32,7 @@ from metadata.ingestion.lineage.sql_lineage import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
+from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -47,6 +48,8 @@ def get_host_from_host_port(uri: str) -> str:
     return uri.split(":")[0]
 
 
+#  pylint: disable=too-many-locals
+@calculate_execution_time_generator()
 def get_view_lineage(
     view: TableView,
     metadata: OpenMetadata,
@@ -85,6 +88,8 @@ def get_view_lineage(
     try:
         connection_type = str(connection_type)
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
+        start_time = time.time()
+        logger.debug(f"Processing view lineage for: {table_fqn}")
         lineage_parser = LineageParser(
             view_definition, dialect, timeout_seconds=timeout_seconds
         )
@@ -94,6 +99,10 @@ def get_view_lineage(
             schema_name = PUBLIC_SCHEMA
             schema_fallback = True
 
+        end_time = time.time()
+        logger.debug(
+            f"Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds"
+        )
         if lineage_parser.source_tables and lineage_parser.target_tables:
             yield from get_lineage_by_query(
                 metadata,
@@ -104,6 +113,7 @@ def get_view_lineage(
                 dialect=dialect,
                 timeout_seconds=timeout_seconds,
                 lineage_source=LineageSource.ViewLineage,
+                lineage_parser=lineage_parser,
                 schema_fallback=schema_fallback,
             ) or []
 
@@ -118,6 +128,7 @@ def get_view_lineage(
                 dialect=dialect,
                 timeout_seconds=timeout_seconds,
                 lineage_source=LineageSource.ViewLineage,
+                lineage_parser=lineage_parser,
                 schema_fallback=schema_fallback,
             ) or []
     except Exception as exc:

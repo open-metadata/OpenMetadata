@@ -1,0 +1,61 @@
+# Multi-architecture Dockerfile for Apache Jena Fuseki
+FROM eclipse-temurin:17-jre-jammy
+
+# Fix for GPG signature issues and install dependencies
+RUN apt-get update || true && \
+    apt-get install -y --no-install-recommends \
+    wget \
+    curl \
+    ca-certificates \
+    || (rm -rf /var/lib/apt/lists/* && \
+        apt-get clean && \
+        apt-get update --fix-missing && \
+        apt-get install -y --no-install-recommends wget curl ca-certificates) && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set Fuseki version
+ENV FUSEKI_VERSION=5.0.0
+ENV FUSEKI_HOME=/fuseki
+
+# Download and install Fuseki
+RUN mkdir -p ${FUSEKI_HOME} && \
+    cd /tmp && \
+    wget -q https://archive.apache.org/dist/jena/binaries/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
+    tar -xzf apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
+    mv apache-jena-fuseki-${FUSEKI_VERSION}/* ${FUSEKI_HOME}/ && \
+    rm -rf apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz apache-jena-fuseki-${FUSEKI_VERSION}
+
+# Create necessary directories
+RUN mkdir -p ${FUSEKI_HOME}/run && \
+    mkdir -p ${FUSEKI_HOME}/databases
+
+# Set working directory
+WORKDIR ${FUSEKI_HOME}
+
+# Expose Fuseki port
+EXPOSE 3030
+
+# Set JVM options
+ENV JVM_ARGS="-Xmx4g -Xms2g"
+
+# Create entrypoint script
+RUN echo '#!/bin/bash\n\
+if [ ! -z "$ADMIN_PASSWORD" ]; then\n\
+    echo "Setting admin password..."\n\
+    ${FUSEKI_HOME}/fuseki-server --passwd --update /fuseki/run/shiro.ini <<EOF\n\
+admin=$ADMIN_PASSWORD\n\
+EOF\n\
+fi\n\
+\n\
+# Create openmetadata database if it doesn'\''t exist\n\
+mkdir -p ${FUSEKI_HOME}/databases/openmetadata\n\
+\n\
+# Start Fuseki\n\
+exec ${FUSEKI_HOME}/fuseki-server --update --loc=${FUSEKI_HOME}/databases/openmetadata /openmetadata\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+# Volume for persistent data
+VOLUME ["${FUSEKI_HOME}/databases", "${FUSEKI_HOME}/run"]
+
+# Entrypoint
+ENTRYPOINT ["/entrypoint.sh"]

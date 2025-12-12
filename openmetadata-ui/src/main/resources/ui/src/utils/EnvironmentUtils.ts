@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
-import process from 'process';
+const development: boolean = (() => {
+  // Use Vite's import.meta.env which is properly typed now
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return import.meta.env.MODE === 'development';
+  }
 
-const development: boolean =
-  !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+  // Fallback to process.env (defined by Vite's define option)
+  return !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+})();
 
 export const isDev = (): boolean => {
   return development;

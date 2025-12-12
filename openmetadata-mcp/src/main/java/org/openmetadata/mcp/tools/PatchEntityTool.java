@@ -1,6 +1,11 @@
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonPatch;
+import java.io.StringReader;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -22,10 +27,16 @@ public class PatchEntityTool implements McpTool {
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
     String entityType = (String) params.get("entityType");
     String entityFqn = (String) params.get("entityFqn");
-    JsonPatch patch = JsonUtils.readOrConvertValue(params.get("patch"), JsonPatch.class);
+    String jsonPatchString = (String) params.get("patch");
+    if (nullOrEmpty(jsonPatchString)) {
+      throw new IllegalArgumentException("Patch cannot be null or empty");
+    }
+
+    JsonArray patchArray = Json.createReader(new StringReader(jsonPatchString)).readArray();
+    JsonPatch jsonPatch = Json.createPatch(patchArray);
 
     // Validate If the User Can Perform the Patch Operation
-    OperationContext operationContext = new OperationContext(entityType, patch);
+    OperationContext operationContext = new OperationContext(entityType, jsonPatch);
     authorizer.authorize(
         securityContext, operationContext, new ResourceContext<>(entityType, null, entityFqn));
 
@@ -35,7 +46,7 @@ public class PatchEntityTool implements McpTool {
             null,
             entityFqn,
             securityContext.getUserPrincipal().getName(),
-            patch,
+            jsonPatch,
             ChangeSource.MANUAL);
     return JsonUtils.convertValue(response, Map.class);
   }

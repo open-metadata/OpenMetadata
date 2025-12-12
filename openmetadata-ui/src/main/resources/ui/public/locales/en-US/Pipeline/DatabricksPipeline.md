@@ -1,12 +1,12 @@
 # DatabricksPipeline
 
-In this section, we provide guides and references to use the Databricks Pipeline connector. You can view the full documentation for DatabricksPipeline [here](https://docs.open-metadata.org/connectors/pipeline/databrickspipeline).
+In this section, we provide guides and references to use the Databricks Pipeline connector. You can view the full documentation for DatabricksPipeline <a href="https://docs.open-metadata.org/connectors/pipeline/databrickspipeline" target="_blank">here</a>.
 
 ## Requirements
 
-To learn more about the Databricks Connection Details (`hostPort`,`token`, `http_path`) information visit these [docs](https://docs.open-metadata.org/connectors/database/databricks/troubleshooting).
+To learn more about the Databricks Connection Details (`hostPort`,`token`, `http_path`) information visit these <a href="https://docs.open-metadata.org/connectors/database/databricks/troubleshooting" target="_blank">docs</a>.
 
-You can find further information on the Databricks Pipeline connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/databrickspipeline).
+You can find further information on the Databricks Pipeline connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/databrickspipeline" target="_blank">docs</a>.
 
 ## Lineage Requirements
 
@@ -38,6 +38,12 @@ $$
 $$section
 ### HTTP Path $(id="httpPath")
 Databricks compute resources URL. E.g., `/sql/1.0/warehouses/xyz123`.
+$$
+
+$$section
+### Lineage Look Back Days $(id="lineageLookBackDays")
+Number of days to look back when fetching lineage data from Databricks system tables (system.access.table_lineage and system.access.column_lineage). 
+Default is 90 days.
 $$
 
 $$section

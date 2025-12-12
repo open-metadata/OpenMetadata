@@ -13,7 +13,6 @@
 import { RightOutlined } from '@ant-design/icons';
 import { Select, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +37,6 @@ const LineageSearchSelect = () => {
     nodes,
     zoomValue,
     reactFlowInstance,
-    isEditMode,
     onNodeClick,
     onColumnClick,
     isPlatformLineage,
@@ -227,9 +225,7 @@ const LineageSearchSelect = () => {
     <Select
       allowClear
       showSearch
-      className={classNames('custom-control-search-box', {
-        'custom-control-search-box-edit-mode': isEditMode,
-      })}
+      className="custom-control-search-box"
       data-testid="lineage-search"
       dropdownMatchSelectWidth={false}
       listHeight={300}

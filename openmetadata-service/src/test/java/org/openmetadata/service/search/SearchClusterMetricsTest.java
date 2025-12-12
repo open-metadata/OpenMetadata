@@ -1,7 +1,10 @@
 package org.openmetadata.service.search;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -13,6 +16,19 @@ import org.mockito.MockitoAnnotations;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
+import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
+import os.org.opensearch.client.opensearch.cluster.stats.ClusterIndices;
+import os.org.opensearch.client.opensearch.cluster.stats.ClusterIndicesShards;
+import os.org.opensearch.client.opensearch.cluster.stats.ClusterNodeCount;
+import os.org.opensearch.client.opensearch.cluster.stats.ClusterNodes;
+import os.org.opensearch.client.opensearch.nodes.Cpu;
+import os.org.opensearch.client.opensearch.nodes.Jvm;
+import os.org.opensearch.client.opensearch.nodes.MemoryStats;
+import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
+import os.org.opensearch.client.opensearch.nodes.OperatingSystem;
+import os.org.opensearch.client.opensearch.nodes.Stats;
 
 public class SearchClusterMetricsTest {
 
@@ -23,50 +39,6 @@ public class SearchClusterMetricsTest {
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
-  }
-
-  @Test
-  void testExtractCpuPercent_NumericValue() throws Exception {
-    // Test OpenSearch < 2.19 format with direct numeric value
-    Map<String, Object> cpu = new HashMap<>();
-    cpu.put("percent", 75.5);
-
-    Double result = invokeExtractCpuPercent(cpu);
-    assertEquals(75.5, result);
-  }
-
-  @Test
-  void testExtractCpuPercent_MapValue() throws Exception {
-    // Test OpenSearch 2.19+ format with map containing value
-    Map<String, Object> cpu = new HashMap<>();
-    Map<String, Object> percentMap = new HashMap<>();
-    percentMap.put("value", 65.3);
-    cpu.put("percent", percentMap);
-
-    Double result = invokeExtractCpuPercent(cpu);
-    assertEquals(65.3, result);
-  }
-
-  @Test
-  void testExtractCpuPercent_MapWithAlternativeKeys() throws Exception {
-    // Test with different key names in the map
-    Map<String, Object> cpu = new HashMap<>();
-    Map<String, Object> percentMap = new HashMap<>();
-    percentMap.put("usage", 45.2);
-    cpu.put("percent", percentMap);
-
-    Double result = invokeExtractCpuPercent(cpu);
-    assertEquals(45.2, result);
-  }
-
-  @Test
-  void testExtractCpuPercent_InvalidValue() throws Exception {
-    // Test with invalid value type
-    Map<String, Object> cpu = new HashMap<>();
-    cpu.put("percent", "invalid");
-
-    Double result = invokeExtractCpuPercent(cpu);
-    assertEquals(50.0, result); // Should return default value
   }
 
   @Test
@@ -124,10 +96,9 @@ public class SearchClusterMetricsTest {
 
   @Test
   void testFetchOpenSearchMetrics_WithLinkedHashMapResponse() throws Exception {
-    // Test handling of OpenSearch 2.19 response with LinkedHashMap
-    Map<String, Object> clusterStats = createMockClusterStats();
-    Map<String, Object> nodesStats = createMockNodesStats();
-    Map<String, Object> clusterSettings = createMockClusterSettings();
+    ClusterStatsResponse clusterStats = createMockClusterStats();
+    NodesStatsResponse nodesStats = createMockNodesStats();
+    GetClusterSettingsResponse clusterSettings = createMockClusterSettings();
 
     when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
@@ -135,6 +106,14 @@ public class SearchClusterMetricsTest {
     when(openSearchClient.clusterStats()).thenReturn(clusterStats);
     when(openSearchClient.nodesStats()).thenReturn(nodesStats);
     when(openSearchClient.clusterSettings()).thenReturn(clusterSettings);
+
+    Map<String, Object> jvmStats = new HashMap<>();
+    jvmStats.put("heapMaxBytes", 1073741824L);
+    jvmStats.put("memoryUsagePercent", 50.0);
+
+    when(openSearchClient.averageCpuPercentFromNodesStats(nodesStats)).thenReturn(25.0);
+    when(openSearchClient.extractJvmMemoryStats(nodesStats)).thenReturn(jvmStats);
+    when(openSearchClient.extractMaxContentLengthStr(clusterSettings)).thenReturn("100mb");
 
     SearchClusterMetrics metrics =
         SearchClusterMetrics.fetchClusterMetrics(searchRepository, 1000, 50);
@@ -148,10 +127,12 @@ public class SearchClusterMetricsTest {
   void testGetConservativeDefaults() throws Exception {
     // Test conservative defaults use JVM heap values
     Method method =
-        SearchClusterMetrics.class.getDeclaredMethod("getConservativeDefaults", long.class);
+        SearchClusterMetrics.class.getDeclaredMethod(
+            "getConservativeDefaults", SearchRepository.class, long.class, int.class);
     method.setAccessible(true);
 
-    SearchClusterMetrics metrics = (SearchClusterMetrics) method.invoke(null, 100000L);
+    SearchClusterMetrics metrics =
+        (SearchClusterMetrics) method.invoke(null, searchRepository, 100000L, 50);
 
     assertNotNull(metrics);
     assertTrue(metrics.getHeapSizeBytes() > 0); // Should use JVM heap
@@ -186,55 +167,61 @@ public class SearchClusterMetricsTest {
     return (Integer) method.invoke(null, map, key, defaultValue);
   }
 
-  private Map<String, Object> createMockClusterStats() {
-    Map<String, Object> stats = new HashMap<>();
-    Map<String, Object> nodes = new HashMap<>();
-    nodes.put("count", 1);
-    stats.put("nodes", nodes);
+  private ClusterStatsResponse createMockClusterStats() {
+    ClusterStatsResponse clusterStats = mock(ClusterStatsResponse.class);
+    ClusterNodes nodes = mock(ClusterNodes.class);
+    ClusterNodeCount nodeCount = mock(ClusterNodeCount.class);
+    ClusterIndices indices = mock(ClusterIndices.class);
+    ClusterIndicesShards shards = mock(ClusterIndicesShards.class);
 
-    Map<String, Object> indices = new HashMap<>();
-    Map<String, Object> shards = new HashMap<>();
-    shards.put("total", 10);
-    indices.put("shards", shards);
-    stats.put("indices", indices);
+    when(nodeCount.total()).thenReturn(1);
+    when(nodes.count()).thenReturn(nodeCount);
+    when(clusterStats.nodes()).thenReturn(nodes);
 
-    return stats;
+    when(shards.total()).thenReturn(10.0);
+    when(indices.shards()).thenReturn(shards);
+    when(clusterStats.indices()).thenReturn(indices);
+    when(indices.shards()).thenReturn(shards);
+
+    return clusterStats;
   }
 
-  private Map<String, Object> createMockNodesStats() {
-    Map<String, Object> stats = new HashMap<>();
-    Map<String, Object> nodes = new HashMap<>();
-    Map<String, Object> node1 = new HashMap<>();
+  private NodesStatsResponse createMockNodesStats() {
+    NodesStatsResponse nodesStats = mock(NodesStatsResponse.class);
+    Stats nodeStats = mock(Stats.class);
+    OperatingSystem os = mock(OperatingSystem.class);
+    Cpu cpu = mock(Cpu.class);
+    Jvm jvm = mock(Jvm.class);
+    MemoryStats mem = mock(MemoryStats.class);
 
-    // OS stats
-    Map<String, Object> os = new HashMap<>();
-    Map<String, Object> cpu = new HashMap<>();
-    // Simulate OpenSearch 2.19 format with LinkedHashMap
-    Map<String, Object> cpuPercent = new HashMap<>();
-    cpuPercent.put("value", 25.0);
-    cpu.put("percent", cpuPercent);
-    os.put("cpu", cpu);
-    node1.put("os", os);
+    when(cpu.percent()).thenReturn(25);
+    when(os.cpu()).thenReturn(cpu);
+    when(nodeStats.os()).thenReturn(os);
 
-    // JVM stats
-    Map<String, Object> jvm = new HashMap<>();
-    Map<String, Object> mem = new HashMap<>();
-    mem.put("heap_used_in_bytes", 536870912L); // 512MB
-    mem.put("heap_max_in_bytes", 1073741824L); // 1GB
-    jvm.put("mem", mem);
-    node1.put("jvm", jvm);
+    when(nodeStats.jvm()).thenReturn(jvm);
+    when(jvm.mem()).thenReturn(mem);
+    when(mem.usedInBytes()).thenReturn(536870912L); // 512MB
+    when(mem.totalInBytes()).thenReturn(1073741824L); // 1GB
 
-    nodes.put("node1", node1);
-    stats.put("nodes", nodes);
+    Map<String, Stats> nodesMap = new HashMap<>();
+    nodesMap.put("node1", nodeStats);
+    when(nodesStats.nodes()).thenReturn(nodesMap);
 
-    return stats;
+    return nodesStats;
   }
 
-  private Map<String, Object> createMockClusterSettings() {
-    Map<String, Object> settings = new HashMap<>();
-    Map<String, Object> persistent = new HashMap<>();
-    persistent.put("http.max_content_length", "100mb");
-    settings.put("persistent", persistent);
-    return settings;
+  private GetClusterSettingsResponse createMockClusterSettings() {
+    GetClusterSettingsResponse clusterSettings = mock(GetClusterSettingsResponse.class);
+    JsonData maxContentLengthData = mock(JsonData.class);
+
+    when(maxContentLengthData.to(String.class)).thenReturn("100mb");
+
+    Map<String, JsonData> persistentSettings = new HashMap<>();
+    persistentSettings.put("http.max_content_length", maxContentLengthData);
+
+    when(clusterSettings.persistent()).thenReturn(persistentSettings);
+    when(clusterSettings.transient_()).thenReturn(new HashMap<>());
+
+    return clusterSettings;
   }
 }

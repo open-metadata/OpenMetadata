@@ -307,22 +307,20 @@ describe('MyDataPage component', () => {
     mockSelectedPersona = null;
     render(<MyDataPage />);
 
+    await screen.findByTestId('page-layout-v1');
+
     expect(
-      await screen.findByText('KnowledgePanel.ActivityFeed')
+      screen.getByTestId('KnowledgePanel.ActivityFeed')
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('KnowledgePanel.RecentlyViewed')
+      screen.getByTestId('KnowledgePanel.RecentlyViewed')
     ).toBeInTheDocument();
+    expect(screen.getByTestId('KnowledgePanel.Following')).toBeInTheDocument();
+    expect(screen.getByTestId('KnowledgePanel.KPI')).toBeInTheDocument();
     expect(
-      await screen.findByText('KnowledgePanel.Following')
+      screen.getByTestId('KnowledgePanel.TotalAssets')
     ).toBeInTheDocument();
-    expect(await screen.findByText('KnowledgePanel.KPI')).toBeInTheDocument();
-    expect(
-      await screen.findByText('KnowledgePanel.TotalAssets')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText('KnowledgePanel.MyData')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('KnowledgePanel.MyData')).toBeInTheDocument();
   });
 
   describe('Component Structure', () => {

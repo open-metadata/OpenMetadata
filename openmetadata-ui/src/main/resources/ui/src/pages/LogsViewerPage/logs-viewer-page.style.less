@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import url('../../styles/variables.less');
+@import '../../styles/variables.less';
 
 .logs-heading {
   background: #222222;
@@ -26,6 +26,31 @@
   }
 }
 
+.logs-viewer-header-container {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid @grey-15;
+  padding: 16px 20px;
+  gap: 16px;
+  display: flex;
+  background-color: @background-color;
+  flex-wrap: wrap;
+
+  .extra-info-label-heading {
+    color: @primary-heading-color;
+    font-weight: 500;
+  }
+
+  .extra-info-value {
+    color: @grey-700;
+  }
+}
+
 .summary-key {
   color: @text-color-tertiary;
+  font-weight: 500;
+
+  @media (max-width: 768px) {
+    margin-bottom: 4px;
+  }
 }

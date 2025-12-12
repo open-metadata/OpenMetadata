@@ -49,6 +49,7 @@ import {
   ScheduleTimeline,
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
+import { EntityReference } from '../../../../generated/entity/type';
 import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
@@ -60,6 +61,7 @@ import {
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../../rest/applicationAPI';
+import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
@@ -70,7 +72,6 @@ import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/M
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
-import ApplicationConfiguration from '../ApplicationConfiguration/ApplicationConfiguration';
 import { useApplicationsProvider } from '../ApplicationsProvider/ApplicationsProvider';
 import AppLogo from '../AppLogo/AppLogo.component';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
@@ -109,7 +110,7 @@ const AppDetails = () => {
 
       const schema = await applicationsClassBase.importSchema(fqn);
 
-      setJsonSchema(schema.default);
+      setJsonSchema(schema);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -219,6 +220,7 @@ const AppDetails = () => {
               <ManageButtonItemLabel
                 description={t('message.uninstall-app', {
                   app: getEntityName(appData),
+                  brandName: brandClassBase.getPageTitle(),
                 })}
                 icon={DeleteIcon}
                 id="uninstall-button"
@@ -235,13 +237,19 @@ const AppDetails = () => {
         ]),
   ];
 
-  const onConfigSave = async (data: IChangeEvent) => {
+  const onConfigSave = async (
+    data: IChangeEvent & { ingestionRunner?: EntityReference }
+  ) => {
     if (appData) {
       setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
-      const updatedFormData = formatFormDataForSubmit(data.formData);
+
+      const { formData, ingestionRunner } = data;
+
+      const updatedFormData = formatFormDataForSubmit(formData);
       const updatedData = {
         ...appData,
         appConfiguration: updatedFormData,
+        ...(ingestionRunner && { ingestionRunner }),
       };
 
       const jsonPatch = compare(appData, updatedData);
@@ -325,18 +333,21 @@ const AppDetails = () => {
     }
   };
 
-  // Check if there's a plugin configuration component for this app
-  const pluginConfigComponent = useMemo(() => {
+  // Check if there's a plugin app details component for this app
+  const pluginAppDetailsComponent = useMemo(() => {
     if (!appData?.name || !plugins.length) {
       return null;
     }
 
     const plugin = plugins.find((p) => p.name === appData.name);
 
-    return plugin?.getConfigComponent?.(appData) || null;
+    return plugin?.getAppDetails?.(appData) || null;
   }, [appData?.name, plugins]);
 
   const tabs = useMemo(() => {
+    const ApplicationConfigurationComponent =
+      applicationsClassBase.getApplicationConfigurationComponent();
+
     const tabConfiguration =
       appData?.appConfiguration && appData.allowConfiguration && jsonSchema
         ? [
@@ -348,12 +359,8 @@ const AppDetails = () => {
                 />
               ),
               key: ApplicationTabs.CONFIGURATION,
-              children: pluginConfigComponent ? (
-                // Use plugin configuration component if available
-                React.createElement(pluginConfigComponent)
-              ) : (
-                // Fall back to default ApplicationConfiguration
-                <ApplicationConfiguration
+              children: (
+                <ApplicationConfigurationComponent
                   appData={appData}
                   isLoading={loadingState.isSaveLoading}
                   jsonSchema={jsonSchema}
@@ -535,12 +542,18 @@ const AppDetails = () => {
           </Space>
         </Col>
         <Col className="app-details-page-tabs" span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            className="tabs-new"
-            data-testid="tabs"
-            items={tabs}
-          />
+          {pluginAppDetailsComponent ? (
+            // Render plugin's custom app details component
+            React.createElement(pluginAppDetailsComponent)
+          ) : (
+            // Render default tabs interface
+            <Tabs
+              destroyInactiveTabPane
+              className="tabs-new"
+              data-testid="tabs"
+              items={tabs}
+            />
+          )}
         </Col>
       </Row>
 

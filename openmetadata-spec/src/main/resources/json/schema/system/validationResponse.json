@@ -47,6 +47,10 @@
     "migrations": {
       "description": "List migration results",
       "$ref": "#/definitions/stepValidation"
+    },
+    "logStorage": {
+      "description": "Log storage connectivity check (only shown if S3 storage is configured)",
+      "$ref": "#/definitions/stepValidation"
     }
   },
   "additionalProperties": false

@@ -14,6 +14,7 @@ Mixin class containing User specific methods
 To be used by OpenMetadata class
 """
 import json
+import traceback
 from functools import lru_cache
 from typing import Optional, Type
 
@@ -181,21 +182,6 @@ class OMetaUserMixin:
         """
         Get a User or Team Entity Reference by searching by its name
         """
-        maybe_user = self._search_by_name(
-            entity=User, name=name, from_count=from_count, size=size, fields=fields
-        )
-        if maybe_user:
-            return EntityReferenceList(
-                root=[
-                    EntityReference(
-                        id=maybe_user.id.root,
-                        type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
-                        name=maybe_user.name.root,
-                        displayName=maybe_user.displayName,
-                    )
-                ]
-            )
-
         maybe_team = self._search_by_name(
             entity=Team, name=name, from_count=from_count, size=size, fields=fields
         )
@@ -213,5 +199,60 @@ class OMetaUserMixin:
                     )
                 ]
             )
-
+        maybe_user = self._search_by_name(
+            entity=User, name=name, from_count=from_count, size=size, fields=fields
+        )
+        if maybe_user:
+            return EntityReferenceList(
+                root=[
+                    EntityReference(
+                        id=maybe_user.id.root,
+                        type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
+                        name=maybe_user.name.root,
+                        displayName=maybe_user.displayName,
+                    )
+                ]
+            )
         return None
+
+    def get_user_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:
+        """
+        Get paginated list of assets for a user
+
+        Args:
+            name: Name of the user
+            limit: Maximum number of assets to return (default 10, max 1000)
+            offset: Offset from which to start returning results (default 0)
+
+        Returns:
+            API response as a dictionary containing paginated assets
+        """
+        try:
+            path = f"/users/name/{name}/assets"
+            params = {"limit": limit, "offset": offset}
+            return self.client.get(path, params)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get user assets due to {exc}")
+            return {}
+
+    def get_team_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:
+        """
+        Get paginated list of assets for a team
+
+        Args:
+            name: Name of the team
+            limit: Maximum number of assets to return (default 10, max 1000)
+            offset: Offset from which to start returning results (default 0)
+
+        Returns:
+            API response as a dictionary containing paginated assets
+        """
+        try:
+            path = f"/teams/name/{name}/assets"
+            params = {"limit": limit, "offset": offset}
+            return self.client.get(path, params)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get team assets due to {exc}")
+            return {}

@@ -20,7 +20,6 @@ const mockProps = {
   title: 'Test Widget',
   icon: <TaskIcon data-testid="widget-icon" />,
   isEditView: false,
-  widgetWidth: 2,
   sortOptions: [
     { key: 'name', label: 'Name' },
     { key: 'date', label: 'Date' },

@@ -74,7 +74,11 @@ const addRule = async (
   await page.locator('[data-testid="condition"]').click();
 
   // Select condition
+  const conditionResponse = page.waitForResponse(
+    '/api/v1/policies/validation/condition/*'
+  );
   await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
+  await conditionResponse;
 
   // Verify condition success
   await expect(page.locator('[data-testid="condition-success"]')).toContainText(
@@ -87,12 +91,16 @@ const addRule = async (
 
 test.describe('Policy page should work properly', () => {
   test.beforeEach('Visit entity details page', async ({ page }) => {
+    test.slow(true);
+
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.POLICIES);
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   });
 
   test('Add new policy with invalid condition', async ({ page }) => {
+    test.slow(true);
+
     await test.step(
       'Default Policies and Roles should be displayed',
       async () => {
@@ -292,10 +300,17 @@ test.describe('Policy page should work properly', () => {
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
+      const policyElement = page.locator('[data-testid="policy-name"]', {
+        hasText: UPDATED_POLICY_NAME,
+      });
+      await getElementWithPagination(page, policyElement, false);
+
       // Click on delete action button
       await page
         .locator(`[data-testid="delete-action-${UPDATED_POLICY_NAME}"]`)
         .click({ force: true });
+
+      await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
       // Type 'DELETE' in the confirmation text input
       await page
@@ -313,6 +328,11 @@ test.describe('Policy page should work properly', () => {
   });
 
   test('Policy should have associated rules and teams', async ({ page }) => {
+    const policyElement = page.locator('[data-testid="policy-name"]', {
+      hasText: DEFAULT_POLICIES.organizationPolicy,
+    });
+    await getElementWithPagination(page, policyElement, false);
+
     const policyResponsePromise = page.waitForResponse(
       '/api/v1/policies/name/OrganizationPolicy?fields=owners%2Clocation%2Cteams%2Croles'
     );

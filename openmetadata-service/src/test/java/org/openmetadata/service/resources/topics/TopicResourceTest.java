@@ -29,6 +29,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -47,12 +48,16 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
@@ -60,17 +65,19 @@ import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.service.resources.topics.TopicResource.TopicList;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
 public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   public static final String SCHEMA_TEXT =
@@ -94,6 +101,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
   public TopicResourceTest() {
     super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS);
     supportsSearchIndex = true;
+    supportsBulkAPI = true;
   }
 
   @Test
@@ -624,6 +632,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     assertFields(expectedField.getChildren(), actualField.getChildren());
   }
 
+  @Order(1)
   @Test
   void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
     // Use existing tags that are already set up in the test environment
@@ -735,5 +744,154 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
       assertTrue(
           field2.getTags() == null || field2.getTags().isEmpty(), "field2 should not have tags");
     }
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    // Critical test: Verify that bulk updates preserve user-made changes
+    // and only update the fields sent in the bulk request (incremental updates)
+
+    // Step 1: Bot creates initial topic (using regular create, not bulk)
+    CreateTopic botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    Topic topic = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", topic.getDescription());
+    assertEquals(1, topic.getTags().size());
+
+    // Step 2: User edits description and adds tag
+    String originalJson = JsonUtils.pojoToJson(topic);
+    String userDescription = "User-edited description - should be preserved";
+    topic.setDescription(userDescription);
+    topic.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Topic userEditedTopic = patchEntity(topic.getId(), originalJson, topic, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedTopic.getDescription());
+    assertEquals(2, userEditedTopic.getTags().size());
+
+    // Step 3: Bot sends bulk update with new tag and different description
+    // Bot's description should be IGNORED (bot protection)
+    // Bot's tag should be MERGED (added to existing)
+    CreateTopic botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify user edits were preserved
+    Topic verifyTopic = getEntity(topic.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    // Description should still be user's (bot protection)
+    assertEquals(
+        userDescription,
+        verifyTopic.getDescription(),
+        "Bot should NOT be able to overwrite user-edited description");
+
+    // Tags should be merged (original 2 + new 1 from bot)
+    assertEquals(3, verifyTopic.getTags().size(), "Tags should be merged, not replaced");
+
+    List<String> tagFqns =
+        verifyTopic.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+    assertTrue(tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+
+    // Cleanup
+    deleteEntity(topic.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    // Test that bulk updates MERGE tags (add new, keep existing)
+    // NOT replace tags completely
+
+    // Step 1: Create topic with initial tags
+    CreateTopic createRequest =
+        createRequest(test.getDisplayName())
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Topic topic = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals(2, topic.getTags().size());
+
+    // Step 2: Send bulk update with additional tag (not replacing existing)
+    CreateTopic updateRequest =
+        createRequest(test.getDisplayName()).withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(updateRequest), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify tags were merged (original 2 + new 1 = 3 total)
+    Topic updatedTopic = getEntity(topic.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        3, updatedTopic.getTags().size(), "Tags should be merged: 2 original + 1 new = 3 total");
+
+    List<String> tagFqns =
+        updatedTopic.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+
+    assertTrue(
+        tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()),
+        "Original tag USER_ADDRESS should still exist");
+    assertTrue(
+        tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()),
+        "Original tag PERSONAL_DATA should still exist");
+    assertTrue(
+        tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+        "New tag PII_SENSITIVE should be added");
+
+    // Cleanup
+    deleteEntity(topic.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    // Test that while bots cannot overwrite user descriptions,
+    // admins CAN update descriptions via bulk
+
+    // Step 1: User creates topic
+    CreateTopic createRequest =
+        createRequest(test.getDisplayName()).withDescription("User-created description");
+
+    Topic topic = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals("User-created description", topic.getDescription());
+
+    // Step 2: Admin updates description via bulk
+    String adminDescription = "Admin-updated description via bulk";
+    CreateTopic adminUpdate =
+        createRequest(test.getDisplayName()).withDescription(adminDescription);
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify admin's description was applied
+    Topic updatedTopic = getEntity(topic.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        adminDescription,
+        updatedTopic.getDescription(),
+        "Admin should be able to update description via bulk");
+
+    // Cleanup
+    deleteEntity(topic.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

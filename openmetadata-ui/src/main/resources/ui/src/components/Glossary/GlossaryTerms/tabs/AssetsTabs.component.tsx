@@ -12,7 +12,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Button,
   Checkbox,
@@ -41,13 +40,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
-import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -56,8 +55,6 @@ import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useFqn } from '../../../../hooks/useFqn';
 import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -76,7 +73,6 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
-import { Transi18next } from '../../../../utils/CommonUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -86,12 +82,15 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../../utils/ExploreUtils';
+import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../../utils/StringsUtils';
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -130,9 +129,7 @@ const AssetsTabs = forwardRef(
     }: AssetsTabsProps,
     ref
   ) => {
-    const { theme } = useApplicationStore();
     const [assetRemoving, setAssetRemoving] = useState(false);
-    const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [quickFilterQuery, setQuickFilterQuery] =
@@ -192,7 +189,7 @@ const AssetsTabs = forwardRef(
     const filterMenu: ItemType[] = useMemo(() => {
       return filters.map((filter) => ({
         key: filter.key,
-        label: filter.label,
+        label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
         onClick: handleMenuClick,
       }));
     }, [filters]);
@@ -201,23 +198,37 @@ const AssetsTabs = forwardRef(
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return '';
+          return (
+            queryFilter ??
+            getTermQuery(
+              { 'domains.fullyQualifiedName': entityFqn ?? '' },
+              'must',
+              undefined,
+              {
+                mustNotTerms: { entityType: 'dataProduct' },
+              }
+            )
+          );
         case AssetsOfEntity.DATA_PRODUCT:
-          return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
+          return getTermQuery({
+            'dataProducts.fullyQualifiedName': entityFqn ?? '',
+          });
 
         case AssetsOfEntity.TEAM:
-          return `(owners.fullyQualifiedName:"${getEncodedFqn(
-            escapeESReservedCharacters(fqn)
-          )}")`;
-
         case AssetsOfEntity.MY_DATA:
         case AssetsOfEntity.FOLLOWING:
-          return queryFilter ?? '';
+          return queryFilter ?? undefined;
+
+        case AssetsOfEntity.GLOSSARY:
+          return getTermQuery({ 'tags.tagFQN': entityFqn ?? '' });
+
+        case AssetsOfEntity.TAG:
+          return getTagAssetsQueryFilter(entityFqn ?? '');
 
         default:
           return getTagAssetsQueryFilter(encodedFqn);
       }
-    }, [type, fqn, entityFqn]);
+    }, [type, entityFqn]);
 
     const fetchAssets = useCallback(
       async ({
@@ -227,17 +238,26 @@ const AssetsTabs = forwardRef(
       }: {
         index?: SearchIndex[];
         page?: number;
-        queryFilter?: Record<string, unknown>;
+        queryFilter?: QueryFilterInterface;
       }) => {
         try {
           setIsLoading(true);
+
+          // Merge queryParam (entity-specific filter) with queryFilter (quick filters)
+          // If no quickFilter, just use the entity filter (queryParam)
+          const finalQueryFilter = queryFilter
+            ? getCombinedQueryFilterObject(
+                queryParam as unknown as QueryFilterInterface,
+                queryFilter
+              )
+            : queryParam;
+
           const res = await searchQuery({
             pageNumber: page,
             pageSize: pageSize,
             searchIndex: index,
             query: `*${searchValue}*`,
-            filters: queryParam as string,
-            queryFilter: queryFilter,
+            queryFilter: finalQueryFilter as Record<string, unknown>,
           });
           const hits = res.hits.hits as SearchedDataProps['data'];
           handlePagingChange({ total: res.hits.total.value ?? 0 });
@@ -262,12 +282,12 @@ const AssetsTabs = forwardRef(
 
     const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
       const latestOpenKey = keys.find(
-        (key) => openKeys.indexOf(key as EntityType) === -1
+        (key) => !openKeys.includes(key as EntityType)
       );
-      if (ASSET_MENU_KEYS.indexOf(latestOpenKey as EntityType) === -1) {
-        setOpenKeys(keys as EntityType[]);
-      } else {
+      if (ASSET_MENU_KEYS.includes(latestOpenKey as EntityType)) {
         setOpenKeys(latestOpenKey ? [latestOpenKey as EntityType] : []);
+      } else {
+        setOpenKeys(keys as EntityType[]);
       }
     };
 
@@ -456,61 +476,18 @@ const AssetsTabs = forwardRef(
         );
       } else {
         return (
-          <ErrorPlaceHolderNew
-            className="p-lg"
-            icon={
-              <AddPlaceHolderIcon
-                className="text-grey-14"
-                height={140}
-                width={140}
-              />
-            }
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph>
-              {noDataPlaceholder ??
-                t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                  entity: t('label.asset'),
-                })}
-            </Typography.Paragraph>
-            <Typography.Paragraph>
-              <Transi18next
-                i18nKey="message.refer-to-our-doc"
-                renderElement={
-                  <a
-                    href={GLOSSARIES_DOCS}
-                    rel="noreferrer"
-                    style={{ color: theme.primaryColor }}
-                    target="_blank"
-                  />
-                }
-                values={{
-                  doc: t('label.doc-plural-lowercase'),
-                }}
-              />
-            </Typography.Paragraph>
-
-            {permissions.Create && (
-              <Tooltip
-                placement="top"
-                title={
-                  isEntityDeleted
-                    ? t(
-                        'message.this-action-is-not-allowed-for-deleted-entities'
-                      )
-                    : t('label.add')
-                }>
-                <Button
-                  ghost
-                  data-testid="add-placeholder-button"
-                  disabled={isEntityDeleted}
-                  icon={<PlusOutlined />}
-                  type="primary"
-                  onClick={onAddAsset}>
-                  {t('label.add')}
-                </Button>
-              </Tooltip>
-            )}
-          </ErrorPlaceHolderNew>
+          <ErrorPlaceHolder
+            buttonId="data-assets-add-button"
+            buttonTitle={t('label.add-entity', { entity: t('label.asset') })}
+            className="border-none"
+            heading={t('message.no-data-message', {
+              entity: t('label.data-asset-lowercase-plural'),
+            })}
+            icon={<FolderEmptyIcon />}
+            permission={permissions.Create}
+            type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}
+            onClick={onAddAsset}
+          />
         );
       }
     }, [
@@ -638,12 +615,12 @@ const AssetsTabs = forwardRef(
         const selectedItemMap = new Map(prevItems ?? []);
 
         if (selectAll) {
-          data.forEach(({ _source }) => {
+          for (const { _source } of data) {
             const id = _source.id;
             if (id) {
               selectedItemMap.set(id, _source);
             }
-          });
+          }
         } else {
           // Clear selection
           selectedItemMap.clear();
@@ -708,17 +685,12 @@ const AssetsTabs = forwardRef(
     ]);
 
     useEffect(() => {
-      const newFilter = getCombinedQueryFilterObject(
-        queryFilter as unknown as QueryFilterInterface,
-        quickFilterQuery as QueryFilterInterface
-      );
-
       fetchAssets({
         index: [SearchIndex.ALL],
         page: currentPage,
-        queryFilter: newFilter,
+        queryFilter: quickFilterQuery,
       });
-    }, [currentPage, pageSize, searchValue, queryFilter, quickFilterQuery]);
+    }, [fetchAssets, currentPage, quickFilterQuery]);
 
     useEffect(() => {
       const dropdownItems = getAssetsPageQuickFilters(type);
@@ -761,18 +733,13 @@ const AssetsTabs = forwardRef(
         // Reset page to one and trigger fetchAssets
         handlePageChange(1);
 
-        const newFilter = getCombinedQueryFilterObject(
-          queryFilter as unknown as QueryFilterInterface,
-          quickFilterQuery as QueryFilterInterface
-        );
-
-        // If current page is already 1 it won't trigger fetchAset from useEffect
+        // If current page is already 1 it won't trigger fetchAssets from useEffect
         // Hence need to manually trigger it for this case
         currentPage === 1 &&
           fetchAssets({
             index: [SearchIndex.ALL],
             page: 1,
-            queryFilter: newFilter,
+            queryFilter: quickFilterQuery,
           });
       },
       closeSummaryPanel() {
@@ -863,7 +830,11 @@ const AssetsTabs = forwardRef(
             )}
             {isLoading ? (
               <Col className="border-default border-radius-sm p-lg" span={24}>
-                <Space className="w-full" direction="vertical" size={16}>
+                <Space
+                  className="w-full"
+                  data-testid="loader"
+                  direction="vertical"
+                  size={16}>
                   <Skeleton />
                   <Skeleton />
                   <Skeleton />

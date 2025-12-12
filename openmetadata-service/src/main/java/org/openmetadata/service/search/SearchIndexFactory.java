@@ -2,6 +2,10 @@ package org.openmetadata.service.search;
 
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.analytics.ReportData;
+import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
+import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.PromptTemplate;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.APICollection;
@@ -30,6 +34,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.*;
 import org.openmetadata.schema.entity.services.ApiService;
+import org.openmetadata.schema.entity.services.LLMService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -42,6 +47,8 @@ import org.openmetadata.service.search.indexes.APICollectionIndex;
 import org.openmetadata.service.search.indexes.APIEndpointIndex;
 import org.openmetadata.service.search.indexes.APIServiceIndex;
 import org.openmetadata.service.search.indexes.AggregatedCostAnalysisReportDataIndex;
+import org.openmetadata.service.search.indexes.AiApplicationIndex;
+import org.openmetadata.service.search.indexes.AiGovernancePolicyIndex;
 import org.openmetadata.service.search.indexes.ChartIndex;
 import org.openmetadata.service.search.indexes.ClassificationIndex;
 import org.openmetadata.service.search.indexes.ContainerIndex;
@@ -60,13 +67,17 @@ import org.openmetadata.service.search.indexes.FileIndex;
 import org.openmetadata.service.search.indexes.GlossaryIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.IngestionPipelineIndex;
+import org.openmetadata.service.search.indexes.LlmModelIndex;
+import org.openmetadata.service.search.indexes.LlmServiceIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
 import org.openmetadata.service.search.indexes.MetadataServiceIndex;
 import org.openmetadata.service.search.indexes.MetricIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.MlModelServiceIndex;
+import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
 import org.openmetadata.service.search.indexes.PipelineServiceIndex;
+import org.openmetadata.service.search.indexes.PromptTemplateIndex;
 import org.openmetadata.service.search.indexes.QueryCostRecordIndex;
 import org.openmetadata.service.search.indexes.QueryIndex;
 import org.openmetadata.service.search.indexes.RawCostAnalysisReportDataIndex;
@@ -106,6 +117,10 @@ public class SearchIndexFactory {
       case Entity.GLOSSARY -> new GlossaryIndex((Glossary) entity);
       case Entity.GLOSSARY_TERM -> new GlossaryTermIndex((GlossaryTerm) entity);
       case Entity.MLMODEL -> new MlModelIndex((MlModel) entity);
+      case Entity.LLM_MODEL -> new LlmModelIndex((LLMModel) entity);
+      case Entity.AI_APPLICATION -> new AiApplicationIndex((AIApplication) entity);
+      case Entity.PROMPT_TEMPLATE -> new PromptTemplateIndex((PromptTemplate) entity);
+      case Entity.AI_GOVERNANCE_POLICY -> new AiGovernancePolicyIndex((AIGovernancePolicy) entity);
       case Entity.TAG -> new TagIndex((Tag) entity);
       case Entity.CLASSIFICATION -> new ClassificationIndex((Classification) entity);
       case Entity.QUERY -> new QueryIndex((Query) entity);
@@ -117,12 +132,13 @@ public class SearchIndexFactory {
       case Entity.TEST_SUITE -> new TestSuiteIndex((TestSuite) entity);
       case Entity.CHART -> new ChartIndex((Chart) entity);
       case Entity.DASHBOARD_DATA_MODEL -> new DashboardDataModelIndex((DashboardDataModel) entity);
-      case Entity.API_COLLCECTION -> new APICollectionIndex((APICollection) entity);
+      case Entity.API_COLLECTION -> new APICollectionIndex((APICollection) entity);
       case Entity.API_ENDPOINT -> new APIEndpointIndex((APIEndpoint) entity);
       case Entity.DASHBOARD_SERVICE -> new DashboardServiceIndex((DashboardService) entity);
       case Entity.DATABASE_SERVICE -> new DatabaseServiceIndex((DatabaseService) entity);
       case Entity.MESSAGING_SERVICE -> new MessagingServiceIndex((MessagingService) entity);
       case Entity.MLMODEL_SERVICE -> new MlModelServiceIndex((MlModelService) entity);
+      case Entity.LLM_SERVICE -> new LlmServiceIndex((LLMService) entity);
       case Entity.SEARCH_SERVICE -> new SearchServiceIndex((SearchService) entity);
       case Entity.SECURITY_SERVICE -> new SecurityServiceIndex((SecurityService) entity);
       case Entity.API_SERVICE -> new APIServiceIndex((ApiService) entity);
@@ -152,6 +168,11 @@ public class SearchIndexFactory {
       case Entity.TEST_CASE_RESOLUTION_STATUS -> new TestCaseResolutionStatusIndex(
           (TestCaseResolutionStatus) entity);
       case Entity.TEST_CASE_RESULT -> new TestCaseResultIndex((TestCaseResult) entity);
+      case Entity.PIPELINE_EXECUTION -> {
+        PipelineExecutionIndex.PipelineExecutionData data =
+            (PipelineExecutionIndex.PipelineExecutionData) entity;
+        yield new PipelineExecutionIndex(data.getPipeline(), data.getPipelineStatus());
+      }
       default -> buildExternalIndexes(entityType, entity);
     };
   }

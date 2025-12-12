@@ -142,6 +142,7 @@ export interface EntityError {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -154,12 +155,24 @@ export interface Stats {
      * Stats for the job
      */
     jobStats?: StepStats;
+    /**
+     * Stats for the reader step (reading from database)
+     */
+    readerStats?: StepStats;
+    /**
+     * Stats for the sink step (writing to search index)
+     */
+    sinkStats?: StepStats;
 }
 
 /**
  * Stats for Different Steps Reader, Processor, Writer.
  *
  * Stats for the job
+ *
+ * Stats for the reader step (reading from database)
+ *
+ * Stats for the sink step (writing to search index)
  */
 export interface StepStats {
     /**

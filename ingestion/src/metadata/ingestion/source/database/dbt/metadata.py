@@ -15,7 +15,7 @@ DBT source methods.
 import traceback
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -346,6 +346,9 @@ class DbtSource(DbtServiceSource):
                         )
                     )
             try:
+                # Deduplicate tags before building FQNs
+                dbt_tags_list = list(set(dbt_tags_list)) if dbt_tags_list else []
+
                 # Create all the tags added
                 dbt_tag_labels = [
                     fqn.build(
@@ -443,8 +446,12 @@ class DbtSource(DbtServiceSource):
                 ),
                 fetch_multiple_entities=True,
             )
+
+            if not table_entities:
+                return None
+
             logger.debug(
-                f"Found table entities from {fqn_search_string}: {table_entities}"
+                f"Found table entities from {fqn_search_string}: {len(table_entities)} entities"
             )
             return (
                 next(iter(filter(None, table_entities)), None)
@@ -455,6 +462,10 @@ class DbtSource(DbtServiceSource):
         try:
             table_entity = search_table(table_fqn)
             if table_entity:
+                logger.debug(
+                    f"Using Table Entity: {table_entity.fullyQualifiedName.root}"
+                    f"with id {table_entity.id}"
+                )
                 return table_entity
 
             if self.source_config.searchAcrossDatabases:
@@ -483,7 +494,9 @@ class DbtSource(DbtServiceSource):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get table entity from OpenMetadata: {exc}")
+            logger.warning(
+                f"Failed to get table entity '{table_fqn}' from OpenMetadata: {exc}"
+            )
 
         return None
 
@@ -511,6 +524,7 @@ class DbtSource(DbtServiceSource):
             self.context.get().exposures = {}
             self.context.get().dbt_tests = {}
             self.context.get().run_results_generate_time = None
+
             # Since we'll be processing multiple run_results for a single project
             # we'll only consider the first run_results generated_at time
             if (
@@ -520,6 +534,9 @@ class DbtSource(DbtServiceSource):
                 self.context.get().run_results_generate_time = (
                     dbt_objects.dbt_run_results[0].metadata.generated_at
                 )
+            dbt_project_name = getattr(
+                dbt_objects.dbt_manifest.metadata, "project_name", None
+            )
             for key, manifest_node in manifest_entities.items():
                 try:
                     resource_type = getattr(
@@ -543,7 +560,7 @@ class DbtSource(DbtServiceSource):
 
                     if (
                         dbt_objects.dbt_sources
-                        and resource_type == SkipResourceTypeEnum.SOURCE.value
+                        and resource_type == DbtCommonEnum.SOURCE.value
                     ):
                         self.add_dbt_sources(
                             key,
@@ -616,7 +633,8 @@ class DbtSource(DbtServiceSource):
 
                     if table_entity := self._get_table_entity(table_fqn=table_fqn):
                         logger.debug(
-                            f"Using Table Entity for datamodel: {table_entity}"
+                            f"Using Table Entity for datamodel: {table_entity.fullyQualifiedName.root}"
+                            f"with id {table_entity.id}"
                         )
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
@@ -644,6 +662,7 @@ class DbtSource(DbtServiceSource):
                                     catalog_node=catalog_node,
                                 ),
                                 tags=dbt_table_tags_list or [],
+                                dbtSourceProject=dbt_project_name,
                             ),
                         )
                         yield Either(right=data_model_link)
@@ -707,20 +726,6 @@ class DbtSource(DbtServiceSource):
                         f"Failed to parse the DBT node {node} to get upstream nodes: {exc}"
                     )
                     continue
-
-        if dbt_node.resource_type == SkipResourceTypeEnum.SOURCE.value:
-            parent_fqn = fqn.build(
-                self.metadata,
-                entity_type=Table,
-                service_name=self.config.serviceName,
-                database_name=get_corrected_name(dbt_node.database),
-                schema_name=get_corrected_name(dbt_node.schema_),
-                table_name=dbt_node.name,
-            )
-
-            # check if the parent table exists in OM before adding it to the upstream list
-            if self._get_table_entity(table_fqn=parent_fqn):
-                upstream_nodes.append(parent_fqn)
 
         return upstream_nodes
 
@@ -914,6 +919,7 @@ class DbtSource(DbtServiceSource):
                 query_fqn = fqn._build(  # pylint: disable=protected-access
                     *source_elements[-3:]
                 )
+                query_fqn = ".".join([f'"{i}"' for i in query_fqn.split(".")])
                 query = (
                     f"create table {query_fqn} as {data_model_link.datamodel.sql.root}"
                 )
@@ -948,6 +954,9 @@ class DbtSource(DbtServiceSource):
     def create_dbt_exposures_lineage(
         self, exposure_spec: dict
     ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Method to process dbt exposure lineage
+        """
         to_entity = exposure_spec[DbtCommonEnum.EXPOSURE]
         upstream = exposure_spec[DbtCommonEnum.UPSTREAM]
         manifest_node = exposure_spec[DbtCommonEnum.MANIFEST_NODE]
@@ -1019,6 +1028,23 @@ class DbtSource(DbtServiceSource):
                     )
                     or []
                 )
+
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
+                for tag_fqn in dbt_meta_info.openmetadata.tags:
+                    # Parse classification.tag format
+                    tag_parts = tag_fqn.split(fqn.FQN_SEPARATOR)
+                    if len(tag_parts) >= 2:
+                        classification_name = tag_parts[0]
+                        tag_name = fqn.FQN_SEPARATOR.join(tag_parts[1:])
+                        dbt_table_tags_list.extend(
+                            get_tag_labels(
+                                metadata=self.metadata,
+                                tags=[tag_name],
+                                classification_name=classification_name,
+                                include_tags=True,
+                            )
+                            or []
+                        )
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -1155,7 +1181,7 @@ class DbtSource(DbtServiceSource):
                             name=manifest_node.name,
                             description=manifest_node.description,
                             entityType=entity_type,
-                            testPlatforms=[TestPlatform.DBT],
+                            testPlatforms=[TestPlatform.dbt],
                             parameterDefinition=create_test_case_parameter_definitions(
                                 manifest_node
                             ),
@@ -1319,7 +1345,7 @@ class DbtSource(DbtServiceSource):
                         )
                     except APIError as err:
                         if err.code != 409:
-                            raise APIError(err) from err
+                            raise err
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

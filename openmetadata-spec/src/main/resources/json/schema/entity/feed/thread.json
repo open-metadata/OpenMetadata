@@ -310,6 +310,14 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "changeDescription": {
+      "description": "Change that led to this version of the Thread.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "resolved": {
       "description": "When `true` indicates the thread has been resolved.",
       "type": "boolean",

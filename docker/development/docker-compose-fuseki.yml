@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  fuseki:
+    image: stain/jena-fuseki:5.0.0
+    container_name: openmetadata-fuseki
+    hostname: fuseki
+    ports:
+      - "3030:3030"
+    environment:
+      - ADMIN_PASSWORD=admin
+      - JVM_ARGS=-Xmx4g -Xms2g
+      - FUSEKI_BASE=/fuseki
+    volumes:
+      - fuseki-data:/fuseki
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    networks:
+      - app_net
+    # Create the database directory before starting Fuseki
+    entrypoint: /bin/sh -c "mkdir -p /fuseki/databases/openmetadata && exec /docker-entrypoint.sh /jena-fuseki/fuseki-server --update --loc=/fuseki/databases/openmetadata /openmetadata"
+
+volumes:
+  fuseki-data:
+    driver: local
+
+networks:
+  app_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.240.0/24

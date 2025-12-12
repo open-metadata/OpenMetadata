@@ -131,6 +131,16 @@
       "description": "The app will be installable only if this flag is set to true.",
       "type": "boolean",
       "default": true
+    },
+    "supportsIngestionRunner": {
+      "description": "If the app support execution through the external runner.",
+      "type": "boolean",
+      "default": false
+    },
+    "allowConcurrentExecution": {
+      "description": "If true, multiple instances of this app can run concurrently. This is useful for apps like QueryRunner that support parallel executions with different configurations.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false,

@@ -20,6 +20,15 @@ export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
  */
 export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
 
+/**
+ * Matches any string that does NOT contain the following:
+ * - Double colon (::)
+ * - Double quote (")
+ * - Greater-than symbol (>)
+ * Useful for restricting names from including these forbidden characters.
+ */
+export const TEST_CASE_NAME_REGEX = /^((?!::)(?!")(?!>).)*$/;
+
 export const TAG_NAME_REGEX = /^[\p{L}\p{M}\w\- .&()]+$/u;
 
 export const passwordRegex =

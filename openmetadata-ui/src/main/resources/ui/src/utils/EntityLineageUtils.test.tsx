@@ -34,6 +34,7 @@ import {
   getLineageDetailsObject,
   getLineageEdge,
   getLineageEdgeForAPI,
+  getLineageTableConfig,
   getNodesBoundsReactFlow,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
@@ -45,6 +46,7 @@ jest.mock('../rest/miscAPI', () => ({
 }));
 
 import { get, isEqual, uniqWith } from 'lodash';
+import { LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS } from '../constants/Lineage.constants';
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
@@ -219,17 +221,17 @@ describe('Test EntityLineageUtils utility', () => {
       {
         id: '1',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '1' } },
+        data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
       },
       {
         id: '2',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '2' } },
+        data: { node: { fullyQualifiedName: '2' }, nodeDepth: 2 },
       },
       {
         id: '3',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '3' } },
+        data: { node: { fullyQualifiedName: '3' }, nodeDepth: 3 },
       },
     ];
     const edges = [
@@ -306,19 +308,20 @@ describe('Test EntityLineageUtils utility', () => {
     const selectedNode = {
       id: '1',
       position: { x: 0, y: 0 },
-      data: { node: { fullyQualifiedName: '1' } },
+      data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
     };
     const nodes = [
       {
         id: '1',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '1' } },
+        data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
       },
       {
         id: '2',
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '2' },
+          nodeDepth: 0, // nodeDepth 0 indicates root node
           isRootNode: true, // This should be filtered out
         },
       },
@@ -327,6 +330,7 @@ describe('Test EntityLineageUtils utility', () => {
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '3' },
+          nodeDepth: 1,
           isRootNode: false, // This should be included
         },
       },
@@ -335,6 +339,7 @@ describe('Test EntityLineageUtils utility', () => {
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '4' },
+          nodeDepth: 1,
           // No isRootNode property - should be included
         },
       },
@@ -374,19 +379,20 @@ describe('Test EntityLineageUtils utility', () => {
     const selectedNode = {
       id: '1',
       position: { x: 0, y: 0 },
-      data: { node: { fullyQualifiedName: '1' } },
+      data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
     };
     const nodes = [
       {
         id: '1',
         position: { x: 0, y: 0 },
-        data: { node: { fullyQualifiedName: '1' } },
+        data: { node: { fullyQualifiedName: '1' }, nodeDepth: 1 },
       },
       {
         id: '2',
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '2' },
+          nodeDepth: 1,
           isRootNode: undefined, // Should be treated as falsy and included
         },
       },
@@ -395,6 +401,7 @@ describe('Test EntityLineageUtils utility', () => {
         position: { x: 0, y: 0 },
         data: {
           node: { fullyQualifiedName: '3' },
+          nodeDepth: 1,
           isRootNode: null, // Should be treated as falsy and included
         },
       },
@@ -1489,6 +1496,151 @@ describe('parseLineageData', () => {
       parseLineageData(dataWithDuplicates, mockEntityFqn, mockRootFqn);
 
       expect(mockUniqWith).toHaveBeenCalled();
+    });
+  });
+});
+
+describe('getLineageTableConfig', () => {
+  it('should return empty arrays for empty CSV data', () => {
+    const result = getLineageTableConfig([]);
+
+    expect(result.columns).toEqual([]);
+    expect(result.dataSource).toEqual([]);
+  });
+
+  it('should return empty arrays for null CSV data', () => {
+    const result = getLineageTableConfig(null as any);
+
+    expect(result.columns).toEqual([]);
+    expect(result.dataSource).toEqual([]);
+  });
+
+  it('should return empty arrays for CSV data with only headers', () => {
+    const result = getLineageTableConfig([['Name', 'Type']]);
+
+    expect(result.columns).toEqual([]);
+    expect(result.dataSource).toEqual([]);
+  });
+
+  it('should return empty arrays for CSV data with less than 1 rows', () => {
+    const result = getLineageTableConfig([['Name']]);
+
+    expect(result.columns).toEqual([]);
+    expect(result.dataSource).toEqual([]);
+  });
+
+  it('should process valid CSV data correctly', () => {
+    const csvData = [
+      ['fromEntityFQN', 'toEntityFQN', 'pipelineName'],
+      ['test.fqn.1', 'test.fqn.2', 'Test Pipeline'],
+      ['test.fqn.3', 'test.fqn.4', 'Another Pipeline'],
+    ];
+
+    const result = getLineageTableConfig(csvData);
+
+    expect(result.columns).toHaveLength(3);
+    expect(result.dataSource).toHaveLength(2);
+
+    // Check column structure with localization keys
+    expect(result.columns[0]).toMatchObject({
+      title: 'label.from-entity',
+      dataIndex: 'fromCombined',
+      key: 'fromCombined',
+      width: 300,
+      ellipsis: { showTitle: false },
+    });
+
+    expect(result.columns[1]).toMatchObject({
+      dataIndex: 'toCombined',
+      key: 'toCombined',
+      title: 'label.to-entity',
+      width: 300,
+      ellipsis: { showTitle: false },
+    });
+
+    expect(result.columns[2]).toMatchObject({
+      title: LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS['pipelineName'],
+      dataIndex: 'pipelineName',
+      key: 'pipelineName',
+      width: 200,
+      ellipsis: { showTitle: false },
+    });
+
+    // Check data source
+    expect(result.dataSource[0]).toEqual({
+      fromEntityFQN: 'test.fqn.1',
+      toEntityFQN: 'test.fqn.2',
+      pipelineName: 'Test Pipeline',
+      key: '0',
+    });
+
+    expect(result.dataSource[1]).toEqual({
+      fromEntityFQN: 'test.fqn.3',
+      toEntityFQN: 'test.fqn.4',
+      pipelineName: 'Another Pipeline',
+      key: '1',
+    });
+  });
+
+  it('should handle CSV data with different column counts', () => {
+    const csvData = [
+      ['fromEntityFQN', 'toEntityFQN'],
+      ['test.fqn.1', 'test.fqn.2', 'extra-column'],
+      ['test.fqn.3'],
+    ];
+
+    const result = getLineageTableConfig(csvData);
+
+    expect(result.columns).toHaveLength(2);
+    expect(result.dataSource).toHaveLength(2);
+
+    expect(result.dataSource[0]).toEqual({
+      fromEntityFQN: 'test.fqn.1',
+      toEntityFQN: 'test.fqn.2',
+      key: '0',
+    });
+
+    expect(result.dataSource[1]).toEqual({
+      fromEntityFQN: 'test.fqn.3',
+      toEntityFQN: '',
+      key: '1',
+    });
+  });
+
+  it('should handle single row of data', () => {
+    const csvData = [
+      ['fromEntityFQN', 'toEntityFQN', 'pipelineName'],
+      ['test.fqn.1', 'test.fqn.2', 'Test Pipeline'],
+    ];
+
+    const result = getLineageTableConfig(csvData);
+
+    expect(result.columns).toHaveLength(3);
+    expect(result.dataSource).toHaveLength(1);
+
+    expect(result.dataSource[0]).toEqual({
+      fromEntityFQN: 'test.fqn.1',
+      toEntityFQN: 'test.fqn.2',
+      pipelineName: 'Test Pipeline',
+      key: '0',
+    });
+  });
+
+  it('should handle empty rows in CSV data', () => {
+    const csvData = [
+      ['fromEntityFQN', 'toEntityFQN'],
+      ['test.fqn.1', 'test.fqn.2'],
+      ['', ''],
+      ['test.fqn.3', 'test.fqn.4'],
+    ];
+
+    const result = getLineageTableConfig(csvData);
+
+    expect(result.dataSource).toHaveLength(3);
+    expect(result.dataSource[1]).toEqual({
+      fromEntityFQN: '',
+      toEntityFQN: '',
+      key: '1',
     });
   });
 });

@@ -23,6 +23,7 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
 import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
@@ -50,6 +51,7 @@ const entities = [
   StorageServiceClass,
   DatabaseClass,
   DatabaseSchemaClass,
+  DriveServiceClass,
 ] as const;
 
 const adminUser = new UserClass();
@@ -78,7 +80,6 @@ entities.forEach((EntityClass) => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
@@ -89,6 +90,8 @@ entities.forEach((EntityClass) => {
     });
 
     test('Domain Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       await entity.domain(
         page,
         EntityDataClass.domain1.responseData,
@@ -102,15 +105,15 @@ entities.forEach((EntityClass) => {
     test('User as Owner Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
-      const OWNER1 = EntityDataClass.user1.getUserName();
-      const OWNER2 = EntityDataClass.user2.getUserName();
-      const OWNER3 = EntityDataClass.user3.getUserName();
+      const OWNER1 = EntityDataClass.user1.getUserDisplayName();
+      const OWNER2 = EntityDataClass.user2.getUserDisplayName();
+      const OWNER3 = EntityDataClass.user3.getUserDisplayName();
       await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
     test('Team as Owner Add, Update and Remove', async ({ page }) => {
-      const OWNER1 = EntityDataClass.team1.data.displayName;
-      const OWNER2 = EntityDataClass.team2.data.displayName;
+      const OWNER1 = EntityDataClass.team1.responseData.displayName;
+      const OWNER2 = EntityDataClass.team2.responseData.displayName;
       await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
     });
 
@@ -208,7 +211,6 @@ entities.forEach((EntityClass) => {
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
     });
   });
@@ -218,7 +220,7 @@ entities.forEach((EntityClass) => {
     test.slow(true);
 
     await redirectToHomePage(page);
-    // get the token from localStorage
+    // get the token
     const token = await getToken(page);
 
     // create a new context with the token

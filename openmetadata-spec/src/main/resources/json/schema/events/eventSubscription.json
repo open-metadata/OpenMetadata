@@ -160,6 +160,17 @@
               "$ref": "../type/basic.json#/definitions/map"
             }
           ]
+        },
+        "notifyDownstream": {
+          "description": "Enable notification of downstream entity stakeholders. When true, notifications will traverse lineage to include stakeholders of entities that consume data from the affected entity.",
+          "type": "boolean",
+          "default": false
+        },
+        "downstreamDepth": {
+          "description": "Maximum depth for downstream stakeholder notification traversal. If null, traverses without depth limit (with cycle protection).",
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "default": null
         }
       },
       "required": ["category", "type"],
@@ -301,6 +312,10 @@
       "items": {
         "$ref": "#/definitions/destination"
       }
+    },
+    "notificationTemplate": {
+      "description": "Optional custom notification template for this subscription. When not set, system default template will be used. Only USER templates can be assigned.",
+      "$ref": "../type/entityReference.json"
     },
     "enabled": {
       "description": "Is the event Subscription enabled.",

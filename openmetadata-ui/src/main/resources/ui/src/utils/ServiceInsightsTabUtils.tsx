@@ -77,6 +77,13 @@ export const getAssetsByServiceType = (serviceType: ServiceTypes): string[] => {
       return [EntityType.SEARCH_SERVICE];
     case 'apiServices':
       return [EntityType.API_COLLECTION, EntityType.API_ENDPOINT];
+    case 'driveServices':
+      return [
+        EntityType.DIRECTORY,
+        EntityType.FILE,
+        EntityType.SPREADSHEET,
+        EntityType.WORKSHEET,
+      ];
     default:
       return [];
   }

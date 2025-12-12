@@ -61,7 +61,7 @@ jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
     .mockImplementation(() => (
       <div data-testid="alert-message">Alert Message</div>
     )),
-  getExploreURLWithFilters: jest.fn().mockReturnValue('test-url'),
+  getExploreURLForAdvancedFilter: jest.fn().mockReturnValue('test-url'),
   getModifiedQueryFilterWithSelectedAssets: jest.fn().mockReturnValue({}),
 }));
 

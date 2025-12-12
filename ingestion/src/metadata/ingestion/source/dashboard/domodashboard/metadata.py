@@ -79,6 +79,8 @@ class DomodashboardSource(DashboardServiceSource):
         return cls(config, metadata)
 
     def get_dashboards_list(self) -> Optional[List[DomoDashboardDetails]]:
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         dashboards = self.client.domo.page_list()
         dashboard_list = []
         for dashboard in dashboards:
@@ -104,15 +106,23 @@ class DomodashboardSource(DashboardServiceSource):
     def get_owner_ref(
         self, dashboard_details: DomoDashboardDetails
     ) -> Optional[EntityReferenceList]:
-        for owner in dashboard_details.owners or []:
-            try:
-                owner_details = self.client.domo.users_get(owner.id)
-                if owner_details.get("email"):
-                    return self.metadata.get_reference_by_email(owner_details["email"])
-            except Exception as exc:
-                logger.warning(
-                    f"Error while getting details of user {owner.displayName} - {exc}"
-                )
+        try:
+            if not self.source_config.includeOwners:
+                return None
+            for owner in dashboard_details.owners or []:
+                try:
+                    owner_details = self.client.domo.users_get(owner.id)
+                    if owner_details.get("email"):
+                        return self.metadata.get_reference_by_email(
+                            owner_details["email"]
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        f"Error while getting details of user {owner.displayName} - {exc}"
+                    )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def yield_dashboard(

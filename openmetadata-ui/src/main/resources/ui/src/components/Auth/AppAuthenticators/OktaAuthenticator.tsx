@@ -14,7 +14,7 @@
 import { useOktaAuth } from '@okta/okta-react';
 import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
 
-import { setOidcToken } from '../../../utils/LocalStorageUtils';
+import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
@@ -46,7 +46,7 @@ const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
       oktaAuth.tokenManager.setTokens(renewToken);
       const newToken =
         renewToken?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
-      setOidcToken(newToken);
+      await setOidcToken(newToken);
 
       return newToken;
     };

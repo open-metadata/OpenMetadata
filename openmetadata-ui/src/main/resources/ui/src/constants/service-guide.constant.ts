@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import brandClassBase from '../utils/BrandData/BrandClassBase';
 import i18n from '../utils/i18next/LocalUtil';
 
 const schedulingIngestionGuide = {
@@ -32,7 +33,9 @@ export const addMetadataIngestionGuide = [
   {
     step: 2,
     title: i18n.t('label.configure-dbt-model'),
-    description: i18n.t('message.configure-dbt-model-description'),
+    description: i18n.t('message.configure-dbt-model-description', {
+      brandName: brandClassBase.getPageTitle(),
+    }),
   },
   {
     ...schedulingIngestionGuide,
@@ -57,7 +60,9 @@ export const addUsageIngestionGuide = [
     title: i18n.t('label.add-entity', {
       entity: i18n.t('label.usage-ingestion'),
     }),
-    description: i18n.t('message.usage-ingestion-description'),
+    description: i18n.t('message.usage-ingestion-description', {
+      brandName: brandClassBase.getPageTitle(),
+    }),
   },
   {
     ...schedulingIngestionGuide,
@@ -153,3 +158,4 @@ export const OPENMETADATA_URL_CONFIG_SERVICE_CATEGORY =
   'OpenMetadataUrlConfiguration';
 export const CUSTOM_PROPERTY_CATEGORY = 'CustomProperty';
 export const OPEN_METADATA = 'OpenMetadata';
+export const TEST_CASE_FORM = 'TestCaseForm';

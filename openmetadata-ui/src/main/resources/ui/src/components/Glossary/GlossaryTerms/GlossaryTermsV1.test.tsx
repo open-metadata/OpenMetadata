@@ -49,10 +49,13 @@ jest.mock(
   })
 );
 
-jest.mock('../../../rest/miscAPI', () => ({
-  searchData: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: MOCK_ASSETS_DATA.data?.hits?.hits || [],
+      total: { value: MOCK_ASSETS_DATA.data?.hits?.total?.value || 0 },
+    },
+  }),
 }));
 
 jest.mock('./tabs/AssetsTabs.component', () =>
@@ -79,7 +82,18 @@ const mockProps = {
     EditDisplayName: true,
     EditCustomFields: true,
   } as OperationPermission,
-  glossaryTerm: mockedGlossaryTerms[0],
+  glossaryTerm: {
+    ...mockedGlossaryTerms[0],
+    children: mockedGlossaryTerms[0].children?.map((child: any) => ({
+      id: child.id,
+      name: child.name,
+      displayName: child.displayName,
+      description: child.description,
+      fullyQualifiedName: child.fullyQualifiedName,
+      type: 'glossaryTerm', // Required field for EntityReference
+      deleted: child.deleted || false,
+    })),
+  },
   termsLoading: false,
   handleGlossaryTermUpdate: jest.fn(),
   onRelatedTermClick: jest.fn(),
@@ -109,7 +123,7 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => {
 });
 
 jest.mock('../../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue({}),
+  ownerTableObject: jest.fn().mockReturnValue([{}]),
 }));
 
 describe('Test Glossary-term component', () => {
@@ -148,7 +162,7 @@ describe('Test Glossary-term component', () => {
     expect(tabs).toHaveLength(5);
     expect(tabs.map((tab) => tab.textContent)).toStrictEqual([
       'label.overview',
-      'label.glossary-term-plural0',
+      'label.glossary-term-plural2',
       'label.asset-plural0',
       'label.activity-feed-and-task-plural0',
       'label.custom-property-plural',

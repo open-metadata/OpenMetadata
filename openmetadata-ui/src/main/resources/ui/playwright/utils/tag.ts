@@ -64,8 +64,10 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
+  await page.waitForLoadState('networkidle');
+
   await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
+    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
     { state: 'detached' }
   );
 
@@ -81,7 +83,7 @@ export const visitClassificationPage = async (
   await fetchTags;
   await page.waitForLoadState('networkidle');
   await page.waitForSelector(
-    '[data-testid="tags-container"] [data-testid="loader"]',
+    '[data-testid="tags-container"] .table-container [data-testid="loader"]',
     { state: 'detached' }
   );
 };
@@ -183,6 +185,11 @@ export const removeAssetsFromTag = async (
   await assetsRemoveRes;
 
   await page.waitForLoadState('networkidle');
+  await page.reload();
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
   await checkAssetsCount(page, 0);
 };
 
@@ -488,9 +495,22 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.click(
     '[data-testid="modal-container"] [data-testid="add-domain"]'
   );
-  await adminPage
-    .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
-    .click();
 
-  await adminPage.getByTestId('saveAssociatedTag').click();
+  const searchDomain = adminPage.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.responseData.name)}*`
+  );
+
+  await adminPage
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.responseData.name);
+
+  await searchDomain;
+
+  // Wait for the tag element to be visible and ensure page is still valid
+  const tagSelector = adminPage.getByTestId(
+    `tag-${domain.responseData.fullyQualifiedName}`
+  );
+  await tagSelector.waitFor({ state: 'visible' });
+  await tagSelector.click();
 };

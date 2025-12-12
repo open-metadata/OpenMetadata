@@ -67,6 +67,7 @@ describe('getSortedOptions', () => {
       { key: 'COUNT', label: 'COUNT', value: 'COUNT' },
       { key: 'DOLLARS', label: 'DOLLARS', value: 'DOLLARS' },
       { key: 'EVENTS', label: 'EVENTS', value: 'EVENTS' },
+      { key: 'OTHER', label: 'OTHER', value: 'OTHER' },
       { key: 'PERCENTAGE', label: 'PERCENTAGE', value: 'PERCENTAGE' },
       { key: 'REQUESTS', label: 'REQUESTS', value: 'REQUESTS' },
       { key: 'TIMESTAMP', label: 'TIMESTAMP', value: 'TIMESTAMP' },

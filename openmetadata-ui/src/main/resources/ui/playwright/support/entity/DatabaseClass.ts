@@ -14,7 +14,12 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { assignDomain, removeDomain, uuid } from '../../utils/common';
+import {
+  assignSingleSelectDomain,
+  removeSingleSelectDomain,
+  uuid,
+  verifyDomainLinkInCard,
+} from '../../utils/common';
 import {
   addMultiOwner,
   addOwner,
@@ -54,6 +59,7 @@ export class DatabaseClass extends EntityClass {
   entity = {
     name: `pw-database-${uuid()}`,
     service: this.service.name,
+    description: 'description',
   };
   schema = {
     name: `pw-database-schema-${uuid()}`,
@@ -190,6 +196,18 @@ export class DatabaseClass extends EntityClass {
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    schema: ResponseDataWithServiceType;
+    table: ResponseDataWithServiceType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+    this.schemaResponseData = data.schema;
+    this.tableResponseData = data.table;
+  }
+
   async visitEntityPage(page: Page) {
     await visitServiceDetailsPage(
       page,
@@ -250,17 +268,16 @@ export class DatabaseClass extends EntityClass {
     ).toBeVisible();
   }
 
-  async verifyDomainChangeInES(page: Page, domain: Domain['responseData']) {
-    // Verify domain change in ES
+  async verifyDomainChangeInES(page: Page, domains: Domain['responseData'][]) {
     const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
     await page.getByTestId('searchBox').fill(searchTerm);
     await page.getByTestId('searchBox').press('Enter');
 
-    await expect(
-      page
-        .getByTestId(`table-data-card_${searchTerm}`)
-        .getByTestId('domains-link')
-    ).toContainText(domain.displayName);
+    const entityCard = page.getByTestId(`table-data-card_${searchTerm}`);
+
+    for (const domain of domains) {
+      await verifyDomainLinkInCard(entityCard, domain);
+    }
 
     await page.getByTestId('searchBox').clear();
   }
@@ -272,7 +289,7 @@ export class DatabaseClass extends EntityClass {
   }
 
   async verifyDomainPropagation(page: Page, domain: Domain['responseData']) {
-    await this.verifyDomainChangeInES(page, domain);
+    await this.verifyDomainChangeInES(page, [domain]);
     await this.visitEntityPage(page);
   }
 
@@ -344,10 +361,10 @@ export class DatabaseClass extends EntityClass {
     domain1: Domain['responseData'],
     domain2: Domain['responseData']
   ) {
-    await assignDomain(page, domain1);
+    await assignSingleSelectDomain(page, domain1);
     await this.verifyDomainPropagation(page, domain1);
-    await removeDomain(page, domain1);
-    await assignDomain(page, domain2);
-    await removeDomain(page, domain2);
+    await removeSingleSelectDomain(page, domain1);
+    await assignSingleSelectDomain(page, domain2);
+    await removeSingleSelectDomain(page, domain2);
   }
 }

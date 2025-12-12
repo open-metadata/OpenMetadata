@@ -26,9 +26,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.domains.DomainResourceTest;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public abstract class ServiceResourceTest<T extends EntityInterface, K extends CreateEntity>

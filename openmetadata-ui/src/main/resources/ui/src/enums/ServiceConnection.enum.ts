@@ -29,4 +29,8 @@ export enum ServiceConnectionFilterPatternFields {
   DATA_MODEL_FILTER_PATTERN = 'dataModelFilterPattern',
   PROJECT_FILTER_PATTERN = 'projectFilterPattern',
   CLASSIFICATION_FILTER_PATTERN = 'classificationFilterPattern',
+  DIRECTORY_FILTER_PATTERN = 'directoryFilterPattern',
+  FILE_FILTER_PATTERN = 'fileFilterPattern',
+  SPREADSHEET_FILTER_PATTERN = 'spreadsheetFilterPattern',
+  WORKSHEET_FILTER_PATTERN = 'worksheetFilterPattern',
 }
