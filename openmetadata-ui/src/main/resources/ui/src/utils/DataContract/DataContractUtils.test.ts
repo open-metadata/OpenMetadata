@@ -35,6 +35,8 @@ jest.mock('../date-time/DateTimeUtils', () => ({
   getEpochMillisForPastDays: jest.fn(
     (days) => 1640995200000 - days * 24 * 60 * 60 * 1000
   ),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 jest.mock('js-yaml', () => ({
@@ -51,6 +53,9 @@ jest.mock('../i18next/LocalUtil', () => ({
 }));
 
 // Import after mocks are set up
+import { DataContractProcessedResultCharts } from '../../components/DataContract/ContractExecutionChart/ContractExecutionChart.interface';
+import { DataContract } from '../../generated/entity/data/dataContract';
+import { DataContractResult } from '../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../generated/type/contractExecutionStatus';
 import {
   createContractExecutionCustomScale,
@@ -85,11 +90,18 @@ describe('DataContractUtils', () => {
           timestamp: 1234567891000,
           contractExecutionStatus: ContractExecutionStatus.Aborted,
         },
+        {
+          id: '4',
+          timestamp: 1234567891000,
+          contractExecutionStatus: ContractExecutionStatus.Running,
+        },
       ];
 
-      const result = processContractExecutionData(executionData as any);
+      const result = processContractExecutionData(
+        executionData as DataContractResult[]
+      );
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4);
       expect(result[0]).toEqual({
         name: '1234567890000_0',
         displayTimestamp: 1234567890000,
@@ -98,6 +110,7 @@ describe('DataContractUtils', () => {
         failed: 0,
         success: 1,
         aborted: 0,
+        running: 0,
         data: executionData[0],
       });
       expect(result[1]).toEqual({
@@ -108,6 +121,7 @@ describe('DataContractUtils', () => {
         failed: 1,
         success: 0,
         aborted: 0,
+        running: 0,
         data: executionData[1],
       });
       expect(result[2]).toEqual({
@@ -118,7 +132,19 @@ describe('DataContractUtils', () => {
         failed: 0,
         success: 0,
         aborted: 1,
+        running: 0,
         data: executionData[2],
+      });
+      expect(result[3]).toEqual({
+        name: '1234567891000_3',
+        displayTimestamp: 1234567891000,
+        value: 1,
+        status: ContractExecutionStatus.Running,
+        failed: 0,
+        success: 0,
+        aborted: 0,
+        running: 1,
+        data: executionData[3],
       });
     });
 
@@ -137,7 +163,9 @@ describe('DataContractUtils', () => {
     ];
 
     it('should create a scale function that maps values to positions', () => {
-      const scale = createContractExecutionCustomScale(mockData as any);
+      const scale = createContractExecutionCustomScale(
+        mockData as DataContractProcessedResultCharts[]
+      );
 
       expect(scale('1234567890000_0')).toBe(0);
       expect(scale('1234567890001_1')).toBe(28); // 0 + 1 * (20 + 8)
@@ -145,13 +173,17 @@ describe('DataContractUtils', () => {
     });
 
     it('should return 0 for unknown values', () => {
-      const scale = createContractExecutionCustomScale(mockData as any);
+      const scale = createContractExecutionCustomScale(
+        mockData as DataContractProcessedResultCharts[]
+      );
 
       expect(scale('unknown_value')).toBe(0);
     });
 
     it('should have chainable domain method', () => {
-      const scale = createContractExecutionCustomScale(mockData as any);
+      const scale = createContractExecutionCustomScale(
+        mockData as DataContractProcessedResultCharts[]
+      );
       const result = scale.domain();
 
       expect(result).toEqual([
@@ -166,7 +198,9 @@ describe('DataContractUtils', () => {
     });
 
     it('should have chainable range method', () => {
-      const scale = createContractExecutionCustomScale(mockData as any);
+      const scale = createContractExecutionCustomScale(
+        mockData as DataContractProcessedResultCharts[]
+      );
       const result = scale.range();
 
       expect(result).toEqual([0, 800]);
@@ -178,7 +212,9 @@ describe('DataContractUtils', () => {
     });
 
     it('should have other required scale methods', () => {
-      const scale = createContractExecutionCustomScale(mockData as any);
+      const scale = createContractExecutionCustomScale(
+        mockData as DataContractProcessedResultCharts[]
+      );
 
       expect(scale.bandwidth()).toBe(20);
       expect(scale.ticks()).toEqual([]);
@@ -198,7 +234,9 @@ describe('DataContractUtils', () => {
         { name: '1646092800000_3', displayTimestamp: 1646092800000 }, // Mar 2022
       ];
 
-      const result = generateMonthTickPositions(processedData as any);
+      const result = generateMonthTickPositions(
+        processedData as DataContractProcessedResultCharts[]
+      );
 
       expect(result).toEqual([
         '1640995200000_0', // First occurrence of Jan
@@ -220,7 +258,9 @@ describe('DataContractUtils', () => {
         { name: '1640995320000_2', displayTimestamp: 1640995320000 },
       ];
 
-      const result = generateMonthTickPositions(processedData as any);
+      const result = generateMonthTickPositions(
+        processedData as DataContractProcessedResultCharts[]
+      );
 
       expect(result).toEqual(['1640995200000_0']); // Only first occurrence
     });
@@ -272,7 +312,9 @@ describe('DataContractUtils', () => {
         qualityValidation: { failed: 2 },
       };
 
-      const result = getConstraintStatus(latestContractResults as any);
+      const result = getConstraintStatus(
+        latestContractResults as DataContractResult
+      );
 
       expect(result).toEqual({
         schema: 'label.passed',
@@ -286,7 +328,9 @@ describe('DataContractUtils', () => {
         schemaValidation: { failed: 0 },
       };
 
-      const result = getConstraintStatus(latestContractResults as any);
+      const result = getConstraintStatus(
+        latestContractResults as DataContractResult
+      );
 
       expect(result).toEqual({
         schema: 'label.passed',
@@ -296,7 +340,9 @@ describe('DataContractUtils', () => {
     it('should return empty object when no validations', () => {
       const latestContractResults = {};
 
-      const result = getConstraintStatus(latestContractResults as any);
+      const result = getConstraintStatus(
+        latestContractResults as DataContractResult
+      );
 
       expect(result).toEqual({});
     });
@@ -344,8 +390,8 @@ describe('DataContractUtils', () => {
       };
 
       const result = getUpdatedContractDetails(
-        contract as any,
-        formValues as any
+        contract as unknown as DataContract,
+        formValues as unknown as DataContract
       );
 
       expect(result).toEqual({
@@ -387,18 +433,18 @@ describe('DataContractUtils', () => {
 
       createElementSpy = jest
         .spyOn(document, 'createElement')
-        .mockReturnValue(mockElement as any);
+        .mockReturnValue(mockElement as unknown as HTMLAnchorElement);
       appendChildSpy = jest
         .spyOn(document.body, 'appendChild')
-        .mockImplementation(() => mockElement as any);
+        .mockImplementation(() => mockElement as unknown as Node);
       removeChildSpy = jest
         .spyOn(document.body, 'removeChild')
-        .mockImplementation(() => mockElement as any);
+        .mockImplementation(() => mockElement as unknown as Node);
       // Mock URL methods on global object
       global.URL = {
         createObjectURL: jest.fn(() => 'blob:url'),
         revokeObjectURL: jest.fn(),
-      } as any;
+      } as unknown as typeof URL;
       createObjectURLSpy = global.URL.createObjectURL as jest.Mock;
       revokeObjectURLSpy = global.URL.revokeObjectURL as jest.Mock;
     });
@@ -414,7 +460,7 @@ describe('DataContractUtils', () => {
         description: 'Test Contract',
       };
 
-      downloadContractYamlFile(contract as any);
+      downloadContractYamlFile(contract as unknown as DataContract);
 
       expect(createElementSpy).toHaveBeenCalledWith('a');
       expect(appendChildSpy).toHaveBeenCalled();

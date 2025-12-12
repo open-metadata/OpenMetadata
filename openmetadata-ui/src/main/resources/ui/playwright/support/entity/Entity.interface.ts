@@ -79,6 +79,7 @@ export enum ENTITY_PATH {
   'dataProducts' = 'dataProduct',
   'metrics' = 'metric',
   charts = 'chart',
+  dataProductsTab = 'dataProductsTab',
 }
 
 export type ResponseDataType = {

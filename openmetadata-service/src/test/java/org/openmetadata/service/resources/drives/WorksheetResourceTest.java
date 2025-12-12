@@ -20,11 +20,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.resources.EntityResourceTest.GOOGLE_DRIVE_SERVICE_REFERENCE;
+import static org.openmetadata.service.resources.EntityResourceTest.PERSONAL_DATA_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.USER_ADDRESS_TAG_LABEL;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -45,10 +50,12 @@ import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -977,5 +984,90 @@ public class WorksheetResourceTest extends EntityResourceTest<Worksheet, CreateW
   @Override
   public EntityReference getContainer(Worksheet entity) {
     return entity.getSpreadsheet();
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    CreateWorksheet botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    Worksheet entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", entity.getDescription());
+    assertEquals(1, entity.getTags().size());
+
+    String originalJson = JsonUtils.pojoToJson(entity);
+    String userDescription = "User-edited description - should be preserved";
+    entity.setDescription(userDescription);
+    entity.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Worksheet userEditedEntity =
+        patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedEntity.getDescription());
+    assertEquals(2, userEditedEntity.getTags().size());
+
+    CreateWorksheet botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    Worksheet verifyEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        userDescription,
+        verifyEntity.getDescription(),
+        "Bot should not overwrite user's description");
+
+    assertEquals(
+        3, verifyEntity.getTags().size(), "Tags should be merged (2 user tags + 1 new bot tag)");
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(USER_ADDRESS_TAG_LABEL.getTagFQN())));
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(PERSONAL_DATA_TAG_LABEL.getTagFQN())));
+    assertTrue(
+        verifyEntity.getTags().stream()
+            .anyMatch(tag -> tag.getTagFQN().equals(PII_SENSITIVE_TAG_LABEL.getTagFQN())));
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    CreateWorksheet botCreate =
+        createRequest(test.getDisplayName()).withDescription("Bot initial description");
+
+    Worksheet entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(entity);
+    entity.setDescription("User description");
+    Worksheet userEditedEntity =
+        patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals("User description", userEditedEntity.getDescription());
+
+    CreateWorksheet adminUpdate =
+        createRequest(test.getDisplayName()).withDescription("Admin override description");
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+
+    Worksheet verifyEntity = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals("Admin override description", verifyEntity.getDescription());
   }
 }

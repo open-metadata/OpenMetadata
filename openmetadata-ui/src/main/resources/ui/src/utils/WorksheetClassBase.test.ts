@@ -26,10 +26,8 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { Worksheet } from '../generated/entity/data/worksheet';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import worksheetClassBase, {
-  WorksheetClassBase,
-  WorksheetDetailPageTabProps,
-} from './WorksheetClassBase';
+import worksheetClassBase, { WorksheetClassBase } from './WorksheetClassBase';
+import { WorksheetDetailPageTabProps } from './WorksheetDetailsUtils';
 
 // Mock dependencies
 jest.mock('../constants/CustomizeWidgets.constants', () => ({
@@ -82,6 +80,7 @@ jest.mock('./CustomizePage/CustomizePageUtils', () => ({
       [EntityTabs.SCHEMA]: 'Schema',
       [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
       [EntityTabs.LINEAGE]: 'Lineage',
+      [EntityTabs.CONTRACT]: 'Contract',
       [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
     };
 
@@ -202,7 +201,7 @@ describe('WorksheetClassBase', () => {
     it('should return correct tab configuration', () => {
       const result = worksheetClass.getWorksheetDetailPageTabsIds();
 
-      expect(result).toHaveLength(4);
+      expect(result).toHaveLength(5);
       expect(result[0]).toEqual({
         id: EntityTabs.SCHEMA,
         name: EntityTabs.SCHEMA,
@@ -225,6 +224,13 @@ describe('WorksheetClassBase', () => {
         editable: false,
       });
       expect(result[3]).toEqual({
+        id: EntityTabs.CONTRACT,
+        name: EntityTabs.CONTRACT,
+        displayName: 'Contract',
+        layout: [],
+        editable: false,
+      });
+      expect(result[4]).toEqual({
         id: EntityTabs.CUSTOM_PROPERTIES,
         name: EntityTabs.CUSTOM_PROPERTIES,
         displayName: 'Custom Properties',

@@ -86,11 +86,22 @@ def split_column_name(column_name: str) -> List[str]:
     """
     Split a column name into its components.
     This is used for passing column names to the analyzer as context.
+    Handles both delimiters (_-. /) and camelCase.
     """
-    # Split by common delimiters
+    # First split by common delimiters
     delimiters = ["_", "-", " ", ".", "/"]
     regex_pattern = "|".join(map(re.escape, delimiters))
-    return list(re.split(regex_pattern, column_name.lower()))
+    parts = re.split(regex_pattern, column_name)
+
+    # Then split each part by camelCase
+    result: List[str] = []
+    for part in parts:
+        if not part:
+            continue
+        camel_parts = re.sub("([a-z])([A-Z])", r"\1 \2", part).split()
+        result.extend([p.lower() for p in camel_parts])
+
+    return result
 
 
 def extract_pii_from_column_names(

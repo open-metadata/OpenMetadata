@@ -1,9 +1,0 @@
-{
-  "name": "system-notification-thread-created",
-  "fullyQualifiedName": "system-notification-thread-created",
-  "displayName": "Thread Created Notification",
-  "description": "System default template for new conversation/task/announcement creation notifications",
-  "provider": "system",
-  "templateSubject": "New {{thread.type}} - {{entity.fullyQualifiedName}}",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}{{#if (eq thread.type 'Conversation')}}[{{publisherName}}] <b>@{{thread.createdBy}}</b> started a conversation for asset <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a><br/>{{thread.message}}{{else if (eq thread.type 'Task')}}[{{publisherName}}] <b>@{{thread.createdBy}}</b> created a Task for {{entity.entityType}} <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a><br/><b>Task Type:</b> {{thread.task.type}}<br/><b>Assignees:</b> {{#each thread.task.assignees}}@{{name}}{{#unless @last}}, {{/unless}}{{/each}}<br/><b>Current Status:</b> {{thread.task.status}}{{else if (eq thread.type 'Announcement')}}[{{publisherName}}] <b>@{{thread.createdBy}}</b> posted an Announcement<br/><b>Description:</b> {{thread.announcement.description}}<br/><b>Started At:</b> {{formatDate thread.announcement.startTime}}<br/><b>Ends At:</b> {{formatDate thread.announcement.endTime}}{{/if}}{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
-}

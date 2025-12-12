@@ -63,3 +63,72 @@ export const buildDomainFilter = (
     },
   };
 };
+
+/**
+ * Interface for term filter configuration
+ */
+interface TermFilter {
+  field: string;
+  value: string;
+  negate?: boolean;
+}
+
+/**
+ * Builds an Elasticsearch query filter for term conditions
+ *
+ * @example
+ * ```typescript
+ * // Single term filter
+ * const filter = buildTermQuery({ field: 'classification.name.keyword', value: 'tier' });
+ *
+ * // Multiple must filters
+ * const filter = buildTermQuery([
+ *   { field: 'classification.name.keyword', value: 'tier' }
+ * ]);
+ *
+ * // With negation (must_not)
+ * const filter = buildTermQuery([
+ *   { field: 'classification.name.keyword', value: 'tier', negate: true },
+ *   { field: 'classification.name.keyword', value: 'certification', negate: true }
+ * ]);
+ * ```
+ *
+ * @param filters - Single filter or array of term filters
+ * @param returnAsString - If true, returns stringified JSON; otherwise returns object
+ * @returns Elasticsearch query filter as object or JSON string
+ */
+export const buildTermQuery = (
+  filters: TermFilter | TermFilter[],
+  returnAsString = true
+): string | Record<string, unknown> => {
+  const filterArray = Array.isArray(filters) ? filters : [filters];
+
+  const must = filterArray
+    .filter((f) => !f.negate)
+    .map((f) => ({ term: { [f.field]: f.value } }));
+
+  const mustNot = filterArray
+    .filter((f) => f.negate)
+    .map((f) => ({ term: { [f.field]: f.value } }));
+
+  const boolQuery: Record<string, unknown> = {};
+
+  if (must.length === 1 && mustNot.length === 0) {
+    boolQuery.must = must[0];
+  } else if (must.length > 1 || mustNot.length > 0) {
+    if (must.length > 0) {
+      boolQuery.must = must.length === 1 ? must[0] : must;
+    }
+    if (mustNot.length > 0) {
+      boolQuery.must_not = mustNot.length === 1 ? mustNot[0] : mustNot;
+    }
+  }
+
+  const queryObject = {
+    query: {
+      bool: boolQuery,
+    },
+  };
+
+  return returnAsString ? JSON.stringify(queryObject) : queryObject;
+};

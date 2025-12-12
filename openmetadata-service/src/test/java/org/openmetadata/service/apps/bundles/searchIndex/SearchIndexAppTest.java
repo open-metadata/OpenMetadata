@@ -60,7 +60,8 @@ import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.DefaultRecreateHandler;
-import org.openmetadata.service.search.RecreateIndexHandler;
+import org.openmetadata.service.search.EntityReindexContext;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -201,7 +202,7 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
 
     searchIndexApp.init(testApp);
 
-    RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
+    ReindexContext context = new ReindexContext();
     context.add(
         "table",
         "cluster_table",
@@ -238,24 +239,27 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
         "dashboard_search_index_rebuild_old",
         Set.of("dashboard", "dashboard_search_index", "all", "dataAsset"));
 
-    SearchClient<Void> client = aliasState.toMock();
+    SearchClient client = aliasState.toMock();
     SearchRepository repo = mock(SearchRepository.class);
     when(repo.getSearchClient()).thenReturn(client);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(repo);
 
-      RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
-      context.add(
-          "table",
-          "table_search_index",
-          "table_search_index_rebuild_old",
-          "table_search_index_rebuild_new",
-          Set.of("table", "table_search_index", "all", "dataAsset"),
-          "table",
-          List.of("all", "dataAsset", "database", "databaseSchema", "databaseService"));
+      EntityReindexContext entityReindexContext =
+          EntityReindexContext.builder()
+              .entityType("table")
+              .canonicalIndex("table_search_index")
+              .originalIndex("table_search_index_rebuild_old")
+              .activeIndex("table_search_index_rebuild_old")
+              .stagedIndex("table_search_index_rebuild_new")
+              .existingAliases(Set.of("table", "table_search_index", "all", "dataAsset"))
+              .canonicalAliases("table")
+              .parentAliases(
+                  Set.of("all", "dataAsset", "database", "databaseSchema", "databaseService"))
+              .build();
 
-      new DefaultRecreateHandler().finalizeReindex(context, true);
+      new DefaultRecreateHandler().finalizeReindex(entityReindexContext, true);
     }
 
     assertTrue(aliasState.deletedIndices.contains("table_search_index_rebuild_old"));
@@ -285,24 +289,26 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
         Set.of("table", "table_search_index", "all", "dataAsset"));
     aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
-    SearchClient<Void> client = aliasState.toMock();
+    SearchClient client = aliasState.toMock();
     SearchRepository repo = mock(SearchRepository.class);
     when(repo.getSearchClient()).thenReturn(client);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(repo);
 
-      RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
-      context.add(
-          "table",
-          "table_search_index",
-          "table_search_index_rebuild_old1",
-          "table_search_index_rebuild_new",
-          Set.of("table", "table_search_index", "all", "dataAsset"),
-          "table",
-          List.of("all", "dataAsset"));
+      EntityReindexContext entityReindexContext =
+          EntityReindexContext.builder()
+              .entityType("table")
+              .canonicalIndex("table_search_index")
+              .originalIndex("table_search_index_rebuild_old1")
+              .activeIndex("table_search_index_rebuild_old1")
+              .stagedIndex("table_search_index_rebuild_new")
+              .existingAliases(Set.of("table", "table_search_index", "all", "dataAsset"))
+              .canonicalAliases("table")
+              .parentAliases(Set.of("all", "dataAsset"))
+              .build();
 
-      new DefaultRecreateHandler().finalizeReindex(context, true);
+      new DefaultRecreateHandler().finalizeReindex(entityReindexContext, true);
     }
 
     assertTrue(aliasState.deletedIndices.contains("table_search_index_rebuild_old1"));
@@ -1052,9 +1058,8 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
       indexAliases.put(indexName, new HashSet<>(aliases));
     }
 
-    SearchClient<Void> toMock() {
-      @SuppressWarnings("unchecked")
-      SearchClient<Void> client = mock(SearchClient.class);
+    SearchClient toMock() {
+      SearchClient client = mock(SearchClient.class);
 
       lenient().when(client.isClientAvailable()).thenReturn(true);
       lenient()

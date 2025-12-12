@@ -25,10 +25,8 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { File } from '../generated/entity/data/file';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import fileClassBase, {
-  FileClassBase,
-  FileDetailPageTabProps,
-} from './FileClassBase';
+import fileClassBase, { FileClassBase } from './FileClassBase';
+import { FileDetailPageTabProps } from './FileDetailsUtils';
 
 // Mock dependencies
 jest.mock('../constants/CustomizeWidgets.constants', () => ({
@@ -77,6 +75,7 @@ jest.mock('./CustomizePage/CustomizePageUtils', () => ({
       [EntityTabs.OVERVIEW]: 'Overview',
       [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
       [EntityTabs.LINEAGE]: 'Lineage',
+      [EntityTabs.CONTRACT]: 'Contract',
       [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
     };
 
@@ -184,7 +183,7 @@ describe('FileClassBase', () => {
     it('should return correct tab configuration', () => {
       const result = fileClass.getFileDetailPageTabsIds();
 
-      expect(result).toHaveLength(4);
+      expect(result).toHaveLength(5);
       expect(result[0]).toEqual({
         id: EntityTabs.OVERVIEW,
         name: EntityTabs.OVERVIEW,
@@ -207,6 +206,13 @@ describe('FileClassBase', () => {
         editable: false,
       });
       expect(result[3]).toEqual({
+        id: EntityTabs.CONTRACT,
+        name: EntityTabs.CONTRACT,
+        displayName: 'Contract',
+        layout: [],
+        editable: false,
+      });
+      expect(result[4]).toEqual({
         id: EntityTabs.CUSTOM_PROPERTIES,
         name: EntityTabs.CUSTOM_PROPERTIES,
         displayName: 'Custom Properties',

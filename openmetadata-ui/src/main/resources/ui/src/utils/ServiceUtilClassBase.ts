@@ -63,6 +63,7 @@ import {
   GOOGLE_DRIVE,
   GRAFANA,
   GREENPLUM,
+  HEX,
   HIVE,
   IBMDB2,
   ICEBERGE,
@@ -112,6 +113,7 @@ import {
   SYNAPSE,
   TABLEAU,
   TERADATA,
+  TIMESCALE,
   TOPIC_DEFAULT,
   TRINO,
   UNITYCATALOG,
@@ -134,8 +136,6 @@ import {
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
-import { ConfigObject } from '../generated/entity/automations/testServiceConnection';
-import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
@@ -146,9 +146,12 @@ import { MessagingServiceType } from '../generated/entity/data/topic';
 import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
-import { ServiceType } from '../generated/entity/services/serviceType';
 import { SearchSourceAlias } from '../interface/search.interface';
-import { ConfigData, ServicesType } from '../interface/service.interface';
+import {
+  ConfigData,
+  ExtraInfoType,
+  ServicesType,
+} from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
@@ -159,7 +162,6 @@ import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
 import { getSecurityConfig } from './SecurityServiceUtils';
-import { getTestConnectionName } from './ServiceUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
@@ -185,6 +187,8 @@ class ServiceUtilClassBase {
     PipelineServiceType.Snowplow,
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
+    DatabaseServiceType.ServiceNow,
+    MetadataServiceType.Collibra,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -260,24 +264,6 @@ class ServiceUtilClassBase {
     return this.serviceDetails;
   }
 
-  public getAddWorkflowData(
-    connectionType: string,
-    serviceType: ServiceType,
-    serviceName?: string,
-    configData?: ConfigData
-  ) {
-    return {
-      name: getTestConnectionName(connectionType),
-      workflowType: WorkflowType.TestConnection,
-      request: {
-        connection: { config: configData as ConfigObject },
-        serviceType,
-        connectionType,
-        serviceName,
-      },
-    };
-  }
-
   public getServiceConfigData(data: {
     serviceName: string;
     serviceType: string;
@@ -303,7 +289,8 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceExtraInfo(_data?: ServicesType): any {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public getServiceExtraInfo(_data?: ServicesType): ExtraInfoType | null {
     return null;
   }
 
@@ -551,6 +538,9 @@ class ServiceUtilClassBase {
       case this.DashboardServiceTypeSmallCase.Tableau:
         return TABLEAU;
 
+      case this.DashboardServiceTypeSmallCase.Hex:
+        return HEX;
+
       case this.DashboardServiceTypeSmallCase.Redash:
         return REDASH;
 
@@ -682,6 +672,9 @@ class ServiceUtilClassBase {
 
       case this.DriveServiceTypeSmallCase.GoogleDrive:
         return GOOGLE_DRIVE;
+
+      case this.DatabaseServiceTypeSmallCase.Timescale:
+        return TIMESCALE;
 
       default: {
         let logo;
@@ -839,6 +832,7 @@ class ServiceUtilClassBase {
     return getDriveConfig(type);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getInsightsTabWidgets(_: ServiceTypes) {
     const widgets: Record<string, React.ComponentType<any>> = {
       AgentsStatusWidget,

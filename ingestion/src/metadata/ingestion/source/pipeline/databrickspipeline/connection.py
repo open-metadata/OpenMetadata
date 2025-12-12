@@ -55,6 +55,7 @@ def get_connection(connection: DatabricksPipelineConnection) -> DatabricksClient
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
+
     return DatabricksClient(connection, engine)
 
 

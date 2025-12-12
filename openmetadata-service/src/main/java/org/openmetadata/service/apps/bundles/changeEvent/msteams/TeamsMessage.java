@@ -7,13 +7,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.openmetadata.service.notifications.channels.NotificationMessage;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class TeamsMessage {
+public class TeamsMessage implements NotificationMessage {
   @JsonProperty("type")
   private String type;
 
@@ -123,6 +124,25 @@ public class TeamsMessage {
 
     @JsonProperty("separator")
     private boolean separator;
+
+    @JsonProperty("fontType")
+    private String fontType;
+  }
+
+  @Getter
+  @Setter
+  @AllArgsConstructor
+  @NoArgsConstructor
+  @Builder
+  public static class Container implements TeamsMessage.BodyItem {
+    @JsonProperty("type")
+    private String type;
+
+    @JsonProperty("style")
+    private String style;
+
+    @JsonProperty("items")
+    private List<TeamsMessage.BodyItem> items;
   }
 
   @Getter

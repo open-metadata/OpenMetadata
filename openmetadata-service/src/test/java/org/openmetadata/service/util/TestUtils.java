@@ -50,13 +50,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
@@ -65,6 +59,7 @@ import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.MetadataConnection;
@@ -78,6 +73,7 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.llm.OpenAIConnection;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
@@ -90,6 +86,7 @@ import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
 import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.LLMConnection;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.schema.type.PipelineConnection;
@@ -197,6 +194,13 @@ public final class TestUtils {
           .withConfig(
               new RestConnection()
                   .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json")));
+
+  public static final LLMConnection OPENAI_CONNECTION =
+      new LLMConnection()
+          .withConfig(
+              new OpenAIConnection()
+                  .withApiKey("test-api-key")
+                  .withBaseURL("https://api.openai.com/v1"));
 
   public static final MetadataConnection AMUNDSEN_CONNECTION =
       new MetadataConnection()
@@ -1039,5 +1043,83 @@ public final class TestUtils {
     form.param("contentType", contentType);
     form.param("size", String.valueOf(size));
     return form;
+  }
+
+  public static <T, L extends ResultList<T>> List<T> getAllPages(
+      WebTarget target,
+      Class<L> clazz,
+      String startQueryParam,
+      String limitQueryParam,
+      Integer pageSize,
+      Map<String, String> headers)
+      throws HttpResponseException {
+    List<T> results = new ArrayList<>();
+    String after = null;
+
+    do {
+      WebTarget pageTarget = target.queryParam(limitQueryParam, pageSize);
+      if (after != null) {
+        pageTarget = pageTarget.queryParam(startQueryParam, after);
+      }
+
+      L resultList = get(pageTarget, clazz, headers);
+
+      if (resultList == null || resultList.getData() == null) {
+        break;
+      }
+
+      results.addAll(resultList.getData());
+      after = resultList.getPaging() != null ? resultList.getPaging().getAfter() : null;
+
+    } while (after != null);
+
+    return results;
+  }
+
+  /**
+   * Wait for the SearchIndexingApplication reindex job to complete by polling app run status.
+   *
+   * @param target WebTarget for the base resource URL
+   * @param authHeaders authentication headers
+   * @param timeoutMs maximum time to wait in milliseconds
+   */
+  public static void waitForReindexCompletion(
+      WebTarget target, Map<String, String> authHeaders, long timeoutMs)
+      throws InterruptedException {
+    long startTime = System.currentTimeMillis();
+    long pollIntervalMs = 1000;
+
+    while (System.currentTimeMillis() - startTime < timeoutMs) {
+      AppRunRecord latestRun = getLatestAppRun(target, "SearchIndexingApplication", authHeaders);
+      if (latestRun != null) {
+        AppRunRecord.Status status = latestRun.getStatus();
+        if (status == AppRunRecord.Status.SUCCESS
+            || status == AppRunRecord.Status.COMPLETED
+            || status == AppRunRecord.Status.FAILED
+            || status == AppRunRecord.Status.ACTIVE_ERROR) {
+          return;
+        }
+      }
+      Thread.sleep(pollIntervalMs);
+    }
+    throw new RuntimeException("Reindex did not complete within " + timeoutMs + "ms timeout");
+  }
+
+  /**
+   * Get the latest app run record for a given application.
+   *
+   * @param target WebTarget for the base resource URL
+   * @param appName name of the application
+   * @param authHeaders authentication headers
+   * @return AppRunRecord or null if not found
+   */
+  public static AppRunRecord getLatestAppRun(
+      WebTarget target, String appName, Map<String, String> authHeaders) {
+    try {
+      WebTarget appTarget = target.path(String.format("apps/name/%s/runs/latest", appName));
+      return get(appTarget, AppRunRecord.class, authHeaders);
+    } catch (HttpResponseException e) {
+      return null;
+    }
   }
 }

@@ -610,4 +610,57 @@ describe('WorksheetVersion', () => {
 
     expect(screen.getAllByTestId('tags-container').length).toBeGreaterThan(0);
   });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    it('should render custom properties tab when ViewCustomFields is true', () => {
+      const permissionsWithViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: true,
+      };
+
+      renderWorksheetVersion({
+        entityPermissions: permissionsWithViewCustomFields,
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+    });
+
+    it('should render custom properties tab when ViewCustomFields is false', () => {
+      const permissionsWithoutViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+        ViewCustomFields: false,
+      };
+
+      renderWorksheetVersion({
+        entityPermissions: permissionsWithoutViewCustomFields,
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+    });
+
+    it('should render custom properties tab when ViewCustomFields is undefined', () => {
+      const permissionsWithUndefinedViewCustomFields = {
+        ...ENTITY_PERMISSIONS,
+      };
+      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+
+      renderWorksheetVersion({
+        entityPermissions: permissionsWithUndefinedViewCustomFields,
+      });
+
+      const customPropertyTabLabel = screen.getByText(
+        'label.custom-property-plural'
+      );
+
+      expect(customPropertyTabLabel).toBeInTheDocument();
+    });
+  });
 });

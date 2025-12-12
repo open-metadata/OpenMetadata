@@ -28,6 +28,11 @@ export interface DatabricksPipelineConnection {
      */
     httpPath?: string;
     /**
+     * Number of days to look back when fetching lineage data from Databricks system tables
+     * (system.access.table_lineage and system.access.column_lineage). Default is 90 days.
+     */
+    lineageLookBackDays?: number;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?:      FilterPattern;

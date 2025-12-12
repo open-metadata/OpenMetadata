@@ -17,8 +17,12 @@ import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contra
 import { ReactComponent as ContractRunningIcon } from '../../assets/svg/ic-contract-running.svg';
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import { DataContractProcessedResultCharts } from '../../components/DataContract/ContractExecutionChart/ContractExecutionChart.interface';
-import { SEMANTIC_OPERATORS } from '../../constants/DataContract.constants';
+import {
+  EDataContractTab,
+  SEMANTIC_TAG_OPERATORS,
+} from '../../constants/DataContract.constants';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import {
@@ -29,6 +33,7 @@ import { DataContractResult } from '../../generated/entity/datacontract/dataCont
 import { formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
+import { getTermQuery } from '../SearchUtils';
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {
   return failed === 0 ? t('label.passed') : t('label.failed');
@@ -113,6 +118,22 @@ export const downloadContractYamlFile = (contract: DataContract) => {
   document.body.removeChild(element);
 };
 
+export const downloadContractAsODCSYaml = (
+  yamlContent: string,
+  contractName: string
+) => {
+  const element = document.createElement('a');
+  const file = new Blob([yamlContent], { type: 'application/yaml' });
+  element.textContent = 'download-file';
+  element.href = URL.createObjectURL(file);
+  element.download = `${contractName}.odcs.yaml`;
+  document.body.appendChild(element);
+  element.click();
+
+  URL.revokeObjectURL(element.href);
+  document.body.removeChild(element);
+};
+
 export const getDataContractStatusIcon = (status: ContractExecutionStatus) => {
   switch (status) {
     case ContractExecutionStatus.Failed:
@@ -135,6 +156,26 @@ export const ContractTestTypeLabelMap = {
   [TestCaseType.column]: i18n.t('label.column'),
 };
 
+export const getContractTabLabel = (tabKey: EDataContractTab): string => {
+  switch (tabKey) {
+    case EDataContractTab.TERMS_OF_SERVICE:
+      return i18n.t('label.terms-of-service');
+    case EDataContractTab.SCHEMA:
+      return i18n.t('label.schema');
+    case EDataContractTab.SEMANTICS:
+      return i18n.t('label.semantic-plural');
+    case EDataContractTab.QUALITY:
+      return i18n.t('label.quality');
+    case EDataContractTab.SECURITY:
+      return i18n.t('label.security');
+    case EDataContractTab.SLA:
+      return i18n.t('label.sla');
+
+    default:
+      return i18n.t('label.contract-detail-plural');
+  }
+};
+
 export const getSematicRuleFields = () => {
   const allFields = jsonLogicSearchClassBase.getCommonConfig();
 
@@ -149,14 +190,17 @@ export const getSematicRuleFields = () => {
         type: 'multiselect',
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.TAG,
             fieldName: 'fullyQualifiedName',
             fieldLabel: 'name',
-            queryFilter:
-              'NOT fullyQualifiedName:Certification.* AND NOT fullyQualifiedName:Tier.*',
+            queryFilter: getTermQuery({}, 'must_not', undefined, {
+              wildcardMustNotQueries: {
+                fullyQualifiedName: ['Certification.*', 'Tier.*'],
+              },
+            }),
           }),
           useAsyncSearch: true,
         },
@@ -176,7 +220,7 @@ export const getSematicRuleFields = () => {
         type: 'multiselect',
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
@@ -201,7 +245,7 @@ export const getSematicRuleFields = () => {
         type: 'multiselect',
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
           useAsyncSearch: true,
@@ -212,6 +256,8 @@ export const getSematicRuleFields = () => {
   };
 
   delete allFields[EntityReferenceFields.EXTENSION];
+  delete allFields[EntityReferenceFields.SERVICE];
+  delete allFields[EntityReferenceFields.NAME];
 
   allFields[EntityReferenceFields.TAG] = tagField;
   allFields[EntityReferenceFields.GLOSSARY_TERM] = glossaryTermField;
@@ -236,6 +282,7 @@ export const processContractExecutionData = (
       failed: status === ContractExecutionStatus.Failed ? 1 : 0,
       success: status === ContractExecutionStatus.Success ? 1 : 0,
       aborted: status === ContractExecutionStatus.Aborted ? 1 : 0,
+      running: status === ContractExecutionStatus.Running ? 1 : 0,
       data: item,
     };
   });
@@ -297,14 +344,14 @@ export const generateMonthTickPositions = (
   const uniqueMonths = new Set();
   const tickPositions: string[] = [];
 
-  processedData.forEach((item) => {
+  for (const item of processedData) {
     const monthKey = new Date(item.displayTimestamp).toISOString().slice(0, 7); // YYYY-MM format
     if (!uniqueMonths.has(monthKey)) {
       uniqueMonths.add(monthKey);
       // Use the first occurrence of each month as the tick position
       tickPositions.push(item.name); // Use the unique name for the tick
     }
-  });
+  }
 
   return tickPositions;
 };
@@ -325,4 +372,39 @@ export const generateSelectOptionsFromString = (
     label: t(`label.${value}`),
     value: value, // Use the string value as the actual value (hour, day, week, etc.)
   }));
+};
+
+export const getDataContractTabByEntity = (entityType: EntityType) => {
+  switch (entityType) {
+    case EntityType.TABLE:
+      return [
+        EDataContractTab.CONTRACT_DETAIL,
+        EDataContractTab.TERMS_OF_SERVICE,
+        EDataContractTab.SCHEMA,
+        EDataContractTab.SEMANTICS,
+        EDataContractTab.SECURITY,
+        EDataContractTab.QUALITY,
+        EDataContractTab.SLA,
+      ];
+    case EntityType.TOPIC:
+    case EntityType.API_ENDPOINT:
+    case EntityType.DASHBOARD_DATA_MODEL:
+      return [
+        EDataContractTab.CONTRACT_DETAIL,
+        EDataContractTab.TERMS_OF_SERVICE,
+        EDataContractTab.SCHEMA,
+        EDataContractTab.SEMANTICS,
+        EDataContractTab.SECURITY,
+        EDataContractTab.SLA,
+      ];
+
+    default:
+      return [
+        EDataContractTab.CONTRACT_DETAIL,
+        EDataContractTab.TERMS_OF_SERVICE,
+        EDataContractTab.SEMANTICS,
+        EDataContractTab.SECURITY,
+        EDataContractTab.SLA,
+      ];
+  }
 };

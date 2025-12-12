@@ -46,6 +46,11 @@ def _(*_, **__):
     return "SELECT SESSION_USER()"
 
 
+@compiles(ConnTestFn, Dialects.Databricks)
+def _(*_, **__):
+    return "SELECT '42'"
+
+
 @compiles(ConnTestFn, Dialects.Db2)
 @compiles(ConnTestFn, Dialects.IbmDbSa)
 @compiles(ConnTestFn, Dialects.Ibmi)

@@ -62,7 +62,6 @@ export const calculateSystemMetrics = (
   stackId?: string
 ) => {
   const operationMetrics: MetricChartType['data'] = [];
-  const operationDateMetrics: MetricChartType['data'] = [];
   const latestOperations = new Map<string, SystemProfile>();
 
   // reverse the profiler data to show the latest data at the top
@@ -83,24 +82,13 @@ export const calculateSystemMetrics = (
       timestamp: Number(data.timestamp),
       [data.operation ?? 'value']: data.rowsAffected,
     });
-    operationDateMetrics.push({
-      name: timestamp,
-      timestamp: Number(data.timestamp),
-      data: data.rowsAffected,
-      [data.operation ?? 'value']: 5,
-    });
   }
 
   const operationMetricsInfo = currentMetrics.information.map((item) => ({
     ...item,
     stackId,
     latestValue: latestOperations.get(item.dataKey)?.rowsAffected,
-  }));
-
-  const operationDateMetricsInfo = currentMetrics.information.map((item) => ({
-    ...item,
-    stackId,
-    latestValue: latestOperations.get(item.dataKey)?.timestamp
+    extra: latestOperations.get(item.dataKey)?.timestamp
       ? customFormatDateTime(
           latestOperations.get(item.dataKey)?.timestamp,
           DATE_TIME_12_HOUR_FORMAT
@@ -109,14 +97,8 @@ export const calculateSystemMetrics = (
   }));
 
   return {
-    operationMetrics: {
-      data: operationMetrics,
-      information: operationMetricsInfo,
-    },
-    operationDateMetrics: {
-      data: operationDateMetrics,
-      information: operationDateMetricsInfo,
-    },
+    data: operationMetrics,
+    information: operationMetricsInfo,
   };
 };
 

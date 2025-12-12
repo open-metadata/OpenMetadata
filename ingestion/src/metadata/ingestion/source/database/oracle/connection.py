@@ -48,7 +48,9 @@ from metadata.ingestion.connections.test_connections import test_connection_db_c
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.oracle.queries import (
     CHECK_ACCESS_TO_ALL,
+    TEST_MATERIALIZED_VIEWS,
     TEST_ORACLE_GET_STORED_PACKAGES,
+    TEST_QUERY_HISTORY,
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
@@ -99,6 +101,8 @@ class OracleConnection(BaseConnection[OracleConnectionConfig, Engine]):
         test_conn_queries = {
             "CheckAccess": CHECK_ACCESS_TO_ALL,
             "PackageAccess": TEST_ORACLE_GET_STORED_PACKAGES,
+            "GetMaterializedViews": TEST_MATERIALIZED_VIEWS,
+            "GetQueryHistory": TEST_QUERY_HISTORY,
         }
 
         return test_connection_db_common(

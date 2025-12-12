@@ -149,12 +149,9 @@ public class ClassificationRepository extends EntityRepository<Classification> {
         hashToFqnMap.put(hash, fqn);
       }
 
-      // Convert the list to JSON array for MySQL
-      String jsonHashes = JsonUtils.pojoToJson(classificationHashes);
-
-      // Use the DAO method for database-specific query
+      // Use the DAO method with simple IN clause - much more efficient
       List<Pair<String, Integer>> results =
-          daoCollection.classificationDAO().bulkGetTermCounts(jsonHashes, classificationHashes);
+          daoCollection.classificationDAO().bulkGetTermCounts(classificationHashes);
 
       // Process results
       for (Pair<String, Integer> result : results) {
@@ -289,6 +286,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
       recordChange("disabled", original.getDisabled(), updated.getDisabled());
+      recordChange(
+          "autoClassificationConfig",
+          original.getAutoClassificationConfig(),
+          updated.getAutoClassificationConfig(),
+          true);
       updateName(original, updated);
     }
 

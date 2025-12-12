@@ -13,11 +13,18 @@
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import { Column, DataType } from '../../../generated/entity/data/table';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ContractSchemaTable from './ContractSchemaTable.component';
 
 jest.mock('../../common/StatusBadge/StatusBadgeV2.component', () => {
   return jest.fn().mockImplementation(() => <p>StatusBadgeV2</p>);
 });
+
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => ({
+    entityType: 'table',
+  })),
+}));
 
 const mockSchemaDetail: Column[] = [
   {
@@ -55,8 +62,40 @@ describe('ContractSchemaTable', () => {
     expect(screen.getByText('label.name')).toBeInTheDocument();
     expect(screen.getByText('label.type')).toBeInTheDocument();
     expect(screen.getByText('label.constraint-plural')).toBeInTheDocument();
-
+    expect(screen.queryByText('label.column-status')).not.toBeInTheDocument();
     expect(screen.queryByText('StatusBadgeV2')).not.toBeInTheDocument();
+  });
+
+  it('should render ColumnStatus column when latestSchemaValidationResult present', () => {
+    render(
+      <ContractSchemaTable
+        latestSchemaValidationResult={{
+          failed: 1,
+          failedFields: ['name'],
+          passed: 5,
+          total: 6,
+        }}
+        schemaDetail={mockSchemaDetail}
+      />
+    );
+
+    expect(screen.getByText('label.column-status')).toBeInTheDocument();
+    expect(screen.getByTestId('schema-column-name-failed')).toBeInTheDocument();
+    expect(screen.getByTestId('schema-column-id-success')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('schema-column-email-success')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('schema-column-contract-success')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('schema-column-property-success')
+    ).toBeInTheDocument();
+
+    // Since being on second page
+    expect(
+      screen.queryByTestId('schema-column-business-success')
+    ).not.toBeInTheDocument();
   });
 
   it('should render schema table with pagination', () => {
@@ -78,5 +117,17 @@ describe('ContractSchemaTable', () => {
     );
 
     expect(screen.queryByText('StatusBadgeV2')).toBeInTheDocument();
+  });
+
+  it('should render not render Constraint Column when not table entity', () => {
+    (useRequiredParams as jest.Mock).mockReturnValue({
+      entityType: 'topic',
+    });
+
+    render(<ContractSchemaTable schemaDetail={mockSchemaDetail} />);
+
+    expect(
+      screen.queryByText('label.constraint-plural')
+    ).not.toBeInTheDocument();
   });
 });

@@ -1,9 +1,0 @@
-{
-  "name": "system-notification-logical-test-case-added",
-  "fullyQualifiedName": "system-notification-logical-test-case-added",
-  "displayName": "Logical Test Case Added Notification",
-  "description": "System default template for logical test case addition notifications",
-  "provider": "system",
-  "templateSubject": "Test cases added to {{entity.fullyQualifiedName}}",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}[{{publisherName}}] <b>{{event.userName}}</b> added logical test cases to <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a>{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
-}

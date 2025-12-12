@@ -52,7 +52,17 @@ public class BotRepository extends EntityRepository<Bot> {
 
   @Override
   public void prepare(Bot entity, boolean update) {
-    User user = Entity.getEntity(entity.getBotUser(), "", Include.ALL);
+    EntityReference botUserRef = entity.getBotUser();
+    if (botUserRef == null) {
+      // Race condition detected: Retry by fetching the relationship directly from the database
+      botUserRef = getBotUser(entity);
+    }
+    if (botUserRef == null) {
+      // This should never happen
+      throw new IllegalStateException(
+          String.format("Bot entity [%s] is missing required botUser reference", entity.getId()));
+    }
+    User user = Entity.getEntity(botUserRef, "", Include.ALL);
     entity.withBotUser(user.getEntityReference());
   }
 

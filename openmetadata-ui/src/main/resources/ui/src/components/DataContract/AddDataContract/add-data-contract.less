@@ -226,20 +226,19 @@
 
     input[type='text'],
     .ant-picker {
-      padding: 8px 14px;
       color: @grey-700;
       font-weight: 500;
+      min-height: 40px;
       border: 1px solid @grey-300;
       border-radius: 8px;
       box-shadow: 0 1px 2px 0px @grey-27;
     }
 
     .ant-input-number-input {
-      padding: 8px 14px;
       color: @grey-700;
       font-weight: 500;
       border-radius: 8px;
-      min-height: 38px;
+      min-height: 40px;
       box-shadow: 0 1px 2px 0px @grey-27;
     }
 
@@ -247,7 +246,6 @@
     .ant-mentions {
       border-radius: 8px;
       border: 1px solid @grey-300;
-      padding: 0 6px;
       color: @grey-700;
       min-height: 40px;
       box-shadow: 0 1px 2px 0px @grey-27;
@@ -265,18 +263,20 @@
       }
     }
 
-    .query-builder-container {
-      .ant-select-selector,
-      .ant-mentions {
-        padding: 4px 12px;
-      }
+    .ant-select-selection-placeholder,
+    .ant-select-selection-item {
+      line-height: 40px;
+    }
 
-      .ant-select-multiple {
-        .ant-select-selector {
-          padding: 0 6px;
+    .ant-select-selection-overflow {
+      .ant-select-selection-overflow-item {
+        .ant-select-selection-item {
+          line-height: 22px;
         }
       }
+    }
 
+    .query-builder-container {
       .group--field {
         align-self: baseline;
       }
@@ -327,7 +327,6 @@
 
 .semantic-rule-editor-view-only {
   input[type='text'] {
-    padding: 8px 14px;
     color: @grey-700;
     box-shadow: 0px 1px 2px 0px @grey-27;
     border: 1px solid @grey-300;
@@ -337,7 +336,6 @@
   .ant-select-selector,
   .ant-mentions {
     border: 1px solid @grey-300;
-    padding: 4px 12px !important;
     color: @grey-700;
     font-weight: 500;
     min-height: 40px !important;
@@ -346,7 +344,6 @@
     .ant-select-selector,
     .ant-mentions {
       border: 1px solid @grey-300;
-      padding: 4px 12px !important;
       color: @grey-700;
       min-height: 40px !important;
       box-shadow: 0 1px 2px 0px @grey-27;

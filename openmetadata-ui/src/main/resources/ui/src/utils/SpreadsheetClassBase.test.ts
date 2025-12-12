@@ -28,8 +28,8 @@ import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import spreadsheetClassBase, {
   SpreadsheetClassBase,
-  SpreadsheetDetailPageTabProps,
 } from './SpreadsheetClassBase';
+import { SpreadsheetDetailPageTabProps } from './SpreadsheetDetailsUtils';
 
 // Mock dependencies
 jest.mock('../constants/CustomizeWidgets.constants', () => ({
@@ -77,6 +77,7 @@ jest.mock('./CustomizePage/CustomizePageUtils', () => ({
       [EntityTabs.WORKSHEETS]: 'Worksheets',
       [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
       [EntityTabs.LINEAGE]: 'Lineage',
+      [EntityTabs.CONTRACT]: 'Contract',
       [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
     };
 
@@ -181,6 +182,7 @@ describe('SpreadsheetClassBase', () => {
           [EntityTabs.WORKSHEETS]: 'Spreadsheet Worksheets',
           [EntityTabs.ACTIVITY_FEED]: 'Activity Feed',
           [EntityTabs.LINEAGE]: 'Lineage',
+          [EntityTabs.CONTRACT]: 'Contract',
           [EntityTabs.CUSTOM_PROPERTIES]: 'Custom Properties',
         } as Record<string, string>,
       };
@@ -198,7 +200,7 @@ describe('SpreadsheetClassBase', () => {
     it('should return correct tab configuration', () => {
       const result = spreadsheetClass.getSpreadsheetDetailPageTabsIds();
 
-      expect(result).toHaveLength(4);
+      expect(result).toHaveLength(5);
       expect(result[0]).toEqual({
         id: EntityTabs.WORKSHEETS,
         name: EntityTabs.WORKSHEETS,
@@ -221,6 +223,13 @@ describe('SpreadsheetClassBase', () => {
         editable: false,
       });
       expect(result[3]).toEqual({
+        id: EntityTabs.CONTRACT,
+        name: EntityTabs.CONTRACT,
+        displayName: 'Contract',
+        layout: [],
+        editable: false,
+      });
+      expect(result[4]).toEqual({
         id: EntityTabs.CUSTOM_PROPERTIES,
         name: EntityTabs.CUSTOM_PROPERTIES,
         displayName: 'Custom Properties',
