@@ -77,7 +77,24 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  public void prepare(App entity, boolean update) {}
+  public void prepare(App entity, boolean update) {
+    // Encrypt sensitive fields in appConfiguration before saving
+    if (entity.getAppConfiguration() != null && entity.getClassName() != null) {
+      try {
+        org.openmetadata.service.apps.ApplicationHandler handler =
+            org.openmetadata.service.apps.ApplicationHandler.getInstance();
+        if (handler != null) {
+          App encryptedApp =
+              handler.appWithEncryptedAppConfiguration(
+                  entity, Entity.getCollectionDAO(), Entity.getSearchRepository());
+          entity.setAppConfiguration(encryptedApp.getAppConfiguration());
+        }
+      } catch (Exception e) {
+        LOG.debug(
+            "Could not encrypt app configuration for {}: {}", entity.getName(), e.getMessage());
+      }
+    }
+  }
 
   public EntityReference createNewAppBot(App application) {
     String botName = String.format("%sBot", application.getName());
