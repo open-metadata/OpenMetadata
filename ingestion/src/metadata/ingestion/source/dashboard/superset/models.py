@@ -52,6 +52,13 @@ class SupersetDashboardCount(BaseModel):
     result: Optional[List[DashboardResult]] = []
 
 
+class FetchedDashboard(BaseModel):
+    """Model for individual dashboard fetch response"""
+
+    id: Optional[int] = None
+    result: Optional[DashboardResult] = DashboardResult()
+
+
 # Chart
 class ChartTable(BaseModel):
     default_endpoint: Optional[str] = None
