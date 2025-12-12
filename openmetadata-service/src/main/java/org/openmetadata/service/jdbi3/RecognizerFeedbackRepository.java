@@ -176,7 +176,7 @@ public class RecognizerFeedbackRepository {
                 .anyMatch(
                     tag ->
                         tag.getTagFQN().equals(tagFQN)
-                            && tag.getLabelType() == TagLabel.LabelType.AUTOMATED);
+                            && tag.getLabelType() == TagLabel.LabelType.GENERATED);
 
         if (!isAutoApplied) {
           throw new IllegalArgumentException(
