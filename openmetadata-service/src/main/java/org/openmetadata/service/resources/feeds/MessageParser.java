@@ -166,7 +166,8 @@ public final class MessageParser {
 
       Matcher matcher = ENTITY_LINK_PATTERN.matcher(link);
       while (matcher.find()) {
-        if (link.contains("|") && matcher.group(1).contains("user")) {
+        if (link.contains("|")
+            && (matcher.group(1).contains("user") || matcher.group(1).contains("team"))) {
           link = link.substring(0, link.indexOf("|")) + ">";
           matcher = ENTITY_LINK_PATTERN.matcher(link);
           matcher.find();
