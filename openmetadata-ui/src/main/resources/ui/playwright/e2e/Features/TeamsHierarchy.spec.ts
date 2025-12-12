@@ -18,8 +18,14 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
-import { addTeamHierarchy, getNewTeamDetails } from '../../utils/team';
+import {
+  addTeamHierarchy,
+  getNewTeamDetails,
+  hardDeleteTeam,
+  softDeleteTeam,
+} from '../../utils/team';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -104,6 +110,74 @@ test.describe('Add Nested Teams and Test TeamsSelectable', () => {
         teamName
       );
     }
+  });
+
+  test('verifies that deleted teams are excluded from organization list', async ({
+    page,
+  }) => {
+    await settingClick(page, GlobalSettingOptions.TEAMS);
+
+    const parentTeamName = teamNames[0];
+    const parentTeam = getNewTeamDetails(parentTeamName);
+    const childTeamName = teamNames[1];
+    const childTeam = getNewTeamDetails(childTeamName);
+    await waitForAllLoadersToDisappear(page);
+    const getOrganizationResponse = page.waitForResponse(
+      '/api/v1/teams/name/*'
+    );
+    await addTeamHierarchy(page, parentTeam, 0, true);
+    await getOrganizationResponse;
+    const permissionResponse = page.waitForResponse(
+      '/api/v1/permissions/team/name/*'
+    );
+    await page.getByRole('link', { name: parentTeamName }).click();
+    await waitForAllLoadersToDisappear(page);
+    await permissionResponse;
+
+    await addTeamHierarchy(page, childTeam, 1, true);
+    await getOrganizationResponse;
+
+    await page.getByRole('link', { name: childTeamName }).click();
+    await waitForAllLoadersToDisappear(page);
+    await permissionResponse;
+
+    await page.getByRole('link', { name: 'Organization' }).click();
+    await waitForAllLoadersToDisappear(page);
+    await page.waitForLoadState('networkidle');
+    await getOrganizationResponse;
+    await page
+      .getByRole('cell', { name: parentTeamName })
+      .locator('svg')
+      .nth(1)
+      .click();
+
+    await expect(page.locator('tbody')).toContainText(childTeamName);
+
+    await page.getByRole('link', { name: childTeamName }).click();
+    await waitForAllLoadersToDisappear(page);
+    await page.waitForLoadState('networkidle');
+    await permissionResponse;
+    await softDeleteTeam(page);
+
+    await expect(page.getByTestId('deleted-badge')).toContainText('Deleted');
+
+    await page.getByRole('link', { name: 'Organization' }).click();
+    await waitForAllLoadersToDisappear(page);
+    await page.waitForLoadState('networkidle');
+    await getOrganizationResponse;
+    await page
+      .getByRole('cell', { name: parentTeamName })
+      .locator('svg')
+      .nth(1)
+      .click();
+
+    await expect(page.locator('tbody')).not.toContainText(childTeamName);
+
+    await page.getByRole('link', { name: parentTeamName }).click();
+    await waitForAllLoadersToDisappear(page);
+    await page.waitForLoadState('networkidle');
+    await permissionResponse;
+    await hardDeleteTeam(page);
   });
 
   test('Delete Parent Team', async ({ page }) => {
