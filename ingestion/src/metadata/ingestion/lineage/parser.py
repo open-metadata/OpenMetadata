@@ -587,6 +587,7 @@ class LineageParser:
             lr_sqlglot = None
 
         if lr_sqlglot:
+            self.query_hash += "-SqlGlot"
             logger.debug(
                 f"[{self.query_hash}] Query parsing with SqlGlot for dialect [{dialect.value}]"
                 f" for query: {self.masked_query or self.query}"
@@ -641,6 +642,7 @@ class LineageParser:
             lr_sqlfluff = None
 
         if lr_sqlfluff:
+            self.query_hash += "-SqlFluff"
             logger.debug(
                 f"[{self.query_hash}] Query parsing with SqlFluff for dialect [{dialect.value}]"
                 f" for query: {self.masked_query or self.query}"
@@ -695,6 +697,7 @@ class LineageParser:
             lr_sqlparse = None
 
         if lr_sqlparse:
+            self.query_hash += "-SqlParse"
             logger.debug(
                 f"[{self.query_hash}] Query parsing with SqlParse for dialect [{dialect.value}]"
                 f" for query: {self.masked_query or self.query}"

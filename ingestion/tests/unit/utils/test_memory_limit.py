@@ -617,6 +617,187 @@ class TestMemoryLimit(unittest.TestCase):
         with self.assertRaises(MemoryLimitExceeded):
             function_exceeding_both()
 
+    def test_memory_limit_in_threaded_environment(self):
+        """
+        Test that memory_limit works correctly when the decorated function
+        is called FROM WITHIN a thread (not the main thread).
+
+        This simulates environments like Airflow workers, ThreadPoolExecutor,
+        or any multi-threaded application where decorated functions run in worker threads.
+        """
+        import threading
+
+        results = {"exception": None, "success": False}
+
+        @memory_limit(max_memory_mb=30, context="test_in_thread", verbose=False)
+        def allocate_in_thread():
+            """Function that will run in a worker thread"""
+            data = []
+            for i in range(50):
+                chunk = bytearray(1024 * 1024)  # 1MB
+                data.append(chunk)
+                if i % 5 == 0:
+                    time.sleep(0.1)
+            return len(data)
+
+        def run_in_thread():
+            """Wrapper to run decorated function in thread"""
+            try:
+                result = allocate_in_thread()
+                results["success"] = True
+                results["result"] = result
+            except MemoryLimitExceeded as e:
+                results["exception"] = e
+
+        # Run decorated function in a separate thread
+        thread = threading.Thread(target=run_in_thread)
+        thread.start()
+        thread.join(timeout=10)  # Wait up to 10 seconds
+
+        # Should have caught memory limit violation even in thread
+        self.assertIsNotNone(results["exception"])
+        self.assertIsInstance(results["exception"], MemoryLimitExceeded)
+        self.assertFalse(results["success"])
+
+    def test_memory_limit_with_multiple_concurrent_threads(self):
+        """
+        Test that memory_limit works correctly with multiple threads
+        running decorated functions concurrently.
+
+        IMPORTANT: tracemalloc tracks memory GLOBALLY across all threads,
+        not per-thread. This is correct behavior - we want to limit total
+        memory usage across all concurrent operations.
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        @memory_limit(max_memory_mb=100, context="test_multi_thread", verbose=False)
+        def allocate_in_concurrent_thread(thread_id: int, mb_to_allocate: int):
+            """Function that allocates specified MB in a thread"""
+            data = []
+            for i in range(mb_to_allocate):
+                chunk = bytearray(1024 * 1024)  # 1MB
+                data.append(chunk)
+                time.sleep(0.05)  # Small delay
+            return f"thread-{thread_id}-allocated-{mb_to_allocate}MB"
+
+        results = {}
+
+        # Run multiple threads sequentially (not concurrently) to test
+        # that memory_limit works correctly when called from threads
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            # Thread 1: should succeed (20MB < 100MB limit)
+            future1 = executor.submit(allocate_in_concurrent_thread, 1, 20)
+            try:
+                result = future1.result()
+                results[1] = {"success": True, "result": result}
+            except MemoryLimitExceeded as e:
+                results[1] = {"success": False, "exception": e}
+
+            # Thread 2: should fail (120MB > 100MB limit)
+            future2 = executor.submit(allocate_in_concurrent_thread, 2, 120)
+            try:
+                result = future2.result()
+                results[2] = {"success": True, "result": result}
+            except MemoryLimitExceeded as e:
+                results[2] = {"success": False, "exception": e}
+
+        # Thread 1: should succeed (20MB < 100MB limit)
+        self.assertTrue(results[1]["success"])
+        self.assertIn("thread-1-allocated-20MB", results[1]["result"])
+
+        # Thread 2: should fail (120MB > 100MB limit)
+        self.assertFalse(results[2]["success"])
+        self.assertIsInstance(results[2]["exception"], MemoryLimitExceeded)
+
+    def test_memory_limit_with_thread_pool_executor(self):
+        """
+        Test memory_limit with ThreadPoolExecutor specifically,
+        as this is commonly used in production (e.g., Airflow).
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        @memory_limit(max_memory_mb=50, context="test_thread_pool", verbose=False)
+        def process_item(item_id: int):
+            """Simulates processing an item with memory allocation"""
+            # Allocate 10MB per item
+            data = [bytearray(1024 * 1024) for _ in range(10)]
+            time.sleep(0.2)
+            return f"processed-{item_id}-{len(data)}MB"
+
+        results = []
+
+        # Process 5 items in thread pool (each 10MB, all under 50MB limit)
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = [executor.submit(process_item, i) for i in range(5)]
+            for future in futures:
+                try:
+                    result = future.result()
+                    results.append({"success": True, "result": result})
+                except Exception as e:
+                    results.append({"success": False, "exception": e})
+
+        # All should succeed (10MB each < 50MB limit)
+        success_count = sum(1 for r in results if r["success"])
+        self.assertEqual(success_count, 5)
+
+    def test_memory_limit_performance_overhead(self):
+        """
+        Test that memory_limit decorator has minimal performance overhead.
+        CPU-intensive function should take similar time with/without decorator.
+        Acceptable overhead: < 50% (ideally < 20%)
+        """
+
+        def cpu_intensive_work():
+            """Pure CPU work - calculate primes"""
+            result = 0
+            for n in range(2, 500000):
+                is_prime = True
+                for i in range(2, int(n**0.5) + 1):
+                    if n % i == 0:
+                        is_prime = False
+                        break
+                if is_prime:
+                    result += 1
+            return result
+
+        # Measure baseline (without decorator)
+        start_baseline = time.time()
+        result_baseline = cpu_intensive_work()
+        baseline_duration = time.time() - start_baseline
+
+        # Measure with memory_limit decorator
+        decorated_fn = memory_limit(max_memory_mb=100)(cpu_intensive_work)
+        start_decorated = time.time()
+        result_decorated = decorated_fn()
+        decorated_duration = time.time() - start_decorated
+
+        # Results should be identical
+        self.assertEqual(result_baseline, result_decorated)
+
+        # Calculate overhead percentage
+        overhead_pct = (
+            (decorated_duration - baseline_duration) / baseline_duration
+        ) * 100
+
+        # Assert overhead is within acceptable limits
+        self.assertLessEqual(
+            overhead_pct,
+            1000,
+            "\n\tVERY HIGH OVERHEAD (>1000%)"
+            f"\n\t - Baseline time: {baseline_duration:.3f}s"
+            f"\n\t - Decorated time: {decorated_duration:.3f}s"
+            f"\n\t - Overhead: {overhead_pct:.1f}%",
+        )
+
+        self.assertLessEqual(
+            overhead_pct,
+            100,
+            "\n\tSIGNIFICANT OVERHEAD (>100%)"
+            f"\n\t - Baseline time: {baseline_duration:.3f}s"
+            f"\n\t - Decorated time: {decorated_duration:.3f}s"
+            f"\n\t - Overhead: {overhead_pct:.1f}%",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

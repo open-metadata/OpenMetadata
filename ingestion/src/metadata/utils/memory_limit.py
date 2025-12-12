@@ -10,12 +10,11 @@
 #  limitations under the License.
 
 """
-Memory limit utilities for controlling memory consumption.
-Cross-platform solution using tracemalloc to track ONLY function-specific allocations.
+Memory limit decorator using tracemalloc for lightweight, low-overhead tracking.
 """
+
 import functools
 import threading
-import time
 import tracemalloc
 from typing import Callable, Optional
 
@@ -23,25 +22,19 @@ from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
 
-# Default memory limit: 100MB in bytes
 DEFAULT_MEMORY_LIMIT_MB = 100
 BYTES_PER_MB = 1024 * 1024
-# Check memory every 0.1 seconds
 MEMORY_CHECK_INTERVAL_SECONDS = 0.1
 
 
 class MemoryLimitExceeded(Exception):
-    """Exception raised when memory limit is exceeded"""
+    """Raised when function exceeds memory limit."""
 
     pass
 
 
 class MemoryMonitor:
-    """
-    Memory monitoring class that tracks ONLY the memory allocated by the decorated function.
-    Uses tracemalloc to get precise, function-specific memory tracking.
-    Works across all platforms: Windows, Linux, macOS, and in any thread context.
-    """
+    """Monitors incremental memory usage using tracemalloc's get_traced_memory."""
 
     def __init__(
         self,
@@ -60,100 +53,86 @@ class MemoryMonitor:
         self.should_stop = threading.Event()
         self.exceeded = threading.Event()
         self.monitor_thread: Optional[threading.Thread] = None
-        self.snapshot_start = None
+        self.baseline_memory = 0
         self.peak_memory = 0
 
     def get_current_function_memory(self) -> int:
         """
-        Get current memory allocated by THIS function only.
-        Returns memory in bytes.
+        Returns lightweight estimate of memory allocated since monitoring started.
+        This method is not used in the hot loop but available for debugging.
         """
         try:
             if not tracemalloc.is_tracing():
                 return 0
 
-            # Get current snapshot
-            snapshot = tracemalloc.take_snapshot()
+            current_memory, _ = tracemalloc.get_traced_memory()
 
-            if self.snapshot_start is None:
+            if current_memory <= self.baseline_memory:
                 return 0
 
-            # Calculate memory difference from start
-            # This gives us ONLY the memory allocated since we started tracking
-            top_stats = snapshot.compare_to(self.snapshot_start, "lineno")
-
-            # Sum up all the size differences (new allocations minus deallocations)
-            total_diff = sum(stat.size_diff for stat in top_stats if stat.size_diff > 0)
-
-            return total_diff
+            return current_memory - self.baseline_memory
         except Exception:
             return 0
 
     def _monitor_loop(self):
-        """Main monitoring loop that runs in a separate thread."""
-        context_str = f"[{self.context}] " if self.context else ""
-        logger.debug(
-            f"{context_str}Memory monitor started for {self.function_name}(). "
-            f"Limit: {self.max_memory_mb}MB"
-        )
-
-        while not self.should_stop.is_set():
-            # Get memory allocated by THIS function only
-            current_memory = self.get_current_function_memory()
-            current_mb = current_memory / BYTES_PER_MB
-
-            # Log checkpoint only if verbose mode is enabled
-            if self.verbose:
-                logger.debug(
-                    f"{context_str}Memory checkpoint for {self.function_name}(): "
-                    f"Current function memory: {current_mb:.2f}MB, Limit: {self.max_memory_mb}MB"
-                )
-
-            # Track peak memory
-            if current_memory > self.peak_memory:
-                self.peak_memory = current_memory
-
-            # Check if memory limit exceeded
-            if current_memory > self.max_memory_bytes:
-                logger.warning(
-                    f"{context_str}Memory limit exceeded in {self.function_name}()! "
-                    f"Function memory usage: {current_mb:.2f}MB, Limit: {self.max_memory_mb}MB"
-                )
+        """
+        Background thread that checks memory every interval.
+        This loop is optimized to do minimal work.
+        """
+        # This is the hot loop. It must be as fast as possible.
+        # We directly call get_traced_memory and do a simple comparison.
+        # No logging, no peak tracking inside the loop.
+        while not self.should_stop.wait(self.check_interval):
+            current, _ = tracemalloc.get_traced_memory()
+            if (current - self.baseline_memory) > self.max_memory_bytes:
                 self.exceeded.set()
                 break
 
-            time.sleep(self.check_interval)
+        # Verbose logging happens only after the loop finishes.
+        if self.verbose:
+            # Final peak memory check after loop exits
+            current, self.peak_memory = tracemalloc.get_traced_memory()
+            final_diff = current - self.baseline_memory
+            if final_diff > self.peak_memory:
+                self.peak_memory = final_diff
 
-        peak_mb = self.peak_memory / BYTES_PER_MB
-        logger.debug(
-            f"{context_str}Memory monitor stopped for {self.function_name}(). "
-            f"Peak function memory: {peak_mb:.2f}MB"
-        )
+            peak_mb = self.peak_memory / BYTES_PER_MB
+            context_str = f"[{self.context}] " if self.context else ""
+            logger.debug(
+                f"{context_str}Memory monitor stopped for {self.function_name}(). "
+                f"Peak function memory: {peak_mb:.2f}MB"
+            )
 
     def start(self):
-        """Start the memory monitoring thread and begin tracking."""
-        # Start tracemalloc to track allocations
+        """Start monitoring thread and tracemalloc."""
         if not tracemalloc.is_tracing():
-            tracemalloc.start()
+            tracemalloc.start(1)  # Minimal frame depth for low overhead
 
-        # Take initial snapshot
-        self.snapshot_start = tracemalloc.take_snapshot()
+        self.baseline_memory, _ = tracemalloc.get_traced_memory()
+        self.peak_memory = 0
 
-        # Start monitoring thread
         self.should_stop.clear()
         self.exceeded.clear()
         self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
         self.monitor_thread.start()
 
     def stop(self):
-        """Stop the memory monitoring thread."""
+        """Stop monitoring and wait for thread to finish."""
         self.should_stop.set()
         if self.monitor_thread:
             self.monitor_thread.join(timeout=1.0)
 
+        if tracemalloc.is_tracing():
+            tracemalloc.stop()
+
     def check_exceeded(self):
-        """Check if memory limit was exceeded and raise exception if so."""
+        """Raise exception if limit was exceeded during execution."""
         if self.exceeded.is_set():
+            # The peak memory is now calculated in the monitor loop's verbose block
+            # or just after the main execution. We need to get the final peak.
+            if not self.verbose:
+                _, self.peak_memory = tracemalloc.get_traced_memory()
+
             peak_mb = self.peak_memory / BYTES_PER_MB
             context_str = f"[{self.context}] " if self.context else ""
             raise MemoryLimitExceeded(
@@ -165,32 +144,15 @@ class MemoryMonitor:
 def memory_limit(
     max_memory_mb: int = DEFAULT_MEMORY_LIMIT_MB,
     context: Optional[str] = None,
-    verbose: bool = False,
+    verbose: bool = True,
 ) -> Callable:
     """
-    Decorator factory to handle memory limits in functions.
-    Monitors ONLY the memory allocated by the decorated function using tracemalloc.
-
-    This tracks ONLY the function's own allocations, ignoring:
-    - Memory from other functions
-    - Pre-existing process memory
-    - Other threads' allocations
-
-    Works across ALL platforms: Windows, Linux, macOS, Argo, Airflow, Kubernetes.
+    Limit function memory usage. Raises MemoryLimitExceeded if exceeded.
 
     Args:
-        max_memory_mb: Maximum memory the function can allocate (in megabytes)
-        context: Optional context string for logging (e.g., query hash, request ID)
-        verbose: Enable verbose checkpoint logging to see memory growth (default: False)
-
-    Raises:
-        MemoryLimitExceeded: When the function exceeds the memory limit
-
-    Example:
-        @memory_limit(max_memory_mb=100, context="query_abc123", verbose=True)
-        def expensive_function():
-            # Your code here
-            pass
+        max_memory_mb: Memory limit in MB (default 100)
+        context: Optional context for log messages
+        verbose: Enable debug logging
     """
 
     def decorator(fn):
@@ -205,23 +167,21 @@ def memory_limit(
 
             context_str = f"[{context}] " if context else ""
             try:
-                # Start monitoring
                 monitor.start()
-                logger.debug(
-                    f"{context_str}Started memory monitoring for {fn.__name__}() "
-                    f"(limit: {max_memory_mb}MB)"
-                )
 
-                # Execute the function
+                if verbose:
+                    logger.debug(
+                        f"{context_str}Started memory monitoring for {fn.__name__}() "
+                        f"(limit: {max_memory_mb}MB)"
+                    )
+
                 result = fn(*args, **kwargs)
 
-                # Check if memory was exceeded during execution
                 monitor.check_exceeded()
 
                 return result
 
             except MemoryLimitExceeded:
-                # Re-raise with function context
                 peak_mb = monitor.peak_memory / BYTES_PER_MB
                 logger.error(
                     f"{context_str}Function {fn.__name__}() exceeded memory limit of {max_memory_mb}MB. "
@@ -232,7 +192,6 @@ def memory_limit(
                     f"Peak usage: {peak_mb:.2f}MB"
                 )
             finally:
-                # Always stop monitoring
                 monitor.stop()
 
         return inner
