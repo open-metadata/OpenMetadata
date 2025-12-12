@@ -18,6 +18,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.DATA_CONTRACT;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
@@ -92,6 +93,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -1174,8 +1176,19 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
       variables.put(UPDATED_BY_VARIABLE, user);
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      workflowHandler.resolveTask(
-          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      // If workflow failed (corrupted Flowable task), apply the status directly
+      if (!workflowSuccess) {
+        LOG.warn(
+            "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
+        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
+        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
+        EntityFieldUtils.setEntityField(
+            dataContract, DATA_CONTRACT, user, FIELD_ENTITY_STATUS, entityStatus, true);
+      }
 
       return dataContract;
     }

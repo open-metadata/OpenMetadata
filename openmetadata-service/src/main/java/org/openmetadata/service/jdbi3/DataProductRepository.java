@@ -19,6 +19,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.TEAM;
@@ -73,6 +74,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.LineageUtil;
@@ -538,8 +540,19 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
       variables.put(UPDATED_BY_VARIABLE, user);
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      workflowHandler.resolveTask(
-          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+      boolean workflowSuccess =
+          workflowHandler.resolveTask(
+              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      // If workflow failed (corrupted Flowable task), apply the status directly
+      if (!workflowSuccess) {
+        LOG.warn(
+            "[GlossaryTerm] Workflow failed for taskId='{}', applying status directly", taskId);
+        Boolean approved = (Boolean) variables.get(RESULT_VARIABLE);
+        String entityStatus = (approved != null && approved) ? "Approved" : "Rejected";
+        EntityFieldUtils.setEntityField(
+            dataProduct, DATA_PRODUCT, user, FIELD_ENTITY_STATUS, entityStatus, true);
+      }
 
       return dataProduct;
     }
