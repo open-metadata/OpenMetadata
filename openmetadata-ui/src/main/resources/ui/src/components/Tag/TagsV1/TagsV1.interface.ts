@@ -34,4 +34,6 @@ export type TagsV1Props = {
   size?: SelectProps['size'];
   isEditTags?: boolean;
   newLook?: boolean;
+  entityType?: string;
+  entityFqn?: string;
 };

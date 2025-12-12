@@ -21,6 +21,8 @@ export interface TagsViewerProps {
   showNoDataPlaceholder?: boolean;
   tagType?: TagSource;
   newLook?: boolean;
+  entityFqn?: string;
+  entityType?: string;
 }
 
 export enum DisplayType {

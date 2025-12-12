@@ -30,10 +30,12 @@ import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compact, startCase, toString } from 'lodash';
-import { Fragment, ReactNode } from 'react';
+import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
+import ChipSelect from '../components/common/ChipSelect/ChipSelect';
+import { ChipSelectProps } from '../components/common/ChipSelect/ChipSelect.interface';
 import { MUIColorPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import { MUICoverImageUpload } from '../components/common/CoverImageUpload';
@@ -44,11 +46,13 @@ import { FilterPatternProps } from '../components/common/FilterPattern/filterPat
 import FormItemLabel from '../components/common/Form/FormItemLabel';
 import { MUIIconPicker } from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
+import MUIAutocomplete from '../components/common/MUIAutocomplete/MUIAutocomplete';
 import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUISelect from '../components/common/MUISelect/MUISelect';
+import MUISwitch from '../components/common/MUISwitch/MUISwitch';
 import MUITagSuggestion from '../components/common/MUITagSuggestion/MUITagSuggestion';
 import MUITextField from '../components/common/MUITextField/MUITextField';
 import MUIUserTeamSelect, {
@@ -370,13 +374,11 @@ export const getField = (field: FieldProp) => {
       break;
 
     case FieldTypes.USER_TEAM_SELECT_INPUT:
-      {
-        fieldElement = (
-          <UserTeamSelectableListSearchInput
-            {...(props as unknown as UserSelectDropdownProps)}
-          />
-        );
-      }
+      fieldElement = (
+        <UserTeamSelectableListSearchInput
+          {...(props as unknown as UserSelectDropdownProps)}
+        />
+      );
 
       break;
 
@@ -443,6 +445,50 @@ export const getField = (field: FieldProp) => {
           <MUICoverImageUpload
             {...(props as Record<string, unknown>)}
             label={muiLabel as string}
+          />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.AUTOCOMPLETE_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUIAutocomplete
+            label={muiLabel as string}
+            placeholder={placeholder}
+            required={isRequired}
+            {...(props as Record<string, unknown>)}
+          />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.SWITCH_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps} valuePropName="checked">
+          <MUISwitch
+            label={muiLabel as string}
+            required={isRequired}
+            {...(props as Record<string, unknown>)}
+          />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.CHIP_SELECT: {
+      return (
+        <Form.Item {...formProps}>
+          <ChipSelect
+            {...(props as unknown as ChipSelectProps)}
+            label={label as string}
           />
         </Form.Item>
       );

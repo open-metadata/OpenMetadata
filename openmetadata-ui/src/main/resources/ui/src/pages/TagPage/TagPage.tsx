@@ -59,7 +59,7 @@ import AssetsTabs, {
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
-import StyleModal from '../../components/Modals/StyleModal/StyleModal.component';
+import StyleModalNew from '../../components/Modals/StyleModal/StyleModalNew';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   BLACK_COLOR,
@@ -89,16 +89,17 @@ import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getEntityDeleteMessage, getFeedCounts } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { renderIcon } from '../../utils/IconUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationTagPath,
 } from '../../utils/RouterUtils';
+import tagClassBase from '../../utils/TagClassBase';
 import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
   getTagAssetsQueryFilter,
-  getTagImageSrc,
 } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -543,6 +544,16 @@ const TagPage = () => {
       },
     ];
 
+    const recognizerTab = tagClassBase.getRecognizerTab(
+      tagItem,
+      activeTab,
+      t,
+      tagItem?.recognizers?.length || 0
+    );
+    if (recognizerTab) {
+      items.push(recognizerTab);
+    }
+
     return items;
   }, [
     tagItem,
@@ -556,17 +567,13 @@ const TagPage = () => {
   ]);
   const icon = useMemo(() => {
     if (tagItem?.style?.iconURL) {
-      const iconUrl = getTagImageSrc(tagItem.style.iconURL);
-
       return (
-        <img
-          alt={tagItem.name ?? t('label.tag')}
-          className="align-middle object-contain"
-          data-testid="icon"
-          height={36}
-          src={iconUrl}
-          width={32}
-        />
+        <div className="align-middle" data-testid="icon">
+          {renderIcon(tagItem.style.iconURL, {
+            size: 36,
+            className: 'object-contain',
+          })}
+        </div>
       );
     }
 
@@ -711,7 +718,7 @@ const TagPage = () => {
 
         <GenericProvider<Tag>
           customizedPage={customizedPage}
-          data={tagItem as Tag}
+          data={tagItem}
           isVersionView={false}
           permissions={disabledAwarePermissions}
           type={EntityType.TAG as CustomizeEntityType}
@@ -766,7 +773,7 @@ const TagPage = () => {
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <StyleModal
+      <StyleModalNew
         open={isStyleEditing}
         style={tagItem.style}
         onCancel={() => setIsStyleEditing(false)}

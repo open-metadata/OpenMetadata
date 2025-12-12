@@ -38,8 +38,8 @@ const NEW_TAG = {
   displayName: `PlaywrightTag-${uuid()}`,
   renamedName: `PlaywrightTag-${uuid()}`,
   description: 'This is the PlaywrightTag',
-  color: '#FF5733',
-  icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
+  color: '#F14C75',
+  icon: 'Cube01',
 };
 const tagFqn = `${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`;
 
@@ -250,11 +250,11 @@ test('Classification Page', async ({ page }) => {
     await redirectToHomePage(page);
     await classification.visitPage(page);
     await page.click('[data-testid="add-classification"]');
-    await page.waitForSelector('.ant-modal-content', {
+    await page.waitForSelector('.tags-form', {
       state: 'visible',
     });
 
-    await expect(page.locator('.ant-modal-content')).toBeVisible();
+    await expect(page.locator('.tags-form')).toBeVisible();
 
     await validateForm(page);
 
@@ -289,19 +289,29 @@ test('Classification Page', async ({ page }) => {
 
     await page.click('[data-testid="add-new-tag-button"]');
 
-    await page.waitForSelector('.ant-modal-content', {
+    await page.waitForSelector('.tags-form', {
       state: 'visible',
     });
 
-    await expect(page.locator('.ant-modal-content')).toBeVisible();
+    await expect(page.locator('.tags-form')).toBeVisible();
 
     await validateForm(page);
 
     await page.fill('[data-testid="name"]', NEW_TAG.name);
     await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
     await page.locator(descriptionBox).fill(NEW_TAG.description);
-    await page.fill('[data-testid="icon-url"]', NEW_TAG.icon);
-    await page.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
+    await page
+      .getByRole('group')
+      .filter({ hasText: 'Icon' })
+      .locator('div')
+      .nth(1)
+      .click();
+    await page
+      .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
+      .click();
+    await page
+      .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
+      .click();
 
     const createTagResponse = page.waitForResponse('api/v1/tags');
     await submitForm(page);

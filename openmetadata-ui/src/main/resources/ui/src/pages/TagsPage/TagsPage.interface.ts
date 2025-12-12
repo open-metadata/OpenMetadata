@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
+import { FormInstance } from 'antd';
 import { LoadingState } from 'Models';
-import { Classification } from '../../generated/entity/classification/classification';
+import {
+  AutoClassificationConfig,
+  Classification,
+} from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
+import { EntityReference } from '../../generated/entity/type';
 
 export type DeleteTagDetailsType = {
   id: string;
@@ -35,20 +40,25 @@ export interface SubmitProps {
   mutuallyExclusive?: boolean;
   iconURL?: string;
   color?: string;
+  owners?: EntityReference[];
+  domains?: EntityReference[];
+  autoClassificationConfig?: AutoClassificationConfig | null;
+  autoClassificationEnabled?: boolean;
+  autoClassificationPriority?: number;
 }
 
 export interface RenameFormProps {
-  visible: boolean;
+  formRef: FormInstance<SubmitProps>;
   isEditing: boolean;
   isTier: boolean;
-  onCancel: () => void;
-  header: string;
-  initialValues?: Omit<Tag, 'id'>;
+  initialValues?: Omit<
+    Tag & { autoClassificationConfig: AutoClassificationConfig },
+    'id'
+  >;
   onSubmit: (value: SubmitProps) => Promise<void>;
   showMutuallyExclusive?: boolean;
   isClassification?: boolean;
   data?: Classification[];
-  isLoading: boolean;
   isSystemTag?: boolean;
   permissions?: {
     createTags?: boolean;
