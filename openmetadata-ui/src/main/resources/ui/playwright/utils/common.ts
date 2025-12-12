@@ -10,12 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, expect, Locator, Page, request } from '@playwright/test';
+import { Browser, expect, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
-import { Domain } from '../support/domain/Domain';
-import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { getToken as getTokenFromStorage } from './tokenStorage';
 
@@ -511,7 +509,7 @@ export const getRandomLastName = () => {
 };
 
 export const generateRandomUsername = (prefix = '') => {
-  const timestamp = Date.now().toString(13);
+  const timestamp = Date.now();
   const firstName = `${prefix}${getRandomFirstName()}`;
   const lastName = `${prefix}${getRandomLastName()}`;
 
