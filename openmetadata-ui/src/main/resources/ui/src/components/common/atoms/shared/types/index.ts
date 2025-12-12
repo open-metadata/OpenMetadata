@@ -12,8 +12,13 @@
  */
 
 import { ReactNode } from 'react';
-import { Aggregations } from '../../../../../interface/search.interface';
+import { SearchIndex } from '../../../../../enums/search.enum';
+import {
+  Aggregations,
+  SearchResponse,
+} from '../../../../../interface/search.interface';
 import { ExploreQuickFilterField } from '../../../../Explore/ExplorePage.interface';
+import { SearchDropdownOption } from '../../../../SearchDropdown/SearchDropdown.interface';
 
 export interface UrlStateConfig {
   searchKey?: string;
@@ -45,7 +50,7 @@ export interface DataFetchingConfig<T> {
   searchIndex: string;
   baseFilter?: string;
   pageSize?: number;
-  transform?: (data: unknown) => T[];
+  transform?: (data: SearchResponse<SearchIndex>) => T[];
 }
 
 export interface DataFetchingResult<T> {
@@ -77,11 +82,11 @@ export interface SelectionState {
 export interface FilterField {
   key: string;
   aggregationField: string;
-  processor?: (options: unknown[]) => unknown[];
+  processor?: (options: SearchDropdownOption[]) => SearchDropdownOption[];
 }
 
 export interface FilterOptions {
-  [key: string]: unknown[];
+  [key: string]: SearchDropdownOption[];
 }
 
 export interface FilterConfig {
@@ -96,7 +101,9 @@ export interface ColumnConfig<T> {
   key: string;
   labelKey: string;
   render: string;
-  getValue?: (entity: T) => unknown;
+  getValue?: (
+    entity: T
+  ) => ReactNode | string | number | boolean | null | undefined;
   customRenderer?: string;
 }
 
@@ -150,8 +157,8 @@ export interface DropdownConfig {
   key: string;
   labelKey: string;
   searchKey: string;
-  options: unknown[];
-  selectedOptions: unknown[];
-  onChange: (values: unknown[]) => void;
+  options: SearchDropdownOption[];
+  selectedOptions: SearchDropdownOption[];
+  onChange: (values: SearchDropdownOption[]) => void;
   onSearch: (term: string) => void;
 }

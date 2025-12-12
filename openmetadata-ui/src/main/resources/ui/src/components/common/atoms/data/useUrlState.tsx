@@ -32,8 +32,8 @@ export const useUrlState = (
 
   const urlState: UrlState = useMemo(() => {
     const searchQuery = searchParams.get(searchKey) || '';
-    const currentPage = parseInt(searchParams.get(pageKey) || '1', 10);
-    const pageSize = parseInt(
+    const currentPage = Number.parseInt(searchParams.get(pageKey) || '1', 10);
+    const pageSize = Number.parseInt(
       searchParams.get(pageSizeKey) || String(defaultPageSize),
       10
     );

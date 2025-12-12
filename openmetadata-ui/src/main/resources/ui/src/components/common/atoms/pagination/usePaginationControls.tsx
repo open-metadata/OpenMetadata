@@ -75,7 +75,7 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
   }, [rowsPerPageOptions, config.pageSize]);
 
   const handlePageSizeChange = (event: SelectChangeEvent<number>) => {
-    const newPageSize = event.target.value as number;
+    const newPageSize = event.target.value;
     if (config.onPageSizeChange) {
       config.onPageSizeChange(newPageSize);
     }
