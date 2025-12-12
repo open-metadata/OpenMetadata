@@ -195,7 +195,7 @@ public class KubernetesSecretsManager extends ExternalSecretsManager {
   }
 
   @Override
-  protected String getSecret(String secretName) {
+  protected String getSecretInternal(String secretName) {
     String k8sSecretName = sanitizeSecretName(secretName);
 
     try {

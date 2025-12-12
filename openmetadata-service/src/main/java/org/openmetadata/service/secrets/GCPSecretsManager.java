@@ -60,7 +60,7 @@ public class GCPSecretsManager extends ExternalSecretsManager {
     } catch (IOException e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e);
     }
-    updateSecret(secretId, cleanNullOrEmpty(secretValue));
+    updateSecret(secretId, secretValue);
   }
 
   @Override
@@ -86,7 +86,7 @@ public class GCPSecretsManager extends ExternalSecretsManager {
   }
 
   @Override
-  String getSecret(String secretId) {
+  protected String getSecretInternal(String secretId) {
     try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
       SecretVersionName secretVersionName =
           SecretVersionName.of(this.projectId, secretId, FIXED_VERSION_ID);
