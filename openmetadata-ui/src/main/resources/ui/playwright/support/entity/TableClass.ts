@@ -256,7 +256,7 @@ export class TableClass extends EntityClass {
       name: string;
       displayName: string;
       description?: string;
-      columns?: any[];
+      columns?: unknown[];
       databaseSchema?: string;
     },
     apiContext: APIRequestContext

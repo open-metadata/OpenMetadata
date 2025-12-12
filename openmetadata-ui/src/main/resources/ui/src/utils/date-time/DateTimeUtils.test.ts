@@ -34,7 +34,6 @@ describe('DateTimeUtils tests', () => {
     // results are consistent regardless of where tests are run
     Settings.defaultLocale = 'en-US';
     Settings.defaultZone = 'UTC';
-    Date;
   });
 
   afterAll(() => {

@@ -14,9 +14,9 @@ import { Badge } from 'antd';
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/CommonUtils';
+import Loader from '../Loader/Loader';
 import './tabs-label.less';
 import { TabsLabelProps } from './TabsLabel.interface';
-import Loader from '../Loader/Loader';
 
 const TabsLabel = ({
   name,
@@ -34,7 +34,9 @@ const TabsLabel = ({
       <div className="d-flex justify-between gap-1">
         {name}
         {isLoading ? (
-          <span data-testid="loading-skeleton" className="d-flex justify-center items-center">
+          <span
+            className="d-flex justify-center items-center"
+            data-testid="loading-skeleton">
             <Loader size="small" />
           </span>
         ) : (

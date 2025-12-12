@@ -117,7 +117,7 @@ class AlertsClassBase {
     const { alertName, alertDisplayName, destinations } =
       this.getCommonAlertFieldsData(data, initialData);
     // Remove timeout from alert object since it's only for UI
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const { timeout, readTimeout, ...finalData } = data;
 
     return {

@@ -1,4 +1,4 @@
-/* eslint-disable i18next/no-literal-string */
+ 
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");

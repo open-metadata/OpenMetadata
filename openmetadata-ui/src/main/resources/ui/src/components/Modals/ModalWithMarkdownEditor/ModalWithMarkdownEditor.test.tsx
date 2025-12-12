@@ -30,7 +30,6 @@ jest.mock('../../common/RichTextEditor/RichTextEditor', () => {
 
 describe('Test ModalWithMarkdownEditor Component', () => {
   beforeAll(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ReactDOM.createPortal = jest.fn().mockImplementation((element, _node) => {
       return element;
     });

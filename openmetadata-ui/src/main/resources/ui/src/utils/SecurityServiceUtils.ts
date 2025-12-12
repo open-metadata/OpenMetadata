@@ -21,6 +21,7 @@ export const getSecurityConfig = (type: Type) => {
 
   switch (type) {
     case Type.Ranger: {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       schema = require('../jsons/connectionSchemas/connections/security/rangerConnection.json');
 
       break;

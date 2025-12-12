@@ -106,7 +106,7 @@ const AuthMechanismForm: FC<Props> = ({
           config_value: scimConfig,
         });
       } catch (error) {
-        // eslint-disable-next-line no-console
+         
         showErrorToast(error as AxiosError);
       }
     }

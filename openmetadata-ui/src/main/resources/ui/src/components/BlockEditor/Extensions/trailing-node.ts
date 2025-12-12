@@ -13,7 +13,6 @@
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function nodeEqualsType({ types, node }: any) {
   return (
     (Array.isArray(types) && types.includes(node.type)) || node.type === types
@@ -54,7 +53,6 @@ export const TrailingNode = Extension.create<TrailingNodeOptions>({
             return;
           }
 
-          // eslint-disable-next-line consistent-return
           return tr.insert(endPosition, type.create());
         },
         state: {

@@ -91,7 +91,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
             profile: {
               email: info.email ?? '',
               name: info.name ?? '',
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
               picture: (info as any).imageUrl ?? '',
               locale: info.locale ?? '',
               sub: info.sub,

@@ -26,7 +26,7 @@ const mockExpectedHiddenFields = reduce(
 
     return acc;
   },
-  {} as Record<string, any>
+  {} as Record<string, unknown>
 );
 
 const mockUISchemaAdditionalFields = reduce(
@@ -36,7 +36,7 @@ const mockUISchemaAdditionalFields = reduce(
 
     return acc;
   },
-  {} as Record<string, any>
+  {} as Record<string, unknown>
 );
 
 describe('getUISchemaWithNestedDefaultFilterFieldsHidden', () => {

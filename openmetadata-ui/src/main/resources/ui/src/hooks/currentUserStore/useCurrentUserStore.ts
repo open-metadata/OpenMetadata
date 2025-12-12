@@ -79,7 +79,6 @@ export const usePersistentStorage = create<Store>()(
 
       clearUserPreference: (userName: string) => {
         set((state) => {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { [userName]: _, ...rest } = state.preferences;
 
           return { preferences: rest };

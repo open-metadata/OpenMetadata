@@ -15,9 +15,9 @@ import { useEffect, useState } from 'react';
 
 const useImage = (fileName: string) => {
   const [loading, setLoading] = useState<boolean>(true);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const [error, setError] = useState<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const [image, setImage] = useState<any>(null);
 
   useEffect(() => {

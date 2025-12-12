@@ -835,6 +835,7 @@ describe('getEntityExtraInfoLength', () => {
       <div>
         <span>Always shown</span>
         {showExtra && <span>Conditional child</span>}
+        {/* eslint-disable-next-line no-constant-binary-expression */}
         {false && <span>Never shown</span>}
         {null}
         {undefined}
