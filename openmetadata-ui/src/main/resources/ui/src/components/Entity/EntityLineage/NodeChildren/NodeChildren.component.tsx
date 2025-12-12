@@ -47,21 +47,23 @@ import {
 } from './NodeChildren.interface';
 
 interface CustomPaginatedListProps {
+  entityChildren: EntityChildren;
+  isOnlyShowColumnsWithLineageFilterActive?: boolean;
   items: React.ReactNode[];
-  filteredColumns: EntityChildren;
   nodeId?: string;
   page: number;
   setPage: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const CustomPaginatedList = ({
+  entityChildren,
+  isOnlyShowColumnsWithLineageFilterActive,
   items,
-  filteredColumns,
   nodeId,
   page,
   setPage,
 }: CustomPaginatedListProps) => {
-  const [itemsOfPreviousPage, setItemsOfPreviousPage] = useState<string[]>([]);
+  const currentNodeAllColumns = Object.values(entityChildren ?? {});
   const { t } = useTranslation();
   const { setColumnsInCurrentPages, useUpdateNodeInternals } =
     useLineageProvider();
@@ -90,11 +92,19 @@ const CustomPaginatedList = ({
     []
   );
 
+  const currentNodeAllPagesItems = useMemo(
+    () =>
+      currentNodeAllColumns.flatMap((item) =>
+        getAllNestedChildrenInFlatArray(item)
+      ),
+    [currentNodeAllColumns, getAllNestedChildrenInFlatArray]
+  );
+
   const {
     totalPages,
     insideCurrentPageItems,
     outsideCurrentPageItems,
-    itemsOfCurrentPage,
+    currentNodeCurrentPageItems,
   } = useMemo(() => {
     const totalPages = Math.ceil(items.length / LINEAGE_CHILD_ITEMS_PER_PAGE);
     const startIdx = (page - 1) * LINEAGE_CHILD_ITEMS_PER_PAGE;
@@ -110,7 +120,8 @@ const CustomPaginatedList = ({
             i >= startIdx && i < endIdx
               ? 'inside-current-page-item'
               : 'outside-current-page-item'
-          }>
+          }
+        >
           {item}
         </div>
       );
@@ -122,7 +133,7 @@ const CustomPaginatedList = ({
       }
     });
 
-    const itemsOfCurrentPage = filteredColumns
+    const currentNodeCurrentPageItems = currentNodeAllColumns
       .slice(startIdx, endIdx)
       .filter(Boolean)
       .flatMap((item) => getAllNestedChildrenInFlatArray(item));
@@ -131,32 +142,50 @@ const CustomPaginatedList = ({
       totalPages,
       insideCurrentPageItems,
       outsideCurrentPageItems,
-      itemsOfCurrentPage,
+      currentNodeCurrentPageItems,
     };
-  }, [items, page, filteredColumns, getAllNestedChildrenInFlatArray]);
+  }, [
+    items,
+    page,
+    currentNodeAllColumns,
+    getAllNestedChildrenInFlatArray,
+    isOnlyShowColumnsWithLineageFilterActive,
+  ]);
 
+  /**
+   * This updates `columnsInCurrentPages` object for current node
+   *
+   * When page or filter is changed, this effect is called
+   * When filter is activated
+   *  - entry for nodeid is updated with `currentNodeAllPagesItems`
+   *  - `currentNodeAllPagesItems` is updated using `filteredColumns`
+   *  - `filteredColumns` is updated to only include columns having lineage
+   * When filter is deactivated
+   *  - entry is updated with `currentNodeCurrentPageItems`.
+   *  - `currentNodeCurrentPageItems` is updated using `filteredColumns`
+   *  - `filteredColumns` is updated to include all columns of current node
+   */
   useEffect(() => {
     setColumnsInCurrentPages((prev) => {
-      const filtered = prev.filter(
-        (item) => !itemsOfPreviousPage.includes(item)
-      );
+      const updated = { ...prev };
+      if (nodeId) {
+        updated[nodeId] = isOnlyShowColumnsWithLineageFilterActive
+          ? currentNodeAllPagesItems
+          : currentNodeCurrentPageItems;
+      }
 
-      const updated = new Set(filtered);
-      itemsOfCurrentPage.forEach((item) => updated.add(item));
-
-      return Array.from(updated);
+      return updated;
     });
-  }, [itemsOfPreviousPage, itemsOfCurrentPage, setColumnsInCurrentPages]);
+  }, [isOnlyShowColumnsWithLineageFilterActive, page]);
 
   const handlePageChange = useCallback(
     (newPage: number) => {
-      setItemsOfPreviousPage(itemsOfCurrentPage);
       setPage(newPage);
       if (nodeId) {
         updateNodeInternals(nodeId);
       }
     },
-    [itemsOfCurrentPage, nodeId, updateNodeInternals]
+    [currentNodeCurrentPageItems, nodeId, updateNodeInternals]
   );
 
   const handlePrev = useCallback(
@@ -175,6 +204,10 @@ const CustomPaginatedList = ({
     [page, totalPages, handlePageChange]
   );
 
+  if (isOnlyShowColumnsWithLineageFilterActive) {
+    return items;
+  }
+
   return (
     <>
       <Stack className="inside-current-page-items" spacing={1}>
@@ -184,32 +217,37 @@ const CustomPaginatedList = ({
         {outsideCurrentPageItems}
       </Stack>
 
-      <Stack
-        alignItems="center"
-        direction="row"
-        justifyContent="center"
-        mt={2}
-        spacing={1}>
-        <IconButton
-          data-testid="prev-btn"
-          disabled={page === 1}
-          size="small"
-          onClick={handlePrev}>
-          <ChevronLeftIcon />
-        </IconButton>
+      {!isOnlyShowColumnsWithLineageFilterActive && (
+        <Stack
+          alignItems="center"
+          direction="row"
+          justifyContent="center"
+          mt={2}
+          spacing={1}
+        >
+          <IconButton
+            data-testid="prev-btn"
+            disabled={page === 1}
+            size="small"
+            onClick={handlePrev}
+          >
+            <ChevronLeftIcon />
+          </IconButton>
 
-        <Typography variant="body2">
-          {page} {t('label.slash-symbol')} {totalPages}
-        </Typography>
+          <Typography variant="body2">
+            {page} {t('label.slash-symbol')} {totalPages}
+          </Typography>
 
-        <IconButton
-          data-testid="next-btn"
-          disabled={page === totalPages}
-          size="small"
-          onClick={handleNext}>
-          <ChevronRightIcon />
-        </IconButton>
-      </Stack>
+          <IconButton
+            data-testid="next-btn"
+            disabled={page === totalPages}
+            size="small"
+            onClick={handleNext}
+          >
+            <ChevronRightIcon />
+          </IconButton>
+        </Stack>
+      )}
     </>
   );
 };
@@ -218,6 +256,7 @@ const NodeChildren = ({
   node,
   isConnectable,
   isChildrenListExpanded,
+  isOnlyShowColumnsWithLineageFilterActive,
 }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
@@ -282,32 +321,74 @@ const NodeChildren = ({
     );
   }, [node]);
 
-  const { children, childrenHeading } = useMemo(
+  const { children: entityChildren, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node]
+  );
+
+  const currentNodeAllColumns = useMemo(
+    () => Object.values(entityChildren ?? {}),
+    [entityChildren]
+  );
+
+  const hasLineageInNestedChildren = useCallback(
+    (column: EntityChildrenItem): boolean => {
+      if (columnsHavingLineage.includes(column.fullyQualifiedName ?? '')) {
+        return true;
+      }
+
+      if (
+        'children' in column &&
+        Array.isArray(column.children) &&
+        column.children.length > 0
+      ) {
+        return column.children.some((child) =>
+          hasLineageInNestedChildren(child)
+        );
+      }
+
+      return false;
+    },
+    [columnsHavingLineage]
+  );
+
+  const currentNodeColumnsWithLineage = useMemo(
+    () =>
+      currentNodeAllColumns.filter((column) =>
+        hasLineageInNestedChildren(column)
+      ),
+    [currentNodeAllColumns, hasLineageInNestedChildren]
   );
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       e.stopPropagation();
-      const value = e.target.value;
-      setSearchValue(value);
+      const searchQuery = e.target.value;
+      setSearchValue(searchQuery);
+      const currentNodeColumnsToSearch =
+        isOnlyShowColumnsWithLineageFilterActive
+          ? currentNodeColumnsWithLineage
+          : currentNodeAllColumns;
 
-      if (value.trim() === '') {
-        // If search value is empty, show all columns
-        const filterColumns = Object.values(children ?? {});
-        setFilteredColumns(filterColumns);
+      if (searchQuery.trim() === '') {
+        setFilteredColumns(currentNodeColumnsToSearch);
         setShowAllColumns(false);
       } else {
-        // Filter columns based on search value
-        const filtered = Object.values(children ?? {}).filter((column) =>
-          getEntityName(column).toLowerCase().includes(value.toLowerCase())
+        const currentNodeMatchedColumns = currentNodeColumnsToSearch.filter(
+          (column) =>
+            getEntityName(column)
+              .toLowerCase()
+              .includes(searchQuery.toLowerCase())
         );
-        setFilteredColumns(filtered);
+        setFilteredColumns(currentNodeMatchedColumns);
         setShowAllColumns(true);
       }
     },
-    [children]
+    [
+      currentNodeAllColumns,
+      currentNodeColumnsWithLineage,
+      isOnlyShowColumnsWithLineageFilterActive,
+    ]
   );
 
   const isColumnVisible = useCallback(
@@ -333,10 +414,18 @@ const NodeChildren = ({
   );
 
   useEffect(() => {
-    if (!isEmpty(children)) {
-      setFilteredColumns(children);
+    if (!isEmpty(entityChildren)) {
+      if (isOnlyShowColumnsWithLineageFilterActive) {
+        setFilteredColumns(currentNodeColumnsWithLineage);
+      } else {
+        setFilteredColumns(currentNodeAllColumns);
+      }
     }
-  }, [children]);
+  }, [
+    currentNodeAllColumns,
+    currentNodeColumnsWithLineage,
+    isOnlyShowColumnsWithLineageFilterActive,
+  ]);
 
   useEffect(() => {
     setShowAllColumns(expandAllColumns);
@@ -346,7 +435,13 @@ const NodeChildren = ({
     if (node.id) {
       updateNodeInternals?.(node.id);
     }
-  }, [selectedColumn, updateNodeInternals, tracedColumns, node.id]);
+  }, [
+    selectedColumn,
+    updateNodeInternals,
+    tracedColumns,
+    node.id,
+    isOnlyShowColumnsWithLineageFilterActive,
+  ]);
 
   const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
     setIsLoading(true);
@@ -438,7 +533,8 @@ const NodeChildren = ({
           className="lineage-collapse-column"
           defaultActiveKey={record.fullyQualifiedName}
           expandIcon={() => null}
-          key={record.fullyQualifiedName}>
+          key={record.fullyQualifiedName}
+        >
           <Panel header={headerContent} key={record.fullyQualifiedName ?? ''}>
             {result}
           </Panel>
@@ -512,14 +608,15 @@ const NodeChildren = ({
   ) {
     return (
       isChildrenListExpanded &&
-      !isEmpty(children) && (
+      !isEmpty(entityChildren) && (
         <div
           className={classNames(
             'column-container',
             selectedColumn && 'any-column-selected',
             isCreatingEdge && 'creating-edge'
           )}
-          data-testid="column-container">
+          data-testid="column-container"
+        >
           <div className="search-box">
             <Input
               data-testid="search-column-input"
@@ -536,7 +633,10 @@ const NodeChildren = ({
               <section className="m-t-md" id="table-columns">
                 <div className="rounded-4 overflow-hidden">
                   <CustomPaginatedList
-                    filteredColumns={filteredColumns}
+                    entityChildren={entityChildren}
+                    isOnlyShowColumnsWithLineageFilterActive={
+                      isOnlyShowColumnsWithLineageFilterActive
+                    }
                     items={renderedColumns}
                     nodeId={node.id}
                     page={page}

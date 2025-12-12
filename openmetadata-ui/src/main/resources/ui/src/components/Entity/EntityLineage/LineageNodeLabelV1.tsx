@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from '@mui/material';
+import { Button, IconButton } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-filter.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
@@ -37,6 +38,8 @@ interface LineageNodeLabelProps {
   node: SourceType;
   isChildrenListExpanded?: boolean;
   toggleColumnsList?: () => void;
+  toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
+  isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
 
 interface LineageNodeLabelPropsExtended
@@ -69,7 +72,8 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
       className={classNames(
         'items-center entity-label-container',
         childrenCount > 0 ? 'with-footer' : ''
-      )}>
+      )}
+    >
       <Col className="d-flex items-center m-b-sm" flex="auto">
         <div className="d-flex entity-service-icon m-r-xs">
           {getServiceIcon(node)}
@@ -79,7 +83,8 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
             align="start"
             className="entity-header-name"
             direction="horizontal"
-            size={6}>
+            size={6}
+          >
             <Typography.Text className="m-b-0 d-flex text-left text-grey-muted node-service-type">
               {node.serviceType}
             </Typography.Text>
@@ -91,7 +96,8 @@ const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
           <Typography.Text
             className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
             data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}>
+            ellipsis={{ tooltip: true }}
+          >
             {getEntityName(node)}
           </Typography.Text>
         </Space>
@@ -171,11 +177,14 @@ const EntityFooter = ({
   isChildrenListExpanded,
   node,
   toggleColumnsList,
+  toggleOnlyShowColumnsWithLineageFilterActive,
+  isOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelPropsExtended) => {
   const { children, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node.id]
   );
+  const { isEditMode } = useLineageProvider();
 
   const childrenCount = children.length;
 
@@ -192,6 +201,14 @@ const EntityFooter = ({
     [toggleColumnsList]
   );
 
+  const handleOnlyShowColumnsWithLineage = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      toggleOnlyShowColumnsWithLineageFilterActive?.();
+    },
+    [toggleOnlyShowColumnsWithLineageFilterActive]
+  );
+
   if (childrenCount === 0) {
     return null;
   }
@@ -205,10 +222,22 @@ const EntityFooter = ({
         )}
         data-testid="children-info-dropdown-btn"
         variant="outlined"
-        onClick={handleClickColumnInfoDropdown}>
+        onClick={handleClickColumnInfoDropdown}
+      >
         {childrenInfoDropdownLabel}
       </Button>
       <TestSuiteSummaryContainer node={node} />
+      <IconButton
+        className={classNames(
+          'only-show-columns-with-lineage-filter-button',
+          isOnlyShowColumnsWithLineageFilterActive && 'active'
+        )}
+        data-testid="lineage-filter-button"
+        disabled={isEditMode}
+        onClick={handleOnlyShowColumnsWithLineage}
+      >
+        <FilterIcon height={20} width={20} />
+      </IconButton>
     </div>
   );
 };
@@ -217,14 +246,22 @@ const LineageNodeLabelV1 = ({
   node,
   isChildrenListExpanded,
   toggleColumnsList,
+  toggleOnlyShowColumnsWithLineageFilterActive,
+  isOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelProps) => {
   return (
     <div className="custom-node-label-container m-0">
       <EntityLabel node={node} />
       <EntityFooter
         isChildrenListExpanded={isChildrenListExpanded}
+        isOnlyShowColumnsWithLineageFilterActive={
+          isOnlyShowColumnsWithLineageFilterActive
+        }
         node={node}
         toggleColumnsList={toggleColumnsList}
+        toggleOnlyShowColumnsWithLineageFilterActive={
+          toggleOnlyShowColumnsWithLineageFilterActive
+        }
       />
     </div>
   );

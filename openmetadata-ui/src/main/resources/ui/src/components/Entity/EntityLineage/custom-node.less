@@ -163,8 +163,23 @@
             }
           }
 
-          .mapping-icon {
+          .only-show-columns-with-lineage-filter-button {
             cursor: pointer;
+            border: 1px solid transparent;
+            width: 25px;
+            height: 25px;
+            svg {
+              width: 14px;
+            }
+
+            &.active {
+              background-color: @primary-1;
+              color: @blue-7;
+            }
+
+            &:disabled:hover {
+              cursor: not-allowed;
+            }
           }
         }
       }
@@ -383,7 +398,9 @@
       }
 
       &.creating-edge {
-        .custom-node-column-container:not(.custom-node-header-column-tracing):hover {
+        .custom-node-column-container:not(
+            .custom-node-header-column-tracing
+          ):hover {
           background-color: @primary-1;
           border-left-color: @primary-6;
         }
