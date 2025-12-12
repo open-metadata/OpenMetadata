@@ -240,6 +240,17 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       applySearchFilter(filter, requestBuilder);
     }
 
+    return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
+  }
+
+  @NotNull
+  private SearchResultListMapper doListWithOffset(
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      OpenSearchRequestBuilder requestBuilder)
+      throws IOException {
     requestBuilder.timeout("30s");
     requestBuilder.from(offset);
     requestBuilder.size(limit);
@@ -297,6 +308,69 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
       }
     }
+  }
+
+  @Override
+  public SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("OpenSearch client is not available");
+    }
+
+    OpenSearchRequestBuilder requestBuilder = new OpenSearchRequestBuilder();
+
+    if (!nullOrEmpty(q)) {
+      OpenSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+      requestBuilder =
+          searchBuilderFactory.getSearchSourceBuilderV2(index, q, offset, limit, false);
+    }
+
+    if (!nullOrEmpty(queryString)) {
+      try {
+        String queryToProcess = OsUtils.parseJsonQuery(queryString);
+        Query query = Query.of(qb -> qb.wrapper(w -> w.query(queryToProcess)));
+        requestBuilder.query(query);
+      } catch (Exception e) {
+        LOG.warn("Error parsing queryString using OsUtils: {}", e.getMessage());
+      }
+    }
+
+    if (!nullOrEmpty(filter) && !filter.equals("{}")) {
+      applySearchFilter(filter, requestBuilder);
+    }
+
+    // Apply RBAC query
+    if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+      OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+      if (rbacQueryBuilder != null) {
+        Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
+        Query existingQuery = requestBuilder.query();
+        if (existingQuery != null) {
+          Query combinedQuery =
+              Query.of(
+                  qb ->
+                      qb.bool(
+                          b -> {
+                            b.must(existingQuery);
+                            b.filter(rbacQuery);
+                            return b;
+                          }));
+          requestBuilder.query(combinedQuery);
+        } else {
+          requestBuilder.query(rbacQuery);
+        }
+      }
+    }
+
+    return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
 
   @Override

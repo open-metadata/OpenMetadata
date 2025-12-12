@@ -305,8 +305,9 @@ public class ApplicationHandler {
         appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH, null);
     updater.update();
     AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
-    AppScheduler.getInstance().scheduleApplication(updatedApp);
-    LOG.info("migrated app configuration for {}", application.getName());
+    LOG.info(
+        "migrated app configuration for {}, will be rescheduled by install()",
+        application.getName());
   }
 
   public void fixCorruptedInstallation(App application) throws SchedulerException {
@@ -323,10 +324,11 @@ public class ApplicationHandler {
     }
     String appName = jobDataMap.getString(APP_NAME);
     if (appName == null) {
-      LOG.info("corrupt entry for app {}, reinstalling", application.getName());
+      LOG.info(
+          "corrupt entry for app {}, deleting corrupt job. Will be rescheduled by install()",
+          application.getName());
       App app = appRepository.getDao().findEntityByName(application.getName());
       AppScheduler.getInstance().deleteScheduledApplication(app);
-      AppScheduler.getInstance().scheduleApplication(app);
     }
   }
 

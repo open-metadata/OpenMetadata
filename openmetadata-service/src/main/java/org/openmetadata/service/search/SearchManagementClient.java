@@ -84,6 +84,31 @@ public interface SearchManagementClient {
       throws IOException;
 
   /**
+   * List entities with pagination support and RBAC enforcement.
+   *
+   * @param filter JSON filter to apply to the search
+   * @param limit maximum number of results to return
+   * @param offset starting position for results
+   * @param index the index to search in
+   * @param searchSortFilter sorting configuration
+   * @param q search query string
+   * @param queryString raw query DSL string
+   * @param subjectContext the subject context for RBAC evaluation
+   * @return response containing paginated search results
+   * @throws IOException if search execution fails
+   */
+  SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException;
+
+  /**
    * List entities with deep pagination using search_after.
    * This method uses the search_after parameter for efficient deep pagination.
    *

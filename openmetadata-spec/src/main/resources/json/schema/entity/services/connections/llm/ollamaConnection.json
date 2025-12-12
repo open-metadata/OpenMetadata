@@ -1,0 +1,53 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/llm/ollamaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OllamaConnection",
+  "description": "Ollama (Local LLM) Service Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.llm.OllamaConnection",
+  "definitions": {
+    "ollamaType": {
+      "description": "Service type",
+      "type": "string",
+      "enum": ["Ollama"],
+      "default": "Ollama"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/ollamaType",
+      "default": "Ollama"
+    },
+    "baseURL": {
+      "title": "Base URL",
+      "description": "Ollama server URL (e.g., http://localhost:11434)",
+      "type": "string",
+      "default": "http://localhost:11434"
+    },
+    "timeout": {
+      "title": "Timeout",
+      "description": "Request timeout in seconds",
+      "type": "integer",
+      "default": 60
+    },
+    "maxRetries": {
+      "title": "Max Retries",
+      "description": "Maximum number of retries for failed requests",
+      "type": "integer",
+      "default": 3
+    },
+    "modelFilterPattern": {
+      "description": "Regex to only fetch models with names matching the pattern",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Model Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["baseURL"]
+}
