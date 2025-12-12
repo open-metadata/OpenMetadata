@@ -86,12 +86,11 @@ for (const EntityClass of entities) {
   const defaultEntity = new EntityClass();
 
   test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
-    browser,
+    page,
   }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs
     test.setTimeout(300_000);
 
-    const { page } = await createNewPage(browser);
     const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(
       page,
       defaultEntity
@@ -205,8 +204,7 @@ for (const EntityClass of entities) {
   });
 }
 
-test('Verify column lineage between tables', async ({ browser }) => {
-  const { page } = await createNewPage(browser);
+test('Verify column lineage between tables', async ({ page }) => {
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
   const table2 = new TableClass();
@@ -242,10 +240,9 @@ test('Verify column lineage between tables', async ({ browser }) => {
   await afterAction();
 });
 
-test('Verify column lineage between table and topic', async ({ browser }) => {
+test('Verify column lineage between table and topic', async ({ page }) => {
   test.slow();
 
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
   const topic = new TopicClass();
@@ -313,9 +310,8 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
 });
 
 test('Verify column lineage between topic and api endpoint', async ({
-  browser,
+  page,
 }) => {
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const topic = new TopicClass();
   const apiEndpoint = new ApiEndpointClass();
@@ -350,9 +346,8 @@ test('Verify column lineage between topic and api endpoint', async ({
 });
 
 test('Verify column lineage between table and api endpoint', async ({
-  browser,
+  page,
 }) => {
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
   const apiEndpoint = new ApiEndpointClass();
@@ -384,10 +379,9 @@ test('Verify column lineage between table and api endpoint', async ({
   await afterAction();
 });
 
-test('Verify function data in edge drawer', async ({ browser }) => {
+test('Verify function data in edge drawer', async ({ page }) => {
   test.slow();
 
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
   const table2 = new TableClass();
@@ -466,9 +460,8 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 });
 
 test('Verify table search with special characters as handled', async ({
-  browser,
+  page,
 }) => {
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
 
   // Create a table with '/' in the name to test encoding functionality
@@ -541,10 +534,9 @@ test('Verify table search with special characters as handled', async ({
   }
 });
 
-test('Verify cycle lineage should be handled properly', async ({ browser }) => {
+test('Verify cycle lineage should be handled properly', async ({ page }) => {
   test.slow();
 
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
   const topic = new TopicClass();
@@ -872,12 +864,8 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await afterAction();
   });
 
-  test('Verify column visibility across pagination pages', async ({
-    browser,
-  }) => {
+  test('Verify column visibility across pagination pages', async ({ page }) => {
     test.slow();
-
-    const { page } = await createNewPage(browser);
 
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
@@ -1015,11 +1003,9 @@ test.describe.serial('Test pagination in column level lineage', () => {
   });
 
   test('Verify edges when no column is hovered or selected', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-
-    const { page } = await createNewPage(browser);
 
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
@@ -1202,11 +1188,9 @@ test.describe.serial('Test pagination in column level lineage', () => {
   });
 
   test('Verify columns and edges when a column is hovered', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-
-    const { page } = await createNewPage(browser);
 
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
@@ -1263,11 +1247,9 @@ test.describe.serial('Test pagination in column level lineage', () => {
   });
 
   test('Verify columns and edges when a column is clicked', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-
-    const { page } = await createNewPage(browser);
 
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
