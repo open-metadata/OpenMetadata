@@ -73,6 +73,21 @@ public class RuleEvaluator {
   }
 
   @Function(
+      name = "isReviewer",
+      input = "none",
+      description = "Returns true if the logged in user is a reviewer of the entity being accessed",
+      examples = {"isReviewer()", "!isReviewer"})
+  public boolean isReviewer() {
+    if (expressionValidation) {
+      return false;
+    }
+    if (subjectContext == null || resourceContext == null || resourceContext.getEntity() == null) {
+      return false;
+    }
+    return subjectContext.isReviewer(resourceContext.getEntity().getReviewers());
+  }
+
+  @Function(
       name = "hasDomain",
       input = "none",
       description =

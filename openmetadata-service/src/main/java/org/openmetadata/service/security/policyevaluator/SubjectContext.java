@@ -80,6 +80,28 @@ public record SubjectContext(User user, String impersonatedBy) {
     return false;
   }
 
+  public boolean isReviewer(List<EntityReference> reviewers) {
+    if (nullOrEmpty(reviewers)) {
+      return false;
+    }
+    for (EntityReference reviewer : reviewers) {
+      // Reviewer is the same user
+      if (reviewer.getType().equals(Entity.USER) && reviewer.getName().equals(user.getName())) {
+        return true;
+      }
+
+      // Reviewer is a team and user is a member of that team
+      if (reviewer.getType().equals(Entity.TEAM)) {
+        for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
+          if (userTeam.getName().equals(reviewer.getName())) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   public boolean hasDomains(List<EntityReference> domains) {
     return checkDomainHierarchyAccess(user.getDomains(), domains);
   }
