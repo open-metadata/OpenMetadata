@@ -1498,19 +1498,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     private void updateChildrenGlossaryRelationships(GlossaryTerm original, GlossaryTerm updated) {
-      // When a parent term moves to a different glossary, all nested children must have their
-      // glossary relationships updated. Children always have HAS relationship to their glossary.
       List<GlossaryTerm> nestedTerms = getNestedTerms(updated);
       if (nestedTerms.isEmpty()) {
         return;
       }
 
-      // Extract child term IDs for batch update
       List<String> childIds =
           nestedTerms.stream().map(GlossaryTerm::getId).map(UUID::toString).toList();
 
-      // Single UPDATE query to change glossary relationship for all children
-      // Updates fromId from old glossary to new glossary in entity_relationship table
       daoCollection
           .relationshipDAO()
           .bulkUpdateFromId(
