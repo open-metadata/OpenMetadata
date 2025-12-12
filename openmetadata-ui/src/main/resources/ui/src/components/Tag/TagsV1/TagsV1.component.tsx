@@ -26,6 +26,7 @@ import { LabelType, TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { renderIcon } from '../../../utils/IconUtils';
 import {
   getClassificationTagPath,
   getGlossaryPath,
@@ -140,21 +141,16 @@ const TagsV1 = ({
     return '';
   }, [newLook, tag.style?.color]);
 
-  const renderIcon = useMemo(() => {
+  const renderTagIcon = useMemo(() => {
     if (hideIcon) {
       return null;
     }
 
     if (tag.style?.iconURL) {
-      return (
-        <img
-          className="m-r-xss"
-          data-testid="icon"
-          height={12}
-          src={tag.style.iconURL}
-          width={12}
-        />
-      );
+      return renderIcon(tag.style.iconURL, {
+        size: 12,
+        style: { marginRight: 4, flexShrink: 0 },
+      });
     }
 
     return startIcon;
@@ -169,7 +165,7 @@ const TagsV1 = ({
             'd-flex items-center p-x-xs w-full tag-content-container',
             tagChipStyleClass
           )}>
-          {renderIcon}
+          {renderTagIcon}
           <Typography.Text
             className="m-0 tags-label text-truncate truncate w-max-full"
             data-testid={`tag-${tag.tagFQN}`}
@@ -180,7 +176,7 @@ const TagsV1 = ({
         </div>
       </div>
     ),
-    [startIcon, tagName, tag, tagColorBar]
+    [renderTagIcon, tagName, tag, tagColorBar]
   );
 
   const automatedTagChip = useMemo(
