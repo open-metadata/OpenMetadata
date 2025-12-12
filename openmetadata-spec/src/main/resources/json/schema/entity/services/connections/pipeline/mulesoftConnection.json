@@ -1,0 +1,124 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/mulesoftConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MulesoftConnection",
+  "description": "MuleSoft Anypoint Platform Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.MulesoftConnection",
+  "definitions": {
+    "MulesoftType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Mulesoft"],
+      "default": "Mulesoft"
+    },
+    "mulesoftAuthentication": {
+      "title": "Mulesoft Authentication",
+      "description": "Authentication method for MuleSoft Anypoint Platform.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/connectedAppAuth"
+        },
+        {
+          "$ref": "#/definitions/basicAuth"
+        }
+      ]
+    },
+    "connectedAppAuth": {
+      "title": "Connected App Authentication",
+      "description": "OAuth 2.0 client credentials authentication using Connected App.",
+      "type": "object",
+      "properties": {
+        "authType": {
+          "title": "Authentication Type",
+          "description": "Authentication type (ConnectedApp).",
+          "type": "string",
+          "enum": ["ConnectedApp"],
+          "default": "ConnectedApp"
+        },
+        "clientId": {
+          "title": "Client ID",
+          "description": "Connected App Client ID from Anypoint Platform.",
+          "type": "string"
+        },
+        "clientSecret": {
+          "title": "Client Secret",
+          "description": "Connected App Client Secret from Anypoint Platform.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["clientId", "clientSecret"]
+    },
+    "basicAuth": {
+      "title": "Basic Authentication",
+      "description": "Username and password authentication for Anypoint Platform.",
+      "type": "object",
+      "properties": {
+        "authType": {
+          "title": "Authentication Type",
+          "description": "Authentication type (Basic).",
+          "type": "string",
+          "enum": ["Basic"],
+          "default": "Basic"
+        },
+        "username": {
+          "title": "Username",
+          "description": "Anypoint Platform username.",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "description": "Anypoint Platform password.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["username", "password"]
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/MulesoftType",
+      "default": "Mulesoft"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host And Port",
+      "description": "MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud, https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://anypoint.mulesoft.com"
+    },
+    "authentication": {
+      "title": "Authentication",
+      "description": "Choose between Connected App (OAuth 2.0) or Basic Authentication.",
+      "$ref": "#/definitions/mulesoftAuthentication"
+    },
+    "organizationId": {
+      "title": "Organization ID",
+      "description": "Anypoint Platform Organization ID. If not provided, the connector will use the user's default organization.",
+      "type": "string"
+    },
+    "environmentId": {
+      "title": "Environment ID",
+      "description": "Anypoint Platform Environment ID. If not provided, the connector will discover all accessible environments.",
+      "type": "string"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex to filter MuleSoft applications by name.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Application Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["authentication"]
+}
