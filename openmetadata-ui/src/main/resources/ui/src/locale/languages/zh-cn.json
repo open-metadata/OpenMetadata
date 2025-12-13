@@ -2396,6 +2396,7 @@
     "no-kpi": "定义关键绩效指标，以监控影响并推动更智能的决策。",
     "no-kpi-available-add-new-one": "没有可用的 KPI, 请单击添加 KPI 按钮添加一个",
     "no-kpi-found": "未找到名称为{{name}}的 KPI",
+    "no-lineage-available": "未找到 lineage 连接",
     "no-match-found": "未找到匹配项",
     "no-mentions": "近期您或您的团队没有被任何项目提及",
     "no-notification-found": "未找到通知",

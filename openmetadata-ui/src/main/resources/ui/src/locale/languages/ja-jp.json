@@ -2396,6 +2396,7 @@
     "no-kpi": "影響をモニターして、より良い意思決定のために KPI（主要業績評価指標）を定義してください。",
     "no-kpi-available-add-new-one": "KPI が利用できません。「KPI を追加」ボタンをクリックしてください。",
     "no-kpi-found": "名前 {{name}} に一致する KPI は見つかりませんでした",
+    "no-lineage-available": "lineage の接続は見つかりませんでした",
     "no-match-found": "一致するものは見つかりませんでした",
     "no-mentions": "あなたやチームが参照されているアクティビティはありません",
     "no-notification-found": "通知は見つかりませんでした",
