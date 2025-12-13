@@ -493,14 +493,11 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await editorLocator.fill('Hey ');
 
-      const username = adminUser.responseData.name;
-      const searchPrefix = username.slice(0, -13);
-
       const userSuggestionsResponse = user1Page.waitForResponse(
-        `/api/v1/search/query?q=*${searchPrefix}***`
+        `/api/v1/search/query?q=*${adminUser.responseData.name}***`
       );
 
-      await editorLocator.pressSequentially(`@${searchPrefix}`);
+      await editorLocator.pressSequentially(`@${adminUser.responseData.name}`);
       await userSuggestionsResponse;
 
       await user1Page
