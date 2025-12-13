@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -48,18 +48,13 @@ test.describe('Glossary Voting', () => {
 
     await expect(upvoteButton).toBeVisible();
 
-    // Get initial vote count
-    const initialCount =
-      (await upvoteButton.textContent())?.trim().replace(/\D/g, '') || '0';
-    const initialVoteCount = parseInt(initialCount) || 0;
-
     // Click upvote
     const voteResponse = page.waitForResponse('/api/v1/glossaries/*/vote');
     await upvoteButton.click();
     await voteResponse;
 
     // Verify vote count increased
-    await expect(upvoteButton).toHaveClass(/active/);
+    await expect(upvoteButton).toHaveClass(/\bactive\b/);
   });
 
   test('should downvote glossary', async ({ page }) => {
@@ -75,7 +70,7 @@ test.describe('Glossary Voting', () => {
     await voteResponse;
 
     // Verify downvote is active
-    await expect(downvoteButton).toHaveClass(/active/);
+    await expect(downvoteButton).toHaveClass(/\bactive\b/);
   });
 
   test('should change vote on glossary from upvote to downvote', async ({
@@ -91,7 +86,7 @@ test.describe('Glossary Voting', () => {
     await upvoteButton.click();
     await voteResponse1;
 
-    await expect(upvoteButton).toHaveClass(/active/);
+    await expect(upvoteButton).toHaveClass(/\bactive\b/);
 
     // Then change to downvote
     const voteResponse2 = page.waitForResponse('/api/v1/glossaries/*/vote');
@@ -99,8 +94,8 @@ test.describe('Glossary Voting', () => {
     await voteResponse2;
 
     // Verify downvote is now active and upvote is not
-    await expect(downvoteButton).toHaveClass(/active/);
-    await expect(upvoteButton).not.toHaveClass(/active/);
+    await expect(downvoteButton).toHaveClass(/\bactive\b/);
+    await expect(upvoteButton).not.toHaveClass(/\bactive\b/);
   });
 
   test('should remove vote on glossary by clicking again', async ({ page }) => {
@@ -113,7 +108,7 @@ test.describe('Glossary Voting', () => {
     await upvoteButton.click();
     await voteResponse1;
 
-    await expect(upvoteButton).toHaveClass(/active/);
+    await expect(upvoteButton).toHaveClass(/\bactive\b/);
 
     // Click again to remove vote
     const voteResponse2 = page.waitForResponse('/api/v1/glossaries/*/vote');
@@ -121,7 +116,7 @@ test.describe('Glossary Voting', () => {
     await voteResponse2;
 
     // Verify vote is removed
-    await expect(upvoteButton).not.toHaveClass(/active/);
+    await expect(upvoteButton).not.toHaveClass(/\bactive\b/);
   });
 
   test('should upvote glossary term', async ({ page }) => {
@@ -137,7 +132,7 @@ test.describe('Glossary Voting', () => {
     await voteResponse;
 
     // Verify vote is active
-    await expect(upvoteButton).toHaveClass(/active/);
+    await expect(upvoteButton).toHaveClass(/\bactive\b/);
   });
 
   test('should downvote glossary term', async ({ page }) => {
@@ -153,7 +148,7 @@ test.describe('Glossary Voting', () => {
     await voteResponse;
 
     // Verify downvote is active
-    await expect(downvoteButton).toHaveClass(/active/);
+    await expect(downvoteButton).toHaveClass(/\bactive\b/);
   });
 
   test('should persist vote after page reload', async ({ page }) => {
@@ -166,7 +161,7 @@ test.describe('Glossary Voting', () => {
     await upvoteButton.click();
     await voteResponse;
 
-    await expect(upvoteButton).toHaveClass(/active/);
+    await expect(upvoteButton).toHaveClass(/\bactive\b/);
 
     // Reload page
     await page.reload();
@@ -175,6 +170,6 @@ test.describe('Glossary Voting', () => {
     // Verify vote persists
     const upvoteButtonAfterReload = page.getByTestId('up-vote-btn');
 
-    await expect(upvoteButtonAfterReload).toHaveClass(/active/);
+    await expect(upvoteButtonAfterReload).toHaveClass(/\bactive\b/);
   });
 });

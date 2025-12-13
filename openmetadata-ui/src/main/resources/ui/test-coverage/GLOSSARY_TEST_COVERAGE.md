@@ -20,8 +20,7 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 | Remove Operations | GlossaryRemoveOperations.spec.ts | 6 |
 | Term Details | GlossaryTermDetails.spec.ts | 6 |
 | Workflow | GlossaryWorkflow.spec.ts | 6 |
-| Assets | GlossaryAssets.spec.ts | 3 |
-| **TOTAL** | **13 files** | **99 tests** |
+| **TOTAL** | **12 files** | **96 tests** |
 
 ---
 
@@ -219,17 +218,6 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 
 ---
 
-### 13. Asset Management
-**File:** `playwright/e2e/Features/GlossaryAssets.spec.ts`
-
-| # | Test Name | Coverage ID |
-|---|-----------|-------------|
-| 1 | should add asset to glossary term via Assets tab | A-A03 |
-| 2 | should add and remove asset from glossary term | A-R01 |
-| 3 | should display asset cards correctly | A-V02 |
-
----
-
 ## Coverage by Feature Area
 
 ### Glossary CRUD
@@ -318,14 +306,11 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 ### Asset Management
 - ✅ A-A01: Add single asset to term
 - ✅ A-A02: Add multiple assets
-- ✅ A-A03: Add asset via Assets dropdown
 - ✅ A-A04: Add table asset
 - ✅ A-A05: Add dashboard asset
 - ✅ A-A08: Mutually exclusive validation
 - ✅ A-V01: Assets tab shows correct count
-- ✅ A-V02: Asset cards display correctly
 - ✅ A-V07: Assets persist after term rename
-- ✅ A-R01: Remove single asset from term
 
 ### Search & Filter
 - ✅ S-S01: Search by exact term name
@@ -407,7 +392,7 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 
 ### Run all glossary tests
 ```bash
-yarn playwright test playwright/e2e/**/Glossary*.spec.ts playwright/e2e/**/*lossary*.spec.ts --project=chromium
+yarn playwright test playwright/e2e/**/Glossary*.spec.ts --project=chromium
 ```
 
 ### Run specific test file
@@ -629,10 +614,10 @@ All P1 tests are now implemented! ✅
 
 | Priority | Covered | Pending | Total |
 |----------|---------|---------|-------|
-| **P1** | ~82 | 0 | ~82 |
-| **P2** | ~17 | ~68 | ~85 |
+| **P1** | ~79 | 0 | ~79 |
+| **P2** | ~17 | ~71 | ~88 |
 | **P3** | ~2 | ~20 | ~22 |
-| **Total** | **99** | **~88** | **~187** |
+| **Total** | **96** | **~91** | **~187** |
 
 ---
 

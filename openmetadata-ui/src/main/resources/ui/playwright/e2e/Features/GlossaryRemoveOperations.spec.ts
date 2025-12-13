@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -233,10 +233,7 @@ test.describe('Glossary Remove Operations', () => {
 
     // On glossary term page, tags are in the main content area, not KnowledgePanel
     // Click add tag button in tags section
-    await page
-      .getByTestId('tags-container')
-      .getByTestId('add-tag')
-      .click();
+    await page.getByTestId('tags-container').getByTestId('add-tag').click();
 
     // Wait for tag selector form
     await page.locator('#tagsForm_tags').waitFor({ state: 'visible' });
@@ -257,10 +254,14 @@ test.describe('Glossary Remove Operations', () => {
     );
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
     await page.getByTestId('saveAssociatedTag').click();
 
     // Handle confirmation modal for glossary term tag updates
-    await expect(page.getByText('Would you like to proceed with updating the tags?')).toBeVisible();
+    await expect(
+      page.getByText('Would you like to proceed with updating the tags?')
+    ).toBeVisible();
+
     const patchRequest = page.waitForResponse('/api/v1/glossaryTerms/*');
     await page.getByRole('button', { name: 'Yes, confirm' }).click();
     await patchRequest;
@@ -271,10 +272,7 @@ test.describe('Glossary Remove Operations', () => {
     ).toBeVisible();
 
     // Remove the tag - click edit button
-    await page
-      .getByTestId('tags-container')
-      .getByTestId('edit-button')
-      .click();
+    await page.getByTestId('tags-container').getByTestId('edit-button').click();
 
     // Remove tag by clicking the X icon
     await page
@@ -290,10 +288,14 @@ test.describe('Glossary Remove Operations', () => {
     );
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
     await page.getByTestId('saveAssociatedTag').click();
 
     // Handle confirmation modal for glossary term tag updates
-    await expect(page.getByText('Would you like to proceed with updating the tags?')).toBeVisible();
+    await expect(
+      page.getByText('Would you like to proceed with updating the tags?')
+    ).toBeVisible();
+
     const patchRequest2 = page.waitForResponse('/api/v1/glossaryTerms/*');
     await page.getByRole('button', { name: 'Yes, confirm' }).click();
     await patchRequest2;

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -48,6 +48,7 @@ test.describe('Glossary Navigation', () => {
 
     // Verify Terms tab is visible and shows count
     const termsTab = page.getByTestId('terms');
+
     await expect(termsTab).toBeVisible();
 
     // Verify term is visible in the table
@@ -61,12 +62,14 @@ test.describe('Glossary Navigation', () => {
     await page.waitForLoadState('networkidle');
 
     // Wait for loader to disappear
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-      timeout: 5000,
-    }).catch(() => {
-      // Loader may not appear if data loads quickly
-    });
+    await page
+      .waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+        timeout: 5000,
+      })
+      .catch(() => {
+        // Loader may not appear if data loads quickly
+      });
 
     // Verify we're on the activity feed tab by checking the tab is active
     await expect(
@@ -91,6 +94,7 @@ test.describe('Glossary Navigation', () => {
 
     // Verify Overview tab is active by default on term page
     const overviewTab = page.getByTestId('overview');
+
     await expect(overviewTab).toBeVisible();
 
     // Verify description is visible on Overview tab
@@ -100,6 +104,7 @@ test.describe('Glossary Navigation', () => {
 
     // Check if Assets tab exists
     const assetsTab = page.getByTestId('assets');
+
     await expect(assetsTab).toBeVisible();
 
     // Click on Assets tab
@@ -107,12 +112,14 @@ test.describe('Glossary Navigation', () => {
     await page.waitForLoadState('networkidle');
 
     // Wait for loader to disappear
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-      timeout: 5000,
-    }).catch(() => {
-      // Loader may not appear if data loads quickly
-    });
+    await page
+      .waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+        timeout: 5000,
+      })
+      .catch(() => {
+        // Loader may not appear if data loads quickly
+      });
 
     // Verify we're on the Assets tab by checking the tab is active
     await expect(
@@ -135,6 +142,7 @@ test.describe('Glossary Navigation', () => {
 
     // Verify breadcrumb is visible
     const breadcrumb = page.locator('[data-testid="breadcrumb"]');
+
     await expect(breadcrumb).toBeVisible();
 
     // Click on Glossaries link in breadcrumb to go to glossary listing

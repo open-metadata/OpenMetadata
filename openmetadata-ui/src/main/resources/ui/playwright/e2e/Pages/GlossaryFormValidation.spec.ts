@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -127,7 +127,9 @@ test.describe('Glossary Form Validation', () => {
 
     await page.click('[data-testid="cancel-glossary"]');
 
-    await expect(page.locator('[data-testid="form-heading"]')).not.toBeVisible();
+    await expect(
+      page.locator('[data-testid="form-heading"]')
+    ).not.toBeVisible();
   });
 
   test('should show error for empty term name', async ({ page }) => {
