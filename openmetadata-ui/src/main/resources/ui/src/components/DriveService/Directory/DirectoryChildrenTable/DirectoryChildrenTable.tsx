@@ -24,8 +24,8 @@ import {
 } from '../../../../generated/entity/data/directory';
 import { getColumnSorter, getEntityName } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 
@@ -76,24 +76,7 @@ function DirectoryChildrenTable() {
           </Tooltip>
         ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (description: EntityReference['description']) => (
-          <>
-            {description ? (
-              <RichTextEditorPreviewerNew markdown={description} />
-            ) : (
-              <Typography.Text className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </Typography.Text>
-            )}
-          </>
-        ),
-      },
+      ...descriptionTableObject(),
     ],
     []
   );

@@ -13,7 +13,7 @@
 import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,10 +43,12 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
-import { tagTableObject } from '../../../../utils/TableColumn.util';
+import {
+  descriptionTableObject,
+  tagTableObject,
+} from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import { FilesTableProps } from './FilesTable.interface';
 
@@ -150,22 +152,7 @@ function FilesTable({
           );
         },
       },
-      {
-        title: t('label.description'),
-        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        width: 400,
-        render: (description: ServicePageData['description']) =>
-          !isUndefined(description) && description.trim() ? (
-            <RichTextEditorPreviewerNew markdown={description} />
-          ) : (
-            <span className="text-grey-muted">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </span>
-          ),
-      },
+      ...descriptionTableObject<ServicePageData>({ width: 400 }),
       ...tagTableObject<ServicePageData>(),
     ],
     [searchValue, t]

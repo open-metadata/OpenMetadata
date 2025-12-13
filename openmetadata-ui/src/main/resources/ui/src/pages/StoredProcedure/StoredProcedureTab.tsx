@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import {
   INITIAL_PAGING_VALUE,
@@ -41,6 +40,7 @@ import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getColumnSorter, highlightSearchText } from '../../utils/EntityUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const StoredProcedureTab = () => {
@@ -187,19 +187,7 @@ const StoredProcedureTab = () => {
           />
         ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text: string) =>
-          isEmpty(text) ? (
-            <Typography.Text className="text-grey-muted">
-              {t('label.no-description')}
-            </Typography.Text>
-          ) : (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ),
-      },
+      ...descriptionTableObject(),
     ],
     [searchValue]
   );

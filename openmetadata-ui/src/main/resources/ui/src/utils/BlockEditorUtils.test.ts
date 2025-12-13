@@ -16,6 +16,7 @@ import {
   formatValueBasedOnContent,
   getHtmlStringFromMarkdownString,
   getTextFromHtmlString,
+  isDescriptionContentEmpty,
   isHTMLString,
   setEditorContent,
   transformImgTagsToFileAttachment,
@@ -828,6 +829,429 @@ describe('transformImgTagsToFileAttachment', () => {
         expect(result).not.toContain('<img');
 
         expect(result).toContain(scenario.expected);
+      });
+    });
+  });
+});
+
+describe('isDescriptionContentEmpty', () => {
+  describe('Null, Undefined, and Empty String Cases', () => {
+    it('should return true for null', () => {
+      expect(isDescriptionContentEmpty(null as unknown as string)).toBe(true);
+    });
+
+    it('should return true for undefined', () => {
+      expect(isDescriptionContentEmpty(undefined as unknown as string)).toBe(
+        true
+      );
+    });
+
+    it('should return true for empty string', () => {
+      expect(isDescriptionContentEmpty('')).toBe(true);
+    });
+
+    it('should return true for string with only whitespace', () => {
+      const whitespaceVariations = ['   ', '\t', '\n', '\r\n', '  \t  \n  '];
+
+      whitespaceVariations.forEach((whitespace) => {
+        expect(isDescriptionContentEmpty(whitespace)).toBe(true);
+      });
+    });
+  });
+
+  describe('Empty Paragraph Cases', () => {
+    it('should return true for basic empty paragraph', () => {
+      expect(isDescriptionContentEmpty('<p></p>')).toBe(true);
+    });
+
+    it('should return true for empty paragraph with whitespace inside', () => {
+      const emptyParagraphCases = [
+        '<p> </p>',
+        '<p>  </p>',
+        '<p>\t</p>',
+        '<p>\n</p>',
+        '<p> \t \n </p>',
+        '<p>     </p>',
+      ];
+
+      emptyParagraphCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(true);
+      });
+    });
+
+    it('should return true for empty paragraph with unicode nbsp (\\u00A0)', () => {
+      // Note: \u00A0 is the actual unicode character, not the HTML entity &nbsp;
+      const unicodeNbspCases = [
+        '<p>\u00A0</p>',
+        '<p> \u00A0 </p>',
+        '<p>\u00A0\u00A0</p>',
+        '<p> \u00A0 \u00A0 </p>',
+        '<p>\t\u00A0\t</p>',
+      ];
+
+      unicodeNbspCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(true);
+      });
+    });
+
+    it('should return false for paragraph with HTML entity &nbsp; string', () => {
+      // HTML entity strings like &nbsp; are NOT matched by the regex
+      // Only the actual unicode character \u00A0 is matched
+      const htmlEntityCases = [
+        '<p>&nbsp;</p>',
+        '<p> &nbsp; </p>',
+        '<p>&nbsp;&nbsp;</p>',
+      ];
+
+      htmlEntityCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(false);
+      });
+    });
+
+    it('should return true for empty paragraph with whitespace before and after', () => {
+      const surroundingWhitespaceCases = [
+        '  <p></p>  ',
+        '\n<p></p>\n',
+        '\t<p></p>\t',
+        '  \n  <p> </p>  \n  ',
+        '   <p>\u00A0</p>   ',
+      ];
+
+      surroundingWhitespaceCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(true);
+      });
+    });
+
+    it('should return true for paragraph with attributes', () => {
+      const paragraphsWithAttributes = [
+        '<p class="test"></p>',
+        '<p id="description"></p>',
+        '<p class="empty" id="test"></p>',
+        '<p style="color: red;"></p>',
+        '<p data-testid="empty"> </p>',
+        '<p class="editor-content">\u00A0</p>',
+        '<p id="content" class="text"> \u00A0 </p>',
+      ];
+
+      paragraphsWithAttributes.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(true);
+      });
+    });
+  });
+
+  describe('Non-Empty Content Cases', () => {
+    it('should return false for paragraph with actual text', () => {
+      const textCases = [
+        '<p>Hello</p>',
+        '<p>Test content</p>',
+        '<p>This is a description</p>',
+        '<p>A</p>',
+        '<p>1</p>',
+      ];
+
+      textCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(false);
+      });
+    });
+
+    it('should return false for paragraph with text and whitespace', () => {
+      const mixedCases = [
+        '<p> Hello </p>',
+        '<p>  Test  </p>',
+        '<p>\nContent\n</p>',
+        '<p> A </p>',
+      ];
+
+      mixedCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(false);
+      });
+    });
+
+    it('should return false for paragraph with nested HTML elements', () => {
+      const nestedCases = [
+        '<p><strong>Bold</strong></p>',
+        '<p><em>Italic</em></p>',
+        '<p><span>Text</span></p>',
+        '<p><a href="#">Link</a></p>',
+        '<p><code>code</code></p>',
+        '<p><br></p>',
+        '<p><br/></p>',
+      ];
+
+      nestedCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(false);
+      });
+    });
+
+    it('should return false for multiple paragraphs', () => {
+      const multipleParagraphsCases = [
+        '<p></p><p></p>',
+        '<p>Test</p><p>Content</p>',
+        '<p></p><p>Content</p>',
+        '<p> </p><p> </p>',
+        '<p>&nbsp;</p><p>&nbsp;</p>',
+      ];
+
+      multipleParagraphsCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(false);
+      });
+    });
+
+    it('should return false for other HTML elements', () => {
+      const otherElementsCases = [
+        '<div></div>',
+        '<div>Content</div>',
+        '<span>Text</span>',
+        '<h1>Heading</h1>',
+        '<ul><li>Item</li></ul>',
+        '<table><tr><td>Cell</td></tr></table>',
+      ];
+
+      otherElementsCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(false);
+      });
+    });
+
+    it('should return false for complex HTML structures', () => {
+      const complexCases = [
+        '<div><p>Content</p></div>',
+        '<p>First</p><p>Second</p>',
+        '<p><strong>Bold</strong> and <em>italic</em></p>',
+        '<p>List:</p><ul><li>Item</li></ul>',
+      ];
+
+      complexCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(false);
+      });
+    });
+  });
+
+  describe('Special Characters and Entities', () => {
+    it('should return false for paragraph with special characters', () => {
+      const specialCharCases = [
+        '<p>@</p>',
+        '<p>#</p>',
+        '<p>!</p>',
+        '<p>$%^&*()</p>',
+        '<p>123</p>',
+      ];
+
+      specialCharCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(false);
+      });
+    });
+
+    it('should return false for paragraph with HTML entities', () => {
+      const entityCases = [
+        '<p>&lt;</p>',
+        '<p>&gt;</p>',
+        '<p>&amp;</p>',
+        '<p>&quot;</p>',
+        '<p>&#39;</p>',
+        '<p>&nbsp;</p>', // HTML entity string, not unicode character
+      ];
+
+      entityCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(false);
+      });
+    });
+
+    it('should return true for combinations of whitespace and unicode nbsp only', () => {
+      const mixedWhitespaceCases = [
+        '<p> \u00A0 </p>',
+        '<p>\t\u00A0\n</p>',
+        '<p>  \u00A0  \u00A0  </p>',
+      ];
+
+      mixedWhitespaceCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(true);
+      });
+    });
+  });
+
+  describe('Case Sensitivity', () => {
+    it('should handle uppercase P tag (case insensitive regex)', () => {
+      const uppercaseCases = [
+        '<P></P>',
+        '<P> </P>',
+        '<P>\u00A0</P>',
+        '  <P></P>  ',
+      ];
+
+      uppercaseCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(true);
+      });
+    });
+
+    it('should handle mixed case P tag', () => {
+      const mixedCaseCases = ['<p></P>', '<P></p>'];
+
+      mixedCaseCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(true);
+      });
+    });
+  });
+
+  describe('Real-world Editor Scenarios', () => {
+    it('should return true for content from empty TipTap editor', () => {
+      expect(isDescriptionContentEmpty('<p></p>')).toBe(true);
+    });
+
+    it('should return true for content from editor with just spaces', () => {
+      expect(isDescriptionContentEmpty('<p>   </p>')).toBe(true);
+    });
+
+    it('should return true for content from editor with unicode nbsp', () => {
+      expect(isDescriptionContentEmpty('<p>\u00A0</p>')).toBe(true);
+    });
+
+    it('should return false for minimal valid content', () => {
+      expect(isDescriptionContentEmpty('<p>.</p>')).toBe(false);
+      expect(isDescriptionContentEmpty('<p>a</p>')).toBe(false);
+      expect(isDescriptionContentEmpty('<p>-</p>')).toBe(false);
+    });
+
+    it('should return false for content with line breaks', () => {
+      expect(isDescriptionContentEmpty('<p><br></p>')).toBe(false);
+      expect(isDescriptionContentEmpty('<p><br/></p>')).toBe(false);
+      expect(isDescriptionContentEmpty('<p><br /></p>')).toBe(false);
+    });
+  });
+
+  describe('Edge Cases and Boundary Conditions', () => {
+    it('should handle very long whitespace strings', () => {
+      const longWhitespace = ' '.repeat(1000);
+
+      expect(isDescriptionContentEmpty(`<p>${longWhitespace}</p>`)).toBe(true);
+    });
+
+    it('should handle multiple unicode nbsp characters', () => {
+      const multipleNbsp = '\u00A0'.repeat(100);
+
+      expect(isDescriptionContentEmpty(`<p>${multipleNbsp}</p>`)).toBe(true);
+    });
+
+    it('should return false for paragraph with just a period', () => {
+      expect(isDescriptionContentEmpty('<p>.</p>')).toBe(false);
+    });
+
+    it('should return false for paragraph with just a dash', () => {
+      expect(isDescriptionContentEmpty('<p>-</p>')).toBe(false);
+    });
+
+    it('should handle self-closing paragraph (invalid HTML)', () => {
+      expect(isDescriptionContentEmpty('<p/>')).toBe(false);
+    });
+
+    it('should handle unclosed paragraph tag', () => {
+      expect(isDescriptionContentEmpty('<p>')).toBe(false);
+      expect(isDescriptionContentEmpty('<p> ')).toBe(false);
+    });
+  });
+
+  describe('Integration with isEmpty from lodash', () => {
+    it('should handle all values that lodash isEmpty considers empty', () => {
+      const lodashEmptyCases = [
+        null,
+        undefined,
+        '',
+        // Arrays and objects are not strings, but testing string coercion
+      ];
+
+      lodashEmptyCases.forEach((value) => {
+        expect(isDescriptionContentEmpty(value as unknown as string)).toBe(
+          true
+        );
+      });
+    });
+  });
+
+  describe('Performance and Robustness', () => {
+    it('should handle extremely large empty paragraphs efficiently', () => {
+      const largeEmpty = `<p>${' '.repeat(10000)}</p>`;
+      const start = Date.now();
+
+      expect(isDescriptionContentEmpty(largeEmpty)).toBe(true);
+
+      const duration = Date.now() - start;
+
+      expect(duration).toBeLessThan(100); // Should be very fast
+    });
+
+    it('should handle complex invalid HTML gracefully', () => {
+      const invalidCases = [
+        '<<p>></p>',
+        '<p><</p>',
+        '<p>></p>',
+        '<p attr="value with <>""></p>',
+      ];
+
+      invalidCases.forEach((content) => {
+        expect(() => isDescriptionContentEmpty(content)).not.toThrow();
+      });
+    });
+  });
+
+  describe('Unicode and International Characters', () => {
+    it('should return false for paragraph with unicode characters', () => {
+      const unicodeCases = [
+        '<p>😀</p>',
+        '<p>こんにちは</p>',
+        '<p>مرحبا</p>',
+        '<p>Привет</p>',
+        '<p>你好</p>',
+      ];
+
+      unicodeCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(false);
+      });
+    });
+
+    it('should handle unicode non-breaking space (nbsp)', () => {
+      // \u00A0 is the unicode character for &nbsp;
+      expect(isDescriptionContentEmpty('<p>\u00A0</p>')).toBe(true);
+      expect(isDescriptionContentEmpty('<p>\u00A0\u00A0</p>')).toBe(true);
+      expect(isDescriptionContentEmpty('<p> \u00A0 </p>')).toBe(true);
+    });
+
+    it('should handle other unicode whitespace characters', () => {
+      // Other unicode spaces might not be caught by the current regex
+      // These tests document the current behavior
+      expect(isDescriptionContentEmpty('<p>\u2003</p>')).toBe(false); // Em space
+      expect(isDescriptionContentEmpty('<p>\u2009</p>')).toBe(false); // Thin space
+    });
+  });
+
+  describe('Regression Tests', () => {
+    it('should correctly identify truly empty descriptions', () => {
+      const trulyEmptyCases = [
+        '',
+        null,
+        undefined,
+        '<p></p>',
+        '<p> </p>',
+        '<p>\u00A0</p>',
+        '  <p>  </p>  ',
+      ];
+
+      trulyEmptyCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content as string)).toBe(true);
+      });
+    });
+
+    it('should correctly identify non-empty descriptions', () => {
+      const nonEmptyCases = [
+        '<p>Description text</p>',
+        '<p>A</p>',
+        '<p>.</p>',
+        '<p><br></p>',
+        '<p><span></span></p>',
+        '<div></div>',
+        '<p>First</p><p>Second</p>',
+      ];
+
+      nonEmptyCases.forEach((content) => {
+        expect(isDescriptionContentEmpty(content)).toBe(false);
       });
     });
   });

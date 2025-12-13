@@ -23,7 +23,6 @@ import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../components/common/Table/Table';
 import { EmptyGraphPlaceholder } from '../../components/DataInsight/EmptyGraphPlaceholder';
 import {
@@ -44,6 +43,7 @@ import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getKpiPath } from '../../utils/RouterUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 
 const KPIList = () => {
   const navigate = useNavigate();
@@ -96,22 +96,7 @@ const KPIList = () => {
           <Link to={getKpiPath(name)}>{getEntityName(record)}</Link>
         ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        width: 300,
-        render: (description: string | undefined) =>
-          description ? (
-            <RichTextEditorPreviewerNew markdown={description} />
-          ) : (
-            <span data-testid="no-description">
-              {t('label.no-entity', {
-                entity: t('label.description'),
-              })}
-            </span>
-          ),
-      },
+      ...descriptionTableObject<Kpi>({ width: 300 }),
       {
         title: t('label.start-entity', { entity: t('label.date') }),
         dataIndex: 'startDate',

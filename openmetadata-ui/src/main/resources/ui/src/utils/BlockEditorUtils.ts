@@ -176,6 +176,9 @@ export const isHTMLString = (content: string) => {
     // If it has markdown syntax but also parsed as HTML, prefer markdown interpretation
     return hasHtmlElements && !hasMarkdownSyntax;
   } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Error parsing content to check HTML string:', e);
+
     return false;
   }
 };
@@ -278,8 +281,15 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
  * @returns Whether the content is empty or not
  */
 export const isDescriptionContentEmpty = (content: string) => {
-  // Check if the content is empty or has only empty paragraph tags
-  return isEmpty(content) || content === '<p></p>';
+  // Treat null/undefined/empty string as empty
+  if (isEmpty(content)) {
+    return true;
+  }
+
+  // Match a single <p>...</p> where the inner content is only whitespace (including &nbsp;)
+  const emptyPRegex = /^\s*<p(?:\s[^>]*)?>[\s\u00A0]*<\/p>\s*$/i;
+
+  return emptyPRegex.test(content);
 };
 
 /**
