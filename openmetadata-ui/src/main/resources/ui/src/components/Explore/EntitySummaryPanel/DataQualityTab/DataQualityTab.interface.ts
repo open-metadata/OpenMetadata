@@ -17,6 +17,7 @@ import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseRe
 export interface DataQualityTabProps {
   entityFQN: string;
   entityType: string;
+  isColumnDetailPanel?: boolean;
 }
 
 export interface TestCaseStatusCounts {

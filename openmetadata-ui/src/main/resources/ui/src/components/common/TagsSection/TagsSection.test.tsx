@@ -694,13 +694,14 @@ describe('TagsSection', () => {
       });
     });
 
-    it('should throw error for unsupported entity type', async () => {
-      const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
+    it('should call onTagsUpdate for unsupported entity type when callback is provided', async () => {
+      const mockOnTagsUpdate = jest.fn().mockResolvedValue([]);
 
       render(
         <TagsSection
           {...defaultProps}
           entityType={'UNSUPPORTED' as EntityType}
+          onTagsUpdate={mockOnTagsUpdate}
         />
       );
 
@@ -712,7 +713,7 @@ describe('TagsSection', () => {
       clickSave();
 
       await waitFor(() => {
-        expect(showErrorToast).toHaveBeenCalled();
+        expect(mockOnTagsUpdate).toHaveBeenCalled();
       });
     });
   });

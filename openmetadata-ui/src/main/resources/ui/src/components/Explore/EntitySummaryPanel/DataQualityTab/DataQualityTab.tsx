@@ -248,7 +248,10 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
   );
 };
 
-const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
+const DataQualityTab: React.FC<DataQualityTabProps> = ({
+  entityFQN,
+  isColumnDetailPanel = false,
+}) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
@@ -348,19 +351,45 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
       );
       const endTs = getCurrentMillis();
 
-      const response = await getListTestCaseIncidentStatus({
-        latest: true,
-        include: Include.NonDeleted,
-        originEntityFQN: entityFQN,
-        startTs,
-        endTs,
-        limit: 100,
-      });
+      let allIncidents: TestCaseResolutionStatus[] = [];
 
-      setIncidents(response.data || []);
+      if (isColumnDetailPanel && testCases.length > 0) {
+        const BATCH_SIZE = 10;
+        for (let i = 0; i < testCases.length; i += BATCH_SIZE) {
+          const batch = testCases.slice(i, i + BATCH_SIZE);
+          const batchPromises = batch.map((testCase) =>
+            getListTestCaseIncidentStatus({
+              latest: true,
+              include: Include.NonDeleted,
+              testCaseFQN: testCase.fullyQualifiedName,
+              startTs,
+              endTs,
+              limit: 100,
+            }).catch(() => ({ data: [] }))
+          );
+
+          const results = await Promise.all(batchPromises);
+          const batchIncidents = results.flatMap((result) => result.data || []);
+          allIncidents = [...allIncidents, ...batchIncidents];
+        }
+      } else {
+        // For table/entity level, use originEntityFQN
+        const response = await getListTestCaseIncidentStatus({
+          latest: true,
+          include: Include.NonDeleted,
+          originEntityFQN: entityFQN,
+          startTs,
+          endTs,
+          limit: 100,
+        });
+
+        allIncidents = response.data || [];
+      }
+
+      setIncidents(allIncidents);
 
       // Calculate incident status counts
-      const counts = (response.data || []).reduce(
+      const counts = allIncidents.reduce(
         (acc, incident) => {
           const status = incident.testCaseResolutionStatusType;
 
@@ -415,8 +444,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
 
   useEffect(() => {
     fetchTestCases();
-    fetchIncidents();
+    if (!isColumnDetailPanel) {
+      fetchIncidents();
+    }
   }, [entityFQN]);
+
+  useEffect(() => {
+    if (isColumnDetailPanel && testCases.length > 0) {
+      fetchIncidents();
+    }
+  }, [testCases.length, isColumnDetailPanel]);
 
   // Filter test cases based on active filter and search text
   const filteredTestCases = useMemo(() => {
@@ -781,7 +818,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     <div className="data-quality-tab-container">
       <Tabs
         activeKey={activeTab}
-        className="data-quality-tabs"
+        className={classNames('data-quality-tabs', {
+          'column-detail-data-quality-tabs': isColumnDetailPanel,
+        })}
         items={tabItems}
         onChange={handleTabChange}
       />
