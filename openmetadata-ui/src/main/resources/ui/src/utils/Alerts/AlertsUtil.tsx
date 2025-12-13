@@ -37,7 +37,15 @@ import {
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isEmpty, isEqual, isUndefined, map, startCase, uniqBy } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  map,
+  omitBy,
+  startCase,
+  uniqBy,
+} from 'lodash';
 import { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
@@ -73,6 +81,7 @@ import {
   TypedEvent,
 } from '../../generated/events/api/typedEvent';
 import {
+  Destination,
   EventFilterRule,
   HTTPMethod,
   InputType,
@@ -472,6 +481,7 @@ export const getDestinationConfigField = (
                                 <Col>
                                   <Col>
                                     <Button
+                                      data-testid={`add-header-button-${fieldName}`}
                                       icon={<PlusOutlined />}
                                       type="primary"
                                       onClick={() => add({})}
@@ -562,6 +572,7 @@ export const getDestinationConfigField = (
                                 <Col>
                                   <Col>
                                     <Button
+                                      data-testid={`add-query-param-button-${fieldName}`}
                                       icon={<PlusOutlined />}
                                       type="primary"
                                       onClick={() => add({})}
@@ -1208,6 +1219,19 @@ export const getConfigQueryParamsArrayFromObject = (
         value,
       }));
 
+/**
+ * @description Normalizes destination config for comparison by converting headers and queryParams to array format
+ */
+export const normalizeDestinationConfig = (config?: Destination['config']) =>
+  omitBy(
+    {
+      ...config,
+      headers: getConfigHeaderArrayFromObject(config?.headers),
+      queryParams: getConfigQueryParamsArrayFromObject(config?.queryParams),
+    },
+    isUndefined
+  );
+
 export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]
 ) => {
@@ -1222,11 +1246,14 @@ export const getFormattedDestinations = (
 
     return {
       ...otherData,
-      config: {
-        ...config,
-        headers: isEmpty(headers) ? undefined : headers,
-        queryParams: isEmpty(queryParams) ? undefined : queryParams,
-      },
+      config: omitBy(
+        {
+          ...config,
+          headers: isEmpty(headers) ? undefined : headers,
+          queryParams: isEmpty(queryParams) ? undefined : queryParams,
+        },
+        isUndefined
+      ),
     };
   });
 
