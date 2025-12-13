@@ -99,15 +99,15 @@ const test = base.extend<{
   page: Page;
   userPage: Page;
 }>({
-  page: async ({ browser }, use) => {
+  page: async ({ browser }, setPage) => {
     const { page } = await performAdminLogin(browser);
-    await use(page);
+    await setPage(page);
     await page.close();
   },
-  userPage: async ({ browser }, use) => {
+  userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
     await user.login(page);
-    await use(page);
+    await setPage(page);
     await page.close();
   },
 });
@@ -1313,11 +1313,25 @@ test.describe('Domains', () => {
       // Navigate to the domain page
       await domain.visitEntityPage(page);
 
+      const dpRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=data_product_search_index&*'
+      );
       // Navigate to data products tab
       await page.getByTestId('data_products').click();
 
+      await dpRes;
+
+      const dpDetails = page.waitForResponse(
+        '/api/v1/dataProducts/name/*?fields=domains*'
+      );
+
       // Click on the data product using displayName
-      await page.getByText(dataProduct.responseData.displayName).click();
+      await page
+        .locator('.explore-search-card')
+        .getByText(dataProduct.responseData.displayName)
+        .click();
+
+      await dpDetails;
 
       // Verify the data product page loads without error
       await expect(
