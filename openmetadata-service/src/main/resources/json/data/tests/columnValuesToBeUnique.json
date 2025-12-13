@@ -50,5 +50,6 @@
     ],
     "supportsRowLevelPassedFailed": true,
     "provider": "system",
+  "enabled": true,
     "dataQualityDimension": "Uniqueness"
 }
