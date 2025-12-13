@@ -13,7 +13,20 @@ Utilities for working with the Presidio Library.
 """
 import inspect
 import logging
-from typing import Any, Callable, Iterable, List, Optional, Set, Type, Union, cast
+from itertools import groupby
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import spacy
 from dateutil import parser
@@ -290,3 +303,58 @@ def apply_confidence_threshold(
         return recognizer
 
     return decorate_entity_recognizer
+
+
+def explain_recognition_results(results: List[RecognizerResult]) -> str:
+    """Builds a verbose explanation of the recognition results taking into account multiple values"""
+
+    def _get_getter(res: RecognizerResult) -> str:
+        return cast(Dict[str, str], res.recognition_metadata).get(
+            "recognizer_identifier", "unknown"
+        )
+
+    grouped_results: groupby[str, RecognizerResult] = groupby(
+        sorted(results, key=_get_getter),
+        key=_get_getter,
+    )
+
+    textual_explanation = ""
+    for recognizer_identifier, group in grouped_results:
+        group_list = list(group)
+
+        recognizer_name: str = cast(
+            Dict[str, str], group_list[0].recognition_metadata
+        ).get("recognizer_name", recognizer_identifier)
+        results_count = len(group_list)
+        results_score = sum(r.score for r in group_list) / results_count
+        maybe_plural_time = "time" if results_count == 1 else "times"
+
+        textual_explanation += (
+            f"Detected by `{recognizer_name}` {results_count} {maybe_plural_time} "
+            + f"with an average score of {results_score:.2f}.\n"
+        )
+
+        patterns_matched: Set[Tuple[str, float]] = set()
+        for result in group_list:
+            if (
+                result.analysis_explanation
+                is None  # pyright: ignore[reportUnnecessaryComparison]
+                or result.analysis_explanation.pattern
+                is None  # pyright: ignore[reportUnnecessaryComparison]
+            ):
+                continue
+
+            patterns_matched.add(
+                (result.analysis_explanation.pattern, result.analysis_explanation.score)
+            )
+
+        if patterns_matched:
+            textual_explanation += "Patterns matched:\n"
+            for pattern, score in sorted(
+                patterns_matched, key=lambda o: o[1], reverse=True
+            ):
+                textual_explanation += f"\t- `{pattern}` (scored: {score:.2f})\n"
+
+        textual_explanation += "\n"
+
+    return textual_explanation
