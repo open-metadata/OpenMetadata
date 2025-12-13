@@ -306,6 +306,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return searchRepository.genericAggregation(q, index, searchAggregation);
   }
 
+  public DataQualityReport getDataQualityReport(
+      String q, String aggQuery, String index, SubjectContext subjectContext) throws IOException {
+    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
+    return searchRepository.genericAggregation(q, index, searchAggregation, subjectContext);
+  }
+
   public TestSummary getTestSummary(List<ResultSummary> testCaseResults) {
     record ProcessedTestCaseResults(String entityLink, String status) {}
 
