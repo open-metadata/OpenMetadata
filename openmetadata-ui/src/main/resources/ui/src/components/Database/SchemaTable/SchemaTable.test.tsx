@@ -248,6 +248,9 @@ jest.mock('../../../utils/FeedUtils', () => ({
 
 jest.mock('../../../utils/TableColumn.util', () => ({
   columnFilterIcon: jest.fn().mockReturnValue(<p>ColumnFilterIcon</p>),
+  ownerTableObject: jest.fn().mockReturnValue([]),
+  domainTableObject: jest.fn().mockReturnValue([]),
+  dataProductTableObject: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
