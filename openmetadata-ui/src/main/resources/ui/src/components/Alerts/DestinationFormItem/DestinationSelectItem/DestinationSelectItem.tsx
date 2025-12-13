@@ -368,13 +368,16 @@ function DestinationSelectItem({
                       }),
                     },
                     {
-                      message: t('message.value-must-be-greater-than', {
-                        field: t('label.downstream-depth'),
-                        minimum: 0,
-                      }),
                       validator: (_, value) => {
                         if (!isEmpty(value) && value <= 0) {
-                          return Promise.reject();
+                          return Promise.reject(
+                            new Error(
+                              t('message.value-must-be-greater-than', {
+                                field: t('label.downstream-depth'),
+                                minimum: 0,
+                              })
+                            )
+                          );
                         }
 
                         return Promise.resolve();
