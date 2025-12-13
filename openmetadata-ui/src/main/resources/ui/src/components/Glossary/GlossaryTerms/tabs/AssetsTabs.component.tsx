@@ -146,7 +146,6 @@ const AssetsTabs = forwardRef(
       handlePageChange,
       handlePageSizeChange,
       handlePagingChange,
-      showPagination,
     } = usePaging();
 
     const isRemovable = useMemo(
@@ -575,19 +574,17 @@ const AssetsTabs = forwardRef(
                 }
               />
             ))}
-            {showPagination && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                isLoading={isLoading}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                  handlePageChange(currentPage)
-                }
-                onShowSizeChange={handlePageSizeChange}
-              />
-            )}
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              isLoading={isLoading}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                handlePageChange(currentPage)
+              }
+              onShowSizeChange={handlePageSizeChange}
+            />
           </div>
         ) : (
           <div className="h-full">{assetErrorPlaceHolder}</div>
@@ -604,7 +601,6 @@ const AssetsTabs = forwardRef(
         selectedItems,
         setSelectedCard,
         handlePageChange,
-        showPagination,
         handlePageSizeChange,
         handleCheckboxChange,
       ]

@@ -60,3 +60,13 @@ export const COMMON_TIER_TAG = [
     fullyQualifiedName: 'Tier.Tier5',
   },
 ];
+
+export const ASSET_FILTER_NAMES = [
+  'Entity Type',
+  'Domains',
+  'Owners',
+  'Tag',
+  'Tier',
+  'Service',
+  'Service Type',
+];
