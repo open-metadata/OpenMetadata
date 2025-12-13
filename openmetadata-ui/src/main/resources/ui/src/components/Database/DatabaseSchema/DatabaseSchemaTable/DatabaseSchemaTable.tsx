@@ -120,7 +120,7 @@ export const DatabaseSchemaTable = ({
     handlePagingChange,
     showPagination,
     pagingCursor,
-  } = usePaging();
+  } = usePaging(undefined, 'contentListPageSize');
 
   const fetchDatabaseSchema = useCallback(
     async (params?: Partial<Paging>) => {

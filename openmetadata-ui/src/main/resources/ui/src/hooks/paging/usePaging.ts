@@ -24,7 +24,10 @@ import {
 } from '../../constants/constants';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
-import { useCurrentUserPreferences } from '../currentUserStore/useCurrentUserStore';
+import {
+  useCurrentUserPreferences,
+  UserPreferences,
+} from '../currentUserStore/useCurrentUserStore';
 import { useTableFilters } from '../useTableFilters';
 
 type FilterState = Record<
@@ -54,18 +57,48 @@ export interface UsePagingInterface {
     pageSize?: number
   ) => void;
   pageSize: number;
+  pageSizeOptions: number[];
   handlePageSizeChange: (page: number) => void;
   showPagination: boolean;
   pagingCursor: PagingUrlParams;
 }
 
-export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
-  const {
-    preferences: { globalPageSize },
-    setPreference,
-  } = useCurrentUserPreferences();
+export const usePaging = (
+  defaultPageSize?: number,
+  storageKey: keyof UserPreferences = 'globalPageSize',
+  maxPageSize = 50
+): UsePagingInterface => {
+  const { preferences, setPreference } = useCurrentUserPreferences();
 
-  const processedPageSize = defaultPageSize ?? globalPageSize;
+  const { pageSizeOptions: systemPageSizeOptions } = useMemo(() => {
+    const defaultSize = defaultPageSize || PAGE_SIZE_BASE;
+
+    // Generate options based on maxPageSize
+    const baseOptions = [15, 25, 50];
+    if (maxPageSize >= 250) {
+      baseOptions.push(250);
+    }
+    if (maxPageSize >= 500) {
+      baseOptions.push(500);
+    }
+
+    // Filter to only include options up to maxPageSize
+    const options = baseOptions.filter((opt) => opt <= maxPageSize);
+
+    // Ensure defaultSize is in options if it's within maxPageSize
+    if (!options.includes(defaultSize) && defaultSize <= maxPageSize) {
+      options.push(defaultSize);
+      options.sort((a, b) => a - b);
+    }
+
+    return {
+      pageSizeOptions: options,
+      defaultSize,
+    };
+  }, [defaultPageSize, maxPageSize]);
+
+  const processedPageSize =
+    (preferences[storageKey] as number) ?? defaultPageSize ?? PAGE_SIZE_BASE;
 
   const { filters: urlParams, setFilters: updateUrlParams } = useTableFilters({
     cursorType: undefined,
@@ -101,7 +134,7 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
   const handlePageSize = useCallback(
     (page: number) => {
       setPageSize(page);
-      setPreference({ globalPageSize: page });
+      setPreference({ [storageKey]: page } as Partial<UserPreferences>);
       setCurrentPage(INITIAL_PAGING_VALUE);
 
       // Update URL params, removing cursor data since they're invalid with new page size
@@ -112,7 +145,7 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
         cursorValue: null,
       });
     },
-    [setPageSize, setCurrentPage, updateUrlParams]
+    [setPageSize, setCurrentPage, updateUrlParams, storageKey, setPreference]
   );
 
   const paginationVisible = useMemo(() => {
@@ -141,12 +174,12 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
 
       if (pageSize) {
         urlUpdate.pageSize = pageSize;
-        setPreference({ globalPageSize: pageSize });
+        setPreference({ [storageKey]: pageSize } as Partial<UserPreferences>);
       }
 
       updateUrlParams(urlUpdate as FilterState);
     },
-    [setCurrentPage, updateUrlParams, currentPage]
+    [setCurrentPage, updateUrlParams, currentPage, storageKey, setPreference]
   );
 
   return {
@@ -155,6 +188,7 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
     currentPage,
     handlePageChange,
     pageSize,
+    pageSizeOptions: systemPageSizeOptions,
     handlePageSizeChange: handlePageSize,
     showPagination: paginationVisible,
     pagingCursor: pagingCursorUrlParams,

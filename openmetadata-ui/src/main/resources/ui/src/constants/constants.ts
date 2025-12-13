@@ -51,7 +51,26 @@ export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
+export const PAGE_SIZE_XLARGE = 250;
+export const PAGE_SIZE_XXLARGE = 500;
 export const ES_MAX_PAGE_SIZE = 10000;
+
+// Table and Data Model entity specific page size options (includes larger sizes)
+export const ASSET_LIST_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_XLARGE,
+  PAGE_SIZE_XXLARGE,
+];
+export const CONTENT_LIST_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_XLARGE,
+  PAGE_SIZE_XXLARGE,
+];
+export const GLOBAL_PAGE_SIZE_OPTIONS = [10, 15, 25, 50];
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const LINEAGE_CHILD_ITEMS_PER_PAGE = 5;

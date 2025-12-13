@@ -29,6 +29,7 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   applicationConfig: {
     customTheme: getThemeConfig(),
   } as UIThemePreference,
+
   currentUser: undefined,
   newUser: undefined,
   isAuthenticated: false,

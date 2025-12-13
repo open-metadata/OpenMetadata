@@ -148,20 +148,20 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
 });
 
 test('Schema Table Pagination should work Properly', async ({ page }) => {
-  const tableResponse = page.waitForResponse(`/api/v1/tables?limit=15**`);
+  const tableResponse = page.waitForResponse(`/api/v1/tables?limit=25**`);
 
   await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
   await tableResponse;
 
   await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
-    '15 / Page'
+    '25 / Page'
   );
 
   await expect(page.getByTestId('previous')).toBeDisabled();
 
   await expect(page.getByTestId('next')).not.toBeDisabled();
 
-  const tableResponse2 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
+  const tableResponse2 = page.waitForResponse(`/api/v1/tables?**limit=25**`);
   await page.getByTestId('next').click();
   await tableResponse2;
 
@@ -169,7 +169,7 @@ test('Schema Table Pagination should work Properly', async ({ page }) => {
 
   await expect(page.getByTestId('page-indicator')).toContainText('2');
 
-  const tableResponse3 = page.waitForResponse(`/api/v1/tables?**limit=15**`);
+  const tableResponse3 = page.waitForResponse(`/api/v1/tables?**limit=25**`);
   await page.getByTestId('previous').click();
   await tableResponse3;
 

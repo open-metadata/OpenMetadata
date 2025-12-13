@@ -287,7 +287,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    // 50 Row + 1 Header row
+    // 25 Row + 1 Header row (default page size is 25)
     expect(
       page.getByTestId('data-model-column-table').getByRole('row')
     ).toHaveCount(51);
