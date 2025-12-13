@@ -357,8 +357,10 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
     config.connectorProvider(new ApacheConnectorProvider());
     config.property(ApacheClientProperties.CONNECTION_MANAGER, connectionManager);
     config.register(new JacksonFeature(APP.getObjectMapper()));
-    config.property(ClientProperties.CONNECT_TIMEOUT, 0);
-    config.property(ClientProperties.READ_TIMEOUT, 0);
+    // CRITICAL: Set reasonable timeouts to prevent indefinite hangs
+    // With Apache connector, 0 means infinite timeout which causes CI to hang
+    config.property(ClientProperties.CONNECT_TIMEOUT, 30_000); // 30 seconds
+    config.property(ClientProperties.READ_TIMEOUT, 120_000); // 2 minutes
     config.property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
     client = ClientBuilder.newClient(config);
   }
