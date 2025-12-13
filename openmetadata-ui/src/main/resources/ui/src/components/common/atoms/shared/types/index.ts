@@ -12,19 +12,27 @@
  */
 
 import { ReactNode } from 'react';
-import { Aggregations } from '../../../../../interface/search.interface';
+import { SearchIndex } from '../../../../../enums/search.enum';
+import {
+  Aggregations,
+  SearchResponse,
+} from '../../../../../interface/search.interface';
 import { ExploreQuickFilterField } from '../../../../Explore/ExplorePage.interface';
+import { SearchDropdownOption } from '../../../../SearchDropdown/SearchDropdown.interface';
 
 export interface UrlStateConfig {
   searchKey?: string;
   filterKeys: string[];
   pageKey?: string;
+  pageSizeKey?: string;
+  defaultPageSize?: number;
 }
 
 export interface UrlState {
   searchQuery: string;
   filters: Record<string, string[]>;
   currentPage: number;
+  pageSize: number;
 }
 
 export interface UrlStateHook {
@@ -33,6 +41,7 @@ export interface UrlStateHook {
   setSearchQuery: (query: string) => void;
   setFilters: (filters: ExploreQuickFilterField[]) => void;
   setCurrentPage: (page: number) => void;
+  setPageSize: (pageSize: number) => void;
   resetFilters: () => void;
   resetAll: () => void;
 }
@@ -41,7 +50,7 @@ export interface DataFetchingConfig<T> {
   searchIndex: string;
   baseFilter?: string;
   pageSize?: number;
-  transform?: (data: any) => T[];
+  transform?: (data: SearchResponse<SearchIndex>) => T[];
 }
 
 export interface DataFetchingResult<T> {
@@ -73,11 +82,11 @@ export interface SelectionState {
 export interface FilterField {
   key: string;
   aggregationField: string;
-  processor?: (options: any[]) => any[];
+  processor?: (options: SearchDropdownOption[]) => SearchDropdownOption[];
 }
 
 export interface FilterOptions {
-  [key: string]: any[];
+  [key: string]: SearchDropdownOption[];
 }
 
 export interface FilterConfig {
@@ -92,7 +101,7 @@ export interface ColumnConfig<T> {
   key: string;
   labelKey: string;
   render: string;
-  getValue?: (entity: T) => any;
+  getValue?: (entity: T) => ReactNode | string | number | null;
   customRenderer?: string;
 }
 
@@ -131,6 +140,7 @@ export interface ListingData<T> {
   handleSearchChange: (query: string) => void;
   handleFilterChange: (filters: ExploreQuickFilterField[]) => void;
   handlePageChange: (page: number) => void;
+  handlePageSizeChange?: (pageSize: number) => void;
   refetch: () => void;
 }
 
@@ -138,15 +148,15 @@ export interface TableViewConfig<T> {
   listing: ListingData<T>;
   enableSelection?: boolean;
   entityLabelKey?: string;
-  customTableRow?: React.ComponentType<any>;
+  customTableRow?: React.ComponentType<Record<string, unknown>>;
 }
 
 export interface DropdownConfig {
   key: string;
   labelKey: string;
   searchKey: string;
-  options: any[];
-  selectedOptions: any[];
-  onChange: (values: any[]) => void;
+  options: SearchDropdownOption[];
+  selectedOptions: SearchDropdownOption[];
+  onChange: (values: SearchDropdownOption[]) => void;
   onSearch: (term: string) => void;
 }
