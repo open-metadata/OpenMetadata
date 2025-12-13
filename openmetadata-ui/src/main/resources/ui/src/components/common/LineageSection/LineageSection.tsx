@@ -81,7 +81,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
         <Typography
           sx={{
             fontWeight: 600,
-            fontSize: '14px',
+            fontSize: '13px',
             mb: 1,
           }}>
           {t('label.lineage')}

@@ -200,4 +200,82 @@ describe('LineageSection', () => {
       expect(downstreamCount).toHaveTextContent('5');
     });
   });
+
+  describe('Edge Cases - State Transitions', () => {
+    it('transitions from loading to no lineage correctly', () => {
+      const { rerender } = render(
+        <LineageSection downstreamCount={0} isLoading upstreamCount={0} />
+      );
+
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.no-lineage-available')
+      ).not.toBeInTheDocument();
+
+      rerender(
+        <LineageSection
+          downstreamCount={0}
+          isLoading={false}
+          upstreamCount={0}
+        />
+      );
+
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(
+        screen.getByText('message.no-lineage-available')
+      ).toBeInTheDocument();
+    });
+
+    it('transitions from loading to with data correctly', () => {
+      const { rerender } = render(
+        <LineageSection downstreamCount={0} isLoading upstreamCount={0} />
+      );
+
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+
+      rerender(
+        <LineageSection
+          downstreamCount={5}
+          isLoading={false}
+          upstreamCount={10}
+        />
+      );
+
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument();
+      expect(screen.getByTestId('downstream-lineage')).toBeInTheDocument();
+    });
+
+    it('transitions from data to loading correctly', () => {
+      const { rerender } = render(
+        <LineageSection downstreamCount={5} isLoading={false} upstreamCount={10} />
+      );
+
+      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument();
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+
+      rerender(
+        <LineageSection downstreamCount={5} isLoading upstreamCount={10} />
+      );
+
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('upstream-lineage')
+      ).not.toBeInTheDocument();
+    });
+
+    it('handles loading state with non-zero counts', () => {
+      render(
+        <LineageSection downstreamCount={10} isLoading upstreamCount={20} />
+      );
+
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('upstream-lineage')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('downstream-lineage')
+      ).not.toBeInTheDocument();
+    });
+  });
 });

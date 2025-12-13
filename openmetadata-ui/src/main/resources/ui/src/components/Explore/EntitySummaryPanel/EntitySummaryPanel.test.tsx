@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -314,5 +314,203 @@ describe('EntitySummaryPanel component tests', () => {
 
     expect(summaryPanelContainer).toBeInTheDocument();
     expect(contentArea).toBeInTheDocument();
+  });
+
+  describe('Lineage Loading State Management', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should initialize with loading state for permissions', async () => {
+      const { container } = await act(async () => {
+        return render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      // Should show loader initially while permissions load
+      const loaders = container.querySelectorAll('[data-testid="loader"]');
+
+      expect(loaders.length).toBeGreaterThan(0);
+    });
+
+    it('should handle entity type that supports lineage', async () => {
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      // Table entity should render (tables support lineage)
+      const tableSummary = screen.getByTestId('TableSummary');
+
+      expect(tableSummary).toBeInTheDocument();
+    });
+
+    it('should handle entity type change correctly', async () => {
+      const { rerender } = await act(async () => {
+        return render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
+
+      // Change entity type to Topic
+      await act(async () => {
+        rerender(
+          <Wrapper>
+            <EntitySummaryPanel
+              entityDetails={{
+                details: {
+                  ...mockTopicEntityDetails,
+                  entityType: EntityType.TOPIC,
+                },
+              }}
+              handleClosePanel={mockHandleClosePanel}
+            />
+          </Wrapper>
+        );
+      });
+
+      expect(screen.getByTestId('TopicSummary')).toBeInTheDocument();
+    });
+
+    it('should handle missing fullyQualifiedName gracefully', async () => {
+      const entityWithoutFQN = {
+        ...mockTableEntityDetails,
+        fullyQualifiedName: undefined,
+      };
+
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: {
+                ...entityWithoutFQN,
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      // Should still render without crashing
+      const tableSummary = screen.getByTestId('TableSummary');
+
+      expect(tableSummary).toBeInTheDocument();
+    });
+
+    it('should handle entity details change correctly', async () => {
+      const { rerender } = await act(async () => {
+        return render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                id: 'table-1',
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
+
+      // Change to different entity with different ID
+      await act(async () => {
+        rerender(
+          <Wrapper>
+            <EntitySummaryPanel
+              entityDetails={{
+                details: {
+                  ...mockTableEntityDetails,
+                  id: 'table-2',
+                  fullyQualifiedName: 'new.table.fqn',
+                  entityType: EntityType.TABLE,
+                },
+              }}
+              handleClosePanel={mockHandleClosePanel}
+            />
+          </Wrapper>
+        );
+      });
+
+      // Should still render the new entity
+      expect(screen.getByTestId('TableSummary')).toBeInTheDocument();
+    });
+
+    it('should handle permission loading state correctly', async () => {
+      const mockGetEntityPermission = jest
+        .fn()
+        .mockImplementation(
+          () =>
+            new Promise((resolve) =>
+              setTimeout(() => resolve({ ViewBasic: true }), 100)
+            )
+        );
+
+      jest
+        .spyOn(
+          require('../../../context/PermissionProvider/PermissionProvider'),
+          'usePermissionProvider'
+        )
+        .mockReturnValue({
+          getEntityPermission: mockGetEntityPermission,
+        });
+
+      const { container } = await act(async () => {
+        return render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      // Should show loader while permission is loading
+      const loaders = container.querySelectorAll('[data-testid="loader"]');
+
+      expect(loaders.length).toBeGreaterThan(0);
+      expect(mockGetEntityPermission).toHaveBeenCalled();
+    });
   });
 });

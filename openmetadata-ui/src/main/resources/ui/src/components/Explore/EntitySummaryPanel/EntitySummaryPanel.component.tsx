@@ -99,8 +99,7 @@ export default function EntitySummaryPanel({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { getEntityPermission } = usePermissionProvider();
-  const [isPermissionLoading, setIsPermissionLoading] =
-    useState<boolean>(false);
+  const [isPermissionLoading, setIsPermissionLoading] = useState<boolean>(true);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
@@ -240,7 +239,10 @@ export default function EntitySummaryPanel({
 
   const fetchLineageData = useCallback(async () => {
     const fqn = entityDetails?.details?.fullyQualifiedName;
+
     if (!fqn || !entityType) {
+      setIsLineageLoading(false);
+      setLineageData(null);
       return;
     }
 
@@ -397,10 +399,11 @@ export default function EntitySummaryPanel({
     }
   }, [
     activeTab,
+    entityType,
+    entityDetails?.details?.fullyQualifiedName,
     fetchEntityData,
     fetchEntityTypeDetail,
     fetchLineageData,
-    entityType,
   ]);
 
   const viewPermission = useMemo(
