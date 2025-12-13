@@ -799,7 +799,7 @@ test.describe('Persona customization', () => {
 
       // Need to find persona card and click as the list might get paginated
       await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
-      
+
       const personaDetailsResponse = adminPage.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/personas/name/') &&
@@ -807,7 +807,7 @@ test.describe('Persona customization', () => {
       );
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await personaDetailsResponse;
-      
+
       await adminPage.getByText('Governance').click();
       await adminPage.getByText('Domain', { exact: true }).click();
 
@@ -867,7 +867,7 @@ test.describe('Persona customization', () => {
         );
         await entity?.visitEntityPage(userPage);
         await domainResponse;
-        
+
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });

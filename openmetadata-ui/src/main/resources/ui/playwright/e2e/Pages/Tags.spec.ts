@@ -178,7 +178,9 @@ test('Classification Page', async ({ page }) => {
     );
 
     const tagResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${tag.responseData.displayName}***`
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        tag.responseData.displayName
+      )}***`
     );
     await page.fill(
       '[data-testid="tag-selector"] input',
