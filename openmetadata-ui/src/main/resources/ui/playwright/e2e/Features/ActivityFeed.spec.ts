@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page, test as base, expect } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
@@ -493,11 +493,14 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await editorLocator.fill('Hey ');
 
+      const username = adminUser.responseData.name;
+      const searchPrefix = username.slice(0, -13);
+
       const userSuggestionsResponse = user1Page.waitForResponse(
-        `/api/v1/search/query?q=*${adminUser.responseData.name}***`
+        `/api/v1/search/query?q=*${searchPrefix}***`
       );
 
-      await editorLocator.pressSequentially(`@${adminUser.responseData.name}`);
+      await editorLocator.pressSequentially(`@${searchPrefix}`);
       await userSuggestionsResponse;
 
       await user1Page
