@@ -120,9 +120,7 @@ test.describe('Glossary Term Details Operations', () => {
       .click();
 
     await expect(
-      page
-        .getByTestId('glossary-term-references-modal')
-        .getByText('References')
+      page.getByTestId('glossary-term-references-modal').getByText('References')
     ).toBeVisible();
 
     // Remove first reference using the delete button in the row
@@ -157,6 +155,7 @@ test.describe('Glossary Term Details Operations', () => {
 
     // Verify related term is visible
     const relatedTermName = glossaryTerm2.responseData?.displayName;
+
     await expect(page.getByTestId(relatedTermName)).toBeVisible();
 
     // Click edit button (shown when related terms exist)
@@ -186,6 +185,7 @@ test.describe('Glossary Term Details Operations', () => {
 
     // Verify related term is visible on term1
     const relatedTermName = glossaryTerm2.responseData?.displayName;
+
     await expect(page.getByTestId(relatedTermName)).toBeVisible();
 
     // Navigate to term2 and verify term1 is shown as related
@@ -193,6 +193,7 @@ test.describe('Glossary Term Details Operations', () => {
     await page.waitForLoadState('networkidle');
 
     const term1Name = glossaryTerm1.responseData?.displayName;
+
     await expect(page.getByTestId(term1Name)).toBeVisible();
 
     // Clean up: remove the related term from term2's page - use edit button since term exists
@@ -210,8 +211,111 @@ test.describe('Glossary Term Details Operations', () => {
   });
 });
 
+// T-U26: Edit term via modal (pencil icon in table)
+test.describe('Edit Term via Table Modal', () => {
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
+  const glossary = new Glossary();
+  const glossaryTerm = new GlossaryTerm(glossary);
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await glossaryTerm.delete(apiContext);
+    await glossary.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should edit term via pencil icon in table row', async ({ page }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary.data.displayName);
+
+    await page.waitForLoadState('networkidle');
+
+    // Find the term row and hover to reveal edit button
+    const termRow = page.locator(
+      `[data-row-key*="${glossaryTerm.responseData.name}"]`
+    );
+
+    await expect(termRow).toBeVisible();
+
+    // Hover over the term name cell to reveal edit button
+    await termRow.hover();
+
+    // Click the edit (pencil) icon button in the row
+    // The edit button appears on hover in the term name cell
+    const editButton = termRow.getByTestId('edit-button');
+    await editButton.click();
+
+    // Wait for edit modal to open
+    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+
+    // Verify the modal has the term name pre-filled
+    await expect(page.locator('[data-testid="name"]')).toHaveValue(
+      glossaryTerm.data.name
+    );
+
+    // Update the description
+    const newDescription = 'Updated description via table edit modal';
+    await page.locator(descriptionBox).clear();
+    await page.locator(descriptionBox).fill(newDescription);
+
+    // Add a synonym
+    const newSynonym = 'TableEditSynonym';
+    await page
+      .locator('[data-testid="synonyms"] input[type="search"]')
+      .fill(newSynonym);
+    await page
+      .locator('[data-testid="synonyms"] input[type="search"]')
+      .press('Enter');
+
+    // Save the changes
+    const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+    await page.click('[data-testid="save-glossary-term"]');
+    await updateResponse;
+
+    // Wait for modal to close
+    await expect(
+      page.locator('[role="dialog"].edit-glossary-modal')
+    ).not.toBeVisible();
+
+    await page.waitForLoadState('networkidle');
+
+    // Verify the description was updated in the table row
+    const updatedTermRow = page.locator(
+      `[data-row-key*="${glossaryTerm.responseData.name}"]`
+    );
+
+    await expect(updatedTermRow).toBeVisible();
+
+    // Verify description column shows updated text
+    await expect(updatedTermRow).toContainText('Updated description');
+
+    // Navigate to term details page using direct navigation
+    await glossaryTerm.visitEntityPage(page);
+    await page.waitForLoadState('networkidle');
+
+    // Verify the description was updated on the term details page
+    await expect(
+      page.locator('[data-testid="asset-description-container"]')
+    ).toContainText(newDescription);
+
+    // Verify the synonym was added
+    await expect(page.getByTestId(newSynonym)).toBeVisible();
+  });
+});
+
 // T-C02: Create term with all fields populated
 test.describe('Term Creation with All Fields', () => {
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
   const glossary = new Glossary();
 
   test.beforeAll(async ({ browser }) => {
@@ -277,6 +381,7 @@ test.describe('Term Creation with All Fields', () => {
 
     // Verify term is created and visible in the table
     const termRow = page.locator(`[data-row-key*="${termName}"]`);
+
     await expect(termRow).toBeVisible();
 
     // Click on the term to view its details

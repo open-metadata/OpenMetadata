@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { DashboardClass } from '../../support/entity/DashboardClass';
+import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { TableClass } from '../../support/entity/TableClass';
-import { DashboardClass } from '../../support/entity/DashboardClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 
 test.use({
@@ -65,17 +65,18 @@ test.describe('Glossary Asset Management', () => {
     await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
     // Search for the table
-    const entityName = table.entityResponseData?.displayName ?? table.entity.name;
-    const searchResponse = page.waitForResponse('/api/v1/search/query*');
-    await page
-      .locator('[data-testid="asset-selection-modal"] [data-testid="searchbar"]')
-      .fill(entityName);
-    await searchResponse;
+    const entityName =
+      table.entityResponseData?.displayName ?? table.entity.name;
+    const modal = page.getByTestId('asset-selection-modal');
+    await modal.getByTestId('searchbar').fill(entityName);
+    const tableCardInModal = modal.locator(
+      `[data-testid="table-data-card_${table.entityResponseData.fullyQualifiedName}"]`
+    );
+
+    await expect(tableCardInModal).toBeVisible();
 
     // Select the table
-    await page.click(
-      `[data-testid="table-data-card_${table.entityResponseData.fullyQualifiedName}"] input[type="checkbox"]`
-    );
+    await tableCardInModal.locator('input[type="checkbox"]').click();
 
     // Save
     await page.click('[data-testid="save-btn"]');
@@ -91,6 +92,7 @@ test.describe('Glossary Asset Management', () => {
 
     // Verify assets count shows in tab badge
     const assetsTab = page.getByRole('tab', { name: /Assets/ });
+
     await expect(assetsTab).toContainText(/\d+/);
   });
 
@@ -110,17 +112,19 @@ test.describe('Glossary Asset Management', () => {
 
     const entityName =
       dashboard.entityResponseData?.displayName ?? dashboard.entity.name;
-    const searchResponse = page.waitForResponse('/api/v1/search/query*');
-    await page
-      .locator('[data-testid="asset-selection-modal"] [data-testid="searchbar"]')
-      .fill(entityName);
-    await searchResponse;
-
-    await page.click(
-      `[data-testid="table-data-card_${dashboard.entityResponseData.fullyQualifiedName}"] input[type="checkbox"]`
+    const modal = page.getByTestId('asset-selection-modal');
+    await modal.getByTestId('searchbar').fill(entityName);
+    const dashboardCardInModal = modal.locator(
+      `[data-testid="table-data-card_${dashboard.entityResponseData.fullyQualifiedName}"]`
     );
 
-    const addResponse = page.waitForResponse('/api/v1/glossaryTerms/*/assets/add');
+    await expect(dashboardCardInModal).toBeVisible();
+
+    await dashboardCardInModal.locator('input[type="checkbox"]').click();
+
+    const addResponse = page.waitForResponse(
+      '/api/v1/glossaryTerms/*/assets/add'
+    );
     await page.click('[data-testid="save-btn"]');
     await addResponse;
 
@@ -157,4 +161,49 @@ test.describe('Glossary Asset Management', () => {
     ).not.toBeVisible();
   });
 
+  test('should display asset cards correctly', async ({ page }) => {
+    await glossaryTerm.visitEntityPage(page);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('tab', { name: 'Assets' }).click();
+    await page.waitForLoadState('networkidle');
+
+    const tableFqn = table.entityResponseData.fullyQualifiedName;
+    const tableName =
+      table.entityResponseData?.displayName ?? table.entity.name;
+
+    let cardLocator = page.locator(
+      `[data-testid="table-data-card_${tableFqn}"]`
+    );
+
+    if (!(await cardLocator.isVisible())) {
+      await page.getByTestId('glossary-term-add-button-menu').click();
+      await page.getByRole('menuitem', { name: 'Assets' }).click();
+
+      await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+
+      const modal = page.getByTestId('asset-selection-modal');
+      await modal.getByTestId('searchbar').fill(tableName);
+      const tableCardInModal = modal.locator(
+        `[data-testid="table-data-card_${tableFqn}"]`
+      );
+
+      await expect(tableCardInModal).toBeVisible();
+
+      await tableCardInModal.locator('input[type="checkbox"]').click();
+
+      await page.click('[data-testid="save-btn"]');
+
+      await expect(page.locator('[role="dialog"].ant-modal')).not.toBeVisible();
+
+      cardLocator = page.locator(`[data-testid="table-data-card_${tableFqn}"]`);
+    }
+
+    await expect(cardLocator).toBeVisible();
+    await expect(
+      cardLocator.getByTestId('entity-header-display-name')
+    ).toContainText(tableName);
+    await expect(cardLocator.getByTestId('entity-link')).toBeVisible();
+    await expect(cardLocator.getByTestId('category-name')).toBeVisible();
+  });
 });

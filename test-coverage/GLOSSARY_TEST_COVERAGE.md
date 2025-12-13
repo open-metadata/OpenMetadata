@@ -369,32 +369,21 @@ The following test cases are identified for future implementation, organized by 
 
 ### P1 - Critical (High Priority)
 
-#### Glossary Creation
-| ID | Test Case | Notes |
-|----|-----------|-------|
-| G-C02 | Create glossary with all optional fields (tags, owners, reviewers, domain) | Full form test |
+✅ Completed (covered by Playwright)
 
-#### Term Creation
-| ID | Test Case | Notes |
-|----|-----------|-------|
-| T-C05 | Create term via row action button (+) | Alternative creation method |
-| T-C11 | Create term with synonyms | During creation (not update) |
-| T-C12 | Create term with references | During creation |
-| T-C13 | Create term with related terms | During creation |
-| T-C14 | Create term with tags | During creation |
-| T-C17 | Create term with owners | During creation |
-| T-C18 | Create term - inherits glossary reviewers | Verify inheritance |
-
-#### Term Updates
-| ID | Test Case | Notes |
-|----|-----------|-------|
-| T-U02 | Update term display name | Via edit modal |
-| T-U26 | Edit term via modal (pencil icon in table) | In-table edit |
-
-#### Assets
-| ID | Test Case | Notes |
-|----|-----------|-------|
-| A-V02 | Asset cards display correctly | Verify card content |
+| ID | Covered By | Test |
+|----|------------|------|
+| G-C02 | `playwright/e2e/Pages/Glossary.spec.ts` | `Create glossary with all optional fields (tags, owners, reviewers, domain)` |
+| T-C05 | `playwright/e2e/Pages/Glossary.spec.ts` | `Create glossary term via row action (+) button` |
+| T-C11 | `playwright/e2e/Pages/Glossary.spec.ts` | `Create term with synonyms during creation` |
+| T-C12 | `playwright/e2e/Pages/Glossary.spec.ts` | `Create term with references during creation` |
+| T-C13 | `playwright/e2e/Pages/Glossary.spec.ts` | `Create term with related terms, tags and owners during creation` |
+| T-C14 | `playwright/e2e/Pages/Glossary.spec.ts` | `Create term with related terms, tags and owners during creation` |
+| T-C17 | `playwright/e2e/Pages/Glossary.spec.ts` | `Create term with related terms, tags and owners during creation` |
+| T-C18 | `playwright/e2e/Pages/Glossary.spec.ts` | `Create term with related terms, tags and owners during creation` |
+| T-U02 | `playwright/e2e/Pages/Glossary.spec.ts` | `Update glossary term display name via edit modal` |
+| T-U26 | `playwright/e2e/Pages/Glossary.spec.ts` | `Update glossary term display name via edit modal` |
+| A-V02 | `playwright/e2e/Features/GlossaryAssets.spec.ts` | `should display asset cards correctly` |
 
 ---
 

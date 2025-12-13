@@ -274,15 +274,15 @@ export const createGlossary = async (
   }
 
   if (glossaryData.tags && glossaryData.tags.length > 0) {
-    const tagsResponse = page.waitForResponse('/api/v1/search/query');
-
     // Add tag
     await page.click('[data-testid="tag-selector"]');
     await page.fill(
       '[data-testid="tag-selector"] input[type="search"]',
       glossaryData.tags[0]
     );
-    await tagsResponse;
+
+    await expect(page.getByTestId(`tag-${glossaryData.tags[0]}`)).toBeVisible();
+
     await page.click(`[data-testid="tag-${glossaryData.tags[0]}"]`);
     await page.click('[data-testid="right-panel"]');
   }
@@ -786,17 +786,17 @@ export const addAssetToGlossaryTerm = async (
   for (const asset of assets) {
     const entityFqn = get(asset, 'entityResponseData.fullyQualifiedName');
     const entityName = get(asset, 'entityResponseData.name');
-    const searchRes = page.waitForResponse('/api/v1/search/query*');
     const entityDisplayName = get(asset, 'entityResponseData.displayName');
 
     const visibleName = entityDisplayName ?? entityName;
-    await page
-      .locator(
-        '[data-testid="asset-selection-modal"] [data-testid="searchbar"]'
-      )
-      .fill(visibleName);
+    const modal = page.getByTestId('asset-selection-modal');
+    await modal.getByTestId('searchbar').fill(visibleName);
+    const entityCardInModal = modal.locator(
+      `[data-testid="table-data-card_${entityFqn}"]`
+    );
 
-    await searchRes;
+    await expect(entityCardInModal).toBeVisible();
+
     await page.click(
       `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
     );

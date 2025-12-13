@@ -190,4 +190,84 @@ test.describe('Glossary tests', () => {
     await searchInput.clear();
     await page.waitForResponse('api/v1/glossaryTerms?*');
   });
+
+  // S-S03: Search is case-insensitive
+  test('should perform case-insensitive search', async ({ page }) => {
+    glossary.visitEntityPage(page);
+
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+
+    const searchInput = page.getByPlaceholder(/search.*term/i);
+
+    // Search with lowercase
+    await searchInput.fill('searchtestterm5');
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+
+    // Should find the term despite case difference
+    await expect(
+      page.getByText('SearchTestTerm5', { exact: true })
+    ).toBeVisible();
+
+    // Clear and search with uppercase
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
+
+    await searchInput.fill('SEARCHTESTTERM5');
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+
+    // Should still find the term
+    await expect(
+      page.getByText('SearchTestTerm5', { exact: true })
+    ).toBeVisible();
+
+    // Clear and search with mixed case
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
+
+    await searchInput.fill('SeArChTeStTeRm5');
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+
+    // Should still find the term
+    await expect(
+      page.getByText('SearchTestTerm5', { exact: true })
+    ).toBeVisible();
+
+    // Clear search
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
+  });
+
+  // S-S07: Search no results - empty state
+  test('should show empty state when search returns no results', async ({
+    page,
+  }) => {
+    glossary.visitEntityPage(page);
+
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+
+    const searchInput = page.getByPlaceholder(/search.*term/i);
+
+    // Search for a term that doesn't exist
+    await searchInput.fill('NonExistentTermXYZ12345');
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+
+    // Verify no results are shown
+    const rowCount = await page.locator('tbody .ant-table-row').count();
+
+    expect(rowCount).toBe(0);
+
+    // Verify empty state message is shown (uses ErrorPlaceHolder component)
+    await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+
+    // Clear search and verify terms return
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
+
+    // Verify terms are visible again
+    const restoredRowCount = await page.locator('tbody .ant-table-row').count();
+
+    expect(restoredRowCount).toBeGreaterThan(0);
+  });
 });

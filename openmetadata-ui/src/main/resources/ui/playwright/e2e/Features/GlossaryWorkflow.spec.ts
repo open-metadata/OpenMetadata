@@ -102,10 +102,12 @@ test.describe('Term Status Transitions', () => {
 
     // Check the term shows in the table with Approved status
     const termRow = page.locator(`[data-row-key*="${termName}"]`);
+
     await expect(termRow).toBeVisible();
 
     // Look for status badge - should be Approved
     const statusBadge = termRow.locator('.status-badge');
+
     await expect(statusBadge).toHaveText('Approved');
   });
 
@@ -140,11 +142,59 @@ test.describe('Term Status Transitions', () => {
 
     // Check the term shows in the table with Draft status
     const termRow = page.locator(`[data-row-key*="${termName}"]`);
+
     await expect(termRow).toBeVisible();
 
     // Look for status badge - should be Draft
     const statusBadge = termRow.locator('.status-badge');
+
     await expect(statusBadge).toHaveText('Draft');
+  });
+
+  // T-C18: Create term - inherits glossary reviewers
+  test('should inherit reviewers from glossary when term is created', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossaryWithReviewer.data.displayName);
+
+    // Click add term button
+    await page.click('[data-testid="add-new-tag-button-header"]');
+    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+
+    // Fill in term details
+    const termName = `InheritReviewerTerm${Date.now()}`;
+    await page.fill('[data-testid="name"]', termName);
+    await page
+      .locator(descriptionBox)
+      .fill('Test term to verify reviewer inheritance');
+
+    // Submit the term
+    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
+    await page.click('[data-testid="save-glossary-term"]');
+    await createResponse;
+
+    // Wait for modal to close
+    await expect(
+      page.locator('[role="dialog"].edit-glossary-modal')
+    ).not.toBeVisible();
+
+    await page.waitForLoadState('networkidle');
+
+    // Click on the term name to navigate to term details
+    await page.click(`[data-testid="${termName}"]`);
+    await page.waitForLoadState('networkidle');
+
+    // Verify the reviewer section shows the inherited reviewer
+    const reviewerSection = page.getByTestId('glossary-reviewer');
+
+    await expect(reviewerSection).toBeVisible();
+
+    // Check that the reviewer name is displayed (inherited from glossary)
+    await expect(
+      reviewerSection.getByText(reviewer.getUserDisplayName())
+    ).toBeVisible();
   });
 });
 
@@ -202,11 +252,13 @@ test.describe('Hierarchy Drag and Drop', () => {
     const parentRow = page
       .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
       .first();
+
     await expect(parentRow).toBeVisible();
 
     const childRow = page.locator(
       `[data-row-key*="${childTerm.responseData.name}"]`
     );
+
     await expect(childRow).toBeVisible();
 
     // Drag parent term (with child) to target term
@@ -229,12 +281,16 @@ test.describe('Hierarchy Drag and Drop', () => {
     // After drag-drop, the tree structure changed - need to expand TargetTerm to see its new children
     // First collapse all, then expand all to refresh the tree state
     const expandButton = page.getByTestId('expand-collapse-all-button');
-    let buttonText = await expandButton.textContent();
+    const buttonText = await expandButton.textContent();
 
     // If showing "Collapse All", collapse first to reset state
     if (buttonText?.includes('Collapse All')) {
       await expandButton.click();
-      await expect(expandButton).toContainText('Expand All', { timeout: 10000 });
+
+      await expect(expandButton).toContainText('Expand All', {
+        timeout: 10000,
+      });
+
       await page.waitForLoadState('networkidle');
     }
 
@@ -246,12 +302,14 @@ test.describe('Hierarchy Drag and Drop', () => {
     const movedParentRow = page
       .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
       .first();
+
     await expect(movedParentRow).toBeVisible();
 
     // Verify child is still visible (moved with parent as part of subtree)
     const movedChildRow = page.locator(
       `[data-row-key*="${childTerm.responseData.name}"]`
     );
+
     await expect(movedChildRow).toBeVisible();
 
     // Verify the hierarchy structure - target term is also visible
@@ -259,6 +317,7 @@ test.describe('Hierarchy Drag and Drop', () => {
     const targetRow = page
       .locator(`[data-row-key*="${targetTerm.responseData.name}"]`)
       .first();
+
     await expect(targetRow).toBeVisible();
   });
 });
@@ -339,6 +398,7 @@ test.describe('Reviewer Permissions', () => {
 
     // Verify the term is visible
     const termRow = page.locator(`[data-row-key*="${termName}"]`);
+
     await expect(termRow).toBeVisible();
 
     // Verify approve/reject buttons are NOT visible for non-reviewer
@@ -407,11 +467,13 @@ test.describe('Term Deletion Cascade', () => {
     const parentRow = page
       .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
       .first();
+
     await expect(parentRow).toBeVisible();
 
     const childRow = page.locator(
       `[data-row-key*="${childTerm.responseData.name}"]`
     );
+
     await expect(childRow).toBeVisible();
 
     // Click on parent term to navigate to its details page

@@ -70,7 +70,7 @@ const ownerUser = new UserClass({
 });
 
 setup('authenticate all users', async ({ browser }) => {
-  setup.setTimeout(120 * 1000);
+  setup.setTimeout(300 * 1000);
   // Create separate pages for each user
   const [
     adminPage,

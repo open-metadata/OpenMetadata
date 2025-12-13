@@ -206,38 +206,68 @@ export class UserClass {
     userName = this.data.email,
     password = this.data.password
   ) {
-    await page.goto('/');
-    await page.waitForURL('**/signin');
-    await page.waitForLoadState('networkidle');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('**/signin', { timeout: 30000 });
+
+    // Wait for page to be fully loaded before interacting
+    await page.waitForLoadState('domcontentloaded');
+
     const emailInput = page.locator('input[id="email"]');
-    await emailInput.waitFor({ state: 'visible' });
+    await emailInput.waitFor({ state: 'visible', timeout: 30000 });
     await emailInput.fill(userName);
     await page.locator('#email').press('Tab');
-    await page.fill('input[id="password"]', password);
+
+    const passwordInput = page.locator('input[id="password"]');
+    await passwordInput.waitFor({ state: 'visible', timeout: 10000 });
+    await passwordInput.fill(password);
+
+    const loginButton = page.getByTestId('login');
+    await loginButton.waitFor({ state: 'visible', timeout: 10000 });
+
     const loginRes = page.waitForResponse('/api/v1/auth/login');
-    await page.getByTestId('login').click();
+    await loginButton.click();
     await loginRes;
 
-    const modal = await page
-      .getByRole('dialog')
-      .locator('div')
-      .filter({ hasText: 'Getting Started' })
-      .nth(1)
-      .isVisible();
+    // Wait for navigation to complete after login
+    await page.waitForURL(/\/(my-data|signin)/, { timeout: 30000 });
 
-    if (modal) {
-      await page.getByRole('dialog').getByRole('img').first().click();
+    // Handle "Getting Started" modal if present
+    try {
+      const gettingStartedModal = page
+        .getByRole('dialog')
+        .locator('div')
+        .filter({ hasText: 'Getting Started' })
+        .nth(1);
+
+      const modalVisible = await gettingStartedModal
+        .waitFor({ state: 'visible', timeout: 3000 })
+        .then(() => true)
+        .catch(() => false);
+
+      if (modalVisible) {
+        await page.getByRole('dialog').getByRole('img').first().click();
+        await page.waitForTimeout(300);
+      }
+    } catch {
+      // Modal not present, continue
     }
 
     // Collapse the left side bar after logging in if it's open
-    const leftNavBar = page.locator('[data-testid="left-sidebar"]');
+    try {
+      const leftNavBar = page.locator('[data-testid="left-sidebar"]');
+      const isVisible = await leftNavBar.isVisible();
 
-    const hasOpenClass = await leftNavBar.evaluate((el) =>
-      el.classList.contains('sidebar-open')
-    );
+      if (isVisible) {
+        const hasOpenClass = await leftNavBar.evaluate((el) =>
+          el.classList.contains('sidebar-open')
+        );
 
-    if (hasOpenClass) {
-      await page.getByTestId('sidebar-toggle').click();
+        if (hasOpenClass) {
+          await page.getByTestId('sidebar-toggle').click();
+        }
+      }
+    } catch {
+      // Sidebar not present or not open, continue
     }
   }
 

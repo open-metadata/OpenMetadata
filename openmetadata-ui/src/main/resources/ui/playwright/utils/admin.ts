@@ -12,19 +12,51 @@
  */
 import { Browser } from '@playwright/test';
 import { AdminClass } from '../support/user/AdminClass';
-import { getAuthContext, getToken, redirectToHomePage } from './common';
+import {
+  getAuthContext,
+  getToken,
+  redirectToHomePage,
+  removeLandingBanner,
+} from './common';
 
-export const performAdminLogin = async (browser: Browser) => {
-  const admin = new AdminClass();
-  const page = await browser.newPage();
-  await admin.login(page);
-  await redirectToHomePage(page);
-  const token = await getToken(page);
-  const apiContext = await getAuthContext(token);
-  const afterAction = async () => {
-    await apiContext.dispose();
-    await page.close();
-  };
+export const performAdminLogin = async (
+  browser: Browser,
+  maxRetries = 2
+): Promise<{
+  page: Awaited<ReturnType<Browser['newPage']>>;
+  apiContext: Awaited<ReturnType<typeof getAuthContext>>;
+  afterAction: () => Promise<void>;
+}> => {
+  let lastError: Error | null = null;
 
-  return { page, apiContext, afterAction };
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const page = await browser.newPage();
+    try {
+      const admin = new AdminClass();
+      await admin.login(page);
+      await redirectToHomePage(page);
+
+      // Ensure any modals are dismissed
+      await removeLandingBanner(page);
+
+      const token = await getToken(page);
+      const apiContext = await getAuthContext(token);
+      const afterAction = async () => {
+        await apiContext.dispose();
+        await page.close();
+      };
+
+      return { page, apiContext, afterAction };
+    } catch (error) {
+      lastError = error as Error;
+      await page.close();
+
+      if (attempt < maxRetries) {
+        // Wait before retry
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+  }
+
+  throw lastError ?? new Error('performAdminLogin failed after retries');
 };
