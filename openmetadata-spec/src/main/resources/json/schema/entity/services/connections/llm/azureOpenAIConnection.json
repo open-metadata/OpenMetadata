@@ -1,0 +1,69 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/llm/azureOpenAIConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AzureOpenAIConnection",
+  "description": "Azure OpenAI Service Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.llm.AzureOpenAIConnection",
+  "definitions": {
+    "azureOpenAIType": {
+      "description": "Service type",
+      "type": "string",
+      "enum": ["AzureOpenAI"],
+      "default": "AzureOpenAI"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/azureOpenAIType",
+      "default": "AzureOpenAI"
+    },
+    "apiKey": {
+      "title": "API Key",
+      "description": "Azure OpenAI API Key",
+      "type": "string",
+      "format": "password"
+    },
+    "endpoint": {
+      "title": "Endpoint",
+      "description": "Azure OpenAI endpoint URL (e.g., https://your-resource-name.openai.azure.com/)",
+      "type": "string"
+    },
+    "apiVersion": {
+      "title": "API Version",
+      "description": "Azure OpenAI API version",
+      "type": "string",
+      "default": "2024-02-15-preview"
+    },
+    "deployment": {
+      "title": "Deployment Name",
+      "description": "Default deployment name to use",
+      "type": "string"
+    },
+    "timeout": {
+      "title": "Timeout",
+      "description": "Request timeout in seconds",
+      "type": "integer",
+      "default": 60
+    },
+    "maxRetries": {
+      "title": "Max Retries",
+      "description": "Maximum number of retries for failed requests",
+      "type": "integer",
+      "default": 3
+    },
+    "modelFilterPattern": {
+      "description": "Regex to only fetch models with names matching the pattern",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Model Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["apiKey", "endpoint"]
+}
