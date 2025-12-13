@@ -1,9 +1,9 @@
 package org.openmetadata.service.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.dropwizard.web.conf.HeaderFactory;
 import java.util.Collections;
 import java.util.Map;
+import org.openmetadata.service.config.web.HeaderFactory;
 
 public class PermissionPolicyHeaderFactory extends HeaderFactory {
   public static final String PERMISSION_POLICY_HEADER = "Permissions-Policy";
