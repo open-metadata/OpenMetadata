@@ -16,7 +16,11 @@ import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage, toastNotification } from '../../utils/common';
+import {
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../utils/common';
 import {
   assignTagToChildren,
   generateEntityChildren,
@@ -227,5 +231,110 @@ test.describe('Data Model', () => {
       rowId: 'revenue_metrics_0031',
       entityEndpoint: 'dashboard/datamodels',
     });
+  });
+});
+
+test.describe('Data Model with special characters in name', () => {
+  const uniqueId = uuid();
+  const serviceNameWithDot = `pw.dashboard.service-${uniqueId}`;
+  const dataModelName = `pw-data-model-${uniqueId}`;
+  let serviceResponseData: { fullyQualifiedName: string };
+  let dataModelResponseData: { fullyQualifiedName: string; name: string };
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    const serviceResponse = await apiContext.post(
+      '/api/v1/services/dashboardServices',
+      {
+        data: {
+          name: serviceNameWithDot,
+          serviceType: 'PowerBI',
+          connection: {
+            config: {
+              type: 'PowerBI',
+              clientId: 'test-client-id',
+              clientSecret: 'test-client-secret',
+              tenantId: 'test-tenant-id',
+            },
+          },
+        },
+      }
+    );
+
+    expect(serviceResponse.ok()).toBeTruthy();
+
+    serviceResponseData = await serviceResponse.json();
+
+    const dataModelResponse = await apiContext.post(
+      '/api/v1/dashboard/datamodels',
+      {
+        data: {
+          name: dataModelName,
+          displayName: dataModelName,
+          description: `Data model for service with dots in name`,
+          service: serviceNameWithDot,
+          columns: [
+            {
+              name: 'column_1',
+              dataType: 'VARCHAR',
+              dataLength: 256,
+              dataTypeDisplay: 'varchar',
+              description: 'Test column',
+            },
+          ],
+          dataModelType: 'PowerBIDataModel',
+        },
+      }
+    );
+
+    expect(dataModelResponse.ok()).toBeTruthy();
+
+    dataModelResponseData = await dataModelResponse.json();
+
+    await afterAction();
+  });
+
+  test.afterAll('Clean up', async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    await apiContext.delete(
+      `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+        serviceResponseData.fullyQualifiedName
+      )}?recursive=true&hardDelete=true`
+    );
+
+    await afterAction();
+  });
+
+  test('should display data model when service name contains dots', async ({
+    page,
+  }) => {
+    await page.goto(
+      `/service/dashboardServices/${encodeURIComponent(
+        serviceNameWithDot
+      )}/data-model`
+    );
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
+
+    await page.waitForSelector('.ant-spin', {
+      state: 'detached',
+    });
+
+    const dataModelLink = page.getByTestId(
+      `data-model-${dataModelResponseData.name}`
+    );
+
+    await expect(dataModelLink).toBeVisible();
+    await expect(dataModelLink).toHaveText(dataModelResponseData.name);
+
+    await dataModelLink.click();
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByTestId('entity-header-name')).toContainText(
+      dataModelName
+    );
   });
 });
