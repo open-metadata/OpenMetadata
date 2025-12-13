@@ -1112,10 +1112,19 @@ test.describe('Glossary tests', () => {
           name: glossaryTerm1.responseData.displayName,
         })
       ).toBeVisible();
+
+      await test.step('Delete glossary to verify broken relation', async () => {
+        await glossary1.delete(apiContext);
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary2.data.displayName);
+
+        // check .ant-alert-error is not visible
+        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+      });
     } finally {
       await glossaryTerm1.delete(apiContext);
       await glossaryTerm2.delete(apiContext);
-      await glossary1.delete(apiContext);
       await glossary2.delete(apiContext);
       await afterAction();
     }
