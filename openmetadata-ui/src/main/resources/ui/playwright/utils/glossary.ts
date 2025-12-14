@@ -203,24 +203,35 @@ export const addTeamAsReviewer = async (
   dataTestId?: string,
   isSelectableInsideForm = false
 ) => {
-  const teamsResponse = page.waitForResponse(
-    '/api/v1/search/query?q=&index=team_search_index&from=0&size=*&sort_field=displayName.keyword&sort_order=asc'
-  );
-
-  const teamsSearchResponse = page.waitForResponse(
-    `api/v1/search/query?q=*${encodeURI(teamName)}*`
-  );
-
   await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
 
   await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
 
-  await teamsResponse;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // Click on Teams tab to switch from default Users tab
+  await page
+    .locator("[data-testid='select-owner-tabs']")
+    .getByRole('tab', { name: 'Teams' })
+    .click();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  // Wait for teams search bar to be visible before filling
+  await expect(
+    page.locator('[data-testid="owner-select-teams-search-bar"]')
+  ).toBeVisible();
 
   await page.fill('[data-testid="owner-select-teams-search-bar"]', teamName);
-  await teamsSearchResponse;
 
-  const ownerItem = page.locator(`.ant-popover [title="${teamName}"]`);
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const ownerItem = page.getByRole('listitem', {
+    name: teamName,
+    exact: true,
+  });
+
+  await expect(ownerItem).toBeVisible();
 
   if (isSelectableInsideForm) {
     await ownerItem.click();
@@ -907,17 +918,20 @@ export const changeTermHierarchyFromModal = async (
   await expect(page.locator('[role="dialog"]')).toBeVisible();
 
   await page.getByLabel('Select Parent').click();
-  await page.waitForSelector('.async-tree-select-list-dropdown', {
+  await page.waitForSelector('.ant-select-dropdown', {
     state: 'visible',
   });
 
-  if (isGlossaryTerm) {
-    const searchRes = page.waitForResponse(`/api/v1/search/query?q=*`);
-    await page.getByLabel('Select Parent').fill(entityDisplayName);
-    await searchRes;
-  }
+  // Search for the entity
+  await page.getByLabel('Select Parent').fill(entityDisplayName);
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(500);
 
-  await page.getByTestId(`tag-${entityFqn}`).click();
+  // Click on the entity in dropdown using text matching
+  const entityOption = page
+    .locator('.ant-select-dropdown')
+    .getByText(entityDisplayName, { exact: false });
+  await entityOption.first().click();
 
   const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
   await page

@@ -139,8 +139,7 @@ test.describe('Glossary tests', () => {
     test.slow(true);
 
     // Navigate to glossary
-
-    glossary.visitEntityPage(page);
+    await glossary.visitEntityPage(page);
 
     // Wait for terms to load
     await page.waitForSelector('[data-testid="glossary-terms-table"]');
@@ -269,5 +268,121 @@ test.describe('Glossary tests', () => {
     const restoredRowCount = await page.locator('tbody .ant-table-row').count();
 
     expect(restoredRowCount).toBeGreaterThan(0);
+  });
+
+  // S-F03: Filter by InReview status
+  test('should filter by InReview status', async ({ page }) => {
+    glossary.visitEntityPage(page);
+
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+
+    // Open status filter dropdown
+    const dropdownButton = page.getByTestId('glossary-status-dropdown');
+    await dropdownButton.click();
+
+    // Select InReview status
+    const inReviewCheckbox = page.locator('.glossary-dropdown-label', {
+      hasText: 'In Review',
+    });
+    await inReviewCheckbox.click();
+
+    const saveButton = page.locator('.ant-btn-primary', {
+      hasText: 'Save',
+    });
+    await saveButton.click();
+
+    // Verify filter is applied (may show no results if no InReview terms exist)
+    await page.waitForLoadState('networkidle');
+
+    // The filter should be applied - either showing InReview terms or empty state
+    const table = page.getByTestId('glossary-terms-table');
+
+    await expect(table).toBeVisible();
+
+    // Clear the filter
+    await dropdownButton.click();
+    await inReviewCheckbox.click();
+    await saveButton.click();
+  });
+
+  // S-F04: Filter by multiple statuses
+  test('should filter by multiple statuses', async ({ page }) => {
+    glossary.visitEntityPage(page);
+
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+
+    // Open status filter dropdown
+    const dropdownButton = page.getByTestId('glossary-status-dropdown');
+    await dropdownButton.click();
+
+    // Select both Approved and Draft statuses
+    const approvedCheckbox = page.locator('.glossary-dropdown-label', {
+      hasText: 'Approved',
+    });
+    const draftCheckbox = page.locator('.glossary-dropdown-label', {
+      hasText: 'Draft',
+    });
+    await approvedCheckbox.click();
+    await draftCheckbox.click();
+
+    const saveButton = page.locator('.ant-btn-primary', {
+      hasText: 'Save',
+    });
+    await saveButton.click();
+
+    // Wait for filter to apply
+    await page.waitForLoadState('networkidle');
+
+    // Verify filtered results
+    const table = page.getByTestId('glossary-terms-table');
+
+    await expect(table).toBeVisible();
+
+    // Clear filters
+    await dropdownButton.click();
+    await approvedCheckbox.click();
+    await draftCheckbox.click();
+    await saveButton.click();
+  });
+
+  // S-F05: Clear status filter
+  test('should clear status filter', async ({ page }) => {
+    glossary.visitEntityPage(page);
+
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+
+    // Count initial terms
+    const initialRowCount = await page.locator('tbody .ant-table-row').count();
+
+    // Open status filter dropdown and apply filter
+    const dropdownButton = page.getByTestId('glossary-status-dropdown');
+    await dropdownButton.click();
+
+    const approvedCheckbox = page.locator('.glossary-dropdown-label', {
+      hasText: 'Approved',
+    });
+    await approvedCheckbox.click();
+
+    const saveButton = page.locator('.ant-btn-primary', {
+      hasText: 'Save',
+    });
+    await saveButton.click();
+
+    await page.waitForLoadState('networkidle');
+
+    // Clear the filter by clicking the same checkbox again
+    await dropdownButton.click();
+    await approvedCheckbox.click();
+    await saveButton.click();
+
+    await page.waitForLoadState('networkidle');
+
+    // Verify all terms are shown again
+    const restoredRowCount = await page.locator('tbody .ant-table-row').count();
+
+    expect(restoredRowCount).toBe(initialRowCount);
   });
 });

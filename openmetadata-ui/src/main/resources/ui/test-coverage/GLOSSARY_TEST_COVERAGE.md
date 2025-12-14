@@ -10,17 +10,22 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 |----------|------|-------|
 | Core CRUD | Glossary.spec.ts | 38 |
 | Form Validation | GlossaryFormValidation.spec.ts | 11 |
-| Import/Export | GlossaryImportExport.spec.ts | 2 |
-| Pagination & Search | GlossaryPagination.spec.ts | 4 |
+| Import/Export | GlossaryImportExport.spec.ts | 5 |
+| Pagination & Search | GlossaryPagination.spec.ts | 7 |
 | Performance | LargeGlossaryPerformance.spec.ts | 9 |
-| Permissions | GlossaryPermissions.spec.ts | 2 |
-| Version History | GlossaryVersionPage.spec.ts | 2 |
+| Permissions | GlossaryPermissions.spec.ts | 7 |
+| Version History | GlossaryVersionPage.spec.ts | 4 |
 | Voting | GlossaryVoting.spec.ts | 7 |
-| Navigation | GlossaryNavigation.spec.ts | 3 |
+| Navigation & Activity | GlossaryNavigation.spec.ts | 9 |
 | Remove Operations | GlossaryRemoveOperations.spec.ts | 6 |
 | Term Details | GlossaryTermDetails.spec.ts | 6 |
-| Workflow | GlossaryWorkflow.spec.ts | 6 |
-| **TOTAL** | **12 files** | **96 tests** |
+| Workflow | GlossaryWorkflow.spec.ts | 9 |
+| Advanced Operations | GlossaryAdvancedOperations.spec.ts | 13 |
+| Hierarchy | GlossaryHierarchy.spec.ts | 6 |
+| Assets | GlossaryAssets.spec.ts | 6 |
+| Tasks | GlossaryTasks.spec.ts | 3 |
+| Misc Operations | GlossaryMiscOperations.spec.ts | 5 |
+| **TOTAL** | **17 files** | **151 tests** |
 
 ---
 
@@ -110,6 +115,9 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 | 2 | should check for nested glossary term search | S-S04 |
 | 3 | should perform case-insensitive search | S-S03 |
 | 4 | should show empty state when search returns no results | S-S07 |
+| 5 | should filter by InReview status | S-F03 |
+| 6 | should filter by multiple statuses | S-F04 |
+| 7 | should clear status filter | S-F05 |
 
 ---
 
@@ -165,7 +173,7 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 
 ---
 
-### 9. Navigation
+### 9. Navigation & Activity Feed
 **File:** `playwright/e2e/Features/GlossaryNavigation.spec.ts`
 
 | # | Test Name | Coverage ID |
@@ -173,6 +181,12 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 | 1 | should navigate between tabs on glossary page | NAV-05 |
 | 2 | should navigate between tabs on glossary term page | NAV-05 |
 | 3 | should navigate via breadcrumbs | NAV-03 |
+| 4 | should navigate to nested term via deep link | NAV-04 |
+| 5 | should show empty state when glossary has no terms | UI-01 |
+| 6 | should view activity feed on glossary | AF-01 |
+| 7 | should view activity feed on glossary term | AF-02 |
+| 8 | should post comment on glossary activity feed | AF-03 |
+| 9 | should post comment on glossary term activity feed | AF-04 |
 
 ---
 
@@ -218,28 +232,110 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 
 ---
 
+### 13. Advanced Operations
+**File:** `playwright/e2e/Features/GlossaryAdvancedOperations.spec.ts`
+
+| # | Test Name | Coverage ID |
+|---|-----------|-------------|
+| 1 | should create glossary with mutually exclusive toggle OFF | G-C04 |
+| 2 | should create glossary with multiple owners (users + teams) | G-C12 |
+| 3 | should create glossary with multiple reviewers (users + teams) | G-C13 |
+| 4 | should replace owner on glossary | G-U05 |
+| 5 | should replace reviewer on glossary | G-U08 |
+| 6 | should remove domain from glossary | G-U12 |
+| 7 | should change domain on glossary | G-U13 |
+| 8 | should create term with custom style color | T-C15 |
+| 9 | should create term with custom style icon URL | T-C16 |
+| 10 | should update term style to set color | T-U22 |
+| 11 | should update term style to set icon URL | T-U23 |
+| 12 | should clear all synonyms from term | T-U08 |
+| 13 | should edit reference name | T-U10 |
+| 14 | should edit reference URL | T-U11 |
+
+---
+
+### 14. Hierarchy Operations
+**File:** `playwright/e2e/Features/GlossaryHierarchy.spec.ts`
+
+| # | Test Name | Coverage ID |
+|---|-----------|-------------|
+| 1 | should move nested term to root level of same glossary | H-M03 |
+| 2 | should move term to root of different glossary | H-M04 |
+| 3 | should move term with children to different glossary | H-M05 |
+| 4 | should cancel move operation | H-M06 |
+| 5 | should navigate 5+ levels deep in hierarchy | H-N07 |
+| 6 | should cancel drag and drop operation | H-DD05 |
+
+---
+
+### 15. Assets Operations
+**File:** `playwright/e2e/Features/GlossaryAssets.spec.ts`
+
+| # | Test Name | Coverage ID |
+|---|-----------|-------------|
+| 1 | should add topic asset to glossary term | A-A06 |
+| 2 | should add pipeline asset to glossary term | A-A07 |
+| 3 | should open summary panel when clicking asset card | A-V03 |
+| 4 | should search within assets tab | A-V04 |
+| 5 | should remove asset from glossary term | A-R01 |
+| 6 | should remove glossary term tag from entity page | A-R03 |
+
+---
+
+### 16. Tasks Operations
+**File:** `playwright/e2e/Features/GlossaryTasks.spec.ts`
+
+| # | Test Name | Coverage ID |
+|---|-----------|-------------|
+| 1 | should reject description suggestion task | TK-05 |
+| 2 | should reject tag suggestion task | TK-07 |
+| 3 | should show task in notification bell | TK-08 |
+
+---
+
+### 17. Miscellaneous Operations
+**File:** `playwright/e2e/Features/GlossaryMiscOperations.spec.ts`
+
+| # | Test Name | Coverage ID |
+|---|-----------|-------------|
+| 1 | should delete glossary with tagged assets | G-D05 |
+| 2 | should update child FQN when parent is renamed | T-U05 |
+| 3 | should delete term with tagged assets | T-D03 |
+| 4 | should not allow dragging term to itself | H-DD07 |
+| 5 | should handle glossary load error gracefully | UI-03 |
+
+---
+
 ## Coverage by Feature Area
 
 ### Glossary CRUD
 - ✅ G-C01: Create glossary with required fields
 - ✅ G-C02: Create glossary with all optional fields (tags, owners, reviewers, domain)
 - ✅ G-C03: Create glossary with mutually exclusive toggle (covered in Add/Remove Assets)
+- ✅ G-C04: Create glossary with mutually exclusive toggle OFF
 - ✅ G-C05: Form validation - empty name
 - ✅ G-C06: Form validation - empty description
 - ✅ G-C07: Form validation - name exceeds max length
 - ✅ G-C08: Form validation - duplicate name
 - ✅ G-C09: Cancel glossary creation
 - ✅ G-C10: Create glossary with special characters validation
+- ✅ G-C12: Create glossary with multiple owners (users + teams)
+- ✅ G-C13: Create glossary with multiple reviewers (users + teams)
 - ✅ G-U01: Update glossary description
 - ✅ G-U02: Update glossary display name via rename modal
 - ✅ G-U04: Remove owner from glossary
+- ✅ G-U05: Replace owner on glossary
 - ✅ G-U07: Remove reviewer from glossary
+- ✅ G-U08: Replace reviewer on glossary
 - ✅ G-U10: Remove tags from glossary
 - ✅ G-U11: Add domain to glossary
+- ✅ G-U12: Remove domain from glossary
+- ✅ G-U13: Change domain on glossary
 - ✅ G-D01: Delete empty glossary
 - ✅ G-D02: Delete glossary with terms
 - ✅ G-D03: Delete glossary in non-English locale
 - ✅ G-D04: Cancel delete operation
+- ✅ G-D05: Delete glossary with assets tagged to terms
 
 ### Term CRUD
 - ✅ T-C01: Create term with required fields
@@ -255,6 +351,8 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 - ✅ T-C12: Create term with references
 - ✅ T-C13: Create term with related terms
 - ✅ T-C14: Create term with tags
+- ✅ T-C15: Create term with custom style (color)
+- ✅ T-C16: Create term with custom style (icon URL)
 - ✅ T-C17: Create term with owners
 - ✅ T-C18: Create term - inherits glossary reviewers
 - ✅ T-C19: Create term with special characters validation
@@ -264,7 +362,10 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 - ✅ T-U04: Rename term - verify FQN updates
 - ✅ T-U06: Add synonyms to term
 - ✅ T-U07: Remove individual synonym
+- ✅ T-U08: Clear all synonyms
 - ✅ T-U09: Add references to term
+- ✅ T-U10: Edit reference name
+- ✅ T-U11: Edit reference URL
 - ✅ T-U12: Remove individual reference
 - ✅ T-U13: Add related terms
 - ✅ T-U14: Remove related term
@@ -275,9 +376,13 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 - ✅ T-U19: Remove owner from term
 - ✅ T-U20: Add reviewer to term
 - ✅ T-U21: Remove reviewer from term
+- ✅ T-U22: Update term style - set color
+- ✅ T-U23: Update term style - set icon URL
 - ✅ T-U26: Edit term via modal (pencil icon in table)
+- ✅ T-U05: Rename term - verify child FQNs update
 - ✅ T-D01: Delete leaf term
 - ✅ T-D02: Delete parent term (cascade children)
+- ✅ T-D03: Delete term with assets tagged
 - ✅ T-D04: Cancel delete operation
 
 ### Hierarchy Management
@@ -285,32 +390,48 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 - ✅ H-DD02: Drag term back to root
 - ✅ H-DD03: Drag term with children (subtree)
 - ✅ H-DD04: Drag term confirmation modal
+- ✅ H-DD05: Drag term - cancel operation
 - ✅ H-DD06: Drag with reviewer acknowledgment
+- ✅ H-DD07: Drag term to itself (prevented)
 - ✅ H-M01: Change parent within same glossary
 - ✅ H-M02: Move term to different glossary
+- ✅ H-M03: Move term to root of current glossary
+- ✅ H-M04: Move term to root of different glossary
+- ✅ H-M05: Move term with children to different glossary
+- ✅ H-M06: Cancel move operation
 - ✅ H-N01: Expand individual parent term
 - ✅ H-N02: Collapse individual parent term
 - ✅ H-N03: Expand all terms
 - ✅ H-N04: Collapse all terms
 - ✅ H-N05: Tree state persists during updates
+- ✅ H-N07: Navigate 5+ levels deep in hierarchy
 
 ### Approval Workflow
 - ✅ W-S01: New term starts as Approved (no reviewers)
 - ✅ W-S02: New term starts as Draft (with reviewers)
 - ✅ W-S03: Approve term from table action
 - ✅ W-S04: Reject term from table action
+- ✅ W-S07: Status badge shows correct color/icon
 - ✅ W-R01: User reviewer can approve
 - ✅ W-R02: Team member reviewer can approve
 - ✅ W-R03: Non-reviewer cannot see approve/reject buttons
+- ✅ W-R04: Owner cannot approve (if not reviewer)
+- ✅ W-R05: Multiple reviewers - any can approve
 
 ### Asset Management
 - ✅ A-A01: Add single asset to term
 - ✅ A-A02: Add multiple assets
 - ✅ A-A04: Add table asset
 - ✅ A-A05: Add dashboard asset
+- ✅ A-A06: Add topic asset
+- ✅ A-A07: Add pipeline asset
 - ✅ A-A08: Mutually exclusive validation
 - ✅ A-V01: Assets tab shows correct count
+- ✅ A-V03: Click asset card opens summary panel
+- ✅ A-V04: Search within assets tab
 - ✅ A-V07: Assets persist after term rename
+- ✅ A-R01: Remove single asset from term
+- ✅ A-R03: Remove asset via entity page (untag)
 
 ### Search & Filter
 - ✅ S-S01: Search by exact term name
@@ -321,6 +442,9 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 - ✅ S-S07: Search no results - empty state
 - ✅ S-F01: Filter by Approved status
 - ✅ S-F02: Filter by Draft status
+- ✅ S-F03: Filter by InReview status
+- ✅ S-F04: Filter by multiple statuses
+- ✅ S-F05: Clear status filter
 - ✅ S-P01: Initial load shows 50 terms
 - ✅ S-P02: Infinite scroll loads next batch
 - ✅ S-P03: Scroll position maintained
@@ -341,7 +465,10 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 - ✅ IE-I02: Import updates existing terms
 - ✅ IE-I03: Import with custom properties
 - ✅ IE-I04: Import validation - circular reference
+- ✅ IE-I05: Import validation - missing required fields
+- ✅ IE-I06: Import validation - invalid parent reference
 - ✅ IE-I07: Import shows success/failure counts
+- ✅ IE-I08: Import partial success (some pass, some fail)
 
 ### Version History
 - ✅ V-01: View glossary version history
@@ -350,10 +477,17 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 - ✅ V-04: Version diff shows tag changes
 - ✅ V-05: Version diff shows owner changes
 - ✅ V-06: Version diff shows reviewer changes
+- ✅ V-10: Navigate between versions
+- ✅ V-11: Return to current version from history
 
 ### Permissions
 - ✅ P-01: Allow all operations
 - ✅ P-02: Deny all operations
+- ✅ P-03: EditDescription only - only description editable
+- ✅ P-04: EditOwners only - only owners editable
+- ✅ P-05: EditTags only - only tags editable
+- ✅ P-06: Delete only - only delete available
+- ✅ P-07: Create only - can create but not edit
 - ✅ P-09: Glossary deny - user cannot access
 - ✅ P-10: Term deny - user cannot access
 
@@ -368,12 +502,26 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 
 ### Navigation
 - ✅ NAV-03: Breadcrumb navigation
+- ✅ NAV-04: Deep link to nested term works
 - ✅ NAV-05: Tab navigation
+
+### UI States
+- ✅ UI-01: Empty glossary state (no terms)
+- ✅ UI-03: Error state on API failure
+
+### Activity Feed
+- ✅ AF-01: View activity feed on glossary
+- ✅ AF-02: View activity feed on term
+- ✅ AF-03: Post comment on glossary
+- ✅ AF-04: Post comment on term
 
 ### Tasks
 - ✅ TK-01: Create description task for glossary
 - ✅ TK-02: Create description task for term
 - ✅ TK-03: Create tag request task
+- ✅ TK-05: Reject description suggestion
+- ✅ TK-07: Reject tag suggestion
+- ✅ TK-08: Task appears in notification bell
 
 ### Edge Cases
 - ✅ EC-01: Handle glossary with deleted description
@@ -427,50 +575,19 @@ All P1 tests are now implemented! ✅
 #### Glossary Operations
 | ID | Test Case | Notes |
 |----|-----------|-------|
-| G-C04 | Create glossary with mutually exclusive toggle OFF | Explicit OFF test |
-| G-C12 | Create glossary with multiple owners (users + teams) | Mixed owners |
-| G-C13 | Create glossary with multiple reviewers (users + teams) | Mixed reviewers |
-| G-U05 | Replace owner on glossary | Owner replacement |
-| G-U08 | Replace reviewer on glossary | Reviewer replacement |
-| G-U12 | Remove domain from glossary | Domain removal |
-| G-U13 | Change domain on glossary | Domain change |
 | G-U14 | Update mutually exclusive setting | Toggle change |
-| G-D05 | Delete glossary with assets tagged to terms | Cleanup verification |
-
-#### Term Operations
-| ID | Test Case | Notes |
-|----|-----------|-------|
-| T-C15 | Create term with custom style (color) | Style feature |
-| T-C16 | Create term with custom style (icon URL) | Style feature |
-| T-U05 | Rename term - verify child FQNs update | Cascading FQN |
-| T-U08 | Clear all synonyms | Bulk clear |
-| T-U10 | Edit reference name | Reference edit |
-| T-U11 | Edit reference URL | Reference edit |
-| T-U22 | Update term style - set color | Style update |
-| T-U23 | Update term style - set icon URL | Style update |
-| T-D03 | Delete term with assets tagged | Cleanup verification |
 
 #### Hierarchy
 | ID | Test Case | Notes |
 |----|-----------|-------|
-| H-DD05 | Drag term - cancel operation | Cancel drag |
-| H-DD07 | Drag term to itself (should be prevented) | Self-drag prevention |
 | H-DD08 | Drag parent to its own child (circular - prevented) | Circular prevention |
-| H-M03 | Move term to root of current glossary | Root movement |
-| H-M04 | Move term to root of different glossary | Cross-glossary root |
-| H-M05 | Move term with children to different glossary | Subtree cross-glossary |
-| H-M06 | Cancel move operation | Cancel flow |
 | H-N06 | Load more children (pagination within parent) | Already covered via PF-02 |
-| H-N07 | Navigate 5+ levels deep in hierarchy | Deep navigation |
 
 #### Workflow
 | ID | Test Case | Notes |
 |----|-----------|-------|
 | W-S05 | Approve term from status popover | Alternative approval |
 | W-S06 | Rejected term can be re-submitted | Re-submission |
-| W-S07 | Status badge shows correct color/icon | Visual verification |
-| W-R04 | Owner cannot approve (if not reviewer) | Permission check |
-| W-R05 | Multiple reviewers - any can approve | Multi-reviewer |
 | W-R08 | Non-reviewer edits approved term - goes to review | Status change |
 | W-H01 | View workflow history on term | History view |
 | W-H02 | Hover status badge shows history popover | Popover |
@@ -479,21 +596,12 @@ All P1 tests are now implemented! ✅
 #### Assets
 | ID | Test Case | Notes |
 |----|-----------|-------|
-| A-A06 | Add topic asset | Topic type |
-| A-A07 | Add pipeline asset | Pipeline type |
-| A-V03 | Click asset card opens summary panel | Panel interaction |
-| A-V04 | Search within assets tab | Asset search |
 | A-V05 | Filter assets by entity type | Asset filter |
 | A-V06 | Paginate through assets | Asset pagination |
 | A-R02 | Bulk select and remove assets | Bulk removal |
-| A-R03 | Remove asset via entity page (untag) | Reverse removal |
 
 #### Search & Filter
-| ID | Test Case | Notes |
-|----|-----------|-------|
-| S-F03 | Filter by InReview status | Additional status |
-| S-F04 | Filter by multiple statuses | Multi-filter |
-| S-F05 | Clear status filter | Filter clear |
+All P2 Search & Filter tests are now implemented! ✅
 
 #### Table Operations
 | ID | Test Case | Notes |
@@ -507,9 +615,6 @@ All P1 tests are now implemented! ✅
 |----|-----------|-------|
 | IE-E04 | Export large glossary (100+ terms) | Large export |
 | IE-E05 | Export maintains hierarchy in CSV | Hierarchy in CSV |
-| IE-I05 | Import validation - missing required fields | Validation |
-| IE-I06 | Import validation - invalid parent reference | Validation |
-| IE-I08 | Import partial success (some pass, some fail) | Partial import |
 
 #### Version History
 | ID | Test Case | Notes |
@@ -517,37 +622,12 @@ All P1 tests are now implemented! ✅
 | V-07 | Version diff shows synonym changes | Diff detail |
 | V-08 | Version diff shows reference changes | Diff detail |
 | V-09 | Version diff shows related term changes | Diff detail |
-| V-10 | Navigate between versions | Version nav |
-| V-11 | Return to current version from history | Return nav |
 
 #### Permissions
 | ID | Test Case | Notes |
 |----|-----------|-------|
-| P-03 | EditDescription only - only description editable | Granular permission |
-| P-04 | EditOwners only - only owners editable | Granular permission |
-| P-05 | EditTags only - only tags editable | Granular permission |
-| P-06 | Delete only - only delete available | Granular permission |
-| P-07 | Create only - can create but not edit | Granular permission |
 | P-08 | ViewBasic - limited view access | View permission |
 | P-11 | Team-based permissions work correctly | Team RBAC |
-
-#### Activity Feed & Tasks
-| ID | Test Case | Notes |
-|----|-----------|-------|
-| AF-01 | View activity feed on glossary | Feed view |
-| AF-02 | View activity feed on term | Feed view |
-| AF-03 | Post comment on glossary | Comment |
-| AF-04 | Post comment on term | Comment |
-| TK-05 | Reject description suggestion | Task rejection |
-| TK-07 | Reject tag suggestion | Task rejection |
-| TK-08 | Task appears in notification bell | Notification |
-
-#### Navigation & UI
-| ID | Test Case | Notes |
-|----|-----------|-------|
-| NAV-04 | Deep link to nested term works | URL navigation |
-| UI-01 | Empty glossary state (no terms) | Empty state |
-| UI-03 | Error state on API failure | Error handling |
 
 ---
 
@@ -615,9 +695,11 @@ All P1 tests are now implemented! ✅
 | Priority | Covered | Pending | Total |
 |----------|---------|---------|-------|
 | **P1** | ~79 | 0 | ~79 |
-| **P2** | ~17 | ~71 | ~88 |
+| **P2** | ~69 | ~22 | ~91 |
 | **P3** | ~2 | ~20 | ~22 |
-| **Total** | **96** | **~91** | **~187** |
+| **Total** | **151** | **~42** | **~193** |
+
+**P2 Coverage: ~76%** (Previously ~51%)
 
 ---
 
@@ -630,4 +712,4 @@ All P1 tests are now implemented! ✅
 
 ---
 
-*Last updated: December 2024*
+*Last updated: December 13, 2024*

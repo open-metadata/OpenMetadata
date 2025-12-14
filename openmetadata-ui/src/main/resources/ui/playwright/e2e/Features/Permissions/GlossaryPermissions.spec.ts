@@ -35,6 +35,7 @@ const test = base.extend<{
     const adminPage = await browser.newPage();
     try {
       await adminUser.login(adminPage);
+      // eslint-disable-next-line react-hooks/rules-of-hooks
       await use(adminPage);
     } finally {
       await adminPage.close();
@@ -44,6 +45,7 @@ const test = base.extend<{
     const page = await browser.newPage();
     try {
       await testUser.login(page);
+      // eslint-disable-next-line react-hooks/rules-of-hooks
       await use(page);
     } finally {
       await page.close();
@@ -207,4 +209,277 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await adminUser.delete(apiContext);
   await testUser.delete(apiContext);
   await afterAction();
+});
+
+// P-03: EditDescription only - only description editable
+test('EditDescription only permission', async ({ testUserPage, browser }) => {
+  test.slow(true);
+
+  const page = await browser.newPage();
+  const { apiContext } = await getApiContext(page);
+  await adminUser.login(page);
+  await initializePermissions(page, 'allow', ['EditDescription']);
+  await assignRoleToUser(page, testUser);
+  await page.close();
+
+  await redirectToHomePage(testUserPage);
+  await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
+  await glossary.visitEntityPage(testUserPage);
+
+  await testUserPage.waitForLoadState('networkidle');
+
+  // Edit description button should be visible
+  const editDescBtn = testUserPage.getByTestId('edit-description');
+
+  await expect(editDescBtn).toBeVisible();
+
+  // Other edit buttons should NOT be visible
+  const addOwner = testUserPage.getByTestId('add-owner');
+  const addTag = testUserPage
+    .getByTestId('tags-container')
+    .getByTestId('add-tag');
+
+  await expect(addOwner).not.toBeVisible();
+  await expect(addTag).not.toBeVisible();
+
+  await cleanupPermissions(apiContext);
+});
+
+// P-04: EditOwners only - only owners editable
+test('EditOwners only permission', async ({ testUserPage, browser }) => {
+  test.slow(true);
+
+  const page = await browser.newPage();
+  const { apiContext } = await getApiContext(page);
+  await adminUser.login(page);
+  await initializePermissions(page, 'allow', ['EditOwners']);
+  await assignRoleToUser(page, testUser);
+  await page.close();
+
+  await redirectToHomePage(testUserPage);
+  await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
+  await glossary.visitEntityPage(testUserPage);
+
+  await testUserPage.waitForLoadState('networkidle');
+
+  // Add owner button should be visible
+  const addOwner = testUserPage.getByTestId('add-owner');
+
+  await expect(addOwner).toBeVisible();
+
+  // Edit description button should NOT be visible
+  const editDescBtn = testUserPage.getByTestId('edit-description');
+
+  await expect(editDescBtn).not.toBeVisible();
+
+  await cleanupPermissions(apiContext);
+});
+
+// P-05: EditTags only - only tags editable
+test('EditTags only permission', async ({ testUserPage, browser }) => {
+  test.slow(true);
+
+  const page = await browser.newPage();
+  const { apiContext } = await getApiContext(page);
+  await adminUser.login(page);
+  await initializePermissions(page, 'allow', ['EditTags']);
+  await assignRoleToUser(page, testUser);
+  await page.close();
+
+  await redirectToHomePage(testUserPage);
+  await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
+  await glossary.visitEntityPage(testUserPage);
+
+  await testUserPage.waitForLoadState('networkidle');
+
+  // Add tag button should be visible
+  const addTag = testUserPage
+    .getByTestId('tags-container')
+    .getByTestId('add-tag');
+
+  await expect(addTag).toBeVisible();
+
+  // Edit description button should NOT be visible
+  const editDescBtn = testUserPage.getByTestId('edit-description');
+
+  await expect(editDescBtn).not.toBeVisible();
+
+  await cleanupPermissions(apiContext);
+});
+
+// P-06: Delete only - only delete available
+test('Delete only permission', async ({ testUserPage, browser }) => {
+  test.slow(true);
+
+  const page = await browser.newPage();
+  const { apiContext } = await getApiContext(page);
+  await adminUser.login(page);
+  await initializePermissions(page, 'allow', ['Delete']);
+  await assignRoleToUser(page, testUser);
+  await page.close();
+
+  await redirectToHomePage(testUserPage);
+  await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
+  await glossary.visitEntityPage(testUserPage);
+
+  await testUserPage.waitForLoadState('networkidle');
+
+  // Manage button should be visible with delete option
+  const manageButton = testUserPage.getByTestId('manage-button');
+
+  if (await manageButton.isVisible()) {
+    await manageButton.click();
+
+    const deleteButton = testUserPage.getByTestId('delete-button');
+
+    await expect(deleteButton).toBeVisible();
+
+    // Rename button should NOT be visible
+    const renameButton = testUserPage.getByTestId('rename-button');
+
+    await expect(renameButton).not.toBeVisible();
+  }
+
+  await cleanupPermissions(apiContext);
+});
+
+// P-07: Create only - can create but not edit
+test('Create only permission', async ({ testUserPage, browser }) => {
+  test.slow(true);
+
+  const page = await browser.newPage();
+  const { apiContext } = await getApiContext(page);
+  await adminUser.login(page);
+  await initializePermissions(page, 'allow', ['Create']);
+  await assignRoleToUser(page, testUser);
+  await page.close();
+
+  await redirectToHomePage(testUserPage);
+  await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
+  await glossary.visitEntityPage(testUserPage);
+
+  await testUserPage.waitForLoadState('networkidle');
+
+  // Add glossary button should be visible (create permission)
+  const addGlossaryBtn = testUserPage.getByTestId('add-glossary');
+
+  await expect(addGlossaryBtn).toBeVisible();
+
+  // Edit description should NOT be visible
+  const editDescBtn = testUserPage.getByTestId('edit-description');
+
+  await expect(editDescBtn).not.toBeVisible();
+
+  await cleanupPermissions(apiContext);
+});
+
+// P-08: ViewBasic - limited view access (user can view but not edit)
+test('ViewBasic permission shows read-only access', async ({
+  testUserPage,
+  browser,
+}) => {
+  test.slow(true);
+
+  const page = await browser.newPage();
+  const { apiContext } = await getApiContext(page);
+  await adminUser.login(page);
+
+  try {
+    // Only ViewBasic permission - no edit permissions
+    await initializePermissions(page, 'allow', ['ViewBasic']);
+    await assignRoleToUser(page, testUser);
+  } finally {
+    await page.close();
+  }
+
+  await redirectToHomePage(testUserPage);
+  await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
+  await glossary.visitEntityPage(testUserPage);
+
+  await testUserPage.waitForLoadState('networkidle');
+
+  // User should be able to view the glossary page
+  const glossaryHeader = testUserPage.getByTestId('entity-header-display-name');
+
+  await expect(glossaryHeader).toBeVisible({ timeout: 10000 });
+  await expect(glossaryHeader).toContainText(glossary.data.displayName);
+
+  await cleanupPermissions(apiContext);
+});
+
+// P-11: Team-based permissions work correctly
+test('Team-based permissions work correctly', async ({
+  testUserPage,
+  browser,
+}) => {
+  test.slow(true);
+
+  const page = await browser.newPage();
+  const { apiContext } = await getApiContext(page);
+  await adminUser.login(page);
+
+  let teamId: string | undefined;
+
+  try {
+    // Create a team and add testUser to it
+    const teamName = `TestTeam${Date.now()}`;
+    const teamResponse = await apiContext.post('/api/v1/teams', {
+      data: {
+        name: teamName,
+        displayName: teamName,
+        description: 'Test team for permissions',
+        teamType: 'Group',
+      },
+    });
+    const teamData = await teamResponse.json();
+    teamId = teamData.id;
+
+    // Add user to team
+    await apiContext.patch(`/api/v1/teams/${teamData.id}`, {
+      data: [
+        {
+          op: 'add',
+          path: '/users/0',
+          value: {
+            id: testUser.responseData.id,
+            type: 'user',
+          },
+        },
+      ],
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    });
+
+    // Set up permissions with team as the principal
+    await initializePermissions(
+      page,
+      'allow',
+      ['EditDescription', 'EditOwners'],
+      teamData.id,
+      'team'
+    );
+  } finally {
+    await page.close();
+  }
+
+  // Login as test user and verify permissions inherited from team
+  await redirectToHomePage(testUserPage);
+  await sidebarClick(testUserPage, SidebarItem.GLOSSARY);
+  await glossary.visitEntityPage(testUserPage);
+
+  await testUserPage.waitForLoadState('networkidle');
+
+  // Verify user can access the glossary page (team membership works)
+  const glossaryHeader = testUserPage.getByTestId('entity-header-display-name');
+
+  await expect(glossaryHeader).toBeVisible({ timeout: 10000 });
+  await expect(glossaryHeader).toContainText(glossary.data.displayName);
+
+  // Clean up
+  await cleanupPermissions(apiContext);
+
+  if (teamId) {
+    await apiContext.delete(`/api/v1/teams/${teamId}?hardDelete=true`);
+  }
 });

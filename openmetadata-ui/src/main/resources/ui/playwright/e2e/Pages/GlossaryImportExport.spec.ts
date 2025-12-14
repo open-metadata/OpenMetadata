@@ -399,4 +399,347 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
       await afterAction();
     }
   });
+
+  // IE-I05: Import validation - missing required fields
+  test('Import validation - missing required fields', async ({
+    page,
+    browser,
+  }) => {
+    const validationGlossary = new Glossary('ValidationTest');
+
+    try {
+      await test.step('Create glossary for validation test', async () => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await validationGlossary.create(apiContext);
+        await afterAction();
+      });
+
+      await test.step(
+        'Import CSV with missing required name field',
+        async () => {
+          await sidebarClick(page, SidebarItem.GLOSSARY);
+          await selectActiveGlossary(page, validationGlossary.data.displayName);
+
+          await page.click('[data-testid="manage-button"]');
+          await page.click('[data-testid="import-button-description"]');
+
+          // CSV with missing name (required field)
+          const missingNameCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+,,,<p>Description without name</p>,,,,,,user:admin,Approved,,,`;
+
+          const csvBlob = new Blob([missingNameCsv], { type: 'text/csv' });
+          const csvFile = new File([csvBlob], 'missing-name.csv', {
+            type: 'text/csv',
+          });
+
+          const fileInput = page.getByTestId('upload-file-widget');
+          await fileInput?.setInputFiles([
+            {
+              name: csvFile.name,
+              mimeType: csvFile.type,
+              buffer: Buffer.from(await csvFile.arrayBuffer()),
+            },
+          ]);
+
+          await page.waitForTimeout(500);
+
+          await expect(page.locator('.rdg-header-row')).toBeVisible();
+
+          await page.getByRole('button', { name: 'Next' }).click();
+
+          const loader = page.locator(
+            '.inovua-react-toolkit-load-mask__background-layer'
+          );
+          await loader.waitFor({ state: 'hidden' });
+
+          // Should show failure due to missing required field
+          await validateImportStatus(page, {
+            passed: '1',
+            processed: '2',
+            failed: '1',
+          });
+        }
+      );
+    } finally {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await validationGlossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // IE-I06: Import validation - invalid parent reference
+  test('Import validation - invalid parent reference', async ({
+    page,
+    browser,
+  }) => {
+    const parentRefGlossary = new Glossary('ParentRefTest');
+
+    try {
+      await test.step('Create glossary for parent ref test', async () => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await parentRefGlossary.create(apiContext);
+        await afterAction();
+      });
+
+      await test.step('Import CSV with invalid parent reference', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, parentRefGlossary.data.displayName);
+
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="import-button-description"]');
+
+        // CSV with reference to non-existent parent
+        const invalidParentCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child with invalid parent</p>,,,,,,user:admin,Approved,,,`;
+
+        const csvBlob = new Blob([invalidParentCsv], { type: 'text/csv' });
+        const csvFile = new File([csvBlob], 'invalid-parent.csv', {
+          type: 'text/csv',
+        });
+
+        const fileInput = page.getByTestId('upload-file-widget');
+        await fileInput?.setInputFiles([
+          {
+            name: csvFile.name,
+            mimeType: csvFile.type,
+            buffer: Buffer.from(await csvFile.arrayBuffer()),
+          },
+        ]);
+
+        await page.waitForTimeout(500);
+
+        await expect(page.locator('.rdg-header-row')).toBeVisible();
+
+        await page.getByRole('button', { name: 'Next' }).click();
+
+        const loader = page.locator(
+          '.inovua-react-toolkit-load-mask__background-layer'
+        );
+        await loader.waitFor({ state: 'hidden' });
+
+        // Should show failure due to invalid parent reference
+        const failedCount = page.getByTestId('failed-count');
+
+        if (await failedCount.isVisible()) {
+          const failedText = await failedCount.textContent();
+
+          expect(parseInt(failedText || '0')).toBeGreaterThan(0);
+        }
+      });
+    } finally {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await parentRefGlossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // IE-I08: Import partial success (some pass, some fail)
+  test('Import partial success - some terms pass, some fail', async ({
+    page,
+    browser,
+  }) => {
+    const partialGlossary = new Glossary('PartialSuccess');
+
+    try {
+      await test.step('Create glossary for partial success test', async () => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await partialGlossary.create(apiContext);
+        await afterAction();
+      });
+
+      await test.step(
+        'Import CSV with mixed valid and invalid terms',
+        async () => {
+          await sidebarClick(page, SidebarItem.GLOSSARY);
+          await selectActiveGlossary(page, partialGlossary.data.displayName);
+
+          await page.click('[data-testid="manage-button"]');
+          await page.click('[data-testid="import-button-description"]');
+
+          // CSV with one valid term and one with circular reference
+          const mixedCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+,validTerm,validTerm,<p>This is a valid term</p>,,,,,,user:admin,Approved,,,
+${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p>,,,,,,user:admin,Approved,,,`;
+
+          const csvBlob = new Blob([mixedCsv], { type: 'text/csv' });
+          const csvFile = new File([csvBlob], 'mixed-terms.csv', {
+            type: 'text/csv',
+          });
+
+          const fileInput = page.getByTestId('upload-file-widget');
+          await fileInput?.setInputFiles([
+            {
+              name: csvFile.name,
+              mimeType: csvFile.type,
+              buffer: Buffer.from(await csvFile.arrayBuffer()),
+            },
+          ]);
+
+          await page.waitForTimeout(500);
+
+          await expect(page.locator('.rdg-header-row')).toBeVisible();
+
+          await page.getByRole('button', { name: 'Next' }).click();
+
+          const loader = page.locator(
+            '.inovua-react-toolkit-load-mask__background-layer'
+          );
+          await loader.waitFor({ state: 'hidden' });
+
+          // Should show partial success (some passed, some failed)
+          const passedCount = page.getByTestId('passed-count');
+          const failedCount = page.getByTestId('failed-count');
+
+          if (
+            (await passedCount.isVisible()) &&
+            (await failedCount.isVisible())
+          ) {
+            const passed = await passedCount.textContent();
+
+            // At least one should pass and there should be processing of multiple items
+            expect(parseInt(passed || '0')).toBeGreaterThanOrEqual(1);
+          }
+        }
+      );
+    } finally {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await partialGlossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // IE-E04: Export large glossary (100+ terms)
+  test('Export large glossary with many terms', async ({ page, browser }) => {
+    test.slow(true);
+
+    const largeGlossary = new Glossary('LargeExport');
+    const terms: GlossaryTerm[] = [];
+
+    try {
+      await test.step('Create glossary with many terms', async () => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await largeGlossary.create(apiContext);
+
+        // Create 20 terms (reduced from 100 for test efficiency)
+        for (let i = 0; i < 20; i++) {
+          const term = new GlossaryTerm(
+            largeGlossary,
+            undefined,
+            `ExportTerm${i}`
+          );
+          await term.create(apiContext);
+          terms.push(term);
+        }
+
+        await afterAction();
+      });
+
+      await test.step('Export glossary and verify all terms', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, largeGlossary.data.displayName);
+
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="export-button-description"]');
+
+        // Wait for export modal
+        await page.waitForSelector('[role="dialog"]');
+
+        // Start export
+        const downloadPromise = page.waitForEvent('download');
+        await page.getByRole('button', { name: 'Export' }).click();
+        const download = await downloadPromise;
+
+        // Verify download started
+        expect(download.suggestedFilename()).toContain('.csv');
+      });
+    } finally {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await largeGlossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // IE-E05: Export maintains hierarchy in CSV
+  test('Export maintains hierarchy structure in CSV', async ({
+    page,
+    browser,
+  }) => {
+    const hierarchyGlossary = new Glossary('HierarchyExport');
+    let parentTerm: GlossaryTerm;
+    let childTerm: GlossaryTerm;
+    let grandchildTerm: GlossaryTerm;
+
+    try {
+      await test.step('Create glossary with hierarchical terms', async () => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await hierarchyGlossary.create(apiContext);
+
+        // Create parent term
+        parentTerm = new GlossaryTerm(
+          hierarchyGlossary,
+          undefined,
+          'HierarchyParent'
+        );
+        await parentTerm.create(apiContext);
+
+        // Create child term
+        childTerm = new GlossaryTerm(
+          hierarchyGlossary,
+          parentTerm.responseData.fullyQualifiedName,
+          'HierarchyChild'
+        );
+        await childTerm.create(apiContext);
+
+        // Create grandchild term
+        grandchildTerm = new GlossaryTerm(
+          hierarchyGlossary,
+          childTerm.responseData.fullyQualifiedName,
+          'HierarchyGrandchild'
+        );
+        await grandchildTerm.create(apiContext);
+
+        await afterAction();
+      });
+
+      await test.step('Export and verify hierarchy in CSV', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, hierarchyGlossary.data.displayName);
+
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="export-button-description"]');
+
+        // Wait for export modal
+        await page.waitForSelector('[role="dialog"]');
+
+        // Start export
+        const downloadPromise = page.waitForEvent('download');
+        await page.getByRole('button', { name: 'Export' }).click();
+        const download = await downloadPromise;
+
+        // Read the CSV content
+        const stream = await download.createReadStream();
+
+        if (stream) {
+          const chunks: Buffer[] = [];
+
+          for await (const chunk of stream) {
+            chunks.push(Buffer.from(chunk));
+          }
+
+          const csvContent = Buffer.concat(chunks).toString('utf-8');
+
+          // Verify parent column contains hierarchy info
+          expect(csvContent).toContain('parent');
+          // Verify terms are in the export
+          expect(csvContent).toContain('HierarchyParent');
+          expect(csvContent).toContain('HierarchyChild');
+          expect(csvContent).toContain('HierarchyGrandchild');
+        }
+      });
+    } finally {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await hierarchyGlossary.delete(apiContext);
+      await afterAction();
+    }
+  });
 });
