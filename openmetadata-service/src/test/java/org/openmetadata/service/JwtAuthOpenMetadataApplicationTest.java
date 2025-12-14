@@ -42,12 +42,13 @@ import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.core5.util.Timeout;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.apache.connector.ApacheClientProperties;
 import org.glassfish.jersey.apache.connector.ApacheConnectorProvider;
@@ -347,18 +348,24 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
   }
 
   private static void createClient() {
-    // Use Apache HTTP client connector for Jetty 12.1 compatibility
+    // Use Apache HTTP client 5.x connector for Jetty 12.1 compatibility
     // Configure connection pool to handle concurrent test requests
     PoolingHttpClientConnectionManager connectionManager = new PoolingHttpClientConnectionManager();
-    connectionManager.setMaxTotal(200); // Max total connections
-    connectionManager.setDefaultMaxPerRoute(100); // Max connections per route
+    connectionManager.setMaxTotal(500); // Increased for highly concurrent tests
+    connectionManager.setDefaultMaxPerRoute(200); // Max connections per route
 
     ClientConfig config = new ClientConfig();
     config.connectorProvider(new ApacheConnectorProvider());
     config.property(ApacheClientProperties.CONNECTION_MANAGER, connectionManager);
+    // Configure request-level settings including connection request timeout
+    config.property(
+        ApacheClientProperties.REQUEST_CONFIG,
+        org.apache.hc.client5.http.config.RequestConfig.custom()
+            .setConnectionRequestTimeout(Timeout.ofMinutes(5)) // Time to get connection from pool
+            .setResponseTimeout(Timeout.ofMinutes(2)) // Response timeout
+            .build());
     config.register(new JacksonFeature(APP.getObjectMapper()));
     // CRITICAL: Set reasonable timeouts to prevent indefinite hangs
-    // With Apache connector, 0 means infinite timeout which causes CI to hang
     config.property(ClientProperties.CONNECT_TIMEOUT, 30_000); // 30 seconds
     config.property(ClientProperties.READ_TIMEOUT, 120_000); // 2 minutes
     config.property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
