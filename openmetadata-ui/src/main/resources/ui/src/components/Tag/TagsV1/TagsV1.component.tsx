@@ -141,6 +141,17 @@ const TagsV1 = ({
     return '';
   }, [newLook, tag.style?.color]);
 
+  const renderGeneratedTagIcon = useMemo(() => {
+    if (tag.style?.iconURL) {
+      return renderIcon(tag.style.iconURL, {
+        size: 12,
+        style: { marginRight: 4, flexShrink: 0 },
+      });
+    }
+
+    return <AutomatedTag width={16} />;
+  }, [tag.style?.iconURL]);
+
   const renderTagIcon = useMemo(() => {
     if (hideIcon) {
       return null;
@@ -186,8 +197,8 @@ const TagsV1 = ({
         data-testid="tag-redirect-link"
         to={redirectLink}>
         <TagChip
-          icon={<AutomatedTag width={16} />}
-          label={tag.displayName ?? tag.name ?? tagName ?? ''}
+          icon={renderGeneratedTagIcon}
+          label={tag.displayName || tag.name || tagName || ''}
           labelDataTestId={`tag-${tag.tagFQN}`}
           sx={{
             pl: 1.5,
@@ -261,7 +272,7 @@ const TagsV1 = ({
   if (startWith === TAG_START_WITH.PLUS) {
     return addTagChip;
   }
-  if (tag.labelType === LabelType.Automated && entityType && entityFqn) {
+  if (tag.labelType === LabelType.Generated && entityType && entityFqn) {
     if (isEditTags) {
       return automatedTagChip;
     }
