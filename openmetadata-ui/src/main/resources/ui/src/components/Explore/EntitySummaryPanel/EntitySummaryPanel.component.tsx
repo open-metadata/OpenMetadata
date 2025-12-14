@@ -35,12 +35,18 @@ import { TagLabel } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
+import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
+import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
-import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../../../rest/databaseAPI';
 import { getDomainByName } from '../../../rest/domainAPI';
+import { getDriveAssetByFqn } from '../../../rest/driveAPI';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
@@ -152,6 +158,8 @@ export default function EntitySummaryPanel({
         getMlModelByFQN(fqn, { fields: commonFields }),
       [EntityType.DATABASE]: (fqn: string) =>
         getDatabaseDetailsByFQN(fqn, { fields: commonFields }),
+      [EntityType.DATABASE_SCHEMA]: (fqn: string) =>
+        getDatabaseSchemaDetailsByFQN(fqn, { fields: commonFields }),
       [EntityType.DASHBOARD_DATA_MODEL]: (fqn: string) =>
         getDataModelByFqn(fqn, { fields: commonFields }),
       [EntityType.SEARCH_INDEX]: (fqn: string) =>
@@ -166,6 +174,18 @@ export default function EntitySummaryPanel({
         getChartByFqn(fqn, { fields: commonFields }),
       [EntityType.METRIC]: (fqn: string) =>
         getMetricByFqn(fqn, { fields: commonFields }),
+      [EntityType.API_ENDPOINT]: (fqn: string) =>
+        getApiEndPointByFQN(fqn, { fields: commonFields }),
+      [EntityType.API_COLLECTION]: (fqn: string) =>
+        getApiCollectionByFQN(fqn, { fields: commonFields }),
+      [EntityType.DIRECTORY]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.DIRECTORY, commonFields),
+      [EntityType.FILE]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.FILE, commonFields),
+      [EntityType.SPREADSHEET]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.SPREADSHEET, commonFields),
+      [EntityType.WORKSHEET]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.WORKSHEET, commonFields),
       [EntityType.DATA_PRODUCT]: (fqn: string) =>
         getDataProductByName(fqn, { fields: commonFields }),
       [EntityType.DOMAIN]: (fqn: string) =>

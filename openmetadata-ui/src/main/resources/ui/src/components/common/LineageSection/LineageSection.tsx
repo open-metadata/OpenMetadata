@@ -75,24 +75,6 @@ const LineageSection: React.FC<LineageSectionProps> = ({
     </Box>
   );
 
-  if (isLoading) {
-    return (
-      <Box sx={{ paddingX: '14px', paddingBottom: 4 }}>
-        <Typography
-          sx={{
-            fontWeight: 600,
-            fontSize: '13px',
-            mb: 1,
-          }}>
-          {t('label.lineage')}
-        </Typography>
-        <Box>
-          <Loader size="small" />
-        </Box>
-      </Box>
-    );
-  }
-
   return (
     <Box
       data-testid="lineage-section"
@@ -109,7 +91,9 @@ const LineageSection: React.FC<LineageSectionProps> = ({
         }}>
         {t('label.lineage')}
       </Typography>
-      {upstreamCount === 0 && downstreamCount === 0 ? (
+      {isLoading ? (
+        <Loader size="small" />
+      ) : upstreamCount === 0 && downstreamCount === 0 ? (
         <Typography
           fontSize="12px"
           color={theme.palette.allShades?.gray?.[500]}>

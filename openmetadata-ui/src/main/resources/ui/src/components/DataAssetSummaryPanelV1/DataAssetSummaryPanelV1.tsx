@@ -81,7 +81,7 @@ export const DataAssetSummaryPanelV1 = ({
   onDescriptionUpdate,
   onLinkClick,
   lineageData,
-  isLineageLoading = false,
+  isLineageLoading = true,
   onLineageClick,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
