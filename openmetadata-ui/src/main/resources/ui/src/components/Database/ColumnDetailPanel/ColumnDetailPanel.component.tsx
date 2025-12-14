@@ -14,7 +14,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Chip } from '@mui/material';
 import { Button, Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/down-arrow-icon.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
@@ -30,17 +30,17 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
+import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
+import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
+import Loader from '../../common/Loader/Loader';
+import TagsSection from '../../common/TagsSection/TagsSection';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
 import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
 import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
 import { LineageData } from '../../Lineage/Lineage.interface';
-import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
-import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
-import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
-import Loader from '../../common/Loader/Loader';
-import TagsSection from '../../common/TagsSection/TagsSection';
 import {
   ColumnDetailPanelProps,
   TestCaseStatusCounts,
@@ -49,7 +49,6 @@ import './ColumnDetailPanel.less';
 
 export const ColumnDetailPanel = ({
   column,
-  tableFqn,
   isOpen,
   onClose,
   onColumnUpdate,
@@ -196,6 +195,7 @@ export const ColumnDetailPanel = ({
             entity: t('label.tag-plural'),
           })
         );
+
         throw error;
       } finally {
         setIsLoading(false);
@@ -238,6 +238,7 @@ export const ColumnDetailPanel = ({
             entity: t('label.glossary-term-plural'),
           })
         );
+
         throw error;
       } finally {
         setIsLoading(false);
@@ -245,31 +246,6 @@ export const ColumnDetailPanel = ({
     },
     [column, t, onColumnUpdate]
   );
-
-  const columnOverview = useMemo(() => {
-    if (!column) {
-      return [];
-    }
-
-    return [
-      {
-        label: t('label.type'),
-        value: column.dataTypeDisplay || column.dataType || '-',
-      },
-      {
-        label: t('label.name'),
-        value: column.name,
-      },
-      ...(column.displayName
-        ? [
-            {
-              label: t('label.display-name'),
-              value: column.displayName,
-            },
-          ]
-        : []),
-    ];
-  }, [column, t]);
 
   useEffect(() => {
     if (isOpen && column) {
@@ -355,42 +331,12 @@ export const ColumnDetailPanel = ({
       </Space>
     );
   };
-  const [lineageData, setLineageData] = useState<LineageData | null>(null);
-  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+  const [lineageData] = useState<LineageData | null>(null);
+  const [isLineageLoading] = useState<boolean>(false);
   const [lineageFilter, setLineageFilter] = useState<'upstream' | 'downstream'>(
     'downstream'
   );
-  //   const fetchLineageData = useCallback(async () => {
-  //     const fqn = column?.fullyQualifiedName;
-  //     if (!fqn) {
-  //       return;
-  //     }
 
-  //     try {
-  //       setIsLineageLoading(true);
-  //       const response = await getLineageDataByFQN({
-  //         fqn,
-  //         column?.dataType,
-  //         config: {
-  //           upstreamDepth: 2,
-  //           downstreamDepth: 1,
-  //           nodesPerLayer: 50,
-  //           pipelineViewMode: PipelineViewMode.Node,
-  //         },
-  //       });
-  //       setLineageData(response);
-  //     } catch (error) {
-  //       showErrorToast(error as AxiosError);
-  //       setLineageData(null);
-  //     } finally {
-  //       setIsLineageLoading(false);
-  //     }
-  //   }, [column?.fullyQualifiedName, TabSpecificField.COLUMNS]);
-  //   useEffect(() => {
-  //     if (activeTab === EntityRightPanelTab.LINEAGE) {
-  //       fetchLineageData();
-  //     }
-  //   }, [activeTab, fetchLineageData]);
   const renderLineageTab = () => {
     if (isLineageLoading) {
       return (
@@ -426,7 +372,9 @@ export const ColumnDetailPanel = ({
     return (
       <div className="overview-tab-content">
         <CustomPropertiesSection
-          entityData={column as unknown as { extension?: Record<string, unknown> }}
+          entityData={
+            column as unknown as { extension?: Record<string, unknown> }
+          }
           entityDetails={{ details: column }}
           entityType={EntityType.TABLE}
           isEntityDataLoading={isLoading}
@@ -500,41 +448,26 @@ export const ColumnDetailPanel = ({
     }
 
     switch (activeTab) {
-      case EntityRightPanelTab.OVERVIEW:
-        return (
-          <>
-            <div className="overview-tab-content">{renderOverviewTab()}</div>
-          </>
-        );
       case EntityRightPanelTab.DATA_QUALITY:
         return (
-          <>
-            <DataQualityTab
-              isColumnDetailPanel
-              entityFQN={column.fullyQualifiedName || ''}
-              entityType={EntityType.TABLE as string}
-            />
-          </>
+          <DataQualityTab
+            isColumnDetailPanel
+            entityFQN={column.fullyQualifiedName || ''}
+            entityType={EntityType.TABLE as string}
+          />
         );
       case EntityRightPanelTab.LINEAGE:
-        return (
-          <>
-            <div className="overview-tab-content">{renderLineageTab()}</div>
-          </>
-        );
+        return <div className="overview-tab-content">{renderLineageTab()}</div>;
       case EntityRightPanelTab.CUSTOM_PROPERTIES:
         return (
-          <>
-            <div className="overview-tab-content">
-              {renderCustomPropertiesTab()}
-            </div>
-          </>
+          <div className="overview-tab-content">
+            {renderCustomPropertiesTab()}
+          </div>
         );
+      case EntityRightPanelTab.OVERVIEW:
       default:
         return (
-          <>
-            <div className="overview-tab-content">{renderOverviewTab()}</div>
-          </>
+          <div className="overview-tab-content">{renderOverviewTab()}</div>
         );
     }
   };
