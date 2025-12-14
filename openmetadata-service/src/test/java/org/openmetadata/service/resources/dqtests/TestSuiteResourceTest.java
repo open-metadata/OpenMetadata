@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
+import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
@@ -24,21 +25,24 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
@@ -46,11 +50,15 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -60,6 +68,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
@@ -67,7 +76,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
+import org.openmetadata.service.resources.teams.RoleResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
@@ -79,6 +90,8 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   public static final String TEST_SUITE_TABLE_NAME1 = "tableForExecutableTestSuite";
   public static final String TEST_SUITE_TABLE_NAME2 = "tableForExecutableTestSuiteTwo";
 
+  private static User USER_TEST_CASE_OWNER_VIEW;
+
   public TestSuiteResourceTest() {
     super(
         Entity.TEST_SUITE,
@@ -88,6 +101,56 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         TestSuiteResource.FIELDS);
     supportsSearchIndex = true;
     supportsEtag = false;
+  }
+
+  @BeforeAll
+  public void setupRbacUsers() throws Exception {
+    Rule testCaseOwnerViewRule =
+        new Rule()
+            .withName("AllowTestCaseOwnerViewForReport")
+            .withDescription("Allow VIEW_BASIC on TEST_CASE if user isOwner()")
+            .withEffect(Rule.Effect.ALLOW)
+            .withOperations(List.of(MetadataOperation.VIEW_BASIC))
+            .withResources(List.of(Entity.TEST_CASE))
+            .withCondition("isOwner()");
+
+    PolicyResourceTest policyResourceTest = new PolicyResourceTest();
+    Policy policyTestCaseOwnerView =
+        policyResourceTest.createEntity(
+            new CreatePolicy()
+                .withName("Policy_TestCaseOwnerViewForReport")
+                .withDescription("Policy that allows VIEW_BASIC on TEST_CASE for owner only")
+                .withRules(List.of(testCaseOwnerViewRule)),
+            ADMIN_AUTH_HEADERS);
+
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role roleTestCaseOwnerView =
+        roleResourceTest.createEntity(
+            new CreateRole()
+                .withName("Role_TestCaseOwnerViewForReport")
+                .withDescription("Role that references Policy_TestCaseOwnerViewForReport")
+                .withPolicies(List.of(policyTestCaseOwnerView.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    // Create an isolated team so the user doesn't inherit Organization's default roles
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team isolatedTeam =
+        teamResourceTest.createEntity(
+            new CreateTeam()
+                .withName("Team_IsolatedForRbacReportTest")
+                .withDescription("Isolated team for RBAC report testing - no inherited roles")
+                .withTeamType(GROUP),
+            ADMIN_AUTH_HEADERS);
+
+    UserResourceTest userResourceTest = new UserResourceTest();
+    USER_TEST_CASE_OWNER_VIEW =
+        userResourceTest.createEntity(
+            new CreateUser()
+                .withName("user-test-case-owner-view-report")
+                .withEmail("user-test-case-owner-view-report@open-metadata.org")
+                .withRoles(List.of(roleTestCaseOwnerView.getId()))
+                .withTeams(List.of(isolatedTeam.getId())),
+            ADMIN_AUTH_HEADERS);
   }
 
   public void setupTestSuites(TestInfo test) throws IOException {
@@ -819,8 +882,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
-  void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo)
-      throws IOException, InterruptedException {
+  void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo) throws IOException {
     if (supportsSearchIndex) {
       Random rand = new Random();
       int tablesNum = rand.nextInt(3) + 3;
@@ -829,7 +891,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
       TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
 
       List<Table> tables = new ArrayList<>();
-      List<UUID> createdTestSuiteIds = new ArrayList<>();
+      Map<String, TestSuite> testSuites = new HashMap<>();
 
       for (int i = 0; i < tablesNum; i++) {
         CreateTable tableReq =
@@ -850,66 +912,9 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
         TestSuite testSuite =
             testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
-        createdTestSuiteIds.add(testSuite.getId());
+        testSuites.put(table.getFullyQualifiedName(), testSuite);
       }
-
-      Thread.sleep(3000);
-
-      Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("sortField", "id");
-      queryParams.put("sortOrder", "asc");
-
-      ResultList<TestSuite> allTestSuites =
-          listEntitiesFromSearch(queryParams, 1000, 0, ADMIN_AUTH_HEADERS);
-
-      List<TestSuite> createdTestSuites =
-          allTestSuites.getData().stream()
-              .filter(ts -> createdTestSuiteIds.contains(ts.getId()))
-              .sorted((a, b) -> a.getId().compareTo(b.getId()))
-              .collect(Collectors.toList());
-
-      assertEquals(
-          tablesNum,
-          createdTestSuites.size(),
-          "Expected to find all created test suites in search results");
-
-      List<UUID> sortedCreatedIds =
-          createdTestSuites.stream().map(TestSuite::getId).collect(Collectors.toList());
-      for (int i = 0; i < createdTestSuites.size() - 1; i++) {
-        assertTrue(
-            createdTestSuites.get(i).getId().compareTo(createdTestSuites.get(i + 1).getId()) < 0,
-            "Test suites should be sorted by ID in ascending order");
-      }
-
-      Set<UUID> foundTestSuiteIds = new HashSet<>();
-      for (int limit = 1; limit <= Math.min(5, tablesNum); limit++) {
-        foundTestSuiteIds.clear();
-        int offset = 0;
-        int pageCount = 0;
-        int maxPages = 10000; // Safety limit to prevent infinite loops
-
-        while (pageCount < maxPages) {
-          ResultList<TestSuite> page =
-              listEntitiesFromSearch(queryParams, limit, offset, ADMIN_AUTH_HEADERS);
-
-          if (page.getData().isEmpty()) {
-            break;
-          }
-
-          page.getData().stream()
-              .filter(ts -> createdTestSuiteIds.contains(ts.getId()))
-              .forEach(ts -> foundTestSuiteIds.add(ts.getId()));
-
-          offset += limit;
-          pageCount++;
-        }
-
-        assertEquals(
-            new HashSet<>(createdTestSuiteIds),
-            foundTestSuiteIds,
-            String.format(
-                "All created test suites should be found when paginating with limit %d", limit));
-      }
+      validateEntityListFromSearchWithPagination(new HashMap<>(), testSuites.size());
     }
   }
 
@@ -1098,6 +1103,103 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
     assertCommonFieldChange(fieldName, expected, actual);
+  }
+
+  @Test
+  void test_getDataQualityReport_ownerOnlySeesOwnedTestCases(TestInfo testInfo) throws IOException {
+    TestUtils.enableSearchRbac(true);
+    List<EntityReference> savedDefaultRoles = TestUtils.removeOrganizationDefaultRoles();
+
+    try {
+      // Setup: Create a unique table for this test to avoid conflicts with other tests
+      TableResourceTest tableResourceTest = new TableResourceTest();
+      CreateTable tableReq =
+          tableResourceTest
+              .createRequest(testInfo)
+              .withName("rbacReportTestTable_" + UUID.randomUUID())
+              .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+              .withColumns(
+                  List.of(
+                      new Column()
+                          .withName(C1)
+                          .withDisplayName("c1")
+                          .withDataType(ColumnDataType.VARCHAR)
+                          .withDataLength(10)));
+      Table testTable = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+      String tableLink = String.format("<#E::table::%s>", testTable.getFullyQualifiedName());
+
+      CreateTestSuite createTestSuite = createRequest(testTable.getFullyQualifiedName());
+      createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+
+      EntityReference ownerRef =
+          new EntityReference()
+              .withId(USER_TEST_CASE_OWNER_VIEW.getId())
+              .withType(Entity.USER)
+              .withName(USER_TEST_CASE_OWNER_VIEW.getName());
+
+      TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+
+      CreateTestCase createOwned =
+          testCaseResourceTest
+              .createRequest("OwnedReportTestCase_" + UUID.randomUUID())
+              .withDescription("Test case owned by USER_TEST_CASE_OWNER_VIEW for report test")
+              .withEntityLink(tableLink)
+              .withOwners(List.of(ownerRef));
+      testCaseResourceTest.createAndCheckEntity(createOwned, ADMIN_AUTH_HEADERS);
+
+      CreateTestCase createNotOwned =
+          testCaseResourceTest
+              .createRequest("NotOwnedReportTestCase_" + UUID.randomUUID())
+              .withDescription("Test case owned by someone else for report test")
+              .withEntityLink(tableLink)
+              .withOwners(List.of(USER1_REF));
+      testCaseResourceTest.createAndCheckEntity(createNotOwned, ADMIN_AUTH_HEADERS);
+
+      String ownerAggregation = "bucketName=owner:aggType=terms:field=owners.name";
+
+      // Wait for indexing - verify admin can get some aggregation results
+      Awaitility.await()
+          .pollInterval(1, TimeUnit.SECONDS)
+          .atMost(60, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                DataQualityReport adminReport =
+                    getDataQualityReport(null, ownerAggregation, "testCase", ADMIN_AUTH_HEADERS);
+                assertNotNull(adminReport);
+                assertNotNull(adminReport.getData());
+                // Just verify we have some data
+                assertFalse(
+                    adminReport.getData().isEmpty(), "Admin should see some aggregation data");
+              });
+
+      DataQualityReport adminReport =
+          getDataQualityReport(null, ownerAggregation, "testCase", ADMIN_AUTH_HEADERS);
+      assertNotNull(adminReport);
+      assertNotNull(adminReport.getData());
+
+      DataQualityReport ownerReport =
+          getDataQualityReport(
+              null, ownerAggregation, "testCase", authHeaders(USER_TEST_CASE_OWNER_VIEW.getName()));
+      assertNotNull(ownerReport);
+    } finally {
+      TestUtils.enableSearchRbac(false);
+      TestUtils.restoreOrganizationDefaultRoles(savedDefaultRoles);
+    }
+  }
+
+  private DataQualityReport getDataQualityReport(
+      String query, String aggregationQuery, String index, Map<String, String> authHeaders)
+      throws IOException {
+    WebTarget target = getResource("dataQuality/testSuites/dataQualityReport");
+    if (query != null) {
+      // URL encode the query parameter as it contains special characters like {, }, etc.
+      String encodedQuery =
+          java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8);
+      target = target.queryParam("q", encodedQuery);
+    }
+    target = target.queryParam("aggregationQuery", aggregationQuery);
+    target = target.queryParam("index", index);
+    return TestUtils.get(target, DataQualityReport.class, authHeaders);
   }
 
   @Test

@@ -269,15 +269,6 @@ public class SearchRepository {
           Set<String> parentAliases =
               new HashSet<>(listOrEmpty(context.getParentAliases(entityType)));
 
-          if (stagedIndex != null && !stagedIndex.isEmpty()) {
-            boolean indexReady = searchClient.waitForIndexReady(stagedIndex, 30);
-            if (!indexReady) {
-              LOG.warn(
-                  "Staged index '{}' did not become ready within timeout. Proceeding anyway.",
-                  stagedIndex);
-            }
-          }
-
           EntityReindexContext entityReindexContext =
               EntityReindexContext.builder()
                   .entityType(entityType)
@@ -1509,6 +1500,28 @@ public class SearchRepository {
         queryString);
   }
 
+  public SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithOffset(
+        filter.getCondition(entityType),
+        limit,
+        offset,
+        index.getIndexName(clusterAlias),
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext);
+  }
+
   public SearchResultListMapper listWithDeepPagination(
       String entityType,
       String query,
@@ -1624,6 +1637,15 @@ public class SearchRepository {
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
+  }
+
+  public DataQualityReport genericAggregation(
+      String query,
+      String index,
+      SearchAggregation aggregationMetadata,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.genericAggregation(query, index, aggregationMetadata, subjectContext);
   }
 
   public Response listDataInsightChartResult(

@@ -58,11 +58,13 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.MetadataConnection;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
@@ -73,6 +75,7 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.llm.OpenAIConnection;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.metadata.AmundsenConnection;
@@ -83,8 +86,11 @@ import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnect
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.LLMConnection;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.schema.type.PipelineConnection;
@@ -92,11 +98,14 @@ import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.opentest4j.AssertionFailedError;
 
 @Slf4j
@@ -192,6 +201,13 @@ public final class TestUtils {
           .withConfig(
               new RestConnection()
                   .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json")));
+
+  public static final LLMConnection OPENAI_CONNECTION =
+      new LLMConnection()
+          .withConfig(
+              new OpenAIConnection()
+                  .withApiKey("test-api-key")
+                  .withBaseURL("https://api.openai.com/v1"));
 
   public static final MetadataConnection AMUNDSEN_CONNECTION =
       new MetadataConnection()
@@ -1112,5 +1128,136 @@ public final class TestUtils {
     } catch (HttpResponseException e) {
       return null;
     }
+  }
+
+  public static void enableSearchRbac(boolean enable) throws HttpResponseException {
+    WebTarget target =
+        OpenMetadataApplicationTest.getResource(
+            "system/settings/" + SettingsType.SEARCH_SETTINGS.value());
+    Settings searchSettings = TestUtils.get(target, Settings.class, ADMIN_AUTH_HEADERS);
+    SearchSettings searchConfig =
+        JsonUtils.convertValue(searchSettings.getConfigValue(), SearchSettings.class);
+
+    searchConfig.getGlobalSettings().setEnableAccessControl(enable);
+
+    Settings updatedSettings =
+        new Settings().withConfigType(SettingsType.SEARCH_SETTINGS).withConfigValue(searchConfig);
+    WebTarget updateTarget = OpenMetadataApplicationTest.getResource("system/settings");
+    TestUtils.put(updateTarget, updatedSettings, Response.Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  /**
+   * Removes the default roles from the Organization team. This is useful for RBAC tests where you
+   * need users to NOT inherit the DataConsumer role which provides broad VIEW permissions.
+   *
+   * @return the list of default roles that were removed (to restore later)
+   */
+  public static List<EntityReference> removeOrganizationDefaultRoles()
+      throws HttpResponseException {
+    WebTarget target =
+        OpenMetadataApplicationTest.getResource("teams/name/Organization?fields=defaultRoles");
+    Team organization = TestUtils.get(target, Team.class, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> originalDefaultRoles = organization.getDefaultRoles();
+    if (originalDefaultRoles == null || originalDefaultRoles.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<EntityReference> savedRoles = new ArrayList<>(originalDefaultRoles);
+
+    String originalJson = JsonUtils.pojoToJson(organization);
+    organization.setDefaultRoles(new ArrayList<>());
+    String updatedJson = JsonUtils.pojoToJson(organization);
+
+    JsonNode patch = getJsonPatch(originalJson, updatedJson);
+    WebTarget patchTarget =
+        OpenMetadataApplicationTest.getResource("teams/" + organization.getId());
+    TestUtils.patch(patchTarget, patch, Team.class, ADMIN_AUTH_HEADERS);
+    SubjectCache.invalidateAll();
+
+    return savedRoles;
+  }
+
+  /**
+   * Restores the default roles to the Organization team.
+   *
+   * @param defaultRoles the list of default roles to restore
+   */
+  public static void restoreOrganizationDefaultRoles(List<EntityReference> defaultRoles)
+      throws HttpResponseException {
+    if (defaultRoles == null || defaultRoles.isEmpty()) {
+      return;
+    }
+
+    WebTarget target =
+        OpenMetadataApplicationTest.getResource("teams/name/Organization?fields=defaultRoles");
+    Team organization = TestUtils.get(target, Team.class, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(organization);
+    organization.setDefaultRoles(new ArrayList<>(defaultRoles));
+    String updatedJson = JsonUtils.pojoToJson(organization);
+
+    JsonNode patch = getJsonPatch(originalJson, updatedJson);
+    WebTarget patchTarget =
+        OpenMetadataApplicationTest.getResource("teams/" + organization.getId());
+    TestUtils.patch(patchTarget, patch, Team.class, ADMIN_AUTH_HEADERS);
+    SubjectCache.invalidateAll();
+  }
+
+  /**
+   * Removes policies directly attached to the Organization team. This is needed for RBAC testing to
+   * prevent policy inheritance through team hierarchy.
+   *
+   * @return the list of original policies that were removed (to be restored later)
+   */
+  public static List<EntityReference> removeOrganizationPolicies() throws HttpResponseException {
+    WebTarget target =
+        OpenMetadataApplicationTest.getResource("teams/name/Organization?fields=policies");
+    Team organization = TestUtils.get(target, Team.class, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> originalPolicies = organization.getPolicies();
+    if (originalPolicies == null || originalPolicies.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<EntityReference> savedPolicies = new ArrayList<>(originalPolicies);
+
+    String originalJson = JsonUtils.pojoToJson(organization);
+    organization.setPolicies(new ArrayList<>());
+    String updatedJson = JsonUtils.pojoToJson(organization);
+
+    JsonNode patch = getJsonPatch(originalJson, updatedJson);
+    WebTarget patchTarget =
+        OpenMetadataApplicationTest.getResource("teams/" + organization.getId());
+    TestUtils.patch(patchTarget, patch, Team.class, ADMIN_AUTH_HEADERS);
+    SubjectCache.invalidateAll();
+
+    return savedPolicies;
+  }
+
+  /**
+   * Restores the direct policies to the Organization team.
+   *
+   * @param policies the list of policies to restore
+   */
+  public static void restoreOrganizationPolicies(List<EntityReference> policies)
+      throws HttpResponseException {
+    if (policies == null || policies.isEmpty()) {
+      return;
+    }
+
+    WebTarget target =
+        OpenMetadataApplicationTest.getResource("teams/name/Organization?fields=policies");
+    Team organization = TestUtils.get(target, Team.class, ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(organization);
+    organization.setPolicies(new ArrayList<>(policies));
+    String updatedJson = JsonUtils.pojoToJson(organization);
+
+    JsonNode patch = getJsonPatch(originalJson, updatedJson);
+    WebTarget patchTarget =
+        OpenMetadataApplicationTest.getResource("teams/" + organization.getId());
+    TestUtils.patch(patchTarget, patch, Team.class, ADMIN_AUTH_HEADERS);
+    SubjectCache.invalidateAll();
   }
 }

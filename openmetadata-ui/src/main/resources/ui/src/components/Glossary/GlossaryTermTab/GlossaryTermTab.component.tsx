@@ -790,7 +790,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             return null;
           }
 
-          return description.trim() ? (
+          return description?.trim() ? (
             <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={description}

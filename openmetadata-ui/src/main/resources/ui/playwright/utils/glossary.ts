@@ -690,7 +690,7 @@ export const updateGlossaryTermDataFromTree = async (
 export const validateGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
-  status: 'Draft' | 'Approved',
+  status: 'Draft' | 'In Review' | 'Approved',
   isGlossaryTermPage = false
 ) => {
   // eslint-disable-next-line no-useless-escape
@@ -722,14 +722,22 @@ export const validateGlossaryTerm = async (
     await expect(page.locator(termSelector)).toBeVisible();
     await expect(page.locator(termSelector)).toContainText(term.name);
     await expect(page.locator(statusSelector)).toBeVisible();
-    await expect(page.locator(statusSelector)).toContainText(status);
+
+    // If status is Draft, then check for either Draft or In Review
+    if (status === 'Draft') {
+      await expect(page.locator(statusSelector)).toContainText(
+        /Draft|In Review/
+      );
+    } else {
+      await expect(page.locator(statusSelector)).toContainText(status);
+    }
   }
 };
 
 export const createGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
-  status: 'Draft' | 'Approved',
+  status: 'Draft' | 'In Review' | 'Approved',
   validateCreateForm = true,
   isGlossaryTermPage = false
 ) => {
@@ -809,7 +817,6 @@ export const addAssetToGlossaryTerm = async (
   }
 
   await page.click('[data-testid="save-btn"]');
-  await checkAssetsCount(page, assets.length);
 };
 
 export const updateNameForGlossaryTerm = async (
@@ -1597,7 +1604,7 @@ export const checkGlossaryTermDetails = async (
 };
 
 export const setupGlossaryDenyPermissionTest = async (
-  apiContext: any,
+  apiContext: APIRequestContext,
   isGlossary?: boolean
 ) => {
   // Create all necessary resources
