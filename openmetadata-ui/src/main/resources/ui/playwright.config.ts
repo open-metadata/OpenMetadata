@@ -32,7 +32,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
   /* Limit workers on CI to prevent resource exhaustion on GitHub-hosted runners. */
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 3 : undefined,
   maxFailures: 500,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -56,6 +56,11 @@ export default defineConfig({
     trace: 'retain-on-failure',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
+
+    /* Add navigation timeout to prevent infinite hangs on networkidle waits.
+     * This ensures page.goto() and waitForLoadState() calls timeout after 60s
+     * instead of hanging indefinitely under resource pressure. */
+    navigationTimeout: 60000,
   },
 
   /* Configure projects for major browsers */
