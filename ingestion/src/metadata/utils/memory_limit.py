@@ -30,8 +30,6 @@ MEMORY_CHECK_INTERVAL_SECONDS = 0.1
 class MemoryLimitExceeded(Exception):
     """Raised when function exceeds memory limit."""
 
-    pass
-
 
 class MemoryMonitor:
     """Monitors incremental memory usage using tracemalloc's get_traced_memory."""
@@ -93,10 +91,10 @@ class MemoryMonitor:
             # Final peak memory check after loop exits
             current, self.peak_memory = tracemalloc.get_traced_memory()
             final_diff = current - self.baseline_memory
-            if final_diff > self.peak_memory:
-                self.peak_memory = final_diff
 
+            self.peak_memory = max(final_diff, self.peak_memory)
             peak_mb = self.peak_memory / BYTES_PER_MB
+
             context_str = f"[{self.context}] " if self.context else ""
             logger.debug(
                 f"{context_str}Memory monitor stopped for {self.function_name}(). "
