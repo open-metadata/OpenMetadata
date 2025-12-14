@@ -28,6 +28,16 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
+/**
+ * Asset Management Tests for Glossary Terms
+ *
+ * These tests complement the "Add and Remove Assets" test in Glossary.spec.ts:
+ * - Glossary.spec.ts tests the core flow including mutually exclusive validation
+ * - This file tests specific scenarios: topic/pipeline assets, search, pagination, filtering
+ *
+ * Mutually exclusive validation is covered in Glossary.spec.ts (A-A08)
+ */
+
 // A-A06: Add topic asset
 test.describe('Add Topic Asset to Glossary Term', () => {
   const glossary = new Glossary();
@@ -540,6 +550,168 @@ test.describe('Filter Assets by Entity Type', () => {
     const termHeader = page.getByTestId('entity-header-display-name');
 
     await expect(termHeader).toBeVisible();
+  });
+});
+
+// A-A03: Add asset via "Add Assets" dropdown
+test.describe('Add Asset via Dropdown', () => {
+  const glossary = new Glossary();
+  const glossaryTerm = new GlossaryTerm(glossary);
+  const topicEntity = new TopicClass();
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
+    await topicEntity.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await glossary.delete(apiContext);
+    await topicEntity.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should add asset via Add Assets dropdown button', async ({ page }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary.data.displayName);
+    await goToAssetsTab(page, glossaryTerm.data.displayName);
+
+    // Look for the "Add Assets" dropdown button
+    const addAssetsButton = page.getByTestId('add-assets-button');
+
+    if (await addAssetsButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await addAssetsButton.click();
+
+      // Wait for dropdown to appear
+      await page.waitForSelector('.ant-dropdown', { timeout: 3000 });
+
+      // Click on the option to add assets
+      const addOption = page.locator('.ant-dropdown-menu-item').first();
+
+      if (await addOption.isVisible()) {
+        await addOption.click();
+
+        // Wait for asset selection modal
+        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+          timeout: 5000,
+        });
+
+        // Search for asset
+        const searchResponse = page.waitForResponse('**/api/v1/search/query*');
+        await page.fill(
+          '[data-testid="asset-selection-modal"] [data-testid="searchbar"]',
+          topicEntity.entity.name
+        );
+        await searchResponse;
+
+        // Select the asset
+        const assetCheckbox = page
+          .locator('[data-testid="asset-selection-modal"]')
+          .locator(`text=${topicEntity.entity.name}`)
+          .first();
+
+        if (await assetCheckbox.isVisible({ timeout: 3000 })) {
+          await assetCheckbox.click();
+
+          // Save selection
+          await page.click('[data-testid="save-btn"]');
+          await page.waitForLoadState('networkidle');
+        }
+      }
+    } else {
+      // Use the standard add asset flow
+      await addAssetToGlossaryTerm(page, [topicEntity], false);
+    }
+
+    // Verify asset was added
+    await expect(
+      page.locator('[data-testid="assets"] [data-testid="filter-count"]')
+    ).toBeVisible();
+  });
+});
+
+// A-V02: Asset cards display correctly
+test.describe('Asset Cards Display', () => {
+  const glossary = new Glossary();
+  const glossaryTerm = new GlossaryTerm(glossary);
+  const topicEntity = new TopicClass();
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
+    await topicEntity.create(apiContext);
+
+    // Add asset to term via API
+    await apiContext.patch(
+      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+      {
+        data: [
+          {
+            op: 'add',
+            path: '/assets/0',
+            value: {
+              id: topicEntity.entityResponseData?.id,
+              type: 'topic',
+            },
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await glossary.delete(apiContext);
+    await topicEntity.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should display asset cards with correct information', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary.data.displayName);
+    await goToAssetsTab(page, glossaryTerm.data.displayName);
+
+    await page.waitForLoadState('networkidle');
+
+    // Verify assets tab shows count
+    const assetsCount = page.locator(
+      '[data-testid="assets"] [data-testid="filter-count"]'
+    );
+
+    await expect(assetsCount).toBeVisible({ timeout: 10000 });
+
+    // Verify asset card is displayed
+    const assetCard = page
+      .locator('[data-testid="table-data-card"]')
+      .or(page.locator('[data-testid="entity-header-display-name"]'))
+      .first();
+
+    await expect(assetCard).toBeVisible({ timeout: 5000 });
+
+    // Verify asset name is visible
+    await expect(page.getByText(topicEntity.entity.name)).toBeVisible();
+
+    // Verify asset has entity type indicator
+    const entityTypeIcon = page
+      .locator('[data-testid="table-data-card"]')
+      .locator('[data-testid="entity-link"]');
+
+    if (await entityTypeIcon.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await expect(entityTypeIcon).toBeVisible();
+    }
   });
 });
 

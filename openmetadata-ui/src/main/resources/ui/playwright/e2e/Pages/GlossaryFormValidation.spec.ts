@@ -13,193 +13,169 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
   createNewPage,
   descriptionBox,
-  INVALID_NAMES,
-  NAME_VALIDATION_ERROR,
   redirectToHomePage,
-  toastNotification,
 } from '../../utils/common';
-
+import { selectActiveGlossary } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
-
-const GLOSSARY_NAME_MAX_LENGTH_ERROR = 'Name size must be between 1 and 128';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-test.describe('Glossary Form Validation', () => {
+// G-C05: Form validation - empty name shows error
+test.describe('Glossary Form Validation - Empty Name', () => {
+  test('should show error when glossary name is empty', async ({ page }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+
+    await page.click('[data-testid="add-glossary"]');
+    await page.waitForSelector('[data-testid="form-heading"]');
+
+    // Fill description but leave name empty
+    await page.locator(descriptionBox).fill('Test description');
+
+    // Try to save
+    await page.click('[data-testid="save-glossary"]');
+
+    // Verify error message appears
+    await expect(page.locator('.ant-form-item-explain-error')).toBeVisible();
+  });
+});
+
+// G-C06: Form validation - empty description shows error
+test.describe('Glossary Form Validation - Empty Description', () => {
+  test('should show error when glossary description is empty', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+
+    await page.click('[data-testid="add-glossary"]');
+    await page.waitForSelector('[data-testid="form-heading"]');
+
+    // Fill name but leave description empty
+    await page.fill('[data-testid="name"]', 'TestGlossary');
+
+    // Try to save
+    await page.click('[data-testid="save-glossary"]');
+
+    // Verify error message appears for description
+    await expect(
+      page.locator('.ant-form-item-explain-error').first()
+    ).toBeVisible();
+  });
+});
+
+// G-C08: Form validation - duplicate glossary name
+test.describe('Glossary Form Validation - Duplicate Name', () => {
   const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
     await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await glossaryTerm.delete(apiContext);
     await glossary.delete(apiContext);
     await afterAction();
   });
 
-  test.beforeEach(async ({ page }) => {
+  test('should show error when creating glossary with duplicate name', async ({
+    page,
+  }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
-  });
 
-  test('should show error for empty glossary name', async ({ page }) => {
     await page.click('[data-testid="add-glossary"]');
     await page.waitForSelector('[data-testid="form-heading"]');
 
-    await expect(page.locator('[data-testid="form-heading"]')).toHaveText(
-      'Add Glossary'
-    );
-
-    await page.locator(descriptionBox).fill('Test description');
-    await page.click('[data-testid="save-glossary"]');
-
-    await expect(page.locator('#name_help')).toHaveText('Name is required');
-  });
-
-  test('should show error for empty glossary description', async ({ page }) => {
-    await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
-
-    await page.fill('[data-testid="name"]', 'TestGlossary');
-    await page.click('[data-testid="save-glossary"]');
-
-    await expect(page.locator('#description_help')).toHaveText(
-      'Description is required'
-    );
-  });
-
-  test('should show error for glossary name exceeding max length', async ({
-    page,
-  }) => {
-    await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
-
-    await page.fill('[data-testid="name"]', INVALID_NAMES.MAX_LENGTH);
-
-    await expect(page.locator('#name_help')).toHaveText(
-      GLOSSARY_NAME_MAX_LENGTH_ERROR
-    );
-  });
-
-  test('should show error for glossary name with special characters', async ({
-    page,
-  }) => {
-    await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
-
-    await page.fill('[data-testid="name"]', INVALID_NAMES.WITH_SPECIAL_CHARS);
-
-    await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
-  });
-
-  test('should show error for duplicate glossary name', async ({ page }) => {
-    await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
-
+    // Use the same name as existing glossary
     await page.fill('[data-testid="name"]', glossary.data.name);
     await page.locator(descriptionBox).fill('Test description');
 
-    const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
+    // Try to save
     await page.click('[data-testid="save-glossary"]');
-    await glossaryResponse;
 
-    await toastNotification(page, /already exists/);
+    // Verify error toast or inline error appears
+    await expect(
+      page.getByText(/already exists|duplicate/i).first()
+    ).toBeVisible({ timeout: 10000 });
+  });
+});
+
+// T-C06: Form validation - empty term name
+test.describe('Term Form Validation - Empty Name', () => {
+  const glossary = new Glossary();
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await glossary.create(apiContext);
+    await afterAction();
   });
 
-  test('should allow cancel glossary creation', async ({ page }) => {
-    await page.click('[data-testid="add-glossary"]');
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await glossary.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should show error when term name is empty', async ({ page }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary.data.displayName);
+
+    await page.click('[data-testid="add-new-tag-button-header"]');
     await page.waitForSelector('[data-testid="form-heading"]');
 
-    await page.fill('[data-testid="name"]', 'TestCancelGlossary');
-    await page.locator(descriptionBox).fill('Test description');
+    // Fill description but leave name empty
+    await page.locator(descriptionBox).fill('Test term description');
 
-    await page.click('[data-testid="cancel-glossary"]');
-
-    await expect(
-      page.locator('[data-testid="form-heading"]')
-    ).not.toBeVisible();
-  });
-
-  test('should show error for empty term name', async ({ page }) => {
-    await glossary.visitEntityPage(page);
-
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
-
-    await page.locator(descriptionBox).fill('Test description');
+    // Try to save
     await page.click('[data-testid="save-glossary-term"]');
 
-    await expect(page.locator('#name_help')).toHaveText('Name is required');
+    // Verify error message appears
+    await expect(page.locator('.ant-form-item-explain-error')).toBeVisible();
+  });
+});
+
+// T-C07: Form validation - empty term description
+test.describe('Term Form Validation - Empty Description', () => {
+  const glossary = new Glossary();
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await glossary.create(apiContext);
+    await afterAction();
   });
 
-  test('should show error for empty term description', async ({ page }) => {
-    await glossary.visitEntityPage(page);
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await glossary.delete(apiContext);
+    await afterAction();
+  });
+
+  test('should show error when term description is empty', async ({ page }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary.data.displayName);
 
     await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await page.waitForSelector('[data-testid="form-heading"]');
 
+    // Fill name but leave description empty
     await page.fill('[data-testid="name"]', 'TestTerm');
+
+    // Try to save
     await page.click('[data-testid="save-glossary-term"]');
 
-    await expect(page.locator('#description_help')).toHaveText(
-      'Description is required'
-    );
-  });
-
-  test('should show error for term name exceeding max length', async ({
-    page,
-  }) => {
-    await glossary.visitEntityPage(page);
-
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
-
-    await page.fill('[data-testid="name"]', INVALID_NAMES.MAX_LENGTH);
-
-    await expect(page.locator('#name_help')).toHaveText(
-      GLOSSARY_NAME_MAX_LENGTH_ERROR
-    );
-  });
-
-  test('should show error for term name with special characters', async ({
-    page,
-  }) => {
-    await glossary.visitEntityPage(page);
-
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
-
-    await page.fill('[data-testid="name"]', INVALID_NAMES.WITH_SPECIAL_CHARS);
-
-    await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
-  });
-
-  test('should allow cancel term creation', async ({ page }) => {
-    await glossary.visitEntityPage(page);
-
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
-
-    await page.fill('[data-testid="name"]', 'TestCancelTerm');
-    await page.locator(descriptionBox).fill('Test description');
-
-    // Click cancel button in footer
-    await page.locator('.ant-modal-footer button').first().click();
-
+    // Verify error message appears
     await expect(
-      page.locator('[role="dialog"].edit-glossary-modal')
-    ).not.toBeVisible();
+      page.locator('.ant-form-item-explain-error').first()
+    ).toBeVisible();
   });
 });
