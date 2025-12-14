@@ -182,7 +182,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             "column_profile": [
                 {
                     "totalprice": {
-                        "distinctCount": 22.0,
+                        "distinctCount": 21.0,
                         "distinctProportion": 1.0,
                         "duplicateCount": None,
                         "firstQuartile": -451.0775,
@@ -195,7 +195,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                                 "335.962 to 669.859",
                                 "669.859 and up",
                             ],
-                            "frequencies": [3, 7, 6, 1, 2, 3],
+                            "frequencies": [3, 7, 6, 1, 2, 2],
                         },
                         "interQuartileRange": 467.7975,
                         "max": 856.41,
@@ -212,10 +212,10 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "stddev": 528.297718809555,
                         "sum": -3518.0,
                         "thirdQuartile": 16.72,
-                        "uniqueCount": 22.0,
+                        "uniqueCount": 21.0,
                         "uniqueProportion": 1.0,
                         "validCount": None,
-                        "valuesCount": 22.0,
+                        "valuesCount": 21.0,
                         "valuesPercentage": None,
                         "variance": None,
                     }
