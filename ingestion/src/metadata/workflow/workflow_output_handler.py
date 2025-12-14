@@ -111,7 +111,12 @@ class WorkflowOutputHandler:
         if debug:
             self._print_debug_summary(steps)
             self._print_execution_time_summary()
-            self._print_query_parsing_issues()
+            # In case of large query parsing error summary, this creates
+            # issue of ingestion getting stuck and eventually killed.
+            # Hence commenting it for now.
+            # These are now already logged by the LineageParser
+            # TODO: revisit this in future and see if we can enable it safely
+            # self._print_query_parsing_issues()
 
         self._print_summary(steps)
 
