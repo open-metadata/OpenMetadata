@@ -127,8 +127,7 @@ jobs:
                 --project=chromium \
                 --grep @ingestion \
                 --grep-invert @dataAssetRules \
-                --shard=${CHROMIUM_SHARD}/5 \
-                --workers=50%
+                --shard=${CHROMIUM_SHARD}/5
 
             else
               echo "🔹 Running all other tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
