@@ -12,7 +12,7 @@
 Factory for creating Presidio recognizers from OpenMetadata recognizer configurations.
 """
 import re
-from typing import Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional, cast
 
 from presidio_analyzer import EntityRecognizer
 from presidio_analyzer import Pattern as PresidioPattern
@@ -27,7 +27,10 @@ from metadata.generated.schema.type.patternRecognizer import PatternRecognizer
 from metadata.generated.schema.type.predefinedRecognizer import PredefinedRecognizer
 from metadata.generated.schema.type.recognizer import Recognizer
 from metadata.generated.schema.type.recognizers.regexFlags import RegexFlags
-from metadata.pii.algorithms.presidio_utils import apply_confidence_threshold
+from metadata.pii.algorithms.presidio_utils import (
+    apply_confidence_threshold,
+    recognizer_factories,
+)
 from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
@@ -222,7 +225,12 @@ class PresidioRecognizerFactory:
         if supported_entities := config.supportedEntities:
             args["supported_entities"] = [entity.value for entity in supported_entities]
 
-        return predefined_class(**args)
+        factory_or_class: Any = recognizer_factories.get(  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+            predefined_class, predefined_class
+        )
+        factory = cast(Callable[..., EntityRecognizer], factory_or_class)
+
+        return factory(**args)
 
     @staticmethod
     def create_recognizers_for_tag(tag: Tag) -> List[EntityRecognizer]:
