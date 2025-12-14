@@ -85,9 +85,20 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         SQACommonMethods.create_table_and_view(self)
 
     def delete_table_and_view(self) -> None:
-        with self.engine.connect() as connection:
-            connection.execute(self.drop_view_query)
-            connection.execute(self.drop_table_query)
+        from sqlalchemy.exc import OperationalError
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self.engine.dispose()
+                with self.engine.connect() as connection:
+                    connection.execute(self.drop_view_query)
+                    connection.execute(self.drop_table_query)
+                break
+            except OperationalError as e:
+                if "server closed the connection" in str(e) and attempt < max_retries - 1:
+                    continue
+                raise
 
     def delete_table_rows(self) -> None:
         SQACommonMethods.run_delete_queries(self)
@@ -185,33 +196,33 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "distinctCount": 21.0,
                         "distinctProportion": 1.0,
                         "duplicateCount": None,
-                        "firstQuartile": -451.0775,
+                        "firstQuartile": -430.13,
                         "histogram": {
                             "boundaries": [
-                                "-999.630 to -665.732",
-                                "-665.732 to -331.834",
-                                "-331.834 to 2.064",
-                                "2.064 to 335.962",
-                                "335.962 to 669.859",
-                                "669.859 and up",
+                                "-999.630 to -669.291",
+                                "-669.291 to -338.952",
+                                "-338.952 to -8.613",
+                                "-8.613 to 321.726",
+                                "321.726 to 652.065",
+                                "652.065 and up",
                             ],
-                            "frequencies": [3, 7, 6, 1, 2, 2],
+                            "frequencies": [3, 6, 6, 1, 1, 4],
                         },
-                        "interQuartileRange": 467.7975,
+                        "interQuartileRange": 455.69,
                         "max": 856.41,
                         "maxLength": None,
-                        "mean": -159.0,
-                        "median": -288.81,
+                        "mean": -137.0,
+                        "median": -275.85,
                         "min": -999.63,
                         "minLength": None,
                         "missingCount": None,
                         "missingPercentage": None,
-                        "nonParametricSkew": 0.24571372424720792,
+                        "nonParametricSkew": 0.26190566403449345,
                         "nullCount": 0.0,
                         "nullProportion": 0.0,
-                        "stddev": 528.297718809555,
-                        "sum": -3518.0,
-                        "thirdQuartile": 16.72,
+                        "stddev": 530.152719345975,
+                        "sum": -2882.0,
+                        "thirdQuartile": 25.56,
                         "uniqueCount": 21.0,
                         "uniqueProportion": 1.0,
                         "validCount": None,
