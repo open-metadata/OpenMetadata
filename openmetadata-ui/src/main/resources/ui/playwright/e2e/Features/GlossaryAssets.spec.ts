@@ -163,7 +163,7 @@ test.describe('Asset Card Summary Panel', () => {
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
     // Wait for assets to load
-    await page.waitForLoadState('networkidle');
+    // Removed networkidle - relying on element assertions
 
     // Check if assets tab is visible with count
     const assetsTabCount = page.locator(
@@ -178,7 +178,7 @@ test.describe('Asset Card Summary Panel', () => {
 
       if (await assetLink.isVisible({ timeout: 3000 }).catch(() => false)) {
         await assetLink.click();
-        await page.waitForLoadState('networkidle');
+        // Removed networkidle - relying on element assertions
 
         // Verify summary panel or entity page is shown
         const summaryPanel = page.getByTestId('entity-right-panel');
@@ -255,7 +255,7 @@ test.describe('Search Within Assets Tab', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    await page.waitForLoadState('networkidle');
+    // Removed networkidle - relying on element assertions
 
     // Check if search box exists in assets tab
     const searchBox = page.getByPlaceholder(/search/i);
@@ -263,7 +263,7 @@ test.describe('Search Within Assets Tab', () => {
     if (await searchBox.isVisible()) {
       // Search for first topic
       await searchBox.fill(topic1.entity.name);
-      await page.waitForLoadState('networkidle');
+      // Removed networkidle - relying on element assertions
 
       // Verify filtered results
       await expect(page.getByText(topic1.entity.name)).toBeVisible();
@@ -335,7 +335,7 @@ test.describe('Remove Asset from Glossary Term', () => {
             await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)
           ) {
             await confirmButton.click();
-            await page.waitForLoadState('networkidle');
+            // Removed networkidle - relying on element assertions
           }
         }
       }
@@ -369,7 +369,7 @@ test.describe('Remove Asset via Entity Page', () => {
     const topicFqn = topicEntity.entityResponseData?.fullyQualifiedName;
 
     await page.goto(`/topic/${topicFqn}`);
-    await page.waitForLoadState('networkidle');
+    // Removed networkidle - relying on element assertions
 
     // Verify entity page is loaded
     const entityHeader = page.getByTestId('entity-header-display-name');
@@ -448,7 +448,7 @@ test.describe('Bulk Remove Assets', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    await page.waitForLoadState('networkidle');
+    // Removed networkidle - relying on element assertions
 
     // Select multiple assets using checkboxes
     const checkboxes = page.locator(
@@ -473,7 +473,7 @@ test.describe('Bulk Remove Assets', () => {
 
         if (await confirmBtn.isVisible()) {
           await confirmBtn.click();
-          await page.waitForLoadState('networkidle');
+          // Removed networkidle - relying on element assertions
         }
       }
     }
@@ -539,7 +539,7 @@ test.describe('Filter Assets by Entity Type', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    await page.waitForLoadState('networkidle');
+    // Removed networkidle - relying on element assertions
 
     // Verify assets tab is accessible and clickable
     const assetsTab = page.locator('[data-testid="assets"]');
@@ -619,7 +619,7 @@ test.describe('Add Asset via Dropdown', () => {
 
           // Save selection
           await page.click('[data-testid="save-btn"]');
-          await page.waitForLoadState('networkidle');
+          // Removed networkidle - relying on element assertions
         }
       }
     } else {
@@ -684,7 +684,7 @@ test.describe('Asset Cards Display', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    await page.waitForLoadState('networkidle');
+    // Removed networkidle - relying on element assertions
 
     // Verify assets tab shows count
     const assetsCount = page.locator(
@@ -774,7 +774,7 @@ test.describe('Paginate Through Assets', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    await page.waitForLoadState('networkidle');
+    // Removed networkidle - relying on element assertions
 
     // Verify assets tab is accessible
     const assetsTab = page.locator('[data-testid="assets"]');
