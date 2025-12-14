@@ -14,10 +14,10 @@ import { expect, Page } from '@playwright/test';
 import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
-    BIG_ENTITY_DELETE_TIMEOUT,
-    ENTITIES_WITHOUT_FOLLOWING_BUTTON,
-    LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
-    LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED
+  BIG_ENTITY_DELETE_TIMEOUT,
+  ENTITIES_WITHOUT_FOLLOWING_BUTTON,
+  LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
+  LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
@@ -26,17 +26,17 @@ import { EntityClass } from '../support/entity/EntityClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
-    clickOutside,
-    descriptionBox,
-    readElementInListWithScroll,
-    redirectToHomePage,
-    toastNotification,
-    uuid
+  clickOutside,
+  descriptionBox,
+  readElementInListWithScroll,
+  redirectToHomePage,
+  toastNotification,
+  uuid
 } from './common';
 import {
-    customFormatDateTime,
-    getCurrentMillis,
-    getEpochMillisForFutureDays
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForFutureDays
 } from './dateTime';
 import { searchAndClickOnOption } from './explore';
 import { sidebarClick } from './sidebar';
@@ -2002,7 +2002,7 @@ export const checkExploreSearchFilter = async (
     try {
       const filterObj = JSON.parse(queryFilter);
       const filterStr = JSON.stringify(filterObj);
-      console.log('Parsed filter object:', filterObj);
+      
       // Check if the filter contains both the filterKey and filterValue
       return (
         filterStr.includes(filterKey) &&
@@ -2015,7 +2015,7 @@ export const checkExploreSearchFilter = async (
         queryFilter.includes(filterValueForSearchURL)
       );
     }
-  });
+  }, { timeout: 30_000 });
 
   await page.click('[data-testid="update-btn"]');
   await queryRes;

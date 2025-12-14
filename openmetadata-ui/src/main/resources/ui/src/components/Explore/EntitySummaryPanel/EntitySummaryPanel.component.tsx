@@ -33,11 +33,12 @@ import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
+import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
-import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
+import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
 import { getDomainByName } from '../../../rest/domainAPI';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
@@ -45,7 +46,6 @@ import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { getMlModelByFQN } from '../../../rest/mlModelAPI';
 import { getPipelineByFqn } from '../../../rest/pipelineAPI';
-import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
 import { getContainerByFQN } from '../../../rest/storageAPI';
 import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
@@ -61,20 +61,20 @@ import {
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
-import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
+import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
-import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
 import { LineageTabContent } from './LineageTab';
+import './entity-summary-panel.less';
 
 export default function EntitySummaryPanel({
   entityDetails,
