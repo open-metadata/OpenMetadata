@@ -871,11 +871,12 @@ test.describe('Data Contracts', () => {
             await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
           }
 
-          // Click "Next Page" after every 5 checks
-          if (i % 5 === 0) {
+          // Click "Next Page" after every 25 checks
+          // Click "Next Page" after every 25 checks, but not at 50
+          if (i % 25 === 0 && i < 50) {
             // Schema from 51 to 75 Should not be visible
-            for (let i = 51; i <= 75; i++) {
-              await expect(page.getByText(`test_col_00${i}`)).not.toBeVisible();
+            for (let j = 51; j <= 75; j++) {
+              await expect(page.getByText(`test_col_00${j}`)).not.toBeVisible();
             }
             await page.getByRole('listitem', { name: 'Next Page' }).click();
           }
@@ -928,8 +929,9 @@ test.describe('Data Contracts', () => {
         for (let i = 26; i <= 50; i++) {
           await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
 
-          // Click "Next Page" after every 5 checks
-          if (i % 5 === 0) {
+          // Click "Next Page" after every 25 checks
+          // Click "Next Page" after every 25 checks, but not at 50
+          if (i % 25 === 0 && i < 50) {
             await page.getByRole('listitem', { name: 'Next Page' }).click();
           }
         }
@@ -983,8 +985,9 @@ test.describe('Data Contracts', () => {
           for (let i = 26; i <= 50; i++) {
             await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
 
-            // Click "Next Page" after every 5 checks
-            if (i % 5 === 0) {
+            // Click "Next Page" after every 25 checks
+            // Click "Next Page" after every 25 checks, but not at 50
+            if (i % 25 === 0 && i < 50) {
               await page.getByRole('listitem', { name: 'Next Page' }).click();
             }
           }

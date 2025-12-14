@@ -53,6 +53,8 @@ test.describe('Pagination tests for all pages', () => {
     await page.goto(
       '/databaseSchema/sample_data.ecommerce_db.shopify?showDeletedTables=false'
     );
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
     await testPaginationNavigation(page, 'table');
   });
 
@@ -111,6 +113,8 @@ test.describe('Pagination tests for Classification Tags page', () => {
     test.slow(true);
 
     await page.goto(`/tags/${classification.responseData.name}`);
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
     await testPaginationNavigation(page, 'table');
   });
 });
@@ -145,6 +149,8 @@ test.describe('Pagination tests for Metrics page', () => {
     test.slow(true);
 
     await page.goto('/metrics');
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
     await testPaginationNavigation(page, 'table');
   });
 });
@@ -197,6 +203,8 @@ test.describe('Pagination tests for Notification Alerts page', () => {
     test.slow(true);
 
     await page.goto('/settings/notifications/alerts');
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
     await testPaginationNavigation(page, 'table');
   });
 });
@@ -249,6 +257,8 @@ test.describe('Pagination tests for Observability Alerts page', () => {
     test.slow(true);
 
     await page.goto('/observability/alerts');
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
     await testPaginationNavigation(page, 'table');
   });
 });

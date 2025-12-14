@@ -29,9 +29,12 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    // Change page size to 25
+    // Verify default is 25
+    await expect(page.getByText('25 / Page')).toBeVisible();
+
+    // Change page size to 15
     await page.getByTestId('page-size-selection-dropdown').click();
-    await page.getByRole('menuitem', { name: '25 / Page' }).click();
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -45,20 +48,34 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    await expect(page.getByText('25 / page')).toBeVisible();
+    await expect(page.getByText('15 / Page')).toBeVisible();
 
     // Change page size to 50
+    const updatePreferenceResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PUT' &&
+        response.status() === 200
+    );
     await page.locator('.ant-pagination-options-size-changer').click();
     await page.getByTitle('50 / Page').click();
+    await updatePreferenceResponse;
 
     // Go to Users Page
+    const usersListResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users') &&
+        response.request().method() === 'GET' &&
+        response.status() === 200
+    );
     await settingClick(page, GlobalSettingOptions.USERS);
+    await usersListResponse;
 
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
     });
 
-    await expect(page.getByText('50 / page')).toBeVisible();
+    await expect(page.getByText('50 / Page')).toBeVisible();
   });
 });
