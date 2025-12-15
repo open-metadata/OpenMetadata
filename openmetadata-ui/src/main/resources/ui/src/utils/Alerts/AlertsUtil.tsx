@@ -226,8 +226,6 @@ export const searchEntity = async ({
       queryFilter,
       searchIndex,
     });
-    const searchIndexEntityTypeMapping =
-      searchClassBase.getSearchIndexEntityTypeMapping();
 
     return uniqBy(
       response.hits.hits.map((d) => {
@@ -242,7 +240,7 @@ export const searchEntity = async ({
         const value = setSourceAsValue
           ? JSON.stringify({
               ...d._source,
-              type: searchIndexEntityTypeMapping[d._index],
+              type: d._source.entityType,
             })
           : d._source.fullyQualifiedName ?? '';
 
