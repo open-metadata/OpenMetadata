@@ -126,7 +126,13 @@ export const navigateToPersonaWithPagination = async (
     // Check if element is visible on current page
     if (await locator.isVisible()) {
       if (click) {
+        const personaDetailsResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/personas/name/') &&
+            response.status() === 200
+        );
         await locator.click();
+        await personaDetailsResponse;
       }
 
       return;
