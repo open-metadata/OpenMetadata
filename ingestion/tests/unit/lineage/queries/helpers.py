@@ -14,7 +14,6 @@ from collate_sqllineage.runner import LineageRunner
 from metadata.ingestion.lineage.masker import mask_query, masked_query_cache
 from metadata.utils.timeout import timeout
 
-
 # max lineage parsing wait in second for each parser and graph comparisons
 LINEAGE_PARSING_TIMEOUT = 10
 

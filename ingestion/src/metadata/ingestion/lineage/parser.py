@@ -41,7 +41,7 @@ from metadata.utils.helpers import (
     pretty_print_time_duration,
 )
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.memory_limit import MemoryLimitExceeded, memory_limit
+from metadata.utils.memory_limit import MemoryLimitExceeded
 from metadata.utils.timeout import timeout
 
 # Prevent sqllineage from modifying the logger config
