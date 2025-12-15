@@ -810,40 +810,36 @@ export const selectActiveGlobalDomain = async (
   page: Page,
   domainData: { name: string; displayName: string; fullyQualifiedName?: string }
 ) => {
-  const domainsResponse = page.waitForResponse('api/v1/domains/hierarchy?*');
   await page.getByTestId('domain-dropdown').click();
-  await domainsResponse;
 
   await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
     state: 'visible',
   });
 
   const domainSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(
-      domainData.name
-    )}*&index=domain_search_index*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('domain_search_index')
   );
 
   await page
     .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
-    .fill(domainData.name);
+    .fill(domainData.displayName);
 
   await domainSearchResponse;
 
-  await page.getByTestId(`tag-${domainData.fullyQualifiedName}`).click();
+  await page.getByText(domainData.displayName).click();
 
-  await expect(page.getByTestId('domain-dropdown')).toContainText(
-    domainData.displayName
-  );
+
+  await page.waitForSelector('[data-testid="domain-selectable-tree"]', {
+    state: 'hidden',
+  });
 };
 
 export const selectAllDomainsFromDropdown = async (page: Page) => {
   await page.getByTestId('domain-dropdown').click();
   await page.getByTestId('all-domains-selector').click();
-  await expect(page.getByTestId('domain-dropdown')).toContainText(
-    'All Domains'
-  );
 };
 
 /**

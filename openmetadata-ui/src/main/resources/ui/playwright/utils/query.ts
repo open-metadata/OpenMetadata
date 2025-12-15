@@ -76,18 +76,18 @@ export const createQueryViaUI = async ({
   queryText: string;
   description?: string;
 }) => {
-  await table.visitEntityPage(page);
+  const tableFqn = table.entityResponseData?.fullyQualifiedName;
+  await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+  await page.waitForLoadState('networkidle');
 
   const queryResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=query_search_index*'
   );
   await page.click('[data-testid="table_queries"]');
-  const tableResponse = page.waitForResponse(
-    '/api/v1/search/query?q=&index=table_search_index&from=0&size=*'
-  );
   await queryResponse;
+
   await page.click('[data-testid="add-query-btn"]');
-  await tableResponse;
+  await page.waitForLoadState('networkidle');
 
   await page
     .getByTestId('code-mirror-container')
@@ -118,7 +118,10 @@ export const navigateToTableQueriesTab = async ({
   page: Page;
   table: TableClass;
 }) => {
-  await table.visitEntityPage(page);
+  const tableFqn = table.entityResponseData?.fullyQualifiedName;
+  await page.goto(`/table/${encodeURIComponent(tableFqn)}`);
+  await page.waitForLoadState('networkidle');
+
   const queryResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=query_search_index*'
   );

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -20,6 +21,7 @@ import {
   descriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
+import { sidebarClick } from '../../utils/sidebar';
 import {
   selectActiveGlobalDomain,
   selectAllDomainsFromDropdown,
@@ -450,8 +452,8 @@ test.describe('Query Domain Filtering', () => {
     page,
   }) => {
     test.slow(true);
-
     await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.EXPLORE);
 
     await test.step('Select Domain 1 and create Query 1', async () => {
       await selectActiveGlobalDomain(page, domain1.responseData);
@@ -464,6 +466,7 @@ test.describe('Query Domain Filtering', () => {
     });
 
     await test.step('Select Domain 2 and create Query 2', async () => {
+      await selectAllDomainsFromDropdown(page);
       await selectActiveGlobalDomain(page, domain2.responseData);
       await createQueryViaUI({
         page,
@@ -476,6 +479,7 @@ test.describe('Query Domain Filtering', () => {
     await test.step(
       'With Domain 1 selected - only Query 1 visible',
       async () => {
+      await selectAllDomainsFromDropdown(page);
         await selectActiveGlobalDomain(page, domain1.responseData);
         await navigateToTableQueriesTab({ page, table: domainTable });
 
@@ -494,6 +498,7 @@ test.describe('Query Domain Filtering', () => {
     await test.step(
       'With Domain 2 selected - only Query 2 visible',
       async () => {
+        await selectAllDomainsFromDropdown(page);
         await selectActiveGlobalDomain(page, domain2.responseData);
         await navigateToTableQueriesTab({ page, table: domainTable });
 

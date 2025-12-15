@@ -553,6 +553,7 @@ describe('TestDetailsPageV1 component', () => {
         Promise.resolve({
           name: 'test',
           id: tableId,
+          fullyQualifiedName: 'test-fqn',
           columns: [],
         })
       );
@@ -607,6 +608,7 @@ describe('TestDetailsPageV1 component', () => {
         Promise.resolve({
           name: 'test',
           id: 'table-id',
+          fullyQualifiedName: 'test-fqn',
           columns: [],
         })
       );
@@ -624,7 +626,6 @@ describe('TestDetailsPageV1 component', () => {
         render(<TableDetailsPageV1 />);
       });
 
-      // The component should have called searchQuery and processed the response
       await waitFor(() => {
         expect(searchQuery).toHaveBeenCalled();
       });

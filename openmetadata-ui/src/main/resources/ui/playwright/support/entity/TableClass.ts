@@ -302,8 +302,8 @@ export class TableClass extends EntityClass {
       page,
       searchTerm: searchTerm ?? this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${
-        this.entityResponseData.service.name ?? this.service.name
-      }-${this.entityResponseData.name ?? this.entity.name}`,
+        this.entityResponseData?.service?.name ?? this.service.name
+      }-${this.entityResponseData?.name ?? this.entity.name}`,
     });
   }
 
