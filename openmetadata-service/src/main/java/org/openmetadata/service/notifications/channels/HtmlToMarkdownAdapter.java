@@ -200,6 +200,7 @@ public class HtmlToMarkdownAdapter implements TemplateFormatAdapter {
     public @NotNull Set<HtmlNodeRendererHandler<?>> getHtmlNodeRendererHandlers() {
       return new HashSet<>(
           Arrays.asList(
+              new HtmlNodeRendererHandler<>("div", Element.class, this::renderDiv),
               new HtmlNodeRendererHandler<>("table", Element.class, this::renderTable),
               new HtmlNodeRendererHandler<>("thead", Element.class, this::skipElement),
               new HtmlNodeRendererHandler<>("tbody", Element.class, this::skipElement),
@@ -210,6 +211,16 @@ public class HtmlToMarkdownAdapter implements TemplateFormatAdapter {
 
     private void skipElement(Element elem, HtmlNodeConverterContext ctx, HtmlMarkdownWriter out) {
       // Skip - handled by table renderer
+    }
+
+    /** Handles div elements, extracting and rendering any nested tables as GFM markdown. */
+    private void renderDiv(Element div, HtmlNodeConverterContext ctx, HtmlMarkdownWriter out) {
+      Element nestedTable = div.selectFirst("table");
+      if (nestedTable != null) {
+        renderTable(nestedTable, ctx, out);
+      } else {
+        ctx.renderChildren(div, false, null);
+      }
     }
 
     private void renderTable(Element table, HtmlNodeConverterContext ctx, HtmlMarkdownWriter out) {

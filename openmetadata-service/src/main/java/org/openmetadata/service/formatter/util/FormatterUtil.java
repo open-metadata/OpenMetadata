@@ -338,7 +338,7 @@ public class FormatterUtil {
         TableData failedRowsSample = testCaseRepository.getSampleData(testCase, false);
         testCase.setFailedRowsSample(failedRowsSample);
       } catch (Exception e) {
-        LOG.warn("Failed to load failedRowsSample: {}", e.getMessage());
+        LOG.info("Failed to load failedRowsSample: {}", e.getMessage());
       }
       ChangeEvent changeEvent =
           getChangeEvent(
