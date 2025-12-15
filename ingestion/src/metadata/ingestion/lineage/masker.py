@@ -172,30 +172,23 @@ def mask_query_impl(
             return None
 
         # Since SqlGlot generalizes query structures/syntax, we will use
-        # SqlParse for masking if SqlGlot was used for parsing
+        # SqlParse for masking if SqlGlot is used for parsing
         if isinstance(parser._analyzer, SqlGlotLineageAnalyzer):
             masking_parser = LineageRunner(query, analyzer=SqlParseLineageAnalyzer)
             len(masking_parser.source_tables)
 
         if not masking_parser:
             # Try to create a parser with the same fallback strategy as LineageParser
-            # Try SqlGlot first, then SqlFluff, then SqlParse
+            # but since we are not using SqlGlot for masking, we skip it here.
+            # Try SqlFluff, then SqlParse
             try:
                 masking_parser = LineageRunner(
-                    query, dialect=dialect, analyzer=SqlGlotLineageAnalyzer
+                    query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer
                 )
                 len(masking_parser.source_tables)
             except Exception:
-                try:
-                    masking_parser = LineageRunner(
-                        query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer
-                    )
-                    len(masking_parser.source_tables)
-                except Exception:
-                    masking_parser = LineageRunner(
-                        query, analyzer=SqlParseLineageAnalyzer
-                    )
-                    len(masking_parser.source_tables)
+                masking_parser = LineageRunner(query, analyzer=SqlParseLineageAnalyzer)
+                len(masking_parser.source_tables)
 
         logger.debug(
             f"Query masking started using {masking_parser._analyzer.__class__.__name__}"
@@ -203,10 +196,7 @@ def mask_query_impl(
         )
 
         # Check which analyzer was used based on _analyzer attribute
-        if isinstance(masking_parser._analyzer, SqlGlotLineageAnalyzer):
-            # handled by SqlParse masking
-            pass
-        elif isinstance(masking_parser._analyzer, SqlFluffLineageAnalyzer):
+        if isinstance(masking_parser._analyzer, SqlFluffLineageAnalyzer):
             masked_query = mask_literals_with_sqlfluff(
                 query, masking_parser, query_hash
             )
@@ -217,6 +207,7 @@ def mask_query_impl(
         else:
             logger.warning(
                 f"{hash_prefix}Query masking skipped as no parser._analyzer available."
+                f" Analyzer: {masking_parser._analyzer}"
             )
             return None
 
