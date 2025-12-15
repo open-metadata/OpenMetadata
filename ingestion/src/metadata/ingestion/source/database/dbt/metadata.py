@@ -61,6 +61,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
@@ -872,28 +873,42 @@ class DbtSource(DbtServiceSource):
                     table_fqn=upstream_node
                 )
                 if from_entity and to_entity:
-                    yield Either(
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=Uuid(from_entity.id.root),
-                                    type="table",
-                                ),
-                                toEntity=EntityReference(
-                                    id=Uuid(to_entity.id.root),
-                                    type="table",
-                                ),
-                                lineageDetails=LineageDetails(
-                                    source=LineageSource.DbtLineage,
-                                    sqlQuery=SqlQuery(
-                                        data_model_link.datamodel.sql.root
-                                    )
-                                    if data_model_link.datamodel.sql
-                                    else None,
-                                ),
-                            )
+                    lineage_request = AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=Uuid(from_entity.id.root),
+                                type="table",
+                            ),
+                            toEntity=EntityReference(
+                                id=Uuid(to_entity.id.root),
+                                type="table",
+                            ),
+                            lineageDetails=LineageDetails(
+                                source=LineageSource.DbtLineage,
+                                sqlQuery=SqlQuery(data_model_link.datamodel.sql.root)
+                                if data_model_link.datamodel.sql
+                                else None,
+                            ),
                         )
                     )
+                    if lineage_request is not None:
+                        yield Either(
+                            right=OMetaLineageRequest(
+                                lineage_request=lineage_request,
+                                override_lineage=self.source_config.overrideLineage,
+                            )
+                        )
+                    else:
+                        yield Either(
+                            left=StackTraceError(
+                                name="DBT Lineage upstream nodes",
+                                error=(
+                                    "Error to create DBT lineage from upstream nodes ",
+                                    f"{str(data_model_link.datamodel.upstream)}",
+                                ),
+                                stackTrace=traceback.format_exc(),
+                            )
+                        )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
