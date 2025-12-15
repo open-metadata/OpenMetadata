@@ -166,7 +166,7 @@
     "@babel/preset-react": "^7.10.4",
     "@babel/eslint-parser": "^7.25.9",
     "@estruyf/github-actions-reporter": "^1.7.0",
-    "@playwright/test": "1.56.1",
+    "@playwright/test": "1.55.1",
     "@testing-library/jest-dom": "^5.11.10",
     "@testing-library/react": "^14.2.1",
     "@testing-library/react-hooks": "^8.0.1",
