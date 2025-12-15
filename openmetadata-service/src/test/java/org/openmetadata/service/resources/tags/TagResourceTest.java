@@ -1318,6 +1318,213 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     assertEquals(1, assetsCount.get(tag2.getFullyQualifiedName()), "Tag 2 should have 1 asset");
   }
 
+  @Test
+  void test_disabledCertificationNotVisibleOnAssets(TestInfo test) throws IOException {
+    TableResourceTest tableTest = new TableResourceTest();
+    Classification certificationClassification =
+        createClassification(getEntityName(test) + "_Certification");
+
+    Tag certificationTag =
+        createTag(getEntityName(test) + "_Cert", certificationClassification.getName(), null);
+    Tag anotherTag =
+        createTag(getEntityName(test) + "_AnotherTag", certificationClassification.getName(), null);
+
+    assertFalse(
+        certificationTag.getDisabled(), "Certification tag should not be disabled initially");
+    assertFalse(anotherTag.getDisabled(), "Another tag should not be disabled initially");
+
+    CreateTable createTable1 =
+        tableTest
+            .createRequest(getEntityName(test, 1))
+            .withTags(List.of(new TagLabel().withTagFQN(certificationTag.getFullyQualifiedName())));
+    Table tableWithCert = tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableTest
+            .createRequest(getEntityName(test, 2))
+            .withTags(
+                List.of(
+                    new TagLabel().withTagFQN(certificationTag.getFullyQualifiedName()),
+                    new TagLabel().withTagFQN(anotherTag.getFullyQualifiedName())));
+    Table tableWithMultipleTags = tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    Table retrievedTable1 = tableTest.getEntity(tableWithCert.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(retrievedTable1.getTags(), "Table should have tags");
+    assertEquals(1, retrievedTable1.getTags().size(), "Table should have one tag");
+    assertEquals(
+        certificationTag.getFullyQualifiedName(),
+        retrievedTable1.getTags().get(0).getTagFQN(),
+        "Table should have the certification tag");
+
+    Table retrievedTable2 =
+        tableTest.getEntity(tableWithMultipleTags.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(retrievedTable2.getTags(), "Table should have tags");
+    assertEquals(2, retrievedTable2.getTags().size(), "Table should have two tags");
+
+    String tagJson = JsonUtils.pojoToJson(certificationTag);
+    certificationTag.setDisabled(true);
+    ChangeDescription change = getChangeDescription(certificationTag, MINOR_UPDATE);
+    fieldUpdated(change, "disabled", false, true);
+    Tag disabledTag =
+        patchEntityAndCheck(certificationTag, tagJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertTrue(disabledTag.getDisabled(), "Certification tag should be disabled");
+
+    Tag verifyAnotherTag = getEntity(anotherTag.getId(), ADMIN_AUTH_HEADERS);
+    assertFalse(
+        verifyAnotherTag.getDisabled(),
+        "Another tag should remain enabled when only one specific tag is disabled");
+
+    Table table1AfterDisable =
+        tableTest.getEntity(tableWithCert.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(table1AfterDisable.getTags(), "Table should still have tags field");
+
+    if (!table1AfterDisable.getTags().isEmpty()) {
+      TagLabel tagOnAsset = table1AfterDisable.getTags().get(0);
+      Tag tagEntity = getEntityByName(tagOnAsset.getTagFQN(), ADMIN_AUTH_HEADERS);
+      assertTrue(
+          tagEntity.getDisabled(),
+          "Tag on asset should reflect disabled state - disabled certification should be marked as disabled");
+    }
+
+    Table table2AfterDisable =
+        tableTest.getEntity(tableWithMultipleTags.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        table2AfterDisable.getTags(),
+        "Table with multiple tags should still have tags field after one tag is disabled");
+
+    boolean foundDisabledTag = false;
+    boolean foundEnabledTag = false;
+    for (TagLabel tagLabel : table2AfterDisable.getTags()) {
+      Tag tagEntity = getEntityByName(tagLabel.getTagFQN(), ADMIN_AUTH_HEADERS);
+      if (tagEntity.getId().equals(certificationTag.getId())) {
+        assertTrue(
+            tagEntity.getDisabled(),
+            "The specific disabled tag should be marked as disabled on asset");
+        foundDisabledTag = true;
+      } else if (tagEntity.getId().equals(anotherTag.getId())) {
+        assertFalse(
+            tagEntity.getDisabled(), "Other tags should remain enabled when one tag is disabled");
+        foundEnabledTag = true;
+      }
+    }
+    assertTrue(
+        foundDisabledTag,
+        "Should find the disabled tag on asset (it exists but marked as disabled)");
+    assertTrue(foundEnabledTag, "Should find the enabled tag on asset");
+
+    assertResponse(
+        () ->
+            tableTest.createEntity(
+                tableTest
+                    .createRequest(getEntityName(test, 3))
+                    .withTags(
+                        List.of(
+                            new TagLabel().withTagFQN(certificationTag.getFullyQualifiedName()))),
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.disabledTag(
+            new TagLabel().withTagFQN(certificationTag.getFullyQualifiedName())));
+
+    CreateTable createTableWithEnabledTag =
+        tableTest
+            .createRequest(getEntityName(test, 4))
+            .withTags(List.of(new TagLabel().withTagFQN(anotherTag.getFullyQualifiedName())));
+    Table tableWithEnabledTag =
+        tableTest.createEntity(createTableWithEnabledTag, ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        tableWithEnabledTag,
+        "Should be able to create table with enabled tag even when another tag in same classification is disabled");
+
+    String disabledTagJson = JsonUtils.pojoToJson(disabledTag);
+    disabledTag.setDisabled(false);
+    ChangeDescription reEnableChange = getChangeDescription(disabledTag, MINOR_UPDATE);
+    fieldUpdated(reEnableChange, "disabled", true, false);
+    Tag reEnabledTag =
+        patchEntityAndCheck(
+            disabledTag, disabledTagJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, reEnableChange);
+    assertFalse(reEnabledTag.getDisabled(), "Tag should be re-enabled");
+
+    String classificationJson = JsonUtils.pojoToJson(certificationClassification);
+    certificationClassification.setDisabled(true);
+    ChangeDescription classificationChange =
+        getChangeDescription(certificationClassification, MINOR_UPDATE);
+    fieldUpdated(classificationChange, "disabled", false, true);
+    Classification disabledClassification =
+        classificationResourceTest.patchEntityAndCheck(
+            certificationClassification,
+            classificationJson,
+            ADMIN_AUTH_HEADERS,
+            MINOR_UPDATE,
+            classificationChange);
+
+    assertTrue(
+        disabledClassification.getDisabled(),
+        "Classification should be disabled after classification-level disable");
+
+    Tag tagAfterClassificationDisable1 = getEntity(certificationTag.getId(), ADMIN_AUTH_HEADERS);
+    Tag tagAfterClassificationDisable2 = getEntity(anotherTag.getId(), ADMIN_AUTH_HEADERS);
+    assertTrue(
+        tagAfterClassificationDisable1.getDisabled(),
+        "Tag should be disabled when its classification is disabled");
+    assertTrue(
+        tagAfterClassificationDisable2.getDisabled(),
+        "Another tag should also be disabled when its classification is disabled");
+
+    Table table1AfterClassificationDisable =
+        tableTest.getEntity(tableWithCert.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        table1AfterClassificationDisable.getTags(),
+        "Table should still have tags field after classification is disabled");
+
+    if (!table1AfterClassificationDisable.getTags().isEmpty()) {
+      TagLabel tagOnAsset = table1AfterClassificationDisable.getTags().get(0);
+      Tag tagEntity = getEntityByName(tagOnAsset.getTagFQN(), ADMIN_AUTH_HEADERS);
+      assertTrue(
+          tagEntity.getDisabled(),
+          "Tag on asset should reflect disabled state when entire classification is disabled");
+    }
+
+    Table table2AfterClassificationDisable =
+        tableTest.getEntity(tableWithMultipleTags.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        table2AfterClassificationDisable.getTags(),
+        "Table with multiple tags should still have tags field after classification is disabled");
+
+    for (TagLabel tagLabel : table2AfterClassificationDisable.getTags()) {
+      Tag tagEntity = getEntityByName(tagLabel.getTagFQN(), ADMIN_AUTH_HEADERS);
+      assertTrue(
+          tagEntity.getDisabled(),
+          "All tags on asset should reflect disabled state when entire classification is disabled");
+    }
+
+    Table table3AfterClassificationDisable =
+        tableTest.getEntity(tableWithEnabledTag.getId(), "tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        table3AfterClassificationDisable.getTags(),
+        "Table created with enabled tag should still have tags after classification disabled");
+
+    if (!table3AfterClassificationDisable.getTags().isEmpty()) {
+      TagLabel tagOnAsset = table3AfterClassificationDisable.getTags().get(0);
+      Tag tagEntity = getEntityByName(tagOnAsset.getTagFQN(), ADMIN_AUTH_HEADERS);
+      assertTrue(
+          tagEntity.getDisabled(),
+          "Previously enabled tag should now be disabled when classification is disabled");
+    }
+
+    assertResponse(
+        () ->
+            tableTest.createEntity(
+                tableTest
+                    .createRequest(getEntityName(test, 5))
+                    .withTags(
+                        List.of(new TagLabel().withTagFQN(anotherTag.getFullyQualifiedName()))),
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.disabledTag(
+            new TagLabel().withTagFQN(anotherTag.getFullyQualifiedName())));
+  }
+
   private Map<String, Integer> getAllTagsWithAssetsCount() throws HttpResponseException {
     WebTarget target = getResource("tags/assets/counts");
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
