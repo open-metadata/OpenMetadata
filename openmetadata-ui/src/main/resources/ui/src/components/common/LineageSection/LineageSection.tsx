@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Divider, Stack, Typography, useTheme } from '@mui/material';
+import {
+  Box,
+  ButtonBase,
+  Divider,
+  Stack,
+  Typography,
+  useTheme,
+} from '@mui/material';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DownstreamIcon } from '../../../assets/svg/lineage-downstream-icon.svg';
@@ -57,7 +64,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
     count: number,
     gap: number
   ) => (
-    <Box
+    <ButtonBase
       data-testid={`${type}-lineage`}
       sx={{ ...sectionStyles, gap }}
       onClick={handleClick}>
@@ -72,7 +79,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
           {count}
         </Typography>
       </Stack>
-    </Box>
+    </ButtonBase>
   );
 
   return (
@@ -95,23 +102,24 @@ const LineageSection: React.FC<LineageSectionProps> = ({
         <Loader size="small" />
       ) : upstreamCount === 0 && downstreamCount === 0 ? (
         <Typography
-          fontSize="12px"
-          color={theme.palette.allShades?.gray?.[500]}>
+          color={theme.palette.allShades?.gray?.[500]}
+          fontSize="12px">
           {t('message.no-lineage-available')}
         </Typography>
       ) : (
-        <Stack direction="row" spacing={0}>
+        <Stack direction="row" spacing={0} width="fit-content">
           {renderLineageItem('upstream', UpstreamIcon, upstreamCount, 2.5)}
           <Divider
-            orientation="vertical"
             flexItem
+            orientation="vertical"
             sx={{
               alignSelf: 'center',
               height: '20px',
+              marginX: 4,
               borderColor: theme.palette.allShades?.gray?.[200],
             }}
           />
-          <Box sx={{ ml: 4 }}>
+          <Box>
             {renderLineageItem(
               'downstream',
               DownstreamIcon,
