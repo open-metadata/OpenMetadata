@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.Filter;
@@ -379,9 +378,6 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   }
 
   private String getDataQualityDimensionCondition(String dataQualityDimension, String field) {
-    if (DataQualityDimensions.NO_DIMENSION.value().equals(dataQualityDimension)) {
-      return String.format("{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"%s\"}}]}}", field);
-    }
     return String.format("{\"term\": {\"%s\": \"%s\"}}", field, dataQualityDimension);
   }
 
