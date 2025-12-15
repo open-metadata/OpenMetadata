@@ -96,7 +96,7 @@ def oracle_lineage_container():
 
     _grant_query_privileges(container)
 
-    sql_file_path = Path(__file__).parent / "data" / "lineage_v3.sql"
+    sql_file_path = Path(__file__).parent / "data" / "lineage.sql"
     _load_sql_file(container, sql_file_path)
 
     print("Schema: test (lineage tests)")
