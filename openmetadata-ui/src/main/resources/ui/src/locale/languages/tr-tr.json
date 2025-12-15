@@ -211,6 +211,8 @@
     "category": "Kategori",
     "category-plural": "Kategoriler",
     "certification": "Sertifikasyon",
+    "certification-plural": "Sertifikasyonlar",
+    "certification-plural-lowercase": "sertifikasyonlar",
     "change-entity": "{{entity}} Değiştir",
     "change-log-plural": "Değişiklik Günlükleri",
     "change-parent-entity": "Üst {{entity}} Değiştir",

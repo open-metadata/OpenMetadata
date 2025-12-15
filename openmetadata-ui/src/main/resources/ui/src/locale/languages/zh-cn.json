@@ -211,6 +211,8 @@
     "category": "分类",
     "category-plural": "分类",
     "certification": "Certification",
+    "certification-plural": "Certifications",
+    "certification-plural-lowercase": "certifications",
     "change-entity": "更改{{entity}}",
     "change-log-plural": "变更日志",
     "change-parent-entity": "更改父{{entity}}",

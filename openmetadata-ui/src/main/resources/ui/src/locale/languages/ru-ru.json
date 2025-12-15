@@ -211,6 +211,8 @@
     "category": "Категория",
     "category-plural": "Категории",
     "certification": "Сертификация",
+    "certification-plural": "Сертификации",
+    "certification-plural-lowercase": "сертификации",
     "change-entity": "Изменить объект «{{entity}}»",
     "change-log-plural": "Журналы изменений",
     "change-parent-entity": "Изменить родительский объект «{{entity}}»",

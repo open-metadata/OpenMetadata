@@ -211,6 +211,8 @@
     "category": "카테고리",
     "category-plural": "카테고리들",
     "certification": "인증",
+    "certification-plural": "인증",
+    "certification-plural-lowercase": "인증",
     "change-entity": "{{entity}} 변경",
     "change-log-plural": "변경 로그들",
     "change-parent-entity": "상위 {{entity}} 변경",

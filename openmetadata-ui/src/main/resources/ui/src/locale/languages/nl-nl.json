@@ -211,6 +211,8 @@
     "category": "Categorie",
     "category-plural": "Categorieën",
     "certification": "Certification",
+    "certification-plural": "Certifications",
+    "certification-plural-lowercase": "certifications",
     "change-entity": "Verander {{entity}}",
     "change-log-plural": "Wijzigingslogboeken",
     "change-parent-entity": "Change Parent {{entity}}",

@@ -211,6 +211,8 @@
     "category": "Category",
     "category-plural": "Categorias",
     "certification": "Certification",
+    "certification-plural": "Certifications",
+    "certification-plural-lowercase": "certifications",
     "change-entity": "Mudar {{entity}}",
     "change-log-plural": "Registros de Alteração",
     "change-parent-entity": "Change Parent {{entity}}",

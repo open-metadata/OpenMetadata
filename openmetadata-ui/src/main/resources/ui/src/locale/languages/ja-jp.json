@@ -211,6 +211,8 @@
     "category": "カテゴリ",
     "category-plural": "カテゴリ",
     "certification": "認証",
+    "certification-plural": "認証",
+    "certification-plural-lowercase": "認証",
     "change-entity": "{{entity}}を変更",
     "change-log-plural": "変更履歴",
     "change-parent-entity": "親{{entity}}を変更",

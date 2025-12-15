@@ -211,6 +211,8 @@
     "category": "دسته‌بندی",
     "category-plural": "دسته‌بندی‌ها",
     "certification": "Certification",
+    "certification-plural": "Certifications",
+    "certification-plural-lowercase": "certifications",
     "change-entity": "تغییر {{entity}}",
     "change-log-plural": "لاگ‌های تغییر",
     "change-parent-entity": "تغییر والد {{entity}}",

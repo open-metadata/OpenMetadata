@@ -211,6 +211,8 @@
     "category": "Category",
     "category-plural": "קטגוריות",
     "certification": "Certification",
+    "certification-plural": "Certifications",
+    "certification-plural-lowercase": "certifications",
     "change-entity": "שנה {{entity}}",
     "change-log-plural": "יומני שינויים",
     "change-parent-entity": "Change Parent {{entity}}",

@@ -211,6 +211,8 @@
     "category": "類別",
     "category-plural": "類別",
     "certification": "認證",
+    "certification-plural": "認證",
+    "certification-plural-lowercase": "認證",
     "change-entity": "變更 {{entity}}",
     "change-log-plural": "變更日誌",
     "change-parent-entity": "變更父項 {{entity}}",

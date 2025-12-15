@@ -211,6 +211,8 @@
     "category": "श्रेणी",
     "category-plural": "श्रेण्या",
     "certification": "प्रमाणपत्र",
+    "certification-plural": "प्रमाणपत्रे",
+    "certification-plural-lowercase": "प्रमाणपत्रे",
     "change-entity": "{{entity}} बदला",
     "change-log-plural": "बदल नोंदी",
     "change-parent-entity": "पालक {{entity}} बदला",
