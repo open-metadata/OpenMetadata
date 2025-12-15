@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EntityTags, TagFilterOptions } from 'Models';
 import { Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
@@ -23,26 +24,27 @@ import {
   toLower,
   uniqBy,
 } from 'lodash';
-import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Table from '../../../components/common/Table/Table';
-import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
+import { ColumnDetailPanel } from '../../../components/Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../components/Database/TableDescription/TableDescription.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import Table from '../../../components/common/Table/Table';
+import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_SEARCH_INDEX_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
+import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import {
@@ -58,6 +60,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  findFieldByFQN,
   getTableExpandableConfig,
   searchInFields,
   updateFieldDescription,
@@ -88,6 +91,8 @@ const SearchIndexFieldsTable = ({
     []
   );
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(searchIndexFields, 'ordinalPosition'),
@@ -160,6 +165,40 @@ const SearchIndexFieldsTable = ({
     [handleEditField]
   );
 
+  const handleColumnClick = useCallback((field: SearchIndexField) => {
+    setSelectedColumn(field as unknown as Column);
+    setIsColumnDetailOpen(true);
+  }, []);
+
+  const handleCloseColumnDetail = useCallback(() => {
+    setIsColumnDetailOpen(false);
+    setSelectedColumn(null);
+  }, []);
+
+  const handleColumnUpdate = useCallback(
+    (updatedColumn: Column) => {
+      const field = updatedColumn as unknown as SearchIndexField;
+      const fields = cloneDeep(searchIndexFields);
+      updateFieldDescription<SearchIndexField>(
+        field.fullyQualifiedName ?? '',
+        field.description ?? '',
+        fields
+      );
+      updateFieldTags<SearchIndexField>(
+        field.fullyQualifiedName ?? '',
+        field.tags ?? [],
+        fields
+      );
+      onUpdate(fields);
+      setSelectedColumn(updatedColumn);
+    },
+    [searchIndexFields, onUpdate]
+  );
+
+  const handleColumnNavigate = useCallback((column: Column) => {
+    setSelectedColumn(column);
+  }, []);
+
   const renderDataTypeDisplay: SearchIndexCellRendered<
     SearchIndexField,
     'dataTypeDisplay'
@@ -222,7 +261,23 @@ const SearchIndexFieldsTable = ({
         fixed: 'left',
         sorter: getColumnSorter<SearchIndexField, 'name'>('name'),
         render: (_, record: SearchIndexField) => (
-          <div className="d-inline-flex w-max-90">
+          <div
+            className="d-inline-flex w-max-90"
+            data-testid="column-name"
+            style={{ cursor: isReadOnly ? 'default' : 'pointer' }}
+            onClick={(e) => {
+              if (isReadOnly) {
+                return;
+              }
+              // Don't open detail panel if clicking on edit button or link
+              if (
+                (e.target as HTMLElement).closest('button') ||
+                (e.target as HTMLElement).closest('a')
+              ) {
+                return;
+              }
+              handleColumnClick(record);
+            }}>
             <span className="break-word">
               {stringToHTML(
                 highlightSearchText(getEntityName(record), searchText)
@@ -301,6 +356,8 @@ const SearchIndexFieldsTable = ({
       renderDataTypeDisplay,
       renderDescription,
       tagFilter,
+      handleColumnClick,
+      searchText,
     ]
   );
 
@@ -387,6 +444,44 @@ const SearchIndexFieldsTable = ({
           />
         </EntityAttachmentProvider>
       )}
+
+      <ColumnDetailPanel
+        allColumns={
+          searchIndexFields.map(
+            (field) => field as unknown as Column
+          ) as Column[]
+        }
+        column={selectedColumn}
+        entityType={EntityType.SEARCH_INDEX}
+        hasEditPermission={{
+          tags: hasTagEditAccess,
+          glossaryTerms: hasGlossaryTermEditAccess,
+          description: hasDescriptionEditAccess,
+          viewAllPermission: false,
+          customProperties: false,
+        }}
+        isOpen={isColumnDetailOpen}
+        tableFqn={entityFqn}
+        updateColumnDescription={async (fqn, description) => {
+          const fields = cloneDeep(searchIndexFields);
+          updateFieldDescription<SearchIndexField>(fqn, description, fields);
+          await onUpdate(fields);
+          // Find and return the updated field
+          const updatedField = findFieldByFQN<SearchIndexField>(fields, fqn);
+          return updatedField as unknown as Column;
+        }}
+        updateColumnTags={async (fqn, tags) => {
+          const fields = cloneDeep(searchIndexFields);
+          updateFieldTags<SearchIndexField>(fqn, tags ?? [], fields);
+          await onUpdate(fields);
+          // Find and return the updated field
+          const updatedField = findFieldByFQN<SearchIndexField>(fields, fqn);
+          return updatedField as unknown as Column;
+        }}
+        onClose={handleCloseColumnDetail}
+        onColumnUpdate={handleColumnUpdate}
+        onNavigate={handleColumnNavigate}
+      />
     </>
   );
 };

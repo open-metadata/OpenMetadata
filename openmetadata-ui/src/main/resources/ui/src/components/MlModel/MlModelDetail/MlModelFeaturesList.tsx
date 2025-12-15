@@ -11,22 +11,24 @@
  *  limitations under the License.
  */
 
+import { EntityTags } from 'Models';
 import { Card, Col, Divider, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import { EntityTags } from 'Models';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { MlFeature, Mlmodel } from '../../../generated/entity/data/mlmodel';
+import { Column } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/type/schema';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import SourceList from './SourceList.component';
 
 const MlModelFeaturesList = () => {
@@ -35,6 +37,8 @@ const MlModelFeaturesList = () => {
     {} as MlFeature
   );
   const [editDescription, setEditDescription] = useState<boolean>(false);
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
   const { data, onUpdate, permissions } = useGenericContext<Mlmodel>();
 
   const { mlFeatures, isDeleted, entityFqn } = useMemo(() => {
@@ -107,6 +111,41 @@ const MlModelFeaturesList = () => {
     }
   };
 
+  const handleColumnClick = useCallback((feature: MlFeature) => {
+    setSelectedColumn(feature as unknown as Column);
+    setIsColumnDetailOpen(true);
+  }, []);
+
+  const handleCloseColumnDetail = useCallback(() => {
+    setIsColumnDetailOpen(false);
+    setSelectedColumn(null);
+  }, []);
+
+  const handleColumnUpdate = useCallback(
+    (updatedColumn: Column) => {
+      const feature = updatedColumn as unknown as MlFeature;
+      const updatedFeatures =
+        mlFeatures?.map((f) => {
+          if (f.name === feature.name) {
+            return {
+              ...feature,
+              description: feature.description ?? f.description,
+              tags: feature.tags ?? f.tags,
+            };
+          } else {
+            return f;
+          }
+        }) ?? [];
+      handleFeaturesUpdate(updatedFeatures);
+      setSelectedColumn(updatedColumn);
+    },
+    [mlFeatures, handleFeaturesUpdate]
+  );
+
+  const handleColumnNavigate = useCallback((column: Column) => {
+    setSelectedColumn(column);
+  }, []);
+
   if (!isEmpty(mlFeatures)) {
     return (
       <Fragment>
@@ -129,7 +168,25 @@ const MlModelFeaturesList = () => {
                   key={feature.fullyQualifiedName}>
                   <Row gutter={[0, 8]}>
                     <Col span={24}>
-                      <Typography.Text className="font-semibold">
+                      <Typography.Text
+                        className="font-semibold"
+                        data-testid="column-name"
+                        style={{
+                          cursor: isDeleted ? 'default' : 'pointer',
+                        }}
+                        onClick={(e) => {
+                          if (isDeleted) {
+                            return;
+                          }
+                          // Don't open detail panel if clicking on edit button or link
+                          if (
+                            (e.target as HTMLElement).closest('button') ||
+                            (e.target as HTMLElement).closest('a')
+                          ) {
+                            return;
+                          }
+                          handleColumnClick(feature);
+                        }}>
                         {feature.name}
                       </Typography.Text>
                     </Col>
@@ -258,6 +315,66 @@ const MlModelFeaturesList = () => {
             />
           </EntityAttachmentProvider>
         )}
+
+        <ColumnDetailPanel
+          allColumns={
+            (mlFeatures ?? []).map(
+              (feature) => feature as unknown as Column
+            ) as Column[]
+          }
+          column={selectedColumn}
+          entityType={EntityType.MLMODEL}
+          hasEditPermission={{
+            tags: hasEditPermission,
+            glossaryTerms: hasEditGlossaryTermPermission,
+            description: permissions.EditAll || permissions.EditDescription,
+            viewAllPermission: permissions.ViewAll,
+            customProperties: false,
+          }}
+          isOpen={isColumnDetailOpen}
+          tableFqn={entityFqn}
+          updateColumnDescription={async (fqn, description) => {
+            const updatedFeatures =
+              mlFeatures?.map((feature) => {
+                if (feature.fullyQualifiedName === fqn) {
+                  return {
+                    ...feature,
+                    description,
+                  };
+                } else {
+                  return feature;
+                }
+              }) ?? [];
+            await handleFeaturesUpdate(updatedFeatures);
+            // Find and return the updated feature
+            const updatedFeature = updatedFeatures.find(
+              (f) => f.fullyQualifiedName === fqn
+            );
+            return updatedFeature as unknown as Column;
+          }}
+          updateColumnTags={async (fqn, tags) => {
+            const updatedFeatures =
+              mlFeatures?.map((feature) => {
+                if (feature.fullyQualifiedName === fqn) {
+                  return {
+                    ...feature,
+                    tags: tags ?? [],
+                  };
+                } else {
+                  return feature;
+                }
+              }) ?? [];
+            await handleFeaturesUpdate(updatedFeatures);
+            // Find and return the updated feature
+            const updatedFeature = updatedFeatures.find(
+              (f) => f.fullyQualifiedName === fqn
+            );
+            return updatedFeature as unknown as Column;
+          }}
+          onClose={handleCloseColumnDetail}
+          onColumnUpdate={handleColumnUpdate}
+          onNavigate={handleColumnNavigate}
+        />
       </Fragment>
     );
   } else {

@@ -10,20 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityTags, TagFilterOptions } from 'Models';
 import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
-import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {} from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_API_ENDPOINT_SCHEMA_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
+import {} from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   APIEndpoint,
@@ -32,6 +32,7 @@ import {
   Field,
   TagSource,
 } from '../../../generated/entity/data/apiEndpoint';
+import { Column } from '../../../generated/entity/data/table';
 import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -43,20 +44,22 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  findFieldByFQN,
   getAllRowKeysByKeyName,
   getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import Table from '../../common/Table/Table';
-import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import Table from '../../common/Table/Table';
+import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 
 interface APIEndpointSchemaProps {
   isVersionView?: boolean;
@@ -77,6 +80,8 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.REQUEST_SCHEMA
   );
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
   const {
     data: apiEndpointDetails,
     permissions,
@@ -197,9 +202,67 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     }
   };
 
+  const handleColumnClick = useCallback((field: Field) => {
+    setSelectedColumn(field as unknown as Column);
+    setIsColumnDetailOpen(true);
+  }, []);
+
+  const handleCloseColumnDetail = useCallback(() => {
+    setIsColumnDetailOpen(false);
+    setSelectedColumn(null);
+  }, []);
+
+  const handleColumnUpdate = useCallback(
+    (updatedColumn: Column) => {
+      if (!isUndefined(onApiEndpointUpdate)) {
+        const schema = cloneDeep(activeSchema);
+        const field = updatedColumn as unknown as Field;
+        updateFieldDescription<Field>(
+          field.fullyQualifiedName ?? '',
+          field.description ?? '',
+          schema?.schemaFields
+        );
+        updateFieldTags<Field>(
+          field.fullyQualifiedName ?? '',
+          field.tags ?? [],
+          schema?.schemaFields
+        );
+        onApiEndpointUpdate(
+          {
+            ...apiEndpointDetails,
+            [activeSchemaKey]: schema,
+          },
+          activeSchemaKey
+        );
+      }
+      setSelectedColumn(updatedColumn);
+    },
+    [activeSchema, activeSchemaKey, apiEndpointDetails, onApiEndpointUpdate]
+  );
+
+  const handleColumnNavigate = useCallback((column: Column) => {
+    setSelectedColumn(column);
+  }, []);
+
   const renderSchemaName = useCallback(
     (_: string, record: Field) => (
-      <div className="d-inline-flex w-max-90 vertical-align-inherit">
+      <div
+        className="d-inline-flex w-max-90 vertical-align-inherit"
+        data-testid="column-name"
+        style={{ cursor: isVersionView ? 'default' : 'pointer' }}
+        onClick={(e) => {
+          if (isVersionView) {
+            return;
+          }
+          // Don't open detail panel if clicking on edit button or link
+          if (
+            (e.target as HTMLElement).closest('button') ||
+            (e.target as HTMLElement).closest('a')
+          ) {
+            return;
+          }
+          handleColumnClick(record);
+        }}>
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
@@ -211,7 +274,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         </Tooltip>
       </div>
     ),
-    [isVersionView]
+    [isVersionView, handleColumnClick]
   );
 
   const renderDataType = useCallback(
@@ -375,6 +438,9 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       tagFilter,
       theme,
       handleFieldTagsChange,
+      handleColumnClick,
+      permissions,
+      isVersionView,
     ]
   );
 
@@ -442,6 +508,72 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           />
         </EntityAttachmentProvider>
       )}
+
+      <ColumnDetailPanel
+        allColumns={
+          activeSchemaFields.map(
+            (field) => field as unknown as Column
+          ) as Column[]
+        }
+        column={selectedColumn}
+        entityType={EntityType.API_ENDPOINT}
+        hasEditPermission={{
+          tags: permissions.EditTags || permissions.EditAll,
+          glossaryTerms: permissions.EditGlossaryTerms || permissions.EditAll,
+          description: permissions.EditDescription || permissions.EditAll,
+          viewAllPermission: permissions.ViewAll,
+          customProperties: false,
+        }}
+        isOpen={isColumnDetailOpen}
+        tableFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
+        updateColumnDescription={async (fqn, description) => {
+          if (!isUndefined(onApiEndpointUpdate)) {
+            const schema = cloneDeep(activeSchema);
+            updateFieldDescription<Field>(
+              fqn,
+              description,
+              schema?.schemaFields
+            );
+            await onApiEndpointUpdate(
+              {
+                ...apiEndpointDetails,
+                [activeSchemaKey]: schema,
+              },
+              activeSchemaKey
+            );
+            // Find and return the updated field
+            const updatedField = findFieldByFQN<Field>(
+              schema?.schemaFields ?? [],
+              fqn
+            );
+            return updatedField as unknown as Column;
+          }
+          return selectedColumn as Column;
+        }}
+        updateColumnTags={async (fqn, tags) => {
+          if (!isUndefined(onApiEndpointUpdate)) {
+            const schema = cloneDeep(activeSchema);
+            updateFieldTags<Field>(fqn, tags ?? [], schema?.schemaFields);
+            await onApiEndpointUpdate(
+              {
+                ...apiEndpointDetails,
+                [activeSchemaKey]: schema,
+              },
+              activeSchemaKey
+            );
+            // Find and return the updated field
+            const updatedField = findFieldByFQN<Field>(
+              schema?.schemaFields ?? [],
+              fqn
+            );
+            return updatedField as unknown as Column;
+          }
+          return selectedColumn as Column;
+        }}
+        onClose={handleCloseColumnDetail}
+        onColumnUpdate={handleColumnUpdate}
+        onNavigate={handleColumnNavigate}
+      />
     </Row>
   );
 };

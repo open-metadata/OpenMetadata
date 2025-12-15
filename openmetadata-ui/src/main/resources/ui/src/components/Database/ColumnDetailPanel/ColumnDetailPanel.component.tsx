@@ -14,7 +14,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Chip } from '@mui/material';
 import { Button, Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ArrowSvg } from '../../../assets/svg/down-arrow-icon.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
@@ -22,25 +22,32 @@ import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
 import { ReactComponent as ArrowUp } from '../../../assets/svg/up-arrow-icon.svg';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
-import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
+import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { generateEntityLink } from '../../../utils/TableUtils';
+import {
+  findOriginalColumnIndex,
+  flattenColumns,
+  generateEntityLink,
+  getDataTypeDisplay,
+  mergeGlossaryWithTags,
+  mergeTagsWithGlossary,
+} from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
-import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
-import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
-import Loader from '../../common/Loader/Loader';
-import TagsSection from '../../common/TagsSection/TagsSection';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
 import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
 import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
 import { LineageData } from '../../Lineage/Lineage.interface';
+import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
+import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
+import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
+import Loader from '../../common/Loader/Loader';
+import TagsSection from '../../common/TagsSection/TagsSection';
 import {
   ColumnDetailPanelProps,
   TestCaseStatusCounts,
@@ -52,14 +59,16 @@ export const ColumnDetailPanel = ({
   isOpen,
   onClose,
   onColumnUpdate,
+  updateColumnDescription,
+  updateColumnTags,
   hasEditPermission = {},
   allColumns = [],
-  currentColumnIndex = 0,
   onNavigate,
   tableConstraints = [],
+  entityType = EntityType.TABLE,
 }: ColumnDetailPanelProps) => {
   const { t } = useTranslation();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
@@ -70,7 +79,11 @@ export const ColumnDetailPanel = ({
     aborted: 0,
     total: 0,
   });
-
+  const [lineageData] = useState<LineageData | null>(null);
+  const [isLineageLoading] = useState<boolean>(false);
+  const [lineageFilter, setLineageFilter] = useState<'upstream' | 'downstream'>(
+    'downstream'
+  );
   const fetchTestCases = useCallback(async () => {
     if (!column?.fullyQualifiedName) {
       setIsTestCaseLoading(false);
@@ -89,32 +102,7 @@ export const ColumnDetailPanel = ({
         fields: ['testCaseResult', 'incidentId'],
       });
 
-      const counts = (response.data || []).reduce(
-        (acc, testCase) => {
-          const status = testCase.testCaseResult?.testCaseStatus;
-          if (status) {
-            switch (status) {
-              case TestCaseStatus.Success:
-                acc.success++;
-
-                break;
-              case TestCaseStatus.Failed:
-                acc.failed++;
-
-                break;
-              case TestCaseStatus.Aborted:
-                acc.aborted++;
-
-                break;
-            }
-            acc.total++;
-          }
-
-          return acc;
-        },
-        { success: 0, failed: 0, aborted: 0, total: 0 }
-      );
-
+      const counts = calculateTestCaseStatusCounts(response.data || []);
       setStatusCounts(counts);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -130,6 +118,22 @@ export const ColumnDetailPanel = ({
     }
   }, [isOpen, column, fetchTestCases]);
 
+  // Flatten all columns including nested children for accurate counting and navigation
+  const flattenedColumns = useMemo(
+    () => flattenColumns(allColumns),
+    [allColumns]
+  );
+
+  // Find the actual index in the flattened array
+  const actualColumnIndex = useMemo(() => {
+    if (!column?.fullyQualifiedName) {
+      return 0;
+    }
+    return flattenedColumns.findIndex(
+      (col) => col.fullyQualifiedName === column.fullyQualifiedName
+    );
+  }, [column, flattenedColumns]);
+
   const handleDescriptionUpdate = useCallback(
     async (newDescription: string) => {
       if (!column?.fullyQualifiedName) {
@@ -137,10 +141,18 @@ export const ColumnDetailPanel = ({
       }
 
       try {
-        setIsLoading(true);
-        const response = await updateTableColumn(column.fullyQualifiedName, {
-          description: newDescription,
-        });
+        setIsDescriptionLoading(true);
+
+        // Use provided update function or fall back to default table API
+        const updateFn =
+          updateColumnDescription ||
+          ((fqn: string, description: string) =>
+            updateTableColumn(fqn, { description }));
+
+        const response = await updateFn(
+          column.fullyQualifiedName,
+          newDescription
+        );
 
         showSuccessToast(
           t('server.update-entity-success', {
@@ -159,10 +171,10 @@ export const ColumnDetailPanel = ({
           })
         );
       } finally {
-        setIsLoading(false);
+        setIsDescriptionLoading(false);
       }
     },
-    [column, t, onColumnUpdate]
+    [column, t, onColumnUpdate, updateColumnDescription]
   );
 
   const handleTagsUpdate = useCallback(
@@ -172,10 +184,16 @@ export const ColumnDetailPanel = ({
       }
 
       try {
-        setIsLoading(true);
-        const response = await updateTableColumn(column.fullyQualifiedName, {
-          tags: updatedTags,
-        });
+        // Preserve glossary terms when updating classification tags
+        const allTags = mergeTagsWithGlossary(column.tags, updatedTags);
+
+        // Use provided update function or fall back to default table API
+        const updateFn =
+          updateColumnTags ||
+          ((fqn: string, tags: Column['tags']) =>
+            updateTableColumn(fqn, { tags }));
+
+        const response = await updateFn(column.fullyQualifiedName, allTags);
 
         showSuccessToast(
           t('server.update-entity-success', {
@@ -197,11 +215,9 @@ export const ColumnDetailPanel = ({
         );
 
         throw error;
-      } finally {
-        setIsLoading(false);
       }
     },
-    [column, t, onColumnUpdate]
+    [column, t, onColumnUpdate, updateColumnTags]
   );
 
   const handleGlossaryTermsUpdate = useCallback(
@@ -211,14 +227,18 @@ export const ColumnDetailPanel = ({
       }
 
       try {
-        setIsLoading(true);
-        const nonGlossaryTags =
-          column.tags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
-        const allTags = [...nonGlossaryTags, ...(updatedGlossaryTerms || [])];
+        const allTags = mergeGlossaryWithTags(
+          column.tags,
+          updatedGlossaryTerms
+        );
 
-        const response = await updateTableColumn(column.fullyQualifiedName, {
-          tags: allTags,
-        });
+        // Use provided update function or fall back to default table API
+        const updateFn =
+          updateColumnTags ||
+          ((fqn: string, tags: Column['tags']) =>
+            updateTableColumn(fqn, { tags }));
+
+        const response = await updateFn(column.fullyQualifiedName, allTags);
 
         showSuccessToast(
           t('server.update-entity-success', {
@@ -240,11 +260,9 @@ export const ColumnDetailPanel = ({
         );
 
         throw error;
-      } finally {
-        setIsLoading(false);
       }
     },
-    [column, t, onColumnUpdate]
+    [column, t, onColumnUpdate, updateColumnTags]
   );
 
   useEffect(() => {
@@ -257,54 +275,85 @@ export const ColumnDetailPanel = ({
     setActiveTab(tab);
   };
 
-  const handlePreviousColumn = () => {
-    if (currentColumnIndex > 0 && onNavigate) {
-      const prevColumn = allColumns[currentColumnIndex - 1];
-      onNavigate(prevColumn, currentColumnIndex - 1);
-    }
-  };
+  const handleColumnNavigation = useCallback(
+    (direction: 'previous' | 'next') => {
+      if (!onNavigate) {
+        return;
+      }
 
-  const handleNextColumn = () => {
-    if (currentColumnIndex < allColumns.length - 1 && onNavigate) {
-      const nextColumn = allColumns[currentColumnIndex + 1];
-      onNavigate(nextColumn, currentColumnIndex + 1);
-    }
-  };
+      const isPrevious = direction === 'previous';
+      const canNavigate = isPrevious
+        ? actualColumnIndex > 0
+        : actualColumnIndex < flattenedColumns.length - 1;
 
-  const isPreviousDisabled = currentColumnIndex === 0;
-  const isNextDisabled = currentColumnIndex === allColumns.length - 1;
+      if (!canNavigate) {
+        return;
+      }
+
+      const targetIndex = isPrevious
+        ? actualColumnIndex - 1
+        : actualColumnIndex + 1;
+      const targetColumn = flattenedColumns[targetIndex];
+      const originalIndex = findOriginalColumnIndex(targetColumn, allColumns);
+
+      onNavigate(
+        targetColumn,
+        originalIndex >= 0 ? originalIndex : targetIndex
+      );
+    },
+    [actualColumnIndex, flattenedColumns, allColumns, onNavigate]
+  );
+
+  const handlePreviousColumn = useCallback(
+    () => handleColumnNavigation('previous'),
+    [handleColumnNavigation]
+  );
+
+  const handleNextColumn = useCallback(
+    () => handleColumnNavigation('next'),
+    [handleColumnNavigation]
+  );
+
+  const isPreviousDisabled = actualColumnIndex === 0;
+  const isNextDisabled = actualColumnIndex === flattenedColumns.length - 1;
+
+  const dataQualityTests = useMemo(
+    () => [
+      { type: 'success' as const, count: statusCounts.success },
+      { type: 'aborted' as const, count: statusCounts.aborted },
+      { type: 'failed' as const, count: statusCounts.failed },
+    ],
+    [statusCounts]
+  );
+
+  const classificationTags = useMemo(
+    () =>
+      column?.tags?.filter((tag) => tag.source !== TagSource.Glossary) || [],
+    [column?.tags]
+  );
 
   const renderOverviewTab = () => {
-    if (isLoading) {
-      return (
-        <div className="flex-center p-lg">
-          <Loader size="default" />
-        </div>
-      );
-    }
-
     return (
       <Space className="w-full" direction="vertical" size="large">
-        <DescriptionSection
-          description={column?.description}
-          hasPermission={hasEditPermission.description}
-          onDescriptionUpdate={handleDescriptionUpdate}
-        />
+        {isDescriptionLoading ? (
+          <div className="flex-center p-lg">
+            <Loader size="small" />
+          </div>
+        ) : (
+          <DescriptionSection
+            description={column?.description}
+            hasPermission={hasEditPermission?.description ?? false}
+            onDescriptionUpdate={handleDescriptionUpdate}
+          />
+        )}
 
         {isTestCaseLoading ? (
           <Loader size="small" />
         ) : (
           statusCounts.total > 0 && (
             <DataQualitySection
-              tests={[
-                { type: 'success', count: statusCounts.success },
-                { type: 'aborted', count: statusCounts.aborted },
-                { type: 'failed', count: statusCounts.failed },
-              ]}
+              tests={dataQualityTests}
               totalTests={statusCounts.total}
-              onEdit={() => {
-                // Handle edit functionality
-              }}
             />
           )
         )}
@@ -312,7 +361,7 @@ export const ColumnDetailPanel = ({
         <GlossaryTermsSection
           entityId={column?.fullyQualifiedName || ''}
           entityType={'_column' as EntityType}
-          hasPermission={hasEditPermission.glossaryTerms}
+          hasPermission={hasEditPermission?.glossaryTerms ?? false}
           maxVisibleGlossaryTerms={3}
           tags={column?.tags}
           onGlossaryTermsUpdate={handleGlossaryTermsUpdate}
@@ -321,21 +370,13 @@ export const ColumnDetailPanel = ({
         <TagsSection
           entityId={column?.fullyQualifiedName || ''}
           entityType={'_column' as EntityType}
-          hasPermission={hasEditPermission.tags}
-          tags={
-            column?.tags?.filter((tag) => tag.source !== TagSource.Glossary) ||
-            []
-          }
+          hasPermission={hasEditPermission?.tags ?? false}
+          tags={classificationTags}
           onTagsUpdate={handleTagsUpdate}
         />
       </Space>
     );
   };
-  const [lineageData] = useState<LineageData | null>(null);
-  const [isLineageLoading] = useState<boolean>(false);
-  const [lineageFilter, setLineageFilter] = useState<'upstream' | 'downstream'>(
-    'downstream'
-  );
 
   const renderLineageTab = () => {
     if (isLineageLoading) {
@@ -346,21 +387,21 @@ export const ColumnDetailPanel = ({
       );
     }
 
-    if (lineageData) {
+    if (!lineageData) {
       return (
-        <LineageTabContent
-          entityFqn={column?.fullyQualifiedName || ''}
-          filter={lineageFilter}
-          lineageData={lineageData}
-          onFilterChange={setLineageFilter}
-        />
+        <div className="text-center text-grey-muted p-lg">
+          {t('label.no-data-found')}
+        </div>
       );
     }
 
     return (
-      <div className="text-center text-grey-muted p-lg">
-        {t('label.no-data-found')}
-      </div>
+      <LineageTabContent
+        entityFqn={column?.fullyQualifiedName || ''}
+        filter={lineageFilter}
+        lineageData={lineageData}
+        onFilterChange={setLineageFilter}
+      />
     );
   };
 
@@ -376,8 +417,8 @@ export const ColumnDetailPanel = ({
             column as unknown as { extension?: Record<string, unknown> }
           }
           entityDetails={{ details: column }}
-          entityType={EntityType.TABLE}
-          isEntityDataLoading={isLoading}
+          entityType={entityType}
+          isEntityDataLoading={false}
           viewCustomPropertiesPermission={
             hasEditPermission.customProperties ?? false
           }
@@ -385,11 +426,16 @@ export const ColumnDetailPanel = ({
       </div>
     );
   };
-  const isPrimaryKey = tableConstraints.some(
-    (constraint: TableConstraint) =>
-      constraint.constraintType === 'PRIMARY_KEY' &&
-      constraint.columns?.includes(column?.name ?? '')
-  );
+  const isPrimaryKey = useMemo(() => {
+    if (!column?.name) {
+      return false;
+    }
+    return tableConstraints.some(
+      (constraint: TableConstraint) =>
+        constraint.constraintType === 'PRIMARY_KEY' &&
+        constraint.columns?.includes(column.name)
+    );
+  }, [column?.name, tableConstraints]);
 
   const columnTitle = column ? (
     <div className="title-section">
@@ -413,6 +459,7 @@ export const ColumnDetailPanel = ({
             </div>
             <div>
               <Button
+                data-testid="close-button"
                 icon={<CloseOutlined />}
                 size="small"
                 type="text"
@@ -422,12 +469,14 @@ export const ColumnDetailPanel = ({
           </div>
         </Tooltip>
         <div className="d-flex items-center gap-2">
-          <Chip
-            className="data-type-chip"
-            label={column.dataTypeDisplay}
-            size="small"
-            variant="outlined"
-          />
+          {getDataTypeDisplay(column) && (
+            <Chip
+              className="data-type-chip"
+              label={getDataTypeDisplay(column) || ''}
+              size="small"
+              variant="outlined"
+            />
+          )}
           {isPrimaryKey && (
             <Chip
               className="data-type-chip"
@@ -453,7 +502,7 @@ export const ColumnDetailPanel = ({
           <DataQualityTab
             isColumnDetailPanel
             entityFQN={column.fullyQualifiedName || ''}
-            entityType={EntityType.TABLE as string}
+            entityType={entityType as string}
           />
         );
       case EntityRightPanelTab.LINEAGE:
@@ -498,8 +547,8 @@ export const ColumnDetailPanel = ({
               onClick={handleNextColumn}
             />
             <Typography.Text className="pagination-header-text text-medium">
-              {currentColumnIndex + 1} {t('label.of-lowercase')}{' '}
-              {allColumns.length} {t('label.column-plural').toLowerCase()}
+              {actualColumnIndex + 1} {t('label.of-lowercase')}{' '}
+              {flattenedColumns.length} {t('label.column-plural').toLowerCase()}
             </Typography.Text>
           </div>
         </div>

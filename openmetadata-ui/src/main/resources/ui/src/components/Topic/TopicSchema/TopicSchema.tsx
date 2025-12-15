@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
+import { EntityTags, TagFilterOptions } from 'Models';
 import { Col, Row, Segmented, Tag, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Key } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
-import { EntityTags, TagFilterOptions } from 'Models';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
@@ -27,6 +27,7 @@ import {
 } from '../../../constants/TableKeys.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { Column } from '../../../generated/entity/data/table';
 import {
   DataTypeTopic,
   Field,
@@ -43,6 +44,7 @@ import {
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
 import {
+  findFieldByFQN,
   getAllRowKeysByKeyName,
   getExpandAllKeysToDepth,
   getSafeExpandAllKeys,
@@ -54,17 +56,18 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
-import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import Table from '../../common/Table/Table';
-import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { ColumnDetailPanel } from '../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import Table from '../../common/Table/Table';
+import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import {
   SchemaViewType,
   TopicSchemaFieldsProps,
@@ -80,6 +83,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
   );
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
   const viewTypeOptions = [
     {
       label: t('label.field-plural'),
@@ -176,6 +181,42 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
   };
 
+  const handleColumnClick = useCallback((field: Field) => {
+    setSelectedColumn(field as unknown as Column);
+    setIsColumnDetailOpen(true);
+  }, []);
+
+  const handleCloseColumnDetail = useCallback(() => {
+    setIsColumnDetailOpen(false);
+    setSelectedColumn(null);
+  }, []);
+
+  const handleColumnUpdate = useCallback(
+    (updatedColumn: Column) => {
+      if (!isUndefined(onUpdate)) {
+        const schema = cloneDeep(messageSchema);
+        const field = updatedColumn as unknown as Field;
+        updateFieldDescription<Field>(
+          field.fullyQualifiedName ?? '',
+          field.description ?? '',
+          schema?.schemaFields
+        );
+        updateFieldTags<Field>(
+          field.fullyQualifiedName ?? '',
+          field.tags ?? [],
+          schema?.schemaFields
+        );
+        onUpdate({ ...topicDetails, messageSchema: schema });
+      }
+      setSelectedColumn(updatedColumn);
+    },
+    [messageSchema, topicDetails, onUpdate]
+  );
+
+  const handleColumnNavigate = useCallback((column: Column) => {
+    setSelectedColumn(column);
+  }, []);
+
   const toggleExpandAll = () => {
     if (expandedRowKeys.length < schemaAllRowKeys.length) {
       const safeKeys = getSafeExpandAllKeys(
@@ -195,7 +236,23 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderSchemaName = useCallback(
     (_: unknown, record: Field) => (
-      <div className="d-inline-flex w-max-90 vertical-align-inherit">
+      <div
+        className="d-inline-flex w-max-90 vertical-align-inherit"
+        data-testid="column-name"
+        style={{ cursor: isVersionView ? 'default' : 'pointer' }}
+        onClick={(e) => {
+          if (isVersionView) {
+            return;
+          }
+          // Don't open detail panel if clicking on edit button or link
+          if (
+            (e.target as HTMLElement).closest('button') ||
+            (e.target as HTMLElement).closest('a')
+          ) {
+            return;
+          }
+          handleColumnClick(record);
+        }}>
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
@@ -207,7 +264,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         </Tooltip>
       </div>
     ),
-    [isVersionView]
+    [isVersionView, handleColumnClick]
   );
 
   const renderDataType = useCallback(
@@ -453,6 +510,60 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           />
         </EntityAttachmentProvider>
       )}
+
+      <ColumnDetailPanel
+        allColumns={
+          (messageSchema?.schemaFields ?? []).map(
+            (field) => field as unknown as Column
+          ) as Column[]
+        }
+        column={selectedColumn}
+        entityType={EntityType.TOPIC}
+        hasEditPermission={{
+          tags: hasTagEditAccess,
+          glossaryTerms: hasGlossaryTermEditAccess,
+          description: hasDescriptionEditAccess,
+          viewAllPermission: permissions.ViewAll,
+          customProperties: false,
+        }}
+        isOpen={isColumnDetailOpen}
+        tableFqn={entityFqn}
+        updateColumnDescription={async (fqn, description) => {
+          if (!isUndefined(onUpdate)) {
+            const schema = cloneDeep(messageSchema);
+            updateFieldDescription<Field>(
+              fqn,
+              description,
+              schema?.schemaFields
+            );
+            await onUpdate({ ...topicDetails, messageSchema: schema });
+            // Find and return the updated field
+            const updatedField = findFieldByFQN<Field>(
+              schema?.schemaFields ?? [],
+              fqn
+            );
+            return updatedField as unknown as Column;
+          }
+          return selectedColumn as Column;
+        }}
+        updateColumnTags={async (fqn, tags) => {
+          if (!isUndefined(onUpdate)) {
+            const schema = cloneDeep(messageSchema);
+            updateFieldTags<Field>(fqn, tags ?? [], schema?.schemaFields);
+            await onUpdate({ ...topicDetails, messageSchema: schema });
+            // Find and return the updated field
+            const updatedField = findFieldByFQN<Field>(
+              schema?.schemaFields ?? [],
+              fqn
+            );
+            return updatedField as unknown as Column;
+          }
+          return selectedColumn as Column;
+        }}
+        onClose={handleCloseColumnDetail}
+        onColumnUpdate={handleColumnUpdate}
+        onNavigate={handleColumnNavigate}
+      />
     </Row>
   );
 };

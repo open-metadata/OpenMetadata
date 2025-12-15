@@ -10,18 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityTags, TagFilterOptions } from 'Models';
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
-import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../../../constants/TableKeys.constants';
+import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import { EntityType, TabSpecificField } from '../../../../../enums/entity.enum';
 import {
   Column,
@@ -44,12 +44,8 @@ import {
   searchTagInData,
 } from '../../../../../utils/TableTags/TableTags.utils';
 import { pruneEmptyChildren } from '../../../../../utils/TableUtils';
-import DisplayName from '../../../../common/DisplayName/DisplayName';
-import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../../../common/Table/Table';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericProvider';
+import { ColumnDetailPanel } from '../../../../Database/ColumnDetailPanel/ColumnDetailPanel.component';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
@@ -58,11 +54,18 @@ import {
   EntityNameWithAdditionFields,
 } from '../../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import DisplayName from '../../../../common/DisplayName/DisplayName';
+import { EntityAttachmentProvider } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
+import Table from '../../../../common/Table/Table';
 
 const ModelTab = () => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const [searchText, setSearchText] = useState('');
+  const [selectedColumn, setSelectedColumn] = useState<Column | null>(null);
+  const [isColumnDetailOpen, setIsColumnDetailOpen] = useState(false);
 
   const [paginatedColumns, setPaginatedColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true);
@@ -111,7 +114,7 @@ const ModelTab = () => {
 
         setPaginatedColumns(pruneEmptyChildren(response.data) || []);
         handlePagingChange(response.paging);
-      } catch (error) {
+      } catch {
         setPaginatedColumns([]);
         handlePagingChange({
           offset: 1,
@@ -244,6 +247,31 @@ const ModelTab = () => {
     );
   };
 
+  const handleColumnClick = useCallback((column: Column) => {
+    setSelectedColumn(column);
+    setIsColumnDetailOpen(true);
+  }, []);
+
+  const handleCloseColumnDetail = useCallback(() => {
+    setIsColumnDetailOpen(false);
+    setSelectedColumn(null);
+  }, []);
+
+  const handleColumnUpdate = useCallback((updatedColumn: Column) => {
+    setPaginatedColumns((prev) =>
+      prev.map((col) =>
+        col.fullyQualifiedName === updatedColumn.fullyQualifiedName
+          ? updatedColumn
+          : col
+      )
+    );
+    setSelectedColumn(updatedColumn);
+  }, []);
+
+  const handleColumnNavigate = useCallback((column: Column) => {
+    setSelectedColumn(column);
+  }, []);
+
   const searchProps = useMemo(
     () => ({
       placeholder: t('message.find-in-table'),
@@ -292,13 +320,27 @@ const ModelTab = () => {
           const { displayName } = record;
 
           return (
-            <DisplayName
-              displayName={displayName}
-              hasEditPermission={editDisplayNamePermission}
-              id={record.fullyQualifiedName ?? ''}
-              name={record.name}
-              onEditDisplayName={handleEditColumnData}
-            />
+            <div
+              data-testid="column-name"
+              style={{ cursor: 'pointer' }}
+              onClick={(e) => {
+                // Don't open detail panel if clicking on edit button or link
+                if (
+                  (e.target as HTMLElement).closest('button') ||
+                  (e.target as HTMLElement).closest('a')
+                ) {
+                  return;
+                }
+                handleColumnClick(record);
+              }}>
+              <DisplayName
+                displayName={displayName}
+                hasEditPermission={editDisplayNamePermission}
+                id={record.fullyQualifiedName ?? ''}
+                name={record.name}
+                onEditDisplayName={handleEditColumnData}
+              />
+            </div>
           );
         },
       },
@@ -389,6 +431,9 @@ const ModelTab = () => {
       editColumnDescription,
       hasEditDescriptionPermission,
       handleFieldTagsChange,
+      handleColumnClick,
+      editDisplayNamePermission,
+      handleEditColumnData,
     ]
   );
 
@@ -431,6 +476,34 @@ const ModelTab = () => {
           />
         </EntityAttachmentProvider>
       )}
+
+      <ColumnDetailPanel
+        allColumns={paginatedColumns}
+        column={selectedColumn}
+        entityType={EntityType.DASHBOARD_DATA_MODEL}
+        hasEditPermission={{
+          tags: hasEditTagsPermission,
+          glossaryTerms: hasEditGlossaryTermPermission,
+          description: hasEditDescriptionPermission,
+          viewAllPermission: permissions.ViewAll,
+          customProperties: false,
+        }}
+        isOpen={isColumnDetailOpen}
+        tableFqn={entityFqn ?? ''}
+        updateColumnDescription={async (fqn, description) => {
+          const response = await updateDataModelColumn(fqn, { description });
+
+          return response;
+        }}
+        updateColumnTags={async (fqn, tags) => {
+          const response = await updateDataModelColumn(fqn, { tags });
+
+          return response;
+        }}
+        onClose={handleCloseColumnDetail}
+        onColumnUpdate={handleColumnUpdate}
+        onNavigate={handleColumnNavigate}
+      />
     </>
   );
 };

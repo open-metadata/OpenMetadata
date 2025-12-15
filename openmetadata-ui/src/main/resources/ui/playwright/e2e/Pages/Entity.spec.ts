@@ -415,8 +415,11 @@ entities.forEach((EntityClass) => {
             const tagOption = page.getByTitle('SpecialCategory');
             await tagOption.click();
 
+            // Wait for update response - could be columns endpoint or entity-specific endpoint
             const updateResponse = page.waitForResponse(
-              '/api/v1/columns/name/*'
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
             );
             await page.getByRole('button', { name: 'Update' }).click();
             await updateResponse;
@@ -428,9 +431,218 @@ entities.forEach((EntityClass) => {
             ).toBeVisible();
 
             // Close panel
-            const closeButton = panelContainer.locator(
-              '.anticon anticon-close'
+            await panelContainer.getByTestId('close-button').click();
+
+            await expect(
+              page.locator('.column-detail-panel')
+            ).not.toBeVisible();
+          }
+        );
+      });
+    }
+
+    // Run only if entity has children
+    if (!isUndefined(entity.childrenTabId)) {
+      test('Tag and Glossary Term preservation in column detail panel', async ({
+        page,
+      }) => {
+        test.slow(true);
+
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        // Test that updating tags preserves glossary terms and vice versa
+        await test.step(
+          'Verify tag updates preserve glossary terms',
+          async () => {
+            // Open column detail panel
+            const columnName = page
+              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+              .getByTestId('column-name');
+            await columnName.scrollIntoViewIfNeeded();
+            await columnName.click();
+            await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+            const panelContainer = page.locator('.column-detail-panel');
+
+            // Step 1: Add a glossary term first
+            await panelContainer
+              .locator('[data-testid="edit-glossary-terms"]')
+              .click();
+            await page
+              .locator('[data-testid="selectable-list"]')
+              .waitFor({ state: 'visible' });
+
+            const searchBar = page.locator(
+              '[data-testid="glossary-term-select-search-bar"]'
             );
+            await searchBar.fill(
+              EntityDataClass.glossaryTerm1.responseData.displayName
+            );
+            await page.waitForSelector('[data-testid="loader"]', {
+              state: 'detached',
+            });
+
+            const termOption = page.locator('.ant-list-item').filter({
+              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
+            });
+            await termOption.click();
+
+            const glossaryUpdateResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            );
+            await page.getByRole('button', { name: 'Update' }).click();
+            await glossaryUpdateResponse;
+
+            // Verify glossary term is added
+            await expect(
+              panelContainer.getByTestId(
+                `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+            ).toBeVisible();
+
+            // Step 2: Add a classification tag (should preserve glossary term)
+            await panelContainer
+              .locator('[data-testid="edit-icon-tags"]')
+              .click();
+            await page
+              .locator('[data-testid="selectable-list"]')
+              .waitFor({ state: 'visible' });
+
+            const searchTag = page.waitForResponse(
+              '/api/v1/search/query?q=*index=tag_search_index*'
+            );
+            await page
+              .locator('[data-testid="tag-select-search-bar"]')
+              .fill('PersonalData.SpecialCategory');
+            await searchTag;
+            await page.waitForSelector('[data-testid="loader"]', {
+              state: 'detached',
+            });
+
+            const tagOption = page.getByTitle('SpecialCategory');
+            await tagOption.click();
+
+            const tagUpdateResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
+            );
+            await page.getByRole('button', { name: 'Update' }).click();
+            await tagUpdateResponse;
+
+            // Verify both tag and glossary term are still present
+            await expect(
+              page
+                .locator('.tags-list')
+                .getByTestId('tag-PersonalData.SpecialCategory')
+            ).toBeVisible();
+            await expect(
+              panelContainer.getByTestId(
+                `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+            ).toBeVisible();
+
+            // Close panel
+            await panelContainer.getByTestId('close-button').click();
+            await expect(
+              page.locator('.column-detail-panel')
+            ).not.toBeVisible();
+          }
+        );
+      });
+
+      test('Column detail panel data type display and nested column navigation', async ({
+        page,
+      }) => {
+        test.slow(true);
+
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await test.step(
+          'Verify data type display and nested column counting',
+          async () => {
+            // Open column detail panel
+            const columnName = page
+              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+              .getByTestId('column-name');
+            await columnName.scrollIntoViewIfNeeded();
+            await columnName.click();
+            await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+            const panelContainer = page.locator('.column-detail-panel');
+
+            // Verify data type is displayed (if available)
+            const dataTypeChip = panelContainer.locator('.data-type-chip');
+            const hasDataType = (await dataTypeChip.count()) > 0;
+
+            if (hasDataType) {
+              // If data type chip exists, it should have content
+              const dataTypeText = await dataTypeChip.textContent();
+              expect(dataTypeText).toBeTruthy();
+              expect(dataTypeText?.trim().length).toBeGreaterThan(0);
+            }
+
+            // Verify pagination shows correct count (including nested columns)
+            const paginationText = panelContainer.locator(
+              '.pagination-header-text'
+            );
+            const paginationContent = await paginationText.textContent();
+
+            // Should match format: "X of Y columns"
+            expect(paginationContent).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
+
+            // Extract numbers from pagination text
+            const match = paginationContent?.match(/(\d+)\s+of\s+(\d+)/i);
+            if (match) {
+              const currentIndex = parseInt(match[1], 10);
+              const totalCount = parseInt(match[2], 10);
+
+              expect(currentIndex).toBeGreaterThan(0);
+              expect(totalCount).toBeGreaterThanOrEqual(currentIndex);
+
+              // If there are multiple columns, test navigation
+              if (totalCount > 1) {
+                const nextButton = panelContainer
+                  .locator('.navigation-container')
+                  .locator('button')
+                  .nth(1);
+
+                if (await nextButton.isEnabled()) {
+                  // Navigate to next column
+                  await nextButton.click();
+                  await page.waitForLoadState('networkidle');
+
+                  // Verify pagination updated
+                  const updatedPagination = await paginationText.textContent();
+                  const updatedMatch =
+                    updatedPagination?.match(/(\d+)\s+of\s+(\d+)/i);
+
+                  if (updatedMatch) {
+                    const newIndex = parseInt(updatedMatch[1], 10);
+                    expect(newIndex).toBe(currentIndex + 1);
+                    expect(parseInt(updatedMatch[2], 10)).toBe(totalCount);
+                  }
+
+                  // Navigate back
+                  const prevButton = panelContainer
+                    .locator('.navigation-container')
+                    .locator('button')
+                    .nth(0);
+
+                  await prevButton.click();
+                  await page.waitForLoadState('networkidle');
+
+                  // Verify we're back
+                  const finalPagination = await paginationText.textContent();
+                  expect(finalPagination).toBe(paginationContent);
+                }
+              }
+            }
+
+            // Close panel
+            const closeButton = panelContainer.locator('button[type="text"]');
             await closeButton.click();
             await expect(
               page.locator('.column-detail-panel')
@@ -492,8 +704,11 @@ entities.forEach((EntityClass) => {
             });
             await termOption.click();
 
+            // Wait for update response - could be columns endpoint or entity-specific endpoint
             const updateResponse = page.waitForResponse(
-              '/api/v1/columns/name/*'
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes(`/api/v1/${entity.endpoint}/`)
             );
             await page.getByRole('button', { name: 'Update' }).click();
             await updateResponse;
@@ -505,10 +720,7 @@ entities.forEach((EntityClass) => {
             ).toBeVisible();
 
             // Close panel
-            const closeButton = panelContainer.locator(
-              '.anticon anticon-close'
-            );
-            await closeButton.click();
+            await panelContainer.getByTestId('close-button').click();
             await expect(
               page.locator('.column-detail-panel')
             ).not.toBeVisible();
@@ -557,7 +769,10 @@ entities.forEach((EntityClass) => {
 
             // Verify panel displays correct column information
             await expect(page.getByTestId('entity-link')).toBeVisible();
-            await expect(page.locator('.data-type-chip')).toBeVisible();
+            // Verify data type chip exists (may not be visible if data type is not available)
+            const dataTypeChip = page.locator('.data-type-chip');
+            // Data type chip should be attached to DOM (may be empty for some entity types)
+            await expect(dataTypeChip.first()).toBeAttached();
 
             // Verify Overview tab is active by default
             await expect(page.getByTestId('overview-tab')).toHaveClass(
@@ -603,9 +818,12 @@ entities.forEach((EntityClass) => {
               /active/
             );
 
-            // Test column navigation with arrow buttons
+            // Test column navigation with arrow buttons and verify nested column counting
             const paginationText = page.locator('.pagination-header-text');
             const initialText = await paginationText.textContent();
+
+            // Verify pagination text format: "X of Y columns" (includes nested columns)
+            expect(initialText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
 
             const nextButton = page
               .locator('.navigation-container')
@@ -618,6 +836,8 @@ entities.forEach((EntityClass) => {
 
               const updatedText = await paginationText.textContent();
               expect(updatedText).not.toBe(initialText);
+              // Verify pagination still shows correct format after navigation
+              expect(updatedText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
               await expect(page.getByTestId('entity-link')).toBeVisible();
 
               // Navigate back to previous column
@@ -630,6 +850,10 @@ entities.forEach((EntityClass) => {
               await prevButton.click();
               await page.waitForLoadState('networkidle');
               await expect(page.getByTestId('entity-link')).toBeVisible();
+
+              // Verify we're back to the original column
+              const finalText = await paginationText.textContent();
+              expect(finalText).toBe(initialText);
             }
 
             // Close panel

@@ -705,19 +705,9 @@ const SchemaTable = () => {
     setSelectedColumn(updatedColumn);
   };
 
-  const handleColumnNavigate = (column: Column, index: number) => {
+  const handleColumnNavigate = (column: Column) => {
     setSelectedColumn(column);
   };
-
-  const currentColumnIndex = useMemo(() => {
-    if (!selectedColumn) {
-      return 0;
-    }
-
-    return tableColumns.findIndex(
-      (col) => col.fullyQualifiedName === selectedColumn.fullyQualifiedName
-    );
-  }, [selectedColumn, tableColumns]);
 
   useEffect(() => {
     setExpandedRowKeys(
@@ -839,7 +829,6 @@ const SchemaTable = () => {
       <ColumnDetailPanel
         allColumns={tableColumns}
         column={selectedColumn}
-        currentColumnIndex={currentColumnIndex}
         hasEditPermission={{
           tags: editTagsPermission,
           glossaryTerms: editGlossaryTermsPermission,

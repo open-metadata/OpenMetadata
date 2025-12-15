@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 
 export interface ColumnDetailPanelProps {
@@ -18,6 +19,11 @@ export interface ColumnDetailPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onColumnUpdate?: (updatedColumn: Column) => void;
+  updateColumnDescription?: (
+    fqn: string,
+    description: string
+  ) => Promise<Column>;
+  updateColumnTags?: (fqn: string, tags: Column['tags']) => Promise<Column>;
   hasEditPermission?: {
     tags?: boolean;
     glossaryTerms?: boolean;
@@ -26,9 +32,9 @@ export interface ColumnDetailPanelProps {
     customProperties?: boolean;
   };
   allColumns?: Column[];
-  currentColumnIndex?: number;
-  onNavigate?: (column: Column, index: number) => void;
+  onNavigate?: (column: Column, index?: number) => void;
   tableConstraints?: TableConstraint[];
+  entityType?: EntityType;
 }
 
 export interface TestCaseStatusCounts {

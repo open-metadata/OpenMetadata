@@ -16,6 +16,7 @@ import {
   isArray,
   isNil,
   isUndefined,
+  lowerCase,
   omit,
   omitBy,
   startCase,
@@ -32,8 +33,8 @@ import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-test.svg'
 import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
 import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
 import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
-import { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
+import { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import { Table } from '../../generated/entity/data/table';
@@ -49,8 +50,8 @@ import { TableSearchSource } from '../../interface/search.interface';
 import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
 import { getEntryFormattedValue } from '../DataInsightUtils';
-import { formatDate } from '../date-time/DateTimeUtils';
 import { generateEntityLink } from '../TableUtils';
+import { formatDate } from '../date-time/DateTimeUtils';
 
 /**
  * Builds the parameters for a test case search based on the given filters.
@@ -460,6 +461,39 @@ export type TestCaseCountByStatus = {
   failed: number;
   aborted: number;
   total: number;
+};
+
+/**
+ * Calculate test case status counts from test cases array
+ * @param testCases Array of test cases with testCaseResult
+ * @returns Object with counts for success, failed, aborted, and total
+ */
+export const calculateTestCaseStatusCounts = (
+  testCases: Array<{
+    testCaseResult?: { testCaseStatus?: string };
+  }>
+): TestCaseCountByStatus => {
+  return (testCases || []).reduce(
+    (acc, testCase) => {
+      const status = lowerCase(testCase.testCaseResult?.testCaseStatus);
+      if (status) {
+        switch (status) {
+          case 'success':
+            acc.success++;
+            break;
+          case 'failed':
+            acc.failed++;
+            break;
+          case 'aborted':
+            acc.aborted++;
+            break;
+        }
+        acc.total++;
+      }
+      return acc;
+    },
+    { success: 0, failed: 0, aborted: 0, total: 0 }
+  );
 };
 
 export const aggregateTestResultsByEntity = (

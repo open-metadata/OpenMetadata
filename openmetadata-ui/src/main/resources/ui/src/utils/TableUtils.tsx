@@ -12,6 +12,7 @@
  */
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
+import { EntityTags } from 'Models';
 import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -26,8 +27,7 @@ import {
   uniqueId,
   upperCase,
 } from 'lodash';
-import { EntityTags } from 'Models';
-import { CSSProperties, Fragment, lazy, Suspense } from 'react';
+import { CSSProperties, Fragment, Suspense, lazy } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
@@ -125,6 +125,16 @@ import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
+import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
+import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
+import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
+import TableQueries from '../components/Database/TableQueries/TableQueries';
+import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
@@ -132,23 +142,13 @@ import { ManageButtonItemLabel } from '../components/common/ManageButtonContentI
 import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
-import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
-import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
-import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
-import TableQueries from '../components/Database/TableQueries/TableQueries';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
-import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
+import { ExportTypes } from '../constants/Export.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
-import { ExportTypes } from '../constants/Export.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
@@ -163,7 +163,7 @@ import {
 } from '../generated/entity/data/table';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
-import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
+import { LabelType, State, TagLabel, TagSource } from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -181,12 +181,12 @@ import {
 } from './CommonUtils';
 import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
-import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
+import { t } from './i18next/LocalUtil';
 
 const EntityLineageTab = lazy(() =>
   import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
@@ -1471,4 +1471,107 @@ export const getSafeExpandAllKeys = <
 
   // For large schemas, expand to exactly 2 levels deep
   return getExpandAllKeysToDepth(fields, 2);
+};
+
+/**
+ * Flattens a nested structure of columns/fields into a single array
+ * Recursively includes all children in the flattened result
+ */
+export const flattenColumns = <T extends { children?: T[] }>(
+  items: T[]
+): T[] => {
+  const result: T[] = [];
+  items.forEach((item) => {
+    result.push(item);
+    if (item.children && item.children.length > 0) {
+      result.push(...flattenColumns(item.children));
+    }
+  });
+  return result;
+};
+
+/**
+ * Finds a field/column by fullyQualifiedName in a nested structure
+ * Recursively searches through children
+ */
+export const findFieldByFQN = <
+  T extends { fullyQualifiedName?: string; children?: T[] }
+>(
+  items: T[],
+  targetFqn: string
+): T | undefined => {
+  for (const item of items) {
+    if (item.fullyQualifiedName === targetFqn) {
+      return item;
+    }
+    if (item.children && item.children.length > 0) {
+      const found = findFieldByFQN(item.children, targetFqn);
+      if (found) return found;
+    }
+  }
+  return undefined;
+};
+
+/**
+ * Gets the data type display value for a column/field
+ * Returns dataTypeDisplay if available, otherwise falls back to dataType
+ */
+export const getDataTypeDisplay = (
+  column: { dataTypeDisplay?: string; dataType?: string | unknown } | null
+): string | undefined => {
+  if (!column) {
+    return undefined;
+  }
+  return column.dataTypeDisplay || String(column.dataType || '');
+};
+
+/**
+ * Merge tags with glossary terms, preserving existing glossary terms
+ * Used when updating classification tags to ensure glossary terms are not lost
+ * @param columnTags Existing tags from the column
+ * @param updatedTags New tags to merge (classification tags)
+ * @returns Merged tags array with glossary terms preserved
+ */
+export const mergeTagsWithGlossary = (
+  columnTags: Column['tags'],
+  updatedTags: Column['tags']
+): Column['tags'] => {
+  const existingGlossaryTags =
+    columnTags?.filter((tag) => tag.source === TagSource.Glossary) || [];
+  const updatedTagsWithoutGlossary =
+    updatedTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
+
+  return [...updatedTagsWithoutGlossary, ...existingGlossaryTags];
+};
+
+/**
+ * Merge glossary terms with non-glossary tags
+ * Used when updating glossary terms to ensure classification tags are not lost
+ * @param columnTags Existing tags from the column
+ * @param updatedGlossaryTerms New glossary terms to merge
+ * @returns Merged tags array with classification tags preserved
+ */
+export const mergeGlossaryWithTags = (
+  columnTags: Column['tags'],
+  updatedGlossaryTerms: Column['tags']
+): Column['tags'] => {
+  const nonGlossaryTags =
+    columnTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
+
+  return [...nonGlossaryTags, ...(updatedGlossaryTerms || [])];
+};
+
+/**
+ * Find the original index of a column in the allColumns array
+ * @param column Column to find
+ * @param allColumns Array of all columns
+ * @returns Index of the column in allColumns, or -1 if not found
+ */
+export const findOriginalColumnIndex = (
+  column: Column,
+  allColumns: Column[]
+): number => {
+  return allColumns.findIndex(
+    (col) => col.fullyQualifiedName === column.fullyQualifiedName
+  );
 };
