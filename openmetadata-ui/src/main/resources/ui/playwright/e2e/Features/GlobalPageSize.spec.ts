@@ -17,6 +17,20 @@ import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 test.describe('Table & Data Model columns table pagination', () => {
+  test.beforeEach(async ({ dataConsumerPage: page }) => {
+    // Clear page size preferences to prevent carryover between tests
+    await page.evaluate(() => {
+      const preferences = localStorage.getItem('om-user-preferences');
+      if (preferences) {
+        const parsed = JSON.parse(preferences);
+        delete parsed.state?.globalPageSize;
+        delete parsed.state?.assetListPageSize;
+        delete parsed.state?.contentListPageSize;
+        localStorage.setItem('om-user-preferences', JSON.stringify(parsed));
+      }
+    });
+  });
+
   test('Page size should persist across different pages', async ({
     dataConsumerPage: page,
   }) => {
@@ -35,6 +49,9 @@ test.describe('Table & Data Model columns table pagination', () => {
     // Change page size to 15
     await page.getByTestId('page-size-selection-dropdown').click();
     await page.getByRole('menuitem', { name: '15 / Page' }).click();
+
+    // Wait for persistence to save to localStorage
+    await page.waitForTimeout(1000);
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',

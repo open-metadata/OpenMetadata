@@ -48,6 +48,20 @@ test.describe('Dashboards', () => {
     await afterAction();
   });
 
+  test.beforeEach(async ({ page }) => {
+    // Clear page size preferences to prevent carryover between tests
+    await page.evaluate(() => {
+      const preferences = localStorage.getItem('om-user-preferences');
+      if (preferences) {
+        const parsed = JSON.parse(preferences);
+        delete parsed.state?.globalPageSize;
+        delete parsed.state?.assetListPageSize;
+        delete parsed.state?.contentListPageSize;
+        localStorage.setItem('om-user-preferences', JSON.stringify(parsed));
+      }
+    });
+  });
+
   test.beforeEach('Visit home page', async ({ dataConsumerPage: page }) => {
     await redirectToHomePage(page);
   });
@@ -215,6 +229,8 @@ test.describe('Data Model', () => {
     });
 
     // Should not show expand icon for non-nested columns
+    await page.waitForTimeout(1000);
+
     await expect(
       page
         .locator('[data-row-key="revenue_metrics_0031"]')

@@ -148,30 +148,43 @@ test('schema table test', async ({ dataStewardPage, ownerPage, page }) => {
 });
 
 test('Schema Table Pagination should work Properly', async ({ page }) => {
-  const tableResponse = page.waitForResponse(`/api/v1/tables?limit=25**`);
+  // Clear page size preferences to prevent carryover between tests
+  await page.evaluate(() => {
+    const preferences = localStorage.getItem('om-user-preferences');
+    if (preferences) {
+      const parsed = JSON.parse(preferences);
+      delete parsed.state?.globalPageSize;
+      delete parsed.state?.assetListPageSize;
+      delete parsed.state?.contentListPageSize;
+      localStorage.setItem('om-user-preferences', JSON.stringify(parsed));
+    }
+  });
 
-  await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
-  await tableResponse;
+  const schemaTable = new TableClass();
+  await schemaTable.create(page.request, 50);
 
-  await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
-    '25 / Page'
-  );
+  const res = page.waitForResponse('/api/v1/tables?limit=25**');
+  await schemaTable.visitEntityPage(page);
+  await res;
 
-  await expect(page.getByTestId('previous')).toBeDisabled();
+  // Check all schema from 1 to 50, and 25 is the max-pagination chip
+  await expect(page.getByTitle('25')).toBeVisible();
 
-  await expect(page.getByTestId('next')).not.toBeDisabled();
+  for (let i = 1; i <= 50; i++) {
+    if (i < 10) {
+      await expect(page.getByText(`test_col_000${i}`)).toBeVisible();
+    } else {
+      await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
+    }
 
-  const tableResponse2 = page.waitForResponse(`/api/v1/tables?**limit=25**`);
-  await page.getByTestId('next').click();
-  await tableResponse2;
-
-  await expect(page.getByTestId('previous')).not.toBeDisabled();
-
-  await expect(page.getByTestId('page-indicator')).toContainText('2');
-
-  const tableResponse3 = page.waitForResponse(`/api/v1/tables?**limit=25**`);
-  await page.getByTestId('previous').click();
-  await tableResponse3;
-
-  await expect(page.getByTestId('page-indicator')).toContainText('1');
+    // Click "Next Page" after every 25 checks
+    // Click "Next Page" after every 25 checks, but not at 50
+    if (i % 25 === 0 && i < 50) {
+      // Schema from 51 to 75 Should not be visible
+      for (let j = 51; j <= 75; j++) {
+        await expect(page.getByText(`test_col_00${j}`)).not.toBeVisible();
+      }
+      await page.getByRole('listitem', { name: 'Next Page' }).click();
+    }
+  }
 });

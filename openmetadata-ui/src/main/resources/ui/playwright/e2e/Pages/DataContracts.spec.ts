@@ -123,6 +123,17 @@ test.describe('Data Contracts', () => {
   });
 
   test.beforeEach('Redirect to Home Page', async ({ page }) => {
+    // Clear page size preferences to prevent carryover between tests
+    await page.evaluate(() => {
+      const preferences = localStorage.getItem('om-user-preferences');
+      if (preferences) {
+        const parsed = JSON.parse(preferences);
+        delete parsed.state?.globalPageSize;
+        delete parsed.state?.assetListPageSize;
+        delete parsed.state?.contentListPageSize;
+        localStorage.setItem('om-user-preferences', JSON.stringify(parsed));
+      }
+    });
     await redirectToHomePage(page);
   });
 
