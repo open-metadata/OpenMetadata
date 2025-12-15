@@ -608,8 +608,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     App app = getInternal(uriInfo, securityContext, id, fieldsParam, include);
-    return ApplicationHandler.getInstance()
-        .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
+    if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
+      return ApplicationHandler.getInstance()
+          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
+    } else {
+      return app;
+    }
   }
 
   @GET
@@ -646,8 +650,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     App app = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
-    return ApplicationHandler.getInstance()
-        .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
+    if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
+      return ApplicationHandler.getInstance()
+          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
+    } else {
+      return app;
+    }
   }
 
   @GET
