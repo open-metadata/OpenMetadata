@@ -95,31 +95,52 @@ jest.mock('../../../utils/CommonUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
-  getAllRowKeysByKeyName: jest.fn(),
-  pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
-  makeData: jest.fn().mockImplementation((value) => value),
-  prepareConstraintIcon: jest.fn(),
-  updateFieldTags: jest.fn(),
-  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
-    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
-      expandable ? (
-        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
-          ExpandIcon
-        </button>
-      ) : null
-    ),
-  })),
-  getTableColumnConfigSelections: jest
-    .fn()
-    .mockReturnValue([
-      'name',
-      'description',
-      'dataTypeDisplay',
-      'tags',
-      'glossary',
-    ]),
-}));
+jest.mock('../../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../../utils/TableUtils');
+  const flattenColumnsMock = (items: any[]): any[] => {
+    if (!items || items.length === 0) {
+      return [];
+    }
+    const result: any[] = [];
+    items.forEach((item) => {
+      result.push(item);
+      if (item.children && item.children.length > 0) {
+        result.push(...flattenColumnsMock(item.children));
+      }
+    });
+    return result;
+  };
+
+  return {
+    ...actual,
+    getAllRowKeysByKeyName: jest.fn(),
+    pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
+    makeData: jest.fn().mockImplementation((value) => value),
+    prepareConstraintIcon: jest.fn(),
+    updateFieldTags: jest.fn(),
+    flattenColumns: jest.fn().mockImplementation(flattenColumnsMock),
+    getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+      expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+        expandable ? (
+          <button
+            data-testid="expand-icon"
+            onClick={(e) => onExpand(record, e)}>
+            ExpandIcon
+          </button>
+        ) : null
+      ),
+    })),
+    getTableColumnConfigSelections: jest
+      .fn()
+      .mockReturnValue([
+        'name',
+        'description',
+        'dataTypeDisplay',
+        'tags',
+        'glossary',
+      ]),
+  };
+});
 
 jest.mock(
   '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
