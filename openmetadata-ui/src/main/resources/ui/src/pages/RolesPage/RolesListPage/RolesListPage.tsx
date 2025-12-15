@@ -152,7 +152,7 @@ const RolesListPage = () => {
                     {getEntityName(policy)}
                   </Link>
                 ) : (
-                  <Tooltip key={uniqueId()} title={NO_PERMISSION_TO_VIEW}>
+                  <Tooltip key={uniqueId()} title={t(NO_PERMISSION_TO_VIEW)}>
                     {getEntityName(policy)}
                   </Tooltip>
                 )
@@ -174,7 +174,7 @@ const RolesListPage = () => {
                         ) : (
                           <Tooltip
                             key={uniqueId()}
-                            title={NO_PERMISSION_TO_VIEW}>
+                            title={t(NO_PERMISSION_TO_VIEW)}>
                             {getEntityName(policy)}
                           </Tooltip>
                         )
@@ -209,7 +209,7 @@ const RolesListPage = () => {
                   ? t('label.delete-entity', {
                       entity: t('label.role-plural').toString(),
                     })
-                  : NO_PERMISSION_FOR_ACTION
+                  : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}

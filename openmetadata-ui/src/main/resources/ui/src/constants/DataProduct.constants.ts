@@ -12,7 +12,6 @@
  */
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
-import i18n from '../utils/i18next/LocalUtil';
 
 export const DATAPRODUCT_DEFAULT_QUICK_FILTERS = [
   EntityFields.OWNERS,
@@ -23,19 +22,19 @@ export const DATAPRODUCT_DEFAULT_QUICK_FILTERS = [
 
 export const DATAPRODUCT_FILTERS = [
   {
-    label: i18n.t('label.owner-plural'),
+    label: 'label.owner-plural',
     key: EntityFields.OWNERS,
   },
   {
-    label: i18n.t('label.domain-plural'),
+    label: 'label.domain-plural',
     key: EntityFields.DOMAINS,
   },
   {
-    label: i18n.t('label.tag-plural'),
+    label: 'label.tag-plural',
     key: EntityFields.CLASSIFICATION_TAGS,
   },
   {
-    label: i18n.t('label.glossary-term-plural'),
+    label: 'label.glossary-term-plural',
     key: EntityFields.GLOSSARY_TERMS,
   },
 ];

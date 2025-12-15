@@ -146,7 +146,6 @@ const AssetsTabs = forwardRef(
       handlePageChange,
       handlePageSizeChange,
       handlePagingChange,
-      showPagination,
     } = usePaging();
 
     const isRemovable = useMemo(
@@ -198,13 +197,16 @@ const AssetsTabs = forwardRef(
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return getTermQuery(
-            { 'domains.fullyQualifiedName': entityFqn ?? '' },
-            'must',
-            undefined,
-            {
-              mustNotTerms: { entityType: 'dataProduct' },
-            }
+          return (
+            queryFilter ??
+            getTermQuery(
+              { 'domains.fullyQualifiedName': entityFqn ?? '' },
+              'must',
+              undefined,
+              {
+                mustNotTerms: { entityType: 'dataProduct' },
+              }
+            )
           );
         case AssetsOfEntity.DATA_PRODUCT:
           return getTermQuery({
@@ -572,19 +574,17 @@ const AssetsTabs = forwardRef(
                 }
               />
             ))}
-            {showPagination && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                isLoading={isLoading}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                  handlePageChange(currentPage)
-                }
-                onShowSizeChange={handlePageSizeChange}
-              />
-            )}
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              isLoading={isLoading}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                handlePageChange(currentPage)
+              }
+              onShowSizeChange={handlePageSizeChange}
+            />
           </div>
         ) : (
           <div className="h-full">{assetErrorPlaceHolder}</div>
@@ -601,7 +601,6 @@ const AssetsTabs = forwardRef(
         selectedItems,
         setSelectedCard,
         handlePageChange,
-        showPagination,
         handlePageSizeChange,
         handleCheckboxChange,
       ]

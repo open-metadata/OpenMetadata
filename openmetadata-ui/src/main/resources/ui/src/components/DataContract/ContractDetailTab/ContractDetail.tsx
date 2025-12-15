@@ -61,7 +61,7 @@ import { getPopupContainer } from '../../../utils/formUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
@@ -429,11 +429,11 @@ const ContractDetail: React.FC<{
 
   if (!contract) {
     return (
-      <ErrorPlaceHolderNew
+      <ErrorPlaceHolder
         icon={
           <EmptyContractIcon className="empty-contract-icon" height={140} />
         }
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        type={ERROR_PLACEHOLDER_TYPE.MUI_CREATE}>
         <Typography.Paragraph className="m-t-md w-80" type="secondary">
           {t('message.create-contract-description')}
         </Typography.Paragraph>
@@ -446,7 +446,7 @@ const ContractDetail: React.FC<{
           onClick={onEdit}>
           {t('label.add-entity', { entity: t('label.contract') })}
         </Button>
-      </ErrorPlaceHolderNew>
+      </ErrorPlaceHolder>
     );
   }
 

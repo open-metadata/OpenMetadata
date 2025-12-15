@@ -223,7 +223,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                   ? t('label.edit-entity', {
                       entity: t('label.property'),
                     })
-                  : NO_PERMISSION_FOR_ACTION
+                  : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
                 className="cursor-pointer p-0"
@@ -244,7 +244,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                   ? t('label.delete-entity', {
                       entity: t('label.property'),
                     })
-                  : NO_PERMISSION_FOR_ACTION
+                  : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
                 className="cursor-pointer p-0"
