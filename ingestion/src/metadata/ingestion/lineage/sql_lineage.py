@@ -86,7 +86,7 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
     return None
 
 
-table_entity_search_cache = LRUCache(LRU_CACHE_SIZE)
+search_cache = LRUCache(LRU_CACHE_SIZE)
 database_service_type_cache = LRUCache(LRU_CACHE_SIZE)
 
 
@@ -204,8 +204,8 @@ def search_table_entities(
         )
 
         search_tuple = (service_name, normalized_db, normalized_schema, table)
-        if search_tuple in table_entity_search_cache:
-            result = table_entity_search_cache.get(search_tuple)
+        if search_tuple in search_cache:
+            result = search_cache.get(search_tuple)
             if result:
                 return result
 
@@ -240,7 +240,7 @@ def search_table_entities(
                         table_entities.append(table_entity)
 
             # added the search tuple to the cache
-            table_entity_search_cache.put(search_tuple, table_entities)
+            search_cache.put(search_tuple, table_entities)
             if table_entities:
                 return table_entities
 
