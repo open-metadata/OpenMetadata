@@ -952,7 +952,16 @@ class DbtSource(DbtServiceSource):
                     timeout_seconds=self.source_config.parsingTimeoutLimit,
                     lineage_source=LineageSource.DbtLineage,
                 )
-                yield from lineages or []
+                for lineage in lineages or []:
+                    if lineage.right is not None:
+                        yield Either(
+                            right=OMetaLineageRequest(
+                                lineage_request=lineage.right,
+                                override_lineage=self.source_config.overrideLineage,
+                            )
+                        )
+                    else:
+                        yield lineage
 
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(
@@ -988,25 +997,41 @@ class DbtSource(DbtServiceSource):
                     entity_list=from_es_result, fetch_multiple_entities=False
                 )
                 if from_entity and to_entity:
-                    yield Either(
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=Uuid(from_entity.id.root),
-                                    type="table",
-                                ),
-                                toEntity=EntityReference(
-                                    id=Uuid(to_entity.id.root),
-                                    type=ExposureTypeMap[manifest_node.type.value][
-                                        "entity_type_name"
-                                    ],
-                                ),
-                                lineageDetails=LineageDetails(
-                                    source=LineageSource.DbtLineage
-                                ),
-                            )
+                    lineage_request = AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=Uuid(from_entity.id.root),
+                                type="table",
+                            ),
+                            toEntity=EntityReference(
+                                id=Uuid(to_entity.id.root),
+                                type=ExposureTypeMap[manifest_node.type.value][
+                                    "entity_type_name"
+                                ],
+                            ),
+                            lineageDetails=LineageDetails(
+                                source=LineageSource.DbtLineage
+                            ),
                         )
                     )
+                    if lineage_request is not None:
+                        yield Either(
+                            right=OMetaLineageRequest(
+                                lineage_request=lineage_request,
+                                override_lineage=self.source_config.overrideLineage,
+                            )
+                        )
+                    else:
+                        yield Either(
+                            left=StackTraceError(
+                                name="DBT Exposure lineage",
+                                error=(
+                                    "Error to create DBT Exposure lineage",
+                                    f"{str(exposure_spec)[:20]}...",
+                                ),
+                                stackTrace=traceback.format_exc(),
+                            )
+                        )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
