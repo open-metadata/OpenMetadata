@@ -447,10 +447,10 @@
       <artifactId>everit-json-schema</artifactId>
     </dependency>
 
-    <!-- Use Apache HTTP client connector instead of Jetty connector for Jetty 12.1 compatibility -->
+    <!-- Use Jetty HTTP client connector - Jersey 3.1.4+ jersey-jetty-connector supports Jetty 12 -->
     <dependency>
       <groupId>org.glassfish.jersey.connectors</groupId>
-      <artifactId>jersey-apache-connector</artifactId>
+      <artifactId>jersey-jetty-connector</artifactId>
       <scope>test</scope>
     </dependency>
 

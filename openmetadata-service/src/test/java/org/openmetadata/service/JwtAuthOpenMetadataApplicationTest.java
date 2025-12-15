@@ -47,9 +47,13 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.eclipse.jetty.client.HttpClient;
 import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
+import org.glassfish.jersey.jetty.connector.JettyClientProperties;
+import org.glassfish.jersey.jetty.connector.JettyConnectorProvider;
+import org.glassfish.jersey.jetty.connector.JettyHttpClientSupplier;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
@@ -344,13 +348,18 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
   }
 
   private static void createClient() {
-    // Use default Jersey client (HttpURLConnection-based) for Jetty 12.1 compatibility
-    // This is simpler and more reliable than Apache connector for tests
+    // Use Jetty HTTP client connector - Jersey 3.1.4+ jersey-jetty-connector supports Jetty 12
+    HttpClient httpClient = new HttpClient();
+    httpClient.setIdleTimeout(0);
     ClientConfig config = new ClientConfig();
+    config.connectorProvider(new JettyConnectorProvider());
+    config.register(new JettyHttpClientSupplier(httpClient));
     config.register(new JacksonFeature(APP.getObjectMapper()));
-    // Set reasonable timeouts to prevent indefinite hangs
+    // Set reasonable timeouts to prevent indefinite hangs in CI
     config.property(ClientProperties.CONNECT_TIMEOUT, 30_000); // 30 seconds
     config.property(ClientProperties.READ_TIMEOUT, 120_000); // 2 minutes
+    config.property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
+    config.property(JettyClientProperties.SYNC_LISTENER_RESPONSE_MAX_SIZE, 10 * 1024 * 1024);
     client = ClientBuilder.newClient(config);
   }
 
