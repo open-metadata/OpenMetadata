@@ -78,6 +78,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
@@ -2033,6 +2034,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.initializeRepositories(config, jdbi);
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
     DatasourceConfig.initialize(connType.label);
+    OpenMetadataApplicationConfigHolder.initialize(config);
   }
 
   // This was before handled via flyway's clean command.
