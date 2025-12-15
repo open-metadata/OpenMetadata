@@ -34,6 +34,7 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
   private PrometheusMeterRegistry prometheusMeterRegistry;
   private OpenMetadataMetrics openMetadataMetrics;
   private StreamableLogsMetrics streamableLogsMetrics;
+  private IngestionProgressTracker ingestionProgressTracker;
 
   @Override
   public void initialize(Bootstrap<?> bootstrap) {
@@ -62,7 +63,12 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
     // Create StreamableLogsMetrics instance
     streamableLogsMetrics = new StreamableLogsMetrics(prometheusMeterRegistry);
 
+
     ReindexingMetrics.initialize(prometheusMeterRegistry);
+
+    // Create IngestionProgressTracker instance for real-time progress updates
+    ingestionProgressTracker = new IngestionProgressTracker(prometheusMeterRegistry);
+
 
     // Register Prometheus endpoint on admin connector
     registerPrometheusEndpoint(environment);
@@ -80,6 +86,7 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
                 bind(prometheusMeterRegistry).to(PrometheusMeterRegistry.class);
                 bind(openMetadataMetrics).to(OpenMetadataMetrics.class);
                 bind(streamableLogsMetrics).to(StreamableLogsMetrics.class);
+                bind(ingestionProgressTracker).to(IngestionProgressTracker.class);
               }
             });
 
@@ -191,6 +198,10 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
 
   public StreamableLogsMetrics getStreamableLogsMetrics() {
     return streamableLogsMetrics;
+  }
+
+  public IngestionProgressTracker getIngestionProgressTracker() {
+    return ingestionProgressTracker;
   }
 
   /**
