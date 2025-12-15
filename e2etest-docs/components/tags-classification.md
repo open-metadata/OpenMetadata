@@ -2,7 +2,7 @@
 layout: default
 title: Tags & Classification
 parent: Components
-nav_order: 48
+nav_order: 49
 ---
 
 # Tags & Classification
@@ -22,8 +22,8 @@ nav_order: 48
 |--------|-------|
 | **Test Files** | 6 |
 | **Test Cases** | 28 |
-| **Test Steps** | 20 |
-| **Total Scenarios** | 48 |
+| **Test Steps** | 21 |
+| **Total Scenarios** | 49 |
 
 ---
 
@@ -96,15 +96,15 @@ nav_order: 48
 | Metric | Count |
 |--------|-------|
 | Tests | 4 |
-| Steps | 8 |
-| Total | 12 |
+| Steps | 9 |
+| Total | 13 |
 
 ### Standalone Tests
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | Classification Page | Classification Page | 8 | [L104](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Tags.spec.ts#L104) |
+| 1 | Classification Page | Classification Page | 9 | [L104](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Tags.spec.ts#L104) |
 | 2 | Search tag using classification display name should work | Search tag using classification display name should work | - | [L531](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Tags.spec.ts#L531) |
 | 3 | Verify system classification term counts | System classification term counts | - | [L580](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Tags.spec.ts#L580) |
 | 4 | Verify Owner Add Delete | Owner Add Delete | - | [L647](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Tags.spec.ts#L647) |

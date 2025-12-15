@@ -2,7 +2,7 @@
 layout: default
 title: Glossary
 parent: Components
-nav_order: 332
+nav_order: 348
 ---
 
 # Glossary
@@ -22,8 +22,8 @@ nav_order: 332
 |--------|-------|
 | **Test Files** | 21 |
 | **Test Cases** | 288 |
-| **Test Steps** | 44 |
-| **Total Scenarios** | 332 |
+| **Test Steps** | 60 |
+| **Total Scenarios** | 348 |
 
 ---
 
@@ -34,20 +34,22 @@ nav_order: 332
 | Metric | Count |
 |--------|-------|
 | Tests | 39 |
-| Steps | 27 |
-| Total | 66 |
+| Steps | 38 |
+| Total | 77 |
 
 ### Glossary tests
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | Glossary & terms creation for reviewer as user | Glossary & terms creation for reviewer as user | 2 | [L113](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L113) |
+| 1 | Glossary & terms creation for reviewer as user | Glossary & terms creation for reviewer as user | 3 | [L113](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L113) |
 | | ↳ *Create Glossary* | | | [L129](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L129) |
 | | ↳ *Create Glossary Terms* | | | [L135](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L135) |
-| 2 | Glossary & terms creation for reviewer as team | Glossary & terms creation for reviewer as team | 2 | [L186](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L186) |
+| | ↳ *Approve Glossary Term from Glossary Listing for reviewer user* | | | [L140](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L140) |
+| 2 | Glossary & terms creation for reviewer as team | Glossary & terms creation for reviewer as team | 3 | [L186](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L186) |
 | | ↳ *Create Glossary* | | | [L200](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L200) |
 | | ↳ *Create Glossary Terms* | | | [L206](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L206) |
+| | ↳ *Approve Glossary Term from Glossary Listing for reviewer team* | | | [L212](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L212) |
 | 3 | Update Glossary and Glossary Term | Update Glossary and Glossary Term | 2 | [L244](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L244) |
 | | ↳ *Update Glossary* | | | [L268](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L268) |
 | | ↳ *Update Glossary Term* | | | [L305](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L305) |
@@ -57,12 +59,14 @@ nav_order: 332
 | | ↳ *Approve and Reject Glossary Term* | | | [L434](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L434) |
 | 6 | Add and Remove Assets | Add and Remove Assets | 1 | [L481](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L481) |
 | | ↳ *Add asset to glossary term using entity* | | | [L507](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L507) |
-| 7 | Rename Glossary Term and verify assets | Rename Glossary Term and verify assets | 3 | [L728](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L728) |
+| 7 | Rename Glossary Term and verify assets | Rename Glossary Term and verify assets | 4 | [L728](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L728) |
 | | ↳ *Assign Glossary Term to table column* | | | [L752](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L752) |
 | | ↳ *Rename Glossary Term* | | | [L764](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L764) |
+| | ↳ *Verify the entity page by clicking on asset* | | | [L796](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L796) |
 | | ↳ *Rename the same entity again* | | | [L849](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L849) |
-| 8 | Drag and Drop Glossary Term | Drag and Drop Glossary Term | 1 | [L883](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L883) |
+| 8 | Drag and Drop Glossary Term | Drag and Drop Glossary Term | 2 | [L883](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L883) |
 | | ↳ *Drag and Drop Glossary Term* | | | [L897](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L897) |
+| | ↳ *Drag and Drop Glossary Term back at parent level* | | | [L925](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L925) |
 | 9 | Drag and Drop Glossary Term Approved Terms having reviewer | Drag and Drop Glossary Term Approved Terms having reviewer | 2 | [L962](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L962) |
 | | ↳ *Update Glossary Term Reviewer* | | | [L980](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L980) |
 | | ↳ *Drag and Drop Glossary Term* | | | [L986](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L986) |
@@ -74,10 +78,14 @@ nav_order: 332
 | 15 | Request tags for Glossary | Request tags for Glossary | - | [L1247](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1247) |
 | 16 | Delete Glossary and Glossary Term using Delete Modal | Delete Glossary and Glossary Term using Delete Modal | - | [L1276](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1276) |
 | 17 | Verify Expand All For Nested Glossary Terms | Expand All For Nested Glossary Terms | - | [L1297](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1297) |
-| 18 | Column selection and visibility for Glossary Terms table | Column selection and visibility for Glossary Terms table | 2 | [L1342](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1342) |
+| 18 | Column selection and visibility for Glossary Terms table | Column selection and visibility for Glossary Terms table | 4 | [L1342](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1342) |
+| | ↳ *Open column dropdown and select columns and check if they are visible* | | | [L1358](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1358) |
+| | ↳ *Open column dropdown and deselect columns and check if they are hidden* | | | [L1372](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1372) |
 | | ↳ *View All columns selection* | | | [L1386](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1386) |
 | | ↳ *Hide All columns selection* | | | [L1404](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1404) |
-| 19 | Glossary Terms Table Status filtering | Glossary Terms Table Status filtering | - | [L1427](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1427) |
+| 19 | Glossary Terms Table Status filtering | Glossary Terms Table Status filtering | 2 | [L1427](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1427) |
+| | ↳ *Deselect status and check if the table has filtered rows* | | | [L1441](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1441) |
+| | ↳ *Re-select the status and check if it appears again* | | | [L1448](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1448) |
 | 20 | Column dropdown drag-and-drop functionality for Glossary Terms table | Column dropdown drag-and-drop functionality for Glossary Terms table | - | [L1462](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1462) |
 | 21 | Glossary Term Update in Glossary Page should persist tree | Glossary Term Update in Glossary Page should persist tree | - | [L1494](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1494) |
 | 22 | Add Glossary Term inside another Term | Add Glossary Term inside another Term | - | [L1544](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1544) |
@@ -86,16 +94,19 @@ nav_order: 332
 | | ↳ *Create Glossary Term Two* | | | [L1609](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1609) |
 | 24 | Verify Glossary Deny Permission | Glossary Deny Permission | - | [L1629](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1629) |
 | 25 | Verify Glossary Term Deny Permission | Glossary Term Deny Permission | - | [L1661](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1661) |
-| 26 | Term should stay approved when changes made by reviewer ⏭️ | Term should stay approved when changes made by reviewer | 1 | [L1692](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1692) |
+| 26 | Term should stay approved when changes made by reviewer ⏭️ | Term should stay approved when changes made by reviewer | 2 | [L1692](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1692) |
+| | ↳ *Navigate to glossary and verify workflow widget* | | | [L1722](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1722) |
 | | ↳ *Perform Changes by reviewer* | | | [L1757](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1757) |
-| 27 | Glossary creation with domain selection | Glossary creation with domain selection | 3 | [L1798](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1798) |
+| 27 | Glossary creation with domain selection | Glossary creation with domain selection | 4 | [L1798](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1798) |
 | | ↳ *Create domain* | | | [L1808](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1808) |
 | | ↳ *Navigate to Glossary page* | | | [L1812](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1812) |
 | | ↳ *Open Add Glossary form* | | | [L1835](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1835) |
-| 28 | Create glossary, change language to Dutch, and delete glossary | Create glossary, change language to Dutch, and delete glossary | 4 | [L1871](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1871) |
+| | ↳ *Save glossary and verify creation with domain* | | | [L1847](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1847) |
+| 28 | Create glossary, change language to Dutch, and delete glossary | Create glossary, change language to Dutch, and delete glossary | 5 | [L1871](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1871) |
 | | ↳ *Create Glossary via API* | | | [L1880](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1880) |
 | | ↳ *Navigate to Glossary page* | | | [L1884](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1884) |
 | | ↳ *Change application language to German* | | | [L1898](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1898) |
+| | ↳ *Open delete modal and verify delete confirmation* | | | [L1916](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1916) |
 | | ↳ *Change language back to English* | | | [L1951](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1951) |
 | 29 | should handle glossary after description is deleted | Handle glossary after description is deleted | - | [L1978](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L1978) |
 | 30 | should handle glossary term after description is deleted | Handle glossary term after description is deleted | - | [L2019](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Glossary.spec.ts#L2019) |
@@ -975,28 +986,33 @@ nav_order: 332
 | Metric | Count |
 |--------|-------|
 | Tests | 7 |
-| Steps | 13 |
-| Total | 20 |
+| Steps | 18 |
+| Total | 25 |
 
 ### Glossary Bulk Import Export
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | Glossary Bulk Import Export | Glossary Bulk Import Export | 4 | [L99](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L99) |
+| 1 | Glossary Bulk Import Export | Glossary Bulk Import Export | 5 | [L99](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L99) |
 | | ↳ *create custom properties for extension edit* | | | [L100](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L100) |
 | | ↳ *should export data glossary term details* | | | [L120](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L120) |
+| | ↳ *should import and edit with one additional glossaryTerm* | | | [L136](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L136) |
 | | ↳ *should have term in review state* | | | [L231](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L231) |
 | | ↳ *delete custom properties* | | | [L241](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L241) |
-| 2 | Check for Circular Reference in Glossary Import | For Circular Reference in Glossary Import | 1 | [L254](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L254) |
+| 2 | Check for Circular Reference in Glossary Import | For Circular Reference in Glossary Import | 3 | [L254](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L254) |
+| | ↳ *Create glossary for circular reference test* | | | [L261](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L261) |
 | | ↳ *Import initial glossary terms* | | | [L271](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L271) |
-| 3 | Import validation - missing required fields | Import validation - missing required fields | 1 | [L404](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L404) |
+| | ↳ *Import CSV with circular reference and verify error* | | | [L329](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L329) |
+| 3 | Import validation - missing required fields | Import validation - missing required fields | 2 | [L404](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L404) |
 | | ↳ *Create glossary for validation test* | | | [L411](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L411) |
+| | ↳ *Import CSV with missing required name field* | | | [L417](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L417) |
 | 4 | Import validation - invalid parent reference | Import validation - invalid parent reference | 2 | [L471](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L471) |
 | | ↳ *Create glossary for parent ref test* | | | [L478](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L478) |
 | | ↳ *Import CSV with invalid parent reference* | | | [L484](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L484) |
-| 5 | Import partial success - some terms pass, some fail | Import partial success - some terms pass, some fail | 1 | [L537](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L537) |
+| 5 | Import partial success - some terms pass, some fail | Import partial success - some terms pass, some fail | 2 | [L537](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L537) |
 | | ↳ *Create glossary for partial success test* | | | [L544](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L544) |
+| | ↳ *Import CSV with mixed valid and invalid terms* | | | [L550](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L550) |
 | 6 | Export large glossary with many terms | Export large glossary with many terms | 2 | [L612](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L612) |
 | | ↳ *Create glossary with many terms* | | | [L619](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L619) |
 | | ↳ *Export glossary and verify all terms* | | | [L637](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/GlossaryImportExport.spec.ts#L637) |

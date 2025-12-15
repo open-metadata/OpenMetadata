@@ -2,7 +2,7 @@
 layout: default
 title: Activity & Collaboration
 parent: Components
-nav_order: 39
+nav_order: 44
 ---
 
 # Activity & Collaboration
@@ -22,8 +22,8 @@ nav_order: 39
 |--------|-------|
 | **Test Files** | 3 |
 | **Test Cases** | 20 |
-| **Test Steps** | 19 |
-| **Total Scenarios** | 39 |
+| **Test Steps** | 24 |
+| **Total Scenarios** | 44 |
 
 ---
 
@@ -34,19 +34,19 @@ nav_order: 39
 | Metric | Count |
 |--------|-------|
 | Tests | 6 |
-| Steps | 13 |
-| Total | 19 |
+| Steps | 16 |
+| Total | 22 |
 
 ### Standalone Tests
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | Single Filter Alert | Single Filter Alert | 3 | [L135](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/NotificationAlerts.spec.ts#L135) |
-| 2 | Multiple Filters Alert | Multiple Filters Alert | 2 | [L197](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/NotificationAlerts.spec.ts#L197) |
+| 1 | Single Filter Alert | Single Filter Alert | 4 | [L135](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/NotificationAlerts.spec.ts#L135) |
+| 2 | Multiple Filters Alert | Multiple Filters Alert | 3 | [L197](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/NotificationAlerts.spec.ts#L197) |
 | 3 | Task source alert | Task source alert | 2 | [L258](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/NotificationAlerts.spec.ts#L258) |
 | 4 | Conversation source alert | Conversation source alert | 3 | [L276](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/NotificationAlerts.spec.ts#L276) |
-| 5 | Alert operations for a user with and without permissions | Alert operations for a user with and without permissions | 3 | [L335](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/NotificationAlerts.spec.ts#L335) |
+| 5 | Alert operations for a user with and without permissions | Alert operations for a user with and without permissions | 4 | [L335](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/NotificationAlerts.spec.ts#L335) |
 | 6 | destination should work properly | Destination should work properly | - | [L388](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/NotificationAlerts.spec.ts#L388) |
 
 ---
@@ -58,8 +58,8 @@ nav_order: 39
 | Metric | Count |
 |--------|-------|
 | Tests | 9 |
-| Steps | 1 |
-| Total | 10 |
+| Steps | 3 |
+| Total | 12 |
 
 ### FeedWidget on landing page
 {: .text-delta }
@@ -80,8 +80,10 @@ nav_order: 39
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | Mention notification shows correct user details in Notification box | Mention notification shows correct user details in Notification box | 1 | [L416](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts#L416) |
+| 1 | Mention notification shows correct user details in Notification box | Mention notification shows correct user details in Notification box | 3 | [L416](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts#L416) |
+| | ↳ *Admin user creates a conversation on an entity* | | | [L422](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts#L422) |
 | | ↳ *User1 mentions admin user in a reply* | | | [L478](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts#L478) |
+| | ↳ *Admin user checks notification for correct user and timestamp* | | | [L524](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts#L524) |
 
 ---
 

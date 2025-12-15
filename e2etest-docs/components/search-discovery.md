@@ -2,7 +2,7 @@
 layout: default
 title: Search & Discovery
 parent: Components
-nav_order: 66
+nav_order: 75
 ---
 
 # Search & Discovery
@@ -22,8 +22,8 @@ nav_order: 66
 |--------|-------|
 | **Test Files** | 14 |
 | **Test Cases** | 47 |
-| **Test Steps** | 19 |
-| **Total Scenarios** | 66 |
+| **Test Steps** | 28 |
+| **Total Scenarios** | 75 |
 
 ---
 
@@ -34,22 +34,24 @@ nav_order: 66
 | Metric | Count |
 |--------|-------|
 | Tests | 6 |
-| Steps | 7 |
-| Total | 13 |
+| Steps | 9 |
+| Total | 15 |
 
 ### Explore Tree scenarios
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | Explore Tree | Explore Tree | 3 | [L59](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L59) |
+| 1 | Explore Tree | Explore Tree | 4 | [L59](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L59) |
 | | ↳ *Check the explore tree* | | | [L60](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L60) |
 | | ↳ *Check the quick filters* | | | [L107](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L107) |
 | | ↳ *Click on tree item and check quick filter* | | | [L131](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L131) |
+| | ↳ *Click on tree item metrics and check quick filter* | | | [L145](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L145) |
 | 2 | Verify Database and Database Schema available in explore tree | Database and Database Schema available in explore tree | 2 | [L157](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L157) |
 | | ↳ *Verify first table database and schema* | | | [L179](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L179) |
 | | ↳ *Verify second table database and schema* | | | [L189](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L189) |
-| 3 | Verify Database and Database schema after rename | Database and Database schema after rename | 2 | [L205](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L205) |
+| 3 | Verify Database and Database schema after rename | Database and Database schema after rename | 3 | [L205](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L205) |
+| | ↳ *Visit explore page and verify existing values* | | | [L217](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L217) |
 | | ↳ *Rename schema and database* | | | [L234](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L234) |
 | | ↳ *Verify renamed values in explore page* | | | [L260](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L260) |
 
@@ -61,6 +63,27 @@ nav_order: 66
 | 1 | Check the listing of tags | The listing of tags | - | [L362](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L362) |
 | 2 | Check listing of entities when index is dataAsset | Listing of entities when index is dataAsset | - | [L385](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L385) |
 | 3 | Check listing of entities when index is all | Listing of entities when index is all | - | [L391](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts#L391) |
+
+---
+
+## CustomPropertySearchSettings
+
+📁 **File:** [`playwright/e2e/Features/CustomPropertySearchSettings.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomPropertySearchSettings.spec.ts)
+
+| Metric | Count |
+|--------|-------|
+| Tests | 3 |
+| Steps | 10 |
+| Total | 13 |
+
+### Standalone Tests
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Create custom properties and configure search for Dashboard | Create custom properties and configure search for Dashboard | 5 | [L65](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomPropertySearchSettings.spec.ts#L65) |
+| 2 | Create custom properties and configure search for Pipeline | Create custom properties and configure search for Pipeline | 3 | [L246](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomPropertySearchSettings.spec.ts#L246) |
+| 3 | Verify custom property fields are persisted in search settings | Custom property fields are persisted in search settings | 2 | [L374](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomPropertySearchSettings.spec.ts#L374) |
 
 ---
 
@@ -182,27 +205,6 @@ nav_order: 66
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
 | 1 | Search Index Application | Search Index Application | 7 | [L73](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SearchIndexApplication.spec.ts#L73) |
-
----
-
-## CustomPropertySearchSettings
-
-📁 **File:** [`playwright/e2e/Features/CustomPropertySearchSettings.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomPropertySearchSettings.spec.ts)
-
-| Metric | Count |
-|--------|-------|
-| Tests | 3 |
-| Steps | 3 |
-| Total | 6 |
-
-### Standalone Tests
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | Create custom properties and configure search for Dashboard | Create custom properties and configure search for Dashboard | 1 | [L65](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomPropertySearchSettings.spec.ts#L65) |
-| 2 | Create custom properties and configure search for Pipeline | Create custom properties and configure search for Pipeline | - | [L246](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomPropertySearchSettings.spec.ts#L246) |
-| 3 | Verify custom property fields are persisted in search settings | Custom property fields are persisted in search settings | 2 | [L374](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomPropertySearchSettings.spec.ts#L374) |
 
 ---
 

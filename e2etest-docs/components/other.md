@@ -2,7 +2,7 @@
 layout: default
 title: Other
 parent: Components
-nav_order: 30
+nav_order: 31
 ---
 
 # Other
@@ -22,8 +22,8 @@ nav_order: 30
 |--------|-------|
 | **Test Files** | 10 |
 | **Test Cases** | 19 |
-| **Test Steps** | 11 |
-| **Total Scenarios** | 30 |
+| **Test Steps** | 12 |
+| **Total Scenarios** | 31 |
 
 ---
 
@@ -34,15 +34,16 @@ nav_order: 30
 | Metric | Count |
 |--------|-------|
 | Tests | 3 |
-| Steps | 8 |
-| Total | 11 |
+| Steps | 9 |
+| Total | 12 |
 
 ### Policy page should work properly
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | Add new policy with invalid condition | Add new policy with invalid condition | 8 | [L101](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Policies.spec.ts#L101) |
+| 1 | Add new policy with invalid condition | Add new policy with invalid condition | 9 | [L101](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Policies.spec.ts#L101) |
+| | ↳ *Default Policies and Roles should be displayed* | | | [L104](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Policies.spec.ts#L104) |
 | | ↳ *Add new policy* | | | [L118](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Policies.spec.ts#L118) |
 | | ↳ *Edit policy description* | | | [L185](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Policies.spec.ts#L185) |
 | | ↳ *Edit policy display name* | | | [L206](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Policies.spec.ts#L206) |

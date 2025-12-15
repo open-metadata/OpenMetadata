@@ -2,7 +2,7 @@
 layout: default
 title: Data Assets
 parent: Components
-nav_order: 232
+nav_order: 254
 ---
 
 # Data Assets
@@ -22,8 +22,8 @@ nav_order: 232
 |--------|-------|
 | **Test Files** | 28 |
 | **Test Cases** | 180 |
-| **Test Steps** | 52 |
-| **Total Scenarios** | 232 |
+| **Test Steps** | 74 |
+| **Total Scenarios** | 254 |
 
 ---
 
@@ -104,8 +104,8 @@ nav_order: 232
 | Metric | Count |
 |--------|-------|
 | Tests | 26 |
-| Steps | 6 |
-| Total | 32 |
+| Steps | 8 |
+| Total | 34 |
 
 ### Standalone Tests
 {: .text-delta }
@@ -135,7 +135,7 @@ nav_order: 232
 | 21 | Set & Update ${titleText} Custom Property  | Set & Update ${titleText} Custom Property  | 2 | [L453](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts#L453) |
 | 22 | Update displayName | Update displayName | - | [L485](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts#L485) |
 | 23 | User should be denied access to edit description when deny policy rule is applied on an entity | User should be denied access to edit description when deny policy rule is applied on an entity | - | [L489](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts#L489) |
-| 24 | Switch from Data Observability tab to Activity Feed tab and verify data appears | Switch from Data Observability tab to Activity Feed tab and verify data appears | 2 | [L549](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts#L549) |
+| 24 | Switch from Data Observability tab to Activity Feed tab and verify data appears | Switch from Data Observability tab to Activity Feed tab and verify data appears | 4 | [L549](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts#L549) |
 | 25 | Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level | Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level | - | [L635](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts#L635) |
 | 26 | Delete ${deleteEntity.getType()} | Delete ${deleteEntity.getType()} | 2 | [L720](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts#L720) |
 
@@ -148,34 +148,46 @@ nav_order: 232
 | Metric | Count |
 |--------|-------|
 | Tests | 6 |
-| Steps | 15 |
-| Total | 21 |
+| Steps | 27 |
+| Total | 33 |
 
 ### Bulk Import Export
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | Database service | Database service | 2 | [L134](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L134) |
+| 1 | Database service | Database service | 3 | [L134](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L134) |
 | | ↳ *create custom properties for extension edit* | | | [L145](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L145) |
 | | ↳ *should export data database service details* | | | [L152](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L152) |
-| 2 | Database | Database | 2 | [L385](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L385) |
+| | ↳ *should import and edit with two additional database* | | | [L157](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L157) |
+| 2 | Database | Database | 3 | [L385](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L385) |
 | | ↳ *create custom properties for extension edit* | | | [L396](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L396) |
 | | ↳ *should export data database details* | | | [L403](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L403) |
-| 3 | Database Schema | Database Schema | 2 | [L583](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L583) |
+| | ↳ *should import and edit with two additional database schema* | | | [L408](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L408) |
+| 3 | Database Schema | Database Schema | 3 | [L583](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L583) |
 | | ↳ *create custom properties for extension edit* | | | [L594](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L594) |
 | | ↳ *should export data database schema details* | | | [L601](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L601) |
-| 4 | Table | Table | 1 | [L757](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L757) |
+| | ↳ *should import and edit with two additional table* | | | [L606](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L606) |
+| 4 | Table | Table | 2 | [L757](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L757) |
 | | ↳ *should export data table details* | | | [L765](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L765) |
-| 5 | Keyboard Delete selection | Keyboard Delete selection | 4 | [L848](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L848) |
+| | ↳ *should import and edit with two additional columns* | | | [L770](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L770) |
+| 5 | Keyboard Delete selection | Keyboard Delete selection | 6 | [L848](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L848) |
 | | ↳ *should export data database schema details* | | | [L856](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L856) |
+| | ↳ *should import and perform edit operation on entity* | | | [L861](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L861) |
+| | ↳ *should export data database schema details after edit changes* | | | [L942](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L942) |
 | | ↳ *Perform Column Select and Delete Operation* | | | [L950](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L950) |
 | | ↳ *Perform Cell Delete Operation and Save* | | | [L973](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L973) |
 | | ↳ *should verify the removed value from entity* | | | [L1015](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1015) |
-| 6 | Range selection ⏭️ | Range selection | 4 | [L1048](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1048) |
+| 6 | Range selection ⏭️ | Range selection | 10 | [L1048](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1048) |
 | | ↳ *should export data database details* | | | [L1057](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1057) |
 | | ↳ *should import and test range selection* | | | [L1062](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1062) |
+| | ↳ *Ctrl+a should select all cells in the grid and deselect all cells by clicking on second cell of .rdg-row* | | | [L1078](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1078) |
+| | ↳ *should select all the cells in the column by clicking on column header* | | | [L1102](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1102) |
 | | ↳ *allow multiple column selection* | | | [L1126](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1126) |
+| | ↳ *allow multiple column selection using keyboard* | | | [L1160](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1160) |
+| | ↳ *allow multiple cell selection using mouse on rightDown and leftUp and extend selection using shift+click* | | | [L1180](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1180) |
+| | ↳ *allow multiple cell selection using keyboard on rightDown and leftUp* | | | [L1252](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1252) |
+| | ↳ *perform single cell copy-paste and undo-redo* | | | [L1293](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1293) |
 | | ↳ *Select range, copy-paste and undo-redo* | | | [L1331](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts#L1331) |
 
 ---
@@ -470,16 +482,17 @@ nav_order: 232
 | Metric | Count |
 |--------|-------|
 | Tests | 1 |
-| Steps | 5 |
-| Total | 6 |
+| Steps | 6 |
+| Total | 7 |
 
 ### Metric Custom Unit of Measurement Flow
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | Should create metric and test unit of measurement updates | Create metric and test unit of measurement updates | 5 | [L30](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/MetricCustomUnitFlow.spec.ts#L30) |
+| 1 | Should create metric and test unit of measurement updates | Create metric and test unit of measurement updates | 6 | [L30](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/MetricCustomUnitFlow.spec.ts#L30) |
 | | ↳ *Navigate to Metrics and create a metric* | | | [L35](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/MetricCustomUnitFlow.spec.ts#L35) |
+| | ↳ *Verify initial unit of measurement is displayed* | | | [L112](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/MetricCustomUnitFlow.spec.ts#L112) |
 | | ↳ *Update unit of measurement to Dollars* | | | [L121](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/MetricCustomUnitFlow.spec.ts#L121) |
 | | ↳ *Remove unit of measurement* | | | [L125](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/MetricCustomUnitFlow.spec.ts#L125) |
 | | ↳ *Set unit back to Percentage* | | | [L129](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/MetricCustomUnitFlow.spec.ts#L129) |
@@ -514,6 +527,53 @@ nav_order: 232
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
 | 1 | Metric listing page and add metric from the  | Metric listing page and add metric from the  | - | [L138](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/Metric.spec.ts#L138) |
+
+---
+
+## EntityVersionPages
+
+📁 **File:** [`playwright/e2e/VersionPages/EntityVersionPages.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts)
+
+| Metric | Count |
+|--------|-------|
+| Tests | 1 |
+| Steps | 5 |
+| Total | 6 |
+
+### Entity Version pages
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | ${entity.getType()} | ${entity.getType()} | 5 | [L152](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts#L152) |
+| | ↳ *should show edited tags and description changes* | | | [L166](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts#L166) |
+| | ↳ *should show owner changes* | | | [L195](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts#L195) |
+| | ↳ *should show column display name changes properly* | | | [L225](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts#L225) |
+| | ↳ *should show tier changes* | | | [L262](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts#L262) |
+| | ↳ *should show version details after soft deleted* | | | [L292](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts#L292) |
+
+---
+
+## ServiceEntityVersionPage
+
+📁 **File:** [`playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts)
+
+| Metric | Count |
+|--------|-------|
+| Tests | 1 |
+| Steps | 4 |
+| Total | 5 |
+
+### Service Version pages
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | ${entity.getType()} | ${entity.getType()} | 4 | [L134](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts#L134) |
+| | ↳ *should show edited tags and description changes* | | | [L140](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts#L140) |
+| | ↳ *should show owner changes* | | | [L169](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts#L169) |
+| | ↳ *should show tier changes* | | | [L191](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts#L191) |
+| | ↳ *should show version details after soft deleted* | | | [L205](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts#L205) |
 
 ---
 
@@ -619,30 +679,9 @@ nav_order: 232
 
 ---
 
-## EntityVersionPages
+## ApiCollection
 
-📁 **File:** [`playwright/e2e/VersionPages/EntityVersionPages.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts)
-
-| Metric | Count |
-|--------|-------|
-| Tests | 1 |
-| Steps | 2 |
-| Total | 3 |
-
-### Entity Version pages
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | ${entity.getType()} | ${entity.getType()} | 2 | [L152](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts#L152) |
-| | ↳ *should show owner changes* | | | [L195](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts#L195) |
-| | ↳ *should show tier changes* | | | [L262](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts#L262) |
-
----
-
-## ServiceEntityVersionPage
-
-📁 **File:** [`playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts)
+📁 **File:** [`playwright/e2e/Flow/ApiCollection.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts)
 
 | Metric | Count |
 |--------|-------|
@@ -650,14 +689,14 @@ nav_order: 232
 | Steps | 2 |
 | Total | 3 |
 
-### Service Version pages
+### API Collection Entity Special Test Cases
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | ${entity.getType()} | ${entity.getType()} | 2 | [L134](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts#L134) |
-| | ↳ *should show owner changes* | | | [L169](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts#L169) |
-| | ↳ *should show tier changes* | | | [L191](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts#L191) |
+| 1 | Verify Owner Propagation: owner should be propagated to the API Collection | Owner Propagation: owner should be propagated to the API Collection | 2 | [L40](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts#L40) |
+| | ↳ *Verify user Owner Propagation: owner should be propagated to the API Collection* | | | [L45](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts#L45) |
+| | ↳ *Verify team Owner Propagation: owner should be propagated to the API Collection* | | | [L72](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts#L72) |
 
 ---
 
@@ -781,25 +820,6 @@ nav_order: 232
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
 | 1 | Topic page should show schema tab with count | Topic page should show schema tab with count | - | [L45](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Topic.spec.ts#L45) |
-
----
-
-## ApiCollection
-
-📁 **File:** [`playwright/e2e/Flow/ApiCollection.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts)
-
-| Metric | Count |
-|--------|-------|
-| Tests | 1 |
-| Steps | 0 |
-| Total | 1 |
-
-### API Collection Entity Special Test Cases
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | Verify Owner Propagation: owner should be propagated to the API Collection | Owner Propagation: owner should be propagated to the API Collection | - | [L40](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts#L40) |
 
 ---
 

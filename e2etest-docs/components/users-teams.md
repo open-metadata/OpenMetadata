@@ -2,7 +2,7 @@
 layout: default
 title: Users & Teams
 parent: Components
-nav_order: 123
+nav_order: 134
 ---
 
 # Users & Teams
@@ -22,8 +22,91 @@ nav_order: 123
 |--------|-------|
 | **Test Files** | 13 |
 | **Test Cases** | 89 |
-| **Test Steps** | 34 |
-| **Total Scenarios** | 123 |
+| **Test Steps** | 45 |
+| **Total Scenarios** | 134 |
+
+---
+
+## Users
+
+📁 **File:** [`playwright/e2e/Pages/Users.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts)
+
+| Metric | Count |
+|--------|-------|
+| Tests | 27 |
+| Steps | 8 |
+| Total | 35 |
+
+### User with Admin Roles
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Update own admin details | Update own admin details | - | [L175](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L175) |
+| 2 | Create and Delete user | Create and Delete user | 1 | [L185](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L185) |
+| | ↳ *User shouldn* | | | [L198](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L198) |
+| 3 | Admin soft & hard delete and restore user | Admin soft & hard delete and restore user | - | [L217](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L217) |
+| 4 | Admin soft & hard delete and restore user from profile page | Admin soft & hard delete and restore user from profile page | - | [L239](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L239) |
+
+### User with Data Consumer Roles
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Token generation & revocation for Data Consumer | Token generation & revocation for Data Consumer | - | [L262](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L262) |
+| 2 | Update token expiration for Data Consumer | Update token expiration for Data Consumer | - | [L273](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L273) |
+| 3 | User should have only view permission for glossary and tags for Data Consumer | User should have only view permission for glossary and tags for Data Consumer | - | [L292](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L292) |
+| 4 | Operations for settings page for Data Consumer | Operations for settings page for Data Consumer | - | [L352](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L352) |
+| 5 | Permissions for table details page for Data Consumer | Permissions for table details page for Data Consumer | - | [L358](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L358) |
+| 6 | Update user details for Data Consumer | Update user details for Data Consumer | - | [L379](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L379) |
+| 7 | Reset Password for Data Consumer | Reset Password for Data Consumer | - | [L390](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L390) |
+
+### User with Data Steward Roles
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Update user details for Data Steward | Update user details for Data Steward | - | [L415](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L415) |
+| 2 | Token generation & revocation for Data Steward | Token generation & revocation for Data Steward | - | [L424](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L424) |
+| 3 | Update token expiration for Data Steward | Update token expiration for Data Steward | - | [L435](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L435) |
+| 4 | Operations for settings page for Data Steward | Operations for settings page for Data Steward | - | [L454](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L454) |
+| 5 | Check permissions for Data Steward | Permissions for Data Steward | - | [L460](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L460) |
+| 6 | Reset Password for Data Steward | Reset Password for Data Steward | - | [L483](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L483) |
+
+### User Profile Feed Interactions
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Should navigate to user profile from feed card avatar click | Navigate to user profile from feed card avatar click | - | [L506](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L506) |
+| 2 | Close the profile dropdown after redirecting to user profile page | Close the profile dropdown after redirecting to user profile page | - | [L567](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L567) |
+
+### User Profile Dropdown Persona Interactions
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Should display persona dropdown with pagination | Display persona dropdown with pagination | - | [L635](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L635) |
+| 2 | Should display default persona tag correctly | Display default persona tag correctly | - | [L670](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L670) |
+| 3 | Should switch personas correctly | Switch personas correctly | - | [L699](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L699) |
+| 4 | Should handle persona sorting correctly | Handle persona sorting correctly | - | [L746](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L746) |
+| 5 | Should revert to default persona after page refresh when non-default is selected | Revert to default persona after page refresh when non-default is selected | - | [L780](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L780) |
+| 6 | Should handle default persona change and removal correctly | Handle default persona change and removal correctly | - | [L862](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L862) |
+
+### User Profile Persona Interactions
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Should add, remove, and navigate to persona pages for Personas section | Add, remove, and navigate to persona pages for Personas section | 3 | [L1055](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1055) |
+| | ↳ *Navigate to persona page by clicking on persona chip* | | | [L1067](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1067) |
+| | ↳ *Navigate back to user profile* | | | [L1093](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1093) |
+| | ↳ *Remove personas from user profile* | | | [L1099](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1099) |
+| 2 | Should add, remove, and navigate to persona pages for Default Persona section | Add, remove, and navigate to persona pages for Default Persona section | 4 | [L1130](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1130) |
+| | ↳ *Add default persona to user profile* | | | [L1142](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1142) |
+| | ↳ *Navigate to persona page by clicking on default persona chip* | | | [L1192](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1192) |
+| | ↳ *Navigate back to user profile* | | | [L1215](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1215) |
+| | ↳ *Remove default persona from user profile* | | | [L1221](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1221) |
 
 ---
 
@@ -96,86 +179,6 @@ nav_order: 123
 
 ---
 
-## Users
-
-📁 **File:** [`playwright/e2e/Pages/Users.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts)
-
-| Metric | Count |
-|--------|-------|
-| Tests | 27 |
-| Steps | 5 |
-| Total | 32 |
-
-### User with Admin Roles
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | Update own admin details | Update own admin details | - | [L175](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L175) |
-| 2 | Create and Delete user | Create and Delete user | - | [L185](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L185) |
-| 3 | Admin soft & hard delete and restore user | Admin soft & hard delete and restore user | - | [L217](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L217) |
-| 4 | Admin soft & hard delete and restore user from profile page | Admin soft & hard delete and restore user from profile page | - | [L239](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L239) |
-
-### User with Data Consumer Roles
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | Token generation & revocation for Data Consumer | Token generation & revocation for Data Consumer | - | [L262](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L262) |
-| 2 | Update token expiration for Data Consumer | Update token expiration for Data Consumer | - | [L273](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L273) |
-| 3 | User should have only view permission for glossary and tags for Data Consumer | User should have only view permission for glossary and tags for Data Consumer | - | [L292](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L292) |
-| 4 | Operations for settings page for Data Consumer | Operations for settings page for Data Consumer | - | [L352](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L352) |
-| 5 | Permissions for table details page for Data Consumer | Permissions for table details page for Data Consumer | - | [L358](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L358) |
-| 6 | Update user details for Data Consumer | Update user details for Data Consumer | - | [L379](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L379) |
-| 7 | Reset Password for Data Consumer | Reset Password for Data Consumer | - | [L390](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L390) |
-
-### User with Data Steward Roles
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | Update user details for Data Steward | Update user details for Data Steward | - | [L415](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L415) |
-| 2 | Token generation & revocation for Data Steward | Token generation & revocation for Data Steward | - | [L424](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L424) |
-| 3 | Update token expiration for Data Steward | Update token expiration for Data Steward | - | [L435](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L435) |
-| 4 | Operations for settings page for Data Steward | Operations for settings page for Data Steward | - | [L454](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L454) |
-| 5 | Check permissions for Data Steward | Permissions for Data Steward | - | [L460](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L460) |
-| 6 | Reset Password for Data Steward | Reset Password for Data Steward | - | [L483](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L483) |
-
-### User Profile Feed Interactions
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | Should navigate to user profile from feed card avatar click | Navigate to user profile from feed card avatar click | - | [L506](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L506) |
-| 2 | Close the profile dropdown after redirecting to user profile page | Close the profile dropdown after redirecting to user profile page | - | [L567](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L567) |
-
-### User Profile Dropdown Persona Interactions
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | Should display persona dropdown with pagination | Display persona dropdown with pagination | - | [L635](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L635) |
-| 2 | Should display default persona tag correctly | Display default persona tag correctly | - | [L670](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L670) |
-| 3 | Should switch personas correctly | Switch personas correctly | - | [L699](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L699) |
-| 4 | Should handle persona sorting correctly | Handle persona sorting correctly | - | [L746](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L746) |
-| 5 | Should revert to default persona after page refresh when non-default is selected | Revert to default persona after page refresh when non-default is selected | - | [L780](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L780) |
-| 6 | Should handle default persona change and removal correctly | Handle default persona change and removal correctly | - | [L862](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L862) |
-
-### User Profile Persona Interactions
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | Should add, remove, and navigate to persona pages for Personas section | Add, remove, and navigate to persona pages for Personas section | 2 | [L1055](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1055) |
-| | ↳ *Navigate back to user profile* | | | [L1093](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1093) |
-| | ↳ *Remove personas from user profile* | | | [L1099](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1099) |
-| 2 | Should add, remove, and navigate to persona pages for Default Persona section | Add, remove, and navigate to persona pages for Default Persona section | 3 | [L1130](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1130) |
-| | ↳ *Add default persona to user profile* | | | [L1142](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1142) |
-| | ↳ *Navigate back to user profile* | | | [L1215](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1215) |
-| | ↳ *Remove default persona from user profile* | | | [L1221](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts#L1221) |
-
----
-
 ## PersonaFlow
 
 📁 **File:** [`playwright/e2e/Flow/PersonaFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts)
@@ -183,8 +186,8 @@ nav_order: 123
 | Metric | Count |
 |--------|-------|
 | Tests | 6 |
-| Steps | 4 |
-| Total | 10 |
+| Steps | 6 |
+| Total | 12 |
 
 ### Standalone Tests
 {: .text-delta }
@@ -196,7 +199,27 @@ nav_order: 123
 | 3 | Persona rename flow should work properly | Persona rename flow should work properly | - | [L202](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts#L202) |
 | 4 | Remove users in persona should work properly | Remove users in persona should work properly | - | [L221](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts#L221) |
 | 5 | Delete persona should work properly | Delete persona should work properly | - | [L249](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts#L249) |
-| 6 | Set and remove default persona should work properly | Set and remove default persona should work properly | 4 | [L347](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts#L347) |
+| 6 | Set and remove default persona should work properly | Set and remove default persona should work properly | 6 | [L347](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts#L347) |
+
+---
+
+## PersonaDeletionUserProfile
+
+📁 **File:** [`playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts)
+
+| Metric | Count |
+|--------|-------|
+| Tests | 2 |
+| Steps | 8 |
+| Total | 10 |
+
+### Standalone Tests
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | User profile loads correctly before and after persona deletion | User profile loads correctly before and after persona deletion | 4 | [L52](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts#L52) |
+| 2 | User profile loads correctly after DEFAULT persona deletion ⏭️ | User profile loads correctly after DEFAULT persona deletion | 4 | [L223](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts#L223) |
 
 ---
 
@@ -251,26 +274,6 @@ nav_order: 123
 
 ---
 
-## PersonaDeletionUserProfile
-
-📁 **File:** [`playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts)
-
-| Metric | Count |
-|--------|-------|
-| Tests | 2 |
-| Steps | 5 |
-| Total | 7 |
-
-### Standalone Tests
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | User profile loads correctly before and after persona deletion | User profile loads correctly before and after persona deletion | 3 | [L52](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts#L52) |
-| 2 | User profile loads correctly after DEFAULT persona deletion ⏭️ | User profile loads correctly after DEFAULT persona deletion | 2 | [L223](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts#L223) |
-
----
-
 ## OnlineUsers
 
 📁 **File:** [`playwright/e2e/Features/OnlineUsers.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts)
@@ -292,6 +295,30 @@ nav_order: 123
 | 4 | Should filter users by time window | Filter users by time window | - | [L114](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts#L114) |
 | 5 | Non-admin users should not see Online Users page | Non-admin users should not see Online Users page | - | [L155](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts#L155) |
 | 6 | Should show correct last activity format | Show correct last activity format | - | [L170](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts#L170) |
+
+---
+
+## Bots
+
+📁 **File:** [`playwright/e2e/Pages/Bots.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts)
+
+| Metric | Count |
+|--------|-------|
+| Tests | 1 |
+| Steps | 5 |
+| Total | 6 |
+
+### Bots Page should work properly
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Bots Page should work properly | Bots Page should work properly | 5 | [L29](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts#L29) |
+| | ↳ *Verify ingestion bot delete button is always disabled* | | | [L32](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts#L32) |
+| | ↳ *Create Bot* | | | [L41](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts#L41) |
+| | ↳ *Update display name and description* | | | [L45](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts#L45) |
+| | ↳ *Update token expiration* | | | [L49](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts#L49) |
+| | ↳ *Delete Bot* | | | [L54](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts#L54) |
 
 ---
 
@@ -318,9 +345,9 @@ nav_order: 123
 
 ---
 
-## Bots
+## IngestionBot
 
-📁 **File:** [`playwright/e2e/Pages/Bots.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts)
+📁 **File:** [`playwright/e2e/Flow/IngestionBot.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts)
 
 | Metric | Count |
 |--------|-------|
@@ -328,16 +355,16 @@ nav_order: 123
 | Steps | 4 |
 | Total | 5 |
 
-### Bots Page should work properly
+### Ingestion Bot 
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | Bots Page should work properly | Bots Page should work properly | 4 | [L29](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts#L29) |
-| | ↳ *Create Bot* | | | [L41](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts#L41) |
-| | ↳ *Update display name and description* | | | [L45](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts#L45) |
-| | ↳ *Update token expiration* | | | [L49](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts#L49) |
-| | ↳ *Delete Bot* | | | [L54](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts#L54) |
+| 1 | Ingestion bot should be able to access domain specific domain | Ingestion bot should be able to access domain specific domain | 4 | [L87](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts#L87) |
+| | ↳ *Assign assets to domains* | | | [L96](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts#L96) |
+| | ↳ *Ingestion bot should access domain assigned assets* | | | [L116](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts#L116) |
+| | ↳ *Assign services to domains* | | | [L148](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts#L148) |
+| | ↳ *Ingestion bot should access domain assigned services* | | | [L171](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts#L171) |
 
 ---
 
@@ -380,27 +407,6 @@ nav_order: 123
 | 1 | Create role | Create role | - | [L49](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts#L49) |
 | 2 | Create new user and assign new role to him | Create new user and assign new role to him | - | [L81](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts#L81) |
 | 3 | Verify assigned role to new user | Assigned role to new user | - | [L112](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts#L112) |
-
----
-
-## IngestionBot
-
-📁 **File:** [`playwright/e2e/Flow/IngestionBot.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts)
-
-| Metric | Count |
-|--------|-------|
-| Tests | 1 |
-| Steps | 2 |
-| Total | 3 |
-
-### Ingestion Bot 
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | Ingestion bot should be able to access domain specific domain | Ingestion bot should be able to access domain specific domain | 2 | [L87](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts#L87) |
-| | ↳ *Assign assets to domains* | | | [L96](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts#L96) |
-| | ↳ *Assign services to domains* | | | [L148](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts#L148) |
 
 ---
 

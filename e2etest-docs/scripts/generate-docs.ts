@@ -314,14 +314,27 @@ function parseTestFile(filePath: string): TestFile {
       totalTests++;
     }
 
-    // Match test.step()
+    // Match test.step() - handles both single line and multi-line patterns
     const stepMatch = trimmedLine.match(/(?:await\s+)?test\.step\s*\(\s*['"`](.+?)['"`]/);
+    const stepStartMatch = trimmedLine.match(/(?:await\s+)?test\.step\s*\(\s*$/);
+
     if (stepMatch && currentTest) {
       currentTest.steps.push({
         name: stepMatch[1],
         line: lineNumber,
       });
       totalSteps++;
+    } else if (stepStartMatch && currentTest && index + 1 < lines.length) {
+      // Multi-line test.step - name is on next line
+      const nextLine = lines[index + 1].trim();
+      const nextLineMatch = nextLine.match(/^['"`](.+?)['"`]/);
+      if (nextLineMatch) {
+        currentTest.steps.push({
+          name: nextLineMatch[1],
+          line: lineNumber,
+        });
+        totalSteps++;
+      }
     }
 
     // Handle closing braces to pop describe stack
@@ -411,8 +424,12 @@ function parseDescribesAccurately(content: string, fileName: string): {
       totalTests++;
     }
 
-    // Match test.step()
+    // Match test.step() - handles both single line and multi-line patterns
+    // Pattern 1: await test.step('name', async () => {
+    // Pattern 2: await test.step(\n  'name',
     const stepMatch = trimmedLine.match(/(?:await\s+)?test\.step\s*\(\s*['"`](.+?)['"`]/);
+    const stepStartMatch = trimmedLine.match(/(?:await\s+)?test\.step\s*\(\s*$/);
+
     if (stepMatch) {
       if (currentTest) {
         currentTest.steps.push({
@@ -421,6 +438,19 @@ function parseDescribesAccurately(content: string, fileName: string): {
         });
       }
       totalSteps++;
+    } else if (stepStartMatch && i + 1 < lines.length) {
+      // Multi-line test.step - name is on next line
+      const nextLine = lines[i + 1].trim();
+      const nextLineMatch = nextLine.match(/^['"`](.+?)['"`]/);
+      if (nextLineMatch) {
+        if (currentTest) {
+          currentTest.steps.push({
+            name: nextLineMatch[1],
+            line: lineNumber,
+          });
+        }
+        totalSteps++;
+      }
     }
 
     // Check for end of describe block (simplified)
@@ -587,9 +617,14 @@ Comprehensive documentation of all Playwright end-to-end tests organized by comp
 |--------|-------|
 | **Components** | ${components.length} |
 | **Test Files** | ${totalFiles} |
-| **Test Cases** | ${totalTests} |
+| **Test Definitions** | ${totalTests} |
 | **Test Steps** | ${totalSteps} |
-| **Total Scenarios** | ${totalScenarios} |
+| **Total Definitions** | ${totalScenarios} |
+| **Runtime Tests** | ~2,100+ |
+
+{: .note }
+> **Runtime Tests** represents actual test executions reported by Playwright. This is higher than definitions because many tests are parameterized (run multiple times with different entities/data).
+> For example, entity tests run once per entity type (Table, Dashboard, Pipeline, Topic, etc.).
 
 ---
 

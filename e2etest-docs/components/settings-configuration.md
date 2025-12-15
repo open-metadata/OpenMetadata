@@ -2,7 +2,7 @@
 layout: default
 title: Settings & Configuration
 parent: Components
-nav_order: 116
+nav_order: 129
 ---
 
 # Settings & Configuration
@@ -22,8 +22,8 @@ nav_order: 116
 |--------|-------|
 | **Test Files** | 14 |
 | **Test Cases** | 57 |
-| **Test Steps** | 59 |
-| **Total Scenarios** | 116 |
+| **Test Steps** | 72 |
+| **Total Scenarios** | 129 |
 
 ---
 
@@ -34,8 +34,8 @@ nav_order: 116
 | Metric | Count |
 |--------|-------|
 | Tests | 9 |
-| Steps | 40 |
-| Total | 49 |
+| Steps | 45 |
+| Total | 54 |
 
 ### Widgets
 {: .text-delta }
@@ -47,13 +47,15 @@ nav_order: 116
 | | ↳ *Test widget filters* | | | [L179](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L179) |
 | | ↳ *Test widget footer navigation* | | | [L185](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L185) |
 | | ↳ *Test widget customization* | | | [L196](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L196) |
-| 2 | Data Assets | Data Assets | 3 | [L203](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L203) |
+| 2 | Data Assets | Data Assets | 4 | [L203](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L203) |
 | | ↳ *Test widget header and navigation* | | | [L213](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L213) |
+| | ↳ *Test widget displays entities and navigation* | | | [L223](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L223) |
 | | ↳ *Test widget footer navigation* | | | [L243](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L243) |
 | | ↳ *Test widget customization* | | | [L254](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L254) |
-| 3 | My Data | My Data | 4 | [L261](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L261) |
+| 3 | My Data | My Data | 5 | [L261](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L261) |
 | | ↳ *Test widget header and navigation* | | | [L271](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L271) |
 | | ↳ *Test widget filters* | | | [L281](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L281) |
+| | ↳ *Test widget displays entities and navigation* | | | [L287](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L287) |
 | | ↳ *Test widget footer navigation* | | | [L302](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L302) |
 | | ↳ *Test widget customization* | | | [L314](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L314) |
 | 4 | KPI | KPI | 5 | [L321](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L321) |
@@ -73,22 +75,25 @@ nav_order: 116
 | | ↳ *Test widget displays followed entities* | | | [L508](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L508) |
 | | ↳ *Test widget footer navigation* | | | [L521](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L521) |
 | | ↳ *Test widget customization* | | | [L533](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L533) |
-| 7 | Domains | Domains | 5 | [L541](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L541) |
+| 7 | Domains | Domains | 6 | [L541](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L541) |
 | | ↳ *Add widget* | | | [L551](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L551) |
 | | ↳ *Test widget header and navigation* | | | [L556](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L556) |
 | | ↳ *Test widget filters* | | | [L561](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L561) |
+| | ↳ *Test widget displays entities and navigation* | | | [L567](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L567) |
 | | ↳ *Test widget footer navigation* | | | [L581](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L581) |
 | | ↳ *Remove widget* | | | [L590](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L590) |
-| 8 | My Tasks | My Tasks | 5 | [L597](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L597) |
+| 8 | My Tasks | My Tasks | 6 | [L597](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L597) |
 | | ↳ *Create a task* | | | [L600](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L600) |
 | | ↳ *Add widget* | | | [L648](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L648) |
 | | ↳ *Test widget header and navigation* | | | [L653](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L653) |
 | | ↳ *Test widget filters* | | | [L663](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L663) |
+| | ↳ *Test widget displays entities and navigation* | | | [L669](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L669) |
 | | ↳ *Remove widget* | | | [L685](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L685) |
-| 9 | Data Products | Data Products | 5 | [L692](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L692) |
+| 9 | Data Products | Data Products | 6 | [L692](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L692) |
 | | ↳ *Add widget* | | | [L702](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L702) |
 | | ↳ *Test widget header and navigation* | | | [L707](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L707) |
 | | ↳ *Test widget filters* | | | [L717](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L717) |
+| | ↳ *Test widget displays entities and navigation* | | | [L723](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L723) |
 | | ↳ *Test widget footer navigation* | | | [L738](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L738) |
 | | ↳ *Remove widget* | | | [L747](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts#L747) |
 
@@ -101,8 +106,8 @@ nav_order: 116
 | Metric | Count |
 |--------|-------|
 | Tests | 10 |
-| Steps | 13 |
-| Total | 23 |
+| Steps | 19 |
+| Total | 29 |
 
 ### Persona customize UI tab
 {: .text-delta }
@@ -113,31 +118,37 @@ nav_order: 116
 | 2 | should show all the data assets customize options | Show all the data assets customize options | - | [L156](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L156) |
 | 3 | should show all the governance customize options | Show all the governance customize options | - | [L166](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L166) |
 | 4 | Navigation check default state | Navigation check default state | - | [L176](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L176) |
-| 5 | customize navigation should work | Customize navigation should work | - | [L181](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L181) |
+| 5 | customize navigation should work | Customize navigation should work | 2 | [L181](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L181) |
+| | ↳ *hide navigation items and validate with persona* | | | [L195](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L195) |
+| | ↳ *show navigation items and validate with persona* | | | [L251](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L251) |
 
 ### Persona customization
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | ${type} - customization should work | ${type} - customization should work | 3 | [L332](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L332) |
+| 1 | ${type} - customization should work | ${type} - customization should work | 4 | [L332](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L332) |
 | | ↳ *pre-requisite* | | | [L345](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L345) |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | | | [L352](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L352) |
 | | ↳ *apply customization* | | | [L395](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L395) |
 | | ↳ *Validate customization* | | | [L436](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L436) |
-| 2 | ${type} - customization should work | ${type} - customization should work | 3 | [L461](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L461) |
+| 2 | ${type} - customization should work | ${type} - customization should work | 4 | [L461](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L461) |
 | | ↳ *pre-requisite* | | | [L474](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L474) |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | | | [L481](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L481) |
 | | ↳ *apply customization* | | | [L523](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L523) |
 | | ↳ *Validate customization* | | | [L560](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L560) |
 | 3 | Validate Glossary Term details page after customization of tabs | Validate Glossary Term details page after customization of tabs | 3 | [L582](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L582) |
 | | ↳ *pre-requisite* | | | [L595](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L595) |
 | | ↳ *apply customization* | | | [L602](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L602) |
 | | ↳ *Validate customization* | | | [L634](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L634) |
-| 4 | customize tab label should only render if it | Customize tab label should only render if it | 2 | [L667](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L667) |
+| 4 | customize tab label should only render if it | Customize tab label should only render if it | 3 | [L667](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L667) |
 | | ↳ *pre-requisite* | | | [L678](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L678) |
 | | ↳ *apply tab label customization for Table* | | | [L685](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L685) |
-| 5 | Domain - customize tab label should only render if it | Domain - customize tab label should only render if it | 2 | [L776](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L776) |
+| | ↳ *validate applied label change and language support for page* | | | [L742](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L742) |
+| 5 | Domain - customize tab label should only render if it | Domain - customize tab label should only render if it | 3 | [L776](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L776) |
 | | ↳ *pre-requisite* | | | [L787](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L787) |
 | | ↳ *apply tab label customization for Domain* | | | [L794](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L794) |
+| | ↳ *validate applied label change for Domain Documentation tab* | | | [L858](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts#L858) |
 
 ---
 
@@ -172,6 +183,30 @@ nav_order: 116
 | 3 | should show correct fields when selecting Google provider | Show correct fields when selecting Google provider | - | [L227](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts#L227) |
 | 4 | should show correct fields when selecting Auth0 provider | Show correct fields when selecting Auth0 provider | - | [L251](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts#L251) |
 | 5 | should show correct fields when selecting Okta provider | Show correct fields when selecting Okta provider | - | [L278](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts#L278) |
+
+---
+
+## CustomizeLandingPage
+
+📁 **File:** [`playwright/e2e/Flow/CustomizeLandingPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts)
+
+| Metric | Count |
+|--------|-------|
+| Tests | 3 |
+| Steps | 3 |
+| Total | 6 |
+
+### Customize Landing Page Flow
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Check all default widget present | All default widget present | - | [L58](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts#L58) |
+| 2 | Add, Remove and Reset widget should work properly | Add, Remove and Reset widget should work properly | 3 | [L63](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts#L63) |
+| | ↳ *Remove widget* | | | [L71](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts#L71) |
+| | ↳ *Add widget* | | | [L104](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts#L104) |
+| | ↳ *Resetting the layout flow should work properly* | | | [L210](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts#L210) |
+| 3 | Widget drag and drop reordering | Widget drag and drop reordering | - | [L263](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts#L263) |
 
 ---
 
@@ -222,26 +257,22 @@ nav_order: 116
 
 ---
 
-## CustomizeLandingPage
+## CustomPropertyAdvanceSeach
 
-📁 **File:** [`playwright/e2e/Flow/CustomizeLandingPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts)
+📁 **File:** [`playwright/e2e/Flow/AdvanceSearchFilter/CustomPropertyAdvanceSeach.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/AdvanceSearchFilter/CustomPropertyAdvanceSeach.spec.ts)
 
 | Metric | Count |
 |--------|-------|
-| Tests | 3 |
-| Steps | 2 |
+| Tests | 1 |
+| Steps | 4 |
 | Total | 5 |
 
-### Customize Landing Page Flow
+### Standalone Tests
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | Check all default widget present | All default widget present | - | [L58](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts#L58) |
-| 2 | Add, Remove and Reset widget should work properly | Add, Remove and Reset widget should work properly | 2 | [L63](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts#L63) |
-| | ↳ *Remove widget* | | | [L71](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts#L71) |
-| | ↳ *Add widget* | | | [L104](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts#L104) |
-| 3 | Widget drag and drop reordering | Widget drag and drop reordering | - | [L263](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts#L263) |
+| 1 | CustomProperty Dashboard Filter | CustomProperty Dashboard Filter | 4 | [L45](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/AdvanceSearchFilter/CustomPropertyAdvanceSeach.spec.ts#L45) |
 
 ---
 
@@ -264,25 +295,6 @@ nav_order: 116
 | 2 | should show navigation blocker when leaving with unsaved changes | Show navigation blocker when leaving with unsaved changes | - | [L108](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SettingsNavigationPage.spec.ts#L108) |
 | 3 | should save changes and navigate when  | Save changes and navigate when  | - | [L154](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SettingsNavigationPage.spec.ts#L154) |
 | 4 | should handle reset functionality and prevent navigation blocker after save | Handle reset functionality and prevent navigation blocker after save | - | [L204](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SettingsNavigationPage.spec.ts#L204) |
-
----
-
-## CustomPropertyAdvanceSeach
-
-📁 **File:** [`playwright/e2e/Flow/AdvanceSearchFilter/CustomPropertyAdvanceSeach.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/AdvanceSearchFilter/CustomPropertyAdvanceSeach.spec.ts)
-
-| Metric | Count |
-|--------|-------|
-| Tests | 1 |
-| Steps | 3 |
-| Total | 4 |
-
-### Standalone Tests
-{: .text-delta }
-
-| # | Test | Behavior | Steps | Line |
-|---|------|----------|-------|------|
-| 1 | CustomProperty Dashboard Filter | CustomProperty Dashboard Filter | 3 | [L45](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/AdvanceSearchFilter/CustomPropertyAdvanceSeach.spec.ts#L45) |
 
 ---
 
