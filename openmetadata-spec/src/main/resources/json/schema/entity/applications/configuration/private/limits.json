@@ -12,7 +12,7 @@
       "description": "The action and its limit.",
       "type": "object",
       "additionalProperties": {
-        "type": "integer",
+        "existingJavaType": "java.math.BigDecimal",
         "description": "Limit for the named action."
       }
     }
