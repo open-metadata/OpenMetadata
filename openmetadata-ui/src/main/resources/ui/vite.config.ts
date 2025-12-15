@@ -13,14 +13,17 @@
 
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, PluginOption, UserConfig } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   const env = loadEnv(mode, process.cwd(), '');
+  const istanbul = process.env.VITE_COVERAGE
+    ? await import('vite-plugin-istanbul').then((m) => m.default)
+    : undefined;
   const devServerTarget =
     env.VITE_DEV_SERVER_TARGET ||
     env.DEV_SERVER_TARGET ||
@@ -70,7 +73,16 @@ export default defineConfig(({ mode }) => {
           algorithm: 'gzip',
           ext: '.gz',
         }),
-    ].filter(Boolean),
+      process.env.VITE_COVERAGE &&
+        istanbul &&
+        istanbul({
+          include: 'src/*',
+          exclude: ['node_modules', 'test/'],
+          extension: ['.js', '.ts', '.tsx'],
+          requireEnv: true,
+          forceBuildInstrument: true,
+        }),
+    ].filter(Boolean) as PluginOption[],
 
     resolve: {
       alias: {
@@ -132,7 +144,7 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       assetsDir: 'assets',
       copyPublicDir: true,
-      sourcemap: false,
+      sourcemap: !!process.env.VITE_COVERAGE,
       minify: mode === 'production' ? 'esbuild' : false,
       rollupOptions: {
         output: {

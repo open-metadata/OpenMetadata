@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Response, test } from '@playwright/test';
+import { Response } from '@playwright/test';
+import { expect, test } from '../base';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   descriptionBox,

@@ -182,3 +182,8 @@ hive-mind-prompt-*.txt
 .claude-flow/
 docs
 memory
+
+# UI Code Coverage
+openmetadata-ui/src/main/resources/ui/coverage/
+openmetadata-ui/src/main/resources/ui/.nyc_output/
+openmetadata-ui/src/main/resources/ui/coverage-summary.md

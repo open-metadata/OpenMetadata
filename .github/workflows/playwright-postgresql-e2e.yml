@@ -31,6 +31,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write # Required for posting coverage comments
 
 concurrency:
   group: playwright-ci-pr-postgresql-${{ github.head_ref || github.run_id }}
@@ -189,7 +190,10 @@ jobs:
 
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
+          # Determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Enable Coverage for Build and Runtime
+          VITE_COVERAGE: "true"
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -198,8 +202,65 @@ jobs:
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
 
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: coverage-raw-${{ matrix.shardIndex }}
+          path: openmetadata-ui/src/main/resources/ui/.nyc_output
+          retention-days: 1
+
       - name: Clean Up
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
+
+  merge-coverage:
+    needs: [playwright-ci-postgresql]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+
+      - name: Install dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn --ignore-scripts --frozen-lockfile
+
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-raw-*
+          path: openmetadata-ui/src/main/resources/ui/all-coverage
+
+      - name: Merge Coverage
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: |
+          mkdir -p .nyc_output
+          # The download action puts each artifact in its own subdir. We flatten them.
+          find all-coverage -path "*/coverage-*.json" -exec cp {} .nyc_output/ \;
+          
+          # Generate Report
+          yarn run coverage:report
+          
+          # Generate Summary for PR Comment
+          node scripts/format-coverage-summary.js > coverage-summary.md
+
+      - name: Post Coverage Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: openmetadata-ui/src/main/resources/ui/coverage-summary.md
+          header: playwright-coverage
+
+      - name: Upload Final Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-coverage-report
+          path: openmetadata-ui/src/main/resources/ui/coverage

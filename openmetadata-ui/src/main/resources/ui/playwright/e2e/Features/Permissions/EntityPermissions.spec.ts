@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { test as base } from '../../base';
 import { EntityClass } from '../../../support/entity/EntityClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../base';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';

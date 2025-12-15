@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test as setup } from '@playwright/test';
+import { expect, test as setup } from './base';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../utils/common';
 

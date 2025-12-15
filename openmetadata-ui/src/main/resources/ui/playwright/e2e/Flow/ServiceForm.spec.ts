@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { expect, test as base } from '../base';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import {
   lookerFormDetails,

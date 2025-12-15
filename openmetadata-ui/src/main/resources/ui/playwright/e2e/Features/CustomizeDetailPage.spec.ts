@@ -10,12 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { expect, test as base } from '../base';
 import {
   ECustomizedDataAssets,
   ECustomizedGovernance,

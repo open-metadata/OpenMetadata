@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { test as base } from '../base';
 import { isUndefined } from 'lodash';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
