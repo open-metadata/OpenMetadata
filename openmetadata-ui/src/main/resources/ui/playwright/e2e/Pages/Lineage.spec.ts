@@ -1301,83 +1301,87 @@ test.describe.serial('Test pagination in column level lineage', () => {
   }) => {
     test.slow();
 
-    const { page } = await createNewPage(browser);
+    const { page, afterAction } = await createNewPage(browser);
 
-    await table1.visitEntityPage(page);
-    await visitLineageTab(page);
-    await activateColumnLayer(page);
-    await toggleLineageFilters(page, table1Fqn);
-    await toggleLineageFilters(page, table2Fqn);
+    try {
+      await table1.visitEntityPage(page);
+      await visitLineageTab(page);
+      await activateColumnLayer(page);
+      await toggleLineageFilters(page, table1Fqn);
+      await toggleLineageFilters(page, table2Fqn);
 
-    await page.getByTestId('full-screen').click();
+      await page.getByTestId('full-screen').click();
 
-    await test.step(
-      'Navigate to T1-P2 and T2-P2, click (T2,C6) and verify highlighted columns and edges',
-      async () => {
-        const table1Node = page.locator(
-          `[data-testid="lineage-node-${table1Fqn}"]`
-        );
-        const table2Node = page.locator(
-          `[data-testid="lineage-node-${table2Fqn}"]`
-        );
+      await test.step(
+        'Navigate to T1-P2 and T2-P2, click (T2,C6) and verify highlighted columns and edges',
+        async () => {
+          const table1Node = page.locator(
+            `[data-testid="lineage-node-${table1Fqn}"]`
+          );
+          const table2Node = page.locator(
+            `[data-testid="lineage-node-${table2Fqn}"]`
+          );
 
-        // Navigate to T1-P2
-        const table1NextBtn = table1Node.locator('[data-testid="next-btn"]');
-        if (await table1NextBtn.isVisible()) {
-          await table1NextBtn.click();
+          // Navigate to T1-P2
+          const table1NextBtn = table1Node.locator('[data-testid="next-btn"]');
+          if (await table1NextBtn.isVisible()) {
+            await table1NextBtn.click();
+            await page.waitForTimeout(500);
+          }
+
+          // Navigate to T2-P2
+          const table2NextBtn = table2Node.locator('[data-testid="next-btn"]');
+          if (await table2NextBtn.isVisible()) {
+            await table2NextBtn.click();
+            await page.waitForTimeout(500);
+          }
+
+          // Click on (T2,C6)
+          const t2c6Column = page.locator(
+            `[data-testid="column-${table2Fqn}.${table2Columns[5].name}"]`
+          );
+          await t2c6Column.click();
           await page.waitForTimeout(500);
+
+          // Verify (T1,C1), (T1,C6) and (T2,C6) are highlighted and visible
+          const t1c1 = page.locator(
+            `[data-testid="column-${table1Fqn}.${table1Columns[0].name}"]`
+          );
+          const t1c6 = page.locator(
+            `[data-testid="column-${table1Fqn}.${table1Columns[5].name}"]`
+          );
+          const t2c6 = page.locator(
+            `[data-testid="column-${table2Fqn}.${table2Columns[5].name}"]`
+          );
+
+          await expect(t1c1).toBeVisible();
+          await expect(t1c1).toHaveClass(/custom-node-header-column-tracing/);
+
+          await expect(t1c6).toBeVisible();
+          await expect(t1c6).toHaveClass(/custom-node-header-column-tracing/);
+
+          await expect(t2c6).toBeVisible();
+          await expect(t2c6).toHaveClass(/custom-node-header-column-tracing/);
+
+          // Verify edges are visible
+          const edge_t1c1_to_t2c6 = `column-edge-${btoa(
+            `${table1Fqn}.${table1Columns[0].name}`
+          )}-${btoa(`${table2Fqn}.${table2Columns[5].name}`)}`;
+          const edge_t1c6_to_t2c6 = `column-edge-${btoa(
+            `${table1Fqn}.${table1Columns[5].name}`
+          )}-${btoa(`${table2Fqn}.${table2Columns[5].name}`)}`;
+
+          await expect(
+            page.locator(`[data-testid="${edge_t1c1_to_t2c6}"]`)
+          ).toBeVisible();
+          await expect(
+            page.locator(`[data-testid="${edge_t1c6_to_t2c6}"]`)
+          ).toBeVisible();
         }
-
-        // Navigate to T2-P2
-        const table2NextBtn = table2Node.locator('[data-testid="next-btn"]');
-        if (await table2NextBtn.isVisible()) {
-          await table2NextBtn.click();
-          await page.waitForTimeout(500);
-        }
-
-        // Click on (T2,C6)
-        const t2c6Column = page.locator(
-          `[data-testid="column-${table2Fqn}.${table2Columns[5].name}"]`
-        );
-        await t2c6Column.click();
-        await page.waitForTimeout(500);
-
-        // Verify (T1,C1), (T1,C6) and (T2,C6) are highlighted and visible
-        const t1c1 = page.locator(
-          `[data-testid="column-${table1Fqn}.${table1Columns[0].name}"]`
-        );
-        const t1c6 = page.locator(
-          `[data-testid="column-${table1Fqn}.${table1Columns[5].name}"]`
-        );
-        const t2c6 = page.locator(
-          `[data-testid="column-${table2Fqn}.${table2Columns[5].name}"]`
-        );
-
-        await expect(t1c1).toBeVisible();
-        await expect(t1c1).toHaveClass(/custom-node-header-column-tracing/);
-
-        await expect(t1c6).toBeVisible();
-        await expect(t1c6).toHaveClass(/custom-node-header-column-tracing/);
-
-        await expect(t2c6).toBeVisible();
-        await expect(t2c6).toHaveClass(/custom-node-header-column-tracing/);
-
-        // Verify edges are visible
-        const edge_t1c1_to_t2c6 = `column-edge-${btoa(
-          `${table1Fqn}.${table1Columns[0].name}`
-        )}-${btoa(`${table2Fqn}.${table2Columns[5].name}`)}`;
-        const edge_t1c6_to_t2c6 = `column-edge-${btoa(
-          `${table1Fqn}.${table1Columns[5].name}`
-        )}-${btoa(`${table2Fqn}.${table2Columns[5].name}`)}`;
-
-        await expect(
-          page.locator(`[data-testid="${edge_t1c1_to_t2c6}"]`)
-        ).toBeVisible();
-        await expect(
-          page.locator(`[data-testid="${edge_t1c6_to_t2c6}"]`)
-        ).toBeVisible();
-      }
-    );
+      );
+    } finally {
+      await afterAction();
+    }
   });
   test('Verify edges for column level lineage between 2 nodes when filter is toggled', async ({
     browser,
