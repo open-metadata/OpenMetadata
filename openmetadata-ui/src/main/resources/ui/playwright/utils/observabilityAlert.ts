@@ -68,12 +68,18 @@ export const addExternalDestination = async ({
   category,
   secretKey,
   input = '',
+  advancedConfig,
 }: {
   page: Page;
   destinationNumber: number;
   category: string;
   input?: string;
   secretKey?: string;
+  advancedConfig?: {
+    secretKey?: string;
+    headers?: Array<{ key: string; value: string }>;
+    queryParams?: Array<{ key: string; value: string }>;
+  };
 }) => {
   // Select destination category
   await page.click(
@@ -121,6 +127,69 @@ export const addExternalDestination = async ({
       `[data-testid="secret-key-input-${destinationNumber}"]`,
       secretKey
     );
+  }
+
+  if (advancedConfig) {
+    await page
+      .getByTestId(`destination-${destinationNumber}`)
+      .getByText('Advanced Configuration')
+      .click();
+
+    if (advancedConfig.secretKey) {
+      await expect(
+        page.getByTestId(`secret-key-input-${destinationNumber}`)
+      ).toBeVisible();
+
+      await page.fill(
+        `[data-testid="secret-key-input-${destinationNumber}"]`,
+        advancedConfig.secretKey
+      );
+    }
+
+    if (advancedConfig.headers) {
+      for (let i = 0; i < advancedConfig.headers.length; i++) {
+        const header = advancedConfig.headers[i];
+
+        await page
+          .getByTestId(`add-header-button-${destinationNumber}`)
+          .click();
+
+        await expect(page.getByTestId(`header-key-input-${i}`)).toBeVisible();
+        await expect(page.getByTestId(`header-value-input-${i}`)).toBeVisible();
+
+        await page.fill(`[data-testid="header-key-input-${i}"]`, header.key);
+        await page.fill(
+          `[data-testid="header-value-input-${i}"]`,
+          header.value
+        );
+      }
+    }
+
+    if (advancedConfig.queryParams) {
+      for (let i = 0; i < advancedConfig.queryParams.length; i++) {
+        const queryParam = advancedConfig.queryParams[i];
+
+        await page
+          .getByTestId(`add-query-param-button-${destinationNumber}`)
+          .click();
+
+        await expect(
+          page.getByTestId(`query-param-key-input-${i}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`query-param-value-input-${i}`)
+        ).toBeVisible();
+
+        await page.fill(
+          `[data-testid="query-param-key-input-${i}"]`,
+          queryParam.key
+        );
+        await page.fill(
+          `[data-testid="query-param-value-input-${i}"]`,
+          queryParam.value
+        );
+      }
+    }
   }
 
   await clickOutside(page);

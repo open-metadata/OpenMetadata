@@ -805,6 +805,7 @@ test.describe('Persona customization', () => {
           response.url().includes('/api/v1/personas/name/') &&
           response.status() === 200
       );
+
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await personaDetailsResponse;
 
