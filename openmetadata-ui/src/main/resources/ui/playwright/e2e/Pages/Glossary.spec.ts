@@ -30,6 +30,7 @@ import {
   redirectToHomePage,
   toastNotification,
   uuid,
+  visitGlossaryPage,
 } from '../../utils/common';
 import {
   addMultiOwner,
@@ -76,6 +77,7 @@ import {
   updateGlossaryTermReviewers,
   validateGlossaryTerm,
   verifyAllColumns,
+  verifyAssetModalFilters,
   verifyColumnsVisibility,
   verifyGlossaryDetails,
   verifyGlossaryWorkflowReviewerCase,
@@ -871,6 +873,37 @@ test.describe('Glossary tests', () => {
       await topic.delete(apiContext);
       await dashboard.delete(apiContext);
       await table1.delete(apiContext);
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Verify asset selection modal filters are shown upfront', async ({
+    browser,
+  }) => {
+    test.slow(true);
+
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1];
+    await glossary1.create(apiContext);
+    await glossaryTerm1.create(apiContext);
+
+    try {
+      await test.step(
+        'Verify filters are visible upfront and can be applied',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.GLOSSARY);
+          await selectActiveGlossary(page, glossary1.data.displayName);
+          await goToAssetsTab(page, glossaryTerm1.data.displayName);
+          await verifyAssetModalFilters(page);
+        }
+      );
+    } finally {
       await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
@@ -1960,6 +1993,116 @@ test.describe('Glossary tests', () => {
         await englishOption.click();
       });
     } finally {
+      await afterAction();
+    }
+  });
+
+  /**
+   * Tests that verify UI handles entities with deleted descriptions gracefully.
+   * The issue occurs when:
+   * 1. An entity is created with a description
+   * 2. The description is later deleted/cleared via API patch
+   * 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL))
+   * 4. UI should handle this gracefully instead of crashing
+   */
+  test('should handle glossary after description is deleted', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary = new Glossary();
+
+    try {
+      await glossary.create(apiContext);
+
+      // Delete the description via API PATCH
+      await apiContext.patch(`/api/v1/glossaries/${glossary.responseData.id}`, {
+        data: [
+          {
+            op: 'remove',
+            path: '/description',
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      });
+
+      // Navigate to the glossary page using displayName
+      await visitGlossaryPage(page, glossary.responseData.displayName);
+
+      // Verify the glossary page loads without error
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toBeVisible();
+
+      // Verify no error page is shown
+      await expect(page.locator('text=Something went wrong')).not.toBeVisible();
+      await expect(
+        page.locator('text=Cannot read properties of undefined')
+      ).not.toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('should handle glossary term after description is deleted', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+
+      // Delete the description via API PATCH to simulate the scenario
+      await apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'remove',
+              path: '/description',
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
+
+      // Navigate to the glossary page using displayName
+      await visitGlossaryPage(page, glossary.responseData.displayName);
+
+      // Wait for the table to load
+      await page.waitForSelector('[data-testid="glossary-terms-table"]');
+
+      // Verify the table renders without crashing
+      const table = page.getByTestId('glossary-terms-table');
+
+      await expect(table).toBeVisible();
+
+      // Verify no error page is shown
+      await expect(page.locator('text=Something went wrong')).not.toBeVisible();
+      await expect(
+        page.locator('text=Cannot read properties of undefined')
+      ).not.toBeVisible();
+
+      // Click on the term to view details
+      await page.getByTestId(glossaryTerm.responseData.displayName).click();
+
+      // Verify the term details page loads without error
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toBeVisible();
+
+      // Verify no error on details page
+      await expect(page.locator('text=Something went wrong')).not.toBeVisible();
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
       await afterAction();
     }
   });

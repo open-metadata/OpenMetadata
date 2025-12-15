@@ -20,10 +20,12 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { visitUserProfilePage } from '../../utils/user';
 import { redirectToUserPage } from '../../utils/userDetails';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
+const user3 = new UserClass();
 const admin = new AdminClass();
 const domain = new Domain();
 const team = new TeamClass({
@@ -58,7 +60,8 @@ test.describe('User with different Roles', () => {
 
     await user1.create(apiContext);
     await user2.create(apiContext);
-
+    await user3.create(apiContext);
+    
     await team.create(apiContext);
     await domain.create(apiContext);
 
@@ -70,7 +73,7 @@ test.describe('User with different Roles', () => {
 
     await user1.delete(apiContext);
     await user2.delete(apiContext);
-
+    await user3.delete(apiContext);
     await team.delete(apiContext);
     await domain.delete(apiContext);
 
@@ -111,7 +114,7 @@ test.describe('User with different Roles', () => {
   test('Create team with domain and verify visibility of inherited domain in user profile after team removal', async ({
     adminPage,
   }) => {
-    await redirectToUserPage(adminPage);
+    await visitUserProfilePage(adminPage, user3.getUserName());
     await adminPage.waitForLoadState('networkidle');
 
     await expect(adminPage.getByTestId('user-profile-teams')).toBeVisible();
@@ -185,7 +188,7 @@ test.describe('User with different Roles', () => {
 
     await teamsResponse;
 
-    await redirectToUserPage(adminPage);
+    await visitUserProfilePage(adminPage, user3.getUserName());
 
     await adminPage.waitForLoadState('networkidle');
 
@@ -446,6 +449,18 @@ test.describe('User with different Roles', () => {
       .locator('.domain-custom-dropdown-class')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
+
+    // Search for the domain
+    const searchPromise2 = adminPage.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        domain.responseData.displayName
+      )}**`
+    );
+    await adminPage
+      .locator('.custom-domain-edit-select .ant-select-selection-search-input')
+      .fill(domain.responseData.displayName);
+
+    await searchPromise2;
 
     // Find the parent domain node switcher (expand icon)
     const parentDomainNode = adminPage

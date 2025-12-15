@@ -459,6 +459,18 @@ class LineageParser:
         if insensitive_match(clean_query, "^COPY.*"):
             return None
 
+        # Filter out CREATE TRIGGER statements - they don't provide lineage information
+        if insensitive_match(
+            clean_query, r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+"
+        ):
+            return None
+
+        # Filter out CREATE FUNCTION/PROCEDURE statements - they don't provide lineage information
+        if insensitive_match(
+            clean_query, r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\s+"
+        ):
+            return None
+
         return clean_query.strip()
 
     @calculate_execution_time(context="EvaluateBestParser")

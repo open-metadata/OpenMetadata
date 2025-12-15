@@ -77,7 +77,6 @@ export const DataAssetSummaryPanelV1 = ({
   onGlossaryTermsUpdate,
   onDescriptionUpdate,
   onLinkClick,
-  isSideDrawer = false,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
@@ -503,9 +502,7 @@ export const DataAssetSummaryPanelV1 = ({
                 key={`tags-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
-                tags={dataAsset.tags?.filter(
-                  (tag: TagLabel) => tag.source !== TagSource.Glossary
-                )}
+                tags={dataAsset.tags}
                 onTagsUpdate={onTagsUpdate}
               />
             </div>
