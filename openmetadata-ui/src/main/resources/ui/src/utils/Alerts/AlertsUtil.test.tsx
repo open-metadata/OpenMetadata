@@ -34,6 +34,7 @@ import {
   mockTypedEvent3,
   mockTypedEvent4,
 } from '../../mocks/AlertUtil.mock';
+import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTermQuery } from '../SearchUtils';
 import {
@@ -53,9 +54,11 @@ import {
   getDisplayNameForEntities,
   getFieldByArgumentType,
   getFilteredDestinationOptions,
+  getFormattedDestinations,
   getFunctionDisplayName,
   getLabelsForEventDetails,
   listLengthValidator,
+  normalizeDestinationConfig,
 } from './AlertsUtil';
 
 jest.mock('antd', () => ({
@@ -620,9 +623,9 @@ describe('getAlertEventsFilterLabels', () => {
       AlertRecentEventFilters.FAILED
     );
 
-    expect(allLabel).toStrictEqual('label.all');
-    expect(successLabel).toStrictEqual('label.successful');
-    expect(failedLabel).toStrictEqual('label.failed');
+    expect(allLabel).toBe('label.all');
+    expect(successLabel).toBe('label.successful');
+    expect(failedLabel).toBe('label.failed');
   });
 
   it('should return empty string for unknown filter', () => {
@@ -630,7 +633,7 @@ describe('getAlertEventsFilterLabels', () => {
       'unknown' as AlertRecentEventFilters
     );
 
-    expect(unknownLabel).toStrictEqual('');
+    expect(unknownLabel).toBe('');
   });
 });
 
@@ -1056,5 +1059,400 @@ describe('handleAlertSave - downstream notification fields', () => {
 
     expect(mappedDestinations[0]).toHaveProperty('notifyDownstream', undefined);
     expect(mappedDestinations[0]).toHaveProperty('downstreamDepth', undefined);
+  });
+});
+
+describe('normalizeDestinationConfig', () => {
+  it('should normalize config with headers and queryParams as objects to arrays', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token123',
+      },
+      queryParams: {
+        param1: 'value1',
+        param2: 'value2',
+      },
+      timeout: 30,
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [
+        { key: 'Content-Type', value: 'application/json' },
+        { key: 'Authorization', value: 'Bearer token123' },
+      ],
+      queryParams: [
+        { key: 'param1', value: 'value1' },
+        { key: 'param2', value: 'value2' },
+      ],
+      timeout: 30,
+    });
+  });
+
+  it('should handle config with undefined headers and queryParams', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      timeout: 30,
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      timeout: 30,
+    });
+  });
+
+  it('should handle config with empty headers and queryParams objects', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {},
+      queryParams: {},
+      timeout: 30,
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [],
+      queryParams: [],
+      timeout: 30,
+    });
+  });
+
+  it('should omit undefined values from config', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      queryParams: undefined,
+      timeout: undefined,
+      secretKey: 'secret123',
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [{ key: 'Content-Type', value: 'application/json' }],
+      secretKey: 'secret123',
+    });
+    expect(result).not.toHaveProperty('timeout');
+    expect(result).not.toHaveProperty('queryParams');
+  });
+
+  it('should handle undefined config', () => {
+    const result = normalizeDestinationConfig(undefined);
+
+    expect(result).toEqual({});
+  });
+
+  it('should handle config with only headers', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {
+        Authorization: 'Bearer token',
+      },
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [{ key: 'Authorization', value: 'Bearer token' }],
+    });
+  });
+
+  it('should handle config with only queryParams', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      queryParams: {
+        apiKey: 'key123',
+      },
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      queryParams: [{ key: 'apiKey', value: 'key123' }],
+    });
+  });
+
+  it('should preserve other config properties unchanged', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      secretKey: 'secret',
+      sendToFollowers: true,
+      sendToOwners: false,
+      readTimeout: 60,
+      headers: {
+        'X-Custom-Header': 'value',
+      },
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      secretKey: 'secret',
+      sendToFollowers: true,
+      sendToOwners: false,
+      readTimeout: 60,
+      headers: [{ key: 'X-Custom-Header', value: 'value' }],
+    });
+  });
+});
+
+describe('getFormattedDestinations', () => {
+  it('should convert headers and queryParams from arrays to objects', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          headers: [
+            { key: 'Content-Type', value: 'application/json' },
+            { key: 'Authorization', value: 'Bearer token123' },
+          ],
+          queryParams: [
+            { key: 'param1', value: 'value1' },
+            { key: 'param2', value: 'value2' },
+          ],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer token123',
+          },
+          queryParams: {
+            param1: 'value1',
+            param2: 'value2',
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should omit empty headers and queryParams', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          headers: [],
+          queryParams: [],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as unknown as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ]);
+  });
+
+  it('should handle undefined headers and queryParams', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ]);
+  });
+
+  it('should remove destinationType from result', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        type: 'Webhook',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        type: 'Webhook',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ]);
+    expect(result?.[0]).not.toHaveProperty('destinationType');
+  });
+
+  it('should handle undefined destinations', () => {
+    const result = getFormattedDestinations(undefined);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should handle empty array', () => {
+    const result = getFormattedDestinations([]);
+
+    expect(result).toEqual([]);
+  });
+
+  it('should preserve other config properties', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          secretKey: 'secret123',
+          timeout: 30,
+          readTimeout: 60,
+          headers: [{ key: 'X-Custom', value: 'test' }],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as unknown as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          secretKey: 'secret123',
+          timeout: 30,
+          readTimeout: 60,
+          headers: {
+            'X-Custom': 'test',
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should handle multiple destinations', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example1.com/webhook',
+          headers: [{ key: 'Auth', value: 'token1' }],
+        },
+      },
+      {
+        destinationType: 'Slack',
+        category: 'External',
+        config: {
+          endpoint: 'https://slack.com/webhook',
+          queryParams: [{ key: 'channel', value: 'general' }],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example1.com/webhook',
+          headers: {
+            Auth: 'token1',
+          },
+        },
+      },
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://slack.com/webhook',
+          queryParams: {
+            channel: 'general',
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should omit undefined config values', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          timeout: undefined,
+          secretKey: 'secret',
+          readTimeout: undefined,
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as unknown as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          secretKey: 'secret',
+        },
+      },
+    ]);
+    expect(result?.[0]?.config).not.toHaveProperty('timeout');
+    expect(result?.[0]?.config).not.toHaveProperty('readTimeout');
   });
 });

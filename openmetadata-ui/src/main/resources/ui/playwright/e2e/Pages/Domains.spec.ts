@@ -20,8 +20,8 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -99,15 +99,15 @@ const test = base.extend<{
   page: Page;
   userPage: Page;
 }>({
-  page: async ({ browser }, use) => {
+  page: async ({ browser }, setPage) => {
     const { page } = await performAdminLogin(browser);
-    await use(page);
+    await setPage(page);
     await page.close();
   },
-  userPage: async ({ browser }, use) => {
+  userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
     await user.login(page);
-    await use(page);
+    await setPage(page);
     await page.close();
   },
 });
@@ -1242,7 +1242,9 @@ test.describe('Domains', () => {
    * 3. The API returns the entity without a description field (due to @JsonInclude(NON_NULL))
    * 4. UI should handle this gracefully instead of crashing
    */
-  test('should handle domain after description is deleted', async ({ page }) => {
+  test('should handle domain after description is deleted', async ({
+    page,
+  }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
 
@@ -1311,11 +1313,25 @@ test.describe('Domains', () => {
       // Navigate to the domain page
       await domain.visitEntityPage(page);
 
+      const dpRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=data_product_search_index&*'
+      );
       // Navigate to data products tab
       await page.getByTestId('data_products').click();
 
+      await dpRes;
+
+      const dpDetails = page.waitForResponse(
+        '/api/v1/dataProducts/name/*?fields=domains*'
+      );
+
       // Click on the data product using displayName
-      await page.getByText(dataProduct.responseData.displayName).click();
+      await page
+        .locator('.explore-search-card')
+        .getByText(dataProduct.responseData.displayName)
+        .click();
+
+      await dpDetails;
 
       // Verify the data product page loads without error
       await expect(
