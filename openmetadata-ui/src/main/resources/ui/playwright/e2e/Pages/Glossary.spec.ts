@@ -21,12 +21,25 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../support/team/TeamClass';
+import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  clearMockedWebSocket,
+  emitDeleteFailure,
+  expectGlossaryNotVisible,
+  expectGlossaryVisible,
+  initiateDelete,
+  mockDeleteApiSuccess,
+  setupMockedWebSocket,
+  waitForGlossaryListRefetch,
+} from '../../utils/asyncDelete';
+import {
   clickOutside,
   descriptionBox,
+  getAuthContext,
   getRandomLastName,
+  getToken,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -1144,10 +1157,19 @@ test.describe('Glossary tests', () => {
           name: glossaryTerm1.responseData.displayName,
         })
       ).toBeVisible();
+
+      await test.step('Delete glossary to verify broken relation', async () => {
+        await glossary1.delete(apiContext);
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary2.data.displayName);
+
+        // check .ant-alert-error is not visible
+        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+      });
     } finally {
       await glossaryTerm1.delete(apiContext);
       await glossaryTerm2.delete(apiContext);
-      await glossary1.delete(apiContext);
       await glossary2.delete(apiContext);
       await afterAction();
     }
@@ -1322,6 +1344,170 @@ test.describe('Glossary tests', () => {
     // Delete Glossary
     await deleteGlossaryOrGlossaryTerm(page, glossary1.data.name);
     await afterAction();
+  });
+
+  test('Async Delete - single delete success', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+
+    try {
+      await glossary1.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await expectGlossaryVisible(page, glossary1.data.displayName);
+
+      await initiateDelete(page);
+
+      await expect(
+        page.getByRole('menuitem', { name: glossary1.data.displayName })
+      ).not.toBeVisible();
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('Async Delete - WebSocket failure triggers recovery', async ({
+    browser,
+  }) => {
+    
+    // Create page and set up mocked WebSocket BEFORE navigation
+    const page = await browser.newPage();
+    await setupMockedWebSocket(page);
+
+    // Login on this page (WebSocket is fully mocked, no real server connection)
+    const admin = new AdminClass();
+    await admin.login(page);
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    const glossary1 = new Glossary();
+
+    try {
+      await glossary1.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await expectGlossaryVisible(page, glossary1.data.displayName);
+
+      // Mock API to return success with jobId (but don't actually delete)
+      const jobId = await mockDeleteApiSuccess(page, 'glossaries');
+
+      // Initiate delete - UI will optimistically remove the glossary
+      await initiateDelete(page);
+      await toastNotification(page, /Delete operation initiated/i);
+      await expectGlossaryNotVisible(page, glossary1.data.displayName);
+
+      // Simulate WebSocket failure event - this should trigger recovery
+      const refetch = waitForGlossaryListRefetch(page);
+      emitDeleteFailure(jobId, glossary1.data.name);
+      await refetch;
+
+      // Item should be restored after failure
+      await expectGlossaryVisible(page, glossary1.data.displayName);
+    } finally {
+      clearMockedWebSocket();
+      await glossary1.delete(apiContext);
+      await apiContext.dispose();
+      await page.close();
+    }
+  });
+
+  test('Async Delete - multiple deletes all succeed', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossaryA = new Glossary();
+    const glossaryB = new Glossary();
+    const glossaryC = new Glossary();
+
+    try {
+      await glossaryA.create(apiContext);
+      await glossaryB.create(apiContext);
+      await glossaryC.create(apiContext);
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await expectGlossaryVisible(page, glossaryA.data.displayName);
+      await expectGlossaryVisible(page, glossaryB.data.displayName);
+      await expectGlossaryVisible(page, glossaryC.data.displayName);
+
+      // Delete A
+      await selectActiveGlossary(page, glossaryA.data.displayName);
+      await initiateDelete(page);
+
+      // Delete B
+      await selectActiveGlossary(page, glossaryB.data.displayName);
+      await initiateDelete(page);
+
+      // A and B deleted, C remains
+      await expect(
+        page.getByRole('menuitem', { name: glossaryA.data.displayName })
+      ).not.toBeVisible();
+      await expect(
+        page.getByRole('menuitem', { name: glossaryB.data.displayName })
+      ).not.toBeVisible();
+      await expectGlossaryVisible(page, glossaryC.data.displayName);
+    } finally {
+      await glossaryC.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Async Delete - multiple deletes with mixed results', async ({
+    browser,
+  }) => {
+    test.slow(true);
+    
+    // Create page and set up mocked WebSocket BEFORE navigation
+    const page = await browser.newPage();
+    await setupMockedWebSocket(page);
+
+    // Login on this page
+    const admin = new AdminClass();
+    await admin.login(page);
+    await redirectToHomePage(page);
+    const token = await getToken(page);
+    const apiContext = await getAuthContext(token);
+
+    const glossaryA = new Glossary();
+    const glossaryB = new Glossary();
+    const glossaryC = new Glossary();
+
+    try {
+      await glossaryA.create(apiContext);
+      await glossaryB.create(apiContext);
+      await glossaryC.create(apiContext);
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await expectGlossaryVisible(page, glossaryA.data.displayName);
+      await expectGlossaryVisible(page, glossaryB.data.displayName);
+      await expectGlossaryVisible(page, glossaryC.data.displayName);
+
+      // Delete A (succeeds - not mocked, real deletion)
+      await selectActiveGlossary(page, glossaryA.data.displayName);
+      await initiateDelete(page);
+      await toastNotification(page, /Delete operation initiated/i);
+
+      // Delete B (fails via mocked WebSocket event)
+      await selectActiveGlossary(page, glossaryB.data.displayName);
+      const jobIdB = await mockDeleteApiSuccess(page, 'glossaries');
+      await initiateDelete(page);
+      await toastNotification(page, /Delete operation initiated/i);
+
+      const refetch = waitForGlossaryListRefetch(page);
+      emitDeleteFailure(jobIdB, glossaryB.data.name);
+      await refetch;
+
+      // A deleted, B restored, C untouched
+      await expect(
+        page.getByRole('menuitem', { name: glossaryA.data.displayName })
+      ).not.toBeVisible();
+      await expectGlossaryVisible(page, glossaryB.data.displayName);
+      await expectGlossaryVisible(page, glossaryC.data.displayName);
+    } finally {
+      clearMockedWebSocket();
+      await glossaryB.delete(apiContext);
+      await glossaryC.delete(apiContext);
+      await apiContext.dispose();
+      await page.close();
+    }
   });
 
   test('Verify Expand All For Nested Glossary Terms', async ({ browser }) => {
