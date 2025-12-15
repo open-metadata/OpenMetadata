@@ -38,15 +38,17 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
         """Set up test fixtures"""
         self.mock_engine = MagicMock(spec=Engine)
         self.mock_connection = MagicMock()
-        self.mock_engine.connect.return_value.__enter__.return_value = self.mock_connection
+        self.mock_engine.connect.return_value.__enter__.return_value = (
+            self.mock_connection
+        )
 
     def test_detect_redshift_provisioned(self):
         """Test detection of Redshift Provisioned cluster (STL tables accessible)"""
         # Mock successful STL query execution
         self.mock_connection.execute.return_value = None
-        
+
         result = detect_redshift_serverless(self.mock_engine)
-        
+
         self.assertFalse(result)
         self.mock_connection.execute.assert_called_once()
 
@@ -54,13 +56,11 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
         """Test detection of Redshift Serverless (InsufficientPrivilege error)"""
         # Mock InsufficientPrivilege error for STL query
         self.mock_connection.execute.side_effect = ProgrammingError(
-            "permission denied for relation stl_query",
-            None,
-            InsufficientPrivilege()
+            "permission denied for relation stl_query", None, InsufficientPrivilege()
         )
-        
+
         result = detect_redshift_serverless(self.mock_engine)
-        
+
         self.assertTrue(result)
         self.mock_connection.execute.assert_called_once()
 
@@ -68,16 +68,16 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
         """Test detection of Redshift Serverless (generic error)"""
         # Mock generic error for STL query
         self.mock_connection.execute.side_effect = Exception("Table does not exist")
-        
+
         result = detect_redshift_serverless(self.mock_engine)
-        
+
         self.assertTrue(result)
         self.mock_connection.execute.assert_called_once()
 
     def test_get_redshift_queries_provisioned(self):
         """Test query selection for Redshift Provisioned"""
         queries = get_redshift_queries(is_serverless=False)
-        
+
         self.assertEqual(queries["sql_statement"], REDSHIFT_SQL_STATEMENT)
         self.assertIn("stl_query", queries["sql_statement"])
         self.assertIn("stl_querytext", queries["sql_statement"])
@@ -86,50 +86,60 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
     def test_get_redshift_queries_serverless(self):
         """Test query selection for Redshift Serverless"""
         queries = get_redshift_queries(is_serverless=True)
-        
+
         self.assertEqual(queries["sql_statement"], REDSHIFT_SERVERLESS_SQL_STATEMENT)
         self.assertIn("SYS_QUERY_HISTORY", queries["sql_statement"])
         self.assertIn("SYS_QUERY_DETAIL", queries["sql_statement"])
         self.assertNotIn("stl_query", queries["sql_statement"])
         self.assertNotIn("stl_querytext", queries["sql_statement"])
 
-    @patch('metadata.ingestion.source.database.redshift.usage.detect_redshift_serverless')
+    @patch(
+        "metadata.ingestion.source.database.redshift.usage.detect_redshift_serverless"
+    )
     def test_usage_source_serverless_initialization(self, mock_detect):
         """Test RedshiftUsageSource initialization with Serverless detection"""
         # Mock serverless detection
         mock_detect.return_value = True
-        
+
         # Mock config objects
-        mock_config = MagicMock()
-        mock_metadata_config = MagicMock()
-        
-        with patch.object(RedshiftUsageSource, '__init__', return_value=None) as mock_init:
+        _ = MagicMock()  # config
+        _ = MagicMock()  # metadata_config
+
+        with patch.object(
+            RedshiftUsageSource, "__init__", return_value=None
+        ) as _mock_init:
             # Create instance and manually set up attributes
             usage_source = RedshiftUsageSource.__new__(RedshiftUsageSource)
             usage_source.engine = self.mock_engine
             usage_source.is_serverless = True
             usage_source.sql_stmt = REDSHIFT_SERVERLESS_SQL_STATEMENT
-            usage_source.filters = usage_source.serverless_filters = """
+            usage_source.filters = (
+                usage_source.serverless_filters
+            ) = """
                 AND query_text NOT ILIKE 'fetch%%'
                 AND query_text NOT ILIKE 'padb_fetch_sample:%%'
                 AND query_text NOT ILIKE 'Undoing%%transactions%%on%%table%%with%%current%%xid%%'
             """
-            
+
             self.assertTrue(usage_source.is_serverless)
             self.assertEqual(usage_source.sql_stmt, REDSHIFT_SERVERLESS_SQL_STATEMENT)
             self.assertIn("query_text", usage_source.filters)
 
-    @patch('metadata.ingestion.source.database.redshift.usage.detect_redshift_serverless')
+    @patch(
+        "metadata.ingestion.source.database.redshift.usage.detect_redshift_serverless"
+    )
     def test_usage_source_provisioned_initialization(self, mock_detect):
         """Test RedshiftUsageSource initialization with Provisioned detection"""
         # Mock provisioned detection
         mock_detect.return_value = False
-        
+
         # Mock config objects
-        mock_config = MagicMock()
-        mock_metadata_config = MagicMock()
-        
-        with patch.object(RedshiftUsageSource, '__init__', return_value=None) as mock_init:
+        _ = MagicMock()  # config
+        _ = MagicMock()  # metadata_config
+
+        with patch.object(
+            RedshiftUsageSource, "__init__", return_value=None
+        ) as _mock_init:
             # Create instance and manually set up attributes
             usage_source = RedshiftUsageSource.__new__(RedshiftUsageSource)
             usage_source.engine = self.mock_engine
@@ -140,7 +150,7 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
                 AND querytxt NOT ILIKE 'padb_fetch_sample:%%'
                 AND querytxt NOT ILIKE 'Undoing%%transactions%%on%%table%%with%%current%%xid%%'
             """
-            
+
             self.assertFalse(usage_source.is_serverless)
             self.assertEqual(usage_source.sql_stmt, REDSHIFT_SQL_STATEMENT)
             self.assertIn("querytxt", usage_source.filters)
@@ -148,20 +158,20 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
     def test_serverless_sql_statement_structure(self):
         """Test that the serverless SQL statement has the correct structure"""
         statement = REDSHIFT_SERVERLESS_SQL_STATEMENT
-        
+
         # Check for SYS views
         self.assertIn("SYS_QUERY_HISTORY", statement)
         self.assertIn("SYS_QUERY_DETAIL", statement)
-        
+
         # Check that STL views are not present
         self.assertNotIn("stl_query", statement)
         self.assertNotIn("stl_querytext", statement)
         self.assertNotIn("stl_scan", statement)
-        
+
         # Check for proper filtering
         self.assertIn("status = 'success'", statement)
         self.assertIn("user_id > 1", statement)
-        
+
         # Check for placeholder substitution
         self.assertIn("{start_time}", statement)
         self.assertIn("{end_time}", statement)
@@ -172,23 +182,27 @@ class TestRedshiftServerlessDetection(unittest.TestCase):
         """Test that the query factory returns the expected dictionary structure"""
         # Test provisioned queries
         provisioned_queries = get_redshift_queries(is_serverless=False)
-        expected_keys = ["sql_statement", "test_queries", "table_changes", "metrics_query"]
-        
+        expected_keys = [
+            "sql_statement",
+            "test_queries",
+            "table_changes",
+            "metrics_query",
+        ]
+
         for key in expected_keys:
             self.assertIn(key, provisioned_queries)
             self.assertIsInstance(provisioned_queries[key], str)
-        
+
         # Test serverless queries
         serverless_queries = get_redshift_queries(is_serverless=True)
-        
+
         for key in expected_keys:
             self.assertIn(key, serverless_queries)
             self.assertIsInstance(serverless_queries[key], str)
-        
+
         # Ensure they're different
         self.assertNotEqual(
-            provisioned_queries["sql_statement"], 
-            serverless_queries["sql_statement"]
+            provisioned_queries["sql_statement"], serverless_queries["sql_statement"]
         )
 
 

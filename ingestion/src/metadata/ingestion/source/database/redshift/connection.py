@@ -68,13 +68,13 @@ def get_connection(connection: RedshiftConnection) -> Engine:
 def detect_redshift_serverless(engine: Engine) -> bool:
     """
     Detect if the Redshift deployment is Serverless or Provisioned.
-    
+
     Redshift Serverless doesn't have access to STL/SVV system tables,
     so we try to query an STL table to determine the deployment type.
-    
+
     Args:
         engine: SQLAlchemy engine connected to Redshift
-        
+
     Returns:
         bool: True if Serverless, False if Provisioned
     """
@@ -85,9 +85,7 @@ def detect_redshift_serverless(engine: Engine) -> bool:
             logger.info("Detected Redshift Provisioned cluster (STL tables accessible)")
             return False  # Provisioned
     except Exception as exc:
-        logger.info(
-            f"Detected Redshift Serverless (STL tables not accessible): {exc}"
-        )
+        logger.info(f"Detected Redshift Serverless (STL tables not accessible): {exc}")
         return True  # Serverless
 
 
@@ -128,15 +126,19 @@ def test_connection(
 
     # Detect if this is Redshift Serverless
     is_serverless = detect_redshift_serverless(engine)
-    
+
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
         "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
         "GetTables": partial(test_query, statement=table_and_view_query, engine=engine),
         "GetViews": partial(test_query, statement=table_and_view_query, engine=engine),
         "GetQueries": partial(
-            test_get_serverless_queries_permissions if is_serverless 
-            else test_get_queries_permissions, engine
+            (
+                test_get_serverless_queries_permissions
+                if is_serverless
+                else test_get_queries_permissions
+            ),
+            engine,
         ),
         "GetDatabases": partial(
             test_query, statement=text(REDSHIFT_GET_DATABASE_NAMES), engine=engine

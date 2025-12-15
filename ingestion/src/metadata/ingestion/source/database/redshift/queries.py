@@ -22,10 +22,10 @@ from metadata.utils.time_utils import datetime_to_timestamp
 def get_redshift_queries(is_serverless: bool = False) -> dict:
     """
     Get the appropriate set of queries based on Redshift deployment type.
-    
+
     Args:
         is_serverless: True for Serverless, False for Provisioned
-        
+
     Returns:
         dict: Dictionary mapping query names to query strings
     """
@@ -36,13 +36,13 @@ def get_redshift_queries(is_serverless: bool = False) -> dict:
             "table_changes": REDSHIFT_SERVERLESS_TABLE_CHANGES_QUERY,
             "metrics_query": SERVERLESS_QUERY_METRICS,
         }
-    else:
-        return {
-            "sql_statement": REDSHIFT_SQL_STATEMENT,
-            "test_queries": REDSHIFT_TEST_GET_QUERIES,
-            "table_changes": REDSHIFT_TABLE_CHANGES_QUERY,
-            "metrics_query": STL_QUERY,
-        }
+    return {
+        "sql_statement": REDSHIFT_SQL_STATEMENT,
+        "test_queries": REDSHIFT_TEST_GET_QUERIES,
+        "table_changes": REDSHIFT_TABLE_CHANGES_QUERY,
+        "metrics_query": STL_QUERY,
+    }
+
 
 # Serverless-compatible query using SYS views
 REDSHIFT_SERVERLESS_SQL_STATEMENT = textwrap.dedent(

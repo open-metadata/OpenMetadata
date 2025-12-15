@@ -15,9 +15,8 @@ from metadata.ingestion.source.database.redshift.connection import (
     detect_redshift_serverless,
 )
 from metadata.ingestion.source.database.redshift.queries import (
-    REDSHIFT_SQL_STATEMENT,
     REDSHIFT_SERVERLESS_SQL_STATEMENT,
-    get_redshift_queries,
+    REDSHIFT_SQL_STATEMENT,
 )
 from metadata.ingestion.source.database.redshift.query_parser import (
     RedshiftQueryParserSource,
@@ -29,6 +28,8 @@ logger = ingestion_logger()
 
 
 class RedshiftUsageSource(RedshiftQueryParserSource, UsageSource):
+    """Redshift Usage Source with support for both Provisioned and Serverless deployments."""
+
     filters = """
         AND querytxt NOT ILIKE 'fetch%%'
         AND querytxt NOT ILIKE 'padb_fetch_sample:%%'
@@ -44,15 +45,19 @@ class RedshiftUsageSource(RedshiftQueryParserSource, UsageSource):
 
     def __init__(self, config, metadata_config):
         super().__init__(config, metadata_config)
-        
+
         # Detect Redshift deployment type
         try:
             self.is_serverless = detect_redshift_serverless(self.engine)
-            logger.info(f"Redshift deployment type: {'Serverless' if self.is_serverless else 'Provisioned'}")
+            logger.info(
+                f"Redshift deployment type: {'Serverless' if self.is_serverless else 'Provisioned'}"
+            )
         except Exception as exc:
-            logger.warning(f"Could not detect Redshift deployment type, defaulting to Provisioned: {exc}")
+            logger.warning(
+                f"Could not detect Redshift deployment type, defaulting to Provisioned: {exc}"
+            )
             self.is_serverless = False
-        
+
         # Set appropriate queries and filters
         if self.is_serverless:
             self.sql_stmt = REDSHIFT_SERVERLESS_SQL_STATEMENT

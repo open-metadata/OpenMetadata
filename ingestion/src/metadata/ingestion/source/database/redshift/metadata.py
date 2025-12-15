@@ -66,23 +66,24 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.redshift.connection import (
+    detect_redshift_serverless,
+)
 from metadata.ingestion.source.database.redshift.incremental_table_processor import (
     RedshiftIncrementalTableProcessor,
 )
 from metadata.ingestion.source.database.redshift.models import RedshiftStoredProcedure
-from metadata.ingestion.source.database.redshift.connection import (
-    detect_redshift_serverless,
-)
 from metadata.ingestion.source.database.redshift.queries import (
-    REDSHIFT_GET_ALL_RELATIONS,
+    REDSHIFT_EXTERNAL_TABLE_LOCATION,
+    REDSHIFT_GET_ALL_RELATION_INFO,
+    REDSHIFT_GET_DATABASE_NAMES,
+    REDSHIFT_GET_STORED_PROCEDURES,
     REDSHIFT_LIFE_CYCLE_QUERY,
     REDSHIFT_PARTITION_DETAILS,
     REDSHIFT_SERVERLESS_TABLE_CHANGES_QUERY,
     REDSHIFT_TABLE_CHANGES_QUERY,
-    REDSHIFT_TABLE_COMMENTS,
     get_redshift_queries,
 )
-from metadata.ingestion.source.database.redshift.utils import (
 from metadata.ingestion.source.database.redshift.utils import (
     _get_all_relation_info,
     _get_column_info,
@@ -154,23 +155,27 @@ class RedshiftSource(
             RedshiftIncrementalTableProcessor
         ] = None
         self.external_location_map = {}
-        
+
         # Detect Redshift deployment type and set appropriate queries
         try:
             self.is_serverless = detect_redshift_serverless(self.engine)
-            logger.info(f"Detected Redshift deployment type: {'Serverless' if self.is_serverless else 'Provisioned'}")
-            
+            logger.info(
+                f"Detected Redshift deployment type: {'Serverless' if self.is_serverless else 'Provisioned'}"
+            )
+
             # Get appropriate queries for the deployment type
             self.redshift_queries = get_redshift_queries(self.is_serverless)
-            
+
             # Update table changes query for incremental processing
             if self.is_serverless:
                 self.table_changes_query = REDSHIFT_SERVERLESS_TABLE_CHANGES_QUERY
             else:
                 self.table_changes_query = REDSHIFT_TABLE_CHANGES_QUERY
-                
+
         except Exception as exc:
-            logger.warning(f"Could not detect Redshift deployment type, defaulting to Provisioned: {exc}")
+            logger.warning(
+                f"Could not detect Redshift deployment type, defaulting to Provisioned: {exc}"
+            )
             self.is_serverless = False
             self.redshift_queries = get_redshift_queries(False)
             self.table_changes_query = REDSHIFT_TABLE_CHANGES_QUERY
@@ -322,6 +327,7 @@ class RedshiftSource(
         }
 
     def get_database_names(self) -> Iterable[str]:
+        """Get database names to process."""
         if not self.config.serviceConnection.root.config.ingestAllDatabases:
             configured_db = self.config.serviceConnection.root.config.database
             self.get_partition_details()
@@ -372,7 +378,7 @@ class RedshiftSource(
 
     @calculate_execution_time()
     def get_table_partition_details(
-        self, table_name: str, schema_name: str, inspector: Inspector
+        self, table_name: str, schema_name: str, _inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:
         diststyle = self.partition_details.get(f"{schema_name}.{table_name}")
         if diststyle:
