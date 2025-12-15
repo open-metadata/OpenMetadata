@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page, test as base, expect } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
@@ -38,12 +38,15 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignSingleSelectDomain,
+  descriptionBox,
   generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
   removeSingleSelectDomain,
+  toastNotification,
+  uuid,
   verifyDomainPropagation,
 } from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
@@ -375,6 +378,65 @@ entities.forEach((EntityClass) => {
           rowSelector,
           entityEndpoint: entity.endpoint,
         });
+
+        // Test tag operations via column detail panel
+        await test.step(
+          'Add and remove tags via column detail panel',
+          async () => {
+            // Open column detail panel
+            const columnName = page
+              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+              .getByTestId('column-name');
+            await columnName.scrollIntoViewIfNeeded();
+            await columnName.click();
+            await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+            const panelContainer = page.locator('.column-detail-panel');
+
+            // Add tag via panel
+            await panelContainer
+              .locator('[data-testid="edit-icon-tags"]')
+              .click();
+            await page
+              .locator('[data-testid="selectable-list"]')
+              .waitFor({ state: 'visible' });
+
+            const searchTag = page.waitForResponse(
+              '/api/v1/search/query?q=*index=tag_search_index*'
+            );
+            await page
+              .locator('[data-testid="tag-select-search-bar"]')
+              .fill('PersonalData.SpecialCategory');
+            await searchTag;
+            await page.waitForSelector('[data-testid="loader"]', {
+              state: 'detached',
+            });
+
+            const tagOption = page.getByTitle('SpecialCategory');
+            await tagOption.click();
+
+            const updateResponse = page.waitForResponse(
+              '/api/v1/columns/name/*'
+            );
+            await page.getByRole('button', { name: 'Update' }).click();
+            await updateResponse;
+
+            await expect(
+              page
+                .locator('.tags-list')
+                .getByTestId('tag-PersonalData.SpecialCategory')
+            ).toBeVisible();
+
+            // Close panel
+            const closeButton = panelContainer.locator(
+              '.anticon anticon-close'
+            );
+            await closeButton.click();
+            await expect(
+              page.locator('.column-detail-panel')
+            ).not.toBeVisible();
+          }
+        );
       });
     }
 
@@ -393,6 +455,65 @@ entities.forEach((EntityClass) => {
           rowSelector,
           entityEndpoint: entity.endpoint,
         });
+
+        // Test glossary term operations via column detail panel
+        await test.step(
+          'Add and remove glossary terms via column detail panel',
+          async () => {
+            // Open column detail panel
+            const columnName = page
+              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+              .getByTestId('column-name');
+            await columnName.click();
+            await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+            const panelContainer = page.locator('.column-detail-panel');
+
+            // Add glossary term via panel
+            await panelContainer
+              .locator('[data-testid="edit-glossary-terms"]')
+              .click();
+            await page
+              .locator('[data-testid="selectable-list"]')
+              .waitFor({ state: 'visible' });
+
+            const searchBar = page.locator(
+              '[data-testid="glossary-term-select-search-bar"]'
+            );
+            await searchBar.fill(
+              EntityDataClass.glossaryTerm1.responseData.displayName
+            );
+            await page.waitForSelector('[data-testid="loader"]', {
+              state: 'detached',
+            });
+
+            const termOption = page.locator('.ant-list-item').filter({
+              hasText: EntityDataClass.glossaryTerm1.responseData.displayName,
+            });
+            await termOption.click();
+
+            const updateResponse = page.waitForResponse(
+              '/api/v1/columns/name/*'
+            );
+            await page.getByRole('button', { name: 'Update' }).click();
+            await updateResponse;
+
+            await expect(
+              panelContainer.getByTestId(
+                `tag-${EntityDataClass.glossaryTerm1.responseData.fullyQualifiedName}`
+              )
+            ).toBeVisible();
+
+            // Close panel
+            const closeButton = panelContainer.locator(
+              '.anticon anticon-close'
+            );
+            await closeButton.click();
+            await expect(
+              page.locator('.column-detail-panel')
+            ).not.toBeVisible();
+          }
+        );
       });
 
       if (['Table', 'DashboardDataModel'].includes(entity.type)) {
@@ -419,6 +540,107 @@ entities.forEach((EntityClass) => {
           entity.childrenSelectorId ?? '',
           rowSelector,
           entity.endpoint
+        );
+
+        // Test description update and panel features via column detail panel
+        await test.step(
+          'Update description via column detail panel and test panel features',
+          async () => {
+            // Open column detail panel
+            const columnName = page
+              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+              .getByTestId('column-name');
+            await columnName.click();
+            await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+            const panelContainer = page.locator('.column-detail-panel');
+
+            // Verify panel displays correct column information
+            await expect(page.getByTestId('entity-link')).toBeVisible();
+            await expect(page.locator('.data-type-chip')).toBeVisible();
+
+            // Verify Overview tab is active by default
+            await expect(page.getByTestId('overview-tab')).toHaveClass(
+              /selected/
+            );
+
+            // Update description via panel
+            const newDescription = `Updated description for column - ${uuid()}`;
+            const editDescriptionButton =
+              panelContainer.getByTestId('edit-description');
+
+            if (await editDescriptionButton.isVisible()) {
+              await editDescriptionButton.click();
+              await page.locator(descriptionBox).first().clear();
+              await page.locator(descriptionBox).first().fill(newDescription);
+              await page.getByTestId('save').click();
+
+              await toastNotification(page, /Description updated successfully/);
+
+              await expect(
+                panelContainer
+                  .locator('[data-testid="viewer-container"]')
+                  .getByText(newDescription)
+              ).toBeVisible();
+            }
+
+            // Test tab navigation
+            await page.getByTestId('data-quality-tab').click();
+            await expect(page.getByTestId('data-quality-tab')).toHaveClass(
+              /active/
+            );
+
+            await page.getByTestId('lineage-tab').click();
+            await expect(page.getByTestId('lineage-tab')).toHaveClass(/active/);
+
+            await page.getByTestId('custom-properties-tab').click();
+            await expect(page.getByTestId('custom-properties-tab')).toHaveClass(
+              /active/
+            );
+
+            await page.getByTestId('overview-tab').click();
+            await expect(page.getByTestId('overview-tab')).toHaveClass(
+              /active/
+            );
+
+            // Test column navigation with arrow buttons
+            const paginationText = page.locator('.pagination-header-text');
+            const initialText = await paginationText.textContent();
+
+            const nextButton = page
+              .locator('.navigation-container')
+              .locator('button')
+              .nth(1);
+
+            if (await nextButton.isEnabled()) {
+              await nextButton.click();
+              await page.waitForLoadState('networkidle');
+
+              const updatedText = await paginationText.textContent();
+              expect(updatedText).not.toBe(initialText);
+              await expect(page.getByTestId('entity-link')).toBeVisible();
+
+              // Navigate back to previous column
+              const prevButton = page
+                .locator('.navigation-container')
+                .locator('button')
+                .nth(0);
+
+              await expect(prevButton).toBeEnabled();
+              await prevButton.click();
+              await page.waitForLoadState('networkidle');
+              await expect(page.getByTestId('entity-link')).toBeVisible();
+            }
+
+            // Close panel
+            const closeButton = panelContainer
+              .locator('button[type="text"]')
+              .first();
+            await closeButton.click();
+            await expect(
+              page.locator('.column-detail-panel')
+            ).not.toBeVisible();
+          }
         );
       });
     }
