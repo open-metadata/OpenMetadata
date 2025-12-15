@@ -2721,8 +2721,8 @@ class TestComplexQueryPatterns(TestCase):
         FROM transactions t
         INNER JOIN customers c ON t.customer_id = c.customer_id AND c.is_active = 1
         INNER JOIN products p ON t.product_id = p.product_id AND p.is_available = 1
-        LEFT JOIN discounts d ON t.product_id = d.product_id 
-            AND t.customer_id = d.customer_id 
+        LEFT JOIN discounts d ON t.product_id = d.product_id
+            AND t.customer_id = d.customer_id
             AND t.transaction_date BETWEEN d.start_date AND d.end_date
         WHERE t.status = 'completed'
         """
@@ -3108,7 +3108,7 @@ class TestComplexQueryPatterns(TestCase):
         query = """
         CREATE TABLE sales_insights AS
         WITH daily_sales AS (
-            SELECT 
+            SELECT
                 DATE(order_date) as sale_date,
                 product_id,
                 SUM(amount) as daily_total,
@@ -3117,7 +3117,7 @@ class TestComplexQueryPatterns(TestCase):
             GROUP BY DATE(order_date), product_id
         ),
         ranked_sales AS (
-            SELECT 
+            SELECT
                 sale_date,
                 product_id,
                 daily_total,
@@ -3127,7 +3127,7 @@ class TestComplexQueryPatterns(TestCase):
             FROM daily_sales
         ),
         product_metrics AS (
-            SELECT 
+            SELECT
                 product_id,
                 AVG(daily_total) as avg_daily_sales,
                 MAX(daily_total) as peak_daily_sales,
@@ -3137,7 +3137,7 @@ class TestComplexQueryPatterns(TestCase):
             WHERE daily_rank <= 100
             GROUP BY product_id
         )
-        SELECT 
+        SELECT
             pm.product_id,
             p.product_name,
             p.category,
@@ -3312,9 +3312,9 @@ class TestComplexQueryPatterns(TestCase):
     def test_cte_chain_05_recursive_hierarchy_with_lineage(self):
         """Test recursive CTE for organizational hierarchy with column lineage."""
         query = """
-        INSERT INTO org_structure 
+        INSERT INTO org_structure
         WITH RECURSIVE employee_hierarchy AS (
-            SELECT 
+            SELECT
                 employee_id,
                 employee_name,
                 manager_id,
@@ -3324,7 +3324,7 @@ class TestComplexQueryPatterns(TestCase):
             FROM employees
             WHERE manager_id IS NULL
             UNION ALL
-            SELECT 
+            SELECT
                 e.employee_id,
                 e.employee_name,
                 e.manager_id,
@@ -3335,7 +3335,7 @@ class TestComplexQueryPatterns(TestCase):
             JOIN employee_hierarchy eh ON e.manager_id = eh.employee_id
         ),
         dept_info AS (
-            SELECT 
+            SELECT
                 d.department_id,
                 d.department_name,
                 d.location,
@@ -3344,7 +3344,7 @@ class TestComplexQueryPatterns(TestCase):
             LEFT JOIN employee_hierarchy eh ON d.department_id = eh.department_id
             GROUP BY d.department_id, d.department_name, d.location
         )
-        SELECT 
+        SELECT
             eh.employee_id,
             eh.employee_name,
             eh.level,
@@ -3492,7 +3492,7 @@ class TestComplexQueryPatterns(TestCase):
         query = """
         CREATE TABLE performance_dashboard AS
         WITH monthly_revenue AS MATERIALIZED (
-            SELECT 
+            SELECT
                 DATE_TRUNC('month', transaction_date) as month,
                 region_id,
                 product_category,
@@ -3502,7 +3502,7 @@ class TestComplexQueryPatterns(TestCase):
             GROUP BY DATE_TRUNC('month', transaction_date), region_id, product_category
         ),
         regional_targets AS MATERIALIZED (
-            SELECT 
+            SELECT
                 month,
                 region_id,
                 SUM(quota_amount) as monthly_target
@@ -3510,7 +3510,7 @@ class TestComplexQueryPatterns(TestCase):
             GROUP BY month, region_id
         ),
         performance_metrics AS (
-            SELECT 
+            SELECT
                 mr.month,
                 r.region_name,
                 mr.product_category,
@@ -3523,7 +3523,7 @@ class TestComplexQueryPatterns(TestCase):
             JOIN regions r ON mr.region_id = r.region_id
             LEFT JOIN regional_targets rt ON mr.month = rt.month AND mr.region_id = rt.region_id
         )
-        SELECT 
+        SELECT
             month,
             region_name,
             product_category,
@@ -3678,7 +3678,7 @@ class TestComplexQueryPatterns(TestCase):
         query = """
         INSERT INTO consolidated_contacts
         WITH all_sources AS (
-            SELECT 
+            SELECT
                 customer_id as contact_id,
                 email,
                 phone,
@@ -3686,7 +3686,7 @@ class TestComplexQueryPatterns(TestCase):
                 created_at
             FROM customers
             UNION ALL
-            SELECT 
+            SELECT
                 lead_id as contact_id,
                 email_address as email,
                 mobile_phone as phone,
@@ -3694,7 +3694,7 @@ class TestComplexQueryPatterns(TestCase):
                 lead_date as created_at
             FROM leads
             UNION ALL
-            SELECT 
+            SELECT
                 partner_id as contact_id,
                 contact_email as email,
                 contact_phone as phone,
@@ -3703,7 +3703,7 @@ class TestComplexQueryPatterns(TestCase):
             FROM partners
         ),
         enriched_contacts AS (
-            SELECT 
+            SELECT
                 s.contact_id,
                 s.email,
                 s.phone,
@@ -3714,7 +3714,7 @@ class TestComplexQueryPatterns(TestCase):
             FROM all_sources s
             LEFT JOIN company_info ci ON s.email LIKE '%@' || ci.domain
         )
-        SELECT 
+        SELECT
             contact_id,
             email,
             phone,
@@ -3915,14 +3915,14 @@ class TestComplexQueryPatterns(TestCase):
         query = """
         CREATE TABLE customer_top_products AS
         WITH customer_stats AS (
-            SELECT 
+            SELECT
                 customer_id,
                 COUNT(*) as total_orders,
                 SUM(order_total) as lifetime_value
             FROM orders
             GROUP BY customer_id
         )
-        SELECT 
+        SELECT
             c.customer_id,
             c.customer_name,
             cs.total_orders,
@@ -3934,7 +3934,7 @@ class TestComplexQueryPatterns(TestCase):
         FROM customers c
         JOIN customer_stats cs ON c.customer_id = cs.customer_id
         CROSS JOIN LATERAL (
-            SELECT 
+            SELECT
                 oi.product_id,
                 p.product_name,
                 COUNT(*) as purchase_count,
@@ -4020,7 +4020,7 @@ class TestComplexQueryPatterns(TestCase):
         query = """
         INSERT INTO customer_segments
         WITH transaction_summary AS (
-            SELECT 
+            SELECT
                 customer_id,
                 COUNT(*) as txn_count,
                 SUM(amount) as total_spent,
@@ -4031,25 +4031,25 @@ class TestComplexQueryPatterns(TestCase):
             GROUP BY customer_id
         ),
         customer_classification AS (
-            SELECT 
+            SELECT
                 ts.customer_id,
                 c.customer_name,
                 c.email,
                 ts.txn_count,
                 ts.total_spent,
                 ts.avg_order_value,
-                CASE 
+                CASE
                     WHEN ts.total_spent >= 10000 THEN 'Platinum'
                     WHEN ts.total_spent >= 5000 THEN 'Gold'
                     WHEN ts.total_spent >= 1000 THEN 'Silver'
                     ELSE 'Bronze'
                 END as tier,
-                CASE 
+                CASE
                     WHEN CURRENT_DATE - ts.last_purchase_date <= 30 THEN 'Active'
                     WHEN CURRENT_DATE - ts.last_purchase_date <= 90 THEN 'At Risk'
                     ELSE 'Churned'
                 END as status,
-                CASE 
+                CASE
                     WHEN ts.txn_count >= 50 AND ts.avg_order_value >= 200 THEN 'VIP'
                     WHEN ts.txn_count >= 20 THEN 'Loyal'
                     WHEN ts.txn_count >= 5 THEN 'Regular'
@@ -4058,7 +4058,7 @@ class TestComplexQueryPatterns(TestCase):
             FROM transaction_summary ts
             JOIN customers c ON ts.customer_id = c.customer_id
         )
-        SELECT 
+        SELECT
             customer_id,
             customer_name,
             email,
@@ -4215,7 +4215,7 @@ class TestComplexQueryPatterns(TestCase):
         query = """
         CREATE TABLE analytics.customer_insights AS
         WITH sales_data AS (
-            SELECT 
+            SELECT
                 s.customer_id,
                 s.order_date,
                 s.product_id,
@@ -4225,7 +4225,7 @@ class TestComplexQueryPatterns(TestCase):
             FROM sales_db.sales s
         ),
         customer_profiles AS (
-            SELECT 
+            SELECT
                 cp.customer_id,
                 cp.segment,
                 cp.country,
@@ -4234,7 +4234,7 @@ class TestComplexQueryPatterns(TestCase):
             FROM crm_db.customer_profiles cp
         ),
         product_catalog AS (
-            SELECT 
+            SELECT
                 p.product_id,
                 p.category,
                 p.brand,
@@ -4242,7 +4242,7 @@ class TestComplexQueryPatterns(TestCase):
             FROM inventory_db.products p
         ),
         enriched_sales AS (
-            SELECT 
+            SELECT
                 sd.customer_id,
                 cp.segment,
                 cp.country,
@@ -4257,7 +4257,7 @@ class TestComplexQueryPatterns(TestCase):
             JOIN customer_profiles cp ON sd.customer_id = cp.customer_id
             JOIN product_catalog pc ON sd.product_id = pc.product_id
         )
-        SELECT 
+        SELECT
             customer_id,
             segment,
             country,
@@ -4616,7 +4616,7 @@ class TestComplexQueryPatterns(TestCase):
             transaction_date,
             source_system
         )
-        SELECT 
+        SELECT
             order_id as transaction_id,
             'SALE' as transaction_type,
             customer_id,
@@ -4625,10 +4625,10 @@ class TestComplexQueryPatterns(TestCase):
             'POS' as source_system
         FROM pos_orders
         WHERE order_status = 'completed'
-        
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
             refund_id as transaction_id,
             'REFUND' as transaction_type,
             customer_id,
@@ -4637,10 +4637,10 @@ class TestComplexQueryPatterns(TestCase):
             'REFUND_SYSTEM' as source_system
         FROM refunds
         WHERE refund_status = 'approved'
-        
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
             payment_id as transaction_id,
             'PAYMENT' as transaction_type,
             customer_id,
@@ -4649,10 +4649,10 @@ class TestComplexQueryPatterns(TestCase):
             'PAYMENT_GATEWAY' as source_system
         FROM payments
         WHERE payment_status = 'successful'
-        
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
             credit_id as transaction_id,
             'CREDIT' as transaction_type,
             customer_id,
@@ -4758,7 +4758,7 @@ class TestComplexQueryPatterns(TestCase):
         query = """
         CREATE VIEW customer_activity_log AS
         WITH online_activity AS (
-            SELECT 
+            SELECT
                 customer_id,
                 session_id as activity_id,
                 page_view_count as activity_count,
@@ -4768,7 +4768,7 @@ class TestComplexQueryPatterns(TestCase):
             WHERE session_date >= '2024-01-01'
         ),
         store_activity AS (
-            SELECT 
+            SELECT
                 customer_id,
                 visit_id as activity_id,
                 items_viewed as activity_count,
@@ -4853,7 +4853,7 @@ class TestComplexQueryPatterns(TestCase):
             quantity,
             last_updated
         )
-        SELECT 
+        SELECT
             p.product_id,
             p.product_name,
             w1.warehouse_id,
@@ -4864,10 +4864,10 @@ class TestComplexQueryPatterns(TestCase):
         JOIN products p ON i1.product_id = p.product_id
         JOIN warehouses w1 ON i1.warehouse_id = w1.warehouse_id
         WHERE i1.quantity > 0
-        
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
             p.product_id,
             p.product_name,
             w2.warehouse_id,
@@ -4932,7 +4932,7 @@ class TestComplexQueryPatterns(TestCase):
         """Test UNION with aggregations and extensive column mappings"""
         query = """
         CREATE TABLE regional_sales_summary AS
-        SELECT 
+        SELECT
             'North' as region,
             product_id,
             SUM(quantity) as total_quantity,
@@ -4940,10 +4940,10 @@ class TestComplexQueryPatterns(TestCase):
             COUNT(*) as order_count
         FROM north_sales
         GROUP BY product_id
-        
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
             'South' as region,
             product_id,
             SUM(quantity) as total_quantity,
@@ -4951,10 +4951,10 @@ class TestComplexQueryPatterns(TestCase):
             COUNT(*) as order_count
         FROM south_sales
         GROUP BY product_id
-        
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
             'East' as region,
             product_id,
             SUM(quantity) as total_quantity,
@@ -5145,15 +5145,15 @@ class TestComplexQueryPatterns(TestCase):
         """Test UNION DISTINCT with column deduplication"""
         query = """
         CREATE VIEW unique_customer_contacts AS
-        SELECT 
+        SELECT
             customer_id,
             email as contact_value,
             'email' as contact_type
         FROM customer_emails
-        
+
         UNION
-        
-        SELECT 
+
+        SELECT
             customer_id,
             phone as contact_value,
             'phone' as contact_type
@@ -5203,16 +5203,16 @@ class TestComplexQueryPatterns(TestCase):
             currency,
             transaction_date
         )
-        SELECT 
+        SELECT
             CAST(order_id AS VARCHAR) as transaction_id,
             order_total as amount,
             order_currency as currency,
             order_date as transaction_date
         FROM orders
-        
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
             CAST(refund_id AS VARCHAR) as transaction_id,
             -1 * refund_amount as amount,
             refund_currency as currency,
@@ -5270,17 +5270,17 @@ class TestComplexQueryPatterns(TestCase):
         """Test UNION with window functions and column lineage"""
         query = """
         CREATE TABLE ranked_products AS
-        SELECT 
+        SELECT
             product_id,
             product_name,
             category,
             price,
             ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) as price_rank
         FROM premium_products
-        
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
             product_id,
             product_name,
             category,
@@ -5345,7 +5345,7 @@ class TestComplexQueryPatterns(TestCase):
             total_revenue,
             transaction_count
         )
-        SELECT 
+        SELECT
             c.customer_id,
             c.customer_name,
             'Online Sales' as revenue_source,
@@ -5355,10 +5355,10 @@ class TestComplexQueryPatterns(TestCase):
         JOIN online_orders o ON c.customer_id = o.customer_id
         WHERE o.status = 'completed'
         GROUP BY c.customer_id, c.customer_name
-        
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
             c.customer_id,
             c.customer_name,
             'Store Sales' as revenue_source,
