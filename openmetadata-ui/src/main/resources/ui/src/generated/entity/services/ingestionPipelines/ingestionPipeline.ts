@@ -2366,7 +2366,7 @@ export interface AppLimitsConfig {
     /**
      * The records of the limits.
      */
-    actions: { [key: string]: any };
+    actions: { [key: string]: number };
     /**
      * The start of this limit cycle. DEPRECATED: Use central billingCycleStart from
      * LimitsConfiguration in openmetadata.yaml
