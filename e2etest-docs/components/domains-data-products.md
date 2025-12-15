@@ -2,115 +2,186 @@
 layout: default
 title: Domains & Data Products
 parent: Components
-nav_order: 35
+nav_order: 56
 ---
 
 # Domains & Data Products
+{: .no_toc }
+
+## Table of contents
+{: .no_toc .text-delta }
+
+1. TOC
+{:toc}
+
+---
+
+## Summary
 
 | Metric | Count |
 |--------|-------|
-| **Total Tests** | 35 |
 | **Test Files** | 4 |
+| **Test Cases** | 35 |
+| **Test Steps** | 21 |
+| **Total Scenarios** | 56 |
 
 ---
 
 ## Domains
 
-**File:** [`playwright/e2e/Pages/Domains.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts)
-**Tests:** 26
+📁 **File:** [`playwright/e2e/Pages/Domains.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts)
+
+| Metric | Count |
+|--------|-------|
+| Tests | 26 |
+| Steps | 19 |
+| Total | 45 |
 
 ### Domains
+{: .text-delta }
 
-| Test | Line |
-|------|------|
-| Create domains and add assets | [L162](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L162) |
-| Create DataProducts and add remove assets | [L210](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L210) |
-| Follow & Un-follow domain | [L340](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L340) |
-| Add, Update custom properties for data product | [L383](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L383) |
-| Switch domain from navbar and check domain query call wrap in quotes | [L432](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L432) |
-| Rename domain | [L486](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L486) |
-| Follow/unfollow subdomain and create nested sub domain | [L513](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L513) |
-| Should clear assets from data products after deletion of data product in Domain | [L620](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L620) |
-| Should inherit owners and experts from parent domain | [L685](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L685) |
-| Domain owner should able to edit description of domain | [L739](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L739) |
-| Verify domain and subdomain asset count accuracy | [L774](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L774) |
-| Verify domain tags and glossary terms | [L898](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L898) |
-| Verify data product tags and glossary terms | [L937](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L937) |
-| Verify clicking All Domains sets active domain to default value | [L962](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L962) |
-| Verify redirect path on data product delete | [L988](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L988) |
-| Verify duplicate domain creation | [L1027](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1027) |
-| Create domain custom property and verify value persistence | [L1063](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1063) |
-| Domain announcement create, edit & delete | [L1163](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1163) |
-| Data Product announcement create, edit & delete | [L1197](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1197) |
-| should handle domain after description is deleted | [L1245](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1245) |
-| should handle data product after description is deleted | [L1284](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1284) |
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Create domains and add assets | Create domains and add assets | 3 | [L162](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L162) |
+| | ↳ *Create domain* | | | [L166](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L166) |
+| | ↳ *Add assets to domain* | | | [L178](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L178) |
+| | ↳ *Delete domain using delete modal* | | | [L183](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L183) |
+| 2 | Create DataProducts and add remove assets | Create DataProducts and add remove assets | 5 | [L210](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L210) |
+| | ↳ *Add assets to domain* | | | [L221](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L221) |
+| | ↳ *Create DataProducts* | | | [L227](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L227) |
+| | ↳ *Follow & Un-follow DataProducts* | | | [L241](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L241) |
+| | ↳ *Add assets to DataProducts* | | | [L311](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L311) |
+| | ↳ *Remove assets from DataProducts* | | | [L322](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L322) |
+| 3 | Follow & Un-follow domain | Follow & Un-follow domain | - | [L340](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L340) |
+| 4 | Add, Update custom properties for data product | Add, Update custom properties for data product | 2 | [L383](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L383) |
+| | ↳ *Set ${titleText} Custom Property* | | | [L404](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L404) |
+| | ↳ *Update ${titleText} Custom Property* | | | [L416](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L416) |
+| 5 | Switch domain from navbar and check domain query call wrap in quotes | Switch domain from navbar and check domain query call wrap in quotes | - | [L432](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L432) |
+| 6 | Rename domain | Rename domain | - | [L486](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L486) |
+| 7 | Follow/unfollow subdomain and create nested sub domain | Follow/unfollow subdomain and create nested sub domain | - | [L513](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L513) |
+| 8 | Should clear assets from data products after deletion of data product in Domain | Clear assets from data products after deletion of data product in Domain | - | [L620](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L620) |
+| 9 | Should inherit owners and experts from parent domain | Inherit owners and experts from parent domain | - | [L685](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L685) |
+| 10 | Domain owner should able to edit description of domain | Domain owner should able to edit description of domain | - | [L739](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L739) |
+| 11 | Verify domain and subdomain asset count accuracy | Domain and subdomain asset count accuracy | 3 | [L774](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L774) |
+| | ↳ *Create domain and subdomain via API* | | | [L785](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L785) |
+| | ↳ *Add assets to domain* | | | [L791](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L791) |
+| | ↳ *Add assets to subdomain* | | | [L800](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L800) |
+| 12 | Verify domain tags and glossary terms | Domain tags and glossary terms | - | [L898](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L898) |
+| 13 | Verify data product tags and glossary terms | Data product tags and glossary terms | - | [L937](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L937) |
+| 14 | Verify clicking All Domains sets active domain to default value | Clicking All Domains sets active domain to default value | - | [L962](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L962) |
+| 15 | Verify redirect path on data product delete | Redirect path on data product delete | - | [L988](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L988) |
+| 16 | Verify duplicate domain creation | Duplicate domain creation | - | [L1027](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1027) |
+| 17 | Create domain custom property and verify value persistence | Create domain custom property and verify value persistence | 2 | [L1063](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1063) |
+| | ↳ *Create custom property for domain entity* | | | [L1078](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1078) |
+| | ↳ *Cleanup custom property* | | | [L1152](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1152) |
+| 18 | Domain announcement create, edit & delete | Domain announcement create, edit & delete | - | [L1163](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1163) |
+| 19 | Data Product announcement create, edit & delete | Data Product announcement create, edit & delete | - | [L1197](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1197) |
+| 20 | should handle domain after description is deleted | Handle domain after description is deleted | - | [L1245](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1245) |
+| 21 | should handle data product after description is deleted | Handle data product after description is deleted | - | [L1284](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1284) |
 
 ### Domains Rbac
+{: .text-delta }
 
-| Test | Line |
-|------|------|
-| Domain Rbac | [L1392](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1392) |
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Domain Rbac | Domain Rbac | 2 | [L1392](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1392) |
+| | ↳ *Assign assets to domains* | | | [L1404](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1404) |
+| | ↳ *User with access to multiple domains* | | | [L1416](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1416) |
 
 ### Data Consumer Domain Ownership
+{: .text-delta }
 
-| Test | Line |
-|------|------|
-| Data consumer can manage domain as owner | [L1511](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1511) |
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Data consumer can manage domain as owner | Data consumer can manage domain as owner | - | [L1511](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1511) |
 
 ### Domain Access with hasDomain() Rule
+{: .text-delta }
 
-| Test | Line |
-|------|------|
-| User with hasDomain() rule can access domain and subdomain assets | [L1596](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1596) |
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | User with hasDomain() rule can access domain and subdomain assets | User with hasDomain() rule can access domain and subdomain assets | 2 | [L1596](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1596) |
+| | ↳ *Verify user can access domain assets* | | | [L1603](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1603) |
+| | ↳ *Verify user can access subdomain assets* | | | [L1622](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1622) |
 
 ### Domain Access with noDomain() Rule
+{: .text-delta }
 
-| Test | Line |
-|------|------|
-| User with noDomain() rule cannot access tables without domain | [L1668](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1668) |
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | User with noDomain() rule cannot access tables without domain | User with noDomain() rule cannot access tables without domain | - | [L1668](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1668) |
 
 ### Domain Tree View Functionality
+{: .text-delta }
 
-| Test | Line |
-|------|------|
-| should render the domain tree view with correct details | [L1750](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1750) |
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | should render the domain tree view with correct details | Render the domain tree view with correct details | - | [L1750](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Domains.spec.ts#L1750) |
+
+---
 
 ## DomainDataProductsWidgets
 
-**File:** [`playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts)
-**Tests:** 6
+📁 **File:** [`playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts)
 
-### Root Tests
+| Metric | Count |
+|--------|-------|
+| Tests | 6 |
+| Steps | 0 |
+| Total | 6 |
 
-| Test | Line |
-|------|------|
-| Assign Widgets | [L88](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L88) |
-| Verify Widgets are having 0 count initially | [L102](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L102) |
-| Domain asset count should update when assets are added | [L115](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L115) |
-| Data Product asset count should update when assets are added | [L136](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L136) |
-| Domain asset count should update when assets are removed | [L160](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L160) |
-| Data Product asset count should update when assets are removed | [L196](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L196) |
+### Standalone Tests
+{: .text-delta }
 
-## DomainPermissions
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Assign Widgets | Assign Widgets | - | [L88](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L88) |
+| 2 | Verify Widgets are having 0 count initially | Widgets are having 0 count initially | - | [L102](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L102) |
+| 3 | Domain asset count should update when assets are added | Domain asset count should update when assets are added | - | [L115](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L115) |
+| 4 | Data Product asset count should update when assets are added | Data Product asset count should update when assets are added | - | [L136](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L136) |
+| 5 | Domain asset count should update when assets are removed | Domain asset count should update when assets are removed | - | [L160](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L160) |
+| 6 | Data Product asset count should update when assets are removed | Data Product asset count should update when assets are removed | - | [L196](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts#L196) |
 
-**File:** [`playwright/e2e/Features/Permissions/DomainPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts)
-**Tests:** 2
-
-### Root Tests
-
-| Test | Line |
-|------|------|
-| Domain allow operations | [L89](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts#L89) |
-| Domain deny operations | [L162](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts#L162) |
+---
 
 ## SubDomainPagination
 
-**File:** [`playwright/e2e/Pages/SubDomainPagination.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SubDomainPagination.spec.ts)
-**Tests:** 1
+📁 **File:** [`playwright/e2e/Pages/SubDomainPagination.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SubDomainPagination.spec.ts)
+
+| Metric | Count |
+|--------|-------|
+| Tests | 1 |
+| Steps | 2 |
+| Total | 3 |
 
 ### SubDomain Pagination
+{: .text-delta }
 
-| Test | Line |
-|------|------|
-| Verify subdomain count and pagination functionality | [L71](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SubDomainPagination.spec.ts#L71) |
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Verify subdomain count and pagination functionality | Subdomain count and pagination functionality | 2 | [L71](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SubDomainPagination.spec.ts#L71) |
+| | ↳ *Verify subdomain count in tab label* | | | [L79](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SubDomainPagination.spec.ts#L79) |
+| | ↳ *Test pagination navigation* | | | [L110](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SubDomainPagination.spec.ts#L110) |
+
+---
+
+## DomainPermissions
+
+📁 **File:** [`playwright/e2e/Features/Permissions/DomainPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts)
+
+| Metric | Count |
+|--------|-------|
+| Tests | 2 |
+| Steps | 0 |
+| Total | 2 |
+
+### Standalone Tests
+{: .text-delta }
+
+| # | Test | Behavior | Steps | Line |
+|---|------|----------|-------|------|
+| 1 | Domain allow operations | Domain allow operations | - | [L89](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts#L89) |
+| 2 | Domain deny operations | Domain deny operations | - | [L162](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/DomainPermissions.spec.ts#L162) |
+
+---
 
