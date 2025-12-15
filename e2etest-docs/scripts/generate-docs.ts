@@ -228,138 +228,24 @@ function extractBehavior(testName: string): string {
   return behavior;
 }
 
-/**
- * Categorize test by type based on name patterns
- */
-function categorizeTest(testName: string): string {
-  const lowerName = testName.toLowerCase();
-
-  if (lowerName.includes('create') || lowerName.includes('add')) return '✨ Create';
-  if (lowerName.includes('update') || lowerName.includes('edit') || lowerName.includes('modify')) return '✏️ Update';
-  if (lowerName.includes('delete') || lowerName.includes('remove')) return '🗑️ Delete';
-  if (lowerName.includes('navigate') || lowerName.includes('navigation')) return '🧭 Navigation';
-  if (lowerName.includes('search') || lowerName.includes('filter')) return '🔍 Search';
-  if (lowerName.includes('permission') || lowerName.includes('access') || lowerName.includes('role')) return '🔐 Access Control';
-  if (lowerName.includes('drag') || lowerName.includes('drop') || lowerName.includes('move')) return '↔️ Drag & Drop';
-  if (lowerName.includes('import') || lowerName.includes('export')) return '📥 Import/Export';
-  if (lowerName.includes('validation') || lowerName.includes('error') || lowerName.includes('invalid')) return '⚠️ Validation';
-  if (lowerName.includes('workflow') || lowerName.includes('approve') || lowerName.includes('reject')) return '✅ Workflow';
-  if (lowerName.includes('version') || lowerName.includes('history')) return '📜 Version';
-
-  return '🧪 General';
-}
-
 function parseTestFile(filePath: string): TestFile {
   const content = fs.readFileSync(filePath, 'utf-8');
-  const lines = content.split('\n');
   const fileName = path.basename(filePath);
 
-  const describes: TestDescribe[] = [];
-  const rootTests: TestCase[] = [];
-  const describeStack: TestDescribe[] = [];
-  let currentTest: TestCase | null = null;
-  let totalTests = 0;
-  let totalSteps = 0;
-  let braceCount = 0;
-  let inDescribe = false;
-
-  lines.forEach((line, index) => {
-    const lineNumber = index + 1;
-    const trimmedLine = line.trim();
-
-    // Track braces for scope
-    const openBraces = (line.match(/\{/g) || []).length;
-    const closeBraces = (line.match(/\}/g) || []).length;
-
-    // Match test.describe
-    const describeMatch = trimmedLine.match(/(?:test\.)?describe(?:\.skip)?(?:\.only)?\s*\(\s*['"`](.+?)['"`]/);
-    if (describeMatch) {
-      const newDescribe: TestDescribe = {
-        name: describeMatch[1],
-        tests: [],
-        nestedDescribes: [],
-        line: lineNumber,
-      };
-
-      if (describeStack.length > 0) {
-        describeStack[describeStack.length - 1].nestedDescribes.push(newDescribe);
-      } else {
-        describes.push(newDescribe);
-      }
-      describeStack.push(newDescribe);
-      inDescribe = true;
-    }
-
-    // Match test() or it()
-    const testMatch = trimmedLine.match(/^(?:test|it)(?:\.skip|\.only)?\s*\(\s*['"`](.+?)['"`]/);
-    if (testMatch && !trimmedLine.includes('test.describe') && !trimmedLine.includes('test.use') &&
-        !trimmedLine.includes('test.beforeAll') && !trimmedLine.includes('test.afterAll') &&
-        !trimmedLine.includes('test.beforeEach') && !trimmedLine.includes('test.afterEach') &&
-        !trimmedLine.includes('test.step')) {
-
-      const isSkipped = trimmedLine.includes('.skip');
-      currentTest = {
-        name: testMatch[1],
-        line: lineNumber,
-        steps: [],
-        description: extractBehavior(testMatch[1]),
-        isSkipped,
-      };
-
-      if (describeStack.length > 0) {
-        describeStack[describeStack.length - 1].tests.push(currentTest);
-      } else {
-        rootTests.push(currentTest);
-      }
-      totalTests++;
-    }
-
-    // Match test.step() - handles both single line and multi-line patterns
-    const stepMatch = trimmedLine.match(/(?:await\s+)?test\.step\s*\(\s*['"`](.+?)['"`]/);
-    const stepStartMatch = trimmedLine.match(/(?:await\s+)?test\.step\s*\(\s*$/);
-
-    if (stepMatch && currentTest) {
-      currentTest.steps.push({
-        name: stepMatch[1],
-        line: lineNumber,
-      });
-      totalSteps++;
-    } else if (stepStartMatch && currentTest && index + 1 < lines.length) {
-      // Multi-line test.step - name is on next line
-      const nextLine = lines[index + 1].trim();
-      const nextLineMatch = nextLine.match(/^['"`](.+?)['"`]/);
-      if (nextLineMatch) {
-        currentTest.steps.push({
-          name: nextLineMatch[1],
-          line: lineNumber,
-        });
-        totalSteps++;
-      }
-    }
-
-    // Handle closing braces to pop describe stack
-    if (closeBraces > openBraces && describeStack.length > 0) {
-      // Simple heuristic: if we see more closing braces, we might be exiting a describe
-      // This is imperfect but works for most cases
-    }
-  });
-
-  // More accurate describe scope tracking using a second pass
-  // Reset and use proper scope tracking
-  const finalDescribes = parseDescribesAccurately(content, fileName);
+  const parsed = parseDescribesAccurately(content);
 
   return {
     path: filePath,
     fileName,
-    describes: finalDescribes.describes,
-    rootTests: finalDescribes.rootTests,
-    totalTests: finalDescribes.totalTests,
-    totalSteps: finalDescribes.totalSteps,
-    totalScenarios: finalDescribes.totalTests + finalDescribes.totalSteps,
+    describes: parsed.describes,
+    rootTests: parsed.rootTests,
+    totalTests: parsed.totalTests,
+    totalSteps: parsed.totalSteps,
+    totalScenarios: parsed.totalTests + parsed.totalSteps,
   };
 }
 
-function parseDescribesAccurately(content: string, fileName: string): {
+function parseDescribesAccurately(content: string): {
   describes: TestDescribe[],
   rootTests: TestCase[],
   totalTests: number,
@@ -374,17 +260,11 @@ function parseDescribesAccurately(content: string, fileName: string): {
   // Simple state machine for parsing
   let currentDescribe: TestDescribe | null = null;
   let currentTest: TestCase | null = null;
-  let describeDepth = 0;
-  let testDepth = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineNumber = i + 1;
     const trimmedLine = line.trim();
-
-    // Count braces
-    const openBraces = (line.match(/\{/g) || []).length;
-    const closeBraces = (line.match(/\}/g) || []).length;
 
     // Match test.describe
     const describeMatch = trimmedLine.match(/(?:test\.)?describe(?:\.skip)?(?:\.only)?\s*\(\s*['"`](.+?)['"`]/);
@@ -451,12 +331,6 @@ function parseDescribesAccurately(content: string, fileName: string): {
         }
         totalSteps++;
       }
-    }
-
-    // Check for end of describe block (simplified)
-    if (trimmedLine === '});' && currentDescribe && closeBraces > 0) {
-      // Could be end of describe - push and reset
-      // This is a heuristic that works for most well-formatted code
     }
   }
 

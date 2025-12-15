@@ -1395,18 +1395,18 @@ nav_order: 348
 | 1 | should handle large number of glossary terms with pagination | Handle large number of glossary terms with pagination | - | [L81](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L81) |
 | 2 | should search and filter glossary terms | Search and filter glossary terms | - | [L119](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L119) |
 | 3 | should expand and collapse all terms | Expand and collapse all terms | - | [L147](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L147) |
-| 4 | should expand individual terms | Expand individual terms | - | [L197](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L197) |
-| 5 | should maintain scroll position when loading more terms | Maintain scroll position when loading more terms | - | [L217](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L217) |
-| 6 | should handle status filtering | Handle status filtering | - | [L288](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L288) |
-| 7 | should show term count in glossary listing | Show term count in glossary listing | - | [L307](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L307) |
-| 8 | should handle drag and drop for term reordering | Handle drag and drop for term reordering | - | [L320](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L320) |
+| 4 | should expand individual terms | Expand individual terms | - | [L199](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L199) |
+| 5 | should maintain scroll position when loading more terms | Maintain scroll position when loading more terms | - | [L219](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L219) |
+| 6 | should handle status filtering | Handle status filtering | - | [L290](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L290) |
+| 7 | should show term count in glossary listing | Show term count in glossary listing | - | [L309](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L309) |
+| 8 | should handle drag and drop for term reordering | Handle drag and drop for term reordering | - | [L322](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L322) |
 
 ### Large Glossary Child Term Performace
 {: .text-delta }
 
 | # | Test | Behavior | Steps | Line |
 |---|------|----------|-------|------|
-| 1 | should handle large number of glossary child term with pagination | Handle large number of glossary child term with pagination | - | [L399](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L399) |
+| 1 | should handle large number of glossary child term with pagination | Handle large number of glossary child term with pagination | - | [L401](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LargeGlossaryPerformance.spec.ts#L401) |
 
 ---
 
