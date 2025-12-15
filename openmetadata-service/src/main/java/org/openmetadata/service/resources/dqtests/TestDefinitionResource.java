@@ -155,7 +155,13 @@ public class TestDefinitionResource
                   "Filter test definitions by supported service. Returns test definitions that either "
                       + "have an empty supportedServices list (supporting all services) or include the specified service.")
           @QueryParam("supportedService")
-          String supportedServiceParam) {
+          String supportedServiceParam,
+      @Parameter(
+              description =
+                  "Filter by enabled status (true/false). If not specified, returns all test definitions.",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("enabled")
+          Boolean enabledParam) {
     ListFilter filter = new ListFilter(include);
     if (entityType != null) {
       filter.addQueryParam("entityType", entityType);
@@ -168,6 +174,9 @@ public class TestDefinitionResource
     }
     if (supportedServiceParam != null) {
       filter.addQueryParam("supportedService", supportedServiceParam);
+    }
+    if (enabledParam != null) {
+      filter.addQueryParam("enabled", String.valueOf(enabledParam));
     }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);

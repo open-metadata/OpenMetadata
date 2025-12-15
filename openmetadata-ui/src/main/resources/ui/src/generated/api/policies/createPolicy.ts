@@ -181,6 +181,7 @@ export enum Operation {
     EditStatus = "EditStatus",
     EditTags = "EditTags",
     EditTeams = "EditTeams",
+    EditTestDefinitionLibrary = "EditTestDefinitionLibrary",
     EditTests = "EditTests",
     EditTier = "EditTier",
     EditUsage = "EditUsage",
@@ -199,6 +200,7 @@ export enum Operation {
     ViewSampleData = "ViewSampleData",
     ViewScim = "ViewScim",
     ViewTestCaseFailedRowsSample = "ViewTestCaseFailedRowsSample",
+    ViewTestDefinitionLibrary = "ViewTestDefinitionLibrary",
     ViewTests = "ViewTests",
     ViewUsage = "ViewUsage",
 }
