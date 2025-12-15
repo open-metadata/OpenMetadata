@@ -26,7 +26,8 @@ from metadata.generated.schema.entity.services.connections.dashboard.powerBIConn
 )
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
 from metadata.ingestion.source.dashboard.powerbi.models import (
     DashboardsResponse,
@@ -63,7 +64,7 @@ class PowerBiApiClient:
     REST Auth & Client for PowerBi
     """
 
-    client: REST
+    client: TrackedREST
 
     def __init__(self, config: PowerBIConnection):
         self.config = config
@@ -85,7 +86,7 @@ class PowerBiApiClient:
             retry=100,
             retry_wait=30,
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="powerbi")
 
     def get_auth_token(self) -> Tuple[str, str]:
         """

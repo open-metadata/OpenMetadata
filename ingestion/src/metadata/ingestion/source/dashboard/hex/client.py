@@ -18,7 +18,8 @@ from typing import List
 from metadata.generated.schema.entity.services.connections.dashboard.hexConnection import (
     HexConnection,
 )
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.hex.models import Project, ProjectListResponse
 from metadata.utils.constants import AUTHORIZATION_HEADER
 from metadata.utils.helpers import clean_uri
@@ -37,7 +38,7 @@ class HexApiClient:
     REST Auth & Client for Hex
     """
 
-    client: REST
+    client: TrackedREST
 
     def __init__(self, config: HexConnection):
         self.config = config
@@ -51,7 +52,7 @@ class HexApiClient:
             extra_headers=HEADERS,
         )
 
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="hex")
 
     def test_project(self) -> None:
         """

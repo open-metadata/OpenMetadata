@@ -87,6 +87,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.logstorage.LogStorageFactory;
 import org.openmetadata.service.logstorage.LogStorageInterface;
+import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
@@ -118,6 +119,7 @@ public class IngestionPipelineResource
   static final String FIELDS = "owners,followers";
 
   @Inject private StreamableLogsMetrics streamableLogsMetrics;
+  @Inject private IngestionProgressTracker progressTracker;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -167,6 +169,12 @@ public class IngestionPipelineResource
       } catch (Exception ex) {
         LOG.error("Failed to initialize default log storage", ex);
       }
+    }
+
+    // Initialize progress tracker for real-time ingestion progress updates
+    if (progressTracker != null) {
+      repository.setProgressTracker(progressTracker);
+      LOG.info("Progress tracker initialized for ingestion pipelines");
     }
   }
 
@@ -1612,6 +1620,164 @@ public class IngestionPipelineResource
     } catch (Exception e) {
       LOG.error("Failed to stream logs for pipeline: {}, runId: {}", fqn, runId, e);
       return Response.status(Response.Status.NOT_FOUND)
+          .entity(Map.of("message", e.getMessage()))
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/progress/{fqn}/stream/{runId}")
+  @Produces("text/event-stream")
+  @Operation(
+      operationId = "streamPipelineProgress",
+      summary = "Stream progress updates for a pipeline run",
+      description =
+          "Stream real-time progress updates for a specific pipeline run using Server-Sent Events",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Progress stream",
+            content = @Content(mediaType = "text/event-stream")),
+        @ApiResponse(responseCode = "404", description = "Pipeline not found")
+      })
+  public Response streamPipelineProgress(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the ingestion pipeline",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
+          UUID runId) {
+    try {
+      // Validate that the pipeline exists first
+      IngestionPipeline pipeline =
+          getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
+
+      // Authorize the request
+      OperationContext operationContext =
+          new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+
+      // Stream progress using the repository
+      return repository.streamProgress(fqn, runId);
+    } catch (Exception e) {
+      LOG.error("Failed to stream progress for pipeline: {}, runId: {}", fqn, runId, e);
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(Map.of("message", e.getMessage()))
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .build();
+    }
+  }
+
+  @PUT
+  @Path("/progress/{fqn}/{runId}")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "updatePipelineProgress",
+      summary = "Update pipeline progress",
+      description = "Update real-time progress for a pipeline run",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Progress updated"),
+        @ApiResponse(responseCode = "404", description = "Pipeline not found")
+      })
+  public Response updatePipelineProgress(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the ingestion pipeline",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
+          UUID runId,
+      @Valid
+          @RequestBody(
+              description = "Progress update",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON,
+                      schema =
+                          @Schema(
+                              implementation =
+                                  org.openmetadata
+                                      .schema
+                                      .entity
+                                      .services
+                                      .ingestionPipelines
+                                      .ProgressUpdate
+                                      .class)))
+          org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate
+              progressUpdate) {
+    // Authorize the request - let authorization exceptions propagate for proper 403 response
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+
+    try {
+      repository.updateProgress(fqn, runId, progressUpdate);
+      return Response.ok().build();
+    } catch (Exception e) {
+      LOG.error("Failed to update progress for pipeline: {}, runId: {}", fqn, runId, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(Map.of("message", e.getMessage()))
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .build();
+    }
+  }
+
+  @POST
+  @Path("/metrics/{fqn}/{runId}")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "submitOperationMetrics",
+      summary = "Submit operation metrics batch",
+      description = "Submit a batch of operation metrics for a pipeline run",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Metrics accepted"),
+        @ApiResponse(responseCode = "404", description = "Pipeline not found")
+      })
+  public Response submitOperationMetrics(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the ingestion pipeline",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
+          UUID runId,
+      @Valid
+          @RequestBody(
+              description = "Operation metrics batch",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON,
+                      schema =
+                          @Schema(
+                              implementation =
+                                  org.openmetadata
+                                      .schema
+                                      .entity
+                                      .services
+                                      .ingestionPipelines
+                                      .OperationMetricsBatch
+                                      .class)))
+          org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetricsBatch
+              metricsBatch) {
+    // Authorize the request - let authorization exceptions propagate for proper 403 response
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+
+    try {
+      repository.addOperationMetrics(fqn, runId, metricsBatch);
+      return Response.ok().build();
+    } catch (Exception e) {
+      LOG.error("Failed to submit metrics for pipeline: {}, runId: {}", fqn, runId, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity(Map.of("message", e.getMessage()))
           .type(MediaType.APPLICATION_JSON_TYPE)
           .build();

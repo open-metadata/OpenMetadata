@@ -17,8 +17,9 @@ import traceback
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
+from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.superset.models import (
     ListDatabaseResult,
     SupersetChart,
@@ -49,7 +50,7 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
             allow_redirects=True,
             verify=get_verify_ssl(config.connection.sslConfig),
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="superset")
         self.generated_auth_token = None
         self.expiry = None
         super().__init__()
@@ -83,7 +84,7 @@ class SupersetAPIClient:
     Superset client wrapper using the REST helper class
     """
 
-    client: REST
+    client: TrackedREST
     _auth_provider: AuthenticationProvider
 
     def __init__(self, config: SupersetConnection):
@@ -98,7 +99,7 @@ class SupersetAPIClient:
             allow_redirects=True,
             verify=get_verify_ssl(config.connection.sslConfig),
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="superset")
 
     def get_dashboard_count(self) -> int:
         resp_dashboards = self.client.get("/dashboard/?q=(page:0,page_size:1)")

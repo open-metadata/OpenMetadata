@@ -17,7 +17,8 @@ import time
 import traceback
 from collections import defaultdict
 from functools import singledispatchmethod
-from typing import Any, Generic, Iterable, List, Type, TypeVar
+from time import perf_counter
+from typing import Any, Generic, Iterable, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -43,6 +44,8 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.execution_time_tracker import ExecutionTimeTrackerContextMap
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.operation_metrics import OperationMetricsState
+from metadata.utils.progress_tracker import ProgressTrackerState
 from metadata.utils.source_hash import generate_source_hash
 
 logger = ingestion_logger()
@@ -75,6 +78,16 @@ class TopologyRunnerMixin(Generic[C]):
     deleted = defaultdict(dict)
     queue = Queue()
 
+    def _get_entity_type_for_node(self, node: TopologyNode) -> Optional[str]:
+        """
+        Get the entity type name for a topology node.
+        Used for progress tracking by entity type.
+        """
+        for stage in node.stages:
+            if stage.type_:
+                return stage.type_.__name__
+        return None
+
     def _run_node_producer(self, node: TopologyNode) -> Iterable[Entity]:
         """Run the node producer"""
         try:
@@ -87,11 +100,28 @@ class TopologyRunnerMixin(Generic[C]):
     def _multithread_process_node(
         self, node: TopologyNode, threads: int
     ) -> Iterable[Entity]:
-        """Multithread Processing of a Node"""
+        """Multithread Processing of a Node with progress tracking"""
         child_nodes = self._get_child_nodes(node)
+        entity_type_name = self._get_entity_type_for_node(node)
+        progress_tracker = ProgressTrackerState()
+        operation_metrics = OperationMetricsState()
 
+        # Track SOURCE time - fetching entities from producer
+        source_start = perf_counter()
         node_entities = list(self._run_node_producer(node) or [])
+        source_time_ms = (perf_counter() - source_start) * 1000
         node_entities_length = len(node_entities)
+
+        if entity_type_name:
+            operation_metrics.record_operation(
+                category="source_fetch",
+                operation=node.producer,
+                duration_ms=source_time_ms,
+                entity_type=entity_type_name,
+            )
+
+        if entity_type_name and node_entities_length > 0:
+            progress_tracker.set_total(entity_type_name, node_entities_length)
 
         if node_entities_length == 0:
             return
@@ -110,6 +140,7 @@ class TopologyRunnerMixin(Generic[C]):
                         chunk,
                         child_nodes,
                         self.context.get_current_thread_id(),
+                        entity_type_name,
                     )
                     for chunk in chunks
                 ]
@@ -130,10 +161,31 @@ class TopologyRunnerMixin(Generic[C]):
                     time.sleep(0.01)
 
     def _process_node(self, node: TopologyNode) -> Iterable[Entity]:
-        """Processing of a Node in a single thread."""
+        """Processing of a Node in a single thread with progress tracking."""
         child_nodes = self._get_child_nodes(node)
+        entity_type_name = self._get_entity_type_for_node(node)
+        progress_tracker = ProgressTrackerState()
+        operation_metrics = OperationMetricsState()
 
-        for node_entity in self._run_node_producer(node) or []:
+        # Track SOURCE time - fetching entities from producer
+        source_start = perf_counter()
+        node_entities = list(self._run_node_producer(node) or [])
+        source_time_ms = (perf_counter() - source_start) * 1000
+
+        if entity_type_name:
+            operation_metrics.record_operation(
+                category="source_fetch",
+                operation=node.producer,
+                duration_ms=source_time_ms,
+                entity_type=entity_type_name,
+            )
+
+        if entity_type_name and node_entities:
+            progress_tracker.set_total(entity_type_name, len(node_entities))
+
+        for node_entity in node_entities:
+            start_time = perf_counter()
+
             for stage in node.stages:
                 yield from self._process_stage(
                     stage=stage, node_entity=node_entity, child_nodes=child_nodes
@@ -143,6 +195,10 @@ class TopologyRunnerMixin(Generic[C]):
             for stage in node.stages:
                 if stage.clear_context:
                     self.context.get().clear_stage(stage=stage)
+
+            if entity_type_name:
+                processing_time = perf_counter() - start_time
+                progress_tracker.increment_processed(entity_type_name, processing_time)
 
             # process all children from the node being run
             yield from self.process_nodes(child_nodes)
@@ -192,13 +248,19 @@ class TopologyRunnerMixin(Generic[C]):
         node_entities: List[Any],
         child_nodes: List[TopologyNode],
         parent_thread_id: int,
+        entity_type_name: Optional[str] = None,
     ):
-        """Multithread processing of a Node Entity"""
+        """Multithread processing of a Node Entity with progress tracking"""
         # Generates a new context based on the parent thread.
         self.context.copy_from(parent_thread_id)
         ExecutionTimeTrackerContextMap().copy_from_parent(parent_thread_id)
 
+        progress_tracker = ProgressTrackerState()
+        operation_metrics = OperationMetricsState()
+
         for node_entity in node_entities:
+            start_time = perf_counter()
+
             # For each stage, we get all the stage results and one by one yield them by adding them to the Queue.
             for stage in node.stages:
                 for stage_result in self._process_stage(
@@ -211,10 +273,17 @@ class TopologyRunnerMixin(Generic[C]):
                 if stage.clear_context:
                     self.context.get().clear_stage(stage=stage)
 
+            if entity_type_name:
+                processing_time = perf_counter() - start_time
+                progress_tracker.increment_processed(entity_type_name, processing_time)
+
             # If the Entity has child nodes that need processing we proceed to processing them with the same logic as above.
 
             for child_result in self.process_nodes(child_nodes):
                 self.queue.put(child_result)
+
+        # Merge thread-local metrics into global state before thread exits
+        operation_metrics.merge_thread_metrics()
 
         # Finally we pop the context and finish the thread
         self.context.pop()
@@ -250,6 +319,8 @@ class TopologyRunnerMixin(Generic[C]):
         and decide if we need to PUT or PATCH at the sink.
         """
         logger.debug(f"Processing stage: {stage}")
+        operation_metrics = OperationMetricsState()
+        stage_start = perf_counter()
 
         for entity_request in (
             self._run_stage_processor(stage=stage, node_entity=node_entity) or []
@@ -265,6 +336,16 @@ class TopologyRunnerMixin(Generic[C]):
 
         if stage.cache_entities:
             self._init_cache_dict(stage=stage, child_nodes=child_nodes)
+
+        # Track STAGE time - processing and sinking entities
+        stage_time_ms = (perf_counter() - stage_start) * 1000
+        entity_type_name = stage.type_.__name__ if stage.type_ else "Unknown"
+        operation_metrics.record_operation(
+            category="stage_process",
+            operation=stage.processor,
+            duration_ms=stage_time_ms,
+            entity_type=entity_type_name,
+        )
 
     def _run_node_post_process(self, node: TopologyNode) -> Iterable[Entity]:
         """

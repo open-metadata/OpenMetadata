@@ -53,6 +53,8 @@ from metadata.utils.class_helper import (
 from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.operation_metrics import OperationMetricsState
+from metadata.utils.progress_tracker import ProgressTrackerState
 from metadata.utils.streamable_logger import (
     cleanup_streamable_logging,
     setup_streamable_logging_for_workflow,
@@ -129,6 +131,14 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 enable_streaming=True,
             )
 
+        # Set run context for operation metrics tracking
+        OperationMetricsState().set_run_context(
+            run_id=str(self.config.pipelineRunId.root)
+            if self.config.pipelineRunId
+            else None,
+            pipeline_fqn=self.config.ingestionPipelineFQN,
+        )
+
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.post_init()
@@ -151,6 +161,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         # Cleanup streamable logging if it was configured
         cleanup_streamable_logging()
+
+        # Reset progress and metrics tracking singletons
+        ProgressTrackerState().reset()
+        OperationMetricsState().reset()
 
         self.metadata.close()
 
@@ -377,6 +391,9 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"({metrics.memory_usage_percent:.2f}%) | "
                     f"Processes: {metrics.active_processes}"
                 )
+
+            # Send progress update to the server for live tracking
+            self.send_progress_update()
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

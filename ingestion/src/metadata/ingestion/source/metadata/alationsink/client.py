@@ -21,8 +21,9 @@ from metadata.generated.schema.entity.services.connections.metadata.alationSinkC
 from metadata.generated.schema.security.credentials.apiAccessTokenAuth import (
     ApiAccessTokenAuth,
 )
+from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.metadata.alationsink.constants import (
     ROUTES,
     TOTAL_RECORDS,
@@ -51,7 +52,7 @@ class AlationSinkAuthenticationProvider(AuthenticationProvider):
             allow_redirects=True,
             verify=get_verify_ssl(config.sslConfig),
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="alation")
         self.generated_auth_token = None
         self.expiry = None
         super().__init__()
@@ -123,7 +124,7 @@ class AlationSinkClient:
             auth_token_mode="",
             verify=get_verify_ssl(config.sslConfig),
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="alation")
         self.pagination_limit = self.config.paginationLimit
 
     def paginate_entity(

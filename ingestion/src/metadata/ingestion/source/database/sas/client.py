@@ -18,7 +18,8 @@ import requests
 from metadata.generated.schema.entity.services.connections.database.sasConnection import (
     SASConnection,
 )
-from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import APIError, ClientConfig
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -43,7 +44,7 @@ class SASClient:
             allow_redirects=True,
             verify=False,
         )
-        self.client = REST(client_config)
+        self.client = TrackedREST(client_config, source_name="sas")
         # custom setting
         self.enable_datatables = config.datatables
         self.custom_filter_datatables = config.dataTablesCustomFilter

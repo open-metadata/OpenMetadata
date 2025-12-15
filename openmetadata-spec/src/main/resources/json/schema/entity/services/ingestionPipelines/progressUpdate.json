@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/progressUpdate.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProgressUpdate",
+  "description": "Real-time progress update for SSE streaming during ingestion pipeline execution",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate",
+  "definitions": {
+    "progressUpdateType": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType",
+      "description": "Type of progress update",
+      "enum": ["DISCOVERY", "PROCESSING", "STEP_COMPLETE", "PIPELINE_COMPLETE", "ERROR"]
+    }
+  },
+  "properties": {
+    "runId": {
+      "description": "Pipeline run ID",
+      "type": "string"
+    },
+    "timestamp": {
+      "description": "When this update was created",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "updateType": {
+      "description": "Type of progress update",
+      "$ref": "#/definitions/progressUpdateType"
+    },
+    "stepName": {
+      "description": "Name of the current step",
+      "type": "string"
+    },
+    "progress": {
+      "description": "Progress by entity type (e.g., Database, DatabaseSchema, Table). Keys are entity types, values contain total, processed, and estimatedRemainingSeconds.",
+      "existingJavaType": "java.util.Map<String, Object>"
+    },
+    "currentEntity": {
+      "description": "FQN of the entity currently being processed",
+      "type": "string"
+    },
+    "message": {
+      "description": "Human-readable status message",
+      "type": "string"
+    }
+  },
+  "required": ["runId", "timestamp", "updateType"],
+  "additionalProperties": false
+}
