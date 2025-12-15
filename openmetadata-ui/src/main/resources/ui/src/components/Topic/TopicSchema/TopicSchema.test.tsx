@@ -42,24 +42,30 @@ jest.mock('../../Database/TableDescription/TableDescription.component', () =>
   ))
 );
 
-jest.mock('../../../utils/TableUtils', () => ({
-  ...jest.requireActual('../../../utils/TableUtils'),
-  getTableExpandableConfig: jest.fn().mockImplementation(() => ({
-    expandIcon: jest.fn(({ onExpand, expandable, record }) =>
-      expandable ? (
-        <button data-testid="expand-icon" onClick={(e) => onExpand(record, e)}>
-          ExpandIcon
-        </button>
-      ) : null
-    ),
-  })),
-  getTableColumnConfigSelections: jest
-    .fn()
-    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
-  handleUpdateTableColumnSelections: jest
-    .fn()
-    .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
-}));
+jest.mock('../../../utils/TableUtils', () => {
+  const actual = jest.requireActual('../../../utils/TableUtils');
+
+  return {
+    ...actual,
+    getTableExpandableConfig: jest.fn().mockImplementation(() => ({
+      expandIcon: jest.fn(({ onExpand, expandable, record }) =>
+        expandable ? (
+          <button
+            data-testid="expand-icon"
+            onClick={(e) => onExpand(record, e)}>
+            ExpandIcon
+          </button>
+        ) : null
+      ),
+    })),
+    getTableColumnConfigSelections: jest
+      .fn()
+      .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+    handleUpdateTableColumnSelections: jest
+      .fn()
+      .mockReturnValue(['name', 'description', 'dataType', 'tags', 'glossary']),
+  };
+});
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
@@ -78,14 +84,6 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
   getGlossaryTermsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
-
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
-  jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="description-preview">Description Preview</div>
-    )
-);
 
 jest.mock(
   '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
@@ -122,6 +120,37 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
 
 jest.mock('../../../utils/TableColumn.util', () => ({
   ownerTableObject: jest.fn().mockReturnValue([{}]),
+}));
+
+jest.mock(
+  '../../Database/ColumnDetailPanel/ColumnDetailPanel.component',
+  () => ({
+    ColumnDetailPanel: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="column-detail-panel" />),
+  })
+);
+
+jest.mock('../../Database/ColumnFilter/ColumnFilter.component', () => ({
+  ColumnFilter: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="column-filter" />),
+}));
+
+jest.mock(
+  '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
+  () => ({
+    EntityAttachmentProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  })
+);
+
+jest.mock('../../common/ToggleExpandButton/ToggleExpandButton', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="toggle-expand-button" />),
 }));
 
 const mockOnUpdate = jest.fn();
