@@ -28,9 +28,10 @@ export async function collectCoverage(page: Page) {
     if (!existsSync(coveragePath)) {
       mkdirSync(coveragePath);
     }
-    writeFileSync(
-      path.join(coveragePath, `coverage-${fullUuid()}.json`),
-      JSON.stringify(coverage)
-    );
+    const filename = `coverage-${fullUuid()}.json`;
+    console.log(`Saving coverage to ${path.join(coveragePath, filename)}`);
+    writeFileSync(path.join(coveragePath, filename), JSON.stringify(coverage));
+  } else {
+    console.warn('Coverage object (window.__coverage__) not found on page.');
   }
 }
