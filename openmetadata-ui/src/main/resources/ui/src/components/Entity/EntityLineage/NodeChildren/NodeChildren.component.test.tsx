@@ -118,23 +118,11 @@ describe('NodeChildren Component', () => {
   it('should only show columns with lineage when filter is on', () => {
     const nodeWithMultipleColumns = {
       ...mockNode,
-      columns: [
-        {
-          name: 'column1',
-          fullyQualifiedName: 'test.fqn.column1',
-          dataType: 'STRING',
-        },
-        {
-          name: 'column2',
-          fullyQualifiedName: 'test.fqn.column2',
-          dataType: 'STRING',
-        },
-        {
-          name: 'column3',
-          fullyQualifiedName: 'test.fqn.column3',
-          dataType: 'STRING',
-        },
-      ],
+      columns: [...Array(3)].map((_, i) => ({
+        name: `column${i + 1}`,
+        fullyQualifiedName: `test.fqn.column${i + 1}`,
+        dataType: 'STRING',
+      })),
     };
 
     mockLineageProvider.columnsHavingLineage = [
