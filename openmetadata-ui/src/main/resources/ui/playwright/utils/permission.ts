@@ -171,14 +171,7 @@ export const validateViewPermissions = async (
   await page.click('[data-testid="profiler"]');
   await page.waitForLoadState('networkidle');
   await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .waitFor({ state: 'visible' });
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .click();
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
   await page.waitForLoadState('networkidle');
   await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(
@@ -190,7 +183,7 @@ export const validateViewPermissions = async (
   await page.waitForLoadState('networkidle');
   await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
 
-  await expect(page.locator('[data-testid="edit-lineage"]')).toBeDisabled();
+  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
 
   await page.click('[data-testid="custom_properties"]');
   await page.waitForLoadState('networkidle');

@@ -54,3 +54,11 @@ export const supersetFormDetails4: SupersetFormType = {
     scheme: 'mysql+pymysql',
   },
 };
+
+export const lookerFormDetails = {
+  clientId: 'test-client-id',
+  clientSecret: 'test-client-secret',
+  hostPort: 'http://localhost:19999',
+  gitCredentials: 'local/path',
+  type: 'Looker',
+};

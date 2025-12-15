@@ -20,7 +20,7 @@ import {
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
 } from '../utils/DataQuality/DataQualityUtils';
-import { getDataQualityReport } from './testAPI';
+import { DataQualityReportParamsType, getDataQualityReport } from './testAPI';
 
 export const fetchEntityCoveredWithDQ = (
   filters?: DataQualityDashboardChartFilters,
@@ -260,4 +260,60 @@ export const fetchTestCaseStatusMetricsByDays = (
     aggregationQuery:
       'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
   });
+};
+
+export const fetchTestCaseResultByTestSuiteId = (
+  testSuiteId: string,
+  status?: TestCaseStatus
+) => {
+  const params: DataQualityReportParamsType = {
+    q: JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                should: [
+                  {
+                    nested: {
+                      path: 'testSuites',
+                      query: {
+                        term: {
+                          'testSuites.id': testSuiteId,
+                        },
+                      },
+                    },
+                  },
+                  {
+                    term: {
+                      'testSuite.id': testSuiteId,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              term: {
+                deleted: false,
+              },
+            },
+            ...(status
+              ? [
+                  {
+                    term: {
+                      'testCaseResult.testCaseStatus': status,
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+      },
+    }),
+    aggregationQuery:
+      'bucketName=entityLinks:aggType=terms:field=entityFQN,bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus',
+    index: 'testCase',
+  };
+
+  return getDataQualityReport(params);
 };

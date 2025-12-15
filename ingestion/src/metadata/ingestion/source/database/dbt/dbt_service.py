@@ -15,12 +15,6 @@ DBT service Topology.
 from abc import ABC, abstractmethod
 from typing import Iterable, List
 
-from collate_dbt_artifacts_parser.parser import (
-    parse_catalog,
-    parse_manifest,
-    parse_run_results,
-    parse_sources,
-)
 from pydantic import Field
 from typing_extensions import Annotated
 
@@ -199,6 +193,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             }
         )
 
+        # pylint: disable=too-many-nested-blocks
         for field in ["nodes", "sources"]:
             for node, value in manifest_dict.get(  # pylint: disable=unused-variable
                 field
@@ -209,9 +204,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                 for key in keys_to_delete:
                     del value[key]
                 if value.get("columns"):
-                    for col_name, value in value[
-                        "columns"
-                    ].items():  # pylint: disable=unused-variable
+                    for _, value in value["columns"].items():
                         if value.get("constraints"):
                             keys_to_delete = [
                                 key
@@ -236,12 +229,26 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                     del result[key]
 
     def get_dbt_files(self) -> Iterable[DbtFiles]:
+        """
+        Prepare the DBT files
+        """
         dbt_files = get_dbt_details(self.source_config.dbtConfigSource)
         for dbt_file in dbt_files:
             self.context.get().dbt_file = dbt_file
             yield dbt_file
 
     def get_dbt_objects(self) -> Iterable[DbtObjects]:
+        """
+        Prepare the DBT objects
+        """
+        # pylint: disable=import-outside-toplevel
+        from collate_dbt_artifacts_parser.parser import (
+            parse_catalog,
+            parse_manifest,
+            parse_run_results,
+            parse_sources,
+        )
+
         self.remove_manifest_non_required_keys(
             manifest_dict=self.context.get().dbt_file.dbt_manifest
         )
@@ -325,18 +332,17 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         Method to process DBT owners using patch APIs
         """
 
-    def get_dbt_tests(self) -> dict:
+    def get_dbt_tests(self) -> Iterable[dict]:
         """
         Prepare the DBT tests
         """
         for _, dbt_test in self.context.get().dbt_tests.items():
             yield dbt_test
 
-    def get_dbt_exposures(self) -> dict:
+    def get_dbt_exposures(self) -> Iterable[dict]:
         """
         Prepare the DBT exposures
         """
-
         for _, exposure in self.context.get().exposures.items():
             yield exposure
 

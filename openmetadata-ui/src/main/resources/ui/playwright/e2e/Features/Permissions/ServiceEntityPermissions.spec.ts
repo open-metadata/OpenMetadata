@@ -12,7 +12,6 @@
  */
 
 import { Page, test as base } from '@playwright/test';
-import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { ApiServiceClass } from '../../../support/entity/service/ApiServiceClass';
 import { DashboardServiceClass } from '../../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
@@ -88,14 +87,13 @@ serviceEntities.forEach((EntityClass) => {
   test.describe(`${entityType} Permissions`, () => {
     test.beforeAll('Setup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
 
     test.afterAll('Cleanup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      await EntityDataClass.postRequisitesForTests(apiContext);
+
       await entity.delete(apiContext);
       await afterAction();
     });

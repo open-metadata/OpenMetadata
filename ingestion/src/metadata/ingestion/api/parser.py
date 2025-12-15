@@ -266,26 +266,35 @@ def get_connection_class(
     ],
 ) -> Type[T]:
     """
-    Build the connection class path, import and return it
-    :param source_type: e.g., Glue
-    :param service_type: e.g., DatabaseConnection
-    :return: e.g., GlueConnection
-    """
+    Build the connection class path, import and return it.
 
-    # Get all the module path minus the file.
-    # From metadata.generated.schema.entity.services.databaseService we get metadata.generated.schema.entity.services
+    Handles connection module imports with automatic fallback for services
+    that use all-lowercase naming (SAS, SQLite, SSAS) instead of camelCase.
+
+    :param source_type: e.g., Glue, SAS, BigQuery
+    :param service_type: e.g., DatabaseConnection
+    :return: e.g., GlueConnection, SASConnection
+    """
     module_path = ".".join(service_type.__module__.split(".")[:-1])
     connection_path = service_type.__name__.lower().replace("connection", "")
-    connection_module = source_type[0].lower() + source_type[1:] + "Connection"
-
     class_name = source_type + "Connection"
+
+    connection_module = source_type[0].lower() + source_type[1:] + "Connection"
     class_path = f"{module_path}.connections.{connection_path}.{connection_module}"
 
-    connection_class = getattr(
-        __import__(class_path, globals(), locals(), [class_name]), class_name
-    )
-
-    return connection_class
+    try:
+        return getattr(
+            __import__(class_path, globals(), locals(), [class_name]),
+            class_name,
+        )
+    except (ImportError, ModuleNotFoundError):
+        # Fallback to all-lowercase for services with non-standard naming (SAS, SQLite, SSAS)
+        connection_module = source_type.lower() + "Connection"
+        class_path = f"{module_path}.connections.{connection_path}.{connection_module}"
+        return getattr(
+            __import__(class_path, globals(), locals(), [class_name]),
+            class_name,
+        )
 
 
 def _parse_validation_err(validation_error: ValidationError) -> str:

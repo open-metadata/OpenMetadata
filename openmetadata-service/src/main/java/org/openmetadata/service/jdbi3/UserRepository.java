@@ -24,7 +24,9 @@ import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import jakarta.json.JsonPatch;
@@ -41,6 +43,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -87,7 +90,9 @@ import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -256,7 +261,7 @@ public class UserRepository extends EntityRepository<User> {
     User updatedUser = JsonUtils.deepCopy(orginalUser, User.class);
     JsonPatch patch =
         JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
-    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
     userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
 
     // Update lastActivityTime immediately on login for metrics visibility
@@ -1045,6 +1050,13 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  private void updateIncidentAssignee(User user) {
+    TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+        (TestCaseResolutionStatusRepository)
+            getEntityTimeSeriesRepository(TEST_CASE_RESOLUTION_STATUS);
+    testCaseResolutionStatusRepository.cleanUpAssignees(user.getFullyQualifiedName());
+  }
+
   @Override
   protected void postDelete(User entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
@@ -1054,12 +1066,79 @@ public class UserRepository extends EntityRepository<User> {
     }
     // Remove suggestions
     daoCollection.suggestionDAO().deleteByCreatedBy(entity.getId());
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            updateIncidentAssignee(entity);
+          } catch (Exception ex) {
+            LOG.error("Error updating test case incident assignee: ", ex);
+          }
+        });
   }
 
   /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
     public UserUpdater(User original, User updated, Operation operation) {
       super(original, updated, operation);
+    }
+
+    /**
+     * Filter domain references to remove deleted domains, then populate valid ones.
+     * This prevents EntityNotFoundException when domains are deleted between updates.
+     */
+    private List<EntityReference> filterValidDomains(List<EntityReference> domains) {
+      if (domains == null || domains.isEmpty()) {
+        return domains;
+      }
+
+      // First filter out deleted domains, then populate valid references
+      List<EntityReference> validDomains =
+          domains.stream()
+              .filter(
+                  domain -> {
+                    try {
+                      Entity.getEntityReference(domain, ALL);
+                      return true;
+                    } catch (EntityNotFoundException e) {
+                      LOG.warn(
+                          "Removing deleted domain {} from user update",
+                          domain.getFullyQualifiedName());
+                      return false;
+                    }
+                  })
+              .collect(Collectors.toList());
+
+      return EntityUtil.populateEntityReferences(validDomains);
+    }
+
+    /**
+     * Filter team references to remove deleted teams, then populate valid ones.
+     * This prevents EntityNotFoundException when teams are deleted between updates.
+     */
+    private List<EntityReference> filterValidTeams(List<EntityReference> teams) {
+      if (teams == null || teams.isEmpty()) {
+        return teams;
+      }
+
+      // First filter out deleted teams, then populate valid references
+      List<EntityReference> validTeams =
+          teams.stream()
+              .filter(
+                  team -> {
+                    try {
+                      Entity.getEntityReference(team, ALL);
+                      return true;
+                    } catch (EntityNotFoundException e) {
+                      LOG.warn(
+                          "Removing deleted team {} from user update",
+                          team.getFullyQualifiedName());
+                      return false;
+                    }
+                  })
+              .collect(Collectors.toList());
+
+      return EntityUtil.populateEntityReferences(validTeams);
     }
 
     @Transaction
@@ -1089,6 +1168,8 @@ public class UserRepository extends EntityRepository<User> {
           "allowImpersonation", original.getAllowImpersonation(), updated.getAllowImpersonation());
       updatePersonaPreferences(original, updated);
       updateAuthenticationMechanism(original, updated);
+      // Invalidate policy cache for this user when roles/teams change
+      SubjectCache.invalidateUser(updated.getName());
     }
 
     private void updateRoles(User original, User updated) {
@@ -1119,10 +1200,10 @@ public class UserRepository extends EntityRepository<User> {
       }
 
       List<EntityReference> origDomains =
-          EntityUtil.populateEntityReferences(listOrEmptyMutable(original.getDomains()));
+          filterValidDomains(listOrEmptyMutable(original.getDomains()));
       // Skip domains inherited from teams,they are handled in setInheritedFields().
       List<EntityReference> updatedDomains =
-          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains())).stream()
+          filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
               .filter(domain -> domain.getInherited() == null || !domain.getInherited())
               .collect(Collectors.toList());
       updated.setDomains(updatedDomains);
@@ -1153,8 +1234,8 @@ public class UserRepository extends EntityRepository<User> {
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.TEAM);
       assignTeams(updated, updated.getTeams());
 
-      List<EntityReference> origTeams = listOrEmpty(original.getTeams());
-      List<EntityReference> updatedTeams = listOrEmpty(updated.getTeams());
+      List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
+      List<EntityReference> updatedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
 
       origTeams.sort(EntityUtil.compareEntityReference);
       updatedTeams.sort(EntityUtil.compareEntityReference);

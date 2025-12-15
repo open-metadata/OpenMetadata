@@ -16,19 +16,8 @@
              https://issues.apache.org/jira/browse/MSHADE-206 which makes it so
              the dependency reduced pom is not reflected in a multi-module build
              correctly. -->
-        <dependency>
-            <groupId>org.opensearch.client</groupId>
-            <artifactId>opensearch-rest-high-level-client</artifactId>
-            <optional>true</optional>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.yaml</groupId>
-                    <artifactId>snakeyaml</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
 
-        <!-- New OpenSearch Java API Client -->
+        <!-- OpenSearch Java API Client -->
         <dependency>
             <groupId>org.opensearch.client</groupId>
             <artifactId>opensearch-java</artifactId>

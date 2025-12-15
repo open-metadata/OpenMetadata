@@ -47,7 +47,7 @@ test('Table difference test case', async ({ page }) => {
   );
   await page.getByText('Data Observability').click();
   await profileResponse;
-  await page.getByRole('menuitem', { name: 'Table Profile' }).click();
+  await page.getByRole('tab', { name: 'Table Profile' }).click();
 
   try {
     await test.step('Create', async () => {
@@ -75,6 +75,13 @@ test('Table difference test case', async ({ page }) => {
       );
       await page.getByTestId('tableDiff').click();
       await tableListSearchResponse;
+
+      const table2KeyColumnsInput = page.locator(
+        '#testCaseFormV1_params_table2\\.keyColumns_0_value'
+      );
+
+      await expect(table2KeyColumnsInput).toBeDisabled();
+
       await page.click('#testCaseFormV1_params_table2');
       await page.waitForSelector(`[data-id="tableDiff"]`, {
         state: 'visible',
@@ -107,6 +114,15 @@ test('Table difference test case', async ({ page }) => {
         table1.entity?.columns[0].name
       );
       await page.getByTitle(table1.entity?.columns[0].name).click();
+
+      await page.fill(
+        '#testCaseFormV1_params_table2\\.keyColumns_0_value',
+        table2.entity?.columns[0].name
+      );
+      await page.getByTitle(table2.entity?.columns[0].name).click();
+
+      await expect(table2KeyColumnsInput).not.toBeDisabled();
+
       await page.fill('#testCaseFormV1_params_threshold', testCase.threshold);
       await page.fill(
         '#testCaseFormV1_params_useColumns_0_value',
@@ -138,10 +154,7 @@ test('Table difference test case', async ({ page }) => {
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page
-        .getByTestId('profiler-tab-left-panel')
-        .getByText('Data Quality')
-        .click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
       await testCaseResponse;
 
       await expect(page.getByTestId(testCase.name)).toBeVisible();
@@ -155,12 +168,51 @@ test('Table difference test case', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
 
       await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
       );
+
+      // Wait for form to finish loading (isLoading becomes false)
+      await expect(page.getByTestId('edit-test-form')).toBeVisible();
+
+      // Verify Table 1's keyColumns is enabled and populated in edit mode
+      const table1KeyColumnsEditInput = page.locator(
+        '#tableTestForm_params_keyColumns_0_value'
+      );
+
+      // Wait for the input to be visible and enabled, and then check its value
+      await expect(table1KeyColumnsEditInput).toBeVisible();
+      await expect(table1KeyColumnsEditInput).not.toBeDisabled();
+
+      // Wait for the value to be populated
+      // Use data-testid to find the select component
+      const columnName = table1.entity?.columns[0].name;
+      const table1Select = page.getByTestId('keyColumns-select');
+
+      // Wait for the select to be visible and verify the selected value is displayed
+      await expect(table1Select).toBeVisible();
+      await expect(table1Select.getByText(columnName)).toBeVisible();
+
+      // Verify table2.keyColumns is enabled and populated in edit mode
+      const table2KeyColumnsEditInput = page.locator(
+        '#tableTestForm_params_table2\\.keyColumns_0_value'
+      );
+
+      // Wait for the input to be visible and enabled, and then check its value
+      await expect(table2KeyColumnsEditInput).toBeVisible();
+      await expect(table2KeyColumnsEditInput).not.toBeDisabled();
+
+      // Wait for the value to be populated
+      const table2ColumnName = table2.entity?.columns[0].name;
+      const table2Select = page.getByTestId('table2.keyColumns-select');
+
+      // Wait for the select to be visible and verify the selected value is displayed
+      await expect(table2Select).toBeVisible();
+      await expect(table2Select.getByText(table2ColumnName)).toBeVisible();
 
       await page
         .locator('label')
@@ -231,7 +283,7 @@ test('Custom SQL Query', async ({ page }) => {
   );
   await page.getByText('Data Observability').click();
   await profileResponse;
-  await page.getByRole('menuitem', { name: 'Table Profile' }).click();
+  await page.getByRole('tab', { name: 'Table Profile' }).click();
 
   try {
     await test.step('Create', async () => {
@@ -287,10 +339,7 @@ test('Custom SQL Query', async ({ page }) => {
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page
-        .getByTestId('profiler-tab-left-panel')
-        .getByText('Data Quality')
-        .click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
       await testCaseResponse;
 
       await expect(page.getByTestId(testCase.name)).toBeVisible();
@@ -304,6 +353,7 @@ test('Custom SQL Query', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
 
@@ -372,7 +422,8 @@ test('Column Values To Be Not Null', async ({ page }) => {
   const testCaseDoc = page.waitForResponse(
     '/locales/en-US/OpenMetadata/TestCaseForm.md'
   );
-  await page.click('[data-testid="column"]');
+  await page.getByRole('menuitem', { name: 'Test case' }).click();
+  await page.getByTestId('select-table-card').getByText('Column Level').click();
   await testCaseDoc;
 
   try {
@@ -440,6 +491,11 @@ test('Column Values To Be Not Null', async ({ page }) => {
     });
 
     await test.step('Edit', async () => {
+      await page
+        .getByTestId(
+          `action-dropdown-${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name}`
+        )
+        .click();
       await page
         .getByTestId(`edit-${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name}`)
         .click();

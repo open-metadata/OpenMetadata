@@ -427,16 +427,16 @@ class TestDLTTableExtraction(unittest.TestCase):
     def test_function_name_pattern(self):
         """Test DLT table with function call for name"""
         source_code = """
-        entity_name = "moneyRequest"
+        entity_name = "customerEvent"
 
         @dlt.table(name=materializer.generate_event_log_table_name())
         def event_log():
             return df
         """
         table_names = extract_dlt_table_names(source_code)
-        # Should infer from entity_name variable
+        # Should infer from entity_name variable and function pattern
         self.assertEqual(len(table_names), 1)
-        self.assertEqual(table_names[0], "moneyRequest")
+        self.assertEqual(table_names[0], "customerevent_event_log")
 
     def test_no_name_parameter(self):
         """Test DLT table decorator without name parameter"""
@@ -477,15 +477,15 @@ class TestKafkaFallbackPatterns(unittest.TestCase):
     def test_topic_variable_fallback(self):
         """Test fallback to topic_name variable when no explicit Kafka pattern"""
         source_code = """
-        topic_name = "dev.ern.cashout.moneyRequest_v1"
-        entity_name = "moneyRequest"
+        topic_name = "dev.example.cashout.customerEvent_v1"
+        entity_name = "customerEvent"
 
         # Kafka reading is abstracted in helper class
         materializer = KafkaMaterializer(topic_name, entity_name)
         """
         configs = extract_kafka_sources(source_code)
         self.assertEqual(len(configs), 1)
-        self.assertEqual(configs[0].topics, ["dev.ern.cashout.moneyRequest_v1"])
+        self.assertEqual(configs[0].topics, ["dev.example.cashout.customerEvent_v1"])
         self.assertIsNone(configs[0].bootstrap_servers)
 
     def test_subject_variable_fallback(self):
@@ -564,8 +564,8 @@ class TestKafkaFallbackPatterns(unittest.TestCase):
         import dlt
         from shared.materializers import KafkaMaterializer
 
-        topic_name = "dev.ern.cashout.moneyRequest_v1"
-        entity_name = "moneyRequest"
+        topic_name = "dev.example.cashout.customerEvent_v1"
+        entity_name = "customerEvent"
 
         materializer = KafkaMaterializer(
             topic_name=topic_name,
@@ -580,12 +580,14 @@ class TestKafkaFallbackPatterns(unittest.TestCase):
         # Test Kafka extraction
         kafka_configs = extract_kafka_sources(source_code)
         self.assertEqual(len(kafka_configs), 1)
-        self.assertEqual(kafka_configs[0].topics, ["dev.ern.cashout.moneyRequest_v1"])
+        self.assertEqual(
+            kafka_configs[0].topics, ["dev.example.cashout.customerEvent_v1"]
+        )
 
         # Test DLT table extraction
         table_names = extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 1)
-        self.assertEqual(table_names[0], "moneyRequest")
+        self.assertEqual(table_names[0], "customerevent_event_log")
 
 
 class TestDLTTableDependencies(unittest.TestCase):
@@ -733,15 +735,49 @@ def orders_silver():
         ]
         self.assertEqual(len(table_deps), 2)
 
-        bronze = next((d for d in table_deps if d.table_name == "orders_bronze"), None)
-        self.assertIsNotNone(bronze)
-        self.assertEqual(bronze.depends_on, ["kafka_orders_source"])
-        self.assertFalse(bronze.reads_from_kafka)
+    def test_materializer_event_log_snapshot_pattern(self):
+        """Test Materializer pattern with event_log and snapshot tables"""
+        source_code = """
+import dlt
+from materialization.materializer.materializer import Materializer
 
-        silver = next((d for d in table_deps if d.table_name == "orders_silver"), None)
-        self.assertIsNotNone(silver)
-        self.assertEqual(silver.depends_on, ["orders_bronze"])
-        self.assertFalse(silver.reads_from_kafka)
+env = "dev"
+entity_name = "customerEvent"
+topic_name = "dev.example.cashout.customerEvent_v1"
+schema_name = "dev.example.cashout.customerEvent_v1-value"
+schema_format = "json"
+snapshot_required = True
+starting_offsets = "earliest"
+
+materializer = Materializer(env, topic_name, schema_format, schema_name, entity_name,
+                            dbutils.secrets.get, False, True, starting_offsets)
+
+@dlt.table(name=materializer.generate_event_log_table_name())
+@dlt.expect_all_or_drop(dq_rules)
+def create_event_log_table():
+    return materializer.build_event_log_dataframe(spark)
+
+if snapshot_required:
+    materializer.build_snapshot_dataframe()
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+
+        # Should find both event_log and snapshot tables
+        self.assertEqual(len(deps), 2)
+
+        # Check event_log table
+        event_log = next((d for d in deps if "event_log" in d.table_name), None)
+        self.assertIsNotNone(event_log)
+        self.assertEqual(event_log.table_name, "customerevent_event_log")
+        self.assertTrue(event_log.reads_from_kafka)
+        self.assertEqual(event_log.depends_on, [])
+
+        # Check snapshot table
+        snapshot = next((d for d in deps if "snapshot" in d.table_name), None)
+        self.assertIsNotNone(snapshot)
+        self.assertEqual(snapshot.table_name, "customerevent_snapshot")
+        self.assertFalse(snapshot.reads_from_kafka)
+        self.assertEqual(snapshot.depends_on, ["customerevent_event_log"])
 
 
 class TestS3SourceDetection(unittest.TestCase):

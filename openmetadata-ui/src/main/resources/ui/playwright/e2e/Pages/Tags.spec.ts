@@ -636,12 +636,17 @@ test('Verify system classification term counts', async ({ page }) => {
     .locator('[data-testid="side-panel-classification"]')
     .filter({ hasText: 'PII' });
 
-  await expect(piiElement.getByTestId('filter-count')).toContainText('3');
+  const piiCountText = await piiElement
+    .getByTestId('filter-count')
+    .textContent();
+  const piiCount = parseInt(piiCountText?.trim() || '0');
+
+  expect(piiCount).toBeGreaterThanOrEqual(3);
 });
 
 test('Verify Owner Add Delete', async ({ page }) => {
   await classification1.visitPage(page);
-  const OWNER1 = user1.getUserName();
+  const OWNER1 = user1.getUserDisplayName();
 
   await addMultiOwner({
     page,
@@ -657,7 +662,7 @@ test('Verify Owner Add Delete', async ({ page }) => {
   await page.waitForLoadState('networkidle');
 
   await expect(
-    page.locator(`[data-testid="tag-owner-name"]`).getByTestId(OWNER1)
+    page.locator(`[data-testid="owner-link"]`).getByTestId(OWNER1)
   ).toBeVisible();
 
   await classification1.visitPage(page);

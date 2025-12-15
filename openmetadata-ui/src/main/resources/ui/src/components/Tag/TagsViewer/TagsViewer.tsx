@@ -73,6 +73,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
             <Link
               className={classNames(
+                'w-full',
                 { 'diff-added tw-mx-1': tag?.added },
                 { 'diff-removed': tag?.removed }
               )}
@@ -145,7 +146,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const popoverRenderElement = useMemo(
     () =>
       sortedTagsBySource.slice(sizeCap).length > 0 && (
-        <div className="m-t-xss" data-testid="popover-element">
+        <div data-testid="popover-element">
           <Popover
             content={
               <div className="d-flex flex-column flex-wrap gap-2">
@@ -158,7 +159,9 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             placement="bottom"
             trigger="click">
             <Tag
-              className="cursor-pointer plus-more-tag"
+              className={classNames('cursor-pointer plus-more-tag', {
+                'new-look': newLook,
+              })}
               data-testid="plus-more-count">{`+${
               sortedTagsBySource.length - (sizeCap ?? 0)
             } more`}</Tag>

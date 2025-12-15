@@ -10,6 +10,7 @@ Run:
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -44,6 +45,8 @@ from metadata.sdk.entities.databaseschemas import DatabaseSchemas
 from metadata.sdk.entities.glossaries import Glossaries
 from metadata.sdk.entities.tables import Tables
 
+logger = logging.getLogger(__name__)
+
 # ------------------------
 # Example-local builders
 # ------------------------
@@ -51,6 +54,8 @@ from metadata.sdk.entities.tables import Tables
 
 @dataclass
 class DatabaseServiceBuilderPy:
+    """Builder for creating database service requests."""
+
     name_val: Optional[str] = None
     description_val: Optional[str] = None
     type_val: Optional[DatabaseServiceType] = None
@@ -71,6 +76,7 @@ class DatabaseServiceBuilderPy:
     def mysql_connection(
         self, host_port: str, username: str, database: Optional[str] = None
     ) -> "DatabaseServiceBuilderPy":
+        """Configure a MySQL connection for the database service."""
         conn = DatabaseConnection(
             config=MysqlConnection(
                 type=MySQLType.Mysql,
@@ -127,6 +133,8 @@ class DatabaseServiceBuilderPy:
 
 @dataclass
 class DatabaseBuilderPy:
+    """Builder for creating database requests."""
+
     name_val: Optional[str] = None
     description_val: Optional[str] = None
     service_fqn_val: Optional[str] = None
@@ -173,6 +181,8 @@ class DatabaseBuilderPy:
 
 @dataclass
 class SchemaBuilderPy:
+    """Builder for creating database schema requests."""
+
     name_val: Optional[str] = None
     description_val: Optional[str] = None
     database_fqn_val: Optional[str] = None
@@ -218,6 +228,8 @@ class SchemaBuilderPy:
 
 @dataclass
 class TableBuilderPy:
+    """Builder for creating table requests."""
+
     name_val: Optional[str] = None
     description_val: Optional[str] = None
     schema_fqn_val: Optional[str] = None
@@ -238,6 +250,7 @@ class TableBuilderPy:
     def add_column(
         self, name: str, dtype: ColumnDataType, *, length: Optional[int] = None
     ) -> "TableBuilderPy":
+        """Add a column to the table."""
         col = Column(
             name=ColumnName(name),
             displayName=None,
@@ -299,6 +312,7 @@ class TableBuilderPy:
 
 
 def main() -> None:
+    """Run the builder-style end-to-end example."""
     config = OpenMetadataConfig(
         server_url="http://localhost:8585",
         jwt_token="YOUR_JWT_OR_API_KEY",
@@ -380,7 +394,7 @@ def main() -> None:
     # apply
     _ = Glossaries.import_csv(glossary_name).with_data(csv_text).execute()
 
-    print("Completed builder-based example successfully.")
+    logger.info("Completed builder-based example successfully.")
 
 
 if __name__ == "__main__":

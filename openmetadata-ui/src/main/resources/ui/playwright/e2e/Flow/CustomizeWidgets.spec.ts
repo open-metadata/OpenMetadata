@@ -17,7 +17,6 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -53,10 +52,6 @@ const testDataProducts = [
   new DataProduct([testDomain], 'pw-data-product-marketing'),
 ];
 
-const creationConfig: EntityDataClassCreationConfig = {
-  entityDetails: true,
-};
-
 const createdDataProducts: DataProduct[] = [];
 
 const test = base.extend<{ page: Page }>({
@@ -75,7 +70,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await persona.create(apiContext, [adminUser.responseData.id]);
-  await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
 
   // Set adminUser as owner for entities created by entityDetails config
   // Only domains and glossaries from entityDetails typically support owners
@@ -84,14 +78,13 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   // Since creationConfig has entityDetails: true, these entities are created:
   // domains, glossaries, users, teams, tags, classifications
   // Only domains and glossaries support ownership
-  if (creationConfig.entityDetails) {
-    entitiesToPatch.push(
-      { entity: EntityDataClass.domain1, endpoint: 'domains' },
-      { entity: EntityDataClass.domain2, endpoint: 'domains' },
-      { entity: EntityDataClass.glossary1, endpoint: 'glossaries' },
-      { entity: EntityDataClass.glossary2, endpoint: 'glossaries' }
-    );
-  }
+
+  entitiesToPatch.push(
+    { entity: EntityDataClass.domain1, endpoint: 'domains' },
+    { entity: EntityDataClass.domain2, endpoint: 'domains' },
+    { entity: EntityDataClass.glossary1, endpoint: 'glossaries' },
+    { entity: EntityDataClass.glossary2, endpoint: 'glossaries' }
+  );
 
   // Patch entities with owner in parallel
   const ownerPatchPromises = entitiesToPatch.map(
@@ -146,7 +139,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
 
 test.afterAll('Cleanup entity', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
-  await EntityDataClass.postRequisitesForTests(apiContext);
   await persona.delete(apiContext);
   await afterAction();
 });
@@ -180,7 +172,7 @@ test.describe('Widgets', () => {
         page,
         widgetKey,
         'Activity Feed',
-        '/explore'
+        `/users/${adminUser.responseData.name}/activity_feed/all`
       );
     });
 
@@ -234,16 +226,7 @@ test.describe('Widgets', () => {
         await waitForAllLoadersToDisappear(page);
         await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
         // Data Assets widget needs special handling for multiple search indexes
-        const searchIndexes = [
-          SearchIndex.TABLE,
-          SearchIndex.TOPIC,
-          SearchIndex.DASHBOARD,
-          SearchIndex.PIPELINE,
-          SearchIndex.MLMODEL,
-          SearchIndex.CONTAINER,
-          SearchIndex.SEARCH_INDEX,
-          SearchIndex.API_ENDPOINT_INDEX,
-        ];
+        const searchIndex = SearchIndex.DATA_ASSET;
 
         await verifyWidgetEntityNavigation(page, {
           widgetKey,
@@ -251,7 +234,7 @@ test.describe('Widgets', () => {
           urlPattern: '/explore',
           verifyElement: '[data-testid="explore-page"]',
           apiResponseUrl: '/api/v1/search/query',
-          searchQuery: searchIndexes,
+          searchQuery: searchIndex,
         });
       }
     );

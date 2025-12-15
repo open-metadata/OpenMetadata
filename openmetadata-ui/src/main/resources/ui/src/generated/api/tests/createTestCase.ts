@@ -23,6 +23,12 @@ export interface CreateTestCase {
      */
     description?: string;
     /**
+     * List of columns to group test results by dimensions. When specified, the test will be
+     * executed both overall and grouped by these columns to provide fine-grained data quality
+     * insights.
+     */
+    dimensionColumns?: string[];
+    /**
      * Display Name that identifies this test.
      */
     displayName?: string;

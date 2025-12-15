@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DateRangeObject } from 'Models';
 import { ReactNode } from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
@@ -22,15 +21,15 @@ import {
   Table,
   TableProfilerConfig,
 } from '../../../../generated/entity/data/table';
-import { TestCase, TestSummary } from '../../../../generated/tests/testCase';
+import { TestCase } from '../../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
+import { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityUtils';
 import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 
 export interface TableProfilerProps {
   permissions: OperationPermission;
   table?: Table;
-  testCaseSummary?: TestSummary;
 }
 
 export interface TableProfilerProviderProps extends TableProfilerProps {
@@ -39,7 +38,7 @@ export interface TableProfilerProviderProps extends TableProfilerProps {
 
 export interface TableProfilerContextInterface {
   isTableDeleted?: boolean;
-  testCaseSummary?: TestSummary;
+  testCaseSummary?: Record<string, TestCaseCountByStatus>;
   permissions: OperationPermission;
   isTestsLoading: boolean;
   isProfilerDataLoading: boolean;
@@ -52,8 +51,6 @@ export interface TableProfilerContextInterface {
   fetchAllTests: (params?: ListTestCaseParamsBySearch) => Promise<void>;
   onCustomMetricUpdate: (table: Table) => void;
   isProfilingEnabled: boolean;
-  dateRangeObject: DateRangeObject;
-  onDateRangeChange: (dateRange: DateRangeObject) => void;
   testCasePaging: UsePagingInterface;
   table?: Table;
   isTestCaseDrawerOpen: boolean;
@@ -94,7 +91,8 @@ export interface TestIndicatorProps {
 export type OverallTableSummaryType = {
   title: string;
   value: number | string;
-  className?: string;
+  icon?: SvgComponent;
+  extra?: ReactNode;
   key: string;
 };
 

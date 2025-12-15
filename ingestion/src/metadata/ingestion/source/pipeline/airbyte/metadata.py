@@ -12,6 +12,7 @@
 Airbyte source to extract metadata
 """
 
+from datetime import datetime
 from typing import Iterable, Optional
 
 from pydantic import BaseModel
@@ -45,6 +46,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.airbyte.client import AirbyteCloudClient
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -83,6 +85,16 @@ class AirbyteSource(PipelineServiceSource):
     Pipeline metadata from Airflow's metadata db
     """
 
+    def __init__(self, config, metadata):
+        super().__init__(config, metadata)
+
+        if isinstance(self.client, AirbyteCloudClient):
+            self.airbyte_cloud = True
+            self.source_url_prefix = "https://cloud.airbyte.com"
+        else:
+            self.airbyte_cloud = False
+            self.source_url_prefix = clean_uri(self.service_connection.hostPort)
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -116,7 +128,7 @@ class AirbyteSource(PipelineServiceSource):
         :return: Create Pipeline request with tasks
         """
         connection_url = (
-            f"{clean_uri(self.service_connection.hostPort)}/workspaces"
+            f"{self.source_url_prefix}/workspaces"
             f"/{pipeline_details.workspace.get('workspaceId')}"
             f"/connections/{pipeline_details.connection.get('connectionId')}"
         )
@@ -138,10 +150,13 @@ class AirbyteSource(PipelineServiceSource):
         """
         Method to get task & pipeline status
         """
+        if self.airbyte_cloud:
+            yield from self._yield_pipeline_status_cloud(pipeline_details)
+            return
 
         # Airbyte does not offer specific attempt link, just at pipeline level
         log_link = (
-            f"{self.service_connection.hostPort}workspaces/{pipeline_details.workspace.get('workspaceId')}"
+            f"{self.source_url_prefix}/workspaces/{pipeline_details.workspace.get('workspaceId')}"
             f"/connections/{pipeline_details.connection.get('connectionId')}/status"
         )
 
@@ -192,6 +207,79 @@ class AirbyteSource(PipelineServiceSource):
                     )
                 )
 
+    def _yield_pipeline_status_cloud(
+        self, pipeline_details: AirbytePipelineDetails
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
+        """
+        Method to get task & pipeline status for Airbyte Cloud.
+        Handles flat job structure with ISO 8601 timestamps.
+        """
+        log_link = (
+            f"{self.source_url_prefix}/workspaces/{pipeline_details.workspace.get('workspaceId')}"
+            f"/connections/{pipeline_details.connection.get('connectionId')}/timeline"
+        )
+
+        for job in self.client.list_jobs(
+            pipeline_details.connection.get("connectionId")
+        ):
+            if not job:
+                continue
+
+            created_at = None
+            ended_at = None
+
+            if job.get("startTime"):
+                try:
+                    start_dt = datetime.fromisoformat(
+                        job["startTime"].replace("Z", "+00:00")
+                    )
+                    created_at = convert_timestamp_to_milliseconds(start_dt.timestamp())
+                except (ValueError, AttributeError) as exc:
+                    logger.warning(f"Failed to parse startTime: {exc}")
+
+            if job.get("lastUpdatedAt"):
+                try:
+                    end_dt = datetime.fromisoformat(
+                        job["lastUpdatedAt"].replace("Z", "+00:00")
+                    )
+                    ended_at = convert_timestamp_to_milliseconds(end_dt.timestamp())
+                except (ValueError, AttributeError) as exc:
+                    logger.warning(f"Failed to parse lastUpdatedAt: {exc}")
+
+            task_status = [
+                TaskStatus(
+                    name=str(pipeline_details.connection.get("connectionId")),
+                    executionStatus=STATUS_MAP.get(
+                        job["status"].lower(), StatusType.Pending
+                    ).value,
+                    startTime=created_at,
+                    endTime=ended_at,
+                    logLink=log_link,
+                )
+            ]
+
+            pipeline_status = PipelineStatus(
+                executionStatus=STATUS_MAP.get(
+                    job["status"].lower(), StatusType.Pending
+                ).value,
+                taskStatus=task_status,
+                timestamp=Timestamp(created_at) if created_at else None,
+            )
+
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
+            )
+
+            yield Either(
+                right=OMetaPipelineStatus(
+                    pipeline_fqn=pipeline_fqn,
+                    pipeline_status=pipeline_status,
+                )
+            )
+
     def _get_table_fqn(self, table_details: TableDetails) -> Optional[str]:
         """
         Get the FQN of the table
@@ -221,12 +309,24 @@ class AirbyteSource(PipelineServiceSource):
         :return: Lineage from inlets and outlets
         """
         pipeline_name = pipeline_details.connection.get("name")
+
+        logger.debug(
+            f"Processing lineage for pipeline: {pipeline_name}, "
+            f"connection_id: {pipeline_details.connection.get('connectionId')}, "
+            f"workspace_id: {pipeline_details.workspace.get('workspaceId')}"
+        )
+        logger.debug(f"Pipeline connection details: {pipeline_details.connection}")
+
         source_connection = self.client.get_source(
             pipeline_details.connection.get("sourceId")
         )
         destination_connection = self.client.get_destination(
             pipeline_details.connection.get("destinationId")
         )
+
+        logger.debug(f"Source connection response: {source_connection}")
+        logger.debug(f"Destination connection response: {destination_connection}")
+
         source_name = source_connection.get("sourceName")
         destination_name = destination_connection.get("destinationName")
 

@@ -41,12 +41,14 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_G
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchConstants.DOMAINS_ID;
 import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
 import static org.openmetadata.service.search.SearchConstants.FAILED_TO_CREATE_INDEX_MESSAGE;
 import static org.openmetadata.service.search.SearchConstants.FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.search.SearchConstants.HITS;
 import static org.openmetadata.service.search.SearchConstants.ID;
 import static org.openmetadata.service.search.SearchConstants.PARENT;
+import static org.openmetadata.service.search.SearchConstants.PARENT_ID;
 import static org.openmetadata.service.search.SearchConstants.SEARCH_SOURCE;
 import static org.openmetadata.service.search.SearchConstants.SERVICE_ID;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
@@ -58,6 +60,9 @@ import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescri
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -119,6 +124,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -139,6 +145,19 @@ public class SearchRepository {
   private final String language;
 
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
+
+  private static final Set<String> SERVICE_ENTITY_SET =
+      Set.of(
+          Entity.DATABASE_SERVICE,
+          Entity.DASHBOARD_SERVICE,
+          Entity.MESSAGING_SERVICE,
+          Entity.PIPELINE_SERVICE,
+          Entity.MLMODEL_SERVICE,
+          Entity.STORAGE_SERVICE,
+          Entity.SEARCH_SERVICE,
+          Entity.SECURITY_SERVICE,
+          Entity.API_SERVICE,
+          Entity.DRIVE_SERVICE);
 
   private final List<String> inheritableFields =
       List.of(
@@ -274,6 +293,15 @@ public class SearchRepository {
     for (IndexMapping indexMapping : entityIndexMap.values()) {
       updateIndex(indexMapping);
     }
+  }
+
+  /**
+   * Hook method called before reindexing starts, after ApplicationContext is initialized.
+   * Subclasses can override this to perform additional initialization that depends on ApplicationContext.
+   */
+  public void prepareForReindex() {
+    // Default implementation does nothing
+    // Sub-classes like SearchRepositoryExt can override to initialize vector services
   }
 
   public IndexMapping getIndexMapping(String entityType) {
@@ -522,6 +550,11 @@ public class SearchRepository {
 
     String entityType = entity.getEntityReference().getType();
     String entityId = entity.getId().toString();
+
+    // Start timing search operation
+    Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
+    long startTime = System.currentTimeMillis();
+
     try {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
       String scriptTxt = DEFAULT_UPDATE_SCRIPT;
@@ -545,12 +578,52 @@ public class SearchRepository {
         SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
         doc = elasticSearchIndex.buildSearchIndexDoc();
       }
+
+      // Use synchronous update to ensure tests pass
+      // TODO: Consider using async updates with proper wait mechanisms in tests
       searchClient.updateEntity(indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
-      propagateInheritedFieldsToChildren(
-          entityType, entityId, changeDescription, indexMapping, entity);
-      propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
-      propagateCertificationTags(entityType, entity, changeDescription);
-      propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+
+      long updateTime = System.currentTimeMillis() - startTime;
+
+      // Only propagate if fields that affect children have changed
+      long propagateTime = 0;
+      if (requiresPropagation(changeDescription, entityType, entity)) {
+        // Time propagation operations
+        startTime = System.currentTimeMillis();
+        propagateInheritedFieldsToChildren(
+            entityType, entityId, changeDescription, indexMapping, entity);
+        propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
+        propagateCertificationTags(entityType, entity, changeDescription);
+        propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+        propagateTime = System.currentTimeMillis() - startTime;
+
+        LOG.info(
+            "Search index update with propagation - entity: {}, type: {}, update: {}ms, propagate: {}ms, total: {}ms",
+            entityId,
+            entityType,
+            updateTime,
+            propagateTime,
+            updateTime + propagateTime);
+      } else {
+        LOG.info(
+            "Search index update without propagation - entity: {}, type: {}, update: {}ms",
+            entityId,
+            entityType,
+            updateTime);
+      }
+
+      // Record search index metrics
+      Tags tags = Tags.of("entity_type", entityType, "operation", "update");
+      Metrics.timer("search.index.update", tags)
+          .record(updateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+
+      if (propagateTime > 0) {
+        Metrics.timer("search.index.propagate", tags)
+            .record(propagateTime, java.util.concurrent.TimeUnit.MILLISECONDS);
+        Metrics.counter("search.index.propagation.executed", tags).increment();
+      } else {
+        Metrics.counter("search.index.propagation.skipped", tags).increment();
+      }
     } catch (Exception ie) {
       LOG.error(
           "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
@@ -559,6 +632,11 @@ public class SearchRepository {
           ie.getMessage(),
           ie.getCause(),
           ExceptionUtils.getStackTrace(ie));
+    } finally {
+      // End search timing
+      if (searchSample != null) {
+        RequestLatencyContext.endSearchOperation(searchSample);
+      }
     }
   }
 
@@ -579,6 +657,98 @@ public class SearchRepository {
     return true;
   }
 
+  /**
+   * Determines if changes require propagation to child entities.
+   * Only propagate when fields that actually affect children have been modified.
+   */
+  private boolean requiresPropagation(
+      ChangeDescription changeDescription, String entityType, EntityInterface entity) {
+    if (changeDescription == null) {
+      return false;
+    }
+
+    // Check if any inheritable fields have changed (owners, domains, etc.)
+    boolean hasInheritableChanges =
+        changeDescription.getFieldsAdded().stream()
+                .anyMatch(field -> inheritableFields.contains(field.getName()))
+            || changeDescription.getFieldsUpdated().stream()
+                .anyMatch(field -> inheritableFields.contains(field.getName()))
+            || changeDescription.getFieldsDeleted().stream()
+                .anyMatch(field -> inheritableFields.contains(field.getName()));
+
+    // Tags need special handling - they only propagate in specific scenarios:
+    // 1. From glossary terms to entities
+    // 2. When a tag entity itself is updated (to all entities using it)
+    // 3. NOT from table to columns
+    boolean hasTagChanges = false;
+    boolean nameChanged =
+        changeDescription.getFieldsUpdated().stream()
+            .anyMatch(field -> field.getName().equals(FIELD_NAME));
+    if (entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)
+        || entityType.equalsIgnoreCase(Entity.TAG)) {
+      hasTagChanges =
+          changeDescription.getFieldsAdded().stream()
+                  .anyMatch(field -> propagateFields.contains(field.getName()))
+              || changeDescription.getFieldsUpdated().stream()
+                  .anyMatch(field -> propagateFields.contains(field.getName()))
+              || changeDescription.getFieldsDeleted().stream()
+                  .anyMatch(field -> propagateFields.contains(field.getName()));
+    }
+
+    // Check for glossary term specific changes
+    if (entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)) {
+      hasInheritableChanges =
+          hasInheritableChanges
+              || hasTagChanges
+              || nameChanged
+              || changeDescription.getFieldsAdded().stream()
+                  .anyMatch(field -> field.getName().equals(Entity.FIELD_TAGS))
+              || changeDescription.getFieldsDeleted().stream()
+                  .anyMatch(field -> field.getName().equals(Entity.FIELD_TAGS));
+    }
+
+    // Check for certification tag changes + tag specific changes
+    if (entityType.equalsIgnoreCase(Entity.TAG)) {
+      Tag tag = (Tag) entity;
+      hasInheritableChanges = hasInheritableChanges || nameChanged;
+      if (tag != null && tag.getCertification() != null) {
+        hasInheritableChanges =
+            hasInheritableChanges
+                || changeDescription.getFieldsUpdated().stream()
+                    .anyMatch(field -> field.getName().equals("certification"));
+      }
+    }
+
+    // Check for relationship changes that need propagation
+    if (changeDescription.getFieldsAdded().stream()
+            .anyMatch(field -> field.getName().equals("upstreamEntityRelationship"))
+        || changeDescription.getFieldsUpdated().stream()
+            .anyMatch(field -> field.getName().equals("upstreamEntityRelationship"))) {
+      hasInheritableChanges = true;
+    }
+
+    // Page entities have special FQN propagation when parent changes
+    if (entityType.equalsIgnoreCase(Entity.PAGE)) {
+      boolean parentChanged =
+          changeDescription.getFieldsAdded().stream()
+                  .anyMatch(field -> field.getName().contains("parent"))
+              || changeDescription.getFieldsUpdated().stream()
+                  .anyMatch(field -> field.getName().contains("parent"));
+      hasInheritableChanges = hasInheritableChanges || parentChanged;
+    }
+
+    boolean propagationRequired = hasInheritableChanges || hasTagChanges;
+
+    if (propagationRequired) {
+      LOG.debug(
+          "Propagation required for entity {} of type {} - changes detected in inheritable fields or special propagation needed",
+          entity.getId(),
+          entityType);
+    }
+
+    return propagationRequired;
+  }
+
   public void propagateInheritedFieldsToChildren(
       String entityType,
       String entityId,
@@ -586,38 +756,56 @@ public class SearchRepository {
       IndexMapping indexMapping,
       EntityInterface entity)
       throws IOException {
-    if (changeDescription != null) {
-      Pair<String, Map<String, Object>> updates =
-          getInheritedFieldChanges(changeDescription, entity);
-      Pair<String, String> parentMatch;
-      if (!updates.getValue().isEmpty()
-          // domains can be updatedDomains or deletedDomains and need to be propagated from the
-          // service level
-          && (updates.getValue().keySet().stream()
-                  .anyMatch(key -> key.toLowerCase().contains(FIELD_DOMAINS))
-              || updates.getValue().containsKey(FIELD_DISPLAY_NAME))) {
-        if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.SECURITY_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.API_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.DRIVE_SERVICE)) {
-          parentMatch = new ImmutablePair<>(SERVICE_ID, entityId);
-        } else {
-          parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
-        }
-      } else {
-        parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
-      }
-      List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
-      if (updates.getKey() != null && !updates.getKey().isEmpty() && !nullOrEmpty(childAliases)) {
-        searchClient.updateChildren(childAliases, parentMatch, updates);
+    if (changeDescription == null) {
+      return;
+    }
+
+    Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription, entity);
+    if (updates.getKey() == null || updates.getKey().isEmpty()) {
+      return;
+    }
+
+    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+    if (nullOrEmpty(childAliases)) {
+      return;
+    }
+
+    // Domain has subdomains (parent.id) and data products (domains.id) - handle separately
+    if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+      propagateToDomainChildren(entityId, indexMapping, updates);
+      return;
+    }
+
+    // Other entities: resolve parent field name and propagate to children
+    String parentFieldName = resolveParentFieldName(entityType, updates);
+    Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
+    searchClient.updateChildren(childAliases, parentMatch, updates);
+  }
+
+  private String resolveParentFieldName(
+      String entityType, Pair<String, Map<String, Object>> updates) {
+    if (!updates.getValue().isEmpty()
+        && (updates.getValue().keySet().stream()
+                .anyMatch(key -> key.toLowerCase().contains(FIELD_DOMAINS))
+            || updates.getValue().containsKey(FIELD_DISPLAY_NAME))) {
+      if (SERVICE_ENTITY_SET.stream().anyMatch(s -> s.equalsIgnoreCase(entityType))) {
+        return SERVICE_ID;
       }
     }
+    return entityType + ".id";
+  }
+
+  private void propagateToDomainChildren(
+      String domainId, IndexMapping indexMapping, Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    searchClient.updateChildren(
+        List.of(indexMapping.getIndexName(clusterAlias)),
+        new ImmutablePair<>(PARENT_ID, domainId),
+        updates);
+    searchClient.updateChildren(
+        List.of(entityIndexMap.get(Entity.DATA_PRODUCT).getIndexName(clusterAlias)),
+        new ImmutablePair<>(DOMAINS_ID, domainId),
+        updates);
   }
 
   public void propagateGlossaryTags(
@@ -1312,6 +1500,28 @@ public class SearchRepository {
         queryString);
   }
 
+  public SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithOffset(
+        filter.getCondition(entityType),
+        limit,
+        offset,
+        index.getIndexName(clusterAlias),
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext);
+  }
+
   public SearchResultListMapper listWithDeepPagination(
       String entityType,
       String query,
@@ -1427,6 +1637,15 @@ public class SearchRepository {
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
+  }
+
+  public DataQualityReport genericAggregation(
+      String query,
+      String index,
+      SearchAggregation aggregationMetadata,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.genericAggregation(query, index, aggregationMetadata, subjectContext);
   }
 
   public Response listDataInsightChartResult(

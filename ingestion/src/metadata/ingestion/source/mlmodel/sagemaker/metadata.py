@@ -94,6 +94,37 @@ class SagemakerSource(MlModelServiceSource):
             )
         return cls(config, metadata)
 
+    def list_registered_models(self):
+        """
+        Returns a list of dicts, one per registered model (model package group)
+        with metadata like name, arn, etc.
+        """
+        registered_models = []
+        try:
+            paginator = self.sagemaker.get_paginator("list_model_package_groups")
+            for page in paginator.paginate():
+                for summary in page.get("ModelPackageGroupSummaryList", []):
+                    group_name = summary["ModelPackageGroupName"]
+
+                    # Get full metadata for this registered model
+                    desc = self.sagemaker.describe_model_package_group(
+                        ModelPackageGroupName=group_name
+                    )
+                    registered_models.append(
+                        {
+                            "ModelName": desc["ModelPackageGroupName"],
+                            "ModelArn": desc["ModelPackageGroupArn"],
+                            "description": desc.get("ModelPackageGroupDescription"),
+                            "CreationTime": desc.get("CreationTime"),
+                        }
+                    )
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Failed to fetch unified studio registered models list - {err}"
+            )
+        return registered_models
+
     def get_mlmodels(  # pylint: disable=arguments-differ
         self,
     ) -> Iterable[SageMakerModel]:
@@ -108,6 +139,16 @@ class SagemakerSource(MlModelServiceSource):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to fetch models list - {err}")
+
+        # get unified studio registered models
+        registered_models = self.list_registered_models()
+        if registered_models:
+            logger.debug(
+                f"Successfully found registered models under sagemaker unified studio"
+            )
+            models.extend(registered_models)
+        else:
+            logger.debug(f"No registered models found under sagemaker unified studio")
 
         for model in models:
             try:

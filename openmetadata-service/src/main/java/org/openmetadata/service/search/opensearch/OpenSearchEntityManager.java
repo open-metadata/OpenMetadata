@@ -4,6 +4,7 @@ import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.g
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
 import static org.openmetadata.service.search.SearchClient.DELETE_COLUMN_LINEAGE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
 import static org.openmetadata.service.search.SearchClient.UPDATE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_FQN_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT;
@@ -26,16 +27,25 @@ import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
+import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Paging;
+import org.openmetadata.schema.type.entityRelationship.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityManagementClient;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -53,8 +63,10 @@ import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import os.org.opensearch.client.opensearch.core.DeleteResponse;
 import os.org.opensearch.client.opensearch.core.GetResponse;
+import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import os.org.opensearch.client.opensearch.core.search.Hit;
 
 /**
  * OpenSearch implementation of entity management operations.
@@ -357,6 +369,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                   .id(docId)
                   .refresh(Refresh.True)
                   .scriptedUpsert(true)
+                  .upsert(params)
                   .script(
                       s ->
                           s.inline(
@@ -369,7 +382,17 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
       LOG.info(
           "Successfully updated entity in OpenSearch for index: {}, docId: {}", indexName, docId);
-    } catch (IOException | OpenSearchException e) {
+    } catch (OpenSearchException e) {
+      if (e.status() == 404) {
+        LOG.warn(
+            "Document not found during update for index: {}, docId: {}. The document may not have been indexed yet.",
+            indexName,
+            docId);
+      } else {
+        LOG.error(
+            "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
+      }
+    } catch (IOException e) {
       LOG.error(
           "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
     }
@@ -944,10 +967,96 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     LOG.info("Successfully {} in OpenSearch for index: {}, docId: {}", operation, indexName, docId);
   }
 
+  @Override
+  public SearchSchemaEntityRelationshipResult getSchemaEntityRelationship(
+      String schemaFqn,
+      String queryFilter,
+      String includeSourceFields,
+      int offset,
+      int limit,
+      int from,
+      int size,
+      boolean deleted)
+      throws IOException {
+    SearchSchemaEntityRelationshipResult result = new SearchSchemaEntityRelationshipResult();
+    result.setData(
+        new SearchEntityRelationshipResult()
+            .withNodes(new java.util.TreeMap<>())
+            .withUpstreamEdges(new HashMap<>())
+            .withDownstreamEdges(new HashMap<>()));
+
+    String finalQueryFilter = buildERQueryFilter(schemaFqn, queryFilter);
+    String tableIndex =
+        Entity.getSearchRepository().getIndexOrAliasName(SearchClient.TABLE_SEARCH_INDEX);
+    SearchResponse<JsonData> searchResponse =
+        OsUtils.searchEntitiesWithLimitOffset(
+            client, tableIndex, finalQueryFilter, offset, limit, deleted);
+    int total = 0;
+    if (searchResponse == null
+        || searchResponse.hits() == null
+        || searchResponse.hits().total() == null) {
+      result.setPaging(new Paging().withOffset(offset).withLimit(limit).withTotal(total));
+      return result;
+    }
+    for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+      String sourceJson = hit.source().toJson().toString();
+      Map<String, Object> source = JsonUtils.getMapFromJson(sourceJson);
+      Object fqn = source.get(SearchClient.FQN_FIELD);
+      if (fqn != null) {
+        String fqnString = String.valueOf(fqn);
+        SearchEntityRelationshipRequest request =
+            new SearchEntityRelationshipRequest()
+                .withFqn(fqnString)
+                .withUpstreamDepth(0)
+                .withDownstreamDepth(1)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withLayerFrom(from)
+                .withLayerSize(size)
+                .withIncludeSourceFields(
+                    SearchUtils.getRequiredEntityRelationshipFields(includeSourceFields));
+        SearchEntityRelationshipResult tableER =
+            ((SearchClient) Entity.getSearchRepository().getSearchClient())
+                .searchEntityRelationship(request);
+        Map.Entry<String, NodeInformation> tableNode =
+            tableER.getNodes().entrySet().stream()
+                .filter(e -> fqn.toString().equals(e.getKey()))
+                .findFirst()
+                .orElse(null);
+        result
+            .getData()
+            .getNodes()
+            .putIfAbsent(fqnString, Objects.requireNonNull(tableNode).getValue());
+        result.getData().getUpstreamEdges().putAll(tableER.getUpstreamEdges());
+        result.getData().getDownstreamEdges().putAll(tableER.getDownstreamEdges());
+      }
+    }
+    total = (int) searchResponse.hits().total().value();
+    result.setPaging(new Paging().withOffset(offset).withLimit(limit).withTotal(total));
+    return result;
+  }
+
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
-    return JsonUtils.getMap(map).entrySet().stream()
-        .filter(entry -> entry.getValue() != null)
-        .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
+    List<String> fieldsToRemove = new ArrayList<>();
+
+    Map<String, JsonData> result =
+        JsonUtils.getMap(map).entrySet().stream()
+            .filter(
+                entry -> {
+                  if (entry.getValue() == null
+                      && FIELDS_TO_REMOVE_WHEN_NULL.contains(entry.getKey())) {
+                    fieldsToRemove.add(entry.getKey());
+                    return false;
+                  }
+                  return entry.getValue() != null;
+                })
+            .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
+
+    if (!fieldsToRemove.isEmpty()) {
+      result.put("fieldsToRemove", JsonData.of(fieldsToRemove));
+    }
+
+    return result;
   }
 
   private JsonData toJsonData(String doc) {
@@ -958,5 +1067,19 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       throw new IllegalArgumentException("Invalid JSON input", e);
     }
     return JsonData.of(docMap);
+  }
+
+  private static String buildERQueryFilter(String schemaFqn, String queryFilter) {
+    String schemaFqnWildcardClause =
+        String.format(
+            "{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}",
+            ReindexingUtil.escapeDoubleQuotes(schemaFqn));
+    String innerBoolFilter;
+    if (!CommonUtil.nullOrEmpty(queryFilter) && !"{}".equals(queryFilter)) {
+      innerBoolFilter = String.format("[ %s , %s ]", schemaFqnWildcardClause, queryFilter);
+    } else {
+      innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
+    }
+    return String.format("{\"bool\":{\"must\":%s}}", innerBoolFilter);
   }
 }
