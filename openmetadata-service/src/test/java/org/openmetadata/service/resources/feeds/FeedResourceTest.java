@@ -405,14 +405,14 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @Test
   void post_validTaskAndList_200() throws IOException {
     int totalTaskCount =
-        listTasks(null, null, null, null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
+        listTasks(null, null, null, null, 1000, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     int assignedByCount =
         listTasks(
                 null,
                 USER.getId().toString(),
                 FilterType.ASSIGNED_BY,
                 null,
-                null,
+                1000,
                 ADMIN_AUTH_HEADERS)
             .getPaging()
             .getTotal();
@@ -422,7 +422,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
                 USER.getId().toString(),
                 FilterType.ASSIGNED_TO,
                 null,
-                null,
+                1000,
                 ADMIN_AUTH_HEADERS)
             .getPaging()
             .getTotal();
@@ -441,7 +441,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     TaskDetails task1 = taskThread.getTask();
 
     // List task and validate
-    ThreadList tasks = listTasks(null, null, null, null, null, USER_AUTH_HEADERS);
+    ThreadList tasks = listTasks(null, null, null, null, 1000, USER_AUTH_HEADERS);
     TaskDetails task = tasks.getData().get(0).getTask();
     validateTaskList(USER2.getId(), "new", TaskStatus.Open, totalTaskCount + 1, tasks);
 
@@ -464,13 +464,13 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             RequestDescription,
             USER2_AUTH_HEADERS);
     TaskDetails task2 = taskThread.getTask();
-    tasks = listTasks(null, null, null, null, null, USER2_AUTH_HEADERS);
+    tasks = listTasks(null, null, null, null, 1000, USER2_AUTH_HEADERS);
     validateTaskList(USER.getId(), "new2", TaskStatus.Open, totalTaskCount + 2, tasks);
 
     // List tasks assigned by USER
     tasks =
         listTasks(
-            null, USER.getId().toString(), FilterType.ASSIGNED_BY, null, null, USER2_AUTH_HEADERS);
+            null, USER.getId().toString(), FilterType.ASSIGNED_BY, null, 1000, USER2_AUTH_HEADERS);
     task = tasks.getData().get(0).getTask();
     validateTask(task1, task);
     validateTaskList(USER2.getId(), "new", TaskStatus.Open, assignedByCount + 1, tasks);
@@ -478,13 +478,13 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // List tasks assigned to USER
     tasks =
         listTasks(
-            null, USER.getId().toString(), FilterType.ASSIGNED_TO, null, null, USER2_AUTH_HEADERS);
+            null, USER.getId().toString(), FilterType.ASSIGNED_TO, null, 1000, USER2_AUTH_HEADERS);
     task = tasks.getData().get(0).getTask();
     validateTask(task2, task);
     validateTaskList(USER.getId(), "new2", TaskStatus.Open, assignedToCount + 1, tasks);
 
     // List all the tasks for a user
-    tasks = listTasks(null, USER.getId().toString(), null, null, null, ADMIN_AUTH_HEADERS);
+    tasks = listTasks(null, USER.getId().toString(), null, null, 1000, ADMIN_AUTH_HEADERS);
     assertEquals(assignedToCount + assignedByCount + 2, tasks.getPaging().getTotal());
     assertEquals(assignedToCount + assignedByCount + 2, tasks.getData().size());
 
@@ -492,10 +492,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     ResolveTask resolveTask = new ResolveTask().withNewValue("accepted description");
     resolveTask(task2.getId(), resolveTask, USER_AUTH_HEADERS);
 
-    tasks = listTasks(null, null, null, TaskStatus.Open, null, USER2_AUTH_HEADERS);
+    tasks = listTasks(null, null, null, TaskStatus.Open, 1000, USER2_AUTH_HEADERS);
     assertFalse(tasks.getData().stream().anyMatch(t -> t.getTask().getId().equals(task2.getId())));
 
-    tasks = listTasks(null, null, null, TaskStatus.Closed, null, USER2_AUTH_HEADERS);
+    tasks = listTasks(null, null, null, TaskStatus.Closed, 1000, USER2_AUTH_HEADERS);
     assertEquals(task2.getId(), tasks.getData().get(0).getTask().getId());
   }
 
@@ -2206,19 +2206,19 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
       String userId,
       FilterType filterType,
       TaskStatus taskStatus,
-      Integer limitPosts,
+      Integer limit,
       Map<String, String> authHeaders)
       throws HttpResponseException {
     return listThreads(
         entityLink,
-        limitPosts,
+        null, // limitPosts for posts within a thread
         authHeaders,
         userId,
         filterType != null ? filterType.toString() : null,
         taskStatus,
         ThreadType.Task.toString(),
         null,
-        null,
+        limit, // limit for the number of threads
         null,
         null);
   }
@@ -2604,5 +2604,41 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   public static String buildTableFieldLink(String tableFqn, String field) {
     return String.format("<#E::table::%s::%s>", tableFqn, field);
+  }
+
+  @Test
+  void post_createTasksConcurrently_200() {
+    String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
+    List<CreateThread> createThreads = new java.util.ArrayList<>();
+    for (int i = 0; i < 50; i++) {
+      createThreads.add(
+          new CreateThread()
+              .withFrom(USER.getName())
+              .withMessage("Concurrent task " + i)
+              .withAbout(about)
+              .withType(ThreadType.Task)
+              .withTaskDetails(
+                  new CreateTaskDetails()
+                      .withAssignees(List.of(USER2.getEntityReference()))
+                      .withType(RequestDescription)
+                      .withSuggestion("new description " + i)));
+    }
+
+    List<Thread> createdTasks =
+        createThreads.parallelStream()
+            .map(
+                createThread -> {
+                  try {
+                    return createThread(createThread, USER_AUTH_HEADERS);
+                  } catch (HttpResponseException e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .toList();
+
+    assertEquals(50, createdTasks.size());
+    List<Integer> taskIds = createdTasks.stream().map(t -> t.getTask().getId()).toList();
+    long distinctIds = taskIds.stream().distinct().count();
+    assertEquals(taskIds.size(), distinctIds, "All task IDs should be unique");
   }
 }
