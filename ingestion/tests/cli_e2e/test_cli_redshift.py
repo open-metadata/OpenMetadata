@@ -96,7 +96,10 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                     connection.execute(self.drop_table_query)
                 break
             except OperationalError as e:
-                if "server closed the connection" in str(e) and attempt < max_retries - 1:
+                if (
+                    "server closed the connection" in str(e)
+                    and attempt < max_retries - 1
+                ):
                     continue
                 raise
 
