@@ -13,135 +13,239 @@
 import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
+import {
+  closeCertificationDropdown,
+  openCertificationDropdown,
+  setCertificationClassificationDisabled,
+  setTagDisabled,
+} from '../../utils/certification';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { visitClassificationPage } from '../../utils/tag';
 
-// Use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const table = new TableClass();
 
-// Create certification tags for testing
-const certificationTag1 = new TagClass({
-  classification: 'Certification',
-});
-const certificationTag2 = new TagClass({
-  classification: 'Certification',
-});
-
-test.describe('Certification Dropdown - Disabled Certification Filtering', () => {
+test.describe.serial('Certification Dropdown', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-
-    // Setup: Create test entities via API
     await table.create(apiContext);
-    await certificationTag1.create(apiContext);
-    await certificationTag2.create(apiContext);
-
+    await setCertificationClassificationDisabled(apiContext, false);
     await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-
-    // Cleanup: Delete test entities
+    await setCertificationClassificationDisabled(apiContext, false);
     await table.delete(apiContext);
-    await certificationTag1.delete(apiContext);
-    await certificationTag2.delete(apiContext);
-
     await afterAction();
   });
 
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
+  test('should show enabled certification tag in dropdown', async ({
+    page,
+    browser,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const tag = new TagClass({ classification: 'Certification' });
+    await tag.create(apiContext);
+
+    try {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await openCertificationDropdown(page);
+
+      await expect(
+        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+      ).toBeVisible();
+
+      await closeCertificationDropdown(page);
+    } finally {
+      await tag.delete(apiContext);
+      await afterAction();
+    }
   });
 
-  test('Enabled certification tags should be visible in the dropdown', async ({
+  test('should NOT show disabled certification tag in dropdown', async ({
     page,
+    browser,
   }) => {
-    await table.visitEntityPage(page);
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const enabledTag = new TagClass({ classification: 'Certification' });
+    const disabledTag = new TagClass({ classification: 'Certification' });
 
-    const certificationResponse = page.waitForResponse(
-      '/api/v1/tags?*parent=Certification*'
-    );
-    await page.getByTestId('edit-certification').click();
-    await certificationResponse;
+    await enabledTag.create(apiContext);
+    await disabledTag.create(apiContext);
+    await setTagDisabled(apiContext, disabledTag.responseData.id, true);
 
-    await page.waitForSelector('.certification-card-popover', {
-      state: 'visible',
-    });
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    try {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await openCertificationDropdown(page);
 
-    await expect(
-      page.getByTestId(
-        `radio-btn-${certificationTag1.responseData.fullyQualifiedName}`
-      )
-    ).toBeVisible();
+      await expect(
+        page.getByTestId(
+          `radio-btn-${disabledTag.responseData.fullyQualifiedName}`
+        )
+      ).not.toBeVisible();
 
-    await expect(
-      page.getByTestId(
-        `radio-btn-${certificationTag2.responseData.fullyQualifiedName}`
-      )
-    ).toBeVisible();
+      await expect(
+        page.getByTestId(
+          `radio-btn-${enabledTag.responseData.fullyQualifiedName}`
+        )
+      ).toBeVisible();
 
-    await page.getByTestId('close-certification').click();
+      await closeCertificationDropdown(page);
+    } finally {
+      await enabledTag.delete(apiContext);
+      await disabledTag.delete(apiContext);
+      await afterAction();
+    }
   });
 
-  test('Disabled Certification classification should hide all certifications in dropdown', async ({
+  test('should NOT show certifications when classification is disabled', async ({
     page,
+    browser,
   }) => {
-    await visitClassificationPage(page, 'Certification', 'Certification');
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const tag = new TagClass({ classification: 'Certification' });
+    await tag.create(apiContext);
+    await setCertificationClassificationDisabled(apiContext, true);
 
-    await page.click('[data-testid="manage-button"]');
-    const disableClassificationResponse = page.waitForResponse(
-      '/api/v1/classifications/*'
-    );
-    await page.click('[data-testid="enable-disable"]');
-    await disableClassificationResponse;
+    try {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await openCertificationDropdown(page);
 
-    await expect(
-      page.locator(
-        '[data-testid="classification-Certification"] [data-testid="disabled"]'
-      )
-    ).toBeVisible();
+      await expect(
+        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+      ).not.toBeVisible();
 
-    await redirectToHomePage(page);
-    await table.visitEntityPage(page);
+      await closeCertificationDropdown(page);
+    } finally {
+      await setCertificationClassificationDisabled(apiContext, false);
+      await tag.delete(apiContext);
+      await afterAction();
+    }
+  });
 
-    const certificationResponse = page.waitForResponse(
-      '/api/v1/tags?*parent=Certification*'
-    );
-    await page.getByTestId('edit-certification').click();
-    await certificationResponse;
+  test('should show certification after re-enabling disabled tag', async ({
+    page,
+    browser,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const tag = new TagClass({ classification: 'Certification' });
+    await tag.create(apiContext);
+    await setTagDisabled(apiContext, tag.responseData.id, true);
 
-    await page.waitForSelector('.certification-card-popover', {
-      state: 'visible',
-    });
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    try {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await openCertificationDropdown(page);
 
-    await expect(
-      page.getByTestId(
-        `radio-btn-${certificationTag1.responseData.fullyQualifiedName}`
-      )
-    ).not.toBeVisible();
+      await expect(
+        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+      ).not.toBeVisible();
 
-    await expect(
-      page.getByTestId(
-        `radio-btn-${certificationTag2.responseData.fullyQualifiedName}`
-      )
-    ).not.toBeVisible();
+      await closeCertificationDropdown(page);
 
-    await expect(
-      page.getByTestId('radio-btn-Certification.Gold')
-    ).not.toBeVisible();
+      await setTagDisabled(apiContext, tag.responseData.id, false);
 
-    await expect(
-      page.getByTestId('radio-btn-Certification.Silver')
-    ).not.toBeVisible();
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await openCertificationDropdown(page);
 
-    await expect(
-      page.getByTestId('radio-btn-Certification.Bronze')
-    ).not.toBeVisible();
+      await expect(
+        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+      ).toBeVisible();
+
+      await closeCertificationDropdown(page);
+    } finally {
+      await tag.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('should show certifications after re-enabling classification', async ({
+    page,
+    browser,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const tag = new TagClass({ classification: 'Certification' });
+    await tag.create(apiContext);
+    await setCertificationClassificationDisabled(apiContext, true);
+
+    try {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await openCertificationDropdown(page);
+
+      await expect(
+        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+      ).not.toBeVisible();
+
+      await closeCertificationDropdown(page);
+
+      await setCertificationClassificationDisabled(apiContext, false);
+
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await openCertificationDropdown(page);
+
+      await expect(
+        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+      ).toBeVisible();
+
+      await closeCertificationDropdown(page);
+    } finally {
+      await setCertificationClassificationDisabled(apiContext, false);
+      await tag.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('should handle multiple disabled tags correctly', async ({
+    page,
+    browser,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const enabledTag = new TagClass({ classification: 'Certification' });
+    const disabledTag1 = new TagClass({ classification: 'Certification' });
+    const disabledTag2 = new TagClass({ classification: 'Certification' });
+
+    await enabledTag.create(apiContext);
+    await disabledTag1.create(apiContext);
+    await disabledTag2.create(apiContext);
+    await setTagDisabled(apiContext, disabledTag1.responseData.id, true);
+    await setTagDisabled(apiContext, disabledTag2.responseData.id, true);
+
+    try {
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await openCertificationDropdown(page);
+
+      await expect(
+        page.getByTestId(
+          `radio-btn-${disabledTag1.responseData.fullyQualifiedName}`
+        )
+      ).not.toBeVisible();
+
+      await expect(
+        page.getByTestId(
+          `radio-btn-${disabledTag2.responseData.fullyQualifiedName}`
+        )
+      ).not.toBeVisible();
+
+      await expect(
+        page.getByTestId(
+          `radio-btn-${enabledTag.responseData.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+
+      await closeCertificationDropdown(page);
+    } finally {
+      await enabledTag.delete(apiContext);
+      await disabledTag1.delete(apiContext);
+      await disabledTag2.delete(apiContext);
+      await afterAction();
+    }
   });
 });
-
