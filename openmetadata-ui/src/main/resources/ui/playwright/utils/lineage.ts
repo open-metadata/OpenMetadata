@@ -419,7 +419,7 @@ export const applyPipelineFromModal = async (
   );
 
   await page
-    .getByTestId(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
+    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
     .dispatchEvent('click');
   await page.getByTestId('add-pipeline').dispatchEvent('click');
 

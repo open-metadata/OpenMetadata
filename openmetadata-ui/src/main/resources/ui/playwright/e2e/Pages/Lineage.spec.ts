@@ -22,6 +22,7 @@ import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
   createNewPage,
   getApiContext,
@@ -82,6 +83,10 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
+test.beforeEach(async ({ page }) => {
+  await redirectToHomePage(page);
+});
+
 for (const EntityClass of entities) {
   const defaultEntity = new EntityClass();
 
@@ -98,7 +103,6 @@ for (const EntityClass of entities) {
 
     try {
       await test.step('Should create lineage for the entity', async () => {
-        await redirectToHomePage(page);
         await currentEntity.visitEntityPage(page);
 
         await visitLineageTab(page);
@@ -710,8 +714,7 @@ test.describe.serial('Test pagination in column level lineage', () => {
   let table2Fqn: string;
 
   test.beforeAll(async ({ browser }) => {
-    const { page } = await createNewPage(browser);
-    const { apiContext, afterAction } = await getApiContext(page);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser);
 
     table1.entity.columns = table1Columns;
     table2.entity.columns = table2Columns;
@@ -857,11 +860,13 @@ test.describe.serial('Test pagination in column level lineage', () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await getApiContext(
-      await createNewPage(browser).then((p) => p.page)
-    );
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await Promise.all([table1.delete(apiContext), table2.delete(apiContext)]);
     await afterAction();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   test('Verify column visibility across pagination pages', async ({ page }) => {
