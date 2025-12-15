@@ -90,6 +90,7 @@ import {
   updateGlossaryTermReviewers,
   validateGlossaryTerm,
   verifyAllColumns,
+  verifyAssetModalFilters,
   verifyColumnsVisibility,
   verifyGlossaryDetails,
   verifyGlossaryWorkflowReviewerCase,
@@ -885,6 +886,37 @@ test.describe('Glossary tests', () => {
       await topic.delete(apiContext);
       await dashboard.delete(apiContext);
       await table1.delete(apiContext);
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Verify asset selection modal filters are shown upfront', async ({
+    browser,
+  }) => {
+    test.slow(true);
+
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1];
+    await glossary1.create(apiContext);
+    await glossaryTerm1.create(apiContext);
+
+    try {
+      await test.step(
+        'Verify filters are visible upfront and can be applied',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.GLOSSARY);
+          await selectActiveGlossary(page, glossary1.data.displayName);
+          await goToAssetsTab(page, glossaryTerm1.data.displayName);
+          await verifyAssetModalFilters(page);
+        }
+      );
+    } finally {
       await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
