@@ -1429,6 +1429,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       if (glossaryChanged) {
         updateGlossaryRelationship(original, updated);
+        // Update glossary relationships for all nested children terms
+        updateChildrenGlossaryRelationships(original, updated);
         recordChange(
             "glossary", original.getGlossary(), updated.getGlossary(), true, entityReferenceMatch);
         invalidateTerm(original.getId());
@@ -1479,6 +1481,32 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             GLOSSARY_TERM,
             Relationship.CONTAINS);
       }
+    }
+
+    private void updateChildrenGlossaryRelationships(GlossaryTerm original, GlossaryTerm updated) {
+      List<GlossaryTerm> nestedTerms = getNestedTerms(updated);
+      if (nestedTerms.isEmpty()) {
+        return;
+      }
+
+      List<String> childIds =
+          nestedTerms.stream().map(GlossaryTerm::getId).map(UUID::toString).toList();
+
+      daoCollection
+          .relationshipDAO()
+          .bulkUpdateFromId(
+              original.getGlossary().getId(),
+              updated.getGlossary().getId(),
+              childIds,
+              GLOSSARY,
+              GLOSSARY_TERM,
+              Relationship.HAS.ordinal());
+
+      LOG.info(
+          "Updated glossary relationships for {} nested terms from {} to {}",
+          childIds.size(),
+          original.getGlossary().getFullyQualifiedName(),
+          updated.getGlossary().getFullyQualifiedName());
     }
 
     private void invalidateTerm(UUID termId) {

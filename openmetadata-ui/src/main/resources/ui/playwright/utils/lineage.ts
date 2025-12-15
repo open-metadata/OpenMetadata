@@ -806,3 +806,14 @@ export const connectEdgeBetweenNodesViaAPI = (
     },
   });
 };
+
+export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
+  const tableNode = page.locator(`[data-testid="lineage-node-${tableFqn}"]`);
+
+  const tableFilterButton = tableNode.locator(
+    '[data-testid="lineage-filter-button"]'
+  );
+  await tableFilterButton.click();
+
+  await page.waitForTimeout(300);
+};
