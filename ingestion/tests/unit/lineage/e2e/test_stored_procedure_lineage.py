@@ -1,7 +1,5 @@
-from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
-
 from ingestion.tests.unit.lineage.e2e.helpers import assert_lineage
-
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 
 # Note: Query history has very uncertain behavior on query execution time
 # making it very hard to test stored procedure lineage reliably.

@@ -1,6 +1,5 @@
-from metadata.generated.schema.entity.data.table import Table
-
 from ingestion.tests.unit.lineage.e2e.helpers import assert_lineage
+from metadata.generated.schema.entity.data.table import Table
 
 
 def test_join_result_table_lineage(
