@@ -693,7 +693,7 @@ test('Verify cycle lineage should be handled properly', async ({ browser }) => {
   }
 });
 
-test.describe.serial.only('Test pagination in column level lineage', () => {
+test.describe.serial('Test pagination in column level lineage', () => {
   const generateColumnsWithNames = (count: number) => {
     const columns = [];
     for (let i = 0; i < count; i++) {
@@ -953,7 +953,6 @@ test.describe.serial.only('Test pagination in column level lineage', () => {
       await test.step('Navigate to T1-P2 and verify visibility', async () => {
         if (await table1NextBtn.isVisible()) {
           await table1NextBtn.click();
-          // await page.waitForTimeout(500);
         }
 
         for (const testId of columnTestIds['T1-P2']) {
@@ -972,7 +971,6 @@ test.describe.serial.only('Test pagination in column level lineage', () => {
       await test.step('Navigate to T2-P2 and verify visibility', async () => {
         if (await table2NextBtn.isVisible()) {
           await table2NextBtn.click();
-          // await page.waitForTimeout(500);
         }
 
         for (const testId of columnTestIds['T2-P2']) {
@@ -991,7 +989,6 @@ test.describe.serial.only('Test pagination in column level lineage', () => {
       await test.step('Navigate to T1-P3 and verify visibility', async () => {
         if (await table1NextBtn.isVisible()) {
           await table1NextBtn.click();
-          // await page.waitForTimeout(500);
         }
 
         for (const testId of columnTestIds['T1-P3']) {
@@ -1010,7 +1007,6 @@ test.describe.serial.only('Test pagination in column level lineage', () => {
       await test.step('Navigate to T2-P3 and verify visibility', async () => {
         if (await table2NextBtn.isVisible()) {
           await table2NextBtn.click();
-          // await page.waitForTimeout(500);
         }
 
         for (const testId of columnTestIds['T2-P3']) {
@@ -1114,7 +1110,6 @@ test.describe.serial.only('Test pagination in column level lineage', () => {
         async () => {
           if (await table2NextBtn.isVisible()) {
             await table2NextBtn.click();
-            // await page.waitForTimeout(500);
           }
 
           const visibleEdges = [
@@ -1172,7 +1167,6 @@ test.describe.serial.only('Test pagination in column level lineage', () => {
         async () => {
           if (await table1NextBtn.isVisible()) {
             await table1NextBtn.click();
-            // await page.waitForTimeout(500);
           }
 
           const visibleEdges = [
@@ -1253,7 +1247,6 @@ test.describe.serial.only('Test pagination in column level lineage', () => {
           );
 
           await c1Column.hover();
-          // await page.waitForTimeout(500);
 
           // Verify (T1,C1), (T2,C1) and (T2,C6) are highlighted and visible
           const t1c1 = page.locator(
@@ -1326,14 +1319,12 @@ test.describe.serial.only('Test pagination in column level lineage', () => {
           const table1NextBtn = table1Node.locator('[data-testid="next-btn"]');
           if (await table1NextBtn.isVisible()) {
             await table1NextBtn.click();
-            // await page.waitForTimeout(500);
           }
 
           // Navigate to T2-P2
           const table2NextBtn = table2Node.locator('[data-testid="next-btn"]');
           if (await table2NextBtn.isVisible()) {
             await table2NextBtn.click();
-            // await page.waitForTimeout(500);
           }
 
           // Click on (T2,C6)
@@ -1341,7 +1332,6 @@ test.describe.serial.only('Test pagination in column level lineage', () => {
             `[data-testid="column-${table2Fqn}.${table2Columns[5].name}"]`
           );
           await t2c6Column.click();
-          // await page.waitForTimeout(500);
 
           // Verify (T1,C1), (T1,C6) and (T2,C6) are highlighted and visible
           const t1c1 = page.locator(
@@ -1456,7 +1446,6 @@ test.describe.serial.only('Test pagination in column level lineage', () => {
             '[data-testid="lineage-filter-button"]'
           );
           await table1FilterButton.click();
-          // await page.waitForTimeout(500);
         }
       );
 
@@ -1491,7 +1480,6 @@ test.describe.serial.only('Test pagination in column level lineage', () => {
             '[data-testid="lineage-filter-button"]'
           );
           await table2FilterButton.click();
-          // await page.waitForTimeout(500);
         }
       );
 
