@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space, Typography } from 'antd';
-import { noop } from 'lodash';
+import { get, noop } from 'lodash';
 import {
   ReactComponent as DataProductIcon,
   ReactComponent as DefaultDataProductIcon,
@@ -125,9 +125,7 @@ export const getDataProductDetailTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.DOCUMENTATION}
-          name={
-            labelMap?.[EntityTabs.DOCUMENTATION] ?? t('label.documentation')
-          }
+          name={get(labelMap, EntityTabs.DOCUMENTATION, t('label.documentation'))}
         />
       ),
       key: EntityTabs.DOCUMENTATION,
@@ -142,10 +140,11 @@ export const getDataProductDetailTabs = ({
                 count={feedCount.totalCount}
                 id={EntityTabs.ACTIVITY_FEED}
                 isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-                name={
-                  labelMap?.[EntityTabs.ACTIVITY_FEED] ??
+                name={get(
+                  labelMap,
+                  EntityTabs.ACTIVITY_FEED,
                   t('label.activity-feed-and-task-plural')
-                }
+                )}
               />
             ),
             key: EntityTabs.ACTIVITY_FEED,
@@ -170,7 +169,7 @@ export const getDataProductDetailTabs = ({
                 count={assetCount ?? 0}
                 id={EntityTabs.ASSETS}
                 isActive={activeTab === EntityTabs.ASSETS}
-                name={labelMap?.[EntityTabs.ASSETS] ?? t('label.asset-plural')}
+                name={get(labelMap, EntityTabs.ASSETS, t('label.asset-plural'))}
               />
             ),
             key: EntityTabs.ASSETS,
@@ -223,10 +222,11 @@ export const getDataProductDetailTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={
-            labelMap?.[EntityTabs.CUSTOM_PROPERTIES] ??
+          name={get(
+            labelMap,
+            EntityTabs.CUSTOM_PROPERTIES,
             t('label.custom-property-plural')
-          }
+          )}
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
