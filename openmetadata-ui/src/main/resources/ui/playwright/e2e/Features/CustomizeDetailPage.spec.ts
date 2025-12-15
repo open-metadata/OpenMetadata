@@ -800,14 +800,7 @@ test.describe('Persona customization', () => {
       // Need to find persona card and click as the list might get paginated
       await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
 
-      const personaDetailsResponse = adminPage.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/personas/name/') &&
-          response.status() === 200
-      );
-
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-      await personaDetailsResponse;
 
       await adminPage.getByText('Governance').click();
       await adminPage.getByText('Domain', { exact: true }).click();
