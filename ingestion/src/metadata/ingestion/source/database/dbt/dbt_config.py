@@ -378,6 +378,9 @@ def download_dbt_files(
     """
     Method to download the files from sources
     """
+    found_manifest = False
+    errors = []
+
     for (  # pylint: disable=too-many-nested-blocks
         key,
         blobs,
@@ -420,6 +423,7 @@ def download_dbt_files(
                         dbt_sources = reader.read(path=blob, **kwargs)
             if not dbt_manifest:
                 raise DBTConfigException(f"Manifest file not found at: {key}")
+            found_manifest = True
             yield DbtFiles(
                 dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
                 dbt_manifest=json.loads(dbt_manifest),
@@ -428,6 +432,11 @@ def download_dbt_files(
             )
         except DBTConfigException as exc:
             logger.warning(exc)
+            errors.append(str(exc))
+
+    if not found_manifest:
+        error_details = "; ".join(errors) if errors else "No dbt artifacts found"
+        raise DBTConfigException(f"No valid dbt manifest.json found. {error_details}")
 
 
 @get_dbt_details.register
