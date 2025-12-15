@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
-import { test as base } from '../base';
+import { expect, Page } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -28,7 +27,7 @@ import {
   inputBasicAlertInformation,
   verifyAlertDetails,
   visitAlertDetailsPage,
-  visitEditAlertPage,
+  visitEditAlertPage
 } from '../../utils/alert';
 import { descriptionBox, getApiContext } from '../../utils/common';
 import {
@@ -41,9 +40,10 @@ import {
   createConversationAlert,
   createTaskAlert,
   editSingleFilterAlert,
-  visitNotificationAlertPage,
+  visitNotificationAlertPage
 } from '../../utils/notificationAlert';
 import { addExternalDestination } from '../../utils/observabilityAlert';
+import { test as base } from '../base';
 
 const dashboard = new DashboardClass();
 const table = new TableClass();
@@ -419,7 +419,13 @@ test('destination should work properly', async ({ page }) => {
     destinationNumber: 1,
     category: 'Slack',
     input: 'https://slack.com',
+    advancedConfig: {
+      headers: [{ key: 'header1', value: 'value1' }],
+      queryParams: [{ key: 'param1', value: 'value1' }],
+    },
   });
+  // Click add destination, to validate value with empty config should not be sent in test destination API call
+  await page.click('[data-testid="add-destination-button"]');
 
   const testDestinations = page.waitForResponse(
     (response) =>
@@ -432,7 +438,7 @@ test('destination should work properly', async ({ page }) => {
 
   await testDestinations.then(async (response) => {
     const testResults = await response.json();
-
+    expect(testResults).toHaveLength(2);
     for (const testResult of testResults) {
       const isGChat = testResult.type === 'GChat';
 

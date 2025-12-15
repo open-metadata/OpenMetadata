@@ -180,7 +180,6 @@ claude-flow.ps1
 hive-mind-prompt-*.txt
 .claude/
 .claude-flow/
-docs
 memory
 
 # UI Code Coverage
