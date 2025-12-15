@@ -553,10 +553,11 @@ class LineageParser:
 
         @calculate_execution_time(context="GetSqlGlotLineageRunner")
         @timeout(seconds=timeout_seconds)
-        @memory_limit(
-            max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
-            context=self.query_hash,
-        )
+        # disable memory limits until better solution is found as they are performance overhead
+        # @memory_limit(
+        #     max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
+        #     context=self.query_hash,
+        # )
         def get_sqlglot_lineage_runner(query: str, dialect: str) -> LineageRunner:
             lr_sqlglot = LineageRunner(
                 query, dialect=dialect, analyzer=SqlGlotLineageAnalyzer
@@ -608,10 +609,11 @@ class LineageParser:
 
         @calculate_execution_time(context="GetSqlFluffLineageRunner")
         @timeout(seconds=timeout_seconds)
-        @memory_limit(
-            max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
-            context=self.query_hash,
-        )
+        # disable memory limits until better solution is found as they are performance overhead
+        # @memory_limit(
+        #     max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
+        #     context=self.query_hash,
+        # )
         def get_sqlfluff_lineage_runner(query: str, dialect: str) -> LineageRunner:
             lr_sqlfluff = LineageRunner(
                 query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer
@@ -663,10 +665,11 @@ class LineageParser:
 
         @calculate_execution_time(context="GetSqlParseLineageRunner")
         @timeout(seconds=timeout_seconds)
-        @memory_limit(
-            max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
-            context=self.query_hash,
-        )
+        # disable memory limits until better solution is found as they are performance overhead
+        # @memory_limit(
+        #     max_memory_mb=LINEAGE_PARSING_MEMORY_LIMIT_MB,
+        #     context=self.query_hash,
+        # )
         def get_sqlparse_lineage_runner(query: str) -> LineageRunner:
             lr_sqlparse = LineageRunner(query)
             lr_sqlparse.get_column_lineage()
