@@ -429,9 +429,22 @@ mvn verify            # Run integration tests
 ```bash
 cd openmetadata-ui/src/main/resources/ui
 yarn lint:fix         # Fix ESLint issues
-yarn pretty           # Format with Prettier  
+yarn pretty           # Format with Prettier
 yarn license-header-fix  # Add license headers
+yarn pre-commit       # Run precommit checks (lint-staged): license headers, i18n sync, organize imports, ESLint, and Prettier
 ```
+
+**IMPORTANT: Precommit Hook Standards**
+- The project uses `lint-staged` with `husky` for precommit checks
+- When making UI changes, ALWAYS run `yarn pre-commit` before committing
+- Precommit automatically runs:
+  1. License header insertion (`yarn license-header-fix`)
+  2. i18n localization sync (`yarn i18n`)
+  3. Import organization (`organize-imports-cli`)
+  4. ESLint with auto-fix (`./lint-staged-eslint.sh`)
+  5. Prettier formatting (`prettier --write`)
+- These checks run on staged files only (via lint-staged)
+- CI will reject commits that don't pass these checks
 
 ### Python
 ```bash
@@ -511,17 +524,22 @@ ALWAYS run these validation steps:
 # Java formatting
 mvn spotless:apply
 
-# Frontend linting
-cd openmetadata-ui/src/main/resources/ui && yarn lint:fix
+# Frontend precommit checks (PREFERRED - runs all formatting and linting)
+cd openmetadata-ui/src/main/resources/ui && yarn pre-commit
 
-# Python formatting  
+# OR run individual frontend checks
+cd openmetadata-ui/src/main/resources/ui && yarn lint:fix && yarn pretty
+
+# Python formatting
 make py_format
 
 # Run tests relevant to your changes
 mvn test                     # For Java changes
-yarn test                    # For UI changes  
+yarn test                    # For UI changes
 make unit_ingestion_dev_env  # For Python changes
 ```
+
+**Note**: The project uses Git hooks (husky + lint-staged) that automatically run precommit checks on staged files. The `yarn pre-commit` command manually runs the same checks.
 
 ### CI Build Expectations
 - **Maven Build**: 45-60 minutes
