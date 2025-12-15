@@ -149,10 +149,14 @@ public class FeedRepository {
     AFTER
   }
 
-  @Transaction
   public int getNextTaskId() {
-    dao.feedDAO().updateTaskId();
-    return dao.feedDAO().getTaskId();
+    return Entity.getJdbi()
+        .inTransaction(
+            handle -> {
+              CollectionDAO.FeedDAO feed = handle.attach(CollectionDAO.FeedDAO.class);
+              feed.updateTaskId();
+              return feed.getTaskId();
+            });
   }
 
   @Getter

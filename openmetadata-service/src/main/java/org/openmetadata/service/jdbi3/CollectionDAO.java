@@ -2179,14 +2179,17 @@ public interface CollectionDAO {
     int deleteByIds(@BindList("ids") List<String> ids);
 
     @ConnectionAwareSqlUpdate(
-        value = "UPDATE task_sequence SET id = id + 1",
+        value = "UPDATE task_sequence SET id=LAST_INSERT_ID(id+1)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "UPDATE task_sequence SET id = id + 1",
+        value = "UPDATE task_sequence SET id=(id+1) RETURNING id",
         connectionType = POSTGRES)
     void updateTaskId();
 
-    @SqlQuery("SELECT id FROM task_sequence LIMIT 1")
+    @ConnectionAwareSqlQuery(value = "SELECT LAST_INSERT_ID()", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT id FROM task_sequence LIMIT 1",
+        connectionType = POSTGRES)
     int getTaskId();
 
     @SqlQuery("SELECT json FROM thread_entity WHERE taskId = :id")
