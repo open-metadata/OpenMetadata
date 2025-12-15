@@ -114,4 +114,74 @@ describe('NodeChildren Component', () => {
     expect(screen.getByText('column1')).toBeInTheDocument();
     expect(screen.queryByText('column2')).not.toBeInTheDocument();
   });
+
+  it('should only show columns with lineage when filter is on', () => {
+    const nodeWithMultipleColumns = {
+      ...mockNode,
+      columns: [
+        {
+          name: 'column1',
+          fullyQualifiedName: 'test.fqn.column1',
+          dataType: 'STRING',
+        },
+        {
+          name: 'column2',
+          fullyQualifiedName: 'test.fqn.column2',
+          dataType: 'STRING',
+        },
+        {
+          name: 'column3',
+          fullyQualifiedName: 'test.fqn.column3',
+          dataType: 'STRING',
+        },
+      ],
+    };
+
+    mockLineageProvider.columnsHavingLineage = [
+      'test.fqn.column1',
+      'test.fqn.column3',
+    ];
+
+    render(
+      <NodeChildren
+        isChildrenListExpanded
+        isOnlyShowColumnsWithLineageFilterActive
+        isConnectable={false}
+        node={nodeWithMultipleColumns}
+      />
+    );
+
+    expect(screen.getByText('column1')).toBeInTheDocument();
+    expect(screen.queryByText('column2')).not.toBeInTheDocument();
+    expect(screen.getByText('column3')).toBeInTheDocument();
+  });
+
+  it('should remove pagination when filter is on', () => {
+    const nodeWithManyColumns = {
+      ...mockNode,
+      columns: [...Array(12)].map((_, i) => ({
+        name: `column${i}`,
+        fullyQualifiedName: `test.fqn.column${i}`,
+        dataType: 'STRING',
+      })),
+    };
+
+    mockLineageProvider.columnsHavingLineage = [
+      'test.fqn.column0',
+      'test.fqn.column2',
+      'test.fqn.column5',
+    ];
+
+    render(
+      <NodeChildren
+        isChildrenListExpanded
+        isOnlyShowColumnsWithLineageFilterActive
+        isConnectable={false}
+        node={nodeWithManyColumns}
+      />
+    );
+
+    expect(screen.queryByTestId('prev-btn')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('next-btn')).not.toBeInTheDocument();
+  });
 });

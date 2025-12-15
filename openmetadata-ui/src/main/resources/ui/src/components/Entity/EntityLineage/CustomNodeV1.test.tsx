@@ -639,8 +639,6 @@ describe('CustomNodeV1', () => {
         expect(screen.queryByTestId('next-btn')).not.toBeInTheDocument();
       });
 
-      it('should turn off the filter when column layer is removed', () => {});
-
       it('should maintain filter state when another layer is applied', () => {
         isColumnLayerActive = true;
         columnsHavingLineage = ['col0', 'col2', 'col5'];
