@@ -181,3 +181,8 @@ hive-mind-prompt-*.txt
 .claude/
 .claude-flow/
 memory
+
+# E2E Docs (VitePress)
+e2etest-docs/.vitepress/cache
+e2etest-docs/.vitepress/dist
+

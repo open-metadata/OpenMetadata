@@ -1,0 +1,71 @@
+[
+  {
+    "text": "Components",
+    "items": [
+      {
+        "text": "All Components",
+        "link": "/components/"
+      },
+      {
+        "text": "Activity & Collaboration",
+        "link": "/components/activity-collaboration"
+      },
+      {
+        "text": "Search & Discovery",
+        "link": "/components/search-discovery"
+      },
+      {
+        "text": "Other",
+        "link": "/components/other"
+      },
+      {
+        "text": "Data Assets",
+        "link": "/components/data-assets"
+      },
+      {
+        "text": "Glossary",
+        "link": "/components/glossary"
+      },
+      {
+        "text": "Data Quality & Observability",
+        "link": "/components/data-quality-observability"
+      },
+      {
+        "text": "Domains & Data Products",
+        "link": "/components/domains-data-products"
+      },
+      {
+        "text": "Tags & Classification",
+        "link": "/components/tags-classification"
+      },
+      {
+        "text": "Users & Teams",
+        "link": "/components/users-teams"
+      },
+      {
+        "text": "Services & Ingestion",
+        "link": "/components/services-ingestion"
+      },
+      {
+        "text": "Settings & Configuration",
+        "link": "/components/settings-configuration"
+      },
+      {
+        "text": "UI Components",
+        "link": "/components/ui-components"
+      },
+      {
+        "text": "Lineage",
+        "link": "/components/lineage"
+      },
+      {
+        "text": "Data Insights",
+        "link": "/components/data-insights"
+      },
+      {
+        "text": "Access Control",
+        "link": "/components/access-control"
+      }
+    ]
+  }
+]
