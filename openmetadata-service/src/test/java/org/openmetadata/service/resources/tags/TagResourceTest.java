@@ -1323,4 +1323,326 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
     return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
+
+  @Order(101)
+  @Test
+  void test_listTagsWithDisabledAndParentParams(TestInfo test) throws IOException {
+    CreateClassification createEnabled =
+        classificationResourceTest
+            .createRequest("enabClas" + UUID.randomUUID().toString().substring(0, 8))
+            .withProvider(ProviderType.SYSTEM);
+    Classification enabledClassification =
+        classificationResourceTest.createAndCheckEntity(createEnabled, ADMIN_AUTH_HEADERS);
+
+    CreateClassification createDisabled =
+        classificationResourceTest
+            .createRequest("disaClas" + UUID.randomUUID().toString().substring(0, 8))
+            .withProvider(ProviderType.SYSTEM);
+    Classification disabledClassification =
+        classificationResourceTest.createAndCheckEntity(createDisabled, ADMIN_AUTH_HEADERS);
+
+    String disabledClassificationJson = JsonUtils.pojoToJson(disabledClassification);
+    disabledClassification.setDisabled(true);
+    ChangeDescription change = getChangeDescription(disabledClassification, MINOR_UPDATE);
+    fieldUpdated(change, "disabled", false, true);
+    disabledClassification =
+        classificationResourceTest.patchEntityAndCheck(
+            disabledClassification,
+            disabledClassificationJson,
+            ADMIN_AUTH_HEADERS,
+            UpdateType.MINOR_UPDATE,
+            change);
+
+    Tag enabledTag1 = createTag(getEntityName(test, 1), enabledClassification.getName(), null);
+    Tag enabledTag2 = createTag(getEntityName(test, 2), enabledClassification.getName(), null);
+    Tag enabledTag3 = createTag(getEntityName(test, 5), enabledClassification.getName(), null);
+    Tag disabledTag1 = createTag(getEntityName(test, 3), disabledClassification.getName(), null);
+    Tag disabledTag2 = createTag(getEntityName(test, 4), disabledClassification.getName(), null);
+
+    assertNotNull(enabledTag1, "EnabledTag1 should be created");
+    assertNotNull(enabledTag2, "EnabledTag2 should be created");
+    assertNotNull(enabledTag3, "EnabledTag3 should be created");
+    assertNotNull(disabledTag1, "DisabledTag1 should be created");
+    assertNotNull(disabledTag2, "DisabledTag2 should be created");
+
+    Tag fetchedEnabledTag1 = getEntity(enabledTag1.getId(), ADMIN_AUTH_HEADERS);
+    assertFalse(
+        fetchedEnabledTag1.getDisabled(),
+        "EnabledTag1 should not be disabled since its classification is not disabled");
+
+    Tag fetchedDisabledTag1 = getEntity(disabledTag1.getId(), ADMIN_AUTH_HEADERS);
+    assertTrue(
+        fetchedDisabledTag1.getDisabled(),
+        "DisabledTag1 should be disabled since its classification is disabled");
+
+    Map<String, String> queryParams = new HashMap<>();
+
+    queryParams.clear();
+    queryParams.put("disabled", "false");
+    ResultList<Tag> nonDisabledTags =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        nonDisabledTags.getData().stream().anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should include tags from enabled classification");
+    assertTrue(
+        nonDisabledTags.getData().stream().anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should include tags from enabled classification");
+    assertFalse(
+        nonDisabledTags.getData().stream().anyMatch(t -> t.getId().equals(disabledTag1.getId())),
+        "Should NOT include tags from disabled classification");
+    assertFalse(
+        nonDisabledTags.getData().stream().anyMatch(t -> t.getId().equals(disabledTag2.getId())),
+        "Should NOT include tags from disabled classification");
+
+    queryParams.clear();
+    queryParams.put("disabled", "true");
+    ResultList<Tag> disabledTags = listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertFalse(
+        disabledTags.getData().stream().anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should NOT include tags from enabled classification");
+    assertFalse(
+        disabledTags.getData().stream().anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should NOT include tags from enabled classification");
+    assertTrue(
+        disabledTags.getData().stream().anyMatch(t -> t.getId().equals(disabledTag1.getId())),
+        "Should include tags from disabled classification");
+    assertTrue(
+        disabledTags.getData().stream().anyMatch(t -> t.getId().equals(disabledTag2.getId())),
+        "Should include tags from disabled classification");
+
+    queryParams.clear();
+    queryParams.put("parent", enabledClassification.getName());
+    ResultList<Tag> allTagsWithParentOnly =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3,
+        allTagsWithParentOnly.getData().size(),
+        "Should return all tags (enabled + disabled) from parent when disabled filter is not specified");
+    assertTrue(
+        allTagsWithParentOnly.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should include all tags from specified parent classification when no disabled filter");
+    assertTrue(
+        allTagsWithParentOnly.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should include all tags from specified parent classification when no disabled filter");
+    assertTrue(
+        allTagsWithParentOnly.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag3.getId())),
+        "Should include all tags from specified parent classification when no disabled filter");
+
+    queryParams.clear();
+    queryParams.put("parent", enabledClassification.getName());
+    queryParams.put("disabled", "false");
+    ResultList<Tag> enabledClassificationTags =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        enabledClassificationTags.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should include tags from specified parent classification");
+    assertTrue(
+        enabledClassificationTags.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should include tags from specified parent classification");
+    assertFalse(
+        enabledClassificationTags.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag1.getId())),
+        "Should NOT include tags from other classification");
+    assertFalse(
+        enabledClassificationTags.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag2.getId())),
+        "Should NOT include tags from other classification");
+
+    queryParams.clear();
+    queryParams.put("parent", disabledClassification.getName());
+    queryParams.put("disabled", "true");
+    ResultList<Tag> disabledClassificationTags =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertFalse(
+        disabledClassificationTags.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should NOT include tags from other classification");
+    assertFalse(
+        disabledClassificationTags.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should NOT include tags from other classification");
+    assertTrue(
+        disabledClassificationTags.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag1.getId())),
+        "Should include tags from specified parent classification");
+    assertTrue(
+        disabledClassificationTags.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag2.getId())),
+        "Should include tags from specified parent classification");
+
+    queryParams.clear();
+    queryParams.put("parent", enabledClassification.getName());
+    queryParams.put("disabled", "false");
+    ResultList<Tag> enabledParentNonDisabled =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        enabledParentNonDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should include non-disabled tags from enabled parent classification");
+    assertTrue(
+        enabledParentNonDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should include non-disabled tags from enabled parent classification");
+    assertFalse(
+        enabledParentNonDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag1.getId())),
+        "Should NOT include tags from other classifications");
+    assertFalse(
+        enabledParentNonDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag2.getId())),
+        "Should NOT include tags from other classifications");
+
+    queryParams.clear();
+    queryParams.put("parent", disabledClassification.getName());
+    queryParams.put("disabled", "false");
+    ResultList<Tag> disabledParentNonDisabled =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertFalse(
+        disabledParentNonDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should NOT include tags from other classifications");
+    assertFalse(
+        disabledParentNonDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should NOT include tags from other classifications");
+    assertFalse(
+        disabledParentNonDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag1.getId())),
+        "Should NOT include disabled tags even from specified parent");
+    assertFalse(
+        disabledParentNonDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag2.getId())),
+        "Should NOT include disabled tags even from specified parent");
+
+    queryParams.clear();
+    queryParams.put("parent", disabledClassification.getName());
+    queryParams.put("disabled", "true");
+    ResultList<Tag> disabledParentDisabled =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertFalse(
+        disabledParentDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should NOT include tags from other classifications");
+    assertFalse(
+        disabledParentDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should NOT include tags from other classifications");
+    assertTrue(
+        disabledParentDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag1.getId())),
+        "Should include disabled tags from disabled parent classification");
+    assertTrue(
+        disabledParentDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag2.getId())),
+        "Should include disabled tags from disabled parent classification");
+
+    queryParams.clear();
+    queryParams.put("parent", enabledClassification.getName());
+    queryParams.put("disabled", "true");
+    ResultList<Tag> enabledParentDisabled =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertFalse(
+        enabledParentDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should NOT include non-disabled tags when filtering for disabled=true");
+    assertFalse(
+        enabledParentDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should NOT include non-disabled tags when filtering for disabled=true");
+    assertFalse(
+        enabledParentDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag1.getId())),
+        "Should NOT include tags from other classifications");
+    assertFalse(
+        enabledParentDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(disabledTag2.getId())),
+        "Should NOT include tags from other classifications");
+
+    deleteEntity(enabledTag1.getId(), ADMIN_AUTH_HEADERS);
+
+    queryParams.clear();
+    queryParams.put("parent", enabledClassification.getName());
+    queryParams.put("disabled", "false");
+    queryParams.put("include", "non-deleted");
+    ResultList<Tag> nonDeletedNonDisabled =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertFalse(
+        nonDeletedNonDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should NOT include deleted tags with include=non-deleted");
+    assertTrue(
+        nonDeletedNonDisabled.getData().stream()
+            .anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should include non-deleted, non-disabled tags from specified parent");
+
+    queryParams.clear();
+    queryParams.put("parent", enabledClassification.getName());
+    queryParams.put("disabled", "false");
+    queryParams.put("include", "all");
+    ResultList<Tag> allNonDisabled =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        allNonDisabled.getData().stream().anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should include deleted tags with include=all");
+    assertTrue(
+        allNonDisabled.getData().stream().anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should include non-deleted tags with include=all");
+
+    queryParams.clear();
+    queryParams.put("parent", enabledClassification.getName());
+    queryParams.put("disabled", "false");
+    queryParams.put("include", "deleted");
+    ResultList<Tag> deletedNonDisabled =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        deletedNonDisabled.getData().stream().anyMatch(t -> t.getId().equals(enabledTag1.getId())),
+        "Should include deleted tags with include=deleted");
+    assertFalse(
+        deletedNonDisabled.getData().stream().anyMatch(t -> t.getId().equals(enabledTag2.getId())),
+        "Should NOT include non-deleted tags with include=deleted");
+
+    queryParams.clear();
+    queryParams.put("parent", enabledClassification.getName());
+    queryParams.put("disabled", "false");
+    ResultList<Tag> pagedResult1 = listEntities(queryParams, 1, null, null, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        1,
+        pagedResult1.getData().size(),
+        "Should respect limit parameter with parent and disabled filters");
+    assertNotNull(pagedResult1.getPaging().getAfter(), "Should have after cursor for pagination");
+
+    String afterCursor = pagedResult1.getPaging().getAfter();
+    ResultList<Tag> pagedResult2 =
+        listEntities(queryParams, 1, null, afterCursor, ADMIN_AUTH_HEADERS);
+    if (!pagedResult2.getData().isEmpty()) {
+      assertNotNull(
+          pagedResult2.getPaging().getBefore(),
+          "Should have before cursor for backward pagination");
+    }
+
+    queryParams.clear();
+    queryParams.put("disabled", "false");
+    queryParams.put("include", "all");
+    ResultList<Tag> allIncludeNonDisabled =
+        listEntities(queryParams, 1000, null, null, ADMIN_AUTH_HEADERS);
+    long enabledCount =
+        allIncludeNonDisabled.getData().stream()
+            .filter(
+                t -> t.getId().equals(enabledTag1.getId()) || t.getId().equals(enabledTag2.getId()))
+            .count();
+    assertTrue(enabledCount >= 1, "Should include tags from enabled classification");
+    long disabledCount =
+        allIncludeNonDisabled.getData().stream()
+            .filter(
+                t ->
+                    t.getId().equals(disabledTag1.getId())
+                        || t.getId().equals(disabledTag2.getId()))
+            .count();
+    assertEquals(0, disabledCount, "Should NOT include tags from disabled classification");
+  }
 }

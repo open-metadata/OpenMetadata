@@ -4450,7 +4450,7 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    private Pair<String, String> buildQueryConditions(ListFilter filter) {
+    private Pair<String, String> buildTagQueryConditions(ListFilter filter) {
       String parent = filter.getQueryParam("parent");
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
 
@@ -4488,15 +4488,12 @@ public interface CollectionDAO {
         postgresCondition.append(" ").append(tagCondition);
       }
 
-      mySqlCondition.append(" AND tag.deleted = FALSE");
-      postgresCondition.append(" AND tag.deleted = FALSE");
-
       return Pair.of(mySqlCondition.toString(), postgresCondition.toString());
     }
 
     @Override
     default int listCount(ListFilter filter) {
-      Pair<String, String> conditions = buildQueryConditions(filter);
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listCount(
           getTableName(),
           getNameHashColumn(),
@@ -4508,7 +4505,7 @@ public interface CollectionDAO {
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
-      Pair<String, String> conditions = buildQueryConditions(filter);
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
@@ -4521,7 +4518,7 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      Pair<String, String> conditions = buildQueryConditions(filter);
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
