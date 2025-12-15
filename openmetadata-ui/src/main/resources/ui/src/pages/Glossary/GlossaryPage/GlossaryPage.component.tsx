@@ -17,6 +17,10 @@ import { isEmpty } from 'lodash';
 import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
+import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
 import GlossaryV1 from '../../../components/Glossary/GlossaryV1.component';
@@ -24,14 +28,10 @@ import {
   ModifiedGlossary,
   useGlossaryStore,
 } from '../../../components/Glossary/useGlossary.store';
-import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../../components/common/Loader/Loader';
-import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
-import { observerOptions } from '../../../constants/Mydata.constants';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -267,6 +267,7 @@ const GlossaryPage = () => {
             (glossary) => glossary.fullyQualifiedName === glossaryFqn
           ) || glossaries[0]
         );
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         !glossaryFqn &&
           glossaries[0].fullyQualifiedName &&
           navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
@@ -331,7 +332,18 @@ const GlossaryPage = () => {
           deleteType: DeleteType.HARD_DELETE,
           prepareType: true,
           isRecursiveDelete: true,
+          onDeleteFailure: fetchGlossaryList,
         });
+
+        // check updated glossary list after deletion
+        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+        setGlossaries(updatedGlossaries);
+        const glossaryPath =
+          updatedGlossaries.length > 0
+            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+            : getGlossaryPath();
+
+        navigate(glossaryPath);
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -341,7 +353,7 @@ const GlossaryPage = () => {
         );
       }
     },
-    [glossaries, activeGlossary]
+    [glossaries, activeGlossary, fetchGlossaryList]
   );
 
   const handleGlossaryTermUpdate = useCallback(
@@ -363,6 +375,7 @@ const GlossaryPage = () => {
             navigate(getGlossaryPath(response.fullyQualifiedName));
             fetchGlossaryList();
           }
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
           shouldRefreshTerms && fetchGlossaryTermDetails();
         } else {
           throw t('server.entity-updating-error', {
@@ -386,6 +399,7 @@ const GlossaryPage = () => {
           deleteType: DeleteType.HARD_DELETE,
           prepareType: true,
           isRecursiveDelete: true,
+          onDeleteFailure: fetchGlossaryList,
         });
 
         let fqn;
@@ -406,7 +420,7 @@ const GlossaryPage = () => {
         );
       }
     },
-    [glossaryFqn, activeGlossary]
+    [glossaryFqn, activeGlossary, fetchGlossaryList]
   );
 
   const handleAssetClick = useCallback(
