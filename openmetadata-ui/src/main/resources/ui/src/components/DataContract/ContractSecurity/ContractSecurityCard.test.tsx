@@ -112,7 +112,7 @@ describe('ContractSecurityCard', () => {
     expect(
       screen.getByTestId('contract-security-classification')
     ).toBeInTheDocument();
-    expect(screen.getByText('label.policy-plural')).toBeInTheDocument();
+    expect(screen.queryByTestId('label.policy-plural')).not.toBeInTheDocument();
     // Should show NO_DATA_PLACEHOLDER when security is undefined
     expect(screen.getAllByText(NO_DATA_PLACEHOLDER)).toHaveLength(1);
   });

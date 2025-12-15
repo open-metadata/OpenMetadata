@@ -5,8 +5,14 @@ source:
     config:
       type: Airbyte
       hostPort: http://localhost:8000
-      username: username
-      password: password
+      auth:
+      # OAuth 2.0 Authentication (for Airbyte Cloud)
+        clientId: <client id>
+        clientSecret: client secret
+      # Basic Authentication (for self-hosted Airbyte)
+      # username: your_username
+      # password: your_password
+      
   sourceConfig:
     config:
       type: PipelineMetadata

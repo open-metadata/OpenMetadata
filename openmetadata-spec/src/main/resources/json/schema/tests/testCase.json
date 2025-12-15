@@ -156,6 +156,14 @@
       },
       "default": []
     },
+    "dimensionColumns": {
+      "description": "List of columns to group test results by dimensions. When specified, the test will be executed both overall and grouped by these columns to provide fine-grained data quality insights.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
     "entityStatus": {
       "description": "Current status of the test case.",
       "$ref": "../type/status.json",

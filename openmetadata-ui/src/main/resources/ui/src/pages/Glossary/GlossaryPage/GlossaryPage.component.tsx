@@ -17,23 +17,21 @@ import { isEmpty } from 'lodash';
 import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../../components/common/Loader/Loader';
-import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
-import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
-import EntitySummaryPanel from '../../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
 import GlossaryV1 from '../../../components/Glossary/GlossaryV1.component';
 import {
   ModifiedGlossary,
   useGlossaryStore,
 } from '../../../components/Glossary/useGlossary.store';
+import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
+import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
+import { observerOptions } from '../../../constants/Mydata.constants';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
-import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -333,7 +331,18 @@ const GlossaryPage = () => {
           deleteType: DeleteType.HARD_DELETE,
           prepareType: true,
           isRecursiveDelete: true,
+          onDeleteFailure: fetchGlossaryList,
         });
+
+        // check updated glossary list after deletion
+        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+        setGlossaries(updatedGlossaries);
+        const glossaryPath =
+          updatedGlossaries.length > 0
+            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+            : getGlossaryPath();
+
+        navigate(glossaryPath);
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -343,7 +352,7 @@ const GlossaryPage = () => {
         );
       }
     },
-    [glossaries, activeGlossary]
+    [glossaries, activeGlossary, fetchGlossaryList]
   );
 
   const handleGlossaryTermUpdate = useCallback(
@@ -388,6 +397,7 @@ const GlossaryPage = () => {
           deleteType: DeleteType.HARD_DELETE,
           prepareType: true,
           isRecursiveDelete: true,
+          onDeleteFailure: fetchGlossaryList,
         });
 
         let fqn;
@@ -408,7 +418,7 @@ const GlossaryPage = () => {
         );
       }
     },
-    [glossaryFqn, activeGlossary]
+    [glossaryFqn, activeGlossary, fetchGlossaryList]
   );
 
   const handleAssetClick = useCallback(
@@ -515,32 +525,7 @@ const GlossaryPage = () => {
       }}
     />
   ) : (
-    <ResizablePanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        children: glossaryElement,
-        minWidth: 700,
-        flex: 0.7,
-        wrapInCard: false,
-      }}
-      hideSecondPanel={!previewAsset}
-      pageTitle={t('label.glossary')}
-      secondPanel={{
-        wrapInCard: false,
-        children: previewAsset && (
-          <EntitySummaryPanel
-            entityDetails={previewAsset}
-            handleClosePanel={() => setPreviewAsset(undefined)}
-            highlights={{ 'tag.name': [glossaryFqn] }}
-          />
-        ),
-        className:
-          'content-resizable-panel-container entity-summary-resizable-right-panel-container',
-        minWidth: 400,
-        flex: 0.3,
-      }}
-    />
+    glossaryElement
   );
 
   return <div>{resizableLayout}</div>;

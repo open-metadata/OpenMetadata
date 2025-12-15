@@ -11,43 +11,26 @@
  *  limitations under the License.
  */
 
-import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Space, Tooltip, Typography } from 'antd';
+import { Grid, Stack, Typography, useTheme } from '@mui/material';
 import { ColumnsType } from 'antd/lib/table';
-import classNames from 'classnames';
-import {
-  filter,
-  find,
-  groupBy,
-  isEmpty,
-  isEqual,
-  isUndefined,
-  map,
-  toLower,
-} from 'lodash';
-import { DateRangeObject } from 'Models';
+import { isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../../../../assets/svg/drop-down.svg';
-import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
-import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
-import { TabSpecificField } from '../../../../../enums/entity.enum';
-import { ProfilerDashboardType } from '../../../../../enums/table.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../../../enums/entity.enum';
 import {
   Column,
   ColumnProfile,
   Table as TableType,
 } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/policy';
-import {
-  TestCase,
-  TestCaseStatus,
-} from '../../../../../generated/tests/testCase';
-import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
@@ -55,70 +38,49 @@ import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
-import { getListTestCaseBySearch } from '../../../../../rest/testAPI';
 import {
+  calculatePercentage,
   formatNumberWithComma,
   getTableFQNFromColumnFQN,
 } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
-import { getEntityColumnFQN } from '../../../../../utils/FeedUtils';
-import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
-import { getAddCustomMetricPath } from '../../../../../utils/RouterUtils';
+import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import {
-  generateEntityLink,
   getTableExpandableConfig,
   pruneEmptyChildren,
 } from '../../../../../utils/TableUtils';
-import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
-import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
-import { SummaryCardProps } from '../../../../common/SummaryCard/SummaryCard.interface';
+import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import Table from '../../../../common/Table/Table';
-import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
-import TestCaseStatusSummaryIndicator from '../../../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
-import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
-import PageHeader from '../../../../PageHeader/PageHeader.component';
-import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
-import ColumnPickerMenu from '../ColumnPickerMenu';
-import ColumnSummary from '../ColumnSummary';
+import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import NoProfilerBanner from '../NoProfilerBanner/NoProfilerBanner.component';
-import ProfilerProgressWidget from '../ProfilerProgressWidget/ProfilerProgressWidget';
 import SingleColumnProfile from '../SingleColumnProfile';
 import { ModifiedColumn } from '../TableProfiler.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
 
 const ColumnProfileTable = () => {
   const location = useCustomLocation();
+  const theme = useTheme();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
+  const { subTab: activeTab } = useParams<{ subTab: ProfilerTabPath }>();
   const tableFqn = useMemo(() => getTableFQNFromColumnFQN(fqn), [fqn]);
   const {
     isTestsLoading,
     isProfilerDataLoading,
     overallSummary,
-    isTableDeleted,
     permissions,
-    onSettingButtonClick,
     isProfilingEnabled,
     tableProfiler,
-    dateRangeObject,
-    onDateRangeChange,
     testCaseSummary,
-    onTestCaseDrawerOpen,
   } = useTableProfiler();
 
-  const testCaseCounts = useMemo(
-    () => testCaseSummary?.columnTestSummary ?? [],
-    [testCaseSummary]
-  );
   const isLoading = isTestsLoading || isProfilerDataLoading;
   const [searchText, setSearchText] = useState<string>('');
   const [data, setData] = useState<ModifiedColumn[]>([]);
-  const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
-  const [columnTestCases, setColumnTestCases] = useState<TestCase[]>([]);
   const [isColumnsLoading, setIsColumnsLoading] = useState(false);
   const {
     currentPage,
@@ -130,40 +92,37 @@ const ColumnProfileTable = () => {
     handlePagingChange,
   } = usePaging(PAGE_SIZE_LARGE);
 
-  const columnCount = useMemo(() => {
-    return tableProfiler?.profile?.columnCount ?? paging.total;
-  }, [overallSummary]);
-
   // SingleColumnProfile needs tableDetailsWithColumns to be passed as props
   const tableDetailsWithColumns = useMemo(
     () => ({ ...tableProfiler, columns: data as Column[] } as TableType),
     [tableProfiler, data]
   );
 
-  const { activeColumnFqn, activeTab } = useMemo(() => {
+  const searchData = useMemo(() => {
     const param = location.search;
     const searchData = Qs.parse(
       param.startsWith('?') ? param.substring(1) : param
     );
 
-    return searchData as { activeColumnFqn: string; activeTab: string };
+    return searchData as { activeColumnFqn: string };
   }, [location.search]);
 
-  const { editTest, editDataProfile } = useMemo(() => {
-    return {
-      editTest:
-        permissions &&
-        getPrioritizedEditPermission(permissions, Operation.EditTests),
-      editDataProfile:
-        permissions &&
-        getPrioritizedEditPermission(permissions, Operation.EditDataProfile),
-    };
-  }, [permissions, getPrioritizedEditPermission]);
+  const { activeColumnFqn } = searchData;
 
-  const updateActiveColumnFqn = (key: string) =>
+  const updateActiveColumnFqn = (key: string) => {
     navigate({
-      search: Qs.stringify({ activeColumnFqn: key, activeTab }),
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
+        tableFqn,
+        EntityTabs.PROFILER,
+        activeTab
+      ),
+      search: Qs.stringify({
+        ...searchData,
+        activeColumnFqn: key,
+      }),
     });
+  };
 
   const tableColumn: ColumnsType<ModifiedColumn> = useMemo(() => {
     return [
@@ -175,14 +134,20 @@ const ColumnProfileTable = () => {
         fixed: 'left',
         render: (_, record) => {
           return (
-            <Button
+            <Typography
               className="break-word p-0"
-              type="link"
+              sx={{
+                color: theme.palette.primary.main,
+                fontSize: theme.typography.pxToRem(14),
+                fontWeight: theme.typography.fontWeightMedium,
+                cursor: 'pointer',
+                '&:hover': { textDecoration: 'underline' },
+              }}
               onClick={() =>
                 updateActiveColumnFqn(record.fullyQualifiedName || '')
               }>
               {getEntityName(record)}
-            </Button>
+            </Typography>
           );
         },
         sorter: (col1, col2) => col1.name.localeCompare(col2.name),
@@ -191,12 +156,16 @@ const ColumnProfileTable = () => {
         title: t('label.data-type'),
         dataIndex: 'dataTypeDisplay',
         key: 'dataType',
-        width: 150,
+        width: 200,
         render: (dataTypeDisplay: string) => {
           return (
-            <Typography.Text className="break-word">
+            <Typography
+              className="break-word"
+              sx={{
+                fontSize: theme.typography.pxToRem(14),
+              }}>
               {dataTypeDisplay || 'N/A'}
-            </Typography.Text>
+            </Typography>
           );
         },
         sorter: (col1, col2) => col1.dataType.localeCompare(col2.dataType),
@@ -207,12 +176,10 @@ const ColumnProfileTable = () => {
         key: 'nullProportion',
         width: 200,
         render: (profile: ColumnProfile) => {
-          return (
-            <ProfilerProgressWidget
-              strokeColor="#351b8e"
-              value={profile?.nullProportion || 0}
-            />
-          );
+          return profile?.nullProportion !== undefined &&
+            profile?.nullProportion !== null
+            ? calculatePercentage(profile.nullProportion, 1, 2, true)
+            : '--';
         },
         sorter: (col1, col2) =>
           (col1.profile?.nullProportion || 0) -
@@ -223,12 +190,11 @@ const ColumnProfileTable = () => {
         dataIndex: 'profile',
         key: 'uniqueProportion',
         width: 200,
-        render: (profile: ColumnProfile) => (
-          <ProfilerProgressWidget
-            strokeColor="#7147e8"
-            value={profile?.uniqueProportion || 0}
-          />
-        ),
+        render: (profile: ColumnProfile) =>
+          profile?.uniqueProportion !== undefined &&
+          profile?.uniqueProportion !== null
+            ? calculatePercentage(profile.uniqueProportion, 1, 2, true)
+            : '--',
         sorter: (col1, col2) =>
           (col1.profile?.uniqueProportion || 0) -
           (col2.profile?.uniqueProportion || 0),
@@ -238,12 +204,11 @@ const ColumnProfileTable = () => {
         dataIndex: 'profile',
         key: 'distinctProportion',
         width: 200,
-        render: (profile: ColumnProfile) => (
-          <ProfilerProgressWidget
-            strokeColor="#4E8B9C"
-            value={profile?.distinctProportion || 0}
-          />
-        ),
+        render: (profile: ColumnProfile) =>
+          profile?.distinctProportion !== undefined &&
+          profile?.distinctProportion !== null
+            ? calculatePercentage(profile.distinctProportion, 1, 2, true)
+            : '--',
         sorter: (col1, col2) =>
           (col1.profile?.distinctProportion || 0) -
           (col2.profile?.distinctProportion || 0),
@@ -252,156 +217,113 @@ const ColumnProfileTable = () => {
         title: t('label.value-count'),
         dataIndex: 'profile',
         key: 'valuesCount',
-        width: 120,
+        width: 200,
         render: (profile: ColumnProfile) =>
-          formatNumberWithComma(profile?.valuesCount || 0),
+          profile?.valuesCount !== undefined && profile?.valuesCount !== null
+            ? formatNumberWithComma(profile.valuesCount)
+            : '--',
         sorter: (col1, col2) =>
           (col1.profile?.valuesCount || 0) - (col2.profile?.valuesCount || 0),
       },
       {
-        title: t('label.test-plural'),
-        dataIndex: 'testCount',
-        key: 'Tests',
-        width: 100,
+        title: t('label.success'),
+        dataIndex: 'success',
+        key: 'success',
+        width: 110,
         render: (_, record) => {
-          const testCounts = testCaseCounts.find((column) => {
-            return isEqual(
-              getEntityColumnFQN(column.entityLink ?? ''),
-              record.fullyQualifiedName
-            );
-          });
+          const testCounts =
+            testCaseSummary?.[
+              record.fullyQualifiedName?.toLocaleLowerCase() ?? ''
+            ];
+
+          if (isUndefined(testCounts?.success) || testCounts?.success === 0) {
+            return '--';
+          }
 
           return (
             <Link
-              data-testid={`${record.name}-test-count`}
-              to={{
-                search: Qs.stringify({
-                  activeTab: TableProfilerTab.DATA_QUALITY,
-                }),
-              }}>
-              {testCounts?.total ?? 0}
+              data-testid={`${record.name}-test-success-count`}
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
+                tableFqn,
+                EntityTabs.PROFILER,
+                ProfilerTabPath.DATA_QUALITY
+              )}>
+              <Typography sx={{ color: theme.palette.success.main }}>
+                {testCounts?.success}
+              </Typography>
             </Link>
           );
         },
       },
       {
-        title: t('label.status'),
-        dataIndex: 'dataQualityTest',
-        key: 'dataQualityTest',
-        width: 150,
+        title: t('label.failed'),
+        dataIndex: 'failed',
+        key: 'failed',
+        width: 100,
         render: (_, record) => {
-          const testCounts = testCaseCounts.find((column) => {
-            return isEqual(
-              getEntityColumnFQN(column.entityLink ?? ''),
-              record.fullyQualifiedName
-            );
-          });
+          const testCounts =
+            testCaseSummary?.[
+              record.fullyQualifiedName?.toLocaleLowerCase() ?? ''
+            ];
+
+          if (isUndefined(testCounts?.failed) || testCounts?.failed === 0) {
+            return '--';
+          }
 
           return (
-            <TestCaseStatusSummaryIndicator testCaseStatusCounts={testCounts} />
+            <Link
+              data-testid={`${record.name}-test-failed-count`}
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
+                tableFqn,
+                EntityTabs.PROFILER,
+                ProfilerTabPath.DATA_QUALITY
+              )}>
+              <Typography sx={{ color: theme.palette.error.main }}>
+                {testCounts?.failed}
+              </Typography>
+            </Link>
+          );
+        },
+      },
+      {
+        title: t('label.aborted'),
+        dataIndex: 'aborted',
+        key: 'aborted',
+        width: 100,
+        render: (_, record) => {
+          const testCounts =
+            testCaseSummary?.[
+              record.fullyQualifiedName?.toLocaleLowerCase() ?? ''
+            ];
+
+          if (isUndefined(testCounts?.aborted) || testCounts?.aborted === 0) {
+            return '--';
+          }
+
+          return (
+            <Link
+              data-testid={`${record.name}-test-aborted-count`}
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
+                tableFqn,
+                EntityTabs.PROFILER,
+                ProfilerTabPath.DATA_QUALITY
+              )}>
+              <Typography sx={{ color: theme.palette.warning.main }}>
+                {testCounts?.aborted}
+              </Typography>
+            </Link>
           );
         },
       },
     ];
-  }, [testCaseCounts]);
-
-  const selectedColumn = useMemo(() => {
-    return find(
-      data,
-      (column: Column) => column.fullyQualifiedName === activeColumnFqn
-    );
-  }, [data, activeColumnFqn]);
-
-  const addButtonContent = [
-    {
-      label: <TabsLabel id="test-case" name={t('label.test-case')} />,
-      key: 'test-case',
-      onClick: () => {
-        onTestCaseDrawerOpen(TestLevel.COLUMN);
-      },
-    },
-    {
-      label: <TabsLabel id="custom-metric" name={t('label.custom-metric')} />,
-      key: 'custom-metric',
-      onClick: () => {
-        navigate({
-          pathname: getAddCustomMetricPath(
-            ProfilerDashboardType.COLUMN,
-            tableFqn
-          ),
-          search: activeColumnFqn ? Qs.stringify({ activeColumnFqn }) : '',
-        });
-      },
-    },
-  ];
-
-  const selectedColumnTestsObj = useMemo(() => {
-    const temp = filter(
-      columnTestCases,
-      (test: TestCase) => !isUndefined(test.testCaseResult)
-    );
-
-    const statusDict = {
-      [TestCaseStatus.Success]: [],
-      [TestCaseStatus.Aborted]: [],
-      [TestCaseStatus.Failed]: [],
-      ...groupBy(temp, 'testCaseResult.testCaseStatus'),
-    };
-
-    return { statusDict, totalTests: temp.length };
-  }, [columnTestCases]);
-
-  const pageHeader = useMemo(() => {
-    return {
-      ...PAGE_HEADERS.COLUMN_PROFILE,
-      header: isEmpty(activeColumnFqn) ? (
-        PAGE_HEADERS.COLUMN_PROFILE.header
-      ) : (
-        <Button
-          className="p-0 text-md font-medium"
-          type="link"
-          onClick={() =>
-            navigate({
-              search: Qs.stringify({
-                activeTab: TableProfilerTab.COLUMN_PROFILE,
-              }),
-            })
-          }>
-          <Space>
-            <DropDownIcon className="transform-90" height={16} width={16} />
-            {PAGE_HEADERS.COLUMN_PROFILE.header}
-          </Space>
-        </Button>
-      ),
-    };
-  }, [activeColumnFqn]);
-
-  const handleDateRangeChange = (value: DateRangeObject) => {
-    if (!isEqual(value, dateRangeObject)) {
-      onDateRangeChange(value);
-    }
-  };
+  }, [testCaseSummary]);
 
   const handleSearchAction = (searchText: string) => {
     setSearchText(searchText);
     handlePageChange(1);
-  };
-
-  const fetchColumnTestCase = async (activeColumnFqn: string) => {
-    setIsTestCaseLoading(true);
-    try {
-      const { data } = await getListTestCaseBySearch({
-        fields: TabSpecificField.TEST_CASE_RESULT,
-        entityLink: generateEntityLink(activeColumnFqn),
-        limit: PAGE_SIZE_LARGE,
-      });
-
-      setColumnTestCases(data);
-    } catch {
-      setColumnTestCases([]);
-    } finally {
-      setIsTestCaseLoading(false);
-    }
   };
 
   const fetchTableColumnWithProfiler = useCallback(
@@ -455,14 +377,6 @@ const ColumnProfileTable = () => {
     }
   }, [tableFqn, currentPage, searchText, pageSize]);
 
-  useEffect(() => {
-    if (activeColumnFqn) {
-      fetchColumnTestCase(activeColumnFqn);
-    } else {
-      setColumnTestCases([]);
-    }
-  }, [activeColumnFqn]);
-
   const pagingProps = useMemo(() => {
     return {
       currentPage: currentPage,
@@ -495,150 +409,45 @@ const ColumnProfileTable = () => {
   }
 
   return (
-    <Row data-testid="column-profile-table-container" gutter={[16, 16]}>
-      <Col span={24}>
-        <Row>
-          <Col span={10}>
-            <PageHeader data={pageHeader} />
-          </Col>
-          <Col span={14}>
-            <Space align="center" className="w-full justify-end">
-              {!isEmpty(activeColumnFqn) && (
-                <DatePickerMenu
-                  showSelectedCustomRange
-                  defaultDateRange={dateRangeObject}
-                  handleDateRangeChange={handleDateRangeChange}
-                />
-              )}
+    <Stack data-testid="column-profile-table-container" spacing="30px">
+      {!isLoading && !isProfilingEnabled && <NoProfilerBanner />}
 
-              {!isTableDeleted && (
-                <>
-                  {!isEmpty(activeColumnFqn) && (
-                    <ColumnPickerMenu
-                      activeColumnFqn={activeColumnFqn}
-                      columns={data}
-                      handleChange={updateActiveColumnFqn}
-                    />
-                  )}
+      <Grid container spacing={5}>
+        {overallSummary?.map((summary) => (
+          <Grid key={summary.title} size="grow">
+            <SummaryCardV1
+              extra={summary.extra}
+              icon={summary.icon}
+              isLoading={isLoading}
+              title={summary.title}
+              value={summary.value}
+            />
+          </Grid>
+        ))}
+      </Grid>
 
-                  {editTest && (
-                    <LimitWrapper resource="dataQuality">
-                      <Dropdown
-                        menu={{
-                          items: addButtonContent,
-                        }}
-                        placement="bottomRight"
-                        trigger={['click']}>
-                        <Button
-                          data-testid="profiler-add-table-test-btn"
-                          type="primary">
-                          <Space>
-                            {t('label.add')}
-                            <DownOutlined />
-                          </Space>
-                        </Button>
-                      </Dropdown>
-                    </LimitWrapper>
-                  )}
-                  {editDataProfile && (
-                    <Tooltip
-                      placement="topRight"
-                      title={t('label.setting-plural')}>
-                      <Button
-                        className="flex-center"
-                        data-testid="profiler-setting-btn"
-                        onClick={onSettingButtonClick}>
-                        <SettingIcon />
-                      </Button>
-                    </Tooltip>
-                  )}
-                </>
-              )}
-            </Space>
-          </Col>
-        </Row>
-      </Col>
-      {!isLoading && !isProfilingEnabled && (
-        <Col span={24}>
-          <NoProfilerBanner />
-        </Col>
-      )}
-      <Col span={24}>
-        <Row gutter={[16, 16]}>
-          {!isUndefined(selectedColumn) && (
-            <Col span={10}>
-              <ColumnSummary column={selectedColumn} />
-            </Col>
-          )}
-
-          <Col span={selectedColumn ? 14 : 24}>
-            <Row
-              wrap
-              className={classNames(
-                activeColumnFqn ? 'justify-start' : 'justify-between'
-              )}
-              gutter={[16, 16]}>
-              {overallSummary?.map((summery) => (
-                <Col key={summery.title}>
-                  <SummaryCard
-                    className={classNames(summery.className, 'h-full')}
-                    isLoading={isLoading}
-                    showProgressBar={false}
-                    title={summery.title}
-                    total={0}
-                    value={
-                      summery.key === 'column-count'
-                        ? columnCount
-                        : summery.value
-                    }
-                  />
-                </Col>
-              ))}
-              {!isEmpty(activeColumnFqn) &&
-                map(selectedColumnTestsObj.statusDict, (data, key) => (
-                  <Col key={key}>
-                    <SummaryCard
-                      showProgressBar
-                      isLoading={isTestCaseLoading}
-                      title={key}
-                      total={selectedColumnTestsObj.totalTests}
-                      type={toLower(key) as SummaryCardProps['type']}
-                      value={data.length}
-                    />
-                  </Col>
-                ))}
-            </Row>
-          </Col>
-        </Row>
-      </Col>
       {isEmpty(activeColumnFqn) ? (
-        <Col span={24}>
-          <Table
-            columns={tableColumn}
-            customPaginationProps={pagingProps}
-            dataSource={data}
-            expandable={getTableExpandableConfig<Column>()}
-            loading={isColumnsLoading || isLoading}
-            locale={{
-              emptyText: <FilterTablePlaceHolder />,
-            }}
-            pagination={false}
-            rowKey="name"
-            scroll={{ x: true }}
-            searchProps={searchProps}
-            size="small"
-          />
-        </Col>
+        <Table
+          columns={tableColumn}
+          customPaginationProps={pagingProps}
+          dataSource={data}
+          expandable={getTableExpandableConfig<Column>()}
+          loading={isColumnsLoading || isLoading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          rowKey="name"
+          scroll={{ x: true, y: 500 }}
+          searchProps={searchProps}
+        />
       ) : (
-        <Col span={24}>
-          <SingleColumnProfile
-            activeColumnFqn={activeColumnFqn}
-            dateRangeObject={dateRangeObject}
-            tableDetails={tableDetailsWithColumns}
-          />
-        </Col>
+        <SingleColumnProfile
+          activeColumnFqn={activeColumnFqn}
+          tableDetails={tableDetailsWithColumns}
+        />
       )}
-    </Row>
+    </Stack>
   );
 };
 

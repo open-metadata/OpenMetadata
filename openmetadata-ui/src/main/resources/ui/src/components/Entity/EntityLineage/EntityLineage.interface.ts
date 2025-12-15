@@ -15,6 +15,7 @@ import { LoadingState } from 'Models';
 import { ReactNode } from 'react';
 import { Edge as FlowEdge, Node } from 'reactflow';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
+import { LineageSettings } from '../../../generated/configuration/lineageSettings';
 import { EntityReference } from '../../../generated/entity/type';
 
 export interface Edge {
@@ -59,9 +60,7 @@ export interface CustomEdgeData {
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
 
-export interface LineageConfig {
-  upstreamDepth: number;
-  downstreamDepth: number;
+export interface LineageConfig extends Omit<LineageSettings, 'lineageLayer'> {
   nodesPerLayer: number;
 }
 
@@ -90,5 +89,5 @@ export interface ExpandCollapseHandlesProps {
   downstreamExpandPerformed: boolean;
   upstreamLineageLength: number;
   onCollapse: (direction?: LineageDirection) => void;
-  onExpand: (direction: LineageDirection) => void;
+  onExpand: (direction: LineageDirection, depth: number) => void;
 }

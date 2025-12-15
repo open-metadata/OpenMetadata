@@ -58,12 +58,8 @@ ALTER TABLE stored_procedure_entity
 ADD COLUMN databaseSchemaHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin
 GENERATED ALWAYS AS (SUBSTRING_INDEX(fqnHash, '.', 3)) STORED;
 
-ALTER TABLE stored_procedure_entity
-DROP INDEX idx_stored_procedure_entity_deleted_name_id;
-
 CREATE INDEX idx_stored_procedure_schema_listing
 ON stored_procedure_entity (deleted, databaseSchemaHash, name, id);
-
 
 -- Recognizer Feedback Storage
 -- Store user feedback on auto-applied tags to improve recognition accuracy

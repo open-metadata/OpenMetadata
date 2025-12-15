@@ -1,9 +1,0 @@
-{
-  "name": "system-notification-test-result",
-  "fullyQualifiedName": "system-notification-test-result",
-  "displayName": "Test Result Notification",
-  "description": "System default template for test case execution result notifications",
-  "provider": "system",
-  "templateSubject": "Test {{testResult.testCaseStatus}} - {{entity.fullyQualifiedName}}",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}<b>Test Result Update</b><br/>Test Case: <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a><br/><b>Status:</b> {{#if (eq testResult.testCaseStatus 'Success')}}<span style=\"color:#48CA9E\">✓ Passed</span>{{else if (eq testResult.testCaseStatus 'Failed')}}<span style=\"color:#F24822\">✗ Failed</span>{{else if (eq testResult.testCaseStatus 'Aborted')}}<span style=\"color:#FFBE0E\">⚠ Aborted</span>{{else}}<span style=\"color:#959595\">⏳ {{testResult.testCaseStatus}}</span>{{/if}}{{#if testResult.result}}<br/><b>Result:</b> {{testResult.result}}{{/if}}{{#if testResult.testResultValue}}<br/><b>Value:</b> {{testResult.testResultValue}}{{/if}}<br/><b>Timestamp:</b> {{formatDate testResult.timestamp}}{{#if entity.description}}<br/><b>Test Description:</b> {{entity.description}}{{/if}}{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
-}
