@@ -324,7 +324,7 @@ This document provides a comprehensive overview of all Playwright E2E tests cove
 
 ### Run all glossary tests
 ```bash
-yarn playwright test playwright/e2e/**/Glossary*.spec.ts playwright/e2e/**/*lossary*.spec.ts --project=chromium
+yarn playwright test playwright/e2e/**/*Glossary*.spec.ts --project=chromium
 ```
 
 ### Run specific test file

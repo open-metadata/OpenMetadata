@@ -211,7 +211,6 @@ test.describe('Glossary Term Details Operations', () => {
   });
 });
 
-// T-U26: Edit term via modal (pencil icon in table)
 test.describe('Edit Term via Table Modal', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -312,7 +311,6 @@ test.describe('Edit Term via Table Modal', () => {
   });
 });
 
-// T-C02: Create term with all fields populated
 test.describe('Term Creation with All Fields', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 

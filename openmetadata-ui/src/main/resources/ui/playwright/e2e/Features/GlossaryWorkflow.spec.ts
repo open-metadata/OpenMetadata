@@ -383,7 +383,6 @@ test.describe('Reviewer Permissions', () => {
     await afterAction();
   });
 
-  // W-R03: Non-reviewer cannot see approve/reject buttons
   test('non-reviewer should not see approve/reject buttons', async ({
     browser,
   }) => {
@@ -1157,7 +1156,6 @@ test.describe('Workflow History', () => {
   });
 });
 
-// T-D02: Delete parent term (cascade children)
 test.describe('Term Deletion Cascade', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 

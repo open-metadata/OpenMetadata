@@ -25,7 +25,6 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-// G-C05: Form validation - empty name shows error
 test.describe('Glossary Form Validation - Empty Name', () => {
   test('should show error when glossary name is empty', async ({ page }) => {
     await redirectToHomePage(page);
@@ -45,7 +44,6 @@ test.describe('Glossary Form Validation - Empty Name', () => {
   });
 });
 
-// G-C06: Form validation - empty description shows error
 test.describe('Glossary Form Validation - Empty Description', () => {
   test('should show error when glossary description is empty', async ({
     page,
@@ -69,7 +67,6 @@ test.describe('Glossary Form Validation - Empty Description', () => {
   });
 });
 
-// G-C08: Form validation - duplicate glossary name
 test.describe('Glossary Form Validation - Duplicate Name', () => {
   const glossary = new Glossary();
 
@@ -108,7 +105,6 @@ test.describe('Glossary Form Validation - Duplicate Name', () => {
   });
 });
 
-// T-C06: Form validation - empty term name
 test.describe('Term Form Validation - Empty Name', () => {
   const glossary = new Glossary();
 
@@ -143,7 +139,6 @@ test.describe('Term Form Validation - Empty Name', () => {
   });
 });
 
-// T-C07: Form validation - empty term description
 test.describe('Term Form Validation - Empty Description', () => {
   const glossary = new Glossary();
 

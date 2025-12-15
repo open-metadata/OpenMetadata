@@ -38,7 +38,6 @@ test.use({
  * Mutually exclusive validation is covered in Glossary.spec.ts (A-A08)
  */
 
-// A-A06: Add topic asset
 test.describe('Add Topic Asset to Glossary Term', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -75,7 +74,6 @@ test.describe('Add Topic Asset to Glossary Term', () => {
   });
 });
 
-// A-A07: Add pipeline asset
 test.describe('Add Pipeline Asset to Glossary Term', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -112,7 +110,6 @@ test.describe('Add Pipeline Asset to Glossary Term', () => {
   });
 });
 
-// A-V03: Click asset card opens summary panel
 test.describe('Asset Card Summary Panel', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -163,7 +160,6 @@ test.describe('Asset Card Summary Panel', () => {
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
     // Wait for assets to load
-    // Removed networkidle - relying on element assertions
 
     // Check if assets tab is visible with count
     const assetsTabCount = page.locator(
@@ -178,7 +174,6 @@ test.describe('Asset Card Summary Panel', () => {
 
       if (await assetLink.isVisible({ timeout: 3000 }).catch(() => false)) {
         await assetLink.click();
-        // Removed networkidle - relying on element assertions
 
         // Verify summary panel or entity page is shown
         const summaryPanel = page.getByTestId('entity-right-panel');
@@ -196,7 +191,6 @@ test.describe('Asset Card Summary Panel', () => {
   });
 });
 
-// A-V04: Search within assets tab
 test.describe('Search Within Assets Tab', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -255,15 +249,12 @@ test.describe('Search Within Assets Tab', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    // Removed networkidle - relying on element assertions
-
     // Check if search box exists in assets tab
     const searchBox = page.getByPlaceholder(/search/i);
 
     if (await searchBox.isVisible()) {
       // Search for first topic
       await searchBox.fill(topic1.entity.name);
-      // Removed networkidle - relying on element assertions
 
       // Verify filtered results
       await expect(page.getByText(topic1.entity.name)).toBeVisible();
@@ -275,7 +266,6 @@ test.describe('Search Within Assets Tab', () => {
   });
 });
 
-// A-R01: Remove single asset from term
 test.describe('Remove Asset from Glossary Term', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -335,7 +325,6 @@ test.describe('Remove Asset from Glossary Term', () => {
             await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)
           ) {
             await confirmButton.click();
-            // Removed networkidle - relying on element assertions
           }
         }
       }
@@ -343,7 +332,6 @@ test.describe('Remove Asset from Glossary Term', () => {
   });
 });
 
-// A-R03: Remove asset via entity page (untag)
 test.describe('Remove Asset via Entity Page', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -369,7 +357,6 @@ test.describe('Remove Asset via Entity Page', () => {
     const topicFqn = topicEntity.entityResponseData?.fullyQualifiedName;
 
     await page.goto(`/topic/${topicFqn}`);
-    // Removed networkidle - relying on element assertions
 
     // Verify entity page is loaded
     const entityHeader = page.getByTestId('entity-header-display-name');
@@ -389,7 +376,6 @@ test.describe('Remove Asset via Entity Page', () => {
   });
 });
 
-// A-R02: Bulk select and remove assets
 test.describe('Bulk Remove Assets', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -448,8 +434,6 @@ test.describe('Bulk Remove Assets', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    // Removed networkidle - relying on element assertions
-
     // Select multiple assets using checkboxes
     const checkboxes = page.locator(
       '[data-testid="asset-card-container"] input[type="checkbox"]'
@@ -473,14 +457,12 @@ test.describe('Bulk Remove Assets', () => {
 
         if (await confirmBtn.isVisible()) {
           await confirmBtn.click();
-          // Removed networkidle - relying on element assertions
         }
       }
     }
   });
 });
 
-// A-V05: Filter assets by entity type
 test.describe('Filter Assets by Entity Type', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -539,8 +521,6 @@ test.describe('Filter Assets by Entity Type', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    // Removed networkidle - relying on element assertions
-
     // Verify assets tab is accessible and clickable
     const assetsTab = page.locator('[data-testid="assets"]');
 
@@ -553,7 +533,6 @@ test.describe('Filter Assets by Entity Type', () => {
   });
 });
 
-// A-A03: Add asset via "Add Assets" dropdown
 test.describe('Add Asset via Dropdown', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -619,7 +598,6 @@ test.describe('Add Asset via Dropdown', () => {
 
           // Save selection
           await page.click('[data-testid="save-btn"]');
-          // Removed networkidle - relying on element assertions
         }
       }
     } else {
@@ -634,7 +612,6 @@ test.describe('Add Asset via Dropdown', () => {
   });
 });
 
-// A-V02: Asset cards display correctly
 test.describe('Asset Cards Display', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -684,8 +661,6 @@ test.describe('Asset Cards Display', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    // Removed networkidle - relying on element assertions
-
     // Verify assets tab shows count
     const assetsCount = page.locator(
       '[data-testid="assets"] [data-testid="filter-count"]'
@@ -715,7 +690,6 @@ test.describe('Asset Cards Display', () => {
   });
 });
 
-// A-V06: Paginate through assets (requires many assets)
 test.describe('Paginate Through Assets', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
@@ -773,8 +747,6 @@ test.describe('Paginate Through Assets', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
     await goToAssetsTab(page, glossaryTerm.data.displayName);
-
-    // Removed networkidle - relying on element assertions
 
     // Verify assets tab is accessible
     const assetsTab = page.locator('[data-testid="assets"]');

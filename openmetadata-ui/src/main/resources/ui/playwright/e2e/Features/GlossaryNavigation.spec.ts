@@ -39,7 +39,6 @@ test.describe('Glossary Navigation', () => {
     await afterAction();
   });
 
-  // NAV-05: Tab navigation (Terms, Assets, Activity)
   test('should navigate between tabs on glossary page', async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);

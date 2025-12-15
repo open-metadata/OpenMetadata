@@ -163,9 +163,10 @@ test.describe('Glossary Voting', () => {
 
     await expect(upvoteButton).toHaveClass(/\bactive\b/);
 
-    // Reload page
+    // Reload page and wait for vote button to be visible
+    const reloadResponse = page.waitForResponse('/api/v1/glossaries/*');
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await reloadResponse;
 
     // Verify vote persists
     const upvoteButtonAfterReload = page.getByTestId('up-vote-btn');

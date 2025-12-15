@@ -186,7 +186,6 @@ test.describe('Glossary Remove Operations', () => {
     ).toBeVisible();
   });
 
-  // G-U10: Remove tags from glossary
   test('should add and remove tags from glossary', async ({ page }) => {
     await glossary.visitEntityPage(page);
     await page.waitForLoadState('networkidle');
@@ -223,7 +222,6 @@ test.describe('Glossary Remove Operations', () => {
     ).not.toBeVisible();
   });
 
-  // T-U17: Remove tags from glossary term
   test('should add and remove tags from glossary term', async ({ page }) => {
     await glossaryTerm.visitEntityPage(page);
     await page.waitForLoadState('networkidle');
