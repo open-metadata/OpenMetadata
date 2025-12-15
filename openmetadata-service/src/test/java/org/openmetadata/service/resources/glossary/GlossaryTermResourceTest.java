@@ -3502,4 +3502,502 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
     return response.readEntity(new GenericType<Map<String, Integer>>() {});
   }
+
+  /**
+   * Test Suite for Glossary Term Move Operations with Children Relationship Verification
+   * These tests verify that when moving glossary terms with children, all relationships
+   * (both parent-child CONTAINS and glossary HAS) are correctly updated.
+   */
+  @Test
+  void test_moveTermWithChildren_toParentInSameGlossary() throws Exception {
+    // Scenario 1: Create term -> add children -> move to another parent in same glossary
+    Glossary glossary = createGlossary("TestGlossary1", null, null);
+
+    // Create parent terms
+    GlossaryTerm parentA = createTerm(glossary, null, "ParentA");
+    GlossaryTerm parentB = createTerm(glossary, null, "ParentB");
+
+    // Create term with children under ParentA
+    GlossaryTerm movingTerm = createTerm(glossary, parentA, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossary, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossary, movingTerm, "Child2");
+
+    // Move MovingTerm from ParentA to ParentB
+    EntityReference parentBRef =
+        new EntityReference()
+            .withId(parentB.getId())
+            .withType(GLOSSARY_TERM)
+            .withFullyQualifiedName(parentB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage = receiveMoveEntityMessage(movingTerm.getId(), parentBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MovingTerm is correctly moved
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(parentB.getId(), movedTerm.getParent().getId());
+    assertEquals(glossary.getId(), movedTerm.getGlossary().getId());
+    assertTrue(
+        movedTerm.getFullyQualifiedName().startsWith(glossary.getName() + ".ParentB.MovingTerm"));
+
+    // Verify Child1 relationships
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild1.getParent().getId());
+    assertEquals(glossary.getId(), verifiedChild1.getGlossary().getId());
+    assertTrue(verifiedChild1.getFullyQualifiedName().contains("ParentB.MovingTerm.Child1"));
+
+    // Verify Child2 relationships
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild2.getParent().getId());
+    assertEquals(glossary.getId(), verifiedChild2.getGlossary().getId());
+    assertTrue(verifiedChild2.getFullyQualifiedName().contains("ParentB.MovingTerm.Child2"));
+  }
+
+  @Test
+  void test_moveTermWithChildren_toRootInDifferentGlossary() throws Exception {
+    // Scenario 2: Move term with children to root of different glossary
+    Glossary glossaryA = createGlossary("GlossaryA", null, null);
+    Glossary glossaryB = createGlossary("GlossaryB", null, null);
+
+    // Create term with children in GlossaryA
+    GlossaryTerm movingTerm = createTerm(glossaryA, null, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossaryA, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossaryA, movingTerm, "Child2");
+    GlossaryTerm grandChild = createTerm(glossaryA, child1, "GrandChild");
+
+    // Move to root of GlossaryB
+    EntityReference glossaryBRef =
+        new EntityReference()
+            .withId(glossaryB.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossaryB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage =
+        receiveMoveEntityMessage(movingTerm.getId(), glossaryBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MovingTerm
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(movedTerm.getParent());
+    assertEquals(glossaryB.getId(), movedTerm.getGlossary().getId());
+    assertEquals("GlossaryB.MovingTerm", movedTerm.getFullyQualifiedName());
+
+    // Verify Child1 glossary changed
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild1.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedChild1.getGlossary().getId());
+    assertEquals("GlossaryB.MovingTerm.Child1", verifiedChild1.getFullyQualifiedName());
+
+    // Verify Child2 glossary changed
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild2.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedChild2.getGlossary().getId());
+
+    // Verify GrandChild glossary changed (nested children)
+    GlossaryTerm verifiedGrandChild =
+        getEntity(grandChild.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(child1.getId(), verifiedGrandChild.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedGrandChild.getGlossary().getId());
+    assertEquals(
+        "GlossaryB.MovingTerm.Child1.GrandChild", verifiedGrandChild.getFullyQualifiedName());
+
+    // CRITICAL: Delete the original glossary to reproduce relationship scenario
+    // If relationships were not properly updated, this will expose orphaned relationships
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify children can STILL be fetched after original glossary is deleted
+    // This would fail with "does not have expected relationship" error if relationships weren't
+    // updated
+    GlossaryTerm child1AfterDelete =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child1AfterDelete.getGlossary().getId());
+    assertNotNull(
+        child1AfterDelete.getGlossary(), "Child must have valid glossary after original deleted");
+
+    GlossaryTerm child2AfterDelete =
+        getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child2AfterDelete.getGlossary().getId());
+
+    GlossaryTerm grandChildAfterDelete =
+        getEntity(grandChild.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), grandChildAfterDelete.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveTermWithChildren_toParentInDifferentGlossary() throws Exception {
+    // Scenario 3: Move term with children to under a parent in different glossary
+    Glossary glossaryA = createGlossary("GlossaryA_3", null, null);
+    Glossary glossaryB = createGlossary("GlossaryB_3", null, null);
+
+    // Create term with children in GlossaryA
+    GlossaryTerm movingTerm = createTerm(glossaryA, null, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossaryA, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossaryA, movingTerm, "Child2");
+
+    // Create parent in GlossaryB
+    GlossaryTerm parentInB = createTerm(glossaryB, null, "ParentInB");
+
+    // Move to under parentInB
+    EntityReference parentInBRef =
+        new EntityReference()
+            .withId(parentInB.getId())
+            .withType(GLOSSARY_TERM)
+            .withFullyQualifiedName(parentInB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage =
+        receiveMoveEntityMessage(movingTerm.getId(), parentInBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MovingTerm
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(parentInB.getId(), movedTerm.getParent().getId());
+    assertEquals(glossaryB.getId(), movedTerm.getGlossary().getId());
+    assertTrue(movedTerm.getFullyQualifiedName().contains("GlossaryB_3.ParentInB.MovingTerm"));
+
+    // Verify children moved to GlossaryB
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), verifiedChild1.getGlossary().getId());
+
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), verifiedChild2.getGlossary().getId());
+
+    // Delete original glossary to expose any orphaned relationships
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify children still accessible with correct glossary
+    GlossaryTerm child1AfterDelete =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child1AfterDelete.getGlossary().getId());
+
+    GlossaryTerm child2AfterDelete =
+        getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child2AfterDelete.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveNestedTermWithChildren_toRootInSameGlossary() throws Exception {
+    // Scenario 4: Term is nested under parent, move it to root in same glossary
+    Glossary glossary = createGlossary("TestGlossary4", null, null);
+
+    // Create hierarchy: ParentA -> MovingTerm -> Child1, Child2
+    GlossaryTerm parentA = createTerm(glossary, null, "ParentA");
+    GlossaryTerm movingTerm = createTerm(glossary, parentA, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossary, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossary, movingTerm, "Child2");
+
+    // Move to root
+    EntityReference glossaryRef =
+        new EntityReference()
+            .withId(glossary.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossary.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage = receiveMoveEntityMessage(movingTerm.getId(), glossaryRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MovingTerm is at root
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(movedTerm.getParent());
+    assertEquals(glossary.getId(), movedTerm.getGlossary().getId());
+    assertEquals("TestGlossary4.MovingTerm", movedTerm.getFullyQualifiedName());
+
+    // Verify children still under MovingTerm and in same glossary
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild1.getParent().getId());
+    assertEquals(glossary.getId(), verifiedChild1.getGlossary().getId());
+
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild2.getParent().getId());
+    assertEquals(glossary.getId(), verifiedChild2.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveNestedTermWithChildren_toRootInDifferentGlossary() throws Exception {
+    // Scenario 5: Term is nested, move to root in different glossary
+    Glossary glossaryA = createGlossary("GlossaryA_5", null, null);
+    Glossary glossaryB = createGlossary("GlossaryB_5", null, null);
+
+    // Create nested term with children in GlossaryA
+    GlossaryTerm parentA = createTerm(glossaryA, null, "ParentA");
+    GlossaryTerm movingTerm = createTerm(glossaryA, parentA, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossaryA, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossaryA, movingTerm, "Child2");
+
+    // Move to root of GlossaryB
+    EntityReference glossaryBRef =
+        new EntityReference()
+            .withId(glossaryB.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossaryB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage =
+        receiveMoveEntityMessage(movingTerm.getId(), glossaryBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify all moved to GlossaryB
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(movedTerm.getParent());
+    assertEquals(glossaryB.getId(), movedTerm.getGlossary().getId());
+
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), verifiedChild1.getGlossary().getId());
+
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), verifiedChild2.getGlossary().getId());
+
+    // Delete original glossary AND original parent to reproduce relationship scenario
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify children still work after original glossary deleted
+    GlossaryTerm child1AfterDelete =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child1AfterDelete.getGlossary().getId());
+
+    GlossaryTerm child2AfterDelete =
+        getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child2AfterDelete.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveNestedTermWithChildren_toParentInDifferentGlossary() throws Exception {
+    // Scenario 6: Term is nested, move to under another parent in different glossary
+    Glossary glossaryA = createGlossary("GlossaryA_6", null, null);
+    Glossary glossaryB = createGlossary("GlossaryB_6", null, null);
+
+    // Create nested structure in GlossaryA
+    GlossaryTerm parentA = createTerm(glossaryA, null, "ParentA");
+    GlossaryTerm movingTerm = createTerm(glossaryA, parentA, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossaryA, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossaryA, movingTerm, "Child2");
+
+    // Create target parent in GlossaryB
+    GlossaryTerm parentB = createTerm(glossaryB, null, "ParentB");
+
+    // Move to under ParentB in GlossaryB
+    EntityReference parentBRef =
+        new EntityReference()
+            .withId(parentB.getId())
+            .withType(GLOSSARY_TERM)
+            .withFullyQualifiedName(parentB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage = receiveMoveEntityMessage(movingTerm.getId(), parentBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MovingTerm moved
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(parentB.getId(), movedTerm.getParent().getId());
+    assertEquals(glossaryB.getId(), movedTerm.getGlossary().getId());
+
+    // Verify children moved to GlossaryB
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild1.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedChild1.getGlossary().getId());
+
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild2.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedChild2.getGlossary().getId());
+
+    // Delete original glossary AND original parent term
+    deleteEntity(parentA.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify children still accessible after both deletions
+    GlossaryTerm child1AfterDelete =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child1AfterDelete.getGlossary().getId());
+    assertEquals(movingTerm.getId(), child1AfterDelete.getParent().getId());
+
+    GlossaryTerm child2AfterDelete =
+        getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child2AfterDelete.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveMiddleTermInHierarchy_toRootInSameGlossary() throws Exception {
+    // Scenario 7a: Create RootTerm -> MiddleTerm -> LeafTerm, move MiddleTerm to root in same
+    // glossary
+    Glossary glossary = createGlossary("TestGlossary7a", null, null);
+
+    // Create 3-level hierarchy
+    GlossaryTerm rootTerm = createTerm(glossary, null, "RootTerm");
+    GlossaryTerm middleTerm = createTerm(glossary, rootTerm, "MiddleTerm");
+    GlossaryTerm leafTerm = createTerm(glossary, middleTerm, "LeafTerm");
+
+    // Move MiddleTerm to root
+    EntityReference glossaryRef =
+        new EntityReference()
+            .withId(glossary.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossary.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage = receiveMoveEntityMessage(middleTerm.getId(), glossaryRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MiddleTerm is at root
+    GlossaryTerm movedMiddle = getEntity(middleTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(movedMiddle.getParent());
+    assertEquals(glossary.getId(), movedMiddle.getGlossary().getId());
+    assertEquals("TestGlossary7a.MiddleTerm", movedMiddle.getFullyQualifiedName());
+
+    // Verify LeafTerm still under MiddleTerm
+    GlossaryTerm verifiedLeaf = getEntity(leafTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(middleTerm.getId(), verifiedLeaf.getParent().getId());
+    assertEquals(glossary.getId(), verifiedLeaf.getGlossary().getId());
+    assertEquals("TestGlossary7a.MiddleTerm.LeafTerm", verifiedLeaf.getFullyQualifiedName());
+
+    // Verify RootTerm unchanged
+    GlossaryTerm verifiedRoot = getEntity(rootTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(verifiedRoot.getParent());
+    assertEquals(glossary.getId(), verifiedRoot.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveMiddleTermInHierarchy_toRootInDifferentGlossary() throws Exception {
+    // Scenario 7b: Create RootTerm -> MiddleTerm -> LeafTerm, move MiddleTerm to root in different
+    // glossary
+    Glossary glossaryA = createGlossary("GlossaryA_7b", null, null);
+    Glossary glossaryB = createGlossary("GlossaryB_7b", null, null);
+
+    // Create 3-level hierarchy in GlossaryA
+    GlossaryTerm rootTerm = createTerm(glossaryA, null, "RootTerm");
+    GlossaryTerm middleTerm = createTerm(glossaryA, rootTerm, "MiddleTerm");
+    GlossaryTerm leafTerm = createTerm(glossaryA, middleTerm, "LeafTerm");
+
+    // Move MiddleTerm to root of GlossaryB
+    EntityReference glossaryBRef =
+        new EntityReference()
+            .withId(glossaryB.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossaryB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage =
+        receiveMoveEntityMessage(middleTerm.getId(), glossaryBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MiddleTerm moved to GlossaryB
+    GlossaryTerm movedMiddle = getEntity(middleTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(movedMiddle.getParent());
+    assertEquals(glossaryB.getId(), movedMiddle.getGlossary().getId());
+    assertEquals("GlossaryB_7b.MiddleTerm", movedMiddle.getFullyQualifiedName());
+
+    // Verify LeafTerm also moved to GlossaryB
+    GlossaryTerm verifiedLeaf = getEntity(leafTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(middleTerm.getId(), verifiedLeaf.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedLeaf.getGlossary().getId());
+    assertEquals("GlossaryB_7b.MiddleTerm.LeafTerm", verifiedLeaf.getFullyQualifiedName());
+
+    // Verify RootTerm stayed in GlossaryA
+    GlossaryTerm verifiedRoot = getEntity(rootTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryA.getId(), verifiedRoot.getGlossary().getId());
+
+    // Delete the original parent (RootTerm) and original glossary
+    // This tests if LeafTerm still works when its grandparent is deleted
+    deleteEntity(rootTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify MiddleTerm and LeafTerm still accessible
+    GlossaryTerm middleAfterDelete =
+        getEntity(middleTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), middleAfterDelete.getGlossary().getId());
+
+    GlossaryTerm leafAfterDelete =
+        getEntity(leafTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), leafAfterDelete.getGlossary().getId());
+    assertEquals(middleTerm.getId(), leafAfterDelete.getParent().getId());
+  }
+
+  @Test
+  void test_consecutiveMoves_verifyRelationshipIntegrity() throws Exception {
+    // Test consecutive moves
+    Glossary glossaryA = createGlossary("DocHub4", null, null);
+    Glossary glossaryTech = createGlossary("TechnicalGlossary", null, null);
+    Glossary glossaryArchive = createGlossary("Archive", null, null);
+
+    // Create term with children in GlossaryA
+    GlossaryTerm tapsToSap = createTerm(glossaryA, null, "TAPStoSAP");
+    GlossaryTerm child1 = createTerm(glossaryA, tapsToSap, "ChildTerm1");
+    GlossaryTerm child2 = createTerm(glossaryA, tapsToSap, "ChildTerm2");
+
+    // First move: to TechnicalGlossary
+    EntityReference techRef =
+        new EntityReference()
+            .withId(glossaryTech.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossaryTech.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage move1 = receiveMoveEntityMessage(tapsToSap.getId(), techRef);
+    assertEquals("COMPLETED", move1.getStatus());
+
+    // Verify after first move
+    GlossaryTerm afterMove1 = getEntity(tapsToSap.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryTech.getId(), afterMove1.getGlossary().getId());
+
+    GlossaryTerm child1AfterMove1 =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryTech.getId(), child1AfterMove1.getGlossary().getId());
+
+    // Second move: to Archive (consecutive move)
+    EntityReference archiveRef =
+        new EntityReference()
+            .withId(glossaryArchive.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossaryArchive.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage move2 = receiveMoveEntityMessage(tapsToSap.getId(), archiveRef);
+    assertEquals("COMPLETED", move2.getStatus());
+
+    // Verify after second move - this should NOT fail!
+    GlossaryTerm afterMove2 = getEntity(tapsToSap.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryArchive.getId(), afterMove2.getGlossary().getId());
+
+    // Critical: Verify children can be fetched individually without errors
+    GlossaryTerm child1Final = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(tapsToSap.getId(), child1Final.getParent().getId());
+    assertEquals(glossaryArchive.getId(), child1Final.getGlossary().getId());
+    assertNotNull(child1Final.getGlossary(), "Child1 must have glossary relationship");
+
+    GlossaryTerm child2Final = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(tapsToSap.getId(), child2Final.getParent().getId());
+    assertEquals(glossaryArchive.getId(), child2Final.getGlossary().getId());
+    assertNotNull(child2Final.getGlossary(), "Child2 must have glossary relationship");
+
+    // Verify we can list children without errors
+    Map<String, String> params = new HashMap<>();
+    params.put("directChildrenOf", afterMove2.getFullyQualifiedName());
+    ResultList<GlossaryTerm> children = listEntities(params, ADMIN_AUTH_HEADERS);
+    assertEquals(2, children.getData().size());
+
+    // CRITICAL: Delete the original glossary and intermediate glossary
+    // This reproduces the EXACT scenario where orphaned relationships cause failures
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossaryTech.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // If relationships weren't updated correctly, the next fetch will fail with:
+    // "Entity type glossaryTerm does not have expected relationship has to/from entity type
+    // glossary"
+    GlossaryTerm termAfterAllDeletes =
+        getEntity(tapsToSap.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryArchive.getId(), termAfterAllDeletes.getGlossary().getId());
+
+    // Fetch each child individually
+    GlossaryTerm child1AfterAllDeletes =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        child1AfterAllDeletes.getGlossary(),
+        "Child1 must have glossary - this fails without the fix!");
+    assertEquals(glossaryArchive.getId(), child1AfterAllDeletes.getGlossary().getId());
+
+    GlossaryTerm child2AfterAllDeletes =
+        getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        child2AfterAllDeletes.getGlossary(),
+        "Child2 must have glossary - this fails without the fix!");
+    assertEquals(glossaryArchive.getId(), child2AfterAllDeletes.getGlossary().getId());
+
+    // Verify listing children still works
+    ResultList<GlossaryTerm> childrenAfterDeletes = listEntities(params, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        2,
+        childrenAfterDeletes.getData().size(),
+        "Listing children must work - this fails without the fix!");
+  }
 }
