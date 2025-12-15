@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -154,10 +154,12 @@ test.describe('Large Glossary Performance Tests', () => {
     const buttonText = await expandAllButton.textContent();
     if (buttonText?.includes('Collapse All')) {
       await expandAllButton.click();
+
       // Wait for the button text to change to "Expand All"
       await expect(expandAllButton).toContainText('Expand All', {
         timeout: 30000,
       });
+
       await page.waitForLoadState('networkidle');
     }
 

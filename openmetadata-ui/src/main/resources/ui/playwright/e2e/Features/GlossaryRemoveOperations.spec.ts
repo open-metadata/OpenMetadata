@@ -256,12 +256,12 @@ test.describe('Glossary Remove Operations', () => {
     await page.getByTestId('saveAssociatedTag').click();
 
     // Handle confirmation modal for glossary term tag updates
-    await expect(
-      page.getByText('Would you like to proceed with updating the tags?')
-    ).toBeVisible();
+    const confirmModal = page.locator('[data-testid="confirmation-modal"]');
+
+    await expect(confirmModal).toBeVisible();
 
     const patchRequest = page.waitForResponse('/api/v1/glossaryTerms/*');
-    await page.getByRole('button', { name: 'Yes, confirm' }).click();
+    await confirmModal.getByRole('button', { name: 'Yes, confirm' }).click();
     await patchRequest;
 
     // Verify tag is added
@@ -290,12 +290,12 @@ test.describe('Glossary Remove Operations', () => {
     await page.getByTestId('saveAssociatedTag').click();
 
     // Handle confirmation modal for glossary term tag updates
-    await expect(
-      page.getByText('Would you like to proceed with updating the tags?')
-    ).toBeVisible();
+    const confirmModal2 = page.locator('[data-testid="confirmation-modal"]');
+
+    await expect(confirmModal2).toBeVisible();
 
     const patchRequest2 = page.waitForResponse('/api/v1/glossaryTerms/*');
-    await page.getByRole('button', { name: 'Yes, confirm' }).click();
+    await confirmModal2.getByRole('button', { name: 'Yes, confirm' }).click();
     await patchRequest2;
 
     // Verify tag is removed
