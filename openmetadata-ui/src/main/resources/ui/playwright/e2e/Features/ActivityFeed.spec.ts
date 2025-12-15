@@ -493,22 +493,27 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await editorLocator.fill('Hey ');
 
-      const username = adminUser.responseData.name;
-      const searchPrefix = username.slice(0, -13);
+      await editorLocator.click();
 
-      const userSuggestionsResponse = user1Page.waitForResponse(
-        `/api/v1/search/query?q=*${searchPrefix}***`
-      );
-
-      await editorLocator.pressSequentially(`@${searchPrefix}`);
+      await user1Page.keyboard.press('@');
+      await editorLocator.pressSequentially(adminUser.responseData.displayName);
+      const userSuggestionsResponse = user1Page.waitForResponse((response) => {
+        const url = response.url();
+        return (
+          url.includes('/api/v1/search/query') &&
+          url.includes(adminUser.responseData.displayName)
+        );
+      });
       await userSuggestionsResponse;
 
-      await user1Page
+      const mentionOption = user1Page
         .locator(`[data-value="@${adminUser.responseData.name}"]`)
-        .first()
-        .click();
+        .first();
 
-      await editorLocator.type(', can you check this?');
+      await mentionOption.waitFor({ state: 'visible' });
+      await mentionOption.click();
+
+      await editorLocator.pressSequentially(', can you check this?');
 
       await expect(
         user1Page.locator('[data-testid="send-button"]')
