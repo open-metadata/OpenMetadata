@@ -939,7 +939,8 @@ def get_lineage_by_query(
                         )
         if not lineage_parser.query_parsing_success:
             logger.debug(
-                f"[{query_hash}] Query parsing failed: {lineage_parser.query_parsing_failure_reason}"
+                f"[{query_hash}] Query parsing failed while getting lineage by query:"
+                f" {lineage_parser.query_parsing_failure_reason}"
             )
             query_parsing_failures.add(
                 QueryParsingError(
@@ -1017,7 +1018,8 @@ def get_lineage_via_table_entity(
                 ) or []
         if not lineage_parser.query_parsing_success:
             logger.debug(
-                f"[{query_hash}] Query parsing failed: {lineage_parser.query_parsing_failure_reason}"
+                f"[{query_hash}] Query parsing failed while getting lineage via table entity by query:"
+                f" {lineage_parser.query_parsing_failure_reason}"
             )
             query_parsing_failures.add(
                 QueryParsingError(
