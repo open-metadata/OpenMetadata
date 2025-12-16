@@ -35,6 +35,7 @@ import {
   addPipelineBetweenNodes,
   applyPipelineFromModal,
   connectEdgeBetweenNodes,
+  connectEdgeBetweenNodesViaAPI,
   deleteEdge,
   deleteNode,
   editLineage,
@@ -715,8 +716,9 @@ test.describe.serial('Test pagination in column level lineage', () => {
   let table2Fqn: string;
 
   test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction, page } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await createNewPage(browser);
 
+    await redirectToHomePage(page);
     table1.entity.columns = table1Columns;
     table2.entity.columns = table2Columns;
 
@@ -748,99 +750,68 @@ test.describe.serial('Test pagination in column level lineage', () => {
 
     await page.getByTestId('full-screen').click();
 
-    const table1PaginationNext = table1Node.locator('[data-testid="next-btn"]');
-    const table2PaginationNext = table2Node.locator('[data-testid="next-btn"]');
     const table1PaginationPrev = table1Node.locator('[data-testid="prev-btn"]');
     const table2PaginationPrev = table2Node.locator('[data-testid="prev-btn"]');
 
     await test.step('Add edges between T1-P1 and T2-P1', async () => {
-      await addColumnLineage(
-        page,
-        `${table1Fqn}.${table1Columns[0].name}`,
-        `${table2Fqn}.${table2Columns[0].name}`,
-        false
-      );
-
-      await addColumnLineage(
-        page,
-        `${table1Fqn}.${table1Columns[1].name}`,
-        `${table2Fqn}.${table2Columns[1].name}`,
-        false
-      );
-
-      await addColumnLineage(
-        page,
-        `${table1Fqn}.${table1Columns[2].name}`,
-        `${table2Fqn}.${table2Columns[2].name}`,
-        false
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        {
+          id: table1Fqn,
+          type: table1.getType(),
+        },
+        {
+          id: table2Fqn,
+          type: table2.getType(),
+        },
+        [
+          {
+            fromColumns: [table1Columns[0].name],
+            toColumn: table2Columns[0].name,
+          },
+          {
+            fromColumns: [table1Columns[1].name],
+            toColumn: table2Columns[1].name,
+          },
+          {
+            fromColumns: [table1Columns[2].name],
+            toColumn: table2Columns[2].name,
+          },
+          {
+            fromColumns: [table1Columns[0].name],
+            toColumn: table2Columns[5].name,
+          },
+          {
+            fromColumns: [table1Columns[1].name],
+            toColumn: table2Columns[6].name,
+          },
+          {
+            fromColumns: [table1Columns[3].name],
+            toColumn: table2Columns[7].name,
+          },
+          {
+            fromColumns: [table1Columns[4].name],
+            toColumn: table2Columns[7].name,
+          },
+          {
+            fromColumns: [table1Columns[5].name],
+            toColumn: table2Columns[5].name,
+          },
+          {
+            fromColumns: [table1Columns[6].name],
+            toColumn: table2Columns[6].name,
+          },
+          {
+            fromColumns: [table1Columns[8].name],
+            toColumn: table2Columns[7].name,
+          },
+        ]
       );
     });
 
     await test.step(
-      'Navigate to T2-P2 and add edges between T1-P1 and T2-P2',
-      async () => {
-        if (await table2PaginationNext.isVisible()) {
-          await table2PaginationNext.click();
-        }
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[0].name}`,
-          `${table2Fqn}.${table2Columns[5].name}`,
-          false
-        );
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[1].name}`,
-          `${table2Fqn}.${table2Columns[6].name}`,
-          false
-        );
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[3].name}`,
-          `${table2Fqn}.${table2Columns[7].name}`,
-          false
-        );
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[4].name}`,
-          `${table2Fqn}.${table2Columns[7].name}`,
-          false
-        );
-      }
-    );
-
-    await test.step(
       'Navigate to T1-P2 and add edges between T1-P2 and T2-P2',
       async () => {
-        if (await table1PaginationNext.isVisible()) {
-          await table1PaginationNext.click();
-        }
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[5].name}`,
-          `${table2Fqn}.${table2Columns[5].name}`,
-          false
-        );
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[6].name}`,
-          `${table2Fqn}.${table2Columns[6].name}`,
-          false
-        );
-
-        await addColumnLineage(
-          page,
-          `${table1Fqn}.${table1Columns[8].name}`,
-          `${table2Fqn}.${table2Columns[7].name}`,
-          false
-        );
-
         const table1Box = await table1Node.boundingBox();
         if (table1Box) {
           await page.mouse.click(table1Box.x - 10, table1Box.y - 10);
