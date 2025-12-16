@@ -116,7 +116,7 @@ public class OpenSearchClient implements SearchClient {
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
     genericManager = new OpenSearchGenericManager(newClient, lowLevelClient);
-    aggregationManager = new OpenSearchAggregationManager(newClient);
+    aggregationManager = new OpenSearchAggregationManager(newClient, rbacConditionEvaluator);
     dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
     searchManager =
         new OpenSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
@@ -219,11 +219,6 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public boolean waitForIndexReady(String indexName, int timeoutSeconds) {
-    return indexManager.waitForIndexReady(indexName, timeoutSeconds);
-  }
-
-  @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
     indexManager.updateIndex(indexMapping, indexMappingContent);
   }
@@ -273,6 +268,21 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     return searchManager.listWithOffset(
         filter, limit, offset, index, searchSortFilter, q, queryString);
+  }
+
+  @Override
+  public SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.listWithOffset(
+        filter, limit, offset, index, searchSortFilter, q, queryString, subjectContext);
   }
 
   @Override
@@ -371,6 +381,16 @@ public class OpenSearchClient implements SearchClient {
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return aggregationManager.genericAggregation(query, index, aggregationMetadata);
+  }
+
+  @Override
+  public DataQualityReport genericAggregation(
+      String query,
+      String index,
+      SearchAggregation aggregationMetadata,
+      SubjectContext subjectContext)
+      throws IOException {
+    return aggregationManager.genericAggregation(query, index, aggregationMetadata, subjectContext);
   }
 
   @Override

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
@@ -785,4 +785,35 @@ export const verifyLineageConfig = async (page: Page) => {
   const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
   await page.getByText('OK').click();
   await saveRes;
+};
+
+export const connectEdgeBetweenNodesViaAPI = (
+  apiContext: APIRequestContext,
+  fromEntity: { id: string; type: string },
+  toEntity: { id: string; type: string },
+  columnsLineage: Array<{ fromColumns: string[]; toColumn: string }>
+) => {
+  return apiContext.put('/api/v1/lineage/', {
+    data: {
+      edge: {
+        fromEntity,
+        toEntity,
+        lineageDetails: { columnsLineage, description: '' },
+      },
+    },
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+};
+
+export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
+  const tableNode = page.locator(`[data-testid="lineage-node-${tableFqn}"]`);
+
+  const tableFilterButton = tableNode.locator(
+    '[data-testid="lineage-filter-button"]'
+  );
+  await tableFilterButton.click();
+
+  await page.waitForTimeout(300);
 };

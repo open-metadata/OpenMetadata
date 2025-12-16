@@ -1642,6 +1642,10 @@ export interface ConfigObject {
      */
     discoveryAPI?: string;
     /**
+     * List of IDs of your DBT cloud environments separated by comma `,`
+     */
+    environmentIds?: string[];
+    /**
      * List of IDs of your DBT cloud jobs seperated by comma `,`
      */
     jobIds?: string[];
@@ -4395,6 +4399,7 @@ export enum ServiceType {
     Dashboard = "Dashboard",
     Database = "Database",
     Drive = "Drive",
+    Llm = "LLM",
     Messaging = "Messaging",
     Metadata = "Metadata",
     MlModel = "MlModel",
