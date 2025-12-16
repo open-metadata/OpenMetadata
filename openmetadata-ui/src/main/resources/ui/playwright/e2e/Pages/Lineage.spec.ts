@@ -22,7 +22,6 @@ import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import { performAdminLogin } from '../../utils/admin';
 import {
   createNewPage,
   getApiContext,
@@ -750,9 +749,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
 
     await page.getByTestId('full-screen').click();
 
-    const table1PaginationPrev = table1Node.locator('[data-testid="prev-btn"]');
-    const table2PaginationPrev = table2Node.locator('[data-testid="prev-btn"]');
-
     await test.step('Add edges between T1-P1 and T2-P1', async () => {
       await connectEdgeBetweenNodesViaAPI(
         apiContext,
@@ -819,18 +815,11 @@ test.describe.serial('Test pagination in column level lineage', () => {
       }
     );
 
-    if (await table1PaginationPrev.isVisible()) {
-      await table1PaginationPrev.click();
-    }
-    if (await table2PaginationPrev.isVisible()) {
-      await table2PaginationPrev.click();
-    }
-
     await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await Promise.all([table1.delete(apiContext), table2.delete(apiContext)]);
     await afterAction();
   });
