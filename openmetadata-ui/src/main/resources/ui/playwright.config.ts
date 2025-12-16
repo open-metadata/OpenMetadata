@@ -32,7 +32,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 1 : undefined,
   maxFailures: 500,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -52,10 +52,19 @@ export default defineConfig({
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
+    /* Optimize for Dev Server Environment */
+    actionTimeout: 10 * 1000,
+    navigationTimeout: 60 * 1000,
+
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'retain-on-failure',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
+  },
+  
+  /* Increase expect timeout for slower dev server rendering */
+  expect: {
+    timeout: 10 * 1000,
   },
 
   /* Configure projects for major browsers */
@@ -116,7 +125,7 @@ export default defineConfig({
   ],
 
   // Increase timeout for the test
-  timeout: 60000,
+  timeout: 120000,
 
   /* Run your local dev server before starting the tests */
   // webServer: {

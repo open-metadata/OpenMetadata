@@ -22,16 +22,29 @@ declare global {
 }
 
 export async function collectCoverage(page: Page) {
-  const coverage = await page.evaluate(() => window.__coverage__);
-  if (coverage) {
-    const coveragePath = path.resolve(process.cwd(), '.nyc_output');
-    if (!existsSync(coveragePath)) {
-      mkdirSync(coveragePath);
+  try {
+    if (page.isClosed()) {
+      return;
     }
-    const filename = `coverage-${fullUuid()}.json`;
-    console.log(`Saving coverage to ${path.join(coveragePath, filename)}`);
-    writeFileSync(path.join(coveragePath, filename), JSON.stringify(coverage));
-  } else {
-    console.warn('Coverage object (window.__coverage__) not found on page.');
+    const coverage = await page.evaluate(() => window.__coverage__);
+    if (coverage) {
+      const coveragePath = path.resolve(process.cwd(), '.nyc_output');
+      if (!existsSync(coveragePath)) {
+        mkdirSync(coveragePath);
+      }
+      const filename = `coverage-${fullUuid()}.json`;
+      console.log(`Saving coverage to ${path.join(coveragePath, filename)}`);
+      writeFileSync(
+        path.join(coveragePath, filename),
+        JSON.stringify(coverage)
+      );
+    } else {
+      console.warn('Coverage object (window.__coverage__) not found on page.');
+    }
+  } catch (error) {
+    console.warn(
+      'Failed to collect coverage (page might be closed or crashed):',
+      error
+    );
   }
 }
