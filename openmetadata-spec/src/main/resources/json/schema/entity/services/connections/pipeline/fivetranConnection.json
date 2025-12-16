@@ -22,7 +22,7 @@
     },
     "apiKey": {
       "title": "Fivetran API Key",
-      "description": "Fivetran API Secret.",
+      "description": "Fivetran API Key.",
       "type": "string"
     },
     "hostPort": {

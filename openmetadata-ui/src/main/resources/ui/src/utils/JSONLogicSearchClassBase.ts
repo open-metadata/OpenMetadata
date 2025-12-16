@@ -21,7 +21,10 @@ import {
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
 import { get, sortBy, toLower } from 'lodash';
-import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
+import {
+  RANGE_FIELD_OPERATORS,
+  TEXT_FIELD_DESCRIPTION_OPERATORS,
+} from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
@@ -33,7 +36,7 @@ import {
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { searchData } from '../rest/miscAPI';
+import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
@@ -87,6 +90,10 @@ class JSONLogicSearchClassBase {
       ...this.baseConfig.types.text,
       valueSources: ['value'],
     },
+    date: {
+      ...this.baseConfig.types.date,
+      valueSources: ['value'],
+    },
   };
   configWidgets: Config['widgets'] = {
     ...this.baseConfig.widgets,
@@ -112,6 +119,17 @@ class JSONLogicSearchClassBase {
     },
     text: {
       ...this.baseConfig.widgets.text,
+    },
+    date: {
+      ...this.baseConfig.widgets.date,
+      jsonLogic: function (val) {
+        // Convert date to Unix timestamp (milliseconds)
+        return this.utils.moment.utc(val).valueOf();
+      },
+      jsonLogicImport: function (val) {
+        // Check if valueFormat indicates timestamp
+        return this.utils.moment.utc(val).toISOString();
+      },
     },
   };
   configOperators: Config['operators'] = {
@@ -208,7 +226,7 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.ALL,
             entityField: EntityFields.SERVICE_NAME,
-            isCaseInsensitive: true,
+            sourceFields: 'service.name',
           }),
           useAsyncSearch: true,
         },
@@ -217,9 +235,9 @@ class JSONLogicSearchClassBase {
         label: t('label.owner-plural'),
         type: '!group',
         mode: 'some',
-        defaultField: 'fullyQualifiedName',
+        defaultField: EntityFields.FULLY_QUALIFIED_NAME,
         subfields: {
-          fullyQualifiedName: {
+          [EntityFields.FULLY_QUALIFIED_NAME]: {
             label: 'Owners',
             type: 'select',
             mainWidgetProps: this.mainWidgetProps,
@@ -228,6 +246,11 @@ class JSONLogicSearchClassBase {
               asyncFetch: advancedSearchClassBase.autocomplete({
                 searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
                 entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+                sourceFields: 'displayName,fullyQualifiedName',
+                sourceFieldOptionType: {
+                  label: 'displayName',
+                  value: 'fullyQualifiedName',
+                },
               }),
               useAsyncSearch: true,
             },
@@ -268,8 +291,9 @@ class JSONLogicSearchClassBase {
       [EntityReferenceFields.DESCRIPTION]: {
         label: t('label.description'),
         type: 'text',
+        defaultOperator: 'like',
         mainWidgetProps: this.mainWidgetProps,
-        operators: TEXT_FIELD_OPERATORS,
+        operators: TEXT_FIELD_DESCRIPTION_OPERATORS,
       },
       [EntityReferenceFields.TAG]: {
         label: t('label.tag-plural'),
@@ -315,7 +339,7 @@ class JSONLogicSearchClassBase {
           },
         },
       },
-      [EntityReferenceFields.DATA_PRODUCT]: {
+      [EntityReferenceFields.DATA_PRODUCTS]: {
         label: t('label.data-product'),
         type: '!group',
         mode: 'some',
@@ -352,7 +376,7 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.TABLE,
             entityField: EntityFields.DATABASE_NAME,
-            isCaseInsensitive: true,
+            sourceFields: 'database.name',
           }),
           useAsyncSearch: true,
         },
@@ -367,7 +391,7 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.TABLE,
             entityField: EntityFields.DATABASE_SCHEMA_NAME,
-            isCaseInsensitive: true,
+            sourceFields: 'databaseSchema.name',
           }),
           useAsyncSearch: true,
         },
@@ -391,9 +415,9 @@ class JSONLogicSearchClassBase {
         label: t('label.reviewer-plural'),
         type: '!group',
         mode: 'some',
-        defaultField: 'fullyQualifiedName',
+        defaultField: EntityFields.FULLY_QUALIFIED_NAME,
         subfields: {
-          fullyQualifiedName: {
+          [EntityFields.FULLY_QUALIFIED_NAME]: {
             label: 'Reviewers New',
             type: 'select',
             mainWidgetProps: this.mainWidgetProps,
@@ -402,6 +426,11 @@ class JSONLogicSearchClassBase {
               asyncFetch: advancedSearchClassBase.autocomplete({
                 searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
                 entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+                sourceFields: 'displayName,fullyQualifiedName',
+                sourceFieldOptionType: {
+                  label: 'displayName',
+                  value: 'fullyQualifiedName',
+                },
               }),
               useAsyncSearch: true,
             },
@@ -421,6 +450,32 @@ class JSONLogicSearchClassBase {
           useAsyncSearch: true,
         },
       },
+      [EntityReferenceFields.UPDATED_AT]: {
+        label: t('label.updated-on'),
+        type: 'date',
+        mainWidgetProps: this.mainWidgetProps,
+        defaultOperator: 'between',
+        operators: [
+          ...RANGE_FIELD_OPERATORS,
+          'less',
+          'less_or_equal',
+          'greater',
+          'greater_or_equal',
+        ],
+      },
+      [EntityReferenceFields.VERSION]: {
+        label: t('label.version'),
+        type: 'number',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: [
+          'equal',
+          'not_equal',
+          'less',
+          'less_or_equal',
+          'greater',
+          'greater_or_equal',
+        ],
+      },
     };
 
     return this._mapFieldsCache;
@@ -434,7 +489,7 @@ class JSONLogicSearchClassBase {
     searchIndex: SearchIndex | SearchIndex[];
     fieldName: string;
     fieldLabel: string;
-    queryFilter?: string;
+    queryFilter?: Record<string, unknown>;
   }) => SelectFieldSettings['asyncFetch'] = ({
     searchIndex,
     fieldName,
@@ -442,19 +497,14 @@ class JSONLogicSearchClassBase {
     queryFilter,
   }) => {
     return (search) => {
-      return searchData(
-        Array.isArray(search) ? search.join(',') : search ?? '',
-        1,
-        PAGE_SIZE_BASE,
-        queryFilter ?? '',
-        '',
-        '',
-        searchIndex ?? SearchIndex.DATA_ASSET,
-        false,
-        false,
-        true
-      ).then((response) => {
-        const data = response.data.hits.hits;
+      return searchQuery({
+        query: Array.isArray(search) ? search.join(',') : search ?? '',
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        queryFilter,
+        searchIndex: searchIndex ?? SearchIndex.DATA_ASSET,
+      }).then((response) => {
+        const data = response.hits.hits;
 
         return {
           values: data.map((item) => ({
@@ -528,9 +578,9 @@ class JSONLogicSearchClassBase {
       ),
     };
 
-    entitySearchIndex.forEach((index) => {
+    for (const index of entitySearchIndex) {
       configs = { ...configs, ...(configIndexMapping[index] ?? {}) };
-    });
+    }
 
     return configs;
   }

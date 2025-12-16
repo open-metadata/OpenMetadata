@@ -22,10 +22,12 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
@@ -34,8 +36,10 @@ import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -45,23 +49,44 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.schema.alert.type.EmailAlertConfig;
+import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.CreateNotificationTemplate;
+import org.openmetadata.schema.api.events.NotificationTemplateRenderRequest;
+import org.openmetadata.schema.api.events.NotificationTemplateRenderResponse;
+import org.openmetadata.schema.api.events.NotificationTemplateSendRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.policies.PolicyResourceTest;
+import org.openmetadata.service.resources.teams.RoleResourceTest;
+import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class NotificationTemplateResourceTest
     extends EntityResourceTest<NotificationTemplate, CreateNotificationTemplate> {
+  private User userWithBasicUserPermission;
 
   public NotificationTemplateResourceTest() {
     super(
@@ -76,7 +101,7 @@ public class NotificationTemplateResourceTest
   @BeforeAll
   public void setup(TestInfo test) throws IOException, URISyntaxException {
     super.setup(test);
-    // Initial setup - seed data will be refreshed before each test
+    userWithBasicUserPermission = createUserWithEditUserNotificationTemplatePermission();
   }
 
   private void ensureCleanSystemTemplates() throws IOException {
@@ -84,7 +109,7 @@ public class NotificationTemplateResourceTest
     NotificationTemplateRepository repository =
         (NotificationTemplateRepository) Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE);
 
-    // List all system templates and delete them directly via DAO
+    // List all system templates and delete them
     Map<String, String> params = new HashMap<>();
     params.put("provider", "system");
     params.put("limit", "1000");
@@ -97,14 +122,14 @@ public class NotificationTemplateResourceTest
             .map(NotificationTemplate::getName)
             .collect(Collectors.toList()));
 
-    // Delete system templates directly through DAO to bypass all restrictions
+    // Hard delete system templates directly using DAO to bypass repository validation
     for (NotificationTemplate template : systemTemplates.getData()) {
       try {
-        // Use DAO directly to bypass all system template deletion restrictions
+        // Use DAO directly to bypass checkSystemEntityDeletion validation
         repository.getDao().delete(template.getId());
-        LOG.debug("Deleted system template via DAO: {}", template.getName());
+        LOG.debug("Hard deleted system template: {}", template.getName());
       } catch (Exception e) {
-        LOG.warn("Failed to delete system template: {}", template.getName(), e);
+        LOG.warn("Failed to hard delete system template: {}", template.getName(), e);
       }
     }
 
@@ -237,6 +262,176 @@ public class NotificationTemplateResourceTest
         NotificationTemplateValidationResponse.class,
         OK.getStatusCode(),
         authHeaders);
+  }
+
+  public final NotificationTemplateRenderResponse renderTemplate(
+      NotificationTemplateRenderRequest request, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/render");
+    return TestUtils.post(
+        target, request, NotificationTemplateRenderResponse.class, OK.getStatusCode(), authHeaders);
+  }
+
+  public final NotificationTemplateValidationResponse sendTemplate(
+      NotificationTemplateSendRequest request, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/send");
+    return TestUtils.post(
+        target,
+        request,
+        NotificationTemplateValidationResponse.class,
+        OK.getStatusCode(),
+        authHeaders);
+  }
+
+  public final Response sendTemplateRaw(
+      NotificationTemplateSendRequest request, Map<String, String> authHeaders) {
+    WebTarget target = getCollection().path("/send");
+    return SecurityUtil.addHeaders(target, authHeaders)
+        .post(entity(request, MediaType.APPLICATION_JSON));
+  }
+
+  private SubscriptionDestination createEmailDestination(String... receivers) {
+    EmailAlertConfig config = new EmailAlertConfig().withReceivers(Set.of(receivers));
+    return new SubscriptionDestination()
+        .withType(SubscriptionDestination.SubscriptionType.EMAIL)
+        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+        .withConfig(JsonUtils.valueToTree(config));
+  }
+
+  private SubscriptionDestination createWebhookDestination(
+      SubscriptionDestination.SubscriptionType type, String endpoint) {
+    Webhook config = new Webhook().withEndpoint(URI.create(endpoint));
+    return new SubscriptionDestination()
+        .withType(type)
+        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+        .withConfig(JsonUtils.valueToTree(config))
+        .withTimeout(5000)
+        .withReadTimeout(5000);
+  }
+
+  private SubscriptionDestination createInternalDestination(
+      SubscriptionDestination.SubscriptionType type) {
+    return new SubscriptionDestination()
+        .withType(type)
+        .withCategory(SubscriptionDestination.SubscriptionCategory.TEAMS);
+  }
+
+  private NotificationTemplateSendRequest createSendRequest(
+      String templateSubject,
+      String templateBody,
+      String resource,
+      SubscriptionDestination... destinations) {
+    NotificationTemplateRenderRequest renderRequest =
+        new NotificationTemplateRenderRequest()
+            .withTemplateSubject(templateSubject)
+            .withTemplateBody(templateBody)
+            .withResource(resource);
+
+    return new NotificationTemplateSendRequest()
+        .withRenderRequest(renderRequest)
+        .withDestinations(List.of(destinations));
+  }
+
+  /**
+   * Helper method to build the expected email with the full envelope structure.
+   * This wraps the provided content in the complete OpenMetadata email envelope.
+   *
+   * @param content The notification content (without envelope)
+   * @return Complete HTML email with envelope
+   */
+  private String createExpectedEmailWithEnvelope(String content) {
+    // Build the complete HTML envelope that matches the
+    // system-email-change-event-notification-envelope.json
+    String envelopeHtml =
+        "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">"
+            + "<html lang=\"en\" xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:v=\"urn:schemas-microsoft-com:vml\" xmlns:o=\"urn:schemas-microsoft-com:office:office\">"
+            + "<head>"
+            + "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">"
+            + "<meta name=\"x-apple-disable-message-reformatting\">"
+            + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+            + "<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">"
+            + "<title>OpenMetadata · Change Event</title>"
+            + "<!--[if mso]><xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->"
+            + "<style type=\"text/css\">"
+            + "html, body { margin:0!important; padding:0!important; height:100%!important; width:100%!important; } "
+            + "* { -ms-text-size-adjust:100%; -webkit-text-size-adjust:100%; } "
+            + "table, td { mso-table-lspace:0pt; mso-table-rspace:0pt; } "
+            + "table { border-collapse:collapse!important; } "
+            + "img { -ms-interpolation-mode:bicubic; border:0; outline:none; text-decoration:none; } "
+            + ".hero-img { display:block; } "
+            + "a { text-decoration:none; } "
+            + ".ExternalClass { width:100%; } "
+            + ".ExternalClass, .ExternalClass * { line-height:100%; } "
+            + "a[x-apple-data-detectors] { color:inherit!important; text-decoration:none!important; } "
+            + "u + #body .full-wrap { width:100%!important; } "
+            + ".preheader { display:none!important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden; mso-hide:all; } "
+            + ".container { max-width:600px!important; table-layout:fixed!important; } "
+            + ".content-card { word-break:break-word; overflow-wrap:anywhere; -ms-word-break:break-all; white-space:normal; max-width:100%!important; } "
+            + "pre, code { white-space:pre-wrap!important; word-break:break-all!important; word-wrap:break-word!important; overflow-wrap:anywhere!important; max-width:100%!important; display:block!important; } "
+            + "blockquote { margin:10px 0!important; padding:12px 16px!important; background-color:#f8f9fa!important; border-left:3px solid #6b7280!important; border-radius:3px!important; font-style:italic!important; color:#1f2937!important; } "
+            + "@media (max-width:600px){ .container { width:100%!important; } .p-sm { padding-left:16px!important; padding-right:16px!important; } }"
+            + "</style>"
+            + "</head>"
+            + "<body id=\"body\" style=\"margin:0; padding:0; background-color:#f6f7fb;\">"
+            + "<div class=\"preheader\">Fresh activity spotted in your OpenMetadata environment.</div>"
+            + "<center role=\"presentation\" style=\"width:100%; background-color:#f6f7fb;\">"
+            + "<!--[if (gte mso 9)|(IE)]><table role=\"presentation\" width=\"100%\" bgcolor=\"#f6f7fb\"><tr><td align=\"center\"><![endif]-->"
+            + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" class=\"full-wrap\" style=\"width:100%; background-color:#f6f7fb;\">"
+            + "<tr><td align=\"center\" style=\"padding:24px 12px;\">"
+            + "<!--[if (gte mso 9)|(IE)]><table role=\"presentation\" width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td><![endif]-->"
+            + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" class=\"container\" bgcolor=\"#ffffff\" style=\"max-width:600px; border-radius:14px; background-color:#ffffff;\">"
+            + "<tr><td style=\"padding:0; border-top-left-radius:14px; border-top-right-radius:14px;\">"
+            + "<!--[if mso]><v:rect xmlns:v=\"urn:schemas-microsoft-com:vml\" fill=\"true\" stroke=\"false\" style=\"width:600px;height:96px;\"><v:fill type=\"frame\" src=\"https://i.imgur.com/7fn1VBe.png\" /><v:textbox inset=\"0,0,0,0\"></v:textbox></v:rect><![endif]-->"
+            + "<!--[if !mso]><!-- -->"
+            + "<img class=\"hero-img\" src=\"https://i.imgur.com/7fn1VBe.png\" width=\"600\" alt=\"OpenMetadata · Change Event\" style=\"width:100%; height:auto; border-top-left-radius:14px; border-top-right-radius:14px;\">"
+            + "<!--<![endif]-->"
+            + "</td></tr>"
+            + "<tr><td class=\"p-sm\" style=\"padding:20px 24px 8px 24px;\">"
+            + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">"
+            + "<tr><td align=\"left\" style=\"font-family:-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size:14px; line-height:22px; color:#1f2937;\">"
+            + "<strong>Heads up!</strong> Some fresh updates just landed in your OpenMetadata environment. Take a quick look at what's new below:"
+            + "</td></tr></table></td></tr>"
+            + "<tr><td class=\"p-sm\" style=\"padding:8px 24px 24px 24px;\">"
+            + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border-radius:12px;\">"
+            + "<tr><td width=\"6\" style=\"background-color:#7247e8; border-top-left-radius:12px; border-bottom-left-radius:12px;\">&nbsp;</td>"
+            + "<td bgcolor=\"#ffffff\" style=\"background-color:#ffffff; padding:16px; border-top-right-radius:12px; border-bottom-right-radius:12px;\">"
+            + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">"
+            + "<tr><td align=\"left\" style=\"font-family:-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size:14px; line-height:22px; color:#1f2937;\">"
+            + "<div class=\"content-card\">"
+            + content
+            + "</div>"
+            + "</td></tr></table></td></tr></table></td></tr>"
+            + "<tr><td class=\"p-sm\" style=\"padding:0 24px 24px 24px;\">"
+            + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">"
+            + "<tr><td align=\"left\" style=\"font-family:-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size:14px; line-height:22px; color:#1f2937;\">"
+            + "<span style=\"font-weight:550;\">Happy exploring!</span><br>Thanks,<br><span style=\"color:#9ca3af; font-style:italic;\">OpenMetadata Team</span>"
+            + "</td></tr></table></td></tr></table>"
+            + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" class=\"container\" style=\"max-width:600px;\">"
+            + "<tr><td class=\"p-sm\" align=\"left\" style=\"padding:16px 24px 6px 24px; font-family:-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size:12px; line-height:18px; color:#6b7280;\">"
+            + "You're receiving this message as part of your OpenMetadata change notification subscription."
+            + "</td></tr>"
+            + "<tr><td class=\"p-sm\" align=\"left\" style=\"padding:0 24px 32px 24px; font-family:-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size:12px; line-height:18px; color:#6b7280;\">"
+            + "Need a hand? The <a href=\"https://docs.open-metadata.org\" target=\"_blank\" style=\"color:#6b4cf6; text-decoration:underline;\">OpenMetadata docs</a> and <a href=\"https://open-metadata.org/community\" target=\"_blank\" style=\"color:#6b4cf6; text-decoration:underline;\">community</a> are ready to help."
+            + "</td></tr></table>"
+            + "<!--[if (gte mso 9)|(IE)]></td></tr></table><![endif]-->"
+            + "</td></tr></table>"
+            + "<!--[if (gte mso 9)|(IE)]></td></tr></table><![endif]-->"
+            + "</center></body></html>";
+    return envelopeHtml;
+  }
+
+  private void assertRenderEquals(
+      String expectedSubject,
+      String expectedHtmlBody,
+      NotificationTemplateRenderResponse response) {
+    assertNotNull(response);
+    assertNotNull(response.getValidation());
+    assertTrue(response.getValidation().getIsValid(), "Validation should pass");
+    assertNotNull(response.getRender());
+
+    assertEquals(expectedSubject, response.getRender().getSubject(), "Subject should match");
+    assertEquals(expectedHtmlBody, response.getRender().getBody(), "HTML body should match");
   }
 
   @Test
@@ -586,7 +781,6 @@ public class NotificationTemplateResourceTest
       "system-notification-entity-deleted",
       "system-notification-entity-soft-deleted",
       "system-notification-entity-default",
-      "system-notification-test-result",
       "system-notification-logical-test-case-added",
       "system-notification-task-closed",
       "system-notification-task-resolved"
@@ -646,8 +840,6 @@ public class NotificationTemplateResourceTest
     assertFalse(
         systemTemplate.getIsModifiedFromDefault(),
         "Fresh template should not be marked as modified");
-    assertNotNull(
-        systemTemplate.getDefaultTemplateChecksum(), "Template should have a default checksum");
   }
 
   @Test
@@ -661,7 +853,6 @@ public class NotificationTemplateResourceTest
     assertFalse(
         systemTemplate.getIsModifiedFromDefault(),
         "Fresh template should not be marked as modified");
-    String originalChecksum = systemTemplate.getDefaultTemplateChecksum();
 
     // User modifies the template using PATCH (following existing test patterns)
     String newBody = "<div>User modified template: {{entity.name}}</div>";
@@ -678,10 +869,6 @@ public class NotificationTemplateResourceTest
         modifiedTemplate.getIsModifiedFromDefault(),
         "Template should be marked as modified after change");
     assertEquals(newBody, modifiedTemplate.getTemplateBody());
-    assertEquals(
-        originalChecksum,
-        modifiedTemplate.getDefaultTemplateChecksum(),
-        "Default checksum should be preserved");
   }
 
   @Test
@@ -731,8 +918,6 @@ public class NotificationTemplateResourceTest
     assertEquals(originalSubject, resetResult.getTemplateSubject());
     assertEquals(originalDescription, resetResult.getDescription());
     assertEquals(originalDisplayName, resetResult.getDisplayName());
-    assertNotNull(
-        resetResult.getDefaultTemplateChecksum(), "Template should have checksum after reset");
   }
 
   @Test
@@ -767,7 +952,6 @@ public class NotificationTemplateResourceTest
             + "{{#each entity.tags as |tag|}}"
             + "<span class='tag'>{{tag.tagFQN}}</span>"
             + "{{/each}}"
-            + "{{joinList entity.columns 'name' ', '}}"
             + "{{formatDate entity.updatedAt 'yyyy-MM-dd'}}";
 
     NotificationTemplateValidationRequest request =
@@ -779,10 +963,8 @@ public class NotificationTemplateResourceTest
     NotificationTemplateValidationResponse validationResponse =
         validateTemplate(request, ADMIN_AUTH_HEADERS);
 
-    assertNotNull(validationResponse.getTemplateBody());
-    assertTrue(validationResponse.getTemplateBody().getPassed());
-    assertNotNull(validationResponse.getTemplateSubject());
-    assertTrue(validationResponse.getTemplateSubject().getPassed());
+    assertTrue(validationResponse.getIsValid(), "Validation should pass");
+    assertNotNull(validationResponse);
   }
 
   @Test
@@ -796,19 +978,15 @@ public class NotificationTemplateResourceTest
     NotificationTemplateValidationResponse validationResponse =
         validateTemplate(request, ADMIN_AUTH_HEADERS);
 
-    // Template body should fail validation
-    assertNotNull(validationResponse.getTemplateBody());
-    assertFalse(validationResponse.getTemplateBody().getPassed());
-    assertNotNull(validationResponse.getTemplateBody().getError());
+    assertFalse(validationResponse.getIsValid(), "Validation should fail");
+    assertNotNull(validationResponse.getBodyError());
     assertTrue(
-        validationResponse.getTemplateBody().getError().contains("Template validation failed"));
-
-    // Template subject should also fail validation
-    assertNotNull(validationResponse.getTemplateSubject());
-    assertFalse(validationResponse.getTemplateSubject().getPassed());
-    assertNotNull(validationResponse.getTemplateSubject().getError());
+        validationResponse.getBodyError().contains("Template validation failed"),
+        "Body error should contain validation message");
+    assertNotNull(validationResponse.getSubjectError());
     assertTrue(
-        validationResponse.getTemplateSubject().getError().contains("Template validation failed"));
+        validationResponse.getSubjectError().contains("Template validation failed"),
+        "Subject error should contain validation message");
   }
 
   @Test
@@ -837,5 +1015,518 @@ public class NotificationTemplateResourceTest
         SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS)
             .post(entity(request, MediaType.APPLICATION_JSON));
     assertEquals(FORBIDDEN.getStatusCode(), response.getStatus());
+  }
+
+  @Test
+  void test_renderTemplate_table_200() throws HttpResponseException {
+    NotificationTemplateRenderRequest request =
+        new NotificationTemplateRenderRequest()
+            .withTemplateSubject("Table Update: {{entity.name}}")
+            .withTemplateBody(
+                "<h3>Table {{entity.name}} has been updated</h3>"
+                    + "<p>FQN: {{entity.fullyQualifiedName}}</p>"
+                    + "<p>Description: {{entity.description}}</p>"
+                    + "<ul>"
+                    + "{{#each entity.columns as |column|}}"
+                    + "<li>{{column.name}} - {{column.dataType}}</li>"
+                    + "{{/each}}"
+                    + "</ul>")
+            .withResource("table");
+
+    NotificationTemplateRenderResponse response = renderTemplate(request, ADMIN_AUTH_HEADERS);
+
+    String expectedSubject = "Table Update: sample_table";
+    String expectedContent =
+        "<h3>Table sample_table has been updated</h3>"
+            + "<p>FQN: sample-service.sample-db.public.sample_table</p>"
+            + "<p>Description: Mock table for notification template testing</p>"
+            + "<ul>"
+            + "<li>id - BIGINT</li>"
+            + "<li>name - VARCHAR</li>"
+            + "<li>email - VARCHAR</li>"
+            + "</ul>";
+
+    String expectedBody = createExpectedEmailWithEnvelope(expectedContent);
+
+    assertRenderEquals(expectedSubject, expectedBody, response);
+  }
+
+  @Test
+  void test_renderTemplate_dashboard_200() throws HttpResponseException {
+    NotificationTemplateRenderRequest request =
+        new NotificationTemplateRenderRequest()
+            .withTemplateSubject("Dashboard Update: {{entity.displayName}}")
+            .withTemplateBody(
+                "<h3>Dashboard {{entity.displayName}}</h3>"
+                    + "<p>Name: {{entity.name}}</p>"
+                    + "<p>FQN: {{entity.fullyQualifiedName}}</p>"
+                    + "{{#if entity.description}}"
+                    + "<p>Description: {{entity.description}}</p>"
+                    + "{{/if}}")
+            .withResource("dashboard");
+
+    NotificationTemplateRenderResponse response = renderTemplate(request, ADMIN_AUTH_HEADERS);
+
+    String expectedSubject = "Dashboard Update: Sample Dashboard";
+    String expectedContent =
+        "<h3>Dashboard Sample Dashboard</h3>"
+            + "<p>Name: sample_dashboard</p>"
+            + "<p>FQN: sample-dashboard-service.sample_dashboard</p>"
+            + "<p>Description: Mock dashboard for notification template testing</p>";
+
+    String expectedBody = createExpectedEmailWithEnvelope(expectedContent);
+
+    assertRenderEquals(expectedSubject, expectedBody, response);
+  }
+
+  @Test
+  void test_renderTemplate_unknownResource_usesGenericFixture() throws HttpResponseException {
+    // Unknown resources now use generic EntityInterface fixture instead of throwing errors
+    NotificationTemplateRenderRequest request =
+        new NotificationTemplateRenderRequest()
+            .withTemplateSubject("Unknown Entity: {{entity.name}}")
+            .withTemplateBody(
+                "<h3>Entity {{entity.name}}</h3>"
+                    + "<p>FQN: {{entity.fullyQualifiedName}}</p>"
+                    + "<p>Description: {{entity.description}}</p>")
+            .withResource("unknown-resource-type");
+
+    NotificationTemplateRenderResponse response = renderTemplate(request, ADMIN_AUTH_HEADERS);
+
+    // Should succeed with generic fixture values
+    assertNotNull(response);
+    assertNotNull(response.getValidation());
+    assertTrue(response.getValidation().getIsValid(), "Validation should pass");
+    assertNotNull(response.getRender());
+
+    String expectedSubject = "Unknown Entity: generic_entity";
+    assertEquals(expectedSubject, response.getRender().getSubject());
+
+    // Body should contain the generic fixture values
+    assertTrue(response.getRender().getBody().contains("generic_entity"));
+    assertTrue(response.getRender().getBody().contains("generic.entity"));
+    assertTrue(
+        response
+            .getRender()
+            .getBody()
+            .contains("Generic entity for notification template testing"));
+  }
+
+  @Test
+  void test_renderTemplate_allResource_usesGenericFixture() throws HttpResponseException {
+    // "all" resource now uses generic EntityInterface fixture instead of throwing errors
+    NotificationTemplateRenderRequest request =
+        new NotificationTemplateRenderRequest()
+            .withTemplateSubject("All Entities: {{entity.name}}")
+            .withTemplateBody(
+                "<h3>Entity {{entity.name}}</h3>" + "<p>Display Name: {{entity.displayName}}</p>")
+            .withResource("all");
+
+    NotificationTemplateRenderResponse response = renderTemplate(request, ADMIN_AUTH_HEADERS);
+
+    // Should succeed with generic fixture values
+    assertNotNull(response);
+    assertNotNull(response.getValidation());
+    assertTrue(response.getValidation().getIsValid(), "Validation should pass");
+    assertNotNull(response.getRender());
+
+    String expectedSubject = "All Entities: generic_entity";
+    assertEquals(expectedSubject, response.getRender().getSubject());
+
+    // Body should contain the generic fixture values
+    assertTrue(response.getRender().getBody().contains("Generic Entity"));
+  }
+
+  @Test
+  void test_renderTemplate_invalidSyntax_validationFailure() throws HttpResponseException {
+    NotificationTemplateRenderRequest request =
+        new NotificationTemplateRenderRequest()
+            .withTemplateSubject("Valid Subject")
+            .withTemplateBody("{{#if entity.name}} Missing end if tag")
+            .withResource("table");
+
+    NotificationTemplateRenderResponse response = renderTemplate(request, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(response);
+    assertNotNull(response.getValidation());
+    assertFalse(response.getValidation().getIsValid(), "Validation should fail");
+    assertNotNull(response.getValidation().getBodyError());
+    assertTrue(
+        response.getValidation().getBodyError().contains("Template validation failed"),
+        "Body error should contain validation message");
+  }
+
+  @Test
+  void test_renderTemplate_403_forbidden() {
+    NotificationTemplateRenderRequest request =
+        new NotificationTemplateRenderRequest()
+            .withTemplateSubject("Table Update: {{entity.name}}")
+            .withTemplateBody("<p>{{entity.name}}</p>")
+            .withResource("table");
+
+    WebTarget target = getCollection().path("/render");
+    Response response =
+        SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS)
+            .post(entity(request, MediaType.APPLICATION_JSON));
+    assertEquals(FORBIDDEN.getStatusCode(), response.getStatus());
+  }
+
+  @Test
+  void test_sendTemplate_emailDestination_200() throws HttpResponseException {
+    SubscriptionDestination emailDest = createEmailDestination("test@example.com");
+
+    NotificationTemplateSendRequest request =
+        createSendRequest(
+            "Test Email: {{entity.name}}",
+            "<p>Entity {{entity.name}} was updated</p>",
+            "table",
+            emailDest);
+
+    NotificationTemplateValidationResponse response = sendTemplate(request, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(response);
+    assertTrue(response.getIsValid(), "Validation should pass");
+  }
+
+  @Test
+  void test_sendTemplate_webhookDestination_200() throws HttpResponseException {
+    SubscriptionDestination webhookDest =
+        createWebhookDestination(
+            SubscriptionDestination.SubscriptionType.SLACK, "http://localhost:9999/webhook");
+
+    NotificationTemplateSendRequest request =
+        createSendRequest(
+            "Test Webhook: {{entity.name}}",
+            "<p>Entity {{entity.name}} was updated</p>",
+            "table",
+            webhookDest);
+
+    NotificationTemplateValidationResponse response = sendTemplate(request, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(response);
+    assertTrue(response.getIsValid(), "Validation should pass");
+  }
+
+  @Test
+  void test_sendTemplate_multipleDestinations_200() throws HttpResponseException {
+    SubscriptionDestination emailDest = createEmailDestination("test@example.com");
+    SubscriptionDestination webhookDest =
+        createWebhookDestination(
+            SubscriptionDestination.SubscriptionType.SLACK, "http://localhost:9999/webhook");
+
+    NotificationTemplateSendRequest request =
+        createSendRequest(
+            "Test Multiple: {{entity.name}}",
+            "<p>Entity {{entity.name}} was updated</p>",
+            "table",
+            emailDest,
+            webhookDest);
+
+    NotificationTemplateValidationResponse response = sendTemplate(request, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(response);
+    assertTrue(response.getIsValid(), "Validation should pass");
+  }
+
+  @Test
+  void test_sendTemplate_internalDestination_400() {
+    SubscriptionDestination internalDest =
+        createInternalDestination(SubscriptionDestination.SubscriptionType.EMAIL);
+
+    NotificationTemplateSendRequest request =
+        createSendRequest(
+            "Test Internal: {{entity.name}}",
+            "<p>Entity {{entity.name}} was updated</p>",
+            "table",
+            internalDest);
+
+    Response response = sendTemplateRaw(request, ADMIN_AUTH_HEADERS);
+    assertEquals(BAD_REQUEST.getStatusCode(), response.getStatus());
+
+    String responseBody = response.readEntity(String.class);
+    assertTrue(
+        responseBody.contains("Only external destinations"),
+        "Error message should indicate only external destinations are supported");
+  }
+
+  @Test
+  void test_sendTemplate_invalidTemplate_validationFailure() throws HttpResponseException {
+    SubscriptionDestination emailDest = createEmailDestination("test@example.com");
+
+    NotificationTemplateSendRequest request =
+        createSendRequest(
+            "Valid Subject", "{{#if entity.name}} Missing end if tag", "table", emailDest);
+
+    NotificationTemplateValidationResponse response = sendTemplate(request, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(response);
+    assertFalse(response.getIsValid(), "Validation should fail");
+    assertNotNull(response.getBodyError());
+    assertTrue(
+        response.getBodyError().contains("Template validation failed"),
+        "Body error should contain validation message");
+  }
+
+  @Test
+  void test_sendTemplate_403_forbidden() {
+    SubscriptionDestination emailDest = createEmailDestination("test@example.com");
+
+    NotificationTemplateSendRequest request =
+        createSendRequest(
+            "Test Email: {{entity.name}}",
+            "<p>Entity {{entity.name}} was updated</p>",
+            "table",
+            emailDest);
+
+    Response response = sendTemplateRaw(request, TEST_AUTH_HEADERS);
+    assertEquals(FORBIDDEN.getStatusCode(), response.getStatus());
+  }
+
+  @Test
+  void test_deleteTemplatePreservesSubscription(TestInfo test) throws IOException {
+    EventSubscriptionResourceTest subscriptionTest = new EventSubscriptionResourceTest();
+
+    CreateNotificationTemplate createTemplate =
+        createRequest("template-to-delete-" + test.getDisplayName())
+            .withTemplateBody("<div>Will be deleted</div>");
+    NotificationTemplate template = createEntity(createTemplate, ADMIN_AUTH_HEADERS);
+
+    EntityReference templateRef =
+        new EntityReference().withId(template.getId()).withType(Entity.NOTIFICATION_TEMPLATE);
+
+    CreateEventSubscription createSub =
+        subscriptionTest
+            .createRequest("sub-survives-" + test.getDisplayName())
+            .withNotificationTemplate(templateRef);
+    EventSubscription subscription = subscriptionTest.createEntity(createSub, ADMIN_AUTH_HEADERS);
+
+    deleteEntity(template.getId(), ADMIN_AUTH_HEADERS);
+
+    EventSubscription afterDelete =
+        subscriptionTest.getEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(afterDelete, "Subscription should exist after template deletion");
+    assertNull(afterDelete.getNotificationTemplate(), "Template reference should be null");
+
+    subscriptionTest.deleteEntity(subscription.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_patchSystemTemplate_requiresSpecialPermission_403() throws IOException {
+    ensureCleanSystemTemplates();
+    Map<String, String> userAuthHeaders =
+        SecurityUtil.authHeaders(userWithBasicUserPermission.getEmail());
+
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    String newBody = "<div>Modified by test user: {{entity.name}}</div>";
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody));
+
+    assertResponse(
+        () -> patchEntity(systemTemplate.getId(), JsonUtils.readTree(json), userAuthHeaders),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='userwitheditusernotificationtemplate'} operations [EditAll] not allowed");
+  }
+
+  @Test
+  void test_patchSystemTemplateByFQN_requiresSpecialPermission_403() throws IOException {
+    ensureCleanSystemTemplates();
+
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    String newBody = "<div>Modified by test user: {{entity.name}}</div>";
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody));
+
+    assertResponse(
+        () ->
+            patchEntityUsingFqn(
+                systemTemplate.getFullyQualifiedName(),
+                JsonUtils.readTree(json),
+                TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='test'} operations [EditAll] not allowed");
+  }
+
+  @Test
+  void test_putSystemTemplate_requiresSpecialPermission_403() throws IOException {
+    ensureCleanSystemTemplates();
+
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    CreateNotificationTemplate updateRequest =
+        new CreateNotificationTemplate()
+            .withName(systemTemplate.getName())
+            .withDisplayName(systemTemplate.getDisplayName())
+            .withDescription("Updated description")
+            .withTemplateSubject(systemTemplate.getTemplateSubject())
+            .withTemplateBody("<div>Updated by test user: {{entity.name}}</div>");
+
+    // TEST_AUTH_HEADERS has DataConsumer role which lacks EditAll and
+    // EditSystemNotificationTemplate
+    assertResponse(
+        () -> updateEntity(updateRequest, OK, USER_WITH_CREATE_HEADERS),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='testwithcreateuserpermission'} operations [EditAll] not allowed");
+  }
+
+  @Test
+  void test_patchSystemTemplate_adminCanEdit_200() throws IOException {
+    ensureCleanSystemTemplates();
+
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    String newBody = "<div>Modified by admin: {{entity.name}}</div>";
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody));
+
+    NotificationTemplate updated =
+        patchEntity(systemTemplate.getId(), JsonUtils.readTree(json), ADMIN_AUTH_HEADERS);
+
+    assertEquals(newBody, updated.getTemplateBody());
+    assertEquals(ProviderType.SYSTEM, updated.getProvider());
+    assertTrue(
+        updated.getIsModifiedFromDefault(), "Template should be marked as modified after edit");
+  }
+
+  @Test
+  void test_putSystemTemplate_adminCanEdit_200() throws IOException {
+    ensureCleanSystemTemplates();
+
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    String newBody = "<div>Updated by admin via PUT: {{entity.name}}</div>";
+    String newDescription = "Updated description via PUT";
+
+    CreateNotificationTemplate updateRequest =
+        new CreateNotificationTemplate()
+            .withName(systemTemplate.getName())
+            .withDisplayName(systemTemplate.getDisplayName())
+            .withDescription(newDescription)
+            .withTemplateSubject(systemTemplate.getTemplateSubject())
+            .withTemplateBody(newBody);
+
+    NotificationTemplate updated = updateEntity(updateRequest, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(newBody, updated.getTemplateBody());
+    assertEquals(newDescription, updated.getDescription());
+    assertEquals(ProviderType.SYSTEM, updated.getProvider());
+    assertTrue(
+        updated.getIsModifiedFromDefault(), "Template should be marked as modified after edit");
+  }
+
+  @Test
+  void test_patchUserTemplate_noSpecialPermissionRequired_200(TestInfo test) throws IOException {
+    CreateNotificationTemplate create = createRequest(getEntityName(test));
+    NotificationTemplate userTemplate = createEntity(create, ADMIN_AUTH_HEADERS);
+    assertEquals(ProviderType.USER, userTemplate.getProvider());
+
+    String newBody = "<div>Test user can edit USER templates: {{entity.name}}</div>";
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody));
+
+    NotificationTemplate updated =
+        patchEntity(userTemplate.getId(), JsonUtils.readTree(json), ADMIN_AUTH_HEADERS);
+
+    assertEquals(newBody, updated.getTemplateBody());
+    assertEquals(ProviderType.USER, updated.getProvider());
+  }
+
+  @Test
+  void test_userWithEditUserNotificationTemplatePermission_canEditUserTemplates()
+      throws IOException {
+    // Create a policy with ONLY EDIT_USER_NOTIFICATION_TEMPLATE permission
+    ensureCleanSystemTemplates();
+
+    Map<String, String> userAuthHeaders =
+        SecurityUtil.authHeaders(userWithBasicUserPermission.getEmail());
+
+    // Test 1: User CAN edit USER templates
+    CreateNotificationTemplate createUserTemplate = createRequest("user-template-test");
+    NotificationTemplate userTemplate = createEntity(createUserTemplate, ADMIN_AUTH_HEADERS);
+    assertEquals(ProviderType.USER, userTemplate.getProvider());
+
+    String newUserBody = "<div>Edited by user with EDIT_USER_NOTIFICATION_TEMPLATE</div>";
+    String userJson =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newUserBody));
+
+    NotificationTemplate updatedUserTemplate =
+        patchEntity(userTemplate.getId(), JsonUtils.readTree(userJson), userAuthHeaders);
+    assertEquals(newUserBody, updatedUserTemplate.getTemplateBody());
+
+    // Test 2: User CANNOT edit SYSTEM templates
+    ensureCleanSystemTemplates();
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found");
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+
+    String newSystemBody = "<div>Attempting to edit SYSTEM template</div>";
+    String systemJson =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newSystemBody));
+
+    assertResponse(
+        () -> patchEntity(systemTemplate.getId(), JsonUtils.readTree(systemJson), userAuthHeaders),
+        FORBIDDEN,
+        "Principal: CatalogPrincipal{name='userwitheditusernotificationtemplate'} operations [EditAll] not allowed");
+  }
+
+  private static User createUserWithEditUserNotificationTemplatePermission()
+      throws HttpResponseException {
+    CreatePolicy createPolicy =
+        new CreatePolicy()
+            .withName("EditUserNotificationTemplateOnlyPolicy")
+            .withDisplayName("Edit User Notification Template Only Policy")
+            .withDescription("Policy with only EditUserNotificationTemplate permission")
+            .withRules(
+                List.of(
+                    new Rule()
+                        .withName("EditUserNotificationTemplateRule")
+                        .withResources(List.of("notificationTemplate"))
+                        .withOperations(List.of(MetadataOperation.EDIT_USER_NOTIFICATION_TEMPLATE))
+                        .withEffect(Rule.Effect.ALLOW)));
+
+    Policy policy = new PolicyResourceTest().createEntity(createPolicy, ADMIN_AUTH_HEADERS);
+
+    // Create a role with this policy (no inherited permissions)
+    CreateRole createRole =
+        new CreateRole()
+            .withName("EditUserNotificationTemplateRole")
+            .withDisplayName("Edit User Notification Template Role")
+            .withDescription("Role with only EditUserNotificationTemplate permission")
+            .withPolicies(List.of(policy.getFullyQualifiedName()));
+
+    Role role = new RoleResourceTest().createEntity(createRole, ADMIN_AUTH_HEADERS);
+
+    // Create a user with this role (no inherited permissions)
+    CreateUser createUser =
+        new CreateUser()
+            .withName("userWithEditUserNotificationTemplate")
+            .withEmail("userWithEditUserNotificationTemplate@open-metadata.org")
+            .withRoles(List.of(role.getId()))
+            .withIsBot(false);
+
+    return new UserResourceTest().createEntity(createUser, ADMIN_AUTH_HEADERS);
   }
 }

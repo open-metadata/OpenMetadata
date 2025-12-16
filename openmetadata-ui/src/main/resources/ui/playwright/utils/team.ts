@@ -58,6 +58,11 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
 
   await createTeamResponse;
 
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
   return teamData;
 };
 
@@ -334,15 +339,17 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
   // Search and select the user
   await page
     .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
-    .fill(user.getUserName());
+    .fill(user.getUserDisplayName());
 
   await page
-    .locator(`[data-testid="selectable-list"] [title="${user.getUserName()}"]`)
+    .locator(
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+    )
     .click();
 
   await expect(
     page.locator(
-      `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
     )
   ).toHaveClass(/active/);
 
@@ -361,7 +368,7 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
 
 export const checkTeamTabCount = async (page: Page) => {
   const fetchResponse = page.waitForResponse(
-    '/api/v1/teams/name/*?fields=*childrenCount*include=all'
+    '/api/v1/teams?parentTeam=Organization&include=non-deleted&fields=**'
   );
 
   await settingClick(page, GlobalSettingOptions.TEAMS);
@@ -369,11 +376,13 @@ export const checkTeamTabCount = async (page: Page) => {
   const response = await fetchResponse;
   const jsonRes = await response.json();
 
+  const childrenCount = jsonRes.data?.length ?? 0;
+
   await expect(
     page.locator(
       '[data-testid="teams"] [data-testid="count"] [data-testid="filter-count"]'
     )
-  ).toContainText(jsonRes.childrenCount.toString());
+  ).toContainText(childrenCount.toString());
 };
 
 export const addEmailTeam = async (page: Page, email: string) => {
@@ -417,15 +426,17 @@ export const addUserTeam = async (
   // Search and select the user
   await page
     .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
-    .fill(user.getUserName());
+    .fill(user.getUserDisplayName());
 
   await page
-    .locator(`[data-testid="selectable-list"] [title="${user.getUserName()}"]`)
+    .locator(
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
+    )
     .click();
 
   await expect(
     page.locator(
-      `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+      `[data-testid="selectable-list"] [title="${user.getUserDisplayName()}"]`
     )
   ).toHaveClass(/active/);
 

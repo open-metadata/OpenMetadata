@@ -32,6 +32,7 @@ import { Operation } from '../../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
+import { useEntityRules } from '../../../../../hooks/useEntityRules';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
@@ -55,6 +56,7 @@ const TeamsInfo = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { currentUser } = useApplicationStore();
+  const { entityRules } = useEntityRules(EntityType.TEAM);
 
   const { email, owners, teamType, id, fullyQualifiedName } = useMemo(
     () => currentTeam,
@@ -323,9 +325,12 @@ const TeamsInfo = ({
       />
       <Divider className="vertical-divider" type="vertical" />
       <OwnerLabel
-        className="text-sm"
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
+        multiple={{
+          user: entityRules.canAddMultipleUserOwners,
+          team: entityRules.canAddMultipleTeamOwner,
+        }}
         owners={owners}
         onUpdate={updateOwner}
       />

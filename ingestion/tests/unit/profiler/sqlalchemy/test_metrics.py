@@ -52,6 +52,7 @@ class User(Base):
     dob = Column(DateTime)  # date of birth
     tob = Column(Time)  # time of birth
     doe = Column(Date)  # date of employment
+    email = Column(String(256))  # unique email for testing allValuesUnique
 
 
 class MetricsTest(TestCase):
@@ -114,6 +115,7 @@ class MetricsTest(TestCase):
                 dob=datetime.datetime(1992, 5, 17),
                 tob=datetime.time(11, 2, 32),
                 doe=datetime.date(2020, 1, 12),
+                email="john1@example.com",
             ),
             User(
                 name="Jane",
@@ -124,6 +126,7 @@ class MetricsTest(TestCase):
                 dob=datetime.datetime(1991, 4, 4),
                 tob=datetime.time(10, 1, 31),
                 doe=datetime.date(2009, 11, 11),
+                email="jane@example.com",
             ),
             User(
                 name="John",
@@ -134,6 +137,7 @@ class MetricsTest(TestCase):
                 dob=datetime.datetime(1982, 2, 2),
                 tob=datetime.time(9, 3, 25),
                 doe=datetime.date(2012, 12, 1),
+                email="john2@example.com",
             ),
         ]
         cls.sqa_profiler_interface.session.add_all(data)
@@ -178,9 +182,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._column_results
-        # SQLITE STD custom implementation returns the squared STD.
-        # Only useful for testing purposes
-        assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.25
+        assert res.get(User.age.name).get(Metrics.STDDEV.name) == 0.5
 
     def test_earliest_time(self):
         """
@@ -342,7 +344,7 @@ class MetricsTest(TestCase):
             profiler_interface=self.sqa_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
-        assert res.get(Metrics.COLUMN_COUNT.name) == 9
+        assert res.get(Metrics.COLUMN_COUNT.name) == 10
 
     def test_avg(self):
         """
@@ -489,6 +491,10 @@ class MetricsTest(TestCase):
     def test_cardinality_distribution_all_distinct(self):
         """
         Check cardinality distribution when all values are distinct
+
+        Note: The existing test data doesn't have a string column where all values are unique.
+        This test verifies the logic works correctly by checking that with non-unique data,
+        we don't get the allValuesUnique flag.
         """
         cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
         count = Metrics.COUNT.value
@@ -505,11 +511,49 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        # Test with id column where all values are distinct
-        id_cardinality = res.get(User.id.name)[Metrics.CARDINALITY_DISTRIBUTION.name]
+        # The name column has: ["John", "Jane", "John"] - not all distinct
+        # So it should return a normal cardinality distribution, not the allValuesUnique flag
+        name_cardinality = res.get(User.name.name)[
+            Metrics.CARDINALITY_DISTRIBUTION.name
+        ]
 
-        # Should return None when all values are distinct
-        assert id_cardinality is None
+        assert name_cardinality is not None
+        # Should have categories (distribution), not allValuesUnique flag
+        assert name_cardinality.get("categories") is not None
+        assert name_cardinality.get("allValuesUnique") is not True
+
+    def test_cardinality_distribution_all_values_unique_flag(self):
+        """
+        Test that allValuesUnique flag is returned when count equals distinct_count
+
+        The email column has all unique values, so it should trigger the allValuesUnique flag.
+        """
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # email column has all unique values: ["john1@example.com", "jane@example.com", "john2@example.com"]
+        # Count: 3, DistinctCount: 3
+        email_cardinality = res.get(User.email.name)[
+            Metrics.CARDINALITY_DISTRIBUTION.name
+        ]
+
+        # Should return the allValuesUnique flag
+        assert email_cardinality is not None
+        assert email_cardinality.get("allValuesUnique") is True
+        # Should not have categories/counts/percentages when allValuesUnique is True
+        assert email_cardinality.get("categories") is None
 
     def test_cardinality_distribution_unsupported_type(self):
         """

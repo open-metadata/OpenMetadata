@@ -42,7 +42,7 @@ export const ownerTableObject = <
     title: i18n.t('label.owner-plural').toString(),
     dataIndex: TABLE_COLUMNS_KEYS.OWNERS,
     key: TABLE_COLUMNS_KEYS.OWNERS,
-    width: 180,
+    width: 280,
     filterIcon: columnFilterIcon,
     render: (owners: EntityReference[]) => (
       <OwnerLabel

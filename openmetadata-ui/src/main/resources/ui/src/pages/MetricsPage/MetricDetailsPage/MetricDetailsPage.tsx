@@ -138,6 +138,7 @@ const MetricDetailsPage = () => {
           TabSpecificField.VOTES,
           TabSpecificField.EXTENSION,
           TabSpecificField.RELATED_METRICS,
+          TabSpecificField.REVIEWERS,
         ].join(','),
       });
       const { id, fullyQualifiedName } = res;
@@ -240,6 +241,7 @@ const MetricDetailsPage = () => {
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
           TabSpecificField.VOTES,
+          TabSpecificField.REVIEWERS,
         ].join(','),
       });
       setMetricDetails(details);

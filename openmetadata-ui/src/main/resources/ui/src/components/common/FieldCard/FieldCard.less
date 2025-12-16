@@ -1,0 +1,231 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.field-card {
+  border-bottom: 0.6px solid @grey-15;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 8px;
+  padding-top: 16px;
+  .field-card-header {
+    justify-content: space-between;
+    align-items: center;
+
+    .field-name-container {
+      display: flex;
+      align-items: center;
+      flex: 1;
+
+      .constraint-icon {
+        margin-right: 8px;
+        display: flex;
+        align-items: center;
+      }
+
+      .field-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: @grey-900;
+        margin-bottom: 4px;
+      }
+    }
+  }
+
+  .field-card-content {
+    display: flex;
+    .field-description {
+      color: @grey-700;
+      font-size: 13px !important;
+      font-weight: 400;
+      .no-description-text {
+        color: @grey-700;
+      }
+      .block-editor-wrapper .tiptap.ProseMirror {
+        font-size: 13px !important;
+      }
+
+      .description-display {
+        .description-text {
+          &.expanded {
+            display: block;
+            line-height: 1.4;
+          }
+
+          &.collapsed {
+            .rich-text-editor-container {
+              .markdown-parser {
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-size: 13px;
+                word-wrap: break-word;
+                word-break: break-word;
+                white-space: normal;
+              }
+            }
+          }
+        }
+
+        .show-more-button {
+          background: none;
+          border: none;
+          color: @primary-color;
+          cursor: pointer;
+          font-size: 12px;
+          padding: 0;
+          padding-top: 4px;
+          text-decoration: none;
+          transition: color 0.2s ease;
+
+          &:hover {
+            color: @primary-6;
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+            color: @primary-6;
+          }
+        }
+      }
+    }
+
+    .field-metadata {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+      margin-bottom: 8px;
+
+      .metadata-section {
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        align-items: flex-start;
+
+        &.expanded {
+          flex-direction: column;
+          gap: 8px;
+
+          .tags-display,
+          .glossary-terms-display {
+            width: 100%;
+          }
+        }
+
+        .metadata-label {
+          font-size: 12px;
+          color: @grey-700;
+          white-space: nowrap;
+          font-weight: 500;
+          line-height: 26px;
+        }
+
+        .tags-display,
+        .glossary-terms-display {
+          flex: 1;
+          min-width: 0;
+
+          .tags-list,
+          .glossary-terms-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+
+            .tag-item,
+            .glossary-term-item {
+              display: inline-flex;
+              align-items: center;
+              gap: 5px;
+              padding: 5px 6px;
+              height: 26px;
+              border-radius: 8px;
+              min-width: 0;
+              background-color: @blue-29;
+              border: 1px solid @blue-30;
+
+              .tag-icon,
+              .glossary-term-icon {
+                width: 12px;
+                height: 12px;
+                flex-shrink: 0;
+                color: @tag-text;
+              }
+
+              .tag-name,
+              .glossary-term-name {
+                color: @tag-text;
+                font-size: 10px;
+                font-weight: 400;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+            }
+
+            .show-more-tags-button,
+            .show-more-terms-button {
+              background: none;
+              border: none;
+              color: @primary-color;
+              cursor: pointer;
+              font-size: 12px;
+              padding: 2px 4px;
+              text-decoration: none;
+              transition: color 0.2s ease;
+              white-space: nowrap;
+              line-height: 26px;
+
+              &:hover {
+                color: @primary-6;
+                text-decoration: underline;
+              }
+
+              &:focus {
+                outline: none;
+                color: @primary-6;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .field-tags {
+      margin-top: 8px;
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .field-card {
+    padding: 12px;
+    margin-bottom: 8px;
+
+    .field-card-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+
+      .field-name-container {
+        width: 100%;
+      }
+    }
+  }
+}

@@ -36,6 +36,7 @@ class MockSchema(BaseModel):
     name: str
     # Keeping it None to reuse the same class for Create and Entity
     fullyQualifiedName: Optional[str] = None
+    deleted: Optional[bool] = None
 
 
 class MockTable(BaseModel):
@@ -44,6 +45,7 @@ class MockTable(BaseModel):
     # Keeping it None to reuse the same class for Create and Entity
     fullyQualifiedName: Optional[str] = None
     columns: List[str]
+    deleted: Optional[bool] = None
 
 
 class MockTopology(ServiceTopology):
@@ -111,7 +113,7 @@ class TopologyRunnerTest(TestCase):
         """Check it works with generic models"""
 
         mock_table = MockTable(name="name", columns=["a", "b", "c"])
-        real_fingerprint = "b4c6559d2fab833ba348c6bd98054b94"
+        real_fingerprint = "5a8e89ce98a5060590b55cf8c00a5d50"
 
         self.assertEqual(real_fingerprint, generate_source_hash(mock_table))
 
@@ -142,29 +144,29 @@ class TopologyRunnerTest(TestCase):
             ],
             [
                 MockSchema(
-                    name="schema1", sourceHash="6414db364af730c9f34cdd705664dfbf"
+                    name="schema1", sourceHash="81598ade7c7fa8f5383a7578e2cb6242"
                 ),
                 MockTable(
                     name="table1",
-                    sourceHash="b3765a609adc20d8382eea0e595233cc",
+                    sourceHash="a5987f1e4ce03538f69af0b02f9e024c",
                     columns=["c1", "c2"],
                 ),
                 MockTable(
                     name="table2",
-                    sourceHash="37e964e369aa225211aa87b388b1e7d2",
+                    sourceHash="b7779efcbd2c01636a104121d5abced4",
                     columns=["c1", "c2"],
                 ),
                 MockSchema(
-                    name="schema2", sourceHash="3e1fafb67d34fb25bec7adf59042da87"
+                    name="schema2", sourceHash="5aa190009346267c1fdc3da529e35c69"
                 ),
                 MockTable(
                     name="table1",
-                    sourceHash="b3765a609adc20d8382eea0e595233cc",
+                    sourceHash="a5987f1e4ce03538f69af0b02f9e024c",
                     columns=["c1", "c2"],
                 ),
                 MockTable(
                     name="table2",
-                    sourceHash="37e964e369aa225211aa87b388b1e7d2",
+                    sourceHash="b7779efcbd2c01636a104121d5abced4",
                     columns=["c1", "c2"],
                 ),
                 "hello",
@@ -194,29 +196,29 @@ class TopologyRunnerTest(TestCase):
             ],
             [
                 MockSchema(
-                    name="schema1", sourceHash="6414db364af730c9f34cdd705664dfbf"
+                    name="schema1", sourceHash="81598ade7c7fa8f5383a7578e2cb6242"
                 ),
                 MockTable(
                     name="table1",
-                    sourceHash="b3765a609adc20d8382eea0e595233cc",
+                    sourceHash="a5987f1e4ce03538f69af0b02f9e024c",
                     columns=["c1", "c2"],
                 ),
                 MockTable(
                     name="table2",
-                    sourceHash="37e964e369aa225211aa87b388b1e7d2",
+                    sourceHash="b7779efcbd2c01636a104121d5abced4",
                     columns=["c1", "c2"],
                 ),
                 MockSchema(
-                    name="schema2", sourceHash="3e1fafb67d34fb25bec7adf59042da87"
+                    name="schema2", sourceHash="5aa190009346267c1fdc3da529e35c69"
                 ),
                 MockTable(
                     name="table1",
-                    sourceHash="b3765a609adc20d8382eea0e595233cc",
+                    sourceHash="a5987f1e4ce03538f69af0b02f9e024c",
                     columns=["c1", "c2"],
                 ),
                 MockTable(
                     name="table2",
-                    sourceHash="37e964e369aa225211aa87b388b1e7d2",
+                    sourceHash="b7779efcbd2c01636a104121d5abced4",
                     columns=["c1", "c2"],
                 ),
                 "hello",

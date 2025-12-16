@@ -36,7 +36,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { addOwner } from './entity';
+import { addOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
 const waitForAssetModalInitialLoad = async (page: Page) => {
@@ -207,9 +207,14 @@ export const selectDataProductFromTab = async (
   page: Page,
   dataProduct: DataProduct['data']
 ) => {
-  const dpRes = page.waitForResponse(
-    '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index*'
-  );
+  const dpRes = page.waitForResponse((response) => {
+    const url = response.url();
+
+    return (
+      url.includes('/api/v1/search/query') &&
+      url.includes('index=data_product_search_index')
+    );
+  });
   await page
     .locator('.domain-details-page-tabs')
     .getByText('Data Products')
@@ -425,7 +430,7 @@ export const addAssetsToDomain = async (
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
-    'Adding a new Asset is easy, just give it a spin!'
+    "Looks like you haven't added any data assets yet."
   );
 
   await page.getByTestId('domain-details-add-button').click();
@@ -477,6 +482,7 @@ export const addAssetsToDomain = async (
   await searchRes;
 
   await page.reload();
+  await waitForAllLoadersToDisappear(page);
   await page.waitForLoadState('networkidle');
 
   await checkAssetsCount(page, assets.length);
@@ -528,7 +534,7 @@ export const addAssetsToDataProduct = async (
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
-    'Adding a new Asset is easy, just give it a spin!'
+    "Looks like you haven't added any data assets yet."
   );
 
   await page.getByTestId('data-product-details-add-button').click();

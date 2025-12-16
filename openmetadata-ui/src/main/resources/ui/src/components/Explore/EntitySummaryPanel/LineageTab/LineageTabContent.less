@@ -1,0 +1,216 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../../styles/variables.less';
+
+.lineage-tab-content {
+  .lineage-info-container {
+    padding-top: 12px;
+  }
+  .right-arrow-icon {
+    color: @grey-400;
+    font-size: 10px !important;
+  }
+  .no-data-placeholder {
+    color: @grey-500 !important;
+    font-size: 13px !important;
+  }
+  .right-arrow-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .right-arrow-icon-dot {
+    width: 2px;
+    height: 2px;
+    background-color: @grey-500;
+    border-radius: 50%;
+  }
+  .lineage-items-list.empty-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    min-height: 300px;
+  }
+  .lineage-item-link,
+  a {
+    cursor: pointer;
+    text-decoration: none;
+    &:hover,
+    a:focus {
+      cursor: pointer;
+      text-decoration: none !important;
+    }
+  }
+  .breadcrumb-container {
+    ol {
+      gap: 2px;
+      font-size: 12px;
+    }
+  }
+  .searchbar-container {
+    margin-bottom: 10px !important;
+  }
+}
+.lineage-filter-button-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  background-color: @grey-9;
+  border-radius: 9px;
+  margin-left: 4px;
+  color: @grey-900;
+  font-size: 10px;
+  display: flex;
+  &.active {
+    color: @primary-6 !important;
+  }
+}
+.service-icon-lineage {
+  width: 12px !important;
+  height: 12px !important;
+}
+.lineage-item-direction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .ant-badge {
+    .ant-badge-status-text {
+      font-size: 11px;
+      font-weight: 500;
+    }
+  }
+}
+.lineage-filter-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-top: 8px;
+
+  .lineage-filter-button {
+    border-radius: 16px;
+    font-size: 12px;
+    height: 28px;
+    padding: 0 7px;
+    display: flex;
+    align-items: center;
+    border: 1px solid @grey-15;
+    background-color: @white;
+    color: @grey-900;
+
+    &.active {
+      border: 1px solid @primary-6;
+      background-color: @primary-6;
+      color: @white;
+    }
+  }
+}
+.lineage-items-list {
+  .lineage-item-card {
+    border: 1px solid @grey-200;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    &:hover {
+      cursor: pointer !important;
+      background-color: @grey-50;
+    }
+    .item-name-text {
+      color: @grey-900;
+      font-size: 14px;
+      font-weight: 600;
+      padding-top: 8px;
+    }
+    .item-direction-text {
+      color: @grey-900;
+      font-size: 9px;
+      text-transform: uppercase;
+      font-weight: 600;
+      line-height: 20px;
+    }
+    .lineage-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      padding-bottom: 0;
+      border-top-right-radius: 10px;
+      border-top-left-radius: 10px;
+
+      .service-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+    .lineage-card-content {
+      padding-left: 12px;
+      padding-right: 12px;
+      padding-bottom: 12px;
+      padding-top: 8px;
+    }
+    .item-path-container {
+      height: 18px;
+      display: flex;
+      align-items: center;
+      width: fit-content;
+    }
+    .item-path-text {
+      color: @grey-500;
+      font-size: 12px !important;
+    }
+
+    .ant-badge {
+      .ant-badge-status-text {
+        font-size: 11px;
+        color: @grey-10;
+        background-color: @grey-100;
+        padding: 2px 8px;
+        border-radius: 12px;
+      }
+    }
+  }
+  .condensed-breadcrumb-container {
+    a {
+      color: @grey-500 !important;
+    }
+  }
+}
+.entity-type-icon {
+  color: @grey-500 !important;
+}
+
+.item-entity-type-text,
+.item-owner-label-text {
+  color: @grey-500 !important;
+  font-size: 10px !important;
+  line-height: 18px;
+  align-content: center;
+  font-weight: 400 !important;
+}
+.item-bullet-separator {
+  color: @grey-400 !important;
+  align-content: center;
+  margin-right: 4px;
+  line-height: 18px;
+}

@@ -36,6 +36,7 @@ import { AsyncSelectListProps } from '../components/common/AsyncSelectList/Async
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { MUIColorPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
+import { MUICoverImageUpload } from '../components/common/CoverImageUpload';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
@@ -160,6 +161,30 @@ export const getField = (field: FieldProp) => {
             label={muiLabel}
             placeholder={placeholder}
             required={isRequired}
+            {...muiProps}
+          />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.PASSWORD_MUI: {
+      const { error, ...muiProps } = props;
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUITextField
+            error={Boolean(error)}
+            helperText={
+              helperTextType === HelperTextType.ALERT ? helperText : undefined
+            }
+            id={id}
+            label={muiLabel}
+            placeholder={placeholder}
+            required={isRequired}
+            type="password"
             {...muiProps}
           />
         </Form.Item>
@@ -407,6 +432,17 @@ export const getField = (field: FieldProp) => {
             {...(props as Record<string, unknown>)}
             label={muiLabel as string}
             toolTip={helperText}
+          />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.COVER_IMAGE_UPLOAD_MUI: {
+      return (
+        <Form.Item {...formProps}>
+          <MUICoverImageUpload
+            {...(props as Record<string, unknown>)}
+            label={muiLabel as string}
           />
         </Form.Item>
       );

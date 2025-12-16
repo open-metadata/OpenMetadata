@@ -15,7 +15,7 @@
  */
 export interface FivetranConnection {
     /**
-     * Fivetran API Secret.
+     * Fivetran API Key.
      */
     apiKey: string;
     /**

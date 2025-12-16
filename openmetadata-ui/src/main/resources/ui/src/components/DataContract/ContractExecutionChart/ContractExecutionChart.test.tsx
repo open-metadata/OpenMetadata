@@ -113,6 +113,8 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   getEpochMillisForPastDays: jest.fn(
     (days) => 1640995200000 - days * 24 * 60 * 60 * 1000
   ),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 jest.mock('../../common/DatePickerMenu/DatePickerMenu.component', () => {

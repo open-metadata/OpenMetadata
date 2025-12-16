@@ -11,29 +11,19 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Paper,
-  TableContainer,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
-import { AxiosError } from 'axios';
 import { useSnackbar } from 'notistack';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ERROR_MESSAGE } from '../../constants/constants';
+import { DRAWER_HEADER_STYLING } from '../../constants/DomainsListPage.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import { addDataProducts } from '../../rest/dataProductAPI';
-import { getIsErrorMatch } from '../../utils/CommonUtils';
-import {
-  showNotistackError,
-  showNotistackSuccess,
-} from '../../utils/NotistackUtils';
+import { addDataProducts, patchDataProduct } from '../../rest/dataProductAPI';
+import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -80,6 +70,9 @@ const DataProductListPage = () => {
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    header: {
+      sx: DRAWER_HEADER_STYLING,
+    },
     onCancel: () => {
       form.resetFields();
     },
@@ -95,45 +88,21 @@ const DataProductListPage = () => {
         onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
           setIsLoading(true);
           try {
-            await addDataProducts(formData as CreateDataProduct);
-            showNotistackSuccess(
+            await createEntityWithCoverImage({
+              formData: formData as CreateDataProduct,
+              entityType: EntityType.DATA_PRODUCT,
+              entityLabel: t('label.data-product'),
+              entityPluralLabel: 'data-products',
+              createEntity: addDataProducts,
+              patchEntity: patchDataProduct,
+              onSuccess: () => {
+                closeDrawer();
+                dataProductListing.refetch();
+              },
               enqueueSnackbar,
-              <Typography sx={{ fontWeight: 600 }} variant="body2">
-                {t('server.create-entity-success', {
-                  entity: t('label.data-product'),
-                })}
-              </Typography>,
-              closeSnackbar
-            );
-            // Close drawer only on successful creation
-            closeDrawer();
-            dataProductListing.refetch();
-          } catch (error) {
-            showNotistackError(
-              enqueueSnackbar,
-              getIsErrorMatch(
-                error as AxiosError,
-                ERROR_MESSAGE.alreadyExist
-              ) ? (
-                <Typography sx={{ fontWeight: 600 }} variant="body2">
-                  {t('server.entity-already-exist', {
-                    entity: t('label.data-product'),
-                    entityPlural: 'data-products',
-                    name: formData.name,
-                  })}
-                </Typography>
-              ) : (
-                (error as AxiosError)
-              ),
-              t('server.add-entity-error', {
-                entity: t('label.data-product').toLowerCase(),
-              }),
-              { vertical: 'top', horizontal: 'center' },
-              closeSnackbar
-            );
-
-            // Keep drawer open on error so user can fix and retry
-            throw error; // Re-throw to reject the promise
+              closeSnackbar,
+              t,
+            });
           } finally {
             setIsLoading(false);
           }
@@ -150,8 +119,7 @@ const DataProductListPage = () => {
 
   // Composable hooks for each UI component
   const { breadcrumbs } = useBreadcrumbs({
-    entityLabelKey: 'label.data-product',
-    basePath: '/dataProduct',
+    items: [{ name: t('label.data-product-plural'), url: '/dataProduct' }],
   });
 
   const { pageHeader } = usePageHeader({

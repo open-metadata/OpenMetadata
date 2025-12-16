@@ -89,6 +89,7 @@ export enum ResourceEntity {
   FILE = 'file',
   SPREADSHEET = 'spreadsheet',
   WORKSHEET = 'worksheet',
+  NOTIFICATION_TEMPLATE = 'notificationTemplate',
 }
 
 export interface PermissionContextType {

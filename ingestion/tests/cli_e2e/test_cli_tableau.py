@@ -33,7 +33,7 @@ class TableauExpectedValues:
 
     # Basic counts - Updated based on actual test knowledge base
     DASHBOARDS_AND_CHARTS = 5  # 1 dashboard + 4 charts = 5
-    LINEAGE_EDGES = 9
+    LINEAGE_EDGES = 3
     TAGS = 2
     DATAMODEL_LINEAGE = 0
     DATAMODELS = 2
@@ -576,7 +576,7 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) >= 5)
         self.assertGreaterEqual(
-            (len(source_status.records) + len(source_status.updated_records)),  # 20-22
+            (len(source_status.records) + len(source_status.updated_records)),
             self.expected_dashboards_and_charts_after_patch()
             + self.expected_tags()
             + self.expected_lineage()

@@ -680,6 +680,10 @@
               "items": {
                 "type": "number"
               }
+            },
+            "allValuesUnique": {
+              "description": "Flag indicating that all values in the column are unique, so no distribution is calculated.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -1066,6 +1070,10 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to this table resource.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -1286,17 +1294,24 @@
       "default": false
     },
     "queries": {
-      "description": "List of queries that are used to create this table.", 
+      "description": "List of queries that are used to create this table.",
       "type": "array",
       "items": {
         "$ref": "../../type/basic.json#/definitions/sqlQuery"
       },
       "default": null
     },
+    "pipelineObservability": {
+      "description": "Pipeline observability information for the table. Multiple pipelines can process the same table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/pipelineObservability.json"
+      },
+      "default": null
+    },
     "entityStatus": {
       "description": "Status of the Table.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": [

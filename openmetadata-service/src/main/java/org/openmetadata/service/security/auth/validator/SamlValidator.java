@@ -301,7 +301,6 @@ public class SamlValidator {
       conn.setConnectTimeout(5000);
       conn.setReadTimeout(5000);
       conn.setInstanceFollowRedirects(false);
-
       int responseCode = conn.getResponseCode();
       LOG.debug("IdP response code to SAML request: {}", responseCode);
 
@@ -350,7 +349,8 @@ public class SamlValidator {
   private String createTestSamlRequest(SamlSSOClientConfig samlConfig) {
     try {
       // Create a minimal SAML AuthnRequest XML
-      String timestamp = java.time.Instant.now().toString();
+      String timestamp =
+          java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString();
       String requestId = "_" + java.util.UUID.randomUUID().toString();
 
       String samlRequestXml =

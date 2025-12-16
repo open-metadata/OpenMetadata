@@ -46,6 +46,7 @@ export interface StoredProcedureDetailPageTabProps {
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   labelMap?: Record<EntityTabs, string>;
   onExtensionUpdate: (value: StoredProcedure) => Promise<void>;
   getEntityFeedCount: () => void;
@@ -86,6 +87,7 @@ class StoredProcedureClassBase {
       EntityTabs.CODE,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

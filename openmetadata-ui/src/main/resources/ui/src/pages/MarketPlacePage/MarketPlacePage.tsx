@@ -31,6 +31,7 @@ import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getMarketPlaceApplicationList } from '../../rest/applicationMarketPlaceAPI';
 import { getEntityName } from '../../utils/EntityUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
@@ -48,6 +49,7 @@ const MarketPlacePage = () => {
     handlePageChange,
     handlePageSizeChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +57,7 @@ const MarketPlacePage = () => {
     useState<AppMarketPlaceDefinition[]>();
 
   const fetchApplicationList = useCallback(
-    async (pagingOffset?: Paging) => {
+    async (pagingOffset?: Partial<Paging>) => {
       try {
         setIsLoading(true);
         const { data, paging } = await getMarketPlaceApplicationList({
@@ -79,12 +81,17 @@ const MarketPlacePage = () => {
     currentPage,
     cursorType,
   }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
-    cursorType &&
+    if (cursorType) {
       fetchApplicationList({
         [cursorType]: paging[cursorType],
         total: paging.total,
-      } as Paging);
+      });
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
+    }
   };
 
   const viewAppDetails = (item: AppMarketPlaceDefinition) => {
@@ -92,8 +99,14 @@ const MarketPlacePage = () => {
   };
 
   useEffect(() => {
-    fetchApplicationList();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchApplicationList({ [cursorType]: cursorValue });
+    } else {
+      fetchApplicationList();
+    }
+  }, [pageSize, pagingCursor]);
 
   if (isLoading) {
     return <Loader />;
@@ -123,7 +136,15 @@ const MarketPlacePage = () => {
           <Row className="marketplace-header-row" justify="center">
             <Col span={18}>
               <div className="d-flex items-center justify-between h-full">
-                <PageHeader data={PAGE_HEADERS.APPLICATION} />
+                <PageHeader
+                  data={{
+                    header: translateWithNestedKeys(
+                      PAGE_HEADERS.APPLICATION.header,
+                      PAGE_HEADERS.APPLICATION.headerParams
+                    ),
+                    subHeader: t(PAGE_HEADERS.APPLICATION.subHeader),
+                  }}
+                />
                 <HeadingIcon />
               </div>
             </Col>
