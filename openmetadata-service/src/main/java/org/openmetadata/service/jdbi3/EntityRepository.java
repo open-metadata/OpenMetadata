@@ -93,7 +93,7 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
-import jakarta.json.JsonPatch;
+import jakarta.json.*;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.Response.Status;
@@ -218,12 +218,8 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.EntityETag;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.*;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ListWithOffsetFunction;
-import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -1672,7 +1668,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       boolean useOptimisticLocking,
       String impersonatedBy) {
     // Start timing JSON patch application
-    T updated = JsonUtils.applyPatch(original, patch, entityClass);
+    T updated =
+        JsonUtils.applyPatch(
+            original, JsonPatchUtils.patchNewTagsWithAppliedBy(patch, user), entityClass);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
 
@@ -2743,7 +2741,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 targetFQN,
                 tagLabel.getLabelType().ordinal(),
                 tagLabel.getState().ordinal(),
-                tagLabel.getReason());
+                tagLabel.getReason(),
+                tagLabel.getAppliedBy());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
