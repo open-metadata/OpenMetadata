@@ -63,7 +63,6 @@ import {
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   columnFilterIcon,
-  descriptionTableObject,
   ownerTableObject,
 } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -71,6 +70,7 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import { ListView } from '../../common/ListView/ListView.component';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
@@ -381,7 +381,21 @@ const Services = ({ serviceName }: ServicesProps) => {
         </div>
       ),
     },
-    ...descriptionTableObject<ServicesType>({ width: 400 }),
+    {
+      title: t('label.description'),
+      dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
+      key: TABLE_COLUMNS_KEYS.DESCRIPTION,
+      width: 200,
+      render: (description) =>
+        description ? (
+          <RichTextEditorPreviewerNew
+            className="max-two-lines"
+            markdown={highlightSearchText(description, searchTerm)}
+          />
+        ) : (
+          <span className="text-grey-muted">{t('label.no-description')}</span>
+        ),
+    },
     {
       title: t('label.type'),
       dataIndex: TABLE_COLUMNS_KEYS.SERVICE_TYPE,

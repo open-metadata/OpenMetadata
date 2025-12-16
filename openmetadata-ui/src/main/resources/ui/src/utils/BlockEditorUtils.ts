@@ -303,6 +303,7 @@ export const isDescriptionContentEmpty = (content: string) => {
   }
 
   // Match a single <p>...</p> where the inner content is only whitespace (including &nbsp;)
+  // including unicode non-breaking space (\u00A0)
   const emptyPRegex = /^\s*<p(?:\s[^>]*)?>[\s\u00A0]*<\/p>\s*$/i;
 
   return emptyPRegex.test(content);

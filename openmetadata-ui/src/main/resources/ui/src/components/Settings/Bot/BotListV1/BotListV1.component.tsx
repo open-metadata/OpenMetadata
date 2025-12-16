@@ -41,12 +41,12 @@ import {
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
-import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -141,7 +141,19 @@ const BotListV1 = ({
           );
         },
       },
-      ...descriptionTableObject(),
+      {
+        title: t('label.description'),
+        dataIndex: 'description',
+        key: 'description',
+        render: (_, record) => (
+          <RichTextEditorPreviewerNew
+            markdown={highlightSearchText(
+              record?.description || '',
+              searchTerm
+            )}
+          />
+        ),
+      },
       {
         title: t('label.action-plural'),
         dataIndex: 'id',

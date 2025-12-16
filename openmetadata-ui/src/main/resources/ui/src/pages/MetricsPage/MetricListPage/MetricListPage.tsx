@@ -178,7 +178,7 @@ const MetricListPage = () => {
           );
         },
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject({ width: 300 }),
       {
         title: t('label.tag-plural'),
         dataIndex: 'tags',
