@@ -23,12 +23,12 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { searchData } from '../../../rest/miscAPI';
 import {
-    formatTeamsResponse,
-    formatUsersResponse
+  formatTeamsResponse,
+  formatUsersResponse,
 } from '../../../utils/APIUtils';
 import {
-    getEntityName,
-    getEntityReferenceFromEntity
+  getEntityName,
+  getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
 import { ProfilePicture } from '../atoms/ProfilePicture';
 
