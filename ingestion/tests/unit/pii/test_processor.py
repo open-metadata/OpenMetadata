@@ -118,6 +118,6 @@ def test_it_returns_the_expected_column_tags(
 
     for column_tag in result.column_tags:
         assert re.match(
-            "^Detected by `[a-zA-Z]+Recognizer [0-9]+ times? with an average score of`",
-            column_tag,
+            "^Detected by `[a-zA-Z]+Recognizer` [0-9]+ times? with an average score of",
+            column_tag.tag_label.reason,
         )

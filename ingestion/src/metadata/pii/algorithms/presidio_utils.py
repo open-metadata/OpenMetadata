@@ -49,7 +49,7 @@ from presidio_analyzer.predefined_recognizers import (
 )
 from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
-from metadata.pii.algorithms import patterns
+from metadata.pii.algorithms import patterns, presidio_constants
 from metadata.pii.constants import PRESIDIO_LOGGER, SPACY_EN_MODEL, SUPPORTED_LANG
 from metadata.utils.dispatch import class_register
 from metadata.utils.logger import pii_logger
@@ -312,7 +312,8 @@ def explain_recognition_results(results: List[RecognizerResult]) -> str:
 
     def _get_getter(res: RecognizerResult) -> str:
         return cast(Dict[str, str], res.recognition_metadata).get(
-            "recognizer_identifier", "unknown"
+            presidio_constants.RECOGNIZER_METADATA_IDENTIFIER,
+            presidio_constants.DEFAULT_RECOGNIZER_IDENTIFIER,
         )
 
     grouped_results: groupby[str, RecognizerResult] = groupby(
@@ -326,14 +327,19 @@ def explain_recognition_results(results: List[RecognizerResult]) -> str:
 
         recognizer_name: str = cast(
             Dict[str, str], group_list[0].recognition_metadata
-        ).get("recognizer_name", recognizer_identifier)
+        ).get(presidio_constants.RECOGNIZER_METADATA_NAME, recognizer_identifier)
         results_count = len(group_list)
         results_score = sum(r.score for r in group_list) / results_count
         maybe_plural_time = "time" if results_count == 1 else "times"
 
         textual_explanation += (
-            f"Detected by `{recognizer_name}` {results_count} {maybe_plural_time} "
-            + f"with an average score of {results_score:.2f}.\n"
+            presidio_constants.TEXTUAL_EXPLANATION_TEMPLATE.format(
+                recognizer_name=recognizer_name,
+                results_count=results_count,
+                maybe_plural_time=maybe_plural_time,
+                results_score=results_score,
+            )
+            + "\n"
         )
 
         patterns_matched: Set[Tuple[str, float]] = set()
@@ -351,11 +357,18 @@ def explain_recognition_results(results: List[RecognizerResult]) -> str:
             )
 
         if patterns_matched:
-            textual_explanation += "Patterns matched:\n"
+            textual_explanation += (
+                presidio_constants.TEXTUAL_EXPLANATION_PATTERN_HEADER_TEMPLATE + "\n"
+            )
             for pattern, score in sorted(
                 patterns_matched, key=lambda o: o[1], reverse=True
             ):
-                textual_explanation += f"\t- `{pattern}` (scored: {score:.2f})\n"
+                textual_explanation += (
+                    presidio_constants.TEXTUAL_EXPLANATION_PATTERN_ITEM_TEMPLATE.format(
+                        pattern=pattern, score=score
+                    )
+                    + f"\n"
+                )
 
         textual_explanation += "\n"
 
