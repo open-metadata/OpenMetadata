@@ -1138,7 +1138,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setSelectedNode({} as SourceType);
     setSelectedEdge(undefined);
     setIsDrawerOpen(false);
-  }, [isEditMode]);
+  }, [isEditMode, activeLayer]);
 
   const onInitReactFlow = (reactFlowInstance: ReactFlowInstance) => {
     setReactFlowInstance(reactFlowInstance);
