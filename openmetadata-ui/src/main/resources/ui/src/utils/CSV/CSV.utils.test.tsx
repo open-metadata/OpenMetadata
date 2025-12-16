@@ -60,6 +60,7 @@ describe('CSVUtils', () => {
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
         csv,
         EntityType.GLOSSARY,
+        false,
         false
       );
 
@@ -189,7 +190,7 @@ describe('CSVUtils', () => {
         MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES
       );
 
-      expect(convertedCSVEntities).toStrictEqual(`dateCp:undefined`);
+      expect(convertedCSVEntities).toBe(`dateCp:undefined`);
     });
   });
 

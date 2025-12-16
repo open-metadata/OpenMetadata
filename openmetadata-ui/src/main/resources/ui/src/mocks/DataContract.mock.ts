@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ContractStatus } from '../generated/entity/data/dataContract';
 import {
   Constraint,
   DataType,
@@ -28,7 +29,7 @@ export const MOCK_DATA_CONTRACT = {
   version: 0.2,
   updatedAt: 1755860378527,
   updatedBy: 'joseph',
-  status: 'Active',
+  status: ContractStatus.Active,
   entity: {
     id: 'ee9d44a0-815d-4ac9-8422-4f9d02ddf04d',
     type: 'table',

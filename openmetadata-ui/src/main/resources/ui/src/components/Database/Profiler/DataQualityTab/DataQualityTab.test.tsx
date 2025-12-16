@@ -243,6 +243,7 @@ describe.skip('DataQualityTab test', () => {
       render(
         <DataQualityTab
           removeFromTestSuite={{
+            isAllowed: true,
             testSuite: {
               id: 'testSuiteId',
               name: 'testSuiteName',

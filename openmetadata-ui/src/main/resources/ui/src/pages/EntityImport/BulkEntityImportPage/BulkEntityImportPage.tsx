@@ -167,14 +167,15 @@ const BulkEntityImportPage = () => {
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
         results.data as string[][],
         importedEntityType,
-        cellEditable
+        cellEditable,
+        isBulkEdit
       );
       setDataSource(dataSource);
       setColumns(columns);
 
       handleActiveStepChange(VALIDATION_STEP.EDIT_VALIDATE);
     },
-    [setDataSource, setColumns, handleActiveStepChange]
+    [isBulkEdit, setDataSource, setColumns, handleActiveStepChange]
   );
 
   const handleLoadData = useCallback(
@@ -266,7 +267,8 @@ const BulkEntityImportPage = () => {
                 getEntityColumnsAndDataSourceFromCSV(
                   results.data as string[][],
                   importedEntityType,
-                  false
+                  false,
+                  isBulkEdit
                 )
               );
             },
@@ -296,7 +298,8 @@ const BulkEntityImportPage = () => {
               getEntityColumnsAndDataSourceFromCSV(
                 results.data as string[][],
                 importedEntityType,
-                false
+                false,
+                isBulkEdit
               )
             );
           },
@@ -309,6 +312,7 @@ const BulkEntityImportPage = () => {
       activeStepRef,
       entityType,
       fqn,
+      isBulkEdit,
       importedEntityType,
       handleResetImportJob,
       handleActiveStepChange,
@@ -516,7 +520,7 @@ const BulkEntityImportPage = () => {
                     ''
                   }
                   type={
-                    !isEmpty(activeAsyncImportJob.error) ? 'error' : 'success'
+                    isEmpty(activeAsyncImportJob.error) ? 'success' : 'error'
                   }
                 />
               )}
