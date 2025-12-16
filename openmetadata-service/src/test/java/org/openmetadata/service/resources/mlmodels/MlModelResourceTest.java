@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -93,7 +94,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   public static final MlStore ML_STORE =
       new MlStore()
           .withStorage(URI.create("s3://my-bucket.com/mlModel").toString())
-          .withImageRepository(URI.create("https://12345.dkr.ecr.region.amazonaws.com").toString());
+          .withImageRepository(URI.create("https://12345.dkr.ecr.region.amazonaws.com").toString())
+          .withArtifactUri(URI.create("gs://my-gcs-bucket/models/my-model").toString());
 
   public static final List<MlFeature> ML_FEATURES =
       Arrays.asList(
@@ -428,6 +430,104 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   }
 
   @Test
+  void post_MlModelWithDatasets_200_ok(TestInfo test) throws IOException {
+    CreateMlModel create =
+        createRequest(test)
+            .withTrainingDatasets(List.of(TABLE_REFERENCE))
+            .withEvaluationDatasets(List.of(TABLE_REFERENCE));
+    MlModel model = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    assertNotNull(model.getTrainingDatasets());
+    assertEquals(1, model.getTrainingDatasets().size());
+    assertEquals(TABLE_REFERENCE.getId(), model.getTrainingDatasets().get(0).getId());
+    assertNotNull(model.getEvaluationDatasets());
+    assertEquals(1, model.getEvaluationDatasets().size());
+    assertEquals(TABLE_REFERENCE.getId(), model.getEvaluationDatasets().get(0).getId());
+  }
+
+  @Test
+  void put_MlModelAddTrainingDatasets_200(TestInfo test) throws IOException {
+    CreateMlModel request = createRequest(test);
+    MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
+    fieldAdded(change, "trainingDatasets", List.of(TABLE_REFERENCE));
+    updateAndCheckEntity(
+        request.withTrainingDatasets(List.of(TABLE_REFERENCE)),
+        Status.OK,
+        ADMIN_AUTH_HEADERS,
+        MINOR_UPDATE,
+        change);
+  }
+
+  @Test
+  void put_MlModelUpdateTrainingDatasets_200(TestInfo test) throws IOException {
+    CreateMlModel request = createRequest(test).withTrainingDatasets(List.of(TABLE_REFERENCE));
+    MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Create another table for update
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(test, 1)
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName());
+    Table table2 = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    EntityReference table2Ref = table2.getEntityReference();
+
+    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
+    fieldDeleted(change, "trainingDatasets", List.of(TABLE_REFERENCE));
+    fieldAdded(change, "trainingDatasets", List.of(table2Ref));
+    updateAndCheckEntity(
+        request.withTrainingDatasets(List.of(table2Ref)),
+        Status.OK,
+        ADMIN_AUTH_HEADERS,
+        MINOR_UPDATE,
+        change);
+  }
+
+  @Test
+  void put_MlModelAddEvaluationDatasets_200(TestInfo test) throws IOException {
+    CreateMlModel request = createRequest(test);
+    MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
+    fieldAdded(change, "evaluationDatasets", List.of(TABLE_REFERENCE));
+    updateAndCheckEntity(
+        request.withEvaluationDatasets(List.of(TABLE_REFERENCE)),
+        Status.OK,
+        ADMIN_AUTH_HEADERS,
+        MINOR_UPDATE,
+        change);
+  }
+
+  @Test
+  void put_MlModelWithInvalidDatasets_404(TestInfo test) {
+    CreateMlModel request = createRequest(test);
+    EntityReference invalidTable =
+        new EntityReference().withId(UUID.randomUUID()).withType("table");
+
+    assertResponse(
+        () -> createEntity(request.withTrainingDatasets(List.of(invalidTable)), ADMIN_AUTH_HEADERS),
+        Status.NOT_FOUND,
+        String.format("table instance for %s not found", invalidTable.getId()));
+  }
+
+  @Test
+  void put_MlModelUpdateMlStoreWithArtifactUri_200(TestInfo test) throws IOException {
+    CreateMlModel request =
+        createRequest(test).withMlStore(new MlStore().withStorage("s3://bucket/models"));
+    MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    MlStore updatedStore =
+        new MlStore()
+            .withStorage("s3://bucket/models")
+            .withImageRepository("docker.io/myrepo/model:latest")
+            .withArtifactUri("gs://my-bucket/models/v2");
+
+    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
+    fieldUpdated(change, "mlStore", model.getMlStore(), updatedStore);
+    updateAndCheckEntity(
+        request.withMlStore(updatedStore), Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
   void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for an ML Model, carry it forward from the ML Model Service
     MlModelServiceResourceTest serviceTest = new MlModelServiceResourceTest();
@@ -568,6 +668,24 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     // sources
     validateMlFeatureSources(createRequest.getMlFeatures(), createdEntity.getMlFeatures());
 
+    // Validate dataset references - only compare IDs since href won't be populated for relationship
+    // references
+    assertDatasetReferences(
+        createRequest.getTrainingDatasets(), createdEntity.getTrainingDatasets());
+    assertDatasetReferences(
+        createRequest.getEvaluationDatasets(), createdEntity.getEvaluationDatasets());
+
+    // Validate MlStore including artifactUri
+    if (createRequest.getMlStore() != null && createdEntity.getMlStore() != null) {
+      assertEquals(
+          createRequest.getMlStore().getStorage(), createdEntity.getMlStore().getStorage());
+      assertEquals(
+          createRequest.getMlStore().getImageRepository(),
+          createdEntity.getMlStore().getImageRepository());
+      assertEquals(
+          createRequest.getMlStore().getArtifactUri(), createdEntity.getMlStore().getArtifactUri());
+    }
+
     TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReferences(createdEntity.getFollowers());
   }
@@ -602,6 +720,8 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
       MlStore expectedMlStore = (MlStore) expected;
       MlStore actualMlStore = JsonUtils.readValue(actual.toString(), MlStore.class);
       assertEquals(expectedMlStore, actualMlStore);
+    } else if (fieldName.contains("trainingDatasets") || fieldName.contains("evaluationDatasets")) {
+      assertEntityReferencesFieldChange(expected, actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }
@@ -691,5 +811,21 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         "Admin updated description",
         updated.getDescription(),
         "Admin should be able to update description via bulk API");
+  }
+
+  private void assertDatasetReferences(
+      List<EntityReference> expected, List<EntityReference> actual) {
+    if (expected == null && actual == null) {
+      return;
+    }
+    if (expected == null || actual == null) {
+      assertEquals(expected, actual);
+      return;
+    }
+    assertEquals(expected.size(), actual.size(), "Dataset reference list size mismatch");
+    Set<UUID> expectedIds =
+        expected.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    Set<UUID> actualIds = actual.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    assertEquals(expectedIds, actualIds, "Dataset reference IDs mismatch");
   }
 }

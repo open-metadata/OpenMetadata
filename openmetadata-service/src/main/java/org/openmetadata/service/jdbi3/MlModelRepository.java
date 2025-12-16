@@ -58,8 +58,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final String MODEL_UPDATE_FIELDS = "dashboard";
-  private static final String MODEL_PATCH_FIELDS = "dashboard";
+  private static final String MODEL_UPDATE_FIELDS = "dashboard,trainingDatasets,evaluationDatasets";
+  private static final String MODEL_PATCH_FIELDS = "dashboard,trainingDatasets,evaluationDatasets";
 
   public MlModelRepository() {
     super(
@@ -106,6 +106,15 @@ public class MlModelRepository extends EntityRepository<MlModel> {
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), mlModel.getId())
               : mlModel.getUsageSummary());
     }
+    // Set dataset references - MLModel uses these datasets
+    mlModel.setTrainingDatasets(
+        fields.contains("trainingDatasets")
+            ? getToEntityRefs(mlModel.getId(), Relationship.TRAINED_WITH, Entity.TABLE)
+            : mlModel.getTrainingDatasets());
+    mlModel.setEvaluationDatasets(
+        fields.contains("evaluationDatasets")
+            ? getToEntityRefs(mlModel.getId(), Relationship.EVALUATED_WITH, Entity.TABLE)
+            : mlModel.getEvaluationDatasets());
   }
 
   @Override
@@ -255,6 +264,25 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     }
   }
 
+  private List<EntityReference> validateDatasetReferences(List<EntityReference> datasets) {
+    if (datasets == null || datasets.isEmpty()) {
+      return datasets;
+    }
+    List<EntityReference> validatedDatasets = new ArrayList<>();
+    for (EntityReference dataset : datasets) {
+      // Validate that the reference exists and is a TABLE entity
+      EntityReference validatedRef = Entity.getEntityReference(dataset, Include.NON_DELETED);
+      if (!Entity.TABLE.equals(validatedRef.getType())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Dataset reference must be a table, but got: %s of type %s",
+                validatedRef.getName(), validatedRef.getType()));
+      }
+      validatedDatasets.add(validatedRef);
+    }
+    return validatedDatasets;
+  }
+
   @Override
   public void prepare(MlModel mlModel, boolean update) {
     populateService(mlModel);
@@ -267,6 +295,14 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     if (mlModel.getDashboard() != null) {
       mlModel.setDashboard(Entity.getEntityReference(mlModel.getDashboard(), Include.NON_DELETED));
     }
+
+    // Validate dataset references
+    if (mlModel.getTrainingDatasets() != null) {
+      mlModel.setTrainingDatasets(validateDatasetReferences(mlModel.getTrainingDatasets()));
+    }
+    if (mlModel.getEvaluationDatasets() != null) {
+      mlModel.setEvaluationDatasets(validateDatasetReferences(mlModel.getEvaluationDatasets()));
+    }
   }
 
   @Override
@@ -274,9 +310,21 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     // Relationships and fields such as service are derived and not stored as part of json
     EntityReference dashboard = mlModel.getDashboard();
     EntityReference service = mlModel.getService();
-    mlModel.withService(null).withDashboard(null);
+    List<EntityReference> trainingDatasets = mlModel.getTrainingDatasets();
+    List<EntityReference> evaluationDatasets = mlModel.getEvaluationDatasets();
+
+    mlModel
+        .withService(null)
+        .withDashboard(null)
+        .withTrainingDatasets(null)
+        .withEvaluationDatasets(null);
     store(mlModel, update);
-    mlModel.withService(service).withDashboard(dashboard);
+
+    mlModel
+        .withService(service)
+        .withDashboard(dashboard)
+        .withTrainingDatasets(trainingDatasets)
+        .withEvaluationDatasets(evaluationDatasets);
   }
 
   @Override
@@ -291,6 +339,30 @@ public class MlModelRepository extends EntityRepository<MlModel> {
           Entity.MLMODEL,
           Entity.DASHBOARD,
           Relationship.USES);
+    }
+
+    // Add relationships for training datasets
+    if (mlModel.getTrainingDatasets() != null) {
+      for (EntityReference dataset : mlModel.getTrainingDatasets()) {
+        addRelationship(
+            mlModel.getId(),
+            dataset.getId(),
+            Entity.MLMODEL,
+            Entity.TABLE,
+            Relationship.TRAINED_WITH);
+      }
+    }
+
+    // Add relationships for evaluation datasets
+    if (mlModel.getEvaluationDatasets() != null) {
+      for (EntityReference dataset : mlModel.getEvaluationDatasets()) {
+        addRelationship(
+            mlModel.getId(),
+            dataset.getId(),
+            Entity.MLMODEL,
+            Entity.TABLE,
+            Relationship.EVALUATED_WITH);
+      }
     }
 
     setMlFeatureSourcesLineage(mlModel);
@@ -436,6 +508,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       updateMlStore(original, updated);
       updateServer(original, updated);
       updateTarget(original, updated);
+      updateTrainingDatasets(original, updated);
+      updateEvaluationDatasets(original, updated);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
@@ -514,6 +588,70 @@ public class MlModelRepository extends EntityRepository<MlModel> {
               Relationship.USES);
         }
       }
+    }
+
+    private void updateTrainingDatasets(MlModel origModel, MlModel updatedModel) {
+      // Delete existing relationships and reassign
+      deleteFrom(origModel.getId(), Entity.MLMODEL, Relationship.TRAINED_WITH, Entity.TABLE);
+      if (updatedModel.getTrainingDatasets() != null) {
+        for (EntityReference dataset : updatedModel.getTrainingDatasets()) {
+          addRelationship(
+              origModel.getId(),
+              dataset.getId(),
+              Entity.MLMODEL,
+              Entity.TABLE,
+              Relationship.TRAINED_WITH);
+        }
+      }
+
+      List<EntityReference> origDatasets = listOrEmpty(origModel.getTrainingDatasets());
+      List<EntityReference> updatedDatasets = listOrEmpty(updatedModel.getTrainingDatasets());
+
+      origDatasets.sort(EntityUtil.compareEntityReference);
+      updatedDatasets.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+
+      recordListChange(
+          "trainingDatasets",
+          origDatasets,
+          updatedDatasets,
+          added,
+          deleted,
+          EntityUtil.entityReferenceMatch);
+    }
+
+    private void updateEvaluationDatasets(MlModel origModel, MlModel updatedModel) {
+      // Delete existing relationships and reassign
+      deleteFrom(origModel.getId(), Entity.MLMODEL, Relationship.EVALUATED_WITH, Entity.TABLE);
+      if (updatedModel.getEvaluationDatasets() != null) {
+        for (EntityReference dataset : updatedModel.getEvaluationDatasets()) {
+          addRelationship(
+              origModel.getId(),
+              dataset.getId(),
+              Entity.MLMODEL,
+              Entity.TABLE,
+              Relationship.EVALUATED_WITH);
+        }
+      }
+
+      List<EntityReference> origDatasets = listOrEmpty(origModel.getEvaluationDatasets());
+      List<EntityReference> updatedDatasets = listOrEmpty(updatedModel.getEvaluationDatasets());
+
+      origDatasets.sort(EntityUtil.compareEntityReference);
+      updatedDatasets.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+
+      recordListChange(
+          "evaluationDatasets",
+          origDatasets,
+          updatedDatasets,
+          added,
+          deleted,
+          EntityUtil.entityReferenceMatch);
     }
   }
 }

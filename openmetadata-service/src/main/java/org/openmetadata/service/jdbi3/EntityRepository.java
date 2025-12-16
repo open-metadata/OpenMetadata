@@ -3128,6 +3128,25 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return null;
   }
 
+  public final List<EntityReference> getToEntityRefs(
+      UUID fromId, Relationship relationship, String toEntityType) {
+    List<EntityRelationshipRecord> records =
+        findToRecords(fromId, entityType, relationship, toEntityType);
+    if (!records.isEmpty()) {
+      List<EntityReference> refs = new ArrayList<>();
+      for (EntityRelationshipRecord record : records) {
+        try {
+          refs.add(Entity.getEntityReferenceById(record.getType(), record.getId(), ALL));
+        } catch (EntityNotFoundException e) {
+          // Skip deleted entities
+          LOG.debug("Skipping deleted entity reference: {} {}", record.getType(), record.getId());
+        }
+      }
+      return refs.isEmpty() ? null : refs;
+    }
+    return null;
+  }
+
   public final EntityReference getToEntityRef(
       UUID fromId, Relationship relationship, String toEntityType, boolean mustHaveRelationship) {
     List<EntityRelationshipRecord> records =
