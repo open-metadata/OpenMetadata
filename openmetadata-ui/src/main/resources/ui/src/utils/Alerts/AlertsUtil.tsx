@@ -158,17 +158,13 @@ export const listLengthValidator =
   <T,>(name: string, minLengthRequired = 1) =>
   async (_: RuleObject, list: T[]) => {
     if (!list || list.length < minLengthRequired) {
-      return Promise.reject(
-        new Error(
-          t('message.length-validator-error', {
-            length: minLengthRequired,
-            field: name,
-          })
-        )
+      throw new Error(
+        t('message.length-validator-error', {
+          length: minLengthRequired,
+          field: name,
+        })
       );
     }
-
-    return Promise.resolve();
   };
 
 export const getAlertActionTypeDisplayName = (
@@ -1440,14 +1436,12 @@ export const getAlertExtraInfo = (
   if (alertEventCountsLoading) {
     return (
       <>
-        {Array(3)
-          .fill(null)
-          .map((_, id) => (
-            <Fragment key={id}>
-              <Divider className="self-center" type="vertical" />
-              <Skeleton.Button active className="extra-info-skeleton" />
-            </Fragment>
-          ))}
+        {new Array(3).fill(null).map((_, id) => (
+          <Fragment key={id}>
+            <Divider className="self-center" type="vertical" />
+            <Skeleton.Button active className="extra-info-skeleton" />
+          </Fragment>
+        ))}
       </>
     );
   }
