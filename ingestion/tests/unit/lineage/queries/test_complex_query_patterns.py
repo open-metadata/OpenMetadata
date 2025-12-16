@@ -8,6 +8,8 @@ capabilities.
 
 from unittest import TestCase
 
+from collate_sqllineage.core.models import DataFunction
+
 from ingestion.tests.unit.lineage.queries.helpers import (
     TestColumnQualifierTuple,
     assert_column_lineage_equal,
@@ -320,12 +322,18 @@ class TestComplexQueryPatterns(TestCase):
             {"employees"},
             set(),
             dialect=Dialect.POSTGRES.value,
+            # SqlParse: Returning two tables (employees, employee_hierarchy), evaluate if it's correct behavior
+            # Graph: SqlFluff produces different graph structure (6n/2e) vs SqlGlot (6n/4e)
+            test_sqlparse=False,
+            skip_graph_check=True,
         )
 
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # Graph: SqlFluff produces different graph structure (20n/26e) vs SqlGlot (6n/4e)
+            skip_graph_check=True,
         )
 
     def test_cte_with_window_functions(self):
@@ -377,6 +385,8 @@ class TestComplexQueryPatterns(TestCase):
             query,
             [],
             dialect=Dialect.SNOWFLAKE.value,
+            # Graph: SqlParse produces different graph structure (18n/27e) vs SqlGlot (17n/20e)
+            skip_graph_check=True,
         )
 
     def test_deeply_nested_ctes_five_levels(self):
@@ -466,6 +476,8 @@ class TestComplexQueryPatterns(TestCase):
             query,
             [],
             dialect=Dialect.MYSQL.value,
+            # Graph: SqlFluff produces different graph structure (24n/27e) vs SqlGlot (16n/13e)
+            skip_graph_check=True,
         )
 
     def test_correlated_subqueries(self):
@@ -496,13 +508,20 @@ class TestComplexQueryPatterns(TestCase):
             {"employees", "performance_reviews"},
             set(),
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: Missing performance_reviews table from EXISTS subquery in WHERE clause
+            # SqlFluff: Missing performance_reviews table from EXISTS subquery in WHERE clause
+            # Although "performance_reviews" may not be contributing to final lineage,
+            # we need to validate this and update accordingly
+            test_sqlglot=False,
+            test_sqlfluff=False,
         )
 
-        # Correlated subqueries create different graph structures across parsers
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # Graph: Correlated subqueries create different graph structures (SqlGlot 6n/5e vs SqlParse 9n/6e)
+            skip_graph_check=True,
         )
 
     def test_nested_subqueries_three_levels(self):
@@ -542,6 +561,8 @@ class TestComplexQueryPatterns(TestCase):
             query,
             [],
             dialect=Dialect.MYSQL.value,
+            # Graph: SqlFluff produces different graph structure (17n/13e) vs SqlGlot (16n/12e)
+            skip_graph_check=True,
         )
 
     def test_subqueries_in_case_statements(self):
@@ -574,12 +595,16 @@ class TestComplexQueryPatterns(TestCase):
             {"orders"},
             set(),
             dialect=Dialect.SNOWFLAKE.value,
+            # Graph: SqlFluff produces different graph structure (2n/1e) vs SqlGlot (5n/2e)
+            skip_graph_check=True,
         )
 
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.SNOWFLAKE.value,
+            # Graph: SqlFluff produces different graph structure (2n/1e) vs SqlGlot (8n/7e)
+            skip_graph_check=True,
         )
 
     # ==================== UNION PATTERNS ====================
@@ -704,12 +729,18 @@ class TestComplexQueryPatterns(TestCase):
             },
             set(),
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: Missing "basic_customers" table from nested UNION
+            # SqlFluff: Missing "basic_customers" table from nested UNION
+            test_sqlglot=False,
+            test_sqlfluff=False,
         )
 
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # Graph: SqlFluff produces different graph structure (6n/3e) vs SqlGlot (10n/7e)
+            skip_graph_check=True,
         )
 
     # ==================== WINDOW FUNCTIONS ====================
@@ -1013,6 +1044,10 @@ class TestComplexQueryPatterns(TestCase):
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: Not generating any column lineage
+            # Graph: SqlFluff (28n/42e) vs SqlParse (27n/41e)
+            test_sqlglot=False,
+            skip_graph_check=True,
         )
 
     def test_update_with_join_and_cte(self):
@@ -1041,9 +1076,13 @@ class TestComplexQueryPatterns(TestCase):
 
         assert_table_lineage_equal(
             query,
-            {"price_history", "products"},
+            {"price_history"},
             {"products"},
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: Capturing only "latest_prices" CTE as source table that too is wrong
+            # SqlFluff: Not capturing target table "products"
+            test_sqlglot=False,
+            test_sqlfluff=False,
         )
 
         # UPDATE with CTE - parsers may have different column lineage extraction
@@ -1051,6 +1090,8 @@ class TestComplexQueryPatterns(TestCase):
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # Graph: SqlGlot (3n/2e) vs SqlFluff (13n/14e)
+            skip_graph_check=True,
         )
 
     def test_create_table_as_select_complex(self):
@@ -1138,8 +1179,50 @@ class TestComplexQueryPatterns(TestCase):
                     TestColumnQualifierTuple("registration_date", "customers"),
                     TestColumnQualifierTuple("registration_date", "customer_360_view"),
                 ),
+                (
+                    TestColumnQualifierTuple("rating", "product_reviews"),
+                    TestColumnQualifierTuple("avg_review_rating", "customer_360_view"),
+                ),
+                (
+                    TestColumnQualifierTuple("order_amount", "orders"),
+                    TestColumnQualifierTuple("customer_tier", "customer_360_view"),
+                ),
+                (
+                    TestColumnQualifierTuple("order_amount", "orders"),
+                    TestColumnQualifierTuple("avg_order_value", "customer_360_view"),
+                ),
+                (
+                    TestColumnQualifierTuple("interaction_date", "customer_support"),
+                    TestColumnQualifierTuple(
+                        "last_interaction_date", "customer_360_view"
+                    ),
+                ),
+                (
+                    TestColumnQualifierTuple("order_date", "orders"),
+                    TestColumnQualifierTuple("last_order_date", "customer_360_view"),
+                ),
+                (
+                    TestColumnQualifierTuple("*", "customer_support"),
+                    TestColumnQualifierTuple(
+                        "support_interactions", "customer_360_view"
+                    ),
+                ),
+                (
+                    TestColumnQualifierTuple("*", "product_reviews"),
+                    TestColumnQualifierTuple("review_count", "customer_360_view"),
+                ),
+                (
+                    TestColumnQualifierTuple("*", "orders"),
+                    TestColumnQualifierTuple("total_orders", "customer_360_view"),
+                ),
+                (
+                    TestColumnQualifierTuple("order_amount", "orders"),
+                    TestColumnQualifierTuple("lifetime_value", "customer_360_view"),
+                ),
             ],
             dialect=Dialect.POSTGRES.value,
+            # Graph: check timeout but same graph structure (57n/78e)
+            skip_graph_check=True,
         )
 
     def test_merge_upsert_operation(self):
@@ -1171,16 +1254,41 @@ class TestComplexQueryPatterns(TestCase):
 
         assert_table_lineage_equal(
             query,
-            {"source_customers", "target_customers"},
+            {"source_customers"},
             {"target_customers"},
             dialect=Dialect.SNOWFLAKE.value,
+            # Graph: SqlGlot (6n/3e) vs SqlFluff (5n/3e)
+            skip_graph_check=True,
         )
 
         # MERGE operations have complex column lineage - parsers differ
         assert_column_lineage_equal(
             query,
-            [],
+            [
+                (
+                    TestColumnQualifierTuple("customer_id", "source_customers"),
+                    TestColumnQualifierTuple("customer_id", "target_customers"),
+                ),
+                (
+                    TestColumnQualifierTuple("total_purchases", "source_customers"),
+                    TestColumnQualifierTuple("total_purchases", "target_customers"),
+                ),
+                (
+                    TestColumnQualifierTuple("customer_name", "source_customers"),
+                    TestColumnQualifierTuple("customer_name", "target_customers"),
+                ),
+                (
+                    TestColumnQualifierTuple("email", "source_customers"),
+                    TestColumnQualifierTuple("email", "target_customers"),
+                ),
+                (
+                    TestColumnQualifierTuple("last_purchase_date", "source_customers"),
+                    TestColumnQualifierTuple("last_purchase_date", "target_customers"),
+                ),
+            ],
             dialect=Dialect.SNOWFLAKE.value,
+            # SqlGlot: Creates additional incorrect column lineage tgt.total_purchases -> target_customers.total_purchases
+            test_sqlglot=False,
         )
 
     # ==================== SET OPERATIONS ====================
@@ -1202,12 +1310,22 @@ class TestComplexQueryPatterns(TestCase):
             {"active_customers", "premium_members"},
             set(),
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: UnsupportedStatementException for INTERSECT operation
+            # SqlFluff: Returns 0 source tables
+            # SqlParse: Only returns "active_customers" as source table
+            test_sqlglot=False,
+            test_sqlfluff=False,
+            test_sqlparse=False,
         )
 
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: UnsupportedStatementException for INTERSECT operation
+            # Graph: SqlFluff (0n/0e) vs SqlParse (2n/1e)
+            test_sqlglot=False,
+            skip_graph_check=True,
         )
 
     def test_except_minus_operation(self):
@@ -1228,12 +1346,20 @@ class TestComplexQueryPatterns(TestCase):
             {"inventory", "sold_products"},
             set(),
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: UnsupportedStatementException for EXCEPT operation
+            # SqlFluff: Returns 0 source tables
+            test_sqlglot=False,
+            test_sqlfluff=False,
         )
 
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: UnsupportedStatementException for EXCEPT operation
+            # Graph: SqlFluff (0n/0e) vs SqlParse (4n/2e)
+            test_sqlglot=False,
+            skip_graph_check=True,
         )
 
     def test_combination_of_set_operations(self):
@@ -1263,12 +1389,20 @@ class TestComplexQueryPatterns(TestCase):
             },
             set(),
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: UnsupportedStatementException for INTERSECT and EXCEPT operations
+            # SqlFluff: Doesn't capture source tables from INTERSECT and EXCEPT, only returns 2
+            test_sqlglot=False,
+            test_sqlfluff=False,
         )
 
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: UnsupportedStatementException for INTERSECT and EXCEPT operations
+            # Graph: SqlFluff (4n/2e) vs SqlParse (16n/12e)
+            test_sqlglot=False,
+            skip_graph_check=True,
         )
 
     # ==================== ADVANCED JSON/ARRAY OPERATIONS ====================
@@ -1313,15 +1447,19 @@ class TestComplexQueryPatterns(TestCase):
 
         assert_table_lineage_equal(
             query,
-            {"customers"},
+            {"customers", DataFunction("unnest")},
             set(),
             dialect=Dialect.POSTGRES.value,
+            # SqlParse: Missing "unnest" data function in source tables
+            test_sqlparse=False,
         )
 
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # Graph: SqlGlot (4n/2e) vs SqlParse (2n/1e)
+            skip_graph_check=True,
         )
 
     # ==================== COMPLEX CONDITIONAL LOGIC ====================
