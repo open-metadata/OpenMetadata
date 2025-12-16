@@ -480,7 +480,7 @@ export const assignCertification = async (
   endpoint: string
 ) => {
   const certificationResponse = page.waitForResponse(
-    '/api/v1/tags?parent=Certification&limit=50&disabled=false'
+    '/api/v1/tags?*parent=Certification*'
   );
   await page.getByTestId('edit-certification').click();
   await certificationResponse;
