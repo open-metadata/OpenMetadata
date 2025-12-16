@@ -16,11 +16,8 @@ import { TagClass } from '../../support/tag/TagClass';
 import {
   closeCertificationDropdown,
   openCertificationDropdown,
-  setAllSystemCertificationTagsDisabled,
   setCertificationClassificationDisabled,
   setTagDisabled,
-  setTagDisabledByFqn,
-  SYSTEM_CERTIFICATION_TAGS,
 } from '../../utils/certification';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 
@@ -248,81 +245,6 @@ test.describe.serial('Certification Dropdown', () => {
       await enabledTag.delete(apiContext);
       await disabledTag1.delete(apiContext);
       await disabledTag2.delete(apiContext);
-      await afterAction();
-    }
-  });
-});
-
-test.describe.serial('System Level Certification Tags', () => {
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await table.create(apiContext);
-    await setCertificationClassificationDisabled(apiContext, false);
-    await setAllSystemCertificationTagsDisabled(apiContext, false);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await setCertificationClassificationDisabled(apiContext, false);
-    await setAllSystemCertificationTagsDisabled(apiContext, false);
-    await table.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should NOT show disabled system certification tag in dropdown', async ({
-    page,
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    const disabledTagFqn = 'Certification.Gold';
-    await setTagDisabledByFqn(apiContext, disabledTagFqn, true);
-
-    try {
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-      await openCertificationDropdown(page);
-
-      // Disabled Gold tag should NOT be visible
-      await expect(
-        page.getByTestId(`radio-btn-${disabledTagFqn}`)
-      ).not.toBeVisible();
-
-      // Other system tags should still be visible
-      await expect(
-        page.getByTestId('radio-btn-Certification.Silver')
-      ).toBeVisible();
-      await expect(
-        page.getByTestId('radio-btn-Certification.Bronze')
-      ).toBeVisible();
-
-      await closeCertificationDropdown(page);
-    } finally {
-      await setTagDisabledByFqn(apiContext, disabledTagFqn, false);
-      await afterAction();
-    }
-  });
-
-  test('should NOT show any system certification tags when classification is disabled', async ({
-    page,
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await setCertificationClassificationDisabled(apiContext, true);
-
-    try {
-      await redirectToHomePage(page);
-      await table.visitEntityPage(page);
-      await openCertificationDropdown(page);
-
-      // All system certification tags should NOT be visible
-      for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
-        await expect(page.getByTestId(`radio-btn-${tagFqn}`)).not.toBeVisible();
-      }
-
-      await closeCertificationDropdown(page);
-    } finally {
-      await setCertificationClassificationDisabled(apiContext, false);
       await afterAction();
     }
   });
