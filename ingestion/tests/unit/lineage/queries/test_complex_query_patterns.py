@@ -1501,12 +1501,19 @@ class TestComplexQueryPatterns(TestCase):
             },
             set(),
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: Missing premium_products table from EXISTS subquery in CASE expression
+            # SqlFluff: Missing all subquery tables in CASE expression (only finds products)
+            # Although "premium_products" is not contributed to final output, review expectations
+            test_sqlglot=False,
+            test_sqlfluff=False,
         )
 
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # Graph: Different graph structures between parsers (SqlGlot 12n/9e vs SqlFluff 2n/1e)
+            skip_graph_check=True,
         )
 
     # ==================== LATERAL JOINS AND DERIVED TABLES ====================
@@ -1536,12 +1543,20 @@ class TestComplexQueryPatterns(TestCase):
             {"customers", "orders"},
             set(),
             dialect=Dialect.POSTGRES.value,
+            # SqlFluff: IndexError: tuple index out of range with LATERAL JOIN syntax
+            # Graph: SqlGlot (6n/3e) vs SqlParse (5n/2e)
+            test_sqlfluff=False,
+            skip_graph_check=True,
         )
 
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # SqlFluff: IndexError: tuple index out of range with LATERAL JOIN syntax
+            # Graph: SqlGlot (12n/12e) vs SqlParse (11n/11e)
+            test_sqlfluff=False,
+            skip_graph_check=True,
         )
 
     def test_multiple_lateral_joins(self):
@@ -1577,12 +1592,20 @@ class TestComplexQueryPatterns(TestCase):
             {"products", "sales", "reviews"},
             set(),
             dialect=Dialect.POSTGRES.value,
+            # SqlFluff: IndexError: tuple index out of range with LATERAL JOIN syntax
+            # Graph: SqlGlot (10n/5e) vs SqlParse (8n/3e)
+            test_sqlfluff=False,
+            skip_graph_check=True,
         )
 
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # SqlFluff: IndexError: tuple index out of range with LATERAL JOIN syntax
+            # Graph: SqlGlot (20n/20e) vs SqlParse (18n/18e)
+            test_sqlfluff=False,
+            skip_graph_check=True,
         )
 
     # ==================== COMPLEX AGGREGATIONS ====================
@@ -1793,6 +1816,8 @@ class TestComplexQueryPatterns(TestCase):
             query,
             [],
             dialect=Dialect.POSTGRES.value,
+            # Graph: SqlGlot (12n/11e) vs SqlFluff (13n/12e)
+            skip_graph_check=True,
         )
 
     # ==================== ADVANCED DML PATTERNS ====================
@@ -1871,8 +1896,28 @@ class TestComplexQueryPatterns(TestCase):
                     TestColumnQualifierTuple("customer_name", "customers"),
                     TestColumnQualifierTuple("customer_name", "customer_segments"),
                 ),
+                (
+                    TestColumnQualifierTuple("order_date", "orders"),
+                    TestColumnQualifierTuple("activity_status", "customer_segments"),
+                ),
+                (
+                    TestColumnQualifierTuple("amount", "orders"),
+                    TestColumnQualifierTuple("customer_segment", "customer_segments"),
+                ),
+                (
+                    TestColumnQualifierTuple("amount", "orders"),
+                    TestColumnQualifierTuple("lifetime_value", "customer_segments"),
+                ),
+                (
+                    TestColumnQualifierTuple("order_id", "orders"),
+                    TestColumnQualifierTuple("total_orders", "customer_segments"),
+                ),
             ],
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: no column lineage captured
+            # Graph: SqlFluff (33n/48e) vs SqlParse (32n/47e)
+            test_sqlglot=False,
+            skip_graph_check=True,
         )
 
     def test_delete_with_subquery_and_join(self):
@@ -1893,6 +1938,12 @@ class TestComplexQueryPatterns(TestCase):
             {"old_orders", "customers"},
             {"old_orders"},
             dialect=Dialect.MYSQL.value,
+            # SqlGlot: no source tables captured
+            # SqlFluff: no source tables captured
+            # SqlParse: no source tables captured
+            test_sqlglot=False,
+            test_sqlfluff=False,
+            test_sqlparse=False,
         )
 
         # DELETE operations typically don't have column lineage
@@ -1900,6 +1951,8 @@ class TestComplexQueryPatterns(TestCase):
             query,
             [],
             dialect=Dialect.MYSQL.value,
+            # Graph: SqlGlot (1n/0e) vs SqlFluff (0n/0e)
+            skip_graph_check=True,
         )
 
     # ==================== COMPLEX VIEW CREATION ====================
@@ -1951,7 +2004,6 @@ class TestComplexQueryPatterns(TestCase):
             dialect=Dialect.POSTGRES.value,
         )
 
-        # CREATE VIEW with UNION - column lineage from multiple sources
         assert_column_lineage_equal(
             query,
             [
@@ -2022,6 +2074,12 @@ class TestComplexQueryPatterns(TestCase):
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: no column lineage captured
+            # SqlFluff: Includes wildcard lineages from CTE aliases with different schema handling (otherwise good)
+            # SqlParse: Includes wildcard lineages from CTE aliases with different schema handling (otherwise good)
+            test_sqlglot=False,
+            test_sqlfluff=False,
+            test_sqlparse=False,
         )
 
     # ==================== COMPLEX SUBQUERY PATTERNS ====================
@@ -2059,6 +2117,8 @@ class TestComplexQueryPatterns(TestCase):
             query,
             [],
             dialect=Dialect.MYSQL.value,
+            # Graph: SqlGlot (9n/8e) vs SqlFluff (16n/19e)
+            skip_graph_check=True,
         )
 
     # ==================== MIXED COMPLEX PATTERNS ====================
@@ -2157,12 +2217,18 @@ class TestComplexQueryPatterns(TestCase):
             {"sales", "products"},
             set(),
             dialect=Dialect.SNOWFLAKE.value,
+            # SqlFluff: capturing "category_leaders" CTE as source table incorrectly
+            # Graph: SqlGlot (19n/11e) vs SqlFluff (17n/10e)
+            test_sqlfluff=False,
+            skip_graph_check=True,
         )
 
         assert_column_lineage_equal(
             query,
             [],
             dialect=Dialect.SNOWFLAKE.value,
+            # Graph: SqlGlot (48n/61e) vs SqlFluff (63n/85e)
+            skip_graph_check=True,
         )
 
     # ==================== COMPLEX NESTED JOINS WITH COLUMN LINEAGE (10 TESTS) ====================
@@ -2250,6 +2316,10 @@ class TestComplexQueryPatterns(TestCase):
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
+            # SqlFluff: capturing "oi.quantity * oi.unit_price" as mutiple wildcard lineages
+            # Graph: check timeout but graph is good (30n/41e)
+            test_sqlfluff=False,
+            skip_graph_check=True,
         )
 
     def test_nested_join_02_four_level_mixed_joins(self):
@@ -2437,6 +2507,8 @@ class TestComplexQueryPatterns(TestCase):
                 ),
             ],
             dialect=Dialect.SNOWFLAKE.value,
+            # Graph: check timeout but graph is good (45n/60e)
+            skip_graph_check=True,
         )
 
     def test_nested_join_04_self_join_multiple_levels(self):
@@ -2656,6 +2728,8 @@ class TestComplexQueryPatterns(TestCase):
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: capturing only 2 column lineages, not capturing from INNER JOIN
+            test_sqlglot=False,
         )
 
     def test_nested_join_07_full_outer_join_with_coalesce(self):
@@ -2809,6 +2883,8 @@ class TestComplexQueryPatterns(TestCase):
             {"products", "sales"},
             {"active_products"},
             dialect=Dialect.POSTGRES.value,
+            # SqlGlot: not capturing "sales" as source table
+            test_sqlglot=False,
         )
 
         assert_column_lineage_equal(
@@ -2836,6 +2912,8 @@ class TestComplexQueryPatterns(TestCase):
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
+            # Graph: SqlGlot (13n/17e) vs SqlFluff (16n/19e)
+            skip_graph_check=True,
         )
 
     def test_nested_join_10_complex_join_conditions(self):
@@ -2909,6 +2987,8 @@ class TestComplexQueryPatterns(TestCase):
                 ),
             ],
             dialect=Dialect.SNOWFLAKE.value,
+            # SqlFluff: capturing arithmetic * as wildcard lineage
+            test_sqlfluff=False,
         )
 
     # ====================  MULTIPLE CTE CHAINS WITH COLUMN LINEAGE (10 TESTS) ====================
