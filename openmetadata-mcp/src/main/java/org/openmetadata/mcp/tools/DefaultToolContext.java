@@ -63,8 +63,7 @@ public class DefaultToolContext {
               .content(
                   List.of(
                       new McpSchema.TextContent(
-                          JsonUtils.pojoToJson(
-                              Map.of("error", "Unknown function: " + toolName)))))
+                          JsonUtils.pojoToJson(Map.of("error", "Unknown function: " + toolName)))))
               .isError(true)
               .build();
       }
