@@ -57,3 +57,37 @@ export const closeCertificationDropdown = async (page: Page) => {
   });
 };
 
+export const SYSTEM_CERTIFICATION_TAGS = [
+  'Certification.Gold',
+  'Certification.Silver',
+  'Certification.Bronze',
+];
+
+export const getTagByFqn = async (
+  apiContext: APIRequestContext,
+  tagFqn: string
+) => {
+  const response = await apiContext.get(
+    `/api/v1/tags/name/${encodeURIComponent(tagFqn)}`
+  );
+
+  return await response.json();
+};
+
+export const setTagDisabledByFqn = async (
+  apiContext: APIRequestContext,
+  tagFqn: string,
+  disabled: boolean
+) => {
+  const tag = await getTagByFqn(apiContext, tagFqn);
+  await setTagDisabled(apiContext, tag.id, disabled);
+};
+
+export const setAllSystemCertificationTagsDisabled = async (
+  apiContext: APIRequestContext,
+  disabled: boolean
+) => {
+  for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
+    await setTagDisabledByFqn(apiContext, tagFqn, disabled);
+  }
+};
