@@ -96,7 +96,6 @@ jobs:
           python-version: "3.10"
           args: "-d postgresql"
           ingestion_dependency: "all"
-          vite-coverage: "true"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -106,6 +105,17 @@ jobs:
       - name: Install dependencies
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: yarn --ignore-scripts --frozen-lockfile
+
+      - name: Start Vite Dev Server with Coverage
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: |
+          VITE_COVERAGE=true yarn start --port 3000 &
+          echo $! > vite-server.pid
+          
+          # Wait for server to be ready
+          timeout 60 bash -c 'until curl -f http://localhost:3000 > /dev/null 2>&1; do sleep 2; done'
+          echo "✅ Vite dev server is ready on port 3000"
+
       - name: Install Playwright Browsers
         run: npx playwright@1.51.1 install --with-deps
       - name: Run Playwright tests
@@ -129,7 +139,7 @@ jobs:
                 --project=chromium \
                 --grep @ingestion \
                 --grep-invert @dataAssetRules \
-                --shard=${CHROMIUM_SHARD}/5
+                --shard=${CHROMIUM_SHARD}/5 \
                 --workers=50%
 
             else
@@ -189,12 +199,13 @@ jobs:
           PLAYWRIGHT_S3_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.TEST_S3_STORAGE_SECRET_ACCESS_KEY }}
           PLAYWRIGHT_S3_STORAGE_END_POINT_URL: ${{ secrets.TEST_S3_STORAGE_END_POINT_URL }}
 
+          # Point tests to Vite dev server instead of Java server
+          PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
+
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
           # Determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Enable Coverage for Build and Runtime
-          VITE_COVERAGE: "true"
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -209,6 +220,15 @@ jobs:
           name: coverage-raw-${{ matrix.shardIndex }}
           path: openmetadata-ui/src/main/resources/ui/.nyc_output
           retention-days: 1
+
+      - name: Stop Vite Server
+        if: always()
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: |
+          if [ -f vite-server.pid ]; then
+            kill $(cat vite-server.pid) || true
+            rm vite-server.pid
+          fi
 
       - name: Clean Up
         run: |
