@@ -59,25 +59,33 @@ export const useListingData = <
     searchKey,
   } = props;
 
-  const urlStateHook = useUrlState({ searchKey, filterKeys, filterConfigs });
+  const urlStateHook = useUrlState({
+    searchKey,
+    filterKeys,
+    filterConfigs,
+    defaultPageSize: pageSize,
+  });
   const {
     urlState,
     parsedFilters,
     setSearchQuery,
     setFilters,
     setCurrentPage,
+    setPageSize,
   } = urlStateHook;
+
+  const effectivePageSize = urlState.pageSize || pageSize;
 
   const dataFetching = useDataFetching<T>({
     searchIndex,
     baseFilter,
-    pageSize,
+    pageSize: effectivePageSize,
   });
 
   const paginationState = usePaginationState({
     currentPage: urlState.currentPage,
     totalEntities: dataFetching.totalEntities,
-    pageSize,
+    pageSize: effectivePageSize,
     onPageChange: setCurrentPage,
   });
 
@@ -103,6 +111,7 @@ export const useListingData = <
     urlState.currentPage,
     urlState.searchQuery,
     urlState.filters,
+    urlState.pageSize,
     // Note: dataFetching.searchEntities intentionally excluded - we always want the latest version
   ]);
 
@@ -133,6 +142,13 @@ export const useListingData = <
       // Selection will be cleared by the useEffect that watches these changes
     },
     [setCurrentPage]
+  );
+
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size);
+    },
+    [setPageSize]
   );
 
   // selectedEntities should be an array of IDs, not entities
@@ -176,6 +192,7 @@ export const useListingData = <
     handleSearchChange,
     handleFilterChange,
     handlePageChange,
+    handlePageSizeChange,
     refetch,
   };
 };
