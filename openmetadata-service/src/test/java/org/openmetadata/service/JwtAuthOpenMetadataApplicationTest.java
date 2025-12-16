@@ -351,6 +351,11 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
     // Use Jetty HTTP client connector - Jersey 3.1.4+ jersey-jetty-connector supports Jetty 12
     HttpClient httpClient = new HttpClient();
     httpClient.setIdleTimeout(0);
+    try {
+      httpClient.start(); // Jetty 12 HttpClient must be explicitly started
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to start Jetty HttpClient", e);
+    }
     ClientConfig config = new ClientConfig();
     config.connectorProvider(new JettyConnectorProvider());
     config.register(new JettyHttpClientSupplier(httpClient));
