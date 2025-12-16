@@ -286,7 +286,6 @@ const TagsV1 = ({
     if (columnName) {
       const recognizerPopupWrapper = tagClassBase.getRecognizerFeedbackPopup(
         tag,
-        entityType,
         entityFqn,
         automatedTagChip
       );
