@@ -16,6 +16,7 @@ on:
     branches:
       - main
     paths:
+      - ".github/workflows/maven-postgres-rdf-tests-build.yml"
       - "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**"
       - "openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**"
       - "openmetadata-spec/src/main/resources/rdf/**"
@@ -27,6 +28,7 @@ on:
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths:
+      - ".github/workflows/maven-postgres-rdf-tests-build.yml"
       - "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**"
       - "openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**"
       - "openmetadata-spec/src/main/resources/rdf/**"
@@ -98,8 +100,7 @@ jobs:
 
       - name: Start PostgreSQL with RDF enabled
         run: |
-          cd ./docker/development
-          docker compose up -d postgresql
+          docker compose -f ./docker/development/docker-compose-postgres-fuseki.yml up -d postgresql fuseki
           # Wait for PostgreSQL to be ready
           sleep 30
           # Verify PostgreSQL is running
