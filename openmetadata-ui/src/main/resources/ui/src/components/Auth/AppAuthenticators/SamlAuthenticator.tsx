@@ -65,7 +65,7 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     const login = async () => {
       if (config.idp.authorityUrl) {
-        const redirectUri = `${window.location.origin}${ROUTES.SAML_CALLBACK}`;
+        const redirectUri = `${window.location.origin}${ROUTES.AUTH_CALLBACK}`;
         window.location.href = `${config.idp.authorityUrl}?redirectUri=${redirectUri}`;
       } else {
         showErrorToast('SAML IDP Authority URL is not configured.');
