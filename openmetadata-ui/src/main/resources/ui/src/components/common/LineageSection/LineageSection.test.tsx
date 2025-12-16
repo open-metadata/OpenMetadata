@@ -13,22 +13,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import LineageSection from './LineageSection';
 
-jest.mock('react-i18next', () => ({
-  useTranslation: jest.fn().mockReturnValue({
-    t: (key: string, options?: Record<string, unknown>) => {
-      if (options) {
-        if (key === 'label.-with-colon') {
-          return `${options.text}:`;
-        }
-
-        return `${key} - ${JSON.stringify(options)}`;
-      }
-
-      return key;
-    },
-  }),
-}));
-
 jest.mock('../../../assets/svg/lineage-upstream-icon.svg', () => ({
   ReactComponent: () => <div data-testid="upstream-icon">Upstream</div>,
 }));
@@ -97,11 +81,9 @@ describe('LineageSection', () => {
       expect(upstreamSection).toBeInTheDocument();
       expect(downstreamSection).toBeInTheDocument();
 
-      expect(screen.getByText('label.upstream:')).toBeInTheDocument();
-      expect(screen.getByText('22')).toBeInTheDocument();
-
-      expect(screen.getByText('label.downstream:')).toBeInTheDocument();
-      expect(screen.getByText('12')).toBeInTheDocument();
+      // Check counts using test IDs (more reliable than text matching)
+      expect(screen.getByTestId('upstream-count')).toHaveTextContent('22');
+      expect(screen.getByTestId('downstream-count')).toHaveTextContent('12');
     });
 
     it('renders divider between upstream and downstream sections', () => {

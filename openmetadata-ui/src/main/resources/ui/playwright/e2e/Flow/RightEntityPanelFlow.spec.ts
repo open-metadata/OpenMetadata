@@ -526,24 +526,19 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
 
       // First verify the Overview tab shows lineage counts in LineageSection
-      const overviewTab = summaryPanel.getByRole('menuitem', {
+      await summaryPanel.getByRole('menuitem', {
         name: /overview/i,
-      });
+      }).click();
 
-      await overviewTab.click();
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
-
-      await summaryPanel.scrollIntoViewIfNeeded();
 
       const lineageSection = summaryPanel.locator(
         '[data-testid="upstream-lineage"]'
       );
 
       if (await lineageSection.isVisible()) {
-        await expect(lineageSection).toBeVisible();
-
         // Verify upstream and downstream counts are visible
         const upstreamText = summaryPanel.getByText(/upstream:/i);
         const downstreamText = summaryPanel.getByText(/downstream:/i);

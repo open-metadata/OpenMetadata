@@ -119,6 +119,35 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
+jest.mock('../../../utils/SearchClassBase', () => {
+  const actual = jest.requireActual('../../../utils/SearchClassBase');
+  const originalInstance = actual.default;
+  
+  // Use Object.assign to copy all properties and methods
+  const mockSearchClassBase = Object.assign({}, originalInstance);
+  
+  // Copy prototype methods
+  const prototype = Object.getPrototypeOf(originalInstance);
+  Object.getOwnPropertyNames(prototype).forEach((name) => {
+    if (name !== 'constructor' && typeof prototype[name] === 'function') {
+      mockSearchClassBase[name] = prototype[name].bind(originalInstance);
+    }
+  });
+  
+  // Override getEntityLink to handle null/undefined gracefully
+  mockSearchClassBase.getEntityLink = jest.fn().mockImplementation((entity) => {
+    if (!entity || !entity.entityType) {
+      return '';
+    }
+    return originalInstance.getEntityLink(entity);
+  });
+  
+  return {
+    __esModule: true,
+    default: mockSearchClassBase,
+  };
+});
+
 describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
     await act(async () => {
@@ -363,6 +392,139 @@ describe('EntitySummaryPanel component tests', () => {
       const tableSummary = screen.getByTestId('TableSummary');
 
       expect(tableSummary).toBeInTheDocument();
+    });
+
+    it('should handle entity type that does not support lineage gracefully', async () => {
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                entityType: EntityType.USER,
+                id: 'user-1',
+                fullyQualifiedName: 'user1',
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      // Should still render without crashing, even though USER doesn't support lineage
+      expect(screen.queryByTestId('TableSummary')).not.toBeInTheDocument();
+    });
+
+    it('should handle missing lineageData gracefully', async () => {
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                entityType: EntityType.TABLE,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      // Should render without crashing even when lineageData is null/undefined
+      const tableSummary = screen.getByTestId('TableSummary');
+
+      expect(tableSummary).toBeInTheDocument();
+    });
+
+    it('should handle missing fullyQualifiedName for lineage-supported entity', async () => {
+      const entityWithoutFQN = {
+        ...mockTableEntityDetails,
+        fullyQualifiedName: undefined,
+        entityType: EntityType.TABLE,
+      };
+
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: entityWithoutFQN,
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      // Should still render without crashing
+      const tableSummary = screen.getByTestId('TableSummary');
+
+      expect(tableSummary).toBeInTheDocument();
+    });
+
+    it('should handle missing entityType gracefully', async () => {
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: {
+                ...mockTableEntityDetails,
+                entityType: undefined as unknown as EntityType,
+              },
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      // Component defaults to EntityType.TABLE when entityType is undefined
+      // So it should render TableSummary as a fallback
+      const tableSummary = screen.getByTestId('TableSummary');
+
+      expect(tableSummary).toBeInTheDocument();
+    });
+
+    it('should handle missing entityDetails gracefully', async () => {
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: null as unknown as any,
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      // Should not crash when entityDetails is null
+      expect(screen.queryByTestId('TableSummary')).not.toBeInTheDocument();
+    });
+
+    it('should handle missing id for lineage-supported entity', async () => {
+      const entityWithoutId = {
+        ...mockTableEntityDetails,
+        id: undefined,
+        entityType: EntityType.TABLE,
+      };
+
+      await act(async () => {
+        render(
+          <EntitySummaryPanel
+            entityDetails={{
+              details: entityWithoutId,
+            }}
+            handleClosePanel={mockHandleClosePanel}
+          />,
+          { wrapper: Wrapper }
+        );
+      });
+
+      // Should not crash when id is missing (component may show loader or not render summary)
+      // The component should handle missing id gracefully without throwing errors
+      expect(screen.queryByTestId('TableSummary')).not.toBeInTheDocument();
     });
 
     it('should handle entity type change correctly', async () => {

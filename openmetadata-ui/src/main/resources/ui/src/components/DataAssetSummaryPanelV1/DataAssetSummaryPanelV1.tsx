@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -180,7 +180,7 @@ export const DataAssetSummaryPanelV1 = ({
         };
       }
 
-      if (!lineageData || !dataAsset.fullyQualifiedName) {
+      if (isUndefined(lineageData) || lineageData === null || isEmpty(dataAsset.fullyQualifiedName)) {
         return {
           upstreamCount: 0,
           downstreamCount: 0,
@@ -198,7 +198,7 @@ export const DataAssetSummaryPanelV1 = ({
         getUpstreamDownstreamNodesEdges(
           edges,
           nodes,
-          dataAsset.fullyQualifiedName
+          dataAsset.fullyQualifiedName!
         );
 
       return {

@@ -24,6 +24,11 @@ import { ReactComponent as DownstreamIcon } from '../../../assets/svg/lineage-do
 import { ReactComponent as UpstreamIcon } from '../../../assets/svg/lineage-upstream-icon.svg';
 import Loader from '../Loader/Loader';
 import { LineageSectionProps } from './LineageSection.interface';
+import {
+  getIconWrapperStyles,
+  getSectionStyles,
+  getTextStyles,
+} from './LineageSection.styles';
 
 const LineageSection: React.FC<LineageSectionProps> = ({
   upstreamCount,
@@ -38,26 +43,6 @@ const LineageSection: React.FC<LineageSectionProps> = ({
     onLineageClick?.();
   };
 
-  const textStyles = {
-    fontSize: '13px',
-    fontWeight: 400,
-    color: theme.palette.allShades?.info?.[700],
-  };
-
-  const sectionStyles = {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    cursor: 'pointer',
-  };
-
-  const iconWrapperStyles = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: theme.palette.allShades?.gray?.[600],
-  };
-
   const renderLineageItem = (
     type: 'upstream' | 'downstream',
     Icon: React.FC<React.SVGProps<SVGSVGElement>>,
@@ -66,16 +51,16 @@ const LineageSection: React.FC<LineageSectionProps> = ({
   ) => (
     <ButtonBase
       data-testid={`${type}-lineage`}
-      sx={{ ...sectionStyles, gap }}
+      sx={{ ...getSectionStyles(), gap }}
       onClick={handleClick}>
-      <Box sx={iconWrapperStyles}>
+      <Box sx={getIconWrapperStyles(theme)}>
         <Icon height={14} width={14} />
       </Box>
       <Stack direction="row" spacing={0.5}>
-        <Typography sx={textStyles}>
+        <Typography sx={getTextStyles(theme)}>
           {t('label.-with-colon', { text: t(`label.${type}`) })}
         </Typography>
-        <Typography data-testid={`${type}-count`} sx={textStyles}>
+        <Typography data-testid={`${type}-count`} sx={getTextStyles(theme)}>
           {count}
         </Typography>
       </Stack>
@@ -86,15 +71,15 @@ const LineageSection: React.FC<LineageSectionProps> = ({
     <Box
       data-testid="lineage-section"
       sx={{
-        paddingX: '14px',
-        paddingBottom: 4,
+        paddingX: theme.spacing(3.25),
+        paddingBottom: theme.spacing(4),
         borderBottom: `0.6px solid ${theme.palette.allShades?.gray?.[200]}`,
       }}>
       <Typography
         sx={{
-          fontWeight: 600,
+          fontWeight: theme.typography.h1.fontWeight,
           fontSize: '13px',
-          mb: 3,
+          mb: theme.spacing(3),
         }}>
         {t('label.lineage')}
       </Typography>
@@ -103,7 +88,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
       ) : upstreamCount === 0 && downstreamCount === 0 ? (
         <Typography
           color={theme.palette.allShades?.gray?.[500]}
-          fontSize="12px">
+          fontSize={theme.typography.caption.fontSize}>
           {t('message.no-lineage-available')}
         </Typography>
       ) : (
@@ -114,8 +99,8 @@ const LineageSection: React.FC<LineageSectionProps> = ({
             orientation="vertical"
             sx={{
               alignSelf: 'center',
-              height: '20px',
-              marginX: 4,
+              height: theme.spacing(5),
+              marginX: theme.spacing(4),
               borderColor: theme.palette.allShades?.gray?.[200],
             }}
           />
