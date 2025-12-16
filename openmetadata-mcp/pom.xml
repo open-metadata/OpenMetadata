@@ -64,6 +64,11 @@
             <version>${mcp-sdk.version}</version>
         </dependency>
         <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp-json-jackson2</artifactId>
+            <version>${mcp-sdk.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.open-metadata</groupId>
             <artifactId>openmetadata-service</artifactId>
             <version>${project.parent.version}</version>
