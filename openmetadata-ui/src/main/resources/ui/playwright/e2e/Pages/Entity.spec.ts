@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base, expect } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
@@ -386,9 +386,11 @@ entities.forEach((EntityClass) => {
             // Open column detail panel
             const columnName = page
               .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId('column-name');
+              .getByTestId('column-name')
+              .first();
             await columnName.scrollIntoViewIfNeeded();
             await columnName.click();
+
             await expect(page.locator('.column-detail-panel')).toBeVisible();
 
             const panelContainer = page.locator('.column-detail-panel');
@@ -457,9 +459,11 @@ entities.forEach((EntityClass) => {
             // Open column detail panel
             const columnName = page
               .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId('column-name');
+              .getByTestId('column-name')
+              .first();
             await columnName.scrollIntoViewIfNeeded();
             await columnName.click();
+
             await expect(page.locator('.column-detail-panel')).toBeVisible();
 
             const panelContainer = page.locator('.column-detail-panel');
@@ -546,6 +550,7 @@ entities.forEach((EntityClass) => {
 
             // Close panel
             await panelContainer.getByTestId('close-button').click();
+
             await expect(
               page.locator('.column-detail-panel')
             ).not.toBeVisible();
@@ -566,9 +571,11 @@ entities.forEach((EntityClass) => {
             // Open column detail panel
             const columnName = page
               .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId('column-name');
+              .getByTestId('column-name')
+              .first();
             await columnName.scrollIntoViewIfNeeded();
             await columnName.click();
+
             await expect(page.locator('.column-detail-panel')).toBeVisible();
 
             const panelContainer = page.locator('.column-detail-panel');
@@ -580,6 +587,7 @@ entities.forEach((EntityClass) => {
             if (hasDataType) {
               // If data type chip exists, it should have content
               const dataTypeText = await dataTypeChip.textContent();
+
               expect(dataTypeText).toBeTruthy();
               expect(dataTypeText?.trim().length).toBeGreaterThan(0);
             }
@@ -621,6 +629,7 @@ entities.forEach((EntityClass) => {
 
                   if (updatedMatch) {
                     const newIndex = parseInt(updatedMatch[1], 10);
+
                     expect(newIndex).toBe(currentIndex + 1);
                     expect(parseInt(updatedMatch[2], 10)).toBe(totalCount);
                   }
@@ -636,14 +645,15 @@ entities.forEach((EntityClass) => {
 
                   // Verify we're back
                   const finalPagination = await paginationText.textContent();
+
                   expect(finalPagination).toBe(paginationContent);
                 }
               }
             }
 
             // Close panel
-            const closeButton = panelContainer.locator('button[type="text"]');
-            await closeButton.click();
+            await panelContainer.getByTestId('close-button').click();
+
             await expect(
               page.locator('.column-detail-panel')
             ).not.toBeVisible();
@@ -675,8 +685,10 @@ entities.forEach((EntityClass) => {
             // Open column detail panel
             const columnName = page
               .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId('column-name');
+              .getByTestId('column-name')
+              .first();
             await columnName.click();
+
             await expect(page.locator('.column-detail-panel')).toBeVisible();
 
             const panelContainer = page.locator('.column-detail-panel');
@@ -721,6 +733,7 @@ entities.forEach((EntityClass) => {
 
             // Close panel
             await panelContainer.getByTestId('close-button').click();
+
             await expect(
               page.locator('.column-detail-panel')
             ).not.toBeVisible();
@@ -761,16 +774,20 @@ entities.forEach((EntityClass) => {
             // Open column detail panel
             const columnName = page
               .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId('column-name');
+              .getByTestId('column-name')
+              .first();
             await columnName.click();
+
             await expect(page.locator('.column-detail-panel')).toBeVisible();
 
             const panelContainer = page.locator('.column-detail-panel');
 
             // Verify panel displays correct column information
             await expect(page.getByTestId('entity-link')).toBeVisible();
+
             // Verify data type chip exists (may not be visible if data type is not available)
             const dataTypeChip = page.locator('.data-type-chip');
+
             // Data type chip should be attached to DOM (may be empty for some entity types)
             await expect(dataTypeChip.first()).toBeAttached();
 
@@ -801,19 +818,23 @@ entities.forEach((EntityClass) => {
 
             // Test tab navigation
             await page.getByTestId('data-quality-tab').click();
+
             await expect(page.getByTestId('data-quality-tab')).toHaveClass(
               /active/
             );
 
             await page.getByTestId('lineage-tab').click();
+
             await expect(page.getByTestId('lineage-tab')).toHaveClass(/active/);
 
             await page.getByTestId('custom-properties-tab').click();
+
             await expect(page.getByTestId('custom-properties-tab')).toHaveClass(
               /active/
             );
 
             await page.getByTestId('overview-tab').click();
+
             await expect(page.getByTestId('overview-tab')).toHaveClass(
               /active/
             );
@@ -835,6 +856,7 @@ entities.forEach((EntityClass) => {
               await page.waitForLoadState('networkidle');
 
               const updatedText = await paginationText.textContent();
+
               expect(updatedText).not.toBe(initialText);
               // Verify pagination still shows correct format after navigation
               expect(updatedText).toMatch(/\d+\s+of\s+\d+\s+columns?/i);
@@ -847,20 +869,21 @@ entities.forEach((EntityClass) => {
                 .nth(0);
 
               await expect(prevButton).toBeEnabled();
+
               await prevButton.click();
               await page.waitForLoadState('networkidle');
+
               await expect(page.getByTestId('entity-link')).toBeVisible();
 
               // Verify we're back to the original column
               const finalText = await paginationText.textContent();
+
               expect(finalText).toBe(initialText);
             }
 
             // Close panel
-            const closeButton = panelContainer
-              .locator('button[type="text"]')
-              .first();
-            await closeButton.click();
+            await panelContainer.getByTestId('close-button').click();
+
             await expect(
               page.locator('.column-detail-panel')
             ).not.toBeVisible();
