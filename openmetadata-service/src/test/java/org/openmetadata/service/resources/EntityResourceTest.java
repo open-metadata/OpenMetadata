@@ -2913,6 +2913,41 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void patch_descriptionRemoval_descriptionFieldPresentInResponse(TestInfo test)
+      throws IOException {
+    if (!supportsPatch || !supportsEmptyDescription) {
+      return;
+    }
+    // Create entity with description
+    K request = createRequest(getEntityName(test), "original description", null, null);
+    T entity = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Patch to remove the description (set to null)
+    String originalJson = JsonUtils.pojoToJson(entity);
+    entity.setDescription(null);
+    T updated = patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+
+    // Verify description is null
+    assertNull(updated.getDescription());
+
+    // Get the raw JSON response to verify the description field is present
+    WebTarget target = getResource(entity.getId());
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    String jsonResponse = response.readEntity(String.class);
+    JsonNode jsonNode = JsonUtils.readTree(jsonResponse);
+
+    // The description field should be present in the JSON response even if null
+    // This test will fail if @JsonInclude(JsonInclude.Include.NON_NULL) excludes the field
+    assertTrue(
+        jsonNode.has("description"),
+        "Description field should be present in JSON response even when null. "
+            + "Current JSON response does not include 'description' field, breaking API contract.");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   protected void put_addDeleteFollower_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following

@@ -173,6 +173,7 @@
                     <includeJsr303Annotations>true</includeJsr303Annotations>
                     <generateBuilders>true</generateBuilders>
                     <useJakartaValidation>true</useJakartaValidation>
+                    <inclusionLevel>ALWAYS</inclusionLevel>
                     <customAnnotator>org.openmetadata.annotations.OpenMetadataAnnotator</customAnnotator>
                 </configuration>
                 <dependencies>
