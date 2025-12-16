@@ -158,7 +158,7 @@ describe('formatContent', () => {
 
     // Should convert to server format with markdown link structure
     expect(result).toContain(
-      '&lt;#E.team.Infrastructure|[@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure)&gt;'
+      '<p>This <a data-type="mention" data-label="Infrastructure" href="http://localhost:3000/settings/members/teams/Infrastructure" data-entitytype="team" data-fqn="Infrastructure"><#E::team::Infrastructure|[@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure)></a> team</p>'
     );
   });
 });
