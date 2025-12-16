@@ -448,9 +448,23 @@
     </dependency>
 
     <!-- Use Jetty HTTP client connector - Jersey 3.1.4+ jersey-jetty-connector supports Jetty 12 -->
+    <!-- Exclude transitive jetty-client 12.0.x - we need 12.1.x to match Dropwizard's Jetty -->
     <dependency>
       <groupId>org.glassfish.jersey.connectors</groupId>
       <artifactId>jersey-jetty-connector</artifactId>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.eclipse.jetty</groupId>
+          <artifactId>jetty-client</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- Explicit jetty-client 12.1.x to match Dropwizard's Jetty version -->
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-client</artifactId>
+      <version>${jetty.version}</version>
       <scope>test</scope>
     </dependency>
 
