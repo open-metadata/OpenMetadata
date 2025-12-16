@@ -59,39 +59,48 @@ public class DefaultToolContext {
           result = new GetLineageTool().execute(authorizer, securityContext, params);
           break;
         default:
-          return new McpSchema.CallToolResult(
-              List.of(
-                  new McpSchema.TextContent(
-                      JsonUtils.pojoToJson(Map.of("error", "Unknown function: " + toolName)))),
-              true);
+          return McpSchema.CallToolResult.builder()
+              .content(
+                  List.of(
+                      new McpSchema.TextContent(
+                          JsonUtils.pojoToJson(
+                              Map.of("error", "Unknown function: " + toolName)))))
+              .isError(true)
+              .build();
       }
 
-      return new McpSchema.CallToolResult(
-          List.of(new McpSchema.TextContent(JsonUtils.pojoToJson(result))), false);
+      return McpSchema.CallToolResult.builder()
+          .content(List.of(new McpSchema.TextContent(JsonUtils.pojoToJson(result))))
+          .isError(false)
+          .build();
     } catch (AuthorizationException ex) {
       LOG.error("Authorization error: {}", ex.getMessage());
-      return new McpSchema.CallToolResult(
-          List.of(
-              new McpSchema.TextContent(
-                  JsonUtils.pojoToJson(
-                      Map.of(
-                          "error",
-                          String.format("Authorization error: %s", ex.getMessage()),
-                          "statusCode",
-                          403)))),
-          true);
+      return McpSchema.CallToolResult.builder()
+          .content(
+              List.of(
+                  new McpSchema.TextContent(
+                      JsonUtils.pojoToJson(
+                          Map.of(
+                              "error",
+                              String.format("Authorization error: %s", ex.getMessage()),
+                              "statusCode",
+                              403)))))
+          .isError(true)
+          .build();
     } catch (Exception ex) {
       LOG.error("Error executing tool: {}", ex.getMessage());
-      return new McpSchema.CallToolResult(
-          List.of(
-              new McpSchema.TextContent(
-                  JsonUtils.pojoToJson(
-                      Map.of(
-                          "error",
-                          String.format("Error executing tool: %s", ex.getMessage()),
-                          "statusCode",
-                          500)))),
-          true);
+      return McpSchema.CallToolResult.builder()
+          .content(
+              List.of(
+                  new McpSchema.TextContent(
+                      JsonUtils.pojoToJson(
+                          Map.of(
+                              "error",
+                              String.format("Error executing tool: %s", ex.getMessage()),
+                              "statusCode",
+                              500)))))
+          .isError(true)
+          .build();
     }
   }
 }
