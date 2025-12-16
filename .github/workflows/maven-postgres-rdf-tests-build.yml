@@ -12,6 +12,7 @@
 name: Maven Postgres RDF Tests CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
