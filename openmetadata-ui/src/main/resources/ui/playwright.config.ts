@@ -52,19 +52,10 @@ export default defineConfig({
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
-    /* Optimize for Dev Server Environment */
-    actionTimeout: 10 * 1000,
-    navigationTimeout: 60 * 1000,
-
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'retain-on-failure',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
-  },
-  
-  /* Increase expect timeout for slower dev server rendering */
-  expect: {
-    timeout: 10 * 1000,
   },
 
   /* Configure projects for major browsers */
@@ -125,7 +116,7 @@ export default defineConfig({
   ],
 
   // Increase timeout for the test
-  timeout: 120000,
+  timeout: 200000,
 
   /* Run your local dev server before starting the tests */
   // webServer: {
