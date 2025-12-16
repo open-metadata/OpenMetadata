@@ -17,6 +17,7 @@ import { Edge } from 'reactflow';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/searchLineageRequest';
+import { LineageLayer } from '../../generated/settings/settings';
 import {
   getDataQualityLineage,
   getLineageDataByFQN,
@@ -232,6 +233,112 @@ describe('LineageProvider', () => {
     const edgeDrawer = screen.getByText('Entity Lineage Sidebar');
 
     expect(edgeDrawer).toBeInTheDocument();
+  });
+
+  it('should enable column layer when entering edit mode and remove column layer when exiting edit mode', () => {
+    const TestComponent = () => {
+      const { onLineageEditClick, activeLayer } = useLineageProvider();
+
+      return (
+        <div>
+          <button data-testid="edit-lineage" onClick={onLineageEditClick}>
+            Edit Lineage
+          </button>
+          <div data-testid="active-layers">{activeLayer.join(',')}</div>
+        </div>
+      );
+    };
+
+    render(
+      <LineageProvider>
+        <TestComponent />
+      </LineageProvider>
+    );
+
+    const editButton = screen.getByTestId('edit-lineage');
+    const activeLayers = screen.getByTestId('active-layers');
+
+    expect(activeLayers.textContent).not.toContain('ColumnLevelLineage');
+
+    fireEvent.click(editButton);
+
+    expect(activeLayers.textContent).toContain('ColumnLevelLineage');
+
+    fireEvent.click(editButton);
+
+    expect(activeLayers.textContent).not.toContain('ColumnLevelLineage');
+  });
+
+  it('should keep other layers unaffected while entering and exiting edit mode', () => {
+    const TestComponent = () => {
+      const { onLineageEditClick, onUpdateLayerView, activeLayer } =
+        useLineageProvider();
+
+      return (
+        <div>
+          <button
+            data-testid="add-column-lineage"
+            onClick={() =>
+              onUpdateLayerView([
+                ...activeLayer,
+                LineageLayer.ColumnLevelLineage,
+              ])
+            }>
+            Add Column Lineage
+          </button>
+          <button
+            data-testid="add-data-observability"
+            onClick={() =>
+              onUpdateLayerView([
+                ...activeLayer,
+                LineageLayer.DataObservability,
+              ])
+            }>
+            Add DataObservability
+          </button>
+          <button data-testid="edit-lineage" onClick={onLineageEditClick}>
+            Edit Lineage
+          </button>
+          <div data-testid="active-layers">{activeLayer.join(',')}</div>
+        </div>
+      );
+    };
+
+    render(
+      <LineageProvider>
+        <TestComponent />
+      </LineageProvider>
+    );
+
+    const addColumnLineageButton = screen.getByTestId('add-column-lineage');
+    const addDataObservabilityButton = screen.getByTestId(
+      'add-data-observability'
+    );
+    const editButton = screen.getByTestId('edit-lineage');
+    const activeLayers = screen.getByTestId('active-layers');
+
+    expect(activeLayers.textContent).not.toContain('ColumnLevelLineage');
+    expect(activeLayers.textContent).not.toContain('DataObservability');
+
+    fireEvent.click(addColumnLineageButton);
+
+    expect(activeLayers.textContent).toContain('ColumnLevelLineage');
+    expect(activeLayers.textContent).not.toContain('DataObservability');
+
+    fireEvent.click(addDataObservabilityButton);
+
+    expect(activeLayers.textContent).toContain('ColumnLevelLineage');
+    expect(activeLayers.textContent).toContain('DataObservability');
+
+    fireEvent.click(editButton);
+
+    expect(activeLayers.textContent).toContain('ColumnLevelLineage');
+    expect(activeLayers.textContent).toContain('DataObservability');
+
+    fireEvent.click(editButton);
+
+    expect(activeLayers.textContent).not.toContain('ColumnLevelLineage');
+    expect(activeLayers.textContent).toContain('DataObservability');
   });
 
   it('should show delete modal', async () => {
