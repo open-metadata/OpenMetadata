@@ -56,10 +56,24 @@ export const updateEntityField = async <T>({
 
   const currentData = { [fieldName]: currentValue };
   const updatedData = { [fieldName]: newValue };
-  const jsonPatch = compare(currentData, updatedData);
+  let jsonPatch = compare(currentData, updatedData);
 
   if (jsonPatch.length === 0) {
     return { success: true, data: currentValue };
+  }
+
+  const hasArrayIndexOperations = jsonPatch.some(
+    (op) => (op.op === 'add' || op.op === 'remove') && op.path.match(/\/\d+$/)
+  );
+
+  if (Array.isArray(newValue) && hasArrayIndexOperations) {
+    jsonPatch = [
+      {
+        op: 'replace',
+        path: `/${fieldName}`,
+        value: newValue,
+      },
+    ];
   }
 
   try {
