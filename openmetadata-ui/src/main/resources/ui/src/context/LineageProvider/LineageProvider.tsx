@@ -1129,9 +1129,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     if (!isEditMode && !hasColumnLayer) {
       setActiveLayer((pre) => uniq([LineageLayer.ColumnLevelLineage, ...pre]));
     } else if (isEditMode && hasColumnLayer) {
-      setActiveLayer((pre) =>
-        pre.filter((layer) => layer !== LineageLayer.ColumnLevelLineage)
-      );
       setTracedNodes([]);
       setTracedColumns([]);
     }

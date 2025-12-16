@@ -235,7 +235,7 @@ describe('LineageProvider', () => {
     expect(edgeDrawer).toBeInTheDocument();
   });
 
-  it('should enable column layer when entering edit mode and remove column layer when exiting edit mode', () => {
+  it('should enable column layer when entering edit mode', () => {
     const TestComponent = () => {
       const { onLineageEditClick, activeLayer } = useLineageProvider();
 
@@ -263,13 +263,9 @@ describe('LineageProvider', () => {
     fireEvent.click(editButton);
 
     expect(activeLayers.textContent).toContain('ColumnLevelLineage');
-
-    fireEvent.click(editButton);
-
-    expect(activeLayers.textContent).not.toContain('ColumnLevelLineage');
   });
 
-  it('should keep other layers unaffected while entering and exiting edit mode', () => {
+  it('should keep other layers unaffected while entering edit mode', () => {
     const TestComponent = () => {
       const { onLineageEditClick, onUpdateLayerView, activeLayer } =
         useLineageProvider();
@@ -333,11 +329,6 @@ describe('LineageProvider', () => {
     fireEvent.click(editButton);
 
     expect(activeLayers.textContent).toContain('ColumnLevelLineage');
-    expect(activeLayers.textContent).toContain('DataObservability');
-
-    fireEvent.click(editButton);
-
-    expect(activeLayers.textContent).not.toContain('ColumnLevelLineage');
     expect(activeLayers.textContent).toContain('DataObservability');
   });
 

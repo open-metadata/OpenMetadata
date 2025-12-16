@@ -731,7 +731,7 @@ test.describe.serial('Test pagination in column level lineage', () => {
 
     await addPipelineBetweenNodes(page, table1, table2);
 
-    await activateColumnLayer(page);
+    await rearrangeNodes(page);
 
     await page.waitForSelector(
       `[data-testid="column-${table1Fqn}.${table1Columns[0].name}"]`,
