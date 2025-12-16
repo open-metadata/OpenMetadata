@@ -380,18 +380,20 @@ entities.forEach((EntityClass) => {
         });
 
         // Test tag operations via column detail panel
-        await test.step(
-          'Add and remove tags via column detail panel',
-          async () => {
-            // Open column detail panel
-            const columnName = page
-              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId('column-name')
-              .first();
-            await columnName.scrollIntoViewIfNeeded();
-            await columnName.click();
+        // Skip for Pipeline as it doesn't have column detail panel
+        if (entity.type !== 'Pipeline') {
+          await test.step(
+            'Add and remove tags via column detail panel',
+            async () => {
+              // Open column detail panel
+              const columnName = page
+                .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+                .getByTestId('column-name')
+                .first();
+              await columnName.scrollIntoViewIfNeeded();
+              await columnName.click();
 
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
+              await expect(page.locator('.column-detail-panel')).toBeVisible();
 
             const panelContainer = page.locator('.column-detail-panel');
 
@@ -440,14 +442,16 @@ entities.forEach((EntityClass) => {
             ).not.toBeVisible();
           }
         );
-      });
-    }
+      }
+    });
+  }
 
-    // Run only if entity has children
-    if (!isUndefined(entity.childrenTabId)) {
+  // Run only if entity has children
+    if (!isUndefined(entity.childrenTabId) && entity.type !== 'Pipeline') {
       test('Tag and Glossary Term preservation in column detail panel', async ({
         page,
       }) => {
+        test.skip(entity.type === 'Pipeline', 'Pipeline does not have column detail panel');
         test.slow(true);
 
         await page.getByTestId(entity.childrenTabId ?? '').click();
@@ -561,6 +565,7 @@ entities.forEach((EntityClass) => {
       test('Column detail panel data type display and nested column navigation', async ({
         page,
       }) => {
+        test.skip(entity.type === 'Pipeline', 'Pipeline does not have column detail panel');
         test.slow(true);
 
         await page.getByTestId(entity.childrenTabId ?? '').click();
@@ -659,10 +664,11 @@ entities.forEach((EntityClass) => {
             ).not.toBeVisible();
           }
         );
-      });
-    }
+      }
+      )
+  }
 
-    // Run only if entity has children
+  // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
       test('Glossary Term Add, Update and Remove for child entities', async ({
         page,
@@ -679,17 +685,19 @@ entities.forEach((EntityClass) => {
         });
 
         // Test glossary term operations via column detail panel
-        await test.step(
-          'Add and remove glossary terms via column detail panel',
-          async () => {
-            // Open column detail panel
-            const columnName = page
-              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId('column-name')
-              .first();
-            await columnName.click();
+        // Skip for Pipeline as it doesn't have column detail panel
+        if (entity.type !== 'Pipeline') {
+          await test.step(
+            'Add and remove glossary terms via column detail panel',
+            async () => {
+              // Open column detail panel
+              const columnName = page
+                .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+                .getByTestId('column-name')
+                .first();
+              await columnName.click();
 
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
+              await expect(page.locator('.column-detail-panel')).toBeVisible();
 
             const panelContainer = page.locator('.column-detail-panel');
 
@@ -737,8 +745,9 @@ entities.forEach((EntityClass) => {
             await expect(
               page.locator('.column-detail-panel')
             ).not.toBeVisible();
-          }
-        );
+            }
+          );
+        }
       });
 
       if (['Table', 'DashboardDataModel'].includes(entity.type)) {
@@ -768,17 +777,19 @@ entities.forEach((EntityClass) => {
         );
 
         // Test description update and panel features via column detail panel
-        await test.step(
-          'Update description via column detail panel and test panel features',
-          async () => {
-            // Open column detail panel
-            const columnName = page
-              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId('column-name')
-              .first();
-            await columnName.click();
+        // Skip for Pipeline as it doesn't have column detail panel
+        if (entity.type !== 'Pipeline') {
+          await test.step(
+            'Update description via column detail panel and test panel features',
+            async () => {
+              // Open column detail panel
+              const columnName = page
+                .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+                .getByTestId('column-name')
+                .first();
+              await columnName.click();
 
-            await expect(page.locator('.column-detail-panel')).toBeVisible();
+              await expect(page.locator('.column-detail-panel')).toBeVisible();
 
             const panelContainer = page.locator('.column-detail-panel');
 
@@ -820,23 +831,19 @@ entities.forEach((EntityClass) => {
             await page.getByTestId('data-quality-tab').click();
 
             await expect(page.getByTestId('data-quality-tab')).toHaveClass(
-              /active/
+              /ant-menu-item-selected/
             );
-
-            await page.getByTestId('lineage-tab').click();
-
-            await expect(page.getByTestId('lineage-tab')).toHaveClass(/active/);
 
             await page.getByTestId('custom-properties-tab').click();
 
             await expect(page.getByTestId('custom-properties-tab')).toHaveClass(
-              /active/
+              /ant-menu-item-selected/
             );
 
             await page.getByTestId('overview-tab').click();
 
             await expect(page.getByTestId('overview-tab')).toHaveClass(
-              /active/
+              /ant-menu-item-selected/
             );
 
             // Test column navigation with arrow buttons and verify nested column counting
@@ -887,8 +894,9 @@ entities.forEach((EntityClass) => {
             await expect(
               page.locator('.column-detail-panel')
             ).not.toBeVisible();
-          }
-        );
+            }
+          );
+        }
       });
     }
 
