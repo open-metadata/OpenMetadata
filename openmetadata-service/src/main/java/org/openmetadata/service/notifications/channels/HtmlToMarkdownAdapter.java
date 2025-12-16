@@ -252,7 +252,7 @@ public class HtmlToMarkdownAdapter implements TemplateFormatAdapter {
         Element firstTr =
             tbody != null ? tbody.selectFirst("> tr") : table.selectFirst("> tr:not(thead > tr)");
         if (firstTr != null && !firstTr.select("> th").isEmpty()) {
-          headerRows.add(bodyRows.remove(0));
+          headerRows.add(bodyRows.removeFirst());
         }
       }
 

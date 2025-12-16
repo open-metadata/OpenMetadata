@@ -40,10 +40,13 @@ import org.commonmark.node.ThematicBreak;
 
 final class SlackBlockAssembler extends AbstractVisitor {
   private static final int SLACK_MAX_TEXT_LENGTH = 3000;
+  private static final int SLACK_MAX_TABLE_ROWS = 100;
+  private static final int SLACK_MAX_TABLE_COLS = 20;
 
   List<LayoutBlock> blocks = new ArrayList<>();
   StringBuilder currentText = new StringBuilder();
   private final SlackMarkdownFormatter inline = new SlackMarkdownFormatter();
+  private SlackTableAttachment tableAttachment;
 
   @Override
   public void visit(CustomNode node) {
@@ -265,66 +268,55 @@ final class SlackBlockAssembler extends AbstractVisitor {
   private void visitTable(TableBlock table) {
     flushCurrentText();
 
-    List<List<String>> headerRows = new ArrayList<>();
-    List<List<String>> bodyRows = new ArrayList<>();
+    // Only one table per message is allowed in Slack - skip additional tables
+    if (tableAttachment != null) {
+      return;
+    }
+
+    createTableAttachment(table);
+  }
+
+  private void createTableAttachment(TableBlock table) {
+    List<List<String>> allRows = new ArrayList<>();
 
     for (Node child = table.getFirstChild(); child != null; child = child.getNext()) {
-      if (child instanceof TableHead) {
+      if (child instanceof TableHead || child instanceof TableBody) {
         for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
           if (row instanceof TableRow) {
-            headerRows.add(extractTableRowCells((TableRow) row));
-          }
-        }
-      } else if (child instanceof TableBody) {
-        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
-          if (row instanceof TableRow) {
-            bodyRows.add(extractTableRowCells((TableRow) row));
+            allRows.add(extractTableRowCells((TableRow) row));
           }
         }
       }
     }
 
-    int colCount = 0;
-    for (List<String> row : headerRows) colCount = Math.max(colCount, row.size());
-    for (List<String> row : bodyRows) colCount = Math.max(colCount, row.size());
+    if (allRows.isEmpty()) return;
 
+    // Enforce Slack limits
+    int colCount =
+        Math.min(allRows.stream().mapToInt(List::size).max().orElse(0), SLACK_MAX_TABLE_COLS);
     if (colCount == 0) return;
 
-    int[] colWidths = new int[colCount];
-    for (int i = 0; i < colCount; i++) colWidths[i] = 3;
+    List<List<SlackTableAttachment.TableCell>> slackRows = new ArrayList<>();
+    int rowLimit = Math.min(allRows.size(), SLACK_MAX_TABLE_ROWS);
 
-    for (List<String> row : headerRows) {
-      for (int i = 0; i < row.size(); i++) {
-        colWidths[i] = Math.max(colWidths[i], Math.min(row.get(i).length(), 30));
+    for (int i = 0; i < rowLimit; i++) {
+      List<String> row = allRows.get(i);
+      List<SlackTableAttachment.TableCell> slackRow = new ArrayList<>();
+      for (int j = 0; j < colCount; j++) {
+        String cellText = j < row.size() ? row.get(j) : "";
+        slackRow.add(SlackTableAttachment.TableCell.rawText(cellText));
       }
-    }
-    for (List<String> row : bodyRows) {
-      for (int i = 0; i < row.size(); i++) {
-        colWidths[i] = Math.max(colWidths[i], Math.min(row.get(i).length(), 30));
-      }
+      slackRows.add(slackRow);
     }
 
-    StringBuilder tableStr = new StringBuilder();
+    SlackTableAttachment.TableBlock slackTable =
+        SlackTableAttachment.TableBlock.builder().rows(slackRows).build();
 
-    if (!headerRows.isEmpty()) {
-      for (List<String> headerRow : headerRows) {
-        appendTableRow(tableStr, headerRow, colWidths, colCount);
-      }
-      tableStr.append("|");
-      for (int i = 0; i < colCount; i++) {
-        tableStr.append("-".repeat(colWidths[i] + 2)).append("|");
-      }
-      tableStr.append("\n");
-    }
+    tableAttachment = new SlackTableAttachment(slackTable);
+  }
 
-    for (List<String> row : bodyRows) {
-      appendTableRow(tableStr, row, colWidths, colCount);
-    }
-
-    String tableContent = tableStr.toString().trim();
-    if (!tableContent.isEmpty()) {
-      blocks.add(createCodeBlock(tableContent));
-    }
+  SlackTableAttachment getTableAttachment() {
+    return tableAttachment;
   }
 
   private List<String> extractTableRowCells(TableRow row) {
@@ -406,6 +398,14 @@ final class SlackBlockAssembler extends AbstractVisitor {
         part = formatCodeForList(code);
       } else if (c instanceof BlockQuote) {
         part = formatBlockQuoteForList((BlockQuote) c);
+      } else if (c instanceof TableBlock) {
+        // Create native table attachment if we don't have one yet
+        if (tableAttachment == null) {
+          createTableAttachment((TableBlock) c);
+          part = ""; // Table will appear as attachment at the bottom
+        } else {
+          part = formatTableForList((TableBlock) c);
+        }
       } else {
         SlackBlockAssembler tempVisitor = new SlackBlockAssembler();
         part = tempVisitor.inline.renderInlineChildren(c).trim();
@@ -417,7 +417,8 @@ final class SlackBlockAssembler extends AbstractVisitor {
         if (c instanceof Paragraph
             || c instanceof FencedCodeBlock
             || c instanceof IndentedCodeBlock
-            || c instanceof BlockQuote) {
+            || c instanceof BlockQuote
+            || c instanceof TableBlock) {
           sb.append("\n");
         } else {
           sb.append(" ");
@@ -477,6 +478,69 @@ final class SlackBlockAssembler extends AbstractVisitor {
     }
 
     return quotedContent.toString().trim();
+  }
+
+  private String formatTableForList(TableBlock table) {
+    List<List<String>> headerRows = new ArrayList<>();
+    List<List<String>> bodyRows = new ArrayList<>();
+
+    for (Node child = table.getFirstChild(); child != null; child = child.getNext()) {
+      if (child instanceof TableHead) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            headerRows.add(extractTableRowCells((TableRow) row));
+          }
+        }
+      } else if (child instanceof TableBody) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            bodyRows.add(extractTableRowCells((TableRow) row));
+          }
+        }
+      }
+    }
+
+    int colCount = 0;
+    for (List<String> row : headerRows) colCount = Math.max(colCount, row.size());
+    for (List<String> row : bodyRows) colCount = Math.max(colCount, row.size());
+
+    if (colCount == 0) return "";
+
+    int[] colWidths = new int[colCount];
+    for (int i = 0; i < colCount; i++) colWidths[i] = 3;
+
+    for (List<String> row : headerRows) {
+      for (int i = 0; i < row.size(); i++) {
+        colWidths[i] = Math.max(colWidths[i], Math.min(row.get(i).length(), 30));
+      }
+    }
+    for (List<String> row : bodyRows) {
+      for (int i = 0; i < row.size(); i++) {
+        colWidths[i] = Math.max(colWidths[i], Math.min(row.get(i).length(), 30));
+      }
+    }
+
+    StringBuilder tableStr = new StringBuilder();
+
+    if (!headerRows.isEmpty()) {
+      for (List<String> headerRow : headerRows) {
+        appendTableRow(tableStr, headerRow, colWidths, colCount);
+      }
+      tableStr.append("|");
+      for (int i = 0; i < colCount; i++) {
+        tableStr.append("-".repeat(colWidths[i] + 2)).append("|");
+      }
+      tableStr.append("\n");
+    }
+
+    for (List<String> row : bodyRows) {
+      appendTableRow(tableStr, row, colWidths, colCount);
+    }
+
+    String tableContent = tableStr.toString().trim();
+    if (tableContent.isEmpty()) return "";
+
+    return "```\n" + escapeMrkdwn(tableContent) + "\n```";
   }
 
   private void appendList(StringBuilder out, Node list, int indent, Integer start) {
