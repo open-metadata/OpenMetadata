@@ -111,23 +111,9 @@ test('form shows error when email is invalid', async ({ page }) => {
 
 ### Making Tests Resilient to Change
 
-- Use stable selectors that won't change with visual updates
-- Prefer `data-testid` attributes for elements that need to be tested but have no natural accessible selector
-- Avoid selecting by class names, tag names, or CSS structure — these change frequently during styling updates
+Use stable selectors that won't change with visual updates. Prefer `data-testid` attributes for elements that need to be tested but have no natural accessible selector. Avoid selecting by class names, tag names, or CSS structure.
 
-#### Example: Resilient vs Brittle Selectors
-
-```typescript
-// ❌ BRITTLE: Will break when styles change
-await page.locator('.btn-primary.large.mt-4').click();
-await page.locator('div > div > button:nth-child(2)').click();
-await page.locator('[class*="Button_submit"]').click();
-
-// ✅ RESILIENT: Stable regardless of styling changes  
-await page.getByTestId('submit-button').click();
-await page.getByRole('button', { name: 'Submit' }).click();
-await page.getByLabel('Email address').fill('test@example.com');
-```
+> See **[Locator Priority Order](#locator-priority-order)** for detailed guidelines and examples.
 
 ---
 
@@ -140,18 +126,7 @@ await page.getByLabel('Email address').fill('test@example.com');
     - `entity-data.setup.ts` -> Each type of data asset is created to avoid the data creation in each test file. `Note: No edit/delete operations should be performed on these assets since it can impact the other tests`
     - `playwright/e2e/fixtures/pages.ts` -> contains fixture-based setup of logged-in pages for users with different roles like admin, data consumer, data steward, etc. These pages can be directly used in the specs by using the exported `test` from the file.
 
-3. **Test setups**: Setup operations for creating a test scenario should be handled via API rather than being done from the UI to reduce the time taken for test setups. `Note: Please ensure that the UI flow for the same action is already being tested in some tests`
-
-Ex.
-```typescript
-describe('Some tests', () => {
-  beforeAll(async () => {
-    // We are setting the owner of a table using API here rather than setting it from the UI
-    // Since the tests for setting the owner from UI already exist.
-    await apiContext.patch('/api/v1/table',{data:[owner: 'something']});
-  });
-});
-```
+3. **Test Setups via API**: Setup operations should be handled via API rather than UI — see **[API Setups for Test Data](#api-setups-for-test-data)** for detailed patterns and examples.
 
 4. **Nested Describe Blocks and Setup Hooks**: When using `beforeAll` hooks inside nested `describe` blocks, follow these guidelines. Setup-hooks execute from outer to inner scope
 
@@ -176,7 +151,7 @@ describe('Outer describe', () => {
 });
 ```
 
-5. **Proper Selectors**: Always use data-testid, id or any other type of **unique** selectors. Almost always avoid using `className` as a final selector.
+5. **Proper Selectors**: See **[Locator Priority Order](#locator-priority-order)** for selector guidelines.
 
 6. **Proper Waits**: Add proper waits before actions that are dependent on any async operations. Always prefer `API awaits` if any action demands or results in a particular API call.
 
