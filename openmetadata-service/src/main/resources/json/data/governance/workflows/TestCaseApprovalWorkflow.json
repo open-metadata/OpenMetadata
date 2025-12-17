@@ -1,0 +1,372 @@
+{
+  "name": "TestCaseApprovalWorkflow",
+  "fullyQualifiedName": "TestCaseApprovalWorkflow",
+  "displayName": "Test Case Approval Workflow",
+  "description": "When a Test Case is Created or Updated, this Workflow will be triggered for the Test Case to be Approved.",
+  "config": {
+    "storeStageStatus": true
+  },
+  "trigger": {
+    "type": "eventBasedEntity",
+    "config": {
+      "entityTypes": ["testCase"],
+      "events": ["Created", "Updated"],
+      "exclude": ["reviewers"],
+      "filter": {}
+    },
+    "output": ["relatedEntity", "updatedBy"]
+  },
+  "nodes": [
+    {
+      "type": "startEvent",
+      "subType": "startEvent",
+      "name": "TestCaseCreated",
+      "displayName": "Test Case Created or Updated"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "AutoApprovedByReviewerEnd",
+      "displayName": "Auto-Approved by Reviewer"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovedEnd",
+      "displayName": "Test Case Status: Approved"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovedEndAfterApproval",
+      "displayName": "Test Case Status: Approved"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "RejectedEnd",
+      "displayName": "Test Case Status: Rejected"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "DraftEnd",
+      "displayName": "Test Case Status: Draft"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckIfTestCaseUpdatedByIsReviewer",
+      "displayName": "Check if Test Case Updated By is Reviewer",
+      "config": {
+        "rules": "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetTestCaseStatusToApprovedByReviewer",
+      "displayName": "Set Status to 'Approved' (By Reviewer)",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckTestCaseHasReviewers",
+      "displayName": "Check if Test Case has Reviewers",
+      "config": {
+        "rules": "{\"and\":[{\"some\":[{\"var\":\"reviewers\"},{\"!=\":[{\"var\":\"fullyQualifiedName\"},null]}]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckTestCaseIsReadyToBeReviewed",
+      "displayName": "Check if Test Case is Ready to be Reviewed",
+      "config": {
+        "rules": "{\"and\":[{\"!!\":[{\"var\":\"entityLink\"}]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetTestCaseStatusToInReview",
+      "displayName": "Set Status to 'In Review'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "In Review"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetTestCaseStatusToDraft",
+      "displayName": "Set Status to 'Draft'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Draft"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "ApproveTestCase",
+      "displayName": "Create User Approval Task",
+      "config": {
+        "assignees": {
+          "addReviewers": true
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckIfTestCaseIsNew",
+      "displayName": "Check if Test Case is New",
+      "config": {
+        "rules": "{\"and\":[{\"==\":[{\"var\":\"version\"},0.1]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetTestCaseStatusToInReviewForUpdate",
+      "displayName": "Set Status to 'In Review' (Update)",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "In Review"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "ApprovalForUpdates",
+      "displayName": "Review Changes for Updates",
+      "config": {
+        "assignees": {
+          "addReviewers": true
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      },
+      "output": ["updatedBy"]
+    },
+    {
+      "type": "automatedTask",
+      "subType": "rollbackEntityTask",
+      "name": "RollbackTestCaseChanges",
+      "displayName": "Rollback Test Case Changes",
+      "config": {},
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApprovalForUpdates"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetTestCaseStatusToApprovedAfterReview",
+      "displayName": "Set Status to 'Approved' (After Review)",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApprovalForUpdates"
+      }
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "RollbackEnd",
+      "displayName": "Changes Rolled Back"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovalEnd",
+      "displayName": "Approved After Unified Review"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetTestCaseStatusToApprovedAfterApproval",
+      "displayName": "Set Status to 'Approved'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveTestCase"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetTestCaseStatusToApproved",
+      "displayName": "Set Status to 'Approved'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetTestCaseStatusToRejected",
+      "displayName": "Set Status to 'Rejected'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Rejected"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveTestCase"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "TestCaseCreated",
+      "to": "CheckTestCaseHasReviewers"
+    },
+    {
+      "from": "CheckTestCaseHasReviewers",
+      "to": "SetTestCaseStatusToApproved",
+      "condition": "false"
+    },
+    {
+      "from": "CheckTestCaseHasReviewers",
+      "to": "CheckIfTestCaseUpdatedByIsReviewer",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfTestCaseUpdatedByIsReviewer",
+      "to": "SetTestCaseStatusToApprovedByReviewer",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfTestCaseUpdatedByIsReviewer",
+      "to": "CheckTestCaseIsReadyToBeReviewed",
+      "condition": "false"
+    },
+    {
+      "from": "SetTestCaseStatusToApprovedByReviewer",
+      "to": "AutoApprovedByReviewerEnd"
+    },
+    {
+      "from": "CheckTestCaseIsReadyToBeReviewed",
+      "to": "SetTestCaseStatusToDraft",
+      "condition": "false"
+    },
+    {
+      "from": "SetTestCaseStatusToDraft",
+      "to": "DraftEnd"
+    },
+    {
+      "from": "CheckTestCaseIsReadyToBeReviewed",
+      "to": "CheckIfTestCaseIsNew",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfTestCaseIsNew",
+      "to": "SetTestCaseStatusToInReview",
+      "condition": "true"
+    },
+    {
+      "from": "CheckIfTestCaseIsNew",
+      "to": "SetTestCaseStatusToInReviewForUpdate",
+      "condition": "false"
+    },
+    {
+      "from": "SetTestCaseStatusToInReview",
+      "to": "ApproveTestCase"
+    },
+    {
+      "from": "SetTestCaseStatusToInReviewForUpdate",
+      "to": "ApprovalForUpdates"
+    },
+    {
+      "from": "ApprovalForUpdates",
+      "to": "SetTestCaseStatusToApprovedAfterReview",
+      "condition": "true"
+    },
+    {
+      "from": "ApprovalForUpdates",
+      "to": "RollbackTestCaseChanges",
+      "condition": "false"
+    },
+    {
+      "from": "RollbackTestCaseChanges",
+      "to": "RollbackEnd"
+    },
+    {
+      "from": "SetTestCaseStatusToApprovedAfterReview",
+      "to": "ApprovalEnd"
+    },
+    {
+      "from": "ApproveTestCase",
+      "to": "SetTestCaseStatusToApprovedAfterApproval",
+      "condition": "true"
+    },
+    {
+      "from": "ApproveTestCase",
+      "to": "SetTestCaseStatusToRejected",
+      "condition": "false"
+    },
+    {
+      "from": "SetTestCaseStatusToApprovedAfterApproval",
+      "to": "ApprovedEndAfterApproval"
+    },
+    {
+      "from": "SetTestCaseStatusToApproved",
+      "to": "ApprovedEnd"
+    },
+    {
+      "from": "SetTestCaseStatusToRejected",
+      "to": "RejectedEnd"
+    }
+  ]
+}
