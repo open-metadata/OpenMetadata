@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { Column } from '../../../src/generated/entity/data/table';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
@@ -23,7 +23,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToExplorePage, uuid } from '../../utils/common';
+import { getApiContext, uuid } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
   CustomProperty,
@@ -37,32 +37,51 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import {
-  clearAndAddGlossaryTerms,
-  clearDataProducts,
   clickDataQualityStatCard,
   editDomain,
+  editGlossaryTerms,
   editTags,
   navigateToEntityPanelTab,
+  navigateToExploreAndSelectTable,
   navigateToIncidentsTab,
-  openEntitySummaryPanel,
   verifyDeletedEntityNotVisible,
 } from '../../utils/entityPanel';
 import { addPipelineBetweenNodes } from '../../utils/lineage';
 
-const testEntity = new TableClass();
+const adminTestEntity = new TableClass();
+const dataStewardTestEntity = new TableClass();
+const dataConsumerTestEntity = new TableClass();
 const testDataProduct = new DataProduct(
   [EntityDataClass.domain1],
   'PW_TestDataProduct'
 );
 
+const dataStewardTestClassification = new ClassificationClass();
+const dataStewardTestTag = new TagClass({
+  classification: dataStewardTestClassification.data.name,
+});
+
+const dataConsumerTestClassification = new ClassificationClass();
+const dataConsumerTestTag = new TagClass({
+  classification: dataConsumerTestClassification.data.name,
+});
+
 test.beforeAll('Setup shared test data', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  await testEntity.create(apiContext);
+  await adminTestEntity.create(apiContext);
+  await dataStewardTestEntity.create(apiContext);
+  await dataConsumerTestEntity.create(apiContext);
   await testDataProduct.create(apiContext);
 
-  // Assign the test entity to domain1 so data products can be linked
-  await testEntity.patch({
+  await dataStewardTestClassification.create(apiContext);
+  await dataStewardTestTag.create(apiContext);
+
+  await dataConsumerTestClassification.create(apiContext);
+  await dataConsumerTestTag.create(apiContext);
+
+  // Assign the admin test entity to domain1 so data products can be linked
+  await adminTestEntity.patch({
     apiContext,
     patchData: [
       {
@@ -83,28 +102,22 @@ test.afterAll('Cleanup shared test data', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
   await testDataProduct.delete(apiContext);
-  await testEntity.delete(apiContext);
+  await adminTestEntity.delete(apiContext);
+  await dataStewardTestEntity.delete(apiContext);
+  await dataConsumerTestEntity.delete(apiContext);
+
+  await dataStewardTestClassification.delete(apiContext);
+  await dataConsumerTestClassification.delete(apiContext);
 
   await afterAction();
 });
 
-async function navigateToExploreAndSelectTable(page: Page) {
-  await redirectToExplorePage(page);
-
-  await page
-    .waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-      timeout: 15000,
-    })
-    .catch(() => {
-      // Loader might not appear, continue
-    });
-  await openEntitySummaryPanel(page, testEntity.entity.name);
-}
-
 test.describe('Right Entity Panel - Admin User Flow', () => {
   test.beforeEach('Navigate to explore page', async ({ adminPage }) => {
-    await navigateToExploreAndSelectTable(adminPage);
+    await navigateToExploreAndSelectTable(
+      adminPage,
+      adminTestEntity.entity.name
+    );
   });
 
   test('Admin - Overview Tab - Description Section - Add and Update', async ({
@@ -152,7 +165,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await deletedUser.delete(apiContext, false);
 
-      await navigateToExploreAndSelectTable(adminPage);
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entity.name
+      );
 
       const summaryPanelAfterDelete = adminPage.locator(
         '.entity-summary-panel-container'
@@ -162,7 +178,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const ownersSectionAfterDelete =
         summaryPanelAfterDelete.locator('.owners-section');
       await ownersSectionAfterDelete.waitFor({ state: 'visible' });
-      await ownersSectionAfterDelete.scrollIntoViewIfNeeded();
 
       await expect(ownersSectionAfterDelete).toBeVisible();
 
@@ -224,7 +239,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await deletedTeam.delete(apiContext);
 
-      await navigateToExploreAndSelectTable(adminPage);
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entity.name
+      );
 
       const summaryPanelAfterDelete = adminPage.locator(
         '.entity-summary-panel-container'
@@ -234,7 +252,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const ownersSectionAfterDelete =
         summaryPanelAfterDelete.locator('.owners-section');
       await ownersSectionAfterDelete.waitFor({ state: 'visible' });
-      await ownersSectionAfterDelete.scrollIntoViewIfNeeded();
 
       await expect(ownersSectionAfterDelete).toBeVisible();
 
@@ -285,30 +302,26 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
       const tagsSection = summaryPanel.locator('.tags-section');
 
-      await tagsSection.scrollIntoViewIfNeeded();
-
       await expect(tagsSection).toBeVisible();
 
-      await editTags(adminPage, deletedTagDisplayName, true);
+      await editTags(adminPage, deletedTagDisplayName);
 
       await deletedTag.delete(apiContext);
 
-      await navigateToExploreAndSelectTable(adminPage);
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entity.name
+      );
 
       const summaryPanelAfterDelete = adminPage.locator(
         '.entity-summary-panel-container'
       );
       const tagsSectionAfterDelete =
         summaryPanelAfterDelete.locator('.tags-section');
-      await tagsSectionAfterDelete.scrollIntoViewIfNeeded();
 
       await expect(tagsSectionAfterDelete).toBeVisible();
 
-      await adminPage
-        .locator('[data-testid="edit-icon-tags"]')
-        .scrollIntoViewIfNeeded();
-
-      await adminPage.locator('[data-testid="edit-icon-tags"]').click();
+      await adminPage.getByTestId('edit-icon-tags').click();
 
       const deletedTagItem = await verifyDeletedEntityNotVisible(
         adminPage,
@@ -343,11 +356,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
       const glossarySection = summaryPanel.locator('.glossary-terms-section');
 
-      await glossarySection.scrollIntoViewIfNeeded();
-
       await expect(glossarySection).toBeVisible();
 
-      await clearAndAddGlossaryTerms(adminPage, deletedTermDisplayName);
+      await editGlossaryTerms(adminPage, deletedTermDisplayName);
 
       await expect(
         adminPage.getByText(/Glossary terms updated successfully/i)
@@ -355,7 +366,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await deletedTerm.delete(apiContext);
 
-      await navigateToExploreAndSelectTable(adminPage);
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entity.name
+      );
 
       const summaryPanelAfterDelete = adminPage.locator(
         '.entity-summary-panel-container'
@@ -363,15 +377,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const glossarySectionAfterDelete = summaryPanelAfterDelete.locator(
         '.glossary-terms-section'
       );
-      await glossarySectionAfterDelete.scrollIntoViewIfNeeded();
 
       await expect(glossarySectionAfterDelete).toBeVisible();
 
-      await adminPage
-        .locator('[data-testid="edit-glossary-terms"]')
-        .scrollIntoViewIfNeeded();
-
-      await adminPage.locator('[data-testid="edit-glossary-terms"]').click();
+      await adminPage.getByTestId('edit-glossary-terms').click();
 
       const deletedTermItem = await verifyDeletedEntityNotVisible(
         adminPage,
@@ -418,11 +427,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const domainsSection = summaryPanel.locator('.domains-section');
 
-    await domainsSection.scrollIntoViewIfNeeded();
-
     await domainsSection.waitFor({ state: 'visible' });
-
-    await clearDataProducts(adminPage);
 
     await editDomain(adminPage, 'TestDomain');
 
@@ -432,7 +437,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
   });
 
   test('Admin - Schema Tab - View Schema', async ({ adminPage }) => {
-    const schemaTab = adminPage.locator('[data-testid="schema-tab"]');
+    const schemaTab = adminPage.getByTestId('schema-tab');
 
     await schemaTab.click();
     await adminPage.waitForSelector('[data-testid="loader"]', {
@@ -445,7 +450,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    for (const child of testEntity.children as Column[]) {
+    for (const child of adminTestEntity.children as Column[]) {
       const fieldCard = adminPage.locator(
         `[data-testid="field-card-${child.name}"]`
       );
@@ -504,12 +509,19 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await upstreamTable.create(apiContext);
       await downstreamTable.create(apiContext);
 
-      // Add lineage connections: upstream -> testEntity -> downstream
-      await addPipelineBetweenNodes(adminPage, upstreamTable, testEntity);
-      await addPipelineBetweenNodes(adminPage, testEntity, downstreamTable);
+      // Add lineage connections: upstream -> adminTestEntity -> downstream
+      await addPipelineBetweenNodes(adminPage, upstreamTable, adminTestEntity);
+      await addPipelineBetweenNodes(
+        adminPage,
+        adminTestEntity,
+        downstreamTable
+      );
 
       // Navigate back to explore and open the entity panel
-      await navigateToExploreAndSelectTable(adminPage);
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entity.name
+      );
 
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
       const lineageTab = summaryPanel.getByRole('menuitem', {
@@ -671,9 +683,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     try {
       // Create test cases for the entity
-      await testEntity.createTestSuiteAndPipelines(apiContext);
+      await adminTestEntity.createTestSuiteAndPipelines(apiContext);
 
-      const testCase1 = await testEntity.createTestCase(apiContext, {
+      const testCase1 = await adminTestEntity.createTestCase(apiContext, {
         name: `pw_test_case_success_${uuid()}`,
         testDefinition: 'tableRowCountToBeBetween',
         parameterValues: [
@@ -682,11 +694,11 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         ],
       });
 
-      const testCase2 = await testEntity.createTestCase(apiContext, {
+      const testCase2 = await adminTestEntity.createTestCase(apiContext, {
         name: `pw_test_case_failed_${uuid()}`,
         entityLink: `<#E::table::${
-          testEntity.entityResponseData?.['fullyQualifiedName']
-        }::columns::${(testEntity.entity?.columns as Column[])[0].name}>`,
+          adminTestEntity.entityResponseData?.['fullyQualifiedName']
+        }::columns::${(adminTestEntity.entity?.columns as Column[])[0].name}>`,
         testDefinition: 'columnValueLengthsToBeBetween',
         parameterValues: [
           { name: 'minLength', value: 3 },
@@ -694,7 +706,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         ],
       });
 
-      const testCase3 = await testEntity.createTestCase(apiContext, {
+      const testCase3 = await adminTestEntity.createTestCase(apiContext, {
         name: `pw_test_case_aborted_${uuid()}`,
         testDefinition: 'tableRowCountToBeBetween',
         parameterValues: [
@@ -704,7 +716,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       });
 
       // Add test results
-      await testEntity.addTestCaseResult(
+      await adminTestEntity.addTestCaseResult(
         apiContext,
         testCase1.fullyQualifiedName,
         {
@@ -713,7 +725,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         }
       );
 
-      await testEntity.addTestCaseResult(
+      await adminTestEntity.addTestCaseResult(
         apiContext,
         testCase2.fullyQualifiedName,
         {
@@ -723,13 +735,16 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         }
       );
 
-      await testEntity.addTestCaseResult(
+      await adminTestEntity.addTestCaseResult(
         apiContext,
         testCase3.fullyQualifiedName,
         { testCaseStatus: 'Aborted', timestamp: getCurrentMillis() }
       );
       // Navigate back to explore and open the entity panel
-      await navigateToExploreAndSelectTable(adminPage);
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entity.name
+      );
 
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
       const dqTab = summaryPanel.getByRole('menuitem', {
@@ -830,7 +845,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       // Verify column name is shown for column-level test
       // Look for the detail item with "Column Name" label that contains the actual column name
-      const columnName = (testEntity.entity?.columns as Column[])[0].name;
+      const columnName = (adminTestEntity.entity?.columns as Column[])[0].name;
       const columnDetail = testCaseDetails
         .locator('.test-case-detail-item')
         .filter({ hasText: /column name/i })
@@ -883,9 +898,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     try {
       // Create test case with incident
-      await testEntity.createTestSuiteAndPipelines(apiContext);
+      await adminTestEntity.createTestSuiteAndPipelines(apiContext);
 
-      const testCase = await testEntity.createTestCase(apiContext, {
+      const testCase = await adminTestEntity.createTestCase(apiContext, {
         name: `pw_incident_test_${uuid()}`,
         testDefinition: 'tableRowCountToBeBetween',
         parameterValues: [
@@ -895,7 +910,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       });
 
       // Add failed test result to create incident
-      await testEntity.addTestCaseResult(
+      await adminTestEntity.addTestCaseResult(
         apiContext,
         testCase.fullyQualifiedName,
         {
@@ -909,7 +924,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       // For now, we'll just test the UI when incidents exist
 
       // Navigate to right panel
-      await navigateToExploreAndSelectTable(adminPage);
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entity.name
+      );
 
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
       const dqTab = summaryPanel.getByRole('menuitem', {
@@ -1002,9 +1020,9 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     try {
       // Create a test case
-      await testEntity.createTestSuiteAndPipelines(apiContext);
+      await adminTestEntity.createTestSuiteAndPipelines(apiContext);
 
-      const testCase = await testEntity.createTestCase(apiContext, {
+      const testCase = await adminTestEntity.createTestCase(apiContext, {
         name: `pw_link_test_${uuid()}`,
         testDefinition: 'tableRowCountToBeBetween',
         parameterValues: [
@@ -1013,14 +1031,17 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         ],
       });
 
-      await testEntity.addTestCaseResult(
+      await adminTestEntity.addTestCaseResult(
         apiContext,
         testCase.fullyQualifiedName,
         { testCaseStatus: 'Success', timestamp: getCurrentMillis() }
       );
 
       // Navigate to right panel
-      await navigateToExploreAndSelectTable(adminPage);
+      await navigateToExploreAndSelectTable(
+        adminPage,
+        adminTestEntity.entity.name
+      );
 
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
       const dqTab = summaryPanel.getByRole('menuitem', {
@@ -1079,7 +1100,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     }
 
     // Patch the entity to add custom property values
-    await testEntity.patch({
+    await adminTestEntity.patch({
       apiContext,
       patchData: [
         {
@@ -1091,7 +1112,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     });
 
     // Navigate to explore and select the entity
-    await navigateToExploreAndSelectTable(adminPage);
+    await navigateToExploreAndSelectTable(
+      adminPage,
+      adminTestEntity.entity.name
+    );
 
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const cpTab = summaryPanel.getByRole('menuitem', {
@@ -1163,7 +1187,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       extensionData[propertyName] = value;
     }
 
-    await testEntity.patch({
+    await adminTestEntity.patch({
       apiContext,
       patchData: [
         {
@@ -1175,7 +1199,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     });
 
     // Navigate to explore and select the entity
-    await navigateToExploreAndSelectTable(adminPage);
+    await navigateToExploreAndSelectTable(
+      adminPage,
+      adminTestEntity.entity.name
+    );
 
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const cpTab = summaryPanel.getByRole('menuitem', {
@@ -1273,7 +1300,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     // Navigate to the entity details page to set custom property values
     await adminPage.goto(
-      `/table/${testEntity.entityResponseData?.['fullyQualifiedName']}`
+      `/table/${adminTestEntity.entityResponseData?.['fullyQualifiedName']}`
     );
     await adminPage.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -1300,7 +1327,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     }
 
     // Now navigate to explore and verify in right panel
-    await navigateToExploreAndSelectTable(adminPage);
+    await navigateToExploreAndSelectTable(
+      adminPage,
+      adminTestEntity.entity.name
+    );
 
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const cpTab = summaryPanel.getByRole('menuitem', {
@@ -1339,7 +1369,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         await expect(propertyNameElement).toContainText(displayName);
 
         // Verify value is displayed (not "Not set")
-        const valueElement = propertyCard.locator('[data-testid="value"]');
+        const valueElement = propertyCard.getByTestId('value');
 
         await expect(valueElement).toBeVisible();
       }
@@ -1350,7 +1380,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
   test('Admin - Custom Properties Tab - Empty State', async ({ adminPage }) => {
     // Navigate to explore without creating custom properties
-    await navigateToExploreAndSelectTable(adminPage);
+    await navigateToExploreAndSelectTable(
+      adminPage,
+      adminTestEntity.entity.name
+    );
 
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
     const cpTab = summaryPanel.getByRole('menuitem', {
@@ -1388,7 +1421,10 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
 test.describe('Right Entity Panel - Data Steward User Flow', () => {
   test.beforeEach('Navigate to explore page', async ({ dataStewardPage }) => {
-    await navigateToExploreAndSelectTable(dataStewardPage);
+    await navigateToExploreAndSelectTable(
+      dataStewardPage,
+      dataStewardTestEntity.entity.name
+    );
   });
 
   test('Data Steward - Overview Tab - Description Section - Add and Update', async ({
@@ -1463,16 +1499,16 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
   test('Data Steward - Overview Tab - Tags Section - Add and Update', async ({
     dataStewardPage,
   }) => {
+    const testTagDisplayName = dataStewardTestTag.getTagDisplayName();
+
     const summaryPanel = dataStewardPage.locator(
       '.entity-summary-panel-container'
     );
     const tagsSection = summaryPanel.locator('.tags-section');
 
-    await tagsSection.scrollIntoViewIfNeeded();
-
     await expect(tagsSection).toBeVisible();
 
-    await editTags(dataStewardPage, 'NonSensitive', true);
+    await editTags(dataStewardPage, testTagDisplayName);
 
     await expect(
       dataStewardPage.getByText(/Tags updated successfully/i)
@@ -1489,7 +1525,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(glossarySection).toBeVisible();
 
-    await clearAndAddGlossaryTerms(dataStewardPage);
+    await editGlossaryTerms(dataStewardPage);
 
     await expect(
       dataStewardPage.getByText(/Glossary terms updated successfully/i)
@@ -1508,7 +1544,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
   test('Data Steward - Schema Tab - View Schema', async ({
     dataStewardPage,
   }) => {
-    const schemaTab = dataStewardPage.locator('[data-testid="schema-tab"]');
+    const schemaTab = dataStewardPage.getByTestId('schema-tab');
 
     await schemaTab.click();
     await dataStewardPage.waitForSelector('[data-testid="loader"]', {
@@ -1521,7 +1557,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    for (const child of testEntity.children as Column[]) {
+    for (const child of dataStewardTestEntity.children as Column[]) {
       const fieldCard = dataStewardPage.locator(
         `[data-testid="field-card-${child.name}"]`
       );
@@ -1653,7 +1689,10 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
 test.describe('Right Entity Panel - Data Consumer User Flow', () => {
   test.beforeEach('Navigate to explore page', async ({ dataConsumerPage }) => {
-    await navigateToExploreAndSelectTable(dataConsumerPage);
+    await navigateToExploreAndSelectTable(
+      dataConsumerPage,
+      dataConsumerTestEntity.entity.name
+    );
   });
 
   test('Data Consumer - Overview Tab - Description Section - Add and Update', async ({
@@ -1718,6 +1757,8 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
   test('Data Consumer - Overview Tab - Tags Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
+    const testTagDisplayName = dataConsumerTestTag.getTagDisplayName();
+
     const summaryPanel = dataConsumerPage.locator(
       '.entity-summary-panel-container'
     );
@@ -1725,7 +1766,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tagsSection).toBeVisible();
 
-    await editTags(dataConsumerPage, 'NonSensitive', true);
+    await editTags(dataConsumerPage, testTagDisplayName);
 
     await expect(
       dataConsumerPage.getByText(/Tags updated successfully/i)
@@ -1742,7 +1783,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(glossarySection).toBeVisible();
 
-    await clearAndAddGlossaryTerms(dataConsumerPage);
+    await editGlossaryTerms(dataConsumerPage);
 
     await expect(
       dataConsumerPage.getByText(/Glossary terms updated successfully/i)
@@ -1776,7 +1817,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    for (const child of testEntity.children as Column[]) {
+    for (const child of dataConsumerTestEntity.children as Column[]) {
       const fieldCard = dataConsumerPage.locator(
         `[data-testid="field-card-${child.name}"]`
       );
