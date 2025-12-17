@@ -16,17 +16,18 @@ package org.openmetadata.service.events.scheduled;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_INFO_KEY;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
-import static org.quartz.impl.StdSchedulerFactory.PROP_SCHED_INSTANCE_NAME;
-import static org.quartz.impl.StdSchedulerFactory.PROP_THREAD_POOL_PREFIX;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -50,6 +51,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -68,29 +70,65 @@ import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.spi.JobFactory;
 import org.quartz.spi.TriggerFiredBundle;
 
+/**
+ * Scheduler for event subscription jobs with clustered execution support.
+ *
+ * <p>This scheduler uses Quartz with JDBC JobStore and clustering enabled to ensure that in a
+ * multi-server deployment, each event subscription job runs on only ONE server at a time. This
+ * prevents duplicate notifications from being sent when multiple OpenMetadata servers are running.
+ *
+ * <p>The clustering works by:
+ *
+ * <ul>
+ *   <li>Storing job state in the database (QRTZ_* tables)
+ *   <li>Using database-level row locking to coordinate job execution
+ *   <li>Automatic failover if a server crashes mid-execution
+ * </ul>
+ */
 @Slf4j
 public class EventSubscriptionScheduler {
   public static final String ALERT_JOB_GROUP = "OMAlertJobGroup";
   public static final String ALERT_TRIGGER_GROUP = "OMAlertJobGroup";
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
-  private static final Scheduler alertsScheduler;
-  private static final String SCHEDULER_NAME = "OpenMetadataEventSubscriptionScheduler";
-  private static final int SCHEDULER_THREAD_COUNT = 5;
+  @Getter private final Scheduler alertsScheduler;
+  private static final String SCHEDULER_NAME = "OMEventSubScheduler";
+  // Thread count per server - increase for high subscription volumes
+  // With N servers, total cluster capacity = N × SCHEDULER_THREAD_COUNT concurrent jobs
+  private static final int SCHEDULER_THREAD_COUNT = 10;
+
+  private static final Map<String, String> CLUSTERED_SCHEDULER_CONFIG = new HashMap<>();
 
   static {
-    Properties properties = new Properties();
-    properties.setProperty(PROP_SCHED_INSTANCE_NAME, SCHEDULER_NAME);
-    properties.setProperty(
-        PROP_THREAD_POOL_PREFIX + ".threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
+    // Scheduler identification - AUTO generates unique instance ID per server
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.scheduler.instanceName", SCHEDULER_NAME);
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.scheduler.instanceId", "AUTO");
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.scheduler.skipUpdateCheck", "true");
 
-    try {
-      StdSchedulerFactory factory = new StdSchedulerFactory();
-      factory.initialize(properties);
-      alertsScheduler = factory.getScheduler();
-    } catch (SchedulerException e) {
-      throw new ExceptionInInitializerError("Failed to initialize scheduler: " + e.getMessage());
-    }
+    // Thread pool configuration
+    CLUSTERED_SCHEDULER_CONFIG.put(
+        "org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
+    CLUSTERED_SCHEDULER_CONFIG.put(
+        "org.quartz.threadPool.threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.threadPool.threadPriority", "5");
+
+    // Job store configuration - JDBC for clustering support
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.misfireThreshold", "60000");
+    CLUSTERED_SCHEDULER_CONFIG.put(
+        "org.quartz.jobStore.class", "org.quartz.impl.jdbcjobstore.JobStoreTX");
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.useProperties", "false");
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
+
+    // Enable clustering - this is the key setting for multi-server deployments
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.isClustered", "true");
+
+    // Cluster check-in interval (how often nodes check if others are alive)
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.clusterCheckinInterval", "20000");
+
+    // Data source configuration (will be overridden with actual DB config)
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.dataSource", "omDS");
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.dataSource.omDS.maxConnections", "5");
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.dataSource.omDS.validationQuery", "select 1");
   }
 
   private record CustomJobFactory(DIContainer di) implements JobFactory {
@@ -109,14 +147,53 @@ public class EventSubscriptionScheduler {
   }
 
   private EventSubscriptionScheduler(
+      OpenMetadataApplicationConfig config,
       PipelineServiceClientInterface pipelineServiceClient,
       OpenMetadataConnectionBuilder openMetadataConnectionBuilder)
       throws SchedulerException {
+
+    // Configure database connection for clustered scheduler
+    Properties properties = new Properties();
+    properties.putAll(CLUSTERED_SCHEDULER_CONFIG);
+    configureDataSource(properties, config);
+
+    // Initialize the clustered scheduler
+    StdSchedulerFactory factory = new StdSchedulerFactory();
+    factory.initialize(properties);
+    this.alertsScheduler = factory.getScheduler();
+
+    // Set up dependency injection for job creation
     DIContainer di = new DIContainer();
     di.registerResource(PipelineServiceClientInterface.class, pipelineServiceClient);
     di.registerResource(OpenMetadataConnectionBuilder.class, openMetadataConnectionBuilder);
     this.alertsScheduler.setJobFactory(new CustomJobFactory(di));
+
+    // Start the scheduler
     this.alertsScheduler.start();
+    LOG.info(
+        "Event Subscription Scheduler started with clustering enabled. Instance ID: {}",
+        this.alertsScheduler.getSchedulerInstanceId());
+  }
+
+  private void configureDataSource(Properties properties, OpenMetadataApplicationConfig config) {
+    // Set database driver and connection details
+    properties.put(
+        "org.quartz.dataSource.omDS.driver", config.getDataSourceFactory().getDriverClass());
+    properties.put("org.quartz.dataSource.omDS.URL", config.getDataSourceFactory().getUrl());
+    properties.put("org.quartz.dataSource.omDS.user", config.getDataSourceFactory().getUser());
+    properties.put(
+        "org.quartz.dataSource.omDS.password", config.getDataSourceFactory().getPassword());
+
+    // Set the appropriate JDBC delegate based on database type
+    if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
+      properties.put(
+          "org.quartz.jobStore.driverDelegateClass",
+          "org.quartz.impl.jdbcjobstore.StdJDBCDelegate");
+    } else {
+      properties.put(
+          "org.quartz.jobStore.driverDelegateClass",
+          "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate");
+    }
   }
 
   @SneakyThrows
@@ -132,13 +209,18 @@ public class EventSubscriptionScheduler {
       try {
         instance =
             new EventSubscriptionScheduler(
+                openMetadataApplicationConfig,
                 PipelineServiceClientFactory.createPipelineServiceClient(
                     openMetadataApplicationConfig.getPipelineServiceClientConfiguration()),
                 new OpenMetadataConnectionBuilder(openMetadataApplicationConfig));
+        initialized = true;
+        LOG.info(
+            "Event Subscription Scheduler initialized with clustered Quartz. "
+                + "Duplicate notifications will be prevented in multi-server deployments.");
       } catch (SchedulerException e) {
+        LOG.error("Failed to initialize Event Subscription Scheduler with clustering", e);
         throw new RuntimeException("Failed to initialize Event Subscription Scheduler", e);
       }
-      initialized = true;
     } else {
       LOG.info("Event Subscription Scheduler is already initialized");
     }
