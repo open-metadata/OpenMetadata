@@ -302,11 +302,22 @@ export const isDescriptionContentEmpty = (content: string) => {
     return true;
   }
 
-  // Match a single <p>...</p> where the inner content is only whitespace (including &nbsp;)
-  // including unicode non-breaking space (\u00A0)
-  const emptyPRegex = /^\s*<p(?:\s[^>]*)?>[\s\u00A0]*<\/p>\s*$/i;
+  // Trim the content
+  const trimmedContent = content.trim();
 
-  return emptyPRegex.test(content);
+  // Check if it's an empty string after trimming
+  if (trimmedContent === '') {
+    return true;
+  }
+
+  // Match a single <p>...</p> where the inner content is only common whitespace
+  // (space, tab, newline, carriage return) and non-breaking space (\u00A0)
+  // Note: We intentionally do NOT match other unicode whitespace like em space (\u2003)
+  // or thin space (\u2009) as those are considered content
+  const emptyPRegex =
+    /^[ \t\r\n]*<p(?:\s[^>]*)?>[ \t\r\n\u00A0]*<\/p>[ \t\r\n]*$/i;
+
+  return emptyPRegex.test(trimmedContent);
 };
 
 /**
