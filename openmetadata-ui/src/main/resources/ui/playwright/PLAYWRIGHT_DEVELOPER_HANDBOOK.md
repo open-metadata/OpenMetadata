@@ -174,10 +174,8 @@ await page.waitForResponse(response =>
 // Wait for specific elements
 await expect(page.getByTestId('success-message')).toBeVisible();
 
-// Wait for custom conditions
-await page.waitForFunction(() => {
-  return page.waitForSelector('[data-testid="Loader"]'),{state: "hidden"});
-});
+// Wait for loader to disappear
+await page.waitForSelector('[data-testid="Loader"]', { state: 'hidden' });
 
 // Use custom wait utilities
 await waitForAllLoadersToDisappear(page);
