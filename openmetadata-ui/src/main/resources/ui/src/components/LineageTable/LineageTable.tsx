@@ -17,7 +17,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import { ColumnsType } from 'antd/es/table';
 import Card from 'antd/lib/card/Card';
 import classNames from 'classnames';
-import { get, isEmpty, map, sortBy } from 'lodash';
+import { isEmpty, map, sortBy } from 'lodash';
 import QueryString from 'qs';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +39,7 @@ import {
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
-import { EntityType, FqnPart } from '../../enums/entity.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/tests/testCase';
 import { Paging } from '../../generated/type/paging';
@@ -53,16 +53,14 @@ import {
   getLineageDataByFQN,
   getLineagePagingData,
 } from '../../rest/lineageAPI';
-import {
-  getPartialNameFromTableFQN,
-  Transi18next,
-} from '../../utils/CommonUtils';
+import { Transi18next } from '../../utils/CommonUtils';
 import {
   getEntityLinkFromType,
   getEntityName,
   highlightSearchText,
 } from '../../utils/EntityUtils';
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import Fqn from '../../utils/Fqn';
 import {
   getSearchNameEsQuery,
   LINEAGE_IMPACT_OPTIONS,
@@ -79,7 +77,10 @@ import Table from '../common/Table/Table';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
-import { LineageNode } from '../Lineage/Lineage.interface';
+import {
+  ColumnLevelLineageNode,
+  LineageNode,
+} from '../Lineage/Lineage.interface';
 import {
   SearchedDataProps,
   SourceType,
@@ -298,7 +299,12 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
     // Add search value conditions for name and displayName using wildcard
     if (searchValue) {
-      mustClauses.push(getSearchNameEsQuery(searchValue));
+      mustClauses.push(
+        getSearchNameEsQuery(
+          searchValue,
+          impactLevel === EImpactLevel.ColumnLevel
+        )
+      );
     }
 
     // Build final query only if we have conditions
@@ -308,7 +314,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         : undefined;
 
     return JSON.stringify(query);
-  }, [selectedQuickFilters, searchValue]);
+  }, [selectedQuickFilters, searchValue, impactLevel]);
 
   // Define table columns
   const extraTableFilters = useMemo(() => {
@@ -511,7 +517,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        sorter: true,
         render: renderName,
       },
       {
@@ -625,63 +630,40 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   // Render function for column names with search highlighting
   const columnNameRender = useCallback(
-    (column: string | string[]) => {
-      const columnNames = Array.isArray(column) ? column.join(', ') : column;
-
-      const prunedColumnName = getPartialNameFromTableFQN(columnNames, [
-        FqnPart.Column,
-      ]);
+    (column: string) => {
+      const prunedColumnName = Fqn.split(column).pop();
 
       return (
         <span>
           {isEmpty(prunedColumnName)
             ? NO_DATA
-            : highlightSearchText(prunedColumnName, searchValue)}
+            : stringToHTML(highlightSearchText(prunedColumnName, searchValue))}
         </span>
       );
     },
-    [lineageDirection, searchValue]
+    [searchValue]
   );
 
   // Define columns for column-level impact analysis
-  const columnImpactColumns: ColumnsType<SearchSourceAlias> = useMemo(
+  const columnImpactColumns: ColumnsType<ColumnLevelLineageNode> = useMemo(
     () => [
       {
         title: t('label.source'),
-        dataIndex:
-          lineageDirection === LineageDirection.Downstream
-            ? 'fromEntity'
-            : 'toEntity',
-        key:
-          lineageDirection === LineageDirection.Downstream
-            ? 'fromEntity'
-            : 'toEntity',
-        sorter: (a, b) => {
-          const key =
-            lineageDirection === LineageDirection.Downstream
-              ? 'column.fromEntity'
-              : 'column.toEntity';
-          const columnA = getPartialNameFromTableFQN(get(a, key, ''), [
-            FqnPart.Table,
-          ]);
-          const columnB = getPartialNameFromTableFQN(get(b, key, ''), [
-            FqnPart.Table,
-          ]);
-
-          return columnA.localeCompare(columnB);
-        },
-        render: (record?: SearchSourceAlias & { type: EntityType }) => (
+        dataIndex: 'fromEntity',
+        key: 'fromEntity',
+        sorter: (a, b) =>
+          a.fromEntity.fullyQualifiedName?.localeCompare(
+            b.fromEntity.fullyQualifiedName ?? ''
+          ),
+        render: (record?: EntityReference) => (
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
-              record?.type as EntityType,
-              record
+              record?.type as EntityType
             )}>
             {stringToHTML(
               highlightSearchText(
-                getPartialNameFromTableFQN(record?.fullyQualifiedName ?? '', [
-                  FqnPart.Table,
-                ]),
+                Fqn.split(record?.fullyQualifiedName ?? '').pop(),
                 searchValue
               )
             )}
@@ -690,66 +672,28 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       },
       {
         title: t('label.source-column-plural'),
-        dataIndex:
-          lineageDirection === LineageDirection.Downstream
-            ? ['column', 'fromColumns']
-            : ['column', 'toColumn'],
-        key:
-          lineageDirection === LineageDirection.Downstream
-            ? 'column.fromColumns'
-            : 'column.toColumn',
-        sorter: (a, b) => {
-          const key =
-            lineageDirection === LineageDirection.Downstream
-              ? 'column.fromColumns.0'
-              : 'column.toColumn';
-          const columnA = getPartialNameFromTableFQN(get(a, key, ''), [
-            FqnPart.Column,
-          ]);
-          const columnB = getPartialNameFromTableFQN(get(b, key, ''), [
-            FqnPart.Column,
-          ]);
-
-          return columnA.localeCompare(columnB);
-        },
+        dataIndex: ['fromColumn'],
+        key: 'fromColumn',
+        sorter: (a, b) => a.fromColumn?.localeCompare(b.fromColumn ?? ''),
         render: columnNameRender,
       },
       {
         title: t('label.impacted'),
-        dataIndex:
-          lineageDirection === LineageDirection.Upstream
-            ? 'fromEntity'
-            : 'toEntity',
-        key:
-          lineageDirection === LineageDirection.Upstream
-            ? 'fromEntity'
-            : 'toEntity',
-        sorter: (a, b) => {
-          const key =
-            lineageDirection === LineageDirection.Upstream
-              ? 'column.fromEntity'
-              : 'column.toEntity';
-          const columnA = getPartialNameFromTableFQN(get(a, key, ''), [
-            FqnPart.Table,
-          ]);
-          const columnB = getPartialNameFromTableFQN(get(b, key, ''), [
-            FqnPart.Table,
-          ]);
-
-          return columnA.localeCompare(columnB);
-        },
-        render: (record?: SearchSourceAlias & { type?: EntityType }) => (
+        dataIndex: 'toEntity',
+        key: 'toEntity',
+        sorter: (a, b) =>
+          a.toEntity?.fullyQualifiedName?.localeCompare(
+            b.toEntity?.fullyQualifiedName ?? ''
+          ),
+        render: (record?: EntityReference) => (
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
-              record?.type as EntityType,
-              record
+              record?.type as EntityType
             )}>
             {stringToHTML(
               highlightSearchText(
-                getPartialNameFromTableFQN(record?.fullyQualifiedName ?? '', [
-                  FqnPart.Table,
-                ]),
+                Fqn.split(record?.fullyQualifiedName ?? '').pop(),
                 searchValue
               )
             )}
@@ -758,28 +702,9 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       },
       {
         title: t('label.impacted-column-plural'),
-        dataIndex:
-          lineageDirection === LineageDirection.Upstream
-            ? ['column', 'fromColumns']
-            : ['column', 'toColumn'],
-        key:
-          lineageDirection === LineageDirection.Upstream
-            ? 'column.fromColumns'
-            : 'column.toColumn',
-        sorter: (a, b) => {
-          const key =
-            lineageDirection === LineageDirection.Upstream
-              ? 'column.fromColumns.0'
-              : 'column.toColumn';
-          const columnA = getPartialNameFromTableFQN(get(a, key, ''), [
-            FqnPart.Column,
-          ]);
-          const columnB = getPartialNameFromTableFQN(get(b, key, ''), [
-            FqnPart.Column,
-          ]);
-
-          return columnA.localeCompare(columnB);
-        },
+        dataIndex: ['toColumn'],
+        key: 'toColumn',
+        sorter: (a, b) => a.toColumn?.localeCompare(b.toColumn ?? ''),
         render: columnNameRender,
       },
       ...tableColumns.slice(1),
