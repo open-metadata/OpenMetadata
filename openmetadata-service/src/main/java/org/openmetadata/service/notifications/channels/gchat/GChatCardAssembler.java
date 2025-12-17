@@ -22,6 +22,7 @@ import org.commonmark.node.ListItem;
 import org.commonmark.node.Node;
 import org.commonmark.node.OrderedList;
 import org.commonmark.node.Paragraph;
+import org.commonmark.node.Text;
 import org.commonmark.node.ThematicBreak;
 
 final class GChatCardAssembler extends AbstractVisitor {
@@ -481,8 +482,8 @@ final class GChatCardAssembler extends AbstractVisitor {
   }
 
   private static void extractPlainTextRecursive(Node node, StringBuilder sb) {
-    if (node instanceof org.commonmark.node.Text) {
-      sb.append(((org.commonmark.node.Text) node).getLiteral());
+    if (node instanceof Text) {
+      sb.append(((Text) node).getLiteral());
     }
     for (Node child = node.getFirstChild(); child != null; child = child.getNext()) {
       extractPlainTextRecursive(child, sb);
