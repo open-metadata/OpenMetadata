@@ -822,3 +822,10 @@ export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
     .getByTestId('lineage-filter-button')
     .click();
 };
+
+export const clickLineageNode = async (page: Page, nodeFqn: string) => {
+  await page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`[data-testid="entity-header-display-name"]`)
+    .click();
+};

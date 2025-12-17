@@ -34,6 +34,7 @@ import {
   addColumnLineage,
   addPipelineBetweenNodes,
   applyPipelineFromModal,
+  clickLineageNode,
   connectEdgeBetweenNodes,
   connectEdgeBetweenNodesViaAPI,
   deleteEdge,
@@ -143,9 +144,8 @@ for (const EntityClass of entities) {
             entity,
             'entityResponseData.fullyQualifiedName'
           );
-          await page
-            .locator(`[data-testid="lineage-node-${toNodeFqn}"]`)
-            .click();
+
+          await clickLineageNode(page, toNodeFqn);
 
           await expect(
             page
@@ -170,9 +170,8 @@ for (const EntityClass of entities) {
           currentEntity,
           'entityResponseData.fullyQualifiedName'
         );
-        await page
-          .locator(`[data-testid="lineage-node-${fromNodeFqn}"]`)
-          .click({ position: { x: 5, y: 5 } });
+
+        await clickLineageNode(page, fromNodeFqn);
 
         for (const entity of entities) {
           await applyPipelineFromModal(page, currentEntity, entity, pipeline);
@@ -527,7 +526,7 @@ test('Verify table search with special characters as handled', async ({
 
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
 
-    await page.locator(`[data-testid="lineage-node-${dbFqn}"]`).click();
+    await clickLineageNode(page, dbFqn);
     await page.waitForLoadState('networkidle');
 
     await expect(
@@ -691,9 +690,8 @@ test('Verify cycle lineage should be handled properly', async ({ page }) => {
 });
 
 test('Verify column layer is applied on entering edit mode', async ({
-  browser,
+  page,
 }) => {
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
 
@@ -734,9 +732,8 @@ test('Verify column layer is applied on entering edit mode', async ({
 });
 
 test('Verify there is no traced nodes and columns on exiting edit mode', async ({
-  browser,
+  page,
 }) => {
-  const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
 
@@ -1407,11 +1404,11 @@ test.describe.serial('Test pagination in column level lineage', () => {
   });
 
   test('Verify edges for column level lineage between 2 nodes when filter is toggled', async ({
-    browser,
+    page,
   }) => {
     test.slow();
 
-    const { page, afterAction } = await createNewPage(browser);
+    const { afterAction } = await getApiContext(page);
 
     try {
       await test.step('1. Load both the table', async () => {
