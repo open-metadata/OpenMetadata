@@ -26,6 +26,15 @@ import {
 } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
+interface TableColumn {
+  name: string;
+  dataType: string;
+  dataLength?: number;
+  dataTypeDisplay: string;
+  description?: string;
+  children?: TableColumn[];
+}
+
 export class TableClass extends EntityClass {
   service: {
     name: string;
@@ -48,7 +57,7 @@ export class TableClass extends EntityClass {
   schema: { name: string; database: string };
   columnsName: string[];
   entityLinkColumnsName: string[];
-  children: unknown[];
+  children: TableColumn[];
   entity: {
     name: string;
     displayName: string;
@@ -256,7 +265,7 @@ export class TableClass extends EntityClass {
       name: string;
       displayName: string;
       description?: string;
-      columns?: unknown[];
+      columns?: TableColumn[];
       databaseSchema?: string;
     },
     apiContext: APIRequestContext

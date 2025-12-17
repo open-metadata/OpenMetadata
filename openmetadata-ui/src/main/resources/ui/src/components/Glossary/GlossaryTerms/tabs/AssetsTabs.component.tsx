@@ -145,7 +145,6 @@ const AssetsTabs = forwardRef(
       handlePageChange,
       handlePageSizeChange,
       handlePagingChange,
-      showPagination,
     } = usePaging();
 
     const isRemovable = useMemo(
@@ -265,7 +264,9 @@ const AssetsTabs = forwardRef(
           if (assetCount === undefined) {
             setTotalAssetCount(res.hits.total.value ?? 0);
           }
-          hits[0] && setSelectedCard(hits[0]._source);
+          if (hits[0]) {
+            setSelectedCard(hits[0]._source);
+          }
         } catch {
           // Nothing here
         } finally {
@@ -574,19 +575,17 @@ const AssetsTabs = forwardRef(
                 }
               />
             ))}
-            {showPagination && (
-              <NextPrevious
-                isNumberBased
-                currentPage={currentPage}
-                isLoading={isLoading}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={({ currentPage }: PagingHandlerParams) =>
-                  handlePageChange(currentPage)
-                }
-                onShowSizeChange={handlePageSizeChange}
-              />
-            )}
+            <NextPrevious
+              isNumberBased
+              currentPage={currentPage}
+              isLoading={isLoading}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={({ currentPage }: PagingHandlerParams) =>
+                handlePageChange(currentPage)
+              }
+              onShowSizeChange={handlePageSizeChange}
+            />
           </div>
         ) : (
           <div className="h-full">{assetErrorPlaceHolder}</div>
@@ -603,7 +602,6 @@ const AssetsTabs = forwardRef(
         selectedItems,
         setSelectedCard,
         handlePageChange,
-        showPagination,
         handlePageSizeChange,
         handleCheckboxChange,
       ]
@@ -734,12 +732,13 @@ const AssetsTabs = forwardRef(
 
         // If current page is already 1 it won't trigger fetchAssets from useEffect
         // Hence need to manually trigger it for this case
-        currentPage === 1 &&
+        if (currentPage === 1) {
           fetchAssets({
             index: [SearchIndex.ALL],
             page: 1,
             queryFilter: quickFilterQuery,
           });
+        }
       },
       closeSummaryPanel() {
         setSelectedCard(undefined);

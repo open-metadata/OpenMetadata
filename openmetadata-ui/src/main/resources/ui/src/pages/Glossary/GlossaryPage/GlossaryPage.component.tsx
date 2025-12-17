@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -267,11 +267,13 @@ const GlossaryPage = () => {
             (glossary) => glossary.fullyQualifiedName === glossaryFqn
           ) || glossaries[0]
         );
-        !glossaryFqn &&
-          glossaries[0].fullyQualifiedName &&
+
+        if (isNil(glossaryFqn) && glossaries[0].fullyQualifiedName) {
           navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
             replace: true,
           });
+        }
+
         setIsRightPanelLoading(false);
       }
     }
@@ -331,7 +333,18 @@ const GlossaryPage = () => {
           deleteType: DeleteType.HARD_DELETE,
           prepareType: true,
           isRecursiveDelete: true,
+          onDeleteFailure: fetchGlossaryList,
         });
+
+        // check updated glossary list after deletion
+        const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+        setGlossaries(updatedGlossaries);
+        const glossaryPath =
+          updatedGlossaries.length > 0
+            ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
+            : getGlossaryPath();
+
+        navigate(glossaryPath);
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -341,7 +354,7 @@ const GlossaryPage = () => {
         );
       }
     },
-    [glossaries, activeGlossary]
+    [glossaries, activeGlossary, fetchGlossaryList]
   );
 
   const handleGlossaryTermUpdate = useCallback(
@@ -363,7 +376,9 @@ const GlossaryPage = () => {
             navigate(getGlossaryPath(response.fullyQualifiedName));
             fetchGlossaryList();
           }
-          shouldRefreshTerms && fetchGlossaryTermDetails();
+          if (shouldRefreshTerms) {
+            fetchGlossaryTermDetails();
+          }
         } else {
           throw t('server.entity-updating-error', {
             entity: t('label.glossary-term'),
@@ -386,6 +401,7 @@ const GlossaryPage = () => {
           deleteType: DeleteType.HARD_DELETE,
           prepareType: true,
           isRecursiveDelete: true,
+          onDeleteFailure: fetchGlossaryList,
         });
 
         let fqn;
@@ -406,7 +422,7 @@ const GlossaryPage = () => {
         );
       }
     },
-    [glossaryFqn, activeGlossary]
+    [glossaryFqn, activeGlossary, fetchGlossaryList]
   );
 
   const handleAssetClick = useCallback(

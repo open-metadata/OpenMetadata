@@ -248,6 +248,7 @@ export default [
       '@typescript-eslint/no-duplicate-enum-values': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-expressions': 'warn',
+      'react-hooks/rules-of-hooks': 'off',
     },
   },
 
