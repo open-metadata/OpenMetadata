@@ -753,11 +753,20 @@ test.describe('Domains', () => {
 
       const descriptionInputBox = '.om-block-editor[contenteditable="true"]';
 
+      // clear existing description to avoid flakiness
+      await userPage.fill(descriptionInputBox, '');
+
       await userPage.fill(descriptionInputBox, 'test description');
+
+      const saveResponse = userPage.waitForResponse(
+        (req) =>
+          req.request().method() === 'patch' &&
+          req.request().url().includes('/api/v1/domains/')
+      );
 
       await userPage.getByTestId('save').click();
 
-      await userPage.waitForTimeout(3000);
+      await saveResponse;
 
       const descriptionBox = '.om-block-editor[contenteditable="false"]';
 
