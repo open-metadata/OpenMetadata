@@ -1369,7 +1369,6 @@ test.describe('Glossary tests', () => {
   test('Async Delete - WebSocket failure triggers recovery', async ({
     browser,
   }) => {
-    
     // Create page and set up mocked WebSocket BEFORE navigation
     const page = await browser.newPage();
     await setupMockedWebSocket(page);
@@ -1443,6 +1442,7 @@ test.describe('Glossary tests', () => {
       await expect(
         page.getByRole('menuitem', { name: glossaryB.data.displayName })
       ).not.toBeVisible();
+
       await expectGlossaryVisible(page, glossaryC.data.displayName);
     } finally {
       await glossaryC.delete(apiContext);
@@ -1454,7 +1454,7 @@ test.describe('Glossary tests', () => {
     browser,
   }) => {
     test.slow(true);
-    
+
     // Create page and set up mocked WebSocket BEFORE navigation
     const page = await browser.newPage();
     await setupMockedWebSocket(page);
@@ -1499,6 +1499,7 @@ test.describe('Glossary tests', () => {
       await expect(
         page.getByRole('menuitem', { name: glossaryA.data.displayName })
       ).not.toBeVisible();
+
       await expectGlossaryVisible(page, glossaryB.data.displayName);
       await expectGlossaryVisible(page, glossaryC.data.displayName);
     } finally {
