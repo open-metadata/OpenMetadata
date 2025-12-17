@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.1.2-python3.10
+FROM apache/airflow:3.1.5-python3.10
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
     && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -82,7 +82,7 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_QUIET=1
 ARG RI_VERSION="1.10.0.0.dev0"
 RUN pip install --upgrade pip
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.1.2/constraints-3.10.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.1.5/constraints-3.10.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
