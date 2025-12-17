@@ -1003,6 +1003,37 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     return value.replace("\"", "\\\"");
   }
 
+  @Test
+  void testRenameDataProductWithDuplicateName(TestInfo test) throws IOException {
+    // Create a domain
+    DomainResourceTest domainTest = new DomainResourceTest();
+    Domain domain = domainTest.createEntity(domainTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+    // Create two data products
+    DataProduct dataProduct1 =
+        createEntity(
+            createRequest(getEntityName(test, 1))
+                .withDomains(List.of(domain.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    DataProduct dataProduct2 =
+        createEntity(
+            createRequest(getEntityName(test, 2))
+                .withDomains(List.of(domain.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    // Try to rename dataProduct1 to the name of dataProduct2
+    String json = JsonUtils.pojoToJson(dataProduct1);
+    dataProduct1.setName(dataProduct2.getName());
+    dataProduct1.setFullyQualifiedName(FullyQualifiedName.quoteName(dataProduct2.getName()));
+
+    // Expect an exception when trying to rename to an existing name
+    assertThatThrownBy(
+            () -> patchEntity(dataProduct1.getId(), json, dataProduct1, ADMIN_AUTH_HEADERS))
+        .isInstanceOf(HttpResponseException.class)
+        .hasMessageContaining("already exists");
+  }
+
   /**
    * Helper method to rename a data product and verify the change.
    */

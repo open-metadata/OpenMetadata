@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
@@ -75,6 +76,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -482,13 +484,21 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     /**
      * Handle data product rename. When a data product is renamed:
-     * 1. Update the FQN of the data product
-     * 2. Update entity links in feed/comments
-     * 3. Update search indexes for assets referencing this data product
+     * 1. Check if another data product with the same name already exists
+     * 2. Update the FQN of the data product
+     * 3. Update entity links in feed/comments
+     * 4. Update search indexes for assets referencing this data product
      */
     private void updateName(DataProduct original, DataProduct updated) {
       if (original.getName().equals(updated.getName())) {
         return;
+      }
+
+      // Check if a data product with the new name already exists
+      DataProduct existing = findByNameOrNull(FullyQualifiedName.quoteName(updated.getName()), ALL);
+      if (existing != null && !existing.getId().equals(original.getId())) {
+        throw new IllegalArgumentException(
+            entityNameAlreadyExists(DATA_PRODUCT, updated.getName()));
       }
 
       String oldFqn = original.getFullyQualifiedName();
