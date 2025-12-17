@@ -2607,7 +2607,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void post_createTasksConcurrently_200() {
+  void post_createTasksConcurrently_200() throws HttpResponseException {
     String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
     List<CreateThread> createThreads = new java.util.ArrayList<>();
     for (int i = 0; i < 50; i++) {
@@ -2640,5 +2640,10 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     List<Integer> taskIds = createdTasks.stream().map(t -> t.getTask().getId()).toList();
     long distinctIds = taskIds.stream().distinct().count();
     assertEquals(taskIds.size(), distinctIds, "All task IDs should be unique");
+
+    // Delete the created task threads
+    for (Thread thread : createdTasks) {
+      deleteThread(thread.getId(), USER_AUTH_HEADERS);
+    }
   }
 }

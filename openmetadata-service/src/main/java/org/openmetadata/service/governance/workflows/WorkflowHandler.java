@@ -603,7 +603,7 @@ public class WorkflowHandler {
     } catch (Exception e) {
       LOG.error(
           "[WorkflowTask] ERROR: Failed to resolve task '{}': {}", customTaskId, e.getMessage(), e);
-      throw e;
+      return false;
     }
   }
 
