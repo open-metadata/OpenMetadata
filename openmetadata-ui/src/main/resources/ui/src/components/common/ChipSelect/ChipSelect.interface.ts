@@ -25,5 +25,5 @@ export interface ChipSelectProps {
   error?: boolean;
   helperText?: string;
   disabled?: boolean;
-  'data-testid'?: string;
+  dataTestId?: string;
 }

@@ -311,22 +311,15 @@ class ServiceBaseClass {
     );
   }
 
-  handleIngestionRetry = async (
-    ingestionType = 'metadata',
+  getWorkFlowDetails = async (
     page: Page,
-    workflowDetails?: any
+    ingestionType: string,
+    workflowDetails?: { fullyQualifiedName: string }
   ) => {
-    const { apiContext } = await getApiContext(page);
-
-    let workflowData;
-
-    // Need to wait before start polling as Ingestion is taking time to reflect state on their db
-    // Queued status are not stored in DB. cc: @ulixius9
-    await page.waitForTimeout(2000);
-
     if (workflowDetails) {
-      workflowData = workflowDetails;
+      return workflowDetails;
     } else {
+      const { apiContext } = await getApiContext(page);
       const response = await apiContext
         .get(
           `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
@@ -337,10 +330,25 @@ class ServiceBaseClass {
         )
         .then((res) => res.json());
 
-      workflowData = response.data.filter(
+      return response.data.find(
         (d: { pipelineType: string }) => d.pipelineType === ingestionType
-      )[0];
+      );
     }
+  };
+
+  handleIngestionRetry = async (
+    ingestionType = 'metadata',
+    page: Page,
+    workflowDetails?: { fullyQualifiedName: string }
+  ) => {
+    // Need to wait before start polling as Ingestion is taking time to reflect state on their db
+    // Queued status are not stored in DB. cc: @ulixius9
+    await page.waitForTimeout(2000);
+    const workflowData = await this.getWorkFlowDetails(
+      page,
+      ingestionType,
+      workflowDetails
+    );
     const oneHourBefore = Date.now() - 86400000;
     let consecutiveErrors = 0;
 

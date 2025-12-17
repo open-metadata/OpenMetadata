@@ -70,6 +70,7 @@ const StyleModalNew: FC<StyleModalProps> = ({
               customStyles={{
                 searchBoxWidth: 366,
               }}
+              dataTestId="icon-picker-btn"
               defaultIcon={DEFAULT_TAG_ICON}
               label={t('label.icon')}
               placeholder={t('label.icon-url')}

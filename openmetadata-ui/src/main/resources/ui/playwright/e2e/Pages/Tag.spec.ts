@@ -167,12 +167,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-    await adminPage
-      .getByRole('group')
-      .filter({ hasText: 'Icon' })
-      .locator('div')
-      .nth(1)
-      .click();
+    await adminPage.getByTestId('icon-picker-btn').click();
     await adminPage.getByRole('button', { name: `Select icon Cube01` }).click();
     await adminPage
       .getByRole('button', { name: 'Select color #F14C75' })
@@ -259,11 +254,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await adminPage.click('[data-testid="add-new-tag-button"]');
 
-    await adminPage.waitForSelector('.tags-form', {
-      state: 'visible',
-    });
-
-    await expect(adminPage.locator('.tags-form')).toBeVisible();
+    await expect(adminPage.getByRole('form', { name: 'tags' })).toBeVisible();
 
     await validateForm(adminPage);
 

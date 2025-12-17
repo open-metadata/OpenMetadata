@@ -56,20 +56,21 @@ export class TagClass {
   constructor(tag: Partial<TagData>) {
     this.randomName = getRandomLastName();
     this.data = {
-      name: tag?.name || `pw-tier-${this.randomName}`,
+      name: tag?.name ?? `pw-tier-${this.randomName}`,
       displayName: `PW Tier ${this.randomName}`,
       description: 'Tier tag for the Collate platform',
       style: {
         color: '#FFD700',
       },
       classification: tag.classification ?? 'Tier',
-      ...(tag.autoClassificationEnabled !== undefined && {
-        autoClassificationEnabled: tag.autoClassificationEnabled,
-      }),
-      ...(tag.autoClassificationPriority !== undefined && {
-        autoClassificationPriority: tag.autoClassificationPriority,
-      }),
     };
+    if (typeof tag.autoClassificationEnabled === 'boolean') {
+      this.data.autoClassificationEnabled = tag.autoClassificationEnabled;
+    }
+
+    if (typeof tag.autoClassificationPriority === 'number') {
+      this.data.autoClassificationPriority = tag.autoClassificationPriority;
+    }
   }
 
   async visitPage(page: Page) {

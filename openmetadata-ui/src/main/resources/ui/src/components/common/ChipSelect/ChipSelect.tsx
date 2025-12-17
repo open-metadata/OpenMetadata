@@ -25,7 +25,7 @@ const ChipSelect: FC<ChipSelectProps> = ({
   error,
   helperText,
   disabled = false,
-  'data-testid': dataTestId,
+  dataTestId,
 }) => {
   const handleChipClick = (optionValue: string) => {
     if (!disabled) {

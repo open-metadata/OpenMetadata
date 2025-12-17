@@ -490,12 +490,7 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.fill('[data-testid="name"]', NEW_TAG.name);
   await adminPage.fill('[data-testid="displayName"]', NEW_TAG.displayName);
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
-  await adminPage
-    .getByRole('group')
-    .filter({ hasText: 'Icon' })
-    .locator('div')
-    .nth(1)
-    .click();
+  await adminPage.getByTestId('icon-picker-btn').click();
   await adminPage
     .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
     .click();
