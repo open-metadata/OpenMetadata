@@ -4,21 +4,52 @@ from typing import List, Optional
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.utils.logger import ingestion_logger
+from metadata.ingestion.source.dashboard.powerbi.models import Dataset
 
 NATIVE_QUERY_PARSER_EXPRESSION = re.compile(
     r"Value\.NativeQuery\(\s*"
-    r"(?P<catalog_type>[A-Za-z0-9_\.]+)\("
-    r"(?P<catalog_info>.*?)\)"
-    r"(?P<catalog_parameters>\{\[.*?\]\})\[Data\],\s*"
+    r"(?P<catalog_type>[A-Za-z0-9_\.]+)\s*\(\s*"
+    r"(?P<catalog_info>.*?)\)\s*"
+    r"(?P<catalog_parameters>\s*\{\s*\[.*?\]\s*\})\s*\[Data\],\s*"
     r'"(?P<query>.*?)"',
     re.DOTALL,
 )
 logger = ingestion_logger()
 
 
+def resolve_database(database: str, dataset: Dataset) -> str:
+    """
+    Resolve the database name from the given input.
+    If the database starts and ends with a single or double quote, it is hardcoded string, we just strip the quotes.
+    othwerwise, it is a parameter defined in the expression section. Get the Default value of the expression.
+    :param database: The input database string.
+    :param dataset: The dataset object containing expressions.
+    :return: The resolved database name.
+    """
+    regexp = r"^['|\"].*['|\"]$"
+
+    if re.match(regexp, database):
+        db_name = database.strip('"').strip()
+    else:
+        db_name = None
+        # get the database from the expression seciton of the workspace
+        if dataset.expressions:
+            for expr in dataset.expressions:
+                if expr.name == database:
+                    if expr.expression:
+                        pattern = r'^"([^"]+)"\s+meta'
+                        kw_match = re.search(pattern, expr.expression)
+                        if kw_match:
+                            db_name = kw_match.group(1)
+    return db_name
+
+
 def parse_databricks_native_query_source(
-    source_expression: str,
+    source_expression: str, dataset: Dataset
 ) -> Optional[List[dict]]:
+    # cleanup new lines and excessive spaces
+    source_expression = source_expression.replace("\n", " ")
+    source_expression = re.sub(r"\s+", " ", source_expression).strip()
 
     groups = NATIVE_QUERY_PARSER_EXPRESSION.search(source_expression)
 
@@ -27,7 +58,7 @@ def parse_databricks_native_query_source(
         catalog_info = details.get("catalog_info", "")
         catalog_parameters = details.get("catalog_parameters", "")
         catalog_info_match = re.match(
-            r".*Catalog\s*=\s*(?P<catalog>[^,]+?)\s*,", catalog_info
+            r".*Catalog\s*=\s*(?P<catalog>[^,]+?)\s*,", catalog_info, re.DOTALL
         )
         if not catalog_info_match:
             logger.error(f"Could not find catalog in info: {catalog_info}")
@@ -39,7 +70,7 @@ def parse_databricks_native_query_source(
             r'Name\s*=\s*(?P<database>[^,]+?)\s*,\s*Kind\s*=\s*"Database"',
             catalog_parameters,
         )
-        database = None
+
         if database_match:
             database = database_match.groupdict().get("database", None)
         else:
@@ -49,7 +80,7 @@ def parse_databricks_native_query_source(
             logger.error(f"Could not find database in {source_expression}")
             return None
 
-        database = database.strip('"').strip()
+        database = resolve_database(database, dataset)
         parser_query = details.get("query")
 
         # Clean the query for parser
@@ -87,7 +118,8 @@ def parse_databricks_native_query_source(
                 raise Exception(parser.query_parsing_failure_reason)
         except Exception as parser_exc:
             logger.error(
-                f"LineageParser failed parsing query with error {parser_query[:200]} ",
+                f"LineageParser failed parsing query with error {parser_query[:200]} in dataset "
+                f"{dataset.name}[{dataset.id}] ",
                 exc_info=parser_exc,
             )
             return None
@@ -104,5 +136,7 @@ def parse_databricks_native_query_source(
         return lineage_tables_list
 
     else:
-        logger.error(f"Invalid Databricks Native Query Syntax: {source_expression}")
+        logger.error(
+            f"Invalid Databricks Native Query Syntax: {source_expression} in dataset {dataset.name}[{dataset.id}]"
+        )
         return None
