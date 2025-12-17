@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
@@ -32,6 +32,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
+import { test } from '../base';
 
 const SERVICE_NAMES = {
   service1: `PlaywrightService_${uuid()}`,

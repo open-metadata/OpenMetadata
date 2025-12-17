@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Page, test as base, expect } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { test as base, expect } from '../base';
 import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PersonaClass } from '../../support/persona/PersonaClass';

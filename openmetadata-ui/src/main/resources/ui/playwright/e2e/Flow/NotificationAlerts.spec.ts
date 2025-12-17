@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -19,30 +19,31 @@ import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    commonCleanup,
-    commonPrerequisites,
-    createAlert,
-    deleteAlert,
-    generateAlertName,
-    inputBasicAlertInformation,
-    verifyAlertDetails,
-    visitAlertDetailsPage,
-    visitEditAlertPage
+  commonCleanup,
+  commonPrerequisites,
+  createAlert,
+  deleteAlert,
+  generateAlertName,
+  inputBasicAlertInformation,
+  verifyAlertDetails,
+  visitAlertDetailsPage,
+  visitEditAlertPage
 } from '../../utils/alert';
 import { descriptionBox, getApiContext } from '../../utils/common';
 import {
-    addFilterWithUsersListInput,
-    addInternalDestination,
-    checkAlertDetailsForWithPermissionUser,
-    checkAlertFlowForWithoutPermissionUser,
-    createAlertForRecentEventsCheck,
-    createAlertWithMultipleFilters,
-    createConversationAlert,
-    createTaskAlert,
-    editSingleFilterAlert,
-    visitNotificationAlertPage
+  addFilterWithUsersListInput,
+  addInternalDestination,
+  checkAlertDetailsForWithPermissionUser,
+  checkAlertFlowForWithoutPermissionUser,
+  createAlertForRecentEventsCheck,
+  createAlertWithMultipleFilters,
+  createConversationAlert,
+  createTaskAlert,
+  editSingleFilterAlert,
+  visitNotificationAlertPage
 } from '../../utils/notificationAlert';
 import { addExternalDestination } from '../../utils/observabilityAlert';
+import { test as base } from '../base';
 
 const dashboard = new DashboardClass();
 const table = new TableClass();

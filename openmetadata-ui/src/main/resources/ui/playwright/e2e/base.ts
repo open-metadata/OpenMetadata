@@ -10,19 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as setup } from './base';
-import { EntityDataClass } from '../support/entity/EntityDataClass';
-import { performAdminLogin } from '../utils/admin';
+import { test as base } from '@playwright/test';
+import { collectCoverage } from '../utils/coverage';
 
-setup('create entity data prerequisites', async ({ browser }) => {
-  setup.setTimeout(300 * 1000);
-
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-
-  try {
-    await EntityDataClass.preRequisitesForTests(apiContext);
-    EntityDataClass.saveResponseData();
-  } finally {
-    await afterAction();
-  }
+export const test = base.extend({
+  page: async ({ page }, use) => {
+    await use(page);
+    await collectCoverage(page);
+  },
 });
+
+export { expect } from '@playwright/test';
