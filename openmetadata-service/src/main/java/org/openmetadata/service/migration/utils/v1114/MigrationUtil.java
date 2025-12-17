@@ -1,83 +1,45 @@
 package org.openmetadata.service.migration.utils.v1114;
 
+import java.util.function.BiPredicate;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.search.AssetTypeConfiguration;
-import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.settings.Settings;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
 @Slf4j
 public class MigrationUtil {
 
-  private static final SystemRepository systemRepository = Entity.getSystemRepository();
-  private static final String SEARCH_SETTINGS_KEY = "searchSettings";
-
   public static void updateSearchSettingsBoostConfiguration() {
     try {
-      LOG.info("Updating search settings: percentileRank factors from 0.05/0.1 to 1.0");
+      LOG.info(
+          "Updating search settings: merging percentileRank factors from default configuration");
 
-      Settings searchSettings = systemRepository.getConfigWithKey(SEARCH_SETTINGS_KEY);
+      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
 
       if (searchSettings == null) {
         LOG.warn("Search settings not found, skipping migration");
         return;
       }
 
-      SearchSettings currentSettings =
-          JsonUtils.readValue(
-              JsonUtils.pojoToJson(searchSettings.getConfigValue()), SearchSettings.class);
+      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
+      SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
 
-      boolean updated = false;
-
-      // Update global fieldValueBoosts - percentileRank factors
-      if (currentSettings.getGlobalSettings() != null
-          && currentSettings.getGlobalSettings().getFieldValueBoosts() != null) {
-        for (FieldValueBoost boost : currentSettings.getGlobalSettings().getFieldValueBoosts()) {
-          if (boost.getField() != null && boost.getField().contains("percentileRank")) {
-            if (boost.getFactor() != null
-                && (boost.getFactor() == 0.05 || boost.getFactor() == 0.1)) {
-              LOG.info(
-                  "Updating global percentileRank factor from {} to 1.0 for field: {}",
-                  boost.getFactor(),
-                  boost.getField());
-              boost.setFactor(1.0);
-              updated = true;
-            }
-          }
-        }
+      if (defaultSettings == null) {
+        LOG.error("Failed to load default search settings, skipping migration");
+        return;
       }
 
-      // Update asset type configurations
-      if (currentSettings.getAssetTypeConfigurations() != null) {
-        for (AssetTypeConfiguration assetConfig : currentSettings.getAssetTypeConfigurations()) {
+      BiPredicate<String, Double> shouldMerge =
+          (field, factor) ->
+              field.contains("percentileRank") && (factor == 0.05 || factor == 0.1 || factor == 2);
 
-          // Update asset-specific fieldValueBoosts - percentileRank factors
-          if (assetConfig.getFieldValueBoosts() != null) {
-            for (FieldValueBoost boost : assetConfig.getFieldValueBoosts()) {
-              if (boost.getField() != null && boost.getField().contains("percentileRank")) {
-                if (boost.getFactor() != null
-                    && (boost.getFactor() == 0.05 || boost.getFactor() == 0.1)) {
-                  LOG.info(
-                      "Updating percentileRank factor from {} to 1.0 for field: {} in asset type: {}",
-                      boost.getFactor(),
-                      boost.getField(),
-                      assetConfig.getAssetType());
-                  boost.setFactor(1.0);
-                  updated = true;
-                }
-              }
-            }
-          }
-        }
-      }
+      boolean updated =
+          SearchSettingsMergeUtil.mergeFieldValueBoosts(
+              currentSettings, defaultSettings, shouldMerge, "percentileRank");
 
       if (updated) {
-        searchSettings.withConfigValue(currentSettings);
-        systemRepository.updateSetting(searchSettings);
-        LOG.info("Search settings percentileRank factors updated successfully");
+        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+        LOG.info("Search settings percentileRank factors merged successfully from defaults");
       } else {
         LOG.info("No updates needed for search settings percentileRank factors");
       }
