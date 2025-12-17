@@ -167,7 +167,16 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-    await adminPage.getByTestId('color-color-input').fill('#6366f1');
+    await adminPage
+      .getByRole('group')
+      .filter({ hasText: 'Icon' })
+      .locator('div')
+      .nth(1)
+      .click();
+    await adminPage.getByRole('button', { name: `Select icon Cube01` }).click();
+    await adminPage
+      .getByRole('button', { name: 'Select color #F14C75' })
+      .click();
 
     const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
     await adminPage.locator('button[type="submit"]').click();

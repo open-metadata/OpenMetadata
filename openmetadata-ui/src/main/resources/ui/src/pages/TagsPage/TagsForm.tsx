@@ -192,10 +192,19 @@ const TagsForm = ({
     }
 
     try {
+      let domainsData;
+      if (domains?.length && !isEditing) {
+        domainsData = domains.map(
+          (domain) => domain.fullyQualifiedName ?? domain.name
+        );
+      } else if (domains?.length) {
+        domainsData = domains;
+      }
+
       const submitData = {
         ...data,
         owners: owners?.length ? owners : undefined,
-        domains: domains?.length ? domains : undefined,
+        domains: domainsData,
       };
       await onSubmit(submitData);
       formRef.setFieldsValue(DEFAULT_FORM_VALUE);
