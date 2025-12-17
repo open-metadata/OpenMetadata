@@ -56,80 +56,14 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
-export const removeLandingBanner = async (page: Page) => {
-  // Try to close any modals or banners that might be blocking
-  try {
-    // Close welcome screen if present
-    const welcomePageCloseButton = await page
-      .waitForSelector('[data-testid="welcome-screen-close-btn"]', {
-        state: 'visible',
-        timeout: 3000,
-      })
-      .catch(() => null);
-
-    if (welcomePageCloseButton) {
-      await welcomePageCloseButton.click();
-      await page.waitForTimeout(300);
-    }
-  } catch {
-    // Ignore if not present
-  }
-
-  try {
-    // Close version update notification if present
-    const versionNotificationClose = await page
-      .locator('.ant-notification-notice-close')
-      .first()
-      .waitFor({ state: 'visible', timeout: 2000 })
-      .catch(() => null);
-
-    if (versionNotificationClose) {
-      await page.locator('.ant-notification-notice-close').first().click();
-      await page.waitForTimeout(300);
-    }
-  } catch {
-    // Ignore if not present
-  }
-
-  try {
-    // Close any generic modal dialogs that might be open
-    const modalCloseButton = await page
-      .locator('[data-testid="modal-close-btn"], .ant-modal-close')
-      .first()
-      .waitFor({ state: 'visible', timeout: 2000 })
-      .catch(() => null);
-
-    if (modalCloseButton) {
-      await page
-        .locator('[data-testid="modal-close-btn"], .ant-modal-close')
-        .first()
-        .click();
-      await page.waitForTimeout(300);
-    }
-  } catch {
-    // Ignore if not present
-  }
-};
-
 export const redirectToHomePage = async (
   page: Page,
   waitForNetworkIdle = true
 ) => {
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
-
-  // Wait for URL to be either my-data or signin (in case of auth issues)
-  await page.waitForURL(/\/(my-data|signin)/, { timeout: 30000 });
-
-  // If redirected to signin, we're likely not authenticated - proceed anyway
-  // as the calling code should handle authentication
-  const currentUrl = page.url();
-  if (currentUrl.includes('/my-data')) {
-    if (waitForNetworkIdle) {
-      await page.waitForLoadState('networkidle');
-    }
-
-    // Dismiss any welcome modals or banners that might appear
-    await removeLandingBanner(page);
+  await page.goto('/');
+  await page.waitForURL('**/my-data');
+  if (waitForNetworkIdle) {
+    await page.waitForLoadState('networkidle');
   }
 };
 
@@ -139,48 +73,45 @@ export const redirectToExplorePage = async (page: Page) => {
   await page.waitForLoadState('networkidle');
 };
 
-export const createNewPage = async (
-  browser: Browser,
-  maxRetries = 2
-): Promise<{
-  page: Awaited<ReturnType<Browser['newPage']>>;
-  apiContext: Awaited<ReturnType<typeof getAuthContext>>;
-  afterAction: () => Promise<void>;
-}> => {
-  let lastError: Error | null = null;
+export const removeLandingBanner = async (page: Page) => {
+  try {
+    const welcomePageCloseButton = await page
+      .waitForSelector('[data-testid="welcome-screen-close-btn"]', {
+        state: 'visible',
+        timeout: 5000,
+      })
+      .catch(() => {
+        // Do nothing if the welcome banner does not exist
+        return;
+      });
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const page = await browser.newPage();
-    try {
-      await redirectToHomePage(page);
-
-      // Dismiss any blocking modals
-      await removeLandingBanner(page);
-
-      // get the token
-      const token = await getToken(page);
-
-      // create a new context with the token
-      const apiContext = await getAuthContext(token);
-
-      const afterAction = async () => {
-        await apiContext.dispose();
-        await page.close();
-      };
-
-      return { page, apiContext, afterAction };
-    } catch (error) {
-      lastError = error as Error;
-      await page.close();
-
-      if (attempt < maxRetries) {
-        // Wait before retry
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
+    // Close the welcome banner if it exists
+    if (welcomePageCloseButton?.isVisible()) {
+      await welcomePageCloseButton.click();
     }
+  } catch {
+    // Do nothing if the welcome banner does not exist
+    return;
   }
+};
 
-  throw lastError ?? new Error('createNewPage failed after retries');
+export const createNewPage = async (browser: Browser) => {
+  // create a new page
+  const page = await browser.newPage();
+  await redirectToHomePage(page);
+
+  // get the token
+  const token = await getToken(page);
+
+  // create a new context with the token
+  const apiContext = await getAuthContext(token);
+
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+  };
+
+  return { page, apiContext, afterAction };
 };
 
 /**
@@ -218,21 +149,17 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
 export const toastNotification = async (
   page: Page,
   message: string | RegExp,
-  timeout = 15000
+  timeout?: number
 ) => {
-  // Wait for alert bar to appear with explicit timeout
   await page.waitForSelector('[data-testid="alert-bar"]', {
     state: 'visible',
-    timeout,
   });
 
   await expect(page.getByTestId('alert-bar')).toHaveText(message, { timeout });
 
-  await expect(page.getByTestId('alert-icon')).toBeVisible({ timeout: 5000 });
+  await expect(page.getByTestId('alert-icon')).toBeVisible();
 
-  await expect(page.getByTestId('alert-icon-close')).toBeVisible({
-    timeout: 5000,
-  });
+  await expect(page.getByTestId('alert-icon-close')).toBeVisible();
 };
 
 export const clickOutside = async (page: Page) => {

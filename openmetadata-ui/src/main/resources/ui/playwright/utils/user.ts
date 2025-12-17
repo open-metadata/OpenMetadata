@@ -43,41 +43,17 @@ export const visitUserListPage = async (page: Page) => {
   await fetchUsers;
 };
 
-export const performUserLogin = async (
-  browser: Browser,
-  user: UserClass,
-  maxRetries = 2
-): Promise<{
-  page: Awaited<ReturnType<Browser['newPage']>>;
-  apiContext: Awaited<ReturnType<typeof getAuthContext>>;
-  afterAction: () => Promise<void>;
-}> => {
-  let lastError: Error | null = null;
+export const performUserLogin = async (browser: Browser, user: UserClass) => {
+  const page = await browser.newPage();
+  await user.login(page);
+  const token = await getToken(page);
+  const apiContext = await getAuthContext(token);
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+  };
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const page = await browser.newPage();
-    try {
-      await user.login(page);
-      const token = await getToken(page);
-      const apiContext = await getAuthContext(token);
-      const afterAction = async () => {
-        await apiContext.dispose();
-        await page.close();
-      };
-
-      return { page, apiContext, afterAction };
-    } catch (error) {
-      lastError = error as Error;
-      await page.close();
-
-      if (attempt < maxRetries) {
-        // Wait before retry
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-    }
-  }
-
-  throw lastError ?? new Error('performUserLogin failed after retries');
+  return { page, apiContext, afterAction };
 };
 
 export const nonDeletedUserChecks = async (page: Page) => {
