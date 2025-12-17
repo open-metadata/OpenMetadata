@@ -171,7 +171,7 @@ for (const EntityClass of entities) {
         );
         await page
           .locator(`[data-testid="lineage-node-${fromNodeFqn}"]`)
-          .click();
+          .click({ position: { x: 5, y: 5 } });
 
         for (const entity of entities) {
           await applyPipelineFromModal(page, currentEntity, entity, pipeline);
