@@ -1,6 +1,137 @@
 # OpenMetadata Playwright Testing Handbook
 
-## Test standards to follow
+## Testing Philosophy
+
+We adopt a user-centric approach to testing that focuses on behavior rather than implementation.
+
+### Avoid Testing Implementation Details
+
+**Implementation details** are things which users of your code will not typically use, see, or even know about. Testing them leads to:
+
+1. **False Negatives**: Tests break when you refactor code, even though the application still works correctly. This leads to brittle tests that require constant maintenance.
+
+2. **False Positives**: Tests pass even when the application is broken, because they're not testing what users actually experience.
+
+#### Example: False Negative (Bad Test)
+
+```typescript
+// ❌ BAD: Testing implementation details
+test('accordion state changes correctly', async ({ page }) => {
+  // This test accesses internal state - it will break if we rename the state variable
+  const accordion = await page.evaluate(() => {
+    const component = document.querySelector('[data-testid="accordion"]');
+    return component.__reactInternalState.openIndex; // Testing internal state!
+  });
+  expect(accordion).toBe(0);
+});
+
+// ✅ GOOD: Testing user-visible behavior
+test('accordion shows content when clicked', async ({ page }) => {
+  // Test what the user actually sees and does
+  await expect(page.getByText('Section 1 Content')).toBeVisible();
+  await expect(page.getByText('Section 2 Content')).not.toBeVisible();
+  
+  await page.getByRole('button', { name: 'Section 2' }).click();
+  
+  await expect(page.getByText('Section 2 Content')).toBeVisible();
+});
+```
+
+#### Example: False Positive (Bad Test)
+
+```typescript
+// ❌ BAD: Test passes but doesn't catch broken functionality
+test('setOwner function exists', async ({ page }) => {
+  // This only checks the function exists, not that it's wired up correctly
+  const hasFunction = await page.evaluate(() => {
+    return typeof window.setOwner === 'function';
+  });
+  expect(hasFunction).toBe(true);
+  // Bug: Button onClick might not call setOwner - test still passes!
+});
+
+// ✅ GOOD: Test verifies actual user flow
+test('user can set table owner', async ({ page }) => {
+  await page.goto('/table/my-table');
+  await page.getByTestId('edit-owner-button').click();
+  await page.getByTestId('owner-select').fill('John Doe');
+  await page.getByText('John Doe').click();
+  await page.getByTestId('save-button').click();
+  
+  // Verify the owner is actually displayed
+  await expect(page.getByTestId('owner-value')).toHaveText('John Doe');
+});
+```
+
+### The Single User Principle (E2E)
+
+In E2E testing, there is only one user to consider: **the end user**.
+
+- They navigate to URLs
+- They click buttons and fill forms
+- They read text and see visual feedback
+- They don't know or care about React components, state management, or API internals
+
+**Your E2E tests should only do what end users can do** — interact with the browser and verify what's visible on screen.
+
+### The Golden Rule
+
+> *"The more your tests resemble the way your software is used, the more confidence they can give you."*
+
+**Do:**
+- Test user-visible behavior and outcomes
+- Interact with elements the way users would (click buttons, fill forms, read text)
+- Assert on what users see and experience
+
+**Don't:**
+- Test internal state or implementation details
+- Access component instances or internal methods
+- Rely on component/function names that might change during refactoring
+
+#### Example: Testing Like a User
+
+```typescript
+// ❌ BAD: Testing implementation
+test('form validation state updates', async ({ page }) => {
+  // Checking internal validation state
+  const isValid = await page.evaluate(() => formComponent.isValid);
+  expect(isValid).toBe(false);
+});
+
+// ✅ GOOD: Testing user experience
+test('form shows error when email is invalid', async ({ page }) => {
+  await page.getByLabel('Email').fill('invalid-email');
+  await page.getByRole('button', { name: 'Submit' }).click();
+  
+  // Assert on what user sees
+  await expect(page.getByText('Please enter a valid email')).toBeVisible();
+  await expect(page.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true');
+});
+```
+
+### Making Tests Resilient to Change
+
+- Use stable selectors that won't change with visual updates
+- Prefer `data-testid` attributes for elements that need to be tested but have no natural accessible selector
+- Avoid selecting by class names, tag names, or CSS structure — these change frequently during styling updates
+
+#### Example: Resilient vs Brittle Selectors
+
+```typescript
+// ❌ BRITTLE: Will break when styles change
+await page.locator('.btn-primary.large.mt-4').click();
+await page.locator('div > div > button:nth-child(2)').click();
+await page.locator('[class*="Button_submit"]').click();
+
+// ✅ RESILIENT: Stable regardless of styling changes  
+await page.getByTestId('submit-button').click();
+await page.getByRole('button', { name: 'Submit' }).click();
+await page.getByLabel('Email address').fill('test@example.com');
+```
+
+---
+
+## Test Standards to Follow
 
 1. **Descriptive Names**: Use clear, descriptive test names that explain the expected behaviour
 
@@ -75,3 +206,105 @@ await waitForAllLoadersToDisappear(page);
     2. Avoid some common parameters or their values in the API unless they are necessary.
     Ex. prefer `/api/tables?*` than `/api/tables?limit=12&include=deleted` since the parameter values or order may change in future. 
     `Note: Exception would be when we are intentionally waiting on something, like '/api/tables?*filter=new*' after applying some filter.`
+
+---
+
+## API Setups for Test Data
+
+### Why Use API for Test Setup?
+
+Using API calls instead of UI interactions for test setup provides:
+- **Speed**: API calls are significantly faster than navigating through UI
+- **Reliability**: Less prone to flakiness from UI animations, loading states, or timing issues
+- **Focus**: Tests focus on what they're actually testing, not setup steps
+
+### Best Practices
+
+1. **Create test data via API in `beforeAll`/`beforeEach` hooks**:
+```typescript
+describe('Table operations', () => {
+  let testTable: Table;
+  
+  beforeAll(async ({ apiContext }) => {
+    // Create test data via API
+    testTable = await apiContext.post('/api/v1/tables', {
+      data: { name: 'test-table', database: 'test-db' }
+    });
+  });
+
+  afterAll(async ({ apiContext }) => {
+    // Cleanup via API
+    await apiContext.delete(`/api/v1/tables/${testTable.id}`);
+  });
+});
+```
+
+2. **Use unique identifiers for test data** to avoid conflicts:
+```typescript
+const uniqueName = `test-entity-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+```
+
+3. **Leverage fixtures for reusable data setup**:
+```typescript
+// In fixtures file
+export const test = base.extend({
+  testUser: async ({ apiContext }, use) => {
+    const user = await apiContext.post('/api/v1/users', { data: userData });
+    await use(user);
+    await apiContext.delete(`/api/v1/users/${user.id}`);
+  },
+});
+```
+
+4. **Only test UI flows once** — if a UI flow is already tested, use API for setup in other tests that depend on that state.
+
+---
+
+## Locator Priority Order
+
+When selecting elements in tests, use locators in the following priority order. This ensures tests are resilient, accessible, and maintainable.
+
+### Recommended Priority
+
+| Priority | Locator | When to Use | Example |
+|----------|---------|-------------|---------|
+| 1 | `getByTestId` | **Preferred for most cases.** Stable, unique identifiers that don't change with UI updates | `page.getByTestId('submit-button')` |
+| 2 | `getByRole` | When testing accessible elements (buttons, links, headings) | `page.getByRole('button', { name: 'Submit' })` |
+| 3 | `getByLabel` | For form inputs with associated labels | `page.getByLabel('Email address')` |
+| 4 | `getByPlaceholder` | For inputs with placeholder text | `page.getByPlaceholder('Enter your email')` |
+| 5 | `getByText` | For elements identified by their visible text | `page.getByText('Welcome back')` |
+| 6 | `getByTitle` | For elements with title attributes | `page.getByTitle('Close dialog')` |
+| 7 | `getByAltText` | For images with alt text | `page.getByAltText('Company logo')` |
+| 8 | `locator` (CSS/XPath) | **Last resort.** Only when above options aren't feasible | `page.locator('.custom-component >> nth=0')` |
+
+### Guidelines
+
+1. **Always prefer `data-testid`** for interactive elements that need testing — it decouples tests from implementation and styling changes.
+
+2. **Use `getByRole` for accessibility testing** — it verifies your app is accessible while also being stable.
+
+3. **Avoid class names and CSS selectors** — these frequently change during styling updates and create brittle tests.
+
+4. **Avoid structural selectors** like `div > span:nth-child(2)` — these break easily with markup changes.
+
+5. **Combine locators for specificity** when needed:
+```typescript
+// Good: Specific and stable
+page.getByTestId('user-table').getByRole('row', { name: /john/i });
+
+// Avoid: Brittle structural selector
+page.locator('table tbody tr:nth-child(3)');
+```
+
+### Adding data-testid Attributes
+
+When adding `data-testid` to components:
+```tsx
+// Good: Descriptive and unique
+<button data-testid="submit-form-button">Submit</button>
+<div data-testid="user-profile-card">...</div>
+
+// Avoid: Generic or unclear
+<button data-testid="btn">Submit</button>
+<div data-testid="card">...</div>
+```
