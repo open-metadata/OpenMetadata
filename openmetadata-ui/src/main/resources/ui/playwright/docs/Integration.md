@@ -2,7 +2,7 @@
 
 # Integration
 
-> **1 Components** | **7 Files** | **175 Tests**
+> **1 Components** | **5 Files** | **56 Tests** | **59 Scenarios** 🚀
 
 ## Table of Contents
 - [Connectors](#connectors)
@@ -14,306 +14,128 @@
 ## Connectors
 
 <details open>
-<summary>📄 <b>ServiceEntity.spec.ts</b> (140 tests)</summary>
+<summary>📄 <b>ServiceIngestion.spec.ts</b> (49 tests, 49 scenarios)</summary>
 
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/ServiceEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ServiceEntity.spec.ts)
+> Source: [`src/main/resources/ui/playwright/e2e/nightly/ServiceIngestion.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/nightly/ServiceIngestion.spec.ts)
 
 ### Api Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Api Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Api Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Api Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Api Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Api Service** - Update description | Tests description updates  Edits the service description |
-| 6 | **Api Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 7 | **Api Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 8 | **Api Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 9 | **Api Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Api Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **Api Service** - Create & Ingest Api Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **Api Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **Api Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **Api Service** - Delete Api Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Api Collection
+### Metabase Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Api Collection** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Api Collection** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Api Collection** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Api Collection** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Api Collection** - Update description | Tests description updates  Edits the service description |
-| 6 | **Api Collection** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 7 | **Api Collection** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 8 | **Api Collection** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 9 | **Api Collection** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Api Collection** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
-| 11 | **Api Collection** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **Metabase Service** - Create & Ingest Metabase Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **Metabase Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **Metabase Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **Metabase Service** - Delete Metabase Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Database Service
+### Mysql Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Database Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Database Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Database Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Database Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Database Service** - Update description | Tests description updates  Edits the service description |
-| 6 | **Database Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 7 | **Database Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 8 | **Database Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 9 | **Database Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Database Service** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
-| 11 | **Database Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **Mysql Service** - Create & Ingest Mysql Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **Mysql Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **Mysql Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **Mysql Service** - Service specific tests | Tests database-specific ingestion behaviors  Runs additional checks for Postgres, Redshift, and MySQL services |
+| 5 | **Mysql Service** - Delete Mysql Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Dashboard Service
+### BigQuery Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Dashboard Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Dashboard Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Dashboard Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Dashboard Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Dashboard Service** - Update description | Tests description updates  Edits the service description |
-| 6 | **Dashboard Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 7 | **Dashboard Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 8 | **Dashboard Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 9 | **Dashboard Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Dashboard Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **BigQuery Service** - Create & Ingest BigQuery Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **BigQuery Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **BigQuery Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **BigQuery Service** - Delete BigQuery Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Messaging Service
+### Kafka Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Messaging Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Messaging Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Messaging Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Messaging Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Messaging Service** - Update description | Tests description updates  Edits the service description |
-| 6 | **Messaging Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 7 | **Messaging Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 8 | **Messaging Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 9 | **Messaging Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Messaging Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **Kafka Service** - Create & Ingest Kafka Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **Kafka Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **Kafka Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **Kafka Service** - Delete Kafka Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Mlmodel Service
+### MlFlow Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Mlmodel Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Mlmodel Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Mlmodel Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Mlmodel Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Mlmodel Service** - Update description | Tests description updates  Edits the service description |
-| 6 | **Mlmodel Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 7 | **Mlmodel Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 8 | **Mlmodel Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 9 | **Mlmodel Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Mlmodel Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **MlFlow Service** - Create & Ingest MlFlow Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **MlFlow Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **MlFlow Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **MlFlow Service** - Delete MlFlow Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Pipeline Service
+### Snowflake Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Pipeline Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Pipeline Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Pipeline Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Pipeline Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Pipeline Service** - Update description | Tests description updates  Edits the service description |
-| 6 | **Pipeline Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 7 | **Pipeline Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 8 | **Pipeline Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 9 | **Pipeline Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Pipeline Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **Snowflake Service** - Create & Ingest Snowflake Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **Snowflake Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **Snowflake Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **Snowflake Service** - Delete Snowflake Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Search Index Service
+### Superset Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Search Index Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Search Index Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Search Index Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Search Index Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Search Index Service** - Update description | Tests description updates  Edits the service description |
-| 6 | **Search Index Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 7 | **Search Index Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 8 | **Search Index Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 9 | **Search Index Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Search Index Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **Superset Service** - Create & Ingest Superset Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **Superset Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **Superset Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **Superset Service** - Delete Superset Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Storage Service
+### Postgres Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Storage Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Storage Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Storage Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Storage Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Storage Service** - Update description | Tests description updates  Edits the service description |
-| 6 | **Storage Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 7 | **Storage Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 8 | **Storage Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 9 | **Storage Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Storage Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **Postgres Service** - Create & Ingest Postgres Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **Postgres Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **Postgres Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **Postgres Service** - Service specific tests | Tests database-specific ingestion behaviors  Runs additional checks for Postgres, Redshift, and MySQL services |
+| 5 | **Postgres Service** - Delete Postgres Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Database
+### Redshift Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Database** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Database** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Database** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Database** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Database** - Certification Add Remove | Tests certification lifecycle  Adds a certification to the service, updates it, and removes it |
-| 6 | **Database** - Update description | Tests description updates  Edits the service description |
-| 7 | **Database** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 8 | **Database** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 9 | **Database** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 10 | **Database** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 11 | **Database** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
-| 12 | **Database** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
-| 13 | **Database** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **Redshift Service** - Create & Ingest Redshift Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **Redshift Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **Redshift Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **Redshift Service** - Service specific tests | Tests database-specific ingestion behaviors  Runs additional checks for Postgres, Redshift, and MySQL services |
+| 5 | **Redshift Service** - Delete Redshift Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Database Schema
+### Airflow Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Database Schema** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Database Schema** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Database Schema** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Database Schema** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Database Schema** - Certification Add Remove | Tests certification lifecycle  Adds a certification to the service, updates it, and removes it |
-| 6 | **Database Schema** - Update description | Tests description updates  Edits the service description |
-| 7 | **Database Schema** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 8 | **Database Schema** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 9 | **Database Schema** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 10 | **Database Schema** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 11 | **Database Schema** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
-| 12 | **Database Schema** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
-| 13 | **Database Schema** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **Airflow Service** - Create & Ingest Airflow Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **Airflow Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **Airflow Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **Airflow Service** - Delete Airflow Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Drive Service
+### Service form
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Drive Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
-| 2 | **Drive Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
-| 3 | **Drive Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
-| 4 | **Drive Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
-| 5 | **Drive Service** - Update description | Tests description updates  Edits the service description |
-| 6 | **Drive Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
-| 7 | **Drive Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
-| 8 | **Drive Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
-| 9 | **Drive Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
-| 10 | **Drive Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+| 1 | **Service form** - name field should throw error for invalid name | Tests validation for invalid service names  Ensures required and character constraints surface errors on the name field |
 
-### Standalone Tests
+### Service Ingestion Pagination
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | Delete Api Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
-| 2 | Delete Api Collection | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
-| 3 | Delete Database Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
-| 4 | Delete Dashboard Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
-| 5 | Delete Messaging Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
-| 6 | Delete Mlmodel Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
-| 7 | Delete Pipeline Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
-| 8 | Delete Search Index Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
-| 9 | Delete Storage Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
-| 10 | Delete Database | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
-| 11 | Delete Database Schema | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
-| 12 | Delete Drive Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| 1 | **Service Ingestion Pagination** - Default Pagination size should be 15 | Tests default ingestion pagination size  Verifies ingestion pipelines load with a default page size of 15 |
 
 </details>
 
 <details open>
-<summary>📄 <b>ServiceEntityPermissions.spec.ts</b> (16 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts)
-
-### Api Service Permissions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Api Service Permissions** - Api Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
-| 2 | **Api Service Permissions** - Api Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
-
-### Dashboard Service Permissions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Dashboard Service Permissions** - Dashboard Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
-| 2 | **Dashboard Service Permissions** - Dashboard Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
-
-### Database Service Permissions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Database Service Permissions** - Database Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
-| 2 | **Database Service Permissions** - Database Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
-
-### Messaging Service Permissions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Messaging Service Permissions** - Messaging Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
-| 2 | **Messaging Service Permissions** - Messaging Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
-
-### Mlmodel Service Permissions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Mlmodel Service Permissions** - Mlmodel Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
-| 2 | **Mlmodel Service Permissions** - Mlmodel Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
-
-### Pipeline Service Permissions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pipeline Service Permissions** - Pipeline Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
-| 2 | **Pipeline Service Permissions** - Pipeline Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
-
-### SearchIndex Service Permissions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **SearchIndex Service Permissions** - SearchIndex Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
-| 2 | **SearchIndex Service Permissions** - SearchIndex Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
-
-### Storage Service Permissions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Storage Service Permissions** - Storage Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
-| 2 | **Storage Service Permissions** - Storage Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
-
-</details>
-
-<details open>
-<summary>📄 <b>ServiceEntityVersionPage.spec.ts</b> (12 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts)
-
-### Service Version pages
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Service Version pages** - Api Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-| 2 | **Service Version pages** - Api Collection | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-| 3 | **Service Version pages** - Dashboard Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-| 4 | **Service Version pages** - Database Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-| 5 | **Service Version pages** - Messaging Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-| 6 | **Service Version pages** - Mlmodel Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-| 7 | **Service Version pages** - Pipeline Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-| 8 | **Service Version pages** - SearchIndex Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-| 9 | **Service Version pages** - Storage Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-| 10 | **Service Version pages** - Database | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-| 11 | **Service Version pages** - Database Schema | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-| 12 | **Service Version pages** - Drive Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
-
-</details>
-
-<details open>
-<summary>📄 <b>ServiceForm.spec.ts</b> (4 tests)</summary>
+<summary>📄 <b>ServiceForm.spec.ts</b> (4 tests, 4 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/ServiceForm.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ServiceForm.spec.ts)
 
@@ -329,7 +151,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>ApiServiceRest.spec.ts</b> (1 tests)</summary>
+<summary>📄 <b>ApiServiceRest.spec.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/ApiServiceRest.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiServiceRest.spec.ts)
 
@@ -342,7 +164,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>IngestionBot.spec.ts</b> (1 tests)</summary>
+<summary>📄 <b>IngestionBot.spec.ts</b> (1 tests, 4 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/IngestionBot.spec.ts)
 
@@ -351,11 +173,15 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Ingestion Bot ** - Ingestion bot should be able to access domain specific domain | Ingestion bot should be able to access domain specific domain |
+| | ↳ *Assign assets to domains* | |
+| | ↳ *Ingestion bot should access domain assigned assets* | |
+| | ↳ *Assign services to domains* | |
+| | ↳ *Ingestion bot should access domain assigned services* | |
 
 </details>
 
 <details open>
-<summary>📄 <b>ServiceListing.spec.ts</b> (1 tests)</summary>
+<summary>📄 <b>ServiceListing.spec.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/ServiceListing.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ServiceListing.spec.ts)
 

@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
 const { execSync } = require('child_process');
 const fs = require('fs');
@@ -7,27 +19,63 @@ const path = require('path');
  * Executes 'playwright test --list --reporter=json' and returns the parsed JSON.
  */
 function runPlaywrightList(testDir) {
+  const projectRoot = path.resolve(testDir, '../..');
+  const tempConfigName = 'playwright.docs.temp.config.ts';
+  const tempConfigPath = path.join(projectRoot, tempConfigName);
+
+  // Temporary config to catch ALL tests, ignoring exclusions in the main config
+  // We need dotenv to ensure conditional tests (like Airflow check) run/list correctly.
+  const tempConfigContent = `
+import { defineConfig } from '@playwright/test';
+import dotenv from 'dotenv';
+
+// Read from default .env file
+dotenv.config();
+
+export default defineConfig({
+  testDir: './playwright/e2e',
+  projects: [
+    {
+      name: 'docs',
+      // Include spec files, explicit app files, and setup/teardown files
+      testMatch: [
+        '**/*.spec.ts', 
+        '**/*.test.ts',
+        '**/dataInsightApp.ts', 
+        '**/*.setup.ts', 
+        '**/*.teardown.ts'
+      ],
+    },
+  ],
+});
+`;
+
+  // Cleanup helper
+  const cleanup = () => {
+    try {
+      if (fs.existsSync(tempConfigPath)) {
+        fs.unlinkSync(tempConfigPath);
+      }
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+  };
+
+  // Register cleanup on exit signals to ensure file is deleted even on Ctrl+C
+  const signalHandler = () => { cleanup(); process.exit(); };
+  process.on('SIGINT', signalHandler);
+  process.on('SIGTERM', signalHandler);
+  // We need to be careful with 'exit' as it runs on normal exit too. 
+  // We'll rely on 'finally' block for normal exit + explicit cleanup call.
+  // But adding it as backup for other exit modes is okay if guarded.
+  process.on('exit', cleanup);
+
   try {
-    // We run relative to the project root (assumed to be where package.json is, or a couple levels up)
-    // The previous parser assumed input dir was 'openmetadata-ui/src/main/resources/ui/playwright/e2e'
-    // We need to run the command from 'openmetadata-ui/src/main/resources/ui' where package.json typically is for UI
+    fs.writeFileSync(tempConfigPath, tempConfigContent);
     
-    // Construct command
-    // We filter by project? Or just list all. The user's repo seems to have projects configured.
-    // The JSON output showed "projectName": "DataAssetRulesDisabled".
-    // We probably want to list ALL tests.
+    console.log(`   Running 'npx playwright test --list --reporter=json' using temp config in ${projectRoot}...`);
     
-    // Note: 'testDir' passed from generate.js is the absolute path to e2e folder.
-    // We need to find the root where 'npx' can run.
-    // e2e is at: .../ui/playwright/e2e
-    // .. -> playwright
-    // ../.. -> ui (This is where package.json and playwright.config.ts are)
-    const projectRoot = path.resolve(testDir, '../..'); 
-    
-    console.log(`   Running 'npx playwright test --list --reporter=json' in ${projectRoot}...`);
-    
-    // Increase maxBuffer to handle large JSON output (2000+ tests)
-    const output = execSync('npx playwright test --list --reporter=json', { 
+    const output = execSync(`npx playwright test --list --reporter=json --config=${tempConfigName}`, { 
       cwd: projectRoot,
       encoding: 'utf-8',
       maxBuffer: 10 * 1024 * 1024 // 10MB
@@ -39,6 +87,12 @@ function runPlaywrightList(testDir) {
     if (error.stdout) console.log('Stdout:', error.stdout);
     if (error.stderr) console.error('Stderr:', error.stderr);
     process.exit(1);
+  } finally {
+    cleanup();
+    // Remove listeners
+    process.removeListener('SIGINT', signalHandler);
+    process.removeListener('SIGTERM', signalHandler);
+    process.removeListener('exit', cleanup);
   }
 }
 
@@ -111,6 +165,100 @@ function extractJSDoc(filePath, lineNumber) {
 /**
  * Recursively traverse the Playwright JSON suite structure to flatten tests.
  */
+/**
+ * Recursively find test.step calls in the function body
+ */
+function findStepsInNode(node, steps, ts) {
+    if (ts.isCallExpression(node)) {
+        const expr = node.expression;
+        if (ts.isPropertyAccessExpression(expr) && 
+            expr.name.getText() === 'step' && 
+            expr.expression.getText() === 'test') {
+            
+            if (node.arguments.length > 0) {
+                const titleArg = node.arguments[0];
+                if (ts.isStringLiteral(titleArg)) {
+                    steps.push({ name: titleArg.text });
+                } else if (ts.isNoSubstitutionTemplateLiteral(titleArg)) {
+                    steps.push({ name: titleArg.text });
+                } else if (ts.isTemplateExpression(titleArg)) {
+                    // Reconstruct template string (best effort)
+                    let text = titleArg.head.text;
+                    titleArg.templateSpans.forEach(span => {
+                        text += '${...}' + span.literal.text;
+                    });
+                    steps.push({ name: text });
+                } else if (ts.isBinaryExpression(titleArg)) {
+                   // Handle concatenation: "Name " + variable
+                   // This is a complex case, for now we might just capture static parts or placeholder
+                    steps.push({ name: titleArg.getText() }); 
+                }
+            }
+        }
+    }
+    ts.forEachChild(node, n => findStepsInNode(n, steps, ts));
+}
+
+/**
+ * Extracts steps from a specific test file using TypeScript AST
+ */
+function extractSteps(filePath, testLine) {
+    try {
+        // We use the existing typescript dependency from the project
+        const ts = require('typescript');
+        
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const sourceFile = ts.createSourceFile(
+            filePath,
+            content,
+            ts.ScriptTarget.Latest,
+            true
+        );
+
+        let steps = [];
+
+        function visit(node) {
+            if (ts.isCallExpression(node)) {
+                const expr = node.expression;
+                // Identify test(...) calls
+                const isTest = (ts.isIdentifier(expr) && expr.text === 'test') ||
+                               (ts.isPropertyAccessExpression(expr) && expr.expression.getText() === 'test' && ['skip', 'fixme', 'only'].includes(expr.name.getText()));
+
+                if (isTest) {
+                    const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+                    // Playwright line is 1-indexed, AST line is 0-indexed
+                    if (line + 1 === testLine) {
+                        // Found the test! Now find the body.
+                        // Iterate args to find the function body (ArrowFunction or FunctionExpression)
+                        let body = null;
+                        for (const arg of node.arguments) {
+                            if (ts.isArrowFunction(arg) || ts.isFunctionExpression(arg)) {
+                                body = arg;
+                                break;
+                            }
+                        }
+
+                        if (body) {
+                            ts.forEachChild(body, n => findStepsInNode(n, steps, ts));
+                        }
+                    }
+                }
+            }
+            ts.forEachChild(node, visit);
+        }
+
+        visit(sourceFile);
+        return steps;
+    } catch (e) {
+        // Fallback if typescript not found or parsing fails
+        // console.error(`Error parsing steps for ${filePath}:`, e.message);
+        return [];
+    }
+}
+
+/**
+ * Recursively traverse the Playwright JSON suite structure to flatten tests.
+ */
 function flattenTests(suite, testDir) {
   let tests = [];
 
@@ -135,13 +283,13 @@ function flattenTests(suite, testDir) {
        const absolutePath = path.resolve(testDir, specFile);
        
        const description = extractJSDoc(absolutePath, specLine) || extractBehavior(specTitle);
+       const steps = extractSteps(absolutePath, specLine);
        
        tests.push({
            name: specTitle,
            line: specLine,
            description: description,
-           steps: [], // Playwright list doesn't give steps, sadly. We might lose steps in the doc.
-                      // Trade-off: Accurate tests vs Steps. Steps were always flaky in parser.
+           steps: steps, 
            isSkipped: false // We can check spec.tests[0].status or annotations
        });
     });

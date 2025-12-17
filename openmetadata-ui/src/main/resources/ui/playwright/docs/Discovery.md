@@ -2,336 +2,16 @@
 
 # Discovery
 
-> **6 Components** | **25 Files** | **315 Tests**
+> **7 Components** | **26 Files** | **355 Tests** | **367 Scenarios** 🚀
 
 ## Table of Contents
-- [Data Assets](#data-assets)
 - [Feed](#feed)
 - [Search](#search)
+- [Data Assets](#data-assets)
+- [Curated Assets](#curated-assets)
 - [Explore](#explore)
 - [Home Page](#home-page)
 - [Data Insights](#data-insights)
-
----
-
-<div id="data-assets"></div>
-
-## Data Assets
-
-<details open>
-<summary>📄 <b>DataAssetRulesDisabled.spec.ts</b> (31 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/DataAssetRulesDisabled.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataAssetRulesDisabled.spec.ts)
-
-### Data Asset Rules Disabled
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Asset Rules Disabled** - Verify the ApiEndpoint entity item action after rules disabled | The ApiEndpoint entity item action after rules disabled |
-| 2 | **Data Asset Rules Disabled** - Verify the Table entity item action after rules disabled | The Table entity item action after rules disabled |
-| 3 | **Data Asset Rules Disabled** - Verify the Store Procedure entity item action after rules disabled | The Store Procedure entity item action after rules disabled |
-| 4 | **Data Asset Rules Disabled** - Verify the Dashboard entity item action after rules disabled | The Dashboard entity item action after rules disabled |
-| 5 | **Data Asset Rules Disabled** - Verify the Pipeline entity item action after rules disabled | The Pipeline entity item action after rules disabled |
-| 6 | **Data Asset Rules Disabled** - Verify the Topic entity item action after rules disabled | The Topic entity item action after rules disabled |
-| 7 | **Data Asset Rules Disabled** - Verify the MlModel entity item action after rules disabled | The MlModel entity item action after rules disabled |
-| 8 | **Data Asset Rules Disabled** - Verify the Container entity item action after rules disabled | The Container entity item action after rules disabled |
-| 9 | **Data Asset Rules Disabled** - Verify the SearchIndex entity item action after rules disabled | The SearchIndex entity item action after rules disabled |
-| 10 | **Data Asset Rules Disabled** - Verify the DashboardDataModel entity item action after rules disabled | The DashboardDataModel entity item action after rules disabled |
-| 11 | **Data Asset Rules Disabled** - Verify the Metric entity item action after rules disabled | The Metric entity item action after rules disabled |
-| 12 | **Data Asset Rules Disabled** - Verify the Chart entity item action after rules disabled | The Chart entity item action after rules disabled |
-| 13 | **Data Asset Rules Disabled** - Verify the Directory entity item action after rules disabled | The Directory entity item action after rules disabled |
-| 14 | **Data Asset Rules Disabled** - Verify the File entity item action after rules disabled | The File entity item action after rules disabled |
-| 15 | **Data Asset Rules Disabled** - Verify the Spreadsheet entity item action after rules disabled | The Spreadsheet entity item action after rules disabled |
-| 16 | **Data Asset Rules Disabled** - Verify the Worksheet entity item action after rules disabled | The Worksheet entity item action after rules disabled |
-| 17 | **Data Asset Rules Disabled** - Verify the Api Service entity item action after rules disabled | The Api Service entity item action after rules disabled |
-| 18 | **Data Asset Rules Disabled** - Verify the Api Collection entity item action after rules disabled | The Api Collection entity item action after rules disabled |
-| 19 | **Data Asset Rules Disabled** - Verify the Database Service entity item action after rules disabled | The Database Service entity item action after rules disabled |
-| 20 | **Data Asset Rules Disabled** - Verify the Dashboard Service entity item action after rules disabled | The Dashboard Service entity item action after rules disabled |
-| 21 | **Data Asset Rules Disabled** - Verify the Messaging Service entity item action after rules disabled | The Messaging Service entity item action after rules disabled |
-| 22 | **Data Asset Rules Disabled** - Verify the MlModel Service entity item action after rules disabled | The MlModel Service entity item action after rules disabled |
-| 23 | **Data Asset Rules Disabled** - Verify the Pipeline Service entity item action after rules disabled | The Pipeline Service entity item action after rules disabled |
-| 24 | **Data Asset Rules Disabled** - Verify the SearchIndex Service entity item action after rules disabled | The SearchIndex Service entity item action after rules disabled |
-| 25 | **Data Asset Rules Disabled** - Verify the Storage Service entity item action after rules disabled | The Storage Service entity item action after rules disabled |
-| 26 | **Data Asset Rules Disabled** - Verify the Database entity item action after rules disabled | The Database entity item action after rules disabled |
-| 27 | **Data Asset Rules Disabled** - Verify the Database Schema entity item action after rules disabled | The Database Schema entity item action after rules disabled |
-| 28 | **Data Asset Rules Disabled** - Verify the Drive Service entity item action after rules disabled | The Drive Service entity item action after rules disabled |
-
-### Data Asset Rules Disabled Bulk Edit Actions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Asset Rules Disabled Bulk Edit Actions** - Database service | Database service |
-| 2 | **Data Asset Rules Disabled Bulk Edit Actions** - Database | Database |
-| 3 | **Data Asset Rules Disabled Bulk Edit Actions** - Database Schema | Database Schema |
-
-</details>
-
-<details open>
-<summary>📄 <b>DataAssetRulesEnabled.spec.ts</b> (28 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/DataAssetRulesEnabled.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataAssetRulesEnabled.spec.ts)
-
-### Data Asset Rules Enabled
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Asset Rules Enabled** - Verify the ApiEndpoint Entity Action items after rules is Enabled | The ApiEndpoint Entity Action items after rules is Enabled |
-| 2 | **Data Asset Rules Enabled** - Verify the Table Entity Action items after rules is Enabled | The Table Entity Action items after rules is Enabled |
-| 3 | **Data Asset Rules Enabled** - Verify the Store Procedure Entity Action items after rules is Enabled | The Store Procedure Entity Action items after rules is Enabled |
-| 4 | **Data Asset Rules Enabled** - Verify the Dashboard Entity Action items after rules is Enabled | The Dashboard Entity Action items after rules is Enabled |
-| 5 | **Data Asset Rules Enabled** - Verify the Pipeline Entity Action items after rules is Enabled | The Pipeline Entity Action items after rules is Enabled |
-| 6 | **Data Asset Rules Enabled** - Verify the Topic Entity Action items after rules is Enabled | The Topic Entity Action items after rules is Enabled |
-| 7 | **Data Asset Rules Enabled** - Verify the MlModel Entity Action items after rules is Enabled | The MlModel Entity Action items after rules is Enabled |
-| 8 | **Data Asset Rules Enabled** - Verify the Container Entity Action items after rules is Enabled | The Container Entity Action items after rules is Enabled |
-| 9 | **Data Asset Rules Enabled** - Verify the SearchIndex Entity Action items after rules is Enabled | The SearchIndex Entity Action items after rules is Enabled |
-| 10 | **Data Asset Rules Enabled** - Verify the DashboardDataModel Entity Action items after rules is Enabled | The DashboardDataModel Entity Action items after rules is Enabled |
-| 11 | **Data Asset Rules Enabled** - Verify the Metric Entity Action items after rules is Enabled | The Metric Entity Action items after rules is Enabled |
-| 12 | **Data Asset Rules Enabled** - Verify the Chart Entity Action items after rules is Enabled | The Chart Entity Action items after rules is Enabled |
-| 13 | **Data Asset Rules Enabled** - Verify the Directory Entity Action items after rules is Enabled | The Directory Entity Action items after rules is Enabled |
-| 14 | **Data Asset Rules Enabled** - Verify the File Entity Action items after rules is Enabled | The File Entity Action items after rules is Enabled |
-| 15 | **Data Asset Rules Enabled** - Verify the Spreadsheet Entity Action items after rules is Enabled | The Spreadsheet Entity Action items after rules is Enabled |
-| 16 | **Data Asset Rules Enabled** - Verify the Worksheet Entity Action items after rules is Enabled | The Worksheet Entity Action items after rules is Enabled |
-| 17 | **Data Asset Rules Enabled** - Verify the Api Service Entity Action items after rules is Enabled | The Api Service Entity Action items after rules is Enabled |
-| 18 | **Data Asset Rules Enabled** - Verify the Api Collection Entity Action items after rules is Enabled | The Api Collection Entity Action items after rules is Enabled |
-| 19 | **Data Asset Rules Enabled** - Verify the Database Service Entity Action items after rules is Enabled | The Database Service Entity Action items after rules is Enabled |
-| 20 | **Data Asset Rules Enabled** - Verify the Dashboard Service Entity Action items after rules is Enabled | The Dashboard Service Entity Action items after rules is Enabled |
-| 21 | **Data Asset Rules Enabled** - Verify the Messaging Service Entity Action items after rules is Enabled | The Messaging Service Entity Action items after rules is Enabled |
-| 22 | **Data Asset Rules Enabled** - Verify the MlModel Service Entity Action items after rules is Enabled | The MlModel Service Entity Action items after rules is Enabled |
-| 23 | **Data Asset Rules Enabled** - Verify the Pipeline Service Entity Action items after rules is Enabled | The Pipeline Service Entity Action items after rules is Enabled |
-| 24 | **Data Asset Rules Enabled** - Verify the SearchIndex Service Entity Action items after rules is Enabled | The SearchIndex Service Entity Action items after rules is Enabled |
-| 25 | **Data Asset Rules Enabled** - Verify the Storage Service Entity Action items after rules is Enabled | The Storage Service Entity Action items after rules is Enabled |
-| 26 | **Data Asset Rules Enabled** - Verify the Database Entity Action items after rules is Enabled | The Database Entity Action items after rules is Enabled |
-| 27 | **Data Asset Rules Enabled** - Verify the Database Schema Entity Action items after rules is Enabled | The Database Schema Entity Action items after rules is Enabled |
-| 28 | **Data Asset Rules Enabled** - Verify the Drive Service Entity Action items after rules is Enabled | The Drive Service Entity Action items after rules is Enabled |
-
-</details>
-
-<details open>
-<summary>📄 <b>Table.spec.ts</b> (12 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Table.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Table.spec.ts)
-
-### Table pagination sorting search scenarios 
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Table pagination sorting search scenarios ** - Table pagination with sorting should works | Table pagination with sorting should works |
-| 2 | **Table pagination sorting search scenarios ** - Table search with sorting should works | Table search with sorting should works |
-| 3 | **Table pagination sorting search scenarios ** - Table filter with sorting should works | Table filter with sorting should works |
-| 4 | **Table pagination sorting search scenarios ** - Table page should show schema tab with count | Table page should show schema tab with count |
-| 5 | **Table pagination sorting search scenarios ** - should persist current page | Persist current page |
-| 6 | **Table pagination sorting search scenarios ** - should persist page size | Persist page size |
-
-### Table & Data Model columns table pagination
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Table & Data Model columns table pagination** - pagination for table column should work | Pagination for table column should work |
-| 2 | **Table & Data Model columns table pagination** - pagination for dashboard data model columns should work | Pagination for dashboard data model columns should work |
-| 3 | **Table & Data Model columns table pagination** - expand collapse should only visible for nested columns | Expand collapse should only visible for nested columns |
-| 4 | **Table & Data Model columns table pagination** - expand / collapse should not appear after updating nested fields table | Expand / collapse should not appear after updating nested fields table |
-
-### Tags and glossary terms should be consistent for search 
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Tags and glossary terms should be consistent for search ** - Glossary term should be consistent for search | Glossary term should be consistent for search |
-| 2 | **Tags and glossary terms should be consistent for search ** - Tags term should be consistent for search | Tags term should be consistent for search |
-
-</details>
-
-<details open>
-<summary>📄 <b>TableSorting.spec.ts</b> (11 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/TableSorting.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TableSorting.spec.ts)
-
-### Table Sorting
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Table Sorting** - Services page should have sorting on name column | Services page should have sorting on name column |
-| 2 | **Table Sorting** - Data Observability services page should have sorting on name column | Data Observability services page should have sorting on name column |
-| 3 | **Table Sorting** - Database Schema page should have sorting on name column | Database Schema page should have sorting on name column |
-| 4 | **Table Sorting** - API Endpoint page should have sorting on name column | API Endpoint page should have sorting on name column |
-| 5 | **Table Sorting** - API Endpoint schema should have sorting on name column | API Endpoint schema should have sorting on name column |
-| 6 | **Table Sorting** - Database Schema Tables tab should have sorting on name column | Database Schema Tables tab should have sorting on name column |
-| 7 | **Table Sorting** - Data Models Table should have sorting on name column | Data Models Table should have sorting on name column |
-| 8 | **Table Sorting** - Stored Procedure Table should have sorting on name column | Stored Procedure Table should have sorting on name column |
-| 9 | **Table Sorting** - Topics Table should have sorting on name column | Topics Table should have sorting on name column |
-| 10 | **Table Sorting** - Drives Service Files Table should have sorting on name column | Drives Service Files Table should have sorting on name column |
-| 11 | **Table Sorting** - Drives Service Spreadsheets Table should have sorting on name column | Drives Service Spreadsheets Table should have sorting on name column |
-
-</details>
-
-<details open>
-<summary>📄 <b>DataAssetsWidget.spec.ts</b> (7 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DataAssetsWidget.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DataAssetsWidget.spec.ts)
-
-### Table
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Table** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
-
-### Dashboard
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Dashboard** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
-
-### Pipeline
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pipeline** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
-
-### Topic
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Topic** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
-
-### Container
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Container** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
-
-### MlModel
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **MlModel** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
-
-### SearchIndex
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **SearchIndex** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
-
-</details>
-
-<details open>
-<summary>📄 <b>Container.spec.ts</b> (3 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Container.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Container.spec.ts)
-
-### Container entity specific tests 
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Container entity specific tests ** - Container page should show Schema and Children count | Container page should show Schema and Children count |
-| 2 | **Container entity specific tests ** - Container page children pagination | Container page children pagination |
-| 3 | **Container entity specific tests ** - expand / collapse should not appear after updating nested fields for container | Expand / collapse should not appear after updating nested fields for container |
-
-</details>
-
-<details open>
-<summary>📄 <b>Dashboards.spec.ts</b> (3 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Dashboards.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Dashboards.spec.ts)
-
-### Dashboards
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Dashboards** - should change the page size | Change the page size |
-
-### Dashboard and Charts deleted toggle
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Dashboard and Charts deleted toggle** - should be able to toggle between deleted and non-deleted charts | Be able to toggle between deleted and non-deleted charts |
-
-### Data Model
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Model** - expand / collapse should not appear after updating nested fields for dashboardDataModels | Expand / collapse should not appear after updating nested fields for dashboardDataModels |
-
-</details>
-
-<details open>
-<summary>📄 <b>TestSuiteMultiPipeline.spec.ts</b> (2 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | TestSuite multi pipeline support | TestSuite multi pipeline support |
-| 2 | Edit the pipeline's test case | Edit the pipeline's test case |
-
-</details>
-
-<details open>
-<summary>📄 <b>SchemaTable.spec.ts</b> (2 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | schema table test | Schema table test |
-| 2 | Schema Table Pagination should work Properly | Schema Table Pagination should work Properly |
-
-</details>
-
-<details open>
-<summary>📄 <b>TableConstraint.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/TableConstraint.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TableConstraint.spec.ts)
-
-### Table Constraints
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Table Constraints** - Table Constraint | Table Constraint |
-
-</details>
-
-<details open>
-<summary>📄 <b>TestSuitePipelineRedeploy.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts)
-
-### Bulk Re-Deploy pipelines 
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Bulk Re-Deploy pipelines ** - Re-deploy all test-suite ingestion pipelines | Re-deploy all test-suite ingestion pipelines |
-
-</details>
-
-<details open>
-<summary>📄 <b>Topic.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Topic.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Topic.spec.ts)
-
-### Topic entity specific tests 
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Topic entity specific tests ** - Topic page should show schema tab with count | Topic page should show schema tab with count |
-
-</details>
-
-<details open>
-<summary>📄 <b>TableVersionPage.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/VersionPages/TableVersionPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/TableVersionPage.spec.ts)
-
-### Table Version Page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Table Version Page** - Pagination and Search should works for columns | Pagination and Search should works for columns |
-
-</details>
-
 
 ---
 
@@ -340,7 +20,7 @@
 ## Feed
 
 <details open>
-<summary>📄 <b>ActivityFeed.spec.ts</b> (9 tests)</summary>
+<summary>📄 <b>ActivityFeed.spec.ts</b> (9 tests, 11 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ActivityFeed.spec.ts)
 
@@ -362,6 +42,9 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Mention notifications in Notification Box** - Mention notification shows correct user details in Notification box | Mention notification shows correct user details in Notification box |
+| | ↳ *Admin user creates a conversation on an entity* | |
+| | ↳ *User1 mentions admin user in a reply* | |
+| | ↳ *Admin user checks notification for correct user and timestamp* | |
 
 </details>
 
@@ -373,7 +56,7 @@
 ## Search
 
 <details open>
-<summary>📄 <b>AdvancedSearch.spec.ts</b> (116 tests)</summary>
+<summary>📄 <b>AdvancedSearch.spec.ts</b> (116 tests, 116 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/AdvancedSearch.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/AdvancedSearch.spec.ts)
 
@@ -501,7 +184,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>AdvancedSearchSuggestions.spec.ts</b> (9 tests)</summary>
+<summary>📄 <b>AdvancedSearchSuggestions.spec.ts</b> (9 tests, 9 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts)
 
@@ -522,7 +205,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>TableSearch.spec.ts</b> (9 tests)</summary>
+<summary>📄 <b>TableSearch.spec.ts</b> (9 tests, 9 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/TableSearch.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TableSearch.spec.ts)
 
@@ -543,7 +226,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>SchemaSearch.spec.ts</b> (1 tests)</summary>
+<summary>📄 <b>SchemaSearch.spec.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/SchemaSearch.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SchemaSearch.spec.ts)
 
@@ -556,7 +239,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>GlobalSearch.spec.ts</b> (1 tests)</summary>
+<summary>📄 <b>GlobalSearch.spec.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/GlobalSearch.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/GlobalSearch.spec.ts)
 
@@ -571,12 +254,371 @@
 
 ---
 
+<div id="data-assets"></div>
+
+## Data Assets
+
+<details open>
+<summary>📄 <b>DataAssetRulesDisabled.spec.ts</b> (31 tests, 31 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataAssetRulesDisabled.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataAssetRulesDisabled.spec.ts)
+
+### Data Asset Rules Disabled
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Asset Rules Disabled** - Verify the ApiEndpoint entity item action after rules disabled | The ApiEndpoint entity item action after rules disabled |
+| 2 | **Data Asset Rules Disabled** - Verify the Table entity item action after rules disabled | The Table entity item action after rules disabled |
+| 3 | **Data Asset Rules Disabled** - Verify the Store Procedure entity item action after rules disabled | The Store Procedure entity item action after rules disabled |
+| 4 | **Data Asset Rules Disabled** - Verify the Dashboard entity item action after rules disabled | The Dashboard entity item action after rules disabled |
+| 5 | **Data Asset Rules Disabled** - Verify the Pipeline entity item action after rules disabled | The Pipeline entity item action after rules disabled |
+| 6 | **Data Asset Rules Disabled** - Verify the Topic entity item action after rules disabled | The Topic entity item action after rules disabled |
+| 7 | **Data Asset Rules Disabled** - Verify the MlModel entity item action after rules disabled | The MlModel entity item action after rules disabled |
+| 8 | **Data Asset Rules Disabled** - Verify the Container entity item action after rules disabled | The Container entity item action after rules disabled |
+| 9 | **Data Asset Rules Disabled** - Verify the SearchIndex entity item action after rules disabled | The SearchIndex entity item action after rules disabled |
+| 10 | **Data Asset Rules Disabled** - Verify the DashboardDataModel entity item action after rules disabled | The DashboardDataModel entity item action after rules disabled |
+| 11 | **Data Asset Rules Disabled** - Verify the Metric entity item action after rules disabled | The Metric entity item action after rules disabled |
+| 12 | **Data Asset Rules Disabled** - Verify the Chart entity item action after rules disabled | The Chart entity item action after rules disabled |
+| 13 | **Data Asset Rules Disabled** - Verify the Directory entity item action after rules disabled | The Directory entity item action after rules disabled |
+| 14 | **Data Asset Rules Disabled** - Verify the File entity item action after rules disabled | The File entity item action after rules disabled |
+| 15 | **Data Asset Rules Disabled** - Verify the Spreadsheet entity item action after rules disabled | The Spreadsheet entity item action after rules disabled |
+| 16 | **Data Asset Rules Disabled** - Verify the Worksheet entity item action after rules disabled | The Worksheet entity item action after rules disabled |
+| 17 | **Data Asset Rules Disabled** - Verify the Api Service entity item action after rules disabled | The Api Service entity item action after rules disabled |
+| 18 | **Data Asset Rules Disabled** - Verify the Api Collection entity item action after rules disabled | The Api Collection entity item action after rules disabled |
+| 19 | **Data Asset Rules Disabled** - Verify the Database Service entity item action after rules disabled | The Database Service entity item action after rules disabled |
+| 20 | **Data Asset Rules Disabled** - Verify the Dashboard Service entity item action after rules disabled | The Dashboard Service entity item action after rules disabled |
+| 21 | **Data Asset Rules Disabled** - Verify the Messaging Service entity item action after rules disabled | The Messaging Service entity item action after rules disabled |
+| 22 | **Data Asset Rules Disabled** - Verify the MlModel Service entity item action after rules disabled | The MlModel Service entity item action after rules disabled |
+| 23 | **Data Asset Rules Disabled** - Verify the Pipeline Service entity item action after rules disabled | The Pipeline Service entity item action after rules disabled |
+| 24 | **Data Asset Rules Disabled** - Verify the SearchIndex Service entity item action after rules disabled | The SearchIndex Service entity item action after rules disabled |
+| 25 | **Data Asset Rules Disabled** - Verify the Storage Service entity item action after rules disabled | The Storage Service entity item action after rules disabled |
+| 26 | **Data Asset Rules Disabled** - Verify the Database entity item action after rules disabled | The Database entity item action after rules disabled |
+| 27 | **Data Asset Rules Disabled** - Verify the Database Schema entity item action after rules disabled | The Database Schema entity item action after rules disabled |
+| 28 | **Data Asset Rules Disabled** - Verify the Drive Service entity item action after rules disabled | The Drive Service entity item action after rules disabled |
+
+### Data Asset Rules Disabled Bulk Edit Actions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Asset Rules Disabled Bulk Edit Actions** - Database service | Database service |
+| | ↳ *Perform bulk edit action* | |
+| 2 | **Data Asset Rules Disabled Bulk Edit Actions** - Database | Database |
+| | ↳ *Perform bulk edit action* | |
+| 3 | **Data Asset Rules Disabled Bulk Edit Actions** - Database Schema | Database Schema |
+| | ↳ *Perform bulk edit action* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>DataAssetRulesEnabled.spec.ts</b> (28 tests, 28 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DataAssetRulesEnabled.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataAssetRulesEnabled.spec.ts)
+
+### Data Asset Rules Enabled
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Asset Rules Enabled** - Verify the ApiEndpoint Entity Action items after rules is Enabled | The ApiEndpoint Entity Action items after rules is Enabled |
+| 2 | **Data Asset Rules Enabled** - Verify the Table Entity Action items after rules is Enabled | The Table Entity Action items after rules is Enabled |
+| 3 | **Data Asset Rules Enabled** - Verify the Store Procedure Entity Action items after rules is Enabled | The Store Procedure Entity Action items after rules is Enabled |
+| 4 | **Data Asset Rules Enabled** - Verify the Dashboard Entity Action items after rules is Enabled | The Dashboard Entity Action items after rules is Enabled |
+| 5 | **Data Asset Rules Enabled** - Verify the Pipeline Entity Action items after rules is Enabled | The Pipeline Entity Action items after rules is Enabled |
+| 6 | **Data Asset Rules Enabled** - Verify the Topic Entity Action items after rules is Enabled | The Topic Entity Action items after rules is Enabled |
+| 7 | **Data Asset Rules Enabled** - Verify the MlModel Entity Action items after rules is Enabled | The MlModel Entity Action items after rules is Enabled |
+| 8 | **Data Asset Rules Enabled** - Verify the Container Entity Action items after rules is Enabled | The Container Entity Action items after rules is Enabled |
+| 9 | **Data Asset Rules Enabled** - Verify the SearchIndex Entity Action items after rules is Enabled | The SearchIndex Entity Action items after rules is Enabled |
+| 10 | **Data Asset Rules Enabled** - Verify the DashboardDataModel Entity Action items after rules is Enabled | The DashboardDataModel Entity Action items after rules is Enabled |
+| 11 | **Data Asset Rules Enabled** - Verify the Metric Entity Action items after rules is Enabled | The Metric Entity Action items after rules is Enabled |
+| 12 | **Data Asset Rules Enabled** - Verify the Chart Entity Action items after rules is Enabled | The Chart Entity Action items after rules is Enabled |
+| 13 | **Data Asset Rules Enabled** - Verify the Directory Entity Action items after rules is Enabled | The Directory Entity Action items after rules is Enabled |
+| 14 | **Data Asset Rules Enabled** - Verify the File Entity Action items after rules is Enabled | The File Entity Action items after rules is Enabled |
+| 15 | **Data Asset Rules Enabled** - Verify the Spreadsheet Entity Action items after rules is Enabled | The Spreadsheet Entity Action items after rules is Enabled |
+| 16 | **Data Asset Rules Enabled** - Verify the Worksheet Entity Action items after rules is Enabled | The Worksheet Entity Action items after rules is Enabled |
+| 17 | **Data Asset Rules Enabled** - Verify the Api Service Entity Action items after rules is Enabled | The Api Service Entity Action items after rules is Enabled |
+| 18 | **Data Asset Rules Enabled** - Verify the Api Collection Entity Action items after rules is Enabled | The Api Collection Entity Action items after rules is Enabled |
+| 19 | **Data Asset Rules Enabled** - Verify the Database Service Entity Action items after rules is Enabled | The Database Service Entity Action items after rules is Enabled |
+| 20 | **Data Asset Rules Enabled** - Verify the Dashboard Service Entity Action items after rules is Enabled | The Dashboard Service Entity Action items after rules is Enabled |
+| 21 | **Data Asset Rules Enabled** - Verify the Messaging Service Entity Action items after rules is Enabled | The Messaging Service Entity Action items after rules is Enabled |
+| 22 | **Data Asset Rules Enabled** - Verify the MlModel Service Entity Action items after rules is Enabled | The MlModel Service Entity Action items after rules is Enabled |
+| 23 | **Data Asset Rules Enabled** - Verify the Pipeline Service Entity Action items after rules is Enabled | The Pipeline Service Entity Action items after rules is Enabled |
+| 24 | **Data Asset Rules Enabled** - Verify the SearchIndex Service Entity Action items after rules is Enabled | The SearchIndex Service Entity Action items after rules is Enabled |
+| 25 | **Data Asset Rules Enabled** - Verify the Storage Service Entity Action items after rules is Enabled | The Storage Service Entity Action items after rules is Enabled |
+| 26 | **Data Asset Rules Enabled** - Verify the Database Entity Action items after rules is Enabled | The Database Entity Action items after rules is Enabled |
+| 27 | **Data Asset Rules Enabled** - Verify the Database Schema Entity Action items after rules is Enabled | The Database Schema Entity Action items after rules is Enabled |
+| 28 | **Data Asset Rules Enabled** - Verify the Drive Service Entity Action items after rules is Enabled | The Drive Service Entity Action items after rules is Enabled |
+
+</details>
+
+<details open>
+<summary>📄 <b>Table.spec.ts</b> (12 tests, 12 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Table.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Table.spec.ts)
+
+### Table pagination sorting search scenarios 
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table pagination sorting search scenarios ** - Table pagination with sorting should works | Table pagination with sorting should works |
+| 2 | **Table pagination sorting search scenarios ** - Table search with sorting should works | Table search with sorting should works |
+| 3 | **Table pagination sorting search scenarios ** - Table filter with sorting should works | Table filter with sorting should works |
+| 4 | **Table pagination sorting search scenarios ** - Table page should show schema tab with count | Table page should show schema tab with count |
+| 5 | **Table pagination sorting search scenarios ** - should persist current page | Persist current page |
+| 6 | **Table pagination sorting search scenarios ** - should persist page size | Persist page size |
+
+### Table & Data Model columns table pagination
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table & Data Model columns table pagination** - pagination for table column should work | Pagination for table column should work |
+| 2 | **Table & Data Model columns table pagination** - pagination for dashboard data model columns should work | Pagination for dashboard data model columns should work |
+| 3 | **Table & Data Model columns table pagination** - expand collapse should only visible for nested columns | Expand collapse should only visible for nested columns |
+| 4 | **Table & Data Model columns table pagination** - expand / collapse should not appear after updating nested fields table | Expand / collapse should not appear after updating nested fields table |
+
+### Tags and glossary terms should be consistent for search 
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Tags and glossary terms should be consistent for search ** - Glossary term should be consistent for search | Glossary term should be consistent for search |
+| 2 | **Tags and glossary terms should be consistent for search ** - Tags term should be consistent for search | Tags term should be consistent for search |
+
+</details>
+
+<details open>
+<summary>📄 <b>TableSorting.spec.ts</b> (11 tests, 11 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/TableSorting.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TableSorting.spec.ts)
+
+### Table Sorting
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table Sorting** - Services page should have sorting on name column | Services page should have sorting on name column |
+| 2 | **Table Sorting** - Data Observability services page should have sorting on name column | Data Observability services page should have sorting on name column |
+| 3 | **Table Sorting** - Database Schema page should have sorting on name column | Database Schema page should have sorting on name column |
+| 4 | **Table Sorting** - API Endpoint page should have sorting on name column | API Endpoint page should have sorting on name column |
+| 5 | **Table Sorting** - API Endpoint schema should have sorting on name column | API Endpoint schema should have sorting on name column |
+| 6 | **Table Sorting** - Database Schema Tables tab should have sorting on name column | Database Schema Tables tab should have sorting on name column |
+| 7 | **Table Sorting** - Data Models Table should have sorting on name column | Data Models Table should have sorting on name column |
+| 8 | **Table Sorting** - Stored Procedure Table should have sorting on name column | Stored Procedure Table should have sorting on name column |
+| 9 | **Table Sorting** - Topics Table should have sorting on name column | Topics Table should have sorting on name column |
+| 10 | **Table Sorting** - Drives Service Files Table should have sorting on name column | Drives Service Files Table should have sorting on name column |
+| 11 | **Table Sorting** - Drives Service Spreadsheets Table should have sorting on name column | Drives Service Spreadsheets Table should have sorting on name column |
+
+</details>
+
+<details open>
+<summary>📄 <b>DataAssetsWidget.spec.ts</b> (7 tests, 7 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DataAssetsWidget.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/DataAssetsWidget.spec.ts)
+
+### Table
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
+
+### Dashboard
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Dashboard** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
+
+### Pipeline
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pipeline** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
+
+### Topic
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Topic** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
+
+### Container
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Container** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
+
+### MlModel
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **MlModel** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
+
+### SearchIndex
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **SearchIndex** - Check Data Asset and Service Filtration | Data Asset and Service Filtration |
+
+</details>
+
+<details open>
+<summary>📄 <b>Container.spec.ts</b> (3 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Container.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Container.spec.ts)
+
+### Container entity specific tests 
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Container entity specific tests ** - Container page should show Schema and Children count | Container page should show Schema and Children count |
+| 2 | **Container entity specific tests ** - Container page children pagination | Container page children pagination |
+| 3 | **Container entity specific tests ** - expand / collapse should not appear after updating nested fields for container | Expand / collapse should not appear after updating nested fields for container |
+
+</details>
+
+<details open>
+<summary>📄 <b>Dashboards.spec.ts</b> (3 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Dashboards.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Dashboards.spec.ts)
+
+### Dashboards
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Dashboards** - should change the page size | Change the page size |
+
+### Dashboard and Charts deleted toggle
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Dashboard and Charts deleted toggle** - should be able to toggle between deleted and non-deleted charts | Be able to toggle between deleted and non-deleted charts |
+
+### Data Model
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Model** - expand / collapse should not appear after updating nested fields for dashboardDataModels | Expand / collapse should not appear after updating nested fields for dashboardDataModels |
+
+</details>
+
+<details open>
+<summary>📄 <b>SchemaTable.spec.ts</b> (2 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/SchemaTable.spec.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | schema table test | Schema table test |
+| | ↳ *set owner* | |
+| | ↳ *set the description* | |
+| 2 | Schema Table Pagination should work Properly | Schema Table Pagination should work Properly |
+
+</details>
+
+<details open>
+<summary>📄 <b>SchemaDefinition.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/SchemaDefinition.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SchemaDefinition.spec.ts)
+
+### Schema definition (views)
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Schema definition (views)** - Verify schema definition (views) of table entity | Schema definition (views) of table entity |
+
+</details>
+
+<details open>
+<summary>📄 <b>TableConstraint.spec.ts</b> (1 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/TableConstraint.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TableConstraint.spec.ts)
+
+### Table Constraints
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table Constraints** - Table Constraint | Table Constraint |
+| | ↳ *Add Constraints* | |
+| | ↳ *Verify Constraints Data* | |
+| | ↳ *Remove Constraints* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>Topic.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Topic.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Topic.spec.ts)
+
+### Topic entity specific tests 
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Topic entity specific tests ** - Topic page should show schema tab with count | Topic page should show schema tab with count |
+
+</details>
+
+<details open>
+<summary>📄 <b>TableVersionPage.spec.ts</b> (1 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/VersionPages/TableVersionPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/TableVersionPage.spec.ts)
+
+### Table Version Page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table Version Page** - Pagination and Search should works for columns | Pagination and Search should works for columns |
+| | ↳ *Pagination Should Work* | |
+| | ↳ *Search Should Work* | |
+
+</details>
+
+
+---
+
+<div id="curated-assets"></div>
+
+## Curated Assets
+
+<details open>
+<summary>📄 <b>CuratedAssets.spec.ts</b> (23 tests, 23 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/CuratedAssets.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CuratedAssets.spec.ts)
+
+### Curated Assets Widget
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Curated Assets Widget** - Test Tables with display name filter | Tables with display name filter |
+| 2 | **Curated Assets Widget** - Test Dashboards with display name filter | Dashboards with display name filter |
+| 3 | **Curated Assets Widget** - Test Pipelines with display name filter | Pipelines with display name filter |
+| 4 | **Curated Assets Widget** - Test Topics with display name filter | Topics with display name filter |
+| 5 | **Curated Assets Widget** - Test ML Model with display name filter | ML Model with display name filter |
+| 6 | **Curated Assets Widget** - Test Containers with display name filter | Containers with display name filter |
+| 7 | **Curated Assets Widget** - Test Search Indexes with display name filter | Search Indexes with display name filter |
+| 8 | **Curated Assets Widget** - Test Charts with display name filter | Charts with display name filter |
+| 9 | **Curated Assets Widget** - Test Stored Procedures with display name filter | Stored Procedures with display name filter |
+| 10 | **Curated Assets Widget** - Test Data Model with display name filter | Data Model with display name filter |
+| 11 | **Curated Assets Widget** - Test Glossary Terms with display name filter | Glossary Terms with display name filter |
+| 12 | **Curated Assets Widget** - Test Metrics with display name filter | Metrics with display name filter |
+| 13 | **Curated Assets Widget** - Test Databases with display name filter | Databases with display name filter |
+| 14 | **Curated Assets Widget** - Test Database Schemas with display name filter | Database Schemas with display name filter |
+| 15 | **Curated Assets Widget** - Test API Collections with display name filter | API Collections with display name filter |
+| 16 | **Curated Assets Widget** - Test API Endpoints with display name filter | API Endpoints with display name filter |
+| 17 | **Curated Assets Widget** - Test Data Products with display name filter | Data Products with display name filter |
+| 18 | **Curated Assets Widget** - Test Knowledge Pages with display name filter | Knowledge Pages with display name filter |
+| 19 | **Curated Assets Widget** - Entity type "ALL" with basic filter | Entity type "ALL" with basic filter |
+| 20 | **Curated Assets Widget** - Multiple entity types with OR conditions | Multiple entity types with OR conditions |
+| 21 | **Curated Assets Widget** - Multiple entity types with AND conditions | Multiple entity types with AND conditions |
+| 22 | **Curated Assets Widget** - Complex nested groups | Complex nested groups |
+| 23 | **Curated Assets Widget** - Placeholder validation - widget not visible without configuration | Placeholder validation - widget not visible without configuration |
+
+</details>
+
+
+---
+
 <div id="explore"></div>
 
 ## Explore
 
 <details open>
-<summary>📄 <b>ExploreTree.spec.ts</b> (26 tests)</summary>
+<summary>📄 <b>ExploreTree.spec.ts</b> (26 tests, 32 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ExploreTree.spec.ts)
 
@@ -585,8 +627,17 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Explore Tree scenarios** - Explore Tree | Explore Tree |
+| | ↳ *Check the explore tree* | |
+| | ↳ *Check the quick filters* | |
+| | ↳ *Click on tree item and check quick filter* | |
+| | ↳ *Click on tree item metrics and check quick filter* | |
 | 2 | **Explore Tree scenarios** - Verify Database and Database Schema available in explore tree | Database and Database Schema available in explore tree |
+| | ↳ *Verify first table database and schema* | |
+| | ↳ *Verify second table database and schema* | |
 | 3 | **Explore Tree scenarios** - Verify Database and Database schema after rename | Database and Database schema after rename |
+| | ↳ *Visit explore page and verify existing values* | |
+| | ↳ *Rename schema and database* | |
+| | ↳ *Verify renamed values in explore page* | |
 
 ### Explore page
 
@@ -619,7 +670,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>ExploreSortOrderFilter.spec.ts</b> (16 tests)</summary>
+<summary>📄 <b>ExploreSortOrderFilter.spec.ts</b> (16 tests, 16 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/ExploreSortOrderFilter.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ExploreSortOrderFilter.spec.ts)
 
@@ -647,7 +698,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>ExploreDiscovery.spec.ts</b> (9 tests)</summary>
+<summary>📄 <b>ExploreDiscovery.spec.ts</b> (9 tests, 9 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/ExploreDiscovery.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ExploreDiscovery.spec.ts)
 
@@ -668,7 +719,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>ExploreQuickFilters.spec.ts</b> (5 tests)</summary>
+<summary>📄 <b>ExploreQuickFilters.spec.ts</b> (5 tests, 5 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/ExploreQuickFilters.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ExploreQuickFilters.spec.ts)
 
@@ -692,17 +743,98 @@
 ## Home Page
 
 <details open>
-<summary>📄 <b>CustomizeLandingPage.spec.ts</b> (3 tests)</summary>
+<summary>📄 <b>FollowingWidget.spec.ts</b> (11 tests, 11 scenarios)</summary>
 
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts)
+> Source: [`src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/FollowingWidget.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/FollowingWidget.spec.ts)
 
-### Customize Landing Page Flow
+### Table
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Customize Landing Page Flow** - Check all default widget present | All default widget present |
-| 2 | **Customize Landing Page Flow** - Add, Remove and Reset widget should work properly | Add, Remove and Reset widget should work properly |
-| 3 | **Customize Landing Page Flow** - Widget drag and drop reordering | Widget drag and drop reordering |
+| 1 | **Table** - Check followed entity present in following widget | Followed entity present in following widget |
+
+### Dashboard
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Dashboard** - Check followed entity present in following widget | Followed entity present in following widget |
+
+### Pipeline
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pipeline** - Check followed entity present in following widget | Followed entity present in following widget |
+
+### Topic
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Topic** - Check followed entity present in following widget | Followed entity present in following widget |
+
+### Container
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Container** - Check followed entity present in following widget | Followed entity present in following widget |
+
+### MlModel
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **MlModel** - Check followed entity present in following widget | Followed entity present in following widget |
+
+### SearchIndex
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **SearchIndex** - Check followed entity present in following widget | Followed entity present in following widget |
+
+### ApiEndpoint
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **ApiEndpoint** - Check followed entity present in following widget | Followed entity present in following widget |
+
+### DashboardDataModel
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **DashboardDataModel** - Check followed entity present in following widget | Followed entity present in following widget |
+
+### Store Procedure
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Store Procedure** - Check followed entity present in following widget | Followed entity present in following widget |
+
+### Metric
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Metric** - Check followed entity present in following widget | Followed entity present in following widget |
+
+</details>
+
+<details open>
+<summary>📄 <b>RecentlyViewed.spec.ts</b> (11 tests, 11 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/RecentlyViewed.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/RecentlyViewed.spec.ts)
+
+### Recently viewed data assets
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Recently viewed data assets** - Check ApiEndpoint in recently viewed | ApiEndpoint in recently viewed |
+| 2 | **Recently viewed data assets** - Check Table in recently viewed | Table in recently viewed |
+| 3 | **Recently viewed data assets** - Check Store Procedure in recently viewed | Store Procedure in recently viewed |
+| 4 | **Recently viewed data assets** - Check Dashboard in recently viewed | Dashboard in recently viewed |
+| 5 | **Recently viewed data assets** - Check Pipeline in recently viewed | Pipeline in recently viewed |
+| 6 | **Recently viewed data assets** - Check Topic in recently viewed | Topic in recently viewed |
+| 7 | **Recently viewed data assets** - Check MlModel in recently viewed | MlModel in recently viewed |
+| 8 | **Recently viewed data assets** - Check Container in recently viewed | Container in recently viewed |
+| 9 | **Recently viewed data assets** - Check SearchIndex in recently viewed | SearchIndex in recently viewed |
+| 10 | **Recently viewed data assets** - Check DashboardDataModel in recently viewed | DashboardDataModel in recently viewed |
+| 11 | **Recently viewed data assets** - Check Metric in recently viewed | Metric in recently viewed |
 
 </details>
 
@@ -714,7 +846,7 @@
 ## Data Insights
 
 <details open>
-<summary>📄 <b>DataInsight.spec.ts</b> (8 tests)</summary>
+<summary>📄 <b>DataInsight.spec.ts</b> (8 tests, 8 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/DataInsight.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataInsight.spec.ts)
 

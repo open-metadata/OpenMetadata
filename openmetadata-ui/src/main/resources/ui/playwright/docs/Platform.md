@@ -2,16 +2,21 @@
 
 # Platform
 
-> **7 Components** | **73 Files** | **1488 Tests**
+> **12 Components** | **68 Files** | **1238 Tests** | **1615 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
+- [Entities](#entities)
 - [Settings](#settings)
+- [Personas & Customizations](#personas-customizations)
+- [Navigation](#navigation)
+- [Lineage (UI)](#lineage-ui-)
+- [Users & Teams](#users-teams)
 - [SSO](#sso)
 - [RBAC](#rbac)
-- [Personas & Customizations](#personas-customizations)
-- [Lineage (UI)](#lineage-ui-)
+- [Onboarding](#onboarding)
 - [App Marketplace](#app-marketplace)
+- [Authentication](#authentication)
 
 ---
 
@@ -20,7 +25,318 @@
 ## Other
 
 <details open>
-<summary>📄 <b>Entity.spec.ts</b> (321 tests)</summary>
+<summary>📄 <b>ConditionalPermissions.spec.ts</b> (22 tests, 22 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/ConditionalPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ConditionalPermissions.spec.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | User with owner permission can only view owned Api Services | User with owner permission can only view owned Api Services |
+| 2 | User with matchAnyTag permission can only view Api Services with the tag | User with matchAnyTag permission can only view Api Services with the tag |
+| 3 | User with owner permission can only view owned Storage Services | User with owner permission can only view owned Storage Services |
+| 4 | User with matchAnyTag permission can only view Storage Services with the tag | User with matchAnyTag permission can only view Storage Services with the tag |
+| 5 | User with owner permission can only view owned Dashboard Services | User with owner permission can only view owned Dashboard Services |
+| 6 | User with matchAnyTag permission can only view Dashboard Services with the tag | User with matchAnyTag permission can only view Dashboard Services with the tag |
+| 7 | User with owner permission can only view owned Mlmodel Services | User with owner permission can only view owned Mlmodel Services |
+| 8 | User with matchAnyTag permission can only view Mlmodel Services with the tag | User with matchAnyTag permission can only view Mlmodel Services with the tag |
+| 9 | User with owner permission can only view owned Pipeline Services | User with owner permission can only view owned Pipeline Services |
+| 10 | User with matchAnyTag permission can only view Pipeline Services with the tag | User with matchAnyTag permission can only view Pipeline Services with the tag |
+| 11 | User with owner permission can only view owned Search Services | User with owner permission can only view owned Search Services |
+| 12 | User with matchAnyTag permission can only view Search Services with the tag | User with matchAnyTag permission can only view Search Services with the tag |
+| 13 | User with owner permission can only view owned Database Services | User with owner permission can only view owned Database Services |
+| 14 | User with matchAnyTag permission can only view Database Services with the tag | User with matchAnyTag permission can only view Database Services with the tag |
+| 15 | User with owner permission can only view owned Messaging Services | User with owner permission can only view owned Messaging Services |
+| 16 | User with matchAnyTag permission can only view Messaging Services with the tag | User with matchAnyTag permission can only view Messaging Services with the tag |
+| 17 | User with owner permission can only view owned Database | User with owner permission can only view owned Database |
+| 18 | User with matchAnyTag permission can only view Database with the tag | User with matchAnyTag permission can only view Database with the tag |
+| 19 | User with owner permission can only view owned Database Schema | User with owner permission can only view owned Database Schema |
+| 20 | User with matchAnyTag permission can only view Database Schema with the tag | User with matchAnyTag permission can only view Database Schema with the tag |
+| 21 | User with owner permission can only view owned Container | User with owner permission can only view owned Container |
+| 22 | User with matchAnyTag permission can only view Container with the tag | User with matchAnyTag permission can only view Container with the tag |
+
+</details>
+
+<details open>
+<summary>📄 <b>AutoPilot.spec.ts</b> (12 tests, 12 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/AutoPilot.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/AutoPilot.spec.ts)
+
+### Rest
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Rest** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
+| 2 | **Rest** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+
+### Metabase
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Metabase** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
+| 2 | **Metabase** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+
+### Mysql
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Mysql** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
+| 2 | **Mysql** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+
+### Kafka
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Kafka** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
+| 2 | **Kafka** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+
+### Mlflow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Mlflow** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
+| 2 | **Mlflow** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+
+### Airflow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Airflow** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
+| 2 | **Airflow** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+
+</details>
+
+<details open>
+<summary>📄 <b>Collect.spec.ts</b> (7 tests, 7 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/Collect.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/Collect.spec.ts)
+
+### Collect end point should work properly
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Collect end point should work properly** - Visit Settings page should trigger collect API | Visit Settings page should trigger collect API |
+| 2 | **Collect end point should work properly** - Visit Explore page should trigger collect API | Visit Explore page should trigger collect API |
+| 3 | **Collect end point should work properly** - Visit Quality page should trigger collect API | Visit Quality page should trigger collect API |
+| 4 | **Collect end point should work properly** - Visit Incident Manager page should trigger collect API | Visit Incident Manager page should trigger collect API |
+| 5 | **Collect end point should work properly** - Visit Insights page should trigger collect API | Visit Insights page should trigger collect API |
+| 6 | **Collect end point should work properly** - Visit Glossary page should trigger collect API | Visit Glossary page should trigger collect API |
+| 7 | **Collect end point should work properly** - Visit Tags page should trigger collect API | Visit Tags page should trigger collect API |
+
+</details>
+
+<details open>
+<summary>📄 <b>DescriptionSuggestion.spec.ts</b> (5 tests, 9 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/DescriptionSuggestion.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DescriptionSuggestion.spec.ts)
+
+### Description Suggestions Table Entity
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Description Suggestions Table Entity** - View, Close, Reject and Accept the Suggestions | View, Close, Reject and Accept the Suggestions |
+| | ↳ *View and Open the Suggestions* | |
+| | ↳ *Accept Single Suggestion* | |
+| | ↳ *Accept Nested Suggestion* | |
+| | ↳ *Reject Single Suggestion* | |
+| | ↳ *Accept all Suggestion* | |
+| 2 | **Description Suggestions Table Entity** - Reject All Suggestions | Reject All Suggestions |
+| 3 | **Description Suggestions Table Entity** - Fetch on avatar click and then all Pending Suggestions button click | Fetch on avatar click and then all Pending Suggestions button click |
+| 4 | **Description Suggestions Table Entity** - Should auto fetch more suggestions, when last user avatar is eliminated and there are more suggestions | Auto fetch more suggestions, when last user avatar is eliminated and there are more suggestions |
+| 5 | **Description Suggestions Table Entity** - Should fetch initial 10 suggestions on entity change from table1 to table2 | Fetch initial 10 suggestions on entity change from table1 to table2 |
+
+</details>
+
+<details open>
+<summary>📄 <b>FrequentlyJoined.spec.ts</b> (2 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/FrequentlyJoined.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/FrequentlyJoined.spec.ts)
+
+### Frequently Joined
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Frequently Joined** - should display frequently joined columns | Display frequently joined columns |
+| 2 | **Frequently Joined** - should display frequently joined table | Display frequently joined table |
+
+</details>
+
+<details open>
+<summary>📄 <b>auth.setup.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/auth.setup.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | authenticate all users | Authenticate all users |
+
+</details>
+
+<details open>
+<summary>📄 <b>dataInsightApp.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/dataInsightApp.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/dataInsightApp.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | Run Data Insight application and wait until success | Run Data Insight application and wait until success |
+
+</details>
+
+<details open>
+<summary>📄 <b>entity-data.setup.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/entity-data.setup.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.setup.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | create entity data prerequisites | Create entity data prerequisites |
+
+</details>
+
+<details open>
+<summary>📄 <b>entity-data.teardown.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/entity-data.teardown.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.teardown.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | cleanup entity data prerequisites | Cleanup entity data prerequisites |
+
+</details>
+
+<details open>
+<summary>📄 <b>Markdown.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Markdown.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Markdown.spec.ts)
+
+### Markdown
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Markdown** - should render markdown | Render markdown |
+
+</details>
+
+<details open>
+<summary>📄 <b>Permission.spec.ts</b> (1 tests, 3 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Permission.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permission.spec.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | Permissions | Permissions |
+| | ↳ *ViewBasic permission* | |
+| | ↳ *EditQuery permission* | |
+| | ↳ *EditTest permission* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>ApiCollection.spec.ts</b> (1 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts)
+
+### API Collection Entity Special Test Cases
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **API Collection Entity Special Test Cases** - Verify Owner Propagation: owner should be propagated to the API Collection's API Endpoint | Owner Propagation: owner should be propagated to the API Collection's API Endpoint |
+| | ↳ *Verify user Owner Propagation: owner should be propagated to the API Collection's API Endpoint* | |
+| | ↳ *Verify team Owner Propagation: owner should be propagated to the API Collection's API Endpoint* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>ApiDocs.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/ApiDocs.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiDocs.spec.ts)
+
+### API docs should work properly
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **API docs should work properly** - API docs should work properly | API docs should work properly |
+
+</details>
+
+<details open>
+<summary>📄 <b>AppBasic.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/AppBasic.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/AppBasic.spec.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | should call installed app api and it should respond with 200 | Call installed app api and it should respond with 200 |
+
+</details>
+
+<details open>
+<summary>📄 <b>Bots.spec.ts</b> (1 tests, 5 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts)
+
+### Bots Page should work properly
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Bots Page should work properly** - Bots Page should work properly | Bots Page should work properly |
+| | ↳ *Verify ingestion bot delete button is always disabled* | |
+| | ↳ *Create Bot* | |
+| | ↳ *Update display name and description* | |
+| | ↳ *Update token expiration* | |
+| | ↳ *Delete Bot* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>HealthCheck.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/HealthCheck.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/HealthCheck.spec.ts)
+
+### Health Check for OpenMetadata
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Health Check for OpenMetadata** - All 5 checks should be successful | All 5 checks should be successful |
+
+</details>
+
+<details open>
+<summary>📄 <b>OmdURLConfiguration.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/OmdURLConfiguration.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/OmdURLConfiguration.spec.ts)
+
+### OM URL configuration
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **OM URL configuration** - update om url configuration should work | Update om url configuration should work |
+
+</details>
+
+
+---
+
+<div id="entities"></div>
+
+## Entities
+
+<details open>
+<summary>📄 <b>Entity.spec.ts</b> (321 tests, 352 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Entity.spec.ts)
 
@@ -47,6 +363,8 @@
 | 17 | **Api Endpoint** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 18 | **Api Endpoint** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 19 | **Api Endpoint** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 20 | **Api Endpoint** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 21 | **Api Endpoint** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -74,9 +392,15 @@
 | 18 | **Table** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 19 | **Table** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 20 | **Table** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 21 | **Table** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 22 | **Table** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 | 23 | **Table** - Switch from Data Observability tab to Activity Feed tab and verify data appears | Switch from Data Observability tab to Activity Feed tab and verify data appears |
+| | ↳ *Navigate to Data Observability tab* | |
+| | ↳ *Verify tabs UI component is rendered in Data Observability tab* | |
+| | ↳ *Switch to Activity Feed tab* | |
+| | ↳ *Verify tabs or left component is rendered in Activity Feed tab* | |
 | 24 | **Table** - Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level | Tests access control for table-level data access with deny policy  Tests that a data consumer assigned a role with deny rules for ViewQueries and ViewSampleData cannot access those tabs on table entities |
 
 ### Stored Procedure
@@ -98,6 +422,8 @@
 | 13 | **Stored Procedure** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Stored Procedure** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 15 | **Stored Procedure** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 16 | **Stored Procedure** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 17 | **Stored Procedure** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -122,6 +448,8 @@
 | 15 | **Dashboard** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 16 | **Dashboard** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 17 | **Dashboard** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 18 | **Dashboard** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 19 | **Dashboard** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -148,6 +476,8 @@
 | 17 | **Pipeline** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 18 | **Pipeline** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 19 | **Pipeline** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 20 | **Pipeline** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 21 | **Pipeline** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -174,6 +504,8 @@
 | 17 | **Topic** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 18 | **Topic** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 19 | **Topic** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 20 | **Topic** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 21 | **Topic** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -200,6 +532,8 @@
 | 17 | **Ml Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 18 | **Ml Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 19 | **Ml Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 20 | **Ml Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 21 | **Ml Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -223,6 +557,8 @@
 | 14 | **Container** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 15 | **Container** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 16 | **Container** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 17 | **Container** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 18 | **Container** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -249,6 +585,8 @@
 | 17 | **Search Index** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 18 | **Search Index** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 19 | **Search Index** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 20 | **Search Index** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 21 | **Search Index** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -277,6 +615,8 @@
 | 19 | **Dashboard Data Model** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 20 | **Dashboard Data Model** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 21 | **Dashboard Data Model** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 22 | **Dashboard Data Model** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 23 | **Dashboard Data Model** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -299,6 +639,8 @@
 | 13 | **Metric** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Metric** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 15 | **Metric** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 16 | **Metric** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 17 | **Metric** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -321,6 +663,8 @@
 | 13 | **Chart** - UpVote & DownVote entity | Tests entity voting functionality  Tests upvoting an entity and downvoting it, verifying vote state changes |
 | 14 | **Chart** - Follow & Un-follow entity | Tests entity following functionality  Tests following an entity and unfollowing it, verifying follow state changes |
 | 15 | **Chart** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
 | 16 | **Chart** - Update displayName | Tests entity display name update  Tests renaming an entity by updating its display name |
 | 17 | **Chart** - User should be denied access to edit description when deny policy rule is applied on an entity | Tests access control for description editing with deny policy  Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions |
 
@@ -414,200 +758,58 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | Delete Api Endpoint | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 2 | Delete Table | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 3 | Delete Stored Procedure | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 4 | Delete Dashboard | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 5 | Delete Pipeline | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 6 | Delete Topic | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 7 | Delete Ml Model | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 8 | Delete Container | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 9 | Delete Search Index | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 10 | Delete Dashboard Data Model | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 11 | Delete Metric | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 12 | Delete Chart | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 13 | Delete Directory | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 14 | Delete File | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 15 | Delete Spreadsheet | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 | 16 | Delete Worksheet | Tests entity deletion (soft and hard delete)  Tests soft deleting an entity and then hard deleting it to completely remove it from the system |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 
 </details>
 
 <details open>
-<summary>📄 <b>Customproperties-part1.spec.ts</b> (162 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/Customproperties-part1.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Customproperties-part1.spec.ts)
-
-### Custom properties without custom property config
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Custom properties without custom property config** - Add Integer custom property for container | Add Integer custom property for container |
-| 2 | **Custom properties without custom property config** - Add Integer custom property for dashboard | Add Integer custom property for dashboard |
-| 3 | **Custom properties without custom property config** - Add Integer custom property for database | Add Integer custom property for database |
-| 4 | **Custom properties without custom property config** - Add Integer custom property for databaseSchema | Add Integer custom property for databaseSchema |
-| 5 | **Custom properties without custom property config** - Add Integer custom property for glossaryTerm | Add Integer custom property for glossaryTerm |
-| 6 | **Custom properties without custom property config** - Add Integer custom property for mlmodel | Add Integer custom property for mlmodel |
-| 7 | **Custom properties without custom property config** - Add Integer custom property for pipeline | Add Integer custom property for pipeline |
-| 8 | **Custom properties without custom property config** - Add Integer custom property for searchIndex | Add Integer custom property for searchIndex |
-| 9 | **Custom properties without custom property config** - Add Integer custom property for storedProcedure | Add Integer custom property for storedProcedure |
-| 10 | **Custom properties without custom property config** - Add Integer custom property for table | Add Integer custom property for table |
-| 11 | **Custom properties without custom property config** - Add Integer custom property for topic | Add Integer custom property for topic |
-| 12 | **Custom properties without custom property config** - Add Integer custom property for apiCollection | Add Integer custom property for apiCollection |
-| 13 | **Custom properties without custom property config** - Add Integer custom property for apiEndpoint | Add Integer custom property for apiEndpoint |
-| 14 | **Custom properties without custom property config** - Add Integer custom property for dataProduct | Add Integer custom property for dataProduct |
-| 15 | **Custom properties without custom property config** - Add Integer custom property for domain | Add Integer custom property for domain |
-| 16 | **Custom properties without custom property config** - Add Integer custom property for dashboardDataModel | Add Integer custom property for dashboardDataModel |
-| 17 | **Custom properties without custom property config** - Add Integer custom property for metric | Add Integer custom property for metric |
-| 18 | **Custom properties without custom property config** - Add Integer custom property for chart | Add Integer custom property for chart |
-| 19 | **Custom properties without custom property config** - Add String custom property for container | Add String custom property for container |
-| 20 | **Custom properties without custom property config** - Add String custom property for dashboard | Add String custom property for dashboard |
-| 21 | **Custom properties without custom property config** - Add String custom property for database | Add String custom property for database |
-| 22 | **Custom properties without custom property config** - Add String custom property for databaseSchema | Add String custom property for databaseSchema |
-| 23 | **Custom properties without custom property config** - Add String custom property for glossaryTerm | Add String custom property for glossaryTerm |
-| 24 | **Custom properties without custom property config** - Add String custom property for mlmodel | Add String custom property for mlmodel |
-| 25 | **Custom properties without custom property config** - Add String custom property for pipeline | Add String custom property for pipeline |
-| 26 | **Custom properties without custom property config** - Add String custom property for searchIndex | Add String custom property for searchIndex |
-| 27 | **Custom properties without custom property config** - Add String custom property for storedProcedure | Add String custom property for storedProcedure |
-| 28 | **Custom properties without custom property config** - Add String custom property for table | Add String custom property for table |
-| 29 | **Custom properties without custom property config** - Add String custom property for topic | Add String custom property for topic |
-| 30 | **Custom properties without custom property config** - Add String custom property for apiCollection | Add String custom property for apiCollection |
-| 31 | **Custom properties without custom property config** - Add String custom property for apiEndpoint | Add String custom property for apiEndpoint |
-| 32 | **Custom properties without custom property config** - Add String custom property for dataProduct | Add String custom property for dataProduct |
-| 33 | **Custom properties without custom property config** - Add String custom property for domain | Add String custom property for domain |
-| 34 | **Custom properties without custom property config** - Add String custom property for dashboardDataModel | Add String custom property for dashboardDataModel |
-| 35 | **Custom properties without custom property config** - Add String custom property for metric | Add String custom property for metric |
-| 36 | **Custom properties without custom property config** - Add String custom property for chart | Add String custom property for chart |
-| 37 | **Custom properties without custom property config** - Add Markdown custom property for container | Add Markdown custom property for container |
-| 38 | **Custom properties without custom property config** - Add Markdown custom property for dashboard | Add Markdown custom property for dashboard |
-| 39 | **Custom properties without custom property config** - Add Markdown custom property for database | Add Markdown custom property for database |
-| 40 | **Custom properties without custom property config** - Add Markdown custom property for databaseSchema | Add Markdown custom property for databaseSchema |
-| 41 | **Custom properties without custom property config** - Add Markdown custom property for glossaryTerm | Add Markdown custom property for glossaryTerm |
-| 42 | **Custom properties without custom property config** - Add Markdown custom property for mlmodel | Add Markdown custom property for mlmodel |
-| 43 | **Custom properties without custom property config** - Add Markdown custom property for pipeline | Add Markdown custom property for pipeline |
-| 44 | **Custom properties without custom property config** - Add Markdown custom property for searchIndex | Add Markdown custom property for searchIndex |
-| 45 | **Custom properties without custom property config** - Add Markdown custom property for storedProcedure | Add Markdown custom property for storedProcedure |
-| 46 | **Custom properties without custom property config** - Add Markdown custom property for table | Add Markdown custom property for table |
-| 47 | **Custom properties without custom property config** - Add Markdown custom property for topic | Add Markdown custom property for topic |
-| 48 | **Custom properties without custom property config** - Add Markdown custom property for apiCollection | Add Markdown custom property for apiCollection |
-| 49 | **Custom properties without custom property config** - Add Markdown custom property for apiEndpoint | Add Markdown custom property for apiEndpoint |
-| 50 | **Custom properties without custom property config** - Add Markdown custom property for dataProduct | Add Markdown custom property for dataProduct |
-| 51 | **Custom properties without custom property config** - Add Markdown custom property for domain | Add Markdown custom property for domain |
-| 52 | **Custom properties without custom property config** - Add Markdown custom property for dashboardDataModel | Add Markdown custom property for dashboardDataModel |
-| 53 | **Custom properties without custom property config** - Add Markdown custom property for metric | Add Markdown custom property for metric |
-| 54 | **Custom properties without custom property config** - Add Markdown custom property for chart | Add Markdown custom property for chart |
-| 55 | **Custom properties without custom property config** - Add Duration custom property for container | Add Duration custom property for container |
-| 56 | **Custom properties without custom property config** - Add Duration custom property for dashboard | Add Duration custom property for dashboard |
-| 57 | **Custom properties without custom property config** - Add Duration custom property for database | Add Duration custom property for database |
-| 58 | **Custom properties without custom property config** - Add Duration custom property for databaseSchema | Add Duration custom property for databaseSchema |
-| 59 | **Custom properties without custom property config** - Add Duration custom property for glossaryTerm | Add Duration custom property for glossaryTerm |
-| 60 | **Custom properties without custom property config** - Add Duration custom property for mlmodel | Add Duration custom property for mlmodel |
-| 61 | **Custom properties without custom property config** - Add Duration custom property for pipeline | Add Duration custom property for pipeline |
-| 62 | **Custom properties without custom property config** - Add Duration custom property for searchIndex | Add Duration custom property for searchIndex |
-| 63 | **Custom properties without custom property config** - Add Duration custom property for storedProcedure | Add Duration custom property for storedProcedure |
-| 64 | **Custom properties without custom property config** - Add Duration custom property for table | Add Duration custom property for table |
-| 65 | **Custom properties without custom property config** - Add Duration custom property for topic | Add Duration custom property for topic |
-| 66 | **Custom properties without custom property config** - Add Duration custom property for apiCollection | Add Duration custom property for apiCollection |
-| 67 | **Custom properties without custom property config** - Add Duration custom property for apiEndpoint | Add Duration custom property for apiEndpoint |
-| 68 | **Custom properties without custom property config** - Add Duration custom property for dataProduct | Add Duration custom property for dataProduct |
-| 69 | **Custom properties without custom property config** - Add Duration custom property for domain | Add Duration custom property for domain |
-| 70 | **Custom properties without custom property config** - Add Duration custom property for dashboardDataModel | Add Duration custom property for dashboardDataModel |
-| 71 | **Custom properties without custom property config** - Add Duration custom property for metric | Add Duration custom property for metric |
-| 72 | **Custom properties without custom property config** - Add Duration custom property for chart | Add Duration custom property for chart |
-| 73 | **Custom properties without custom property config** - Add Email custom property for container | Add Email custom property for container |
-| 74 | **Custom properties without custom property config** - Add Email custom property for dashboard | Add Email custom property for dashboard |
-| 75 | **Custom properties without custom property config** - Add Email custom property for database | Add Email custom property for database |
-| 76 | **Custom properties without custom property config** - Add Email custom property for databaseSchema | Add Email custom property for databaseSchema |
-| 77 | **Custom properties without custom property config** - Add Email custom property for glossaryTerm | Add Email custom property for glossaryTerm |
-| 78 | **Custom properties without custom property config** - Add Email custom property for mlmodel | Add Email custom property for mlmodel |
-| 79 | **Custom properties without custom property config** - Add Email custom property for pipeline | Add Email custom property for pipeline |
-| 80 | **Custom properties without custom property config** - Add Email custom property for searchIndex | Add Email custom property for searchIndex |
-| 81 | **Custom properties without custom property config** - Add Email custom property for storedProcedure | Add Email custom property for storedProcedure |
-| 82 | **Custom properties without custom property config** - Add Email custom property for table | Add Email custom property for table |
-| 83 | **Custom properties without custom property config** - Add Email custom property for topic | Add Email custom property for topic |
-| 84 | **Custom properties without custom property config** - Add Email custom property for apiCollection | Add Email custom property for apiCollection |
-| 85 | **Custom properties without custom property config** - Add Email custom property for apiEndpoint | Add Email custom property for apiEndpoint |
-| 86 | **Custom properties without custom property config** - Add Email custom property for dataProduct | Add Email custom property for dataProduct |
-| 87 | **Custom properties without custom property config** - Add Email custom property for domain | Add Email custom property for domain |
-| 88 | **Custom properties without custom property config** - Add Email custom property for dashboardDataModel | Add Email custom property for dashboardDataModel |
-| 89 | **Custom properties without custom property config** - Add Email custom property for metric | Add Email custom property for metric |
-| 90 | **Custom properties without custom property config** - Add Email custom property for chart | Add Email custom property for chart |
-| 91 | **Custom properties without custom property config** - Add Number custom property for container | Add Number custom property for container |
-| 92 | **Custom properties without custom property config** - Add Number custom property for dashboard | Add Number custom property for dashboard |
-| 93 | **Custom properties without custom property config** - Add Number custom property for database | Add Number custom property for database |
-| 94 | **Custom properties without custom property config** - Add Number custom property for databaseSchema | Add Number custom property for databaseSchema |
-| 95 | **Custom properties without custom property config** - Add Number custom property for glossaryTerm | Add Number custom property for glossaryTerm |
-| 96 | **Custom properties without custom property config** - Add Number custom property for mlmodel | Add Number custom property for mlmodel |
-| 97 | **Custom properties without custom property config** - Add Number custom property for pipeline | Add Number custom property for pipeline |
-| 98 | **Custom properties without custom property config** - Add Number custom property for searchIndex | Add Number custom property for searchIndex |
-| 99 | **Custom properties without custom property config** - Add Number custom property for storedProcedure | Add Number custom property for storedProcedure |
-| 100 | **Custom properties without custom property config** - Add Number custom property for table | Add Number custom property for table |
-| 101 | **Custom properties without custom property config** - Add Number custom property for topic | Add Number custom property for topic |
-| 102 | **Custom properties without custom property config** - Add Number custom property for apiCollection | Add Number custom property for apiCollection |
-| 103 | **Custom properties without custom property config** - Add Number custom property for apiEndpoint | Add Number custom property for apiEndpoint |
-| 104 | **Custom properties without custom property config** - Add Number custom property for dataProduct | Add Number custom property for dataProduct |
-| 105 | **Custom properties without custom property config** - Add Number custom property for domain | Add Number custom property for domain |
-| 106 | **Custom properties without custom property config** - Add Number custom property for dashboardDataModel | Add Number custom property for dashboardDataModel |
-| 107 | **Custom properties without custom property config** - Add Number custom property for metric | Add Number custom property for metric |
-| 108 | **Custom properties without custom property config** - Add Number custom property for chart | Add Number custom property for chart |
-| 109 | **Custom properties without custom property config** - Add Sql Query custom property for container | Add Sql Query custom property for container |
-| 110 | **Custom properties without custom property config** - Add Sql Query custom property for dashboard | Add Sql Query custom property for dashboard |
-| 111 | **Custom properties without custom property config** - Add Sql Query custom property for database | Add Sql Query custom property for database |
-| 112 | **Custom properties without custom property config** - Add Sql Query custom property for databaseSchema | Add Sql Query custom property for databaseSchema |
-| 113 | **Custom properties without custom property config** - Add Sql Query custom property for glossaryTerm | Add Sql Query custom property for glossaryTerm |
-| 114 | **Custom properties without custom property config** - Add Sql Query custom property for mlmodel | Add Sql Query custom property for mlmodel |
-| 115 | **Custom properties without custom property config** - Add Sql Query custom property for pipeline | Add Sql Query custom property for pipeline |
-| 116 | **Custom properties without custom property config** - Add Sql Query custom property for searchIndex | Add Sql Query custom property for searchIndex |
-| 117 | **Custom properties without custom property config** - Add Sql Query custom property for storedProcedure | Add Sql Query custom property for storedProcedure |
-| 118 | **Custom properties without custom property config** - Add Sql Query custom property for table | Add Sql Query custom property for table |
-| 119 | **Custom properties without custom property config** - Add Sql Query custom property for topic | Add Sql Query custom property for topic |
-| 120 | **Custom properties without custom property config** - Add Sql Query custom property for apiCollection | Add Sql Query custom property for apiCollection |
-| 121 | **Custom properties without custom property config** - Add Sql Query custom property for apiEndpoint | Add Sql Query custom property for apiEndpoint |
-| 122 | **Custom properties without custom property config** - Add Sql Query custom property for dataProduct | Add Sql Query custom property for dataProduct |
-| 123 | **Custom properties without custom property config** - Add Sql Query custom property for domain | Add Sql Query custom property for domain |
-| 124 | **Custom properties without custom property config** - Add Sql Query custom property for dashboardDataModel | Add Sql Query custom property for dashboardDataModel |
-| 125 | **Custom properties without custom property config** - Add Sql Query custom property for metric | Add Sql Query custom property for metric |
-| 126 | **Custom properties without custom property config** - Add Sql Query custom property for chart | Add Sql Query custom property for chart |
-| 127 | **Custom properties without custom property config** - Add Time Interval custom property for container | Add Time Interval custom property for container |
-| 128 | **Custom properties without custom property config** - Add Time Interval custom property for dashboard | Add Time Interval custom property for dashboard |
-| 129 | **Custom properties without custom property config** - Add Time Interval custom property for database | Add Time Interval custom property for database |
-| 130 | **Custom properties without custom property config** - Add Time Interval custom property for databaseSchema | Add Time Interval custom property for databaseSchema |
-| 131 | **Custom properties without custom property config** - Add Time Interval custom property for glossaryTerm | Add Time Interval custom property for glossaryTerm |
-| 132 | **Custom properties without custom property config** - Add Time Interval custom property for mlmodel | Add Time Interval custom property for mlmodel |
-| 133 | **Custom properties without custom property config** - Add Time Interval custom property for pipeline | Add Time Interval custom property for pipeline |
-| 134 | **Custom properties without custom property config** - Add Time Interval custom property for searchIndex | Add Time Interval custom property for searchIndex |
-| 135 | **Custom properties without custom property config** - Add Time Interval custom property for storedProcedure | Add Time Interval custom property for storedProcedure |
-| 136 | **Custom properties without custom property config** - Add Time Interval custom property for table | Add Time Interval custom property for table |
-| 137 | **Custom properties without custom property config** - Add Time Interval custom property for topic | Add Time Interval custom property for topic |
-| 138 | **Custom properties without custom property config** - Add Time Interval custom property for apiCollection | Add Time Interval custom property for apiCollection |
-| 139 | **Custom properties without custom property config** - Add Time Interval custom property for apiEndpoint | Add Time Interval custom property for apiEndpoint |
-| 140 | **Custom properties without custom property config** - Add Time Interval custom property for dataProduct | Add Time Interval custom property for dataProduct |
-| 141 | **Custom properties without custom property config** - Add Time Interval custom property for domain | Add Time Interval custom property for domain |
-| 142 | **Custom properties without custom property config** - Add Time Interval custom property for dashboardDataModel | Add Time Interval custom property for dashboardDataModel |
-| 143 | **Custom properties without custom property config** - Add Time Interval custom property for metric | Add Time Interval custom property for metric |
-| 144 | **Custom properties without custom property config** - Add Time Interval custom property for chart | Add Time Interval custom property for chart |
-| 145 | **Custom properties without custom property config** - Add Timestamp custom property for container | Add Timestamp custom property for container |
-| 146 | **Custom properties without custom property config** - Add Timestamp custom property for dashboard | Add Timestamp custom property for dashboard |
-| 147 | **Custom properties without custom property config** - Add Timestamp custom property for database | Add Timestamp custom property for database |
-| 148 | **Custom properties without custom property config** - Add Timestamp custom property for databaseSchema | Add Timestamp custom property for databaseSchema |
-| 149 | **Custom properties without custom property config** - Add Timestamp custom property for glossaryTerm | Add Timestamp custom property for glossaryTerm |
-| 150 | **Custom properties without custom property config** - Add Timestamp custom property for mlmodel | Add Timestamp custom property for mlmodel |
-| 151 | **Custom properties without custom property config** - Add Timestamp custom property for pipeline | Add Timestamp custom property for pipeline |
-| 152 | **Custom properties without custom property config** - Add Timestamp custom property for searchIndex | Add Timestamp custom property for searchIndex |
-| 153 | **Custom properties without custom property config** - Add Timestamp custom property for storedProcedure | Add Timestamp custom property for storedProcedure |
-| 154 | **Custom properties without custom property config** - Add Timestamp custom property for table | Add Timestamp custom property for table |
-| 155 | **Custom properties without custom property config** - Add Timestamp custom property for topic | Add Timestamp custom property for topic |
-| 156 | **Custom properties without custom property config** - Add Timestamp custom property for apiCollection | Add Timestamp custom property for apiCollection |
-| 157 | **Custom properties without custom property config** - Add Timestamp custom property for apiEndpoint | Add Timestamp custom property for apiEndpoint |
-| 158 | **Custom properties without custom property config** - Add Timestamp custom property for dataProduct | Add Timestamp custom property for dataProduct |
-| 159 | **Custom properties without custom property config** - Add Timestamp custom property for domain | Add Timestamp custom property for domain |
-| 160 | **Custom properties without custom property config** - Add Timestamp custom property for dashboardDataModel | Add Timestamp custom property for dashboardDataModel |
-| 161 | **Custom properties without custom property config** - Add Timestamp custom property for metric | Add Timestamp custom property for metric |
-| 162 | **Custom properties without custom property config** - Add Timestamp custom property for chart | Add Timestamp custom property for chart |
-
-</details>
-
-<details open>
-<summary>📄 <b>EntityDataSteward.spec.ts</b> (158 tests)</summary>
+<summary>📄 <b>EntityDataSteward.spec.ts</b> (158 tests, 158 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/EntityDataSteward.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/EntityDataSteward.spec.ts)
 
@@ -847,7 +1049,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>EntityDataConsumer.spec.ts</b> (143 tests)</summary>
+<summary>📄 <b>EntityDataConsumer.spec.ts</b> (143 tests, 143 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/EntityDataConsumer.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/EntityDataConsumer.spec.ts)
 
@@ -1072,293 +1274,249 @@
 </details>
 
 <details open>
-<summary>📄 <b>Customproperties-part2.spec.ts</b> (126 tests)</summary>
+<summary>📄 <b>ServiceEntity.spec.ts</b> (140 tests, 155 scenarios)</summary>
 
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/Customproperties-part2.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Customproperties-part2.spec.ts)
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/ServiceEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/ServiceEntity.spec.ts)
 
-### Custom properties with custom property config
+### Api Service
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Custom properties with custom property config** - Add Enum custom property for container | Add Enum custom property for container |
-| 2 | **Custom properties with custom property config** - Add Enum custom property for dashboard | Add Enum custom property for dashboard |
-| 3 | **Custom properties with custom property config** - Add Enum custom property for database | Add Enum custom property for database |
-| 4 | **Custom properties with custom property config** - Add Enum custom property for databaseSchema | Add Enum custom property for databaseSchema |
-| 5 | **Custom properties with custom property config** - Add Enum custom property for glossaryTerm | Add Enum custom property for glossaryTerm |
-| 6 | **Custom properties with custom property config** - Add Enum custom property for mlmodel | Add Enum custom property for mlmodel |
-| 7 | **Custom properties with custom property config** - Add Enum custom property for pipeline | Add Enum custom property for pipeline |
-| 8 | **Custom properties with custom property config** - Add Enum custom property for searchIndex | Add Enum custom property for searchIndex |
-| 9 | **Custom properties with custom property config** - Add Enum custom property for storedProcedure | Add Enum custom property for storedProcedure |
-| 10 | **Custom properties with custom property config** - Add Enum custom property for table | Add Enum custom property for table |
-| 11 | **Custom properties with custom property config** - Add Enum custom property for topic | Add Enum custom property for topic |
-| 12 | **Custom properties with custom property config** - Add Enum custom property for apiCollection | Add Enum custom property for apiCollection |
-| 13 | **Custom properties with custom property config** - Add Enum custom property for apiEndpoint | Add Enum custom property for apiEndpoint |
-| 14 | **Custom properties with custom property config** - Add Enum custom property for dataProduct | Add Enum custom property for dataProduct |
-| 15 | **Custom properties with custom property config** - Add Enum custom property for domain | Add Enum custom property for domain |
-| 16 | **Custom properties with custom property config** - Add Enum custom property for dashboardDataModel | Add Enum custom property for dashboardDataModel |
-| 17 | **Custom properties with custom property config** - Add Enum custom property for metric | Add Enum custom property for metric |
-| 18 | **Custom properties with custom property config** - Add Enum custom property for chart | Add Enum custom property for chart |
-| 19 | **Custom properties with custom property config** - Add Table custom property for container | Add Table custom property for container |
-| 20 | **Custom properties with custom property config** - Add Table custom property for dashboard | Add Table custom property for dashboard |
-| 21 | **Custom properties with custom property config** - Add Table custom property for database | Add Table custom property for database |
-| 22 | **Custom properties with custom property config** - Add Table custom property for databaseSchema | Add Table custom property for databaseSchema |
-| 23 | **Custom properties with custom property config** - Add Table custom property for glossaryTerm | Add Table custom property for glossaryTerm |
-| 24 | **Custom properties with custom property config** - Add Table custom property for mlmodel | Add Table custom property for mlmodel |
-| 25 | **Custom properties with custom property config** - Add Table custom property for pipeline | Add Table custom property for pipeline |
-| 26 | **Custom properties with custom property config** - Add Table custom property for searchIndex | Add Table custom property for searchIndex |
-| 27 | **Custom properties with custom property config** - Add Table custom property for storedProcedure | Add Table custom property for storedProcedure |
-| 28 | **Custom properties with custom property config** - Add Table custom property for table | Add Table custom property for table |
-| 29 | **Custom properties with custom property config** - Add Table custom property for topic | Add Table custom property for topic |
-| 30 | **Custom properties with custom property config** - Add Table custom property for apiCollection | Add Table custom property for apiCollection |
-| 31 | **Custom properties with custom property config** - Add Table custom property for apiEndpoint | Add Table custom property for apiEndpoint |
-| 32 | **Custom properties with custom property config** - Add Table custom property for dataProduct | Add Table custom property for dataProduct |
-| 33 | **Custom properties with custom property config** - Add Table custom property for domain | Add Table custom property for domain |
-| 34 | **Custom properties with custom property config** - Add Table custom property for dashboardDataModel | Add Table custom property for dashboardDataModel |
-| 35 | **Custom properties with custom property config** - Add Table custom property for metric | Add Table custom property for metric |
-| 36 | **Custom properties with custom property config** - Add Table custom property for chart | Add Table custom property for chart |
-| 37 | **Custom properties with custom property config** - Add Entity Reference custom property for container | Add Entity Reference custom property for container |
-| 38 | **Custom properties with custom property config** - Add Entity Reference custom property for dashboard | Add Entity Reference custom property for dashboard |
-| 39 | **Custom properties with custom property config** - Add Entity Reference custom property for database | Add Entity Reference custom property for database |
-| 40 | **Custom properties with custom property config** - Add Entity Reference custom property for databaseSchema | Add Entity Reference custom property for databaseSchema |
-| 41 | **Custom properties with custom property config** - Add Entity Reference custom property for glossaryTerm | Add Entity Reference custom property for glossaryTerm |
-| 42 | **Custom properties with custom property config** - Add Entity Reference custom property for mlmodel | Add Entity Reference custom property for mlmodel |
-| 43 | **Custom properties with custom property config** - Add Entity Reference custom property for pipeline | Add Entity Reference custom property for pipeline |
-| 44 | **Custom properties with custom property config** - Add Entity Reference custom property for searchIndex | Add Entity Reference custom property for searchIndex |
-| 45 | **Custom properties with custom property config** - Add Entity Reference custom property for storedProcedure | Add Entity Reference custom property for storedProcedure |
-| 46 | **Custom properties with custom property config** - Add Entity Reference custom property for table | Add Entity Reference custom property for table |
-| 47 | **Custom properties with custom property config** - Add Entity Reference custom property for topic | Add Entity Reference custom property for topic |
-| 48 | **Custom properties with custom property config** - Add Entity Reference custom property for apiCollection | Add Entity Reference custom property for apiCollection |
-| 49 | **Custom properties with custom property config** - Add Entity Reference custom property for apiEndpoint | Add Entity Reference custom property for apiEndpoint |
-| 50 | **Custom properties with custom property config** - Add Entity Reference custom property for dataProduct | Add Entity Reference custom property for dataProduct |
-| 51 | **Custom properties with custom property config** - Add Entity Reference custom property for domain | Add Entity Reference custom property for domain |
-| 52 | **Custom properties with custom property config** - Add Entity Reference custom property for dashboardDataModel | Add Entity Reference custom property for dashboardDataModel |
-| 53 | **Custom properties with custom property config** - Add Entity Reference custom property for metric | Add Entity Reference custom property for metric |
-| 54 | **Custom properties with custom property config** - Add Entity Reference custom property for chart | Add Entity Reference custom property for chart |
-| 55 | **Custom properties with custom property config** - Add Entity Reference list custom property for container | Add Entity Reference list custom property for container |
-| 56 | **Custom properties with custom property config** - Add Entity Reference list custom property for dashboard | Add Entity Reference list custom property for dashboard |
-| 57 | **Custom properties with custom property config** - Add Entity Reference list custom property for database | Add Entity Reference list custom property for database |
-| 58 | **Custom properties with custom property config** - Add Entity Reference list custom property for databaseSchema | Add Entity Reference list custom property for databaseSchema |
-| 59 | **Custom properties with custom property config** - Add Entity Reference list custom property for glossaryTerm | Add Entity Reference list custom property for glossaryTerm |
-| 60 | **Custom properties with custom property config** - Add Entity Reference list custom property for mlmodel | Add Entity Reference list custom property for mlmodel |
-| 61 | **Custom properties with custom property config** - Add Entity Reference list custom property for pipeline | Add Entity Reference list custom property for pipeline |
-| 62 | **Custom properties with custom property config** - Add Entity Reference list custom property for searchIndex | Add Entity Reference list custom property for searchIndex |
-| 63 | **Custom properties with custom property config** - Add Entity Reference list custom property for storedProcedure | Add Entity Reference list custom property for storedProcedure |
-| 64 | **Custom properties with custom property config** - Add Entity Reference list custom property for table | Add Entity Reference list custom property for table |
-| 65 | **Custom properties with custom property config** - Add Entity Reference list custom property for topic | Add Entity Reference list custom property for topic |
-| 66 | **Custom properties with custom property config** - Add Entity Reference list custom property for apiCollection | Add Entity Reference list custom property for apiCollection |
-| 67 | **Custom properties with custom property config** - Add Entity Reference list custom property for apiEndpoint | Add Entity Reference list custom property for apiEndpoint |
-| 68 | **Custom properties with custom property config** - Add Entity Reference list custom property for dataProduct | Add Entity Reference list custom property for dataProduct |
-| 69 | **Custom properties with custom property config** - Add Entity Reference list custom property for domain | Add Entity Reference list custom property for domain |
-| 70 | **Custom properties with custom property config** - Add Entity Reference list custom property for dashboardDataModel | Add Entity Reference list custom property for dashboardDataModel |
-| 71 | **Custom properties with custom property config** - Add Entity Reference list custom property for metric | Add Entity Reference list custom property for metric |
-| 72 | **Custom properties with custom property config** - Add Entity Reference list custom property for chart | Add Entity Reference list custom property for chart |
-| 73 | **Custom properties with custom property config** - Add Date custom property for container | Add Date custom property for container |
-| 74 | **Custom properties with custom property config** - Add Date custom property for dashboard | Add Date custom property for dashboard |
-| 75 | **Custom properties with custom property config** - Add Date custom property for database | Add Date custom property for database |
-| 76 | **Custom properties with custom property config** - Add Date custom property for databaseSchema | Add Date custom property for databaseSchema |
-| 77 | **Custom properties with custom property config** - Add Date custom property for glossaryTerm | Add Date custom property for glossaryTerm |
-| 78 | **Custom properties with custom property config** - Add Date custom property for mlmodel | Add Date custom property for mlmodel |
-| 79 | **Custom properties with custom property config** - Add Date custom property for pipeline | Add Date custom property for pipeline |
-| 80 | **Custom properties with custom property config** - Add Date custom property for searchIndex | Add Date custom property for searchIndex |
-| 81 | **Custom properties with custom property config** - Add Date custom property for storedProcedure | Add Date custom property for storedProcedure |
-| 82 | **Custom properties with custom property config** - Add Date custom property for table | Add Date custom property for table |
-| 83 | **Custom properties with custom property config** - Add Date custom property for topic | Add Date custom property for topic |
-| 84 | **Custom properties with custom property config** - Add Date custom property for apiCollection | Add Date custom property for apiCollection |
-| 85 | **Custom properties with custom property config** - Add Date custom property for apiEndpoint | Add Date custom property for apiEndpoint |
-| 86 | **Custom properties with custom property config** - Add Date custom property for dataProduct | Add Date custom property for dataProduct |
-| 87 | **Custom properties with custom property config** - Add Date custom property for domain | Add Date custom property for domain |
-| 88 | **Custom properties with custom property config** - Add Date custom property for dashboardDataModel | Add Date custom property for dashboardDataModel |
-| 89 | **Custom properties with custom property config** - Add Date custom property for metric | Add Date custom property for metric |
-| 90 | **Custom properties with custom property config** - Add Date custom property for chart | Add Date custom property for chart |
-| 91 | **Custom properties with custom property config** - Add Time custom property for container | Add Time custom property for container |
-| 92 | **Custom properties with custom property config** - Add Time custom property for dashboard | Add Time custom property for dashboard |
-| 93 | **Custom properties with custom property config** - Add Time custom property for database | Add Time custom property for database |
-| 94 | **Custom properties with custom property config** - Add Time custom property for databaseSchema | Add Time custom property for databaseSchema |
-| 95 | **Custom properties with custom property config** - Add Time custom property for glossaryTerm | Add Time custom property for glossaryTerm |
-| 96 | **Custom properties with custom property config** - Add Time custom property for mlmodel | Add Time custom property for mlmodel |
-| 97 | **Custom properties with custom property config** - Add Time custom property for pipeline | Add Time custom property for pipeline |
-| 98 | **Custom properties with custom property config** - Add Time custom property for searchIndex | Add Time custom property for searchIndex |
-| 99 | **Custom properties with custom property config** - Add Time custom property for storedProcedure | Add Time custom property for storedProcedure |
-| 100 | **Custom properties with custom property config** - Add Time custom property for table | Add Time custom property for table |
-| 101 | **Custom properties with custom property config** - Add Time custom property for topic | Add Time custom property for topic |
-| 102 | **Custom properties with custom property config** - Add Time custom property for apiCollection | Add Time custom property for apiCollection |
-| 103 | **Custom properties with custom property config** - Add Time custom property for apiEndpoint | Add Time custom property for apiEndpoint |
-| 104 | **Custom properties with custom property config** - Add Time custom property for dataProduct | Add Time custom property for dataProduct |
-| 105 | **Custom properties with custom property config** - Add Time custom property for domain | Add Time custom property for domain |
-| 106 | **Custom properties with custom property config** - Add Time custom property for dashboardDataModel | Add Time custom property for dashboardDataModel |
-| 107 | **Custom properties with custom property config** - Add Time custom property for metric | Add Time custom property for metric |
-| 108 | **Custom properties with custom property config** - Add Time custom property for chart | Add Time custom property for chart |
-| 109 | **Custom properties with custom property config** - Add DateTime custom property for container | Add DateTime custom property for container |
-| 110 | **Custom properties with custom property config** - Add DateTime custom property for dashboard | Add DateTime custom property for dashboard |
-| 111 | **Custom properties with custom property config** - Add DateTime custom property for database | Add DateTime custom property for database |
-| 112 | **Custom properties with custom property config** - Add DateTime custom property for databaseSchema | Add DateTime custom property for databaseSchema |
-| 113 | **Custom properties with custom property config** - Add DateTime custom property for glossaryTerm | Add DateTime custom property for glossaryTerm |
-| 114 | **Custom properties with custom property config** - Add DateTime custom property for mlmodel | Add DateTime custom property for mlmodel |
-| 115 | **Custom properties with custom property config** - Add DateTime custom property for pipeline | Add DateTime custom property for pipeline |
-| 116 | **Custom properties with custom property config** - Add DateTime custom property for searchIndex | Add DateTime custom property for searchIndex |
-| 117 | **Custom properties with custom property config** - Add DateTime custom property for storedProcedure | Add DateTime custom property for storedProcedure |
-| 118 | **Custom properties with custom property config** - Add DateTime custom property for table | Add DateTime custom property for table |
-| 119 | **Custom properties with custom property config** - Add DateTime custom property for topic | Add DateTime custom property for topic |
-| 120 | **Custom properties with custom property config** - Add DateTime custom property for apiCollection | Add DateTime custom property for apiCollection |
-| 121 | **Custom properties with custom property config** - Add DateTime custom property for apiEndpoint | Add DateTime custom property for apiEndpoint |
-| 122 | **Custom properties with custom property config** - Add DateTime custom property for dataProduct | Add DateTime custom property for dataProduct |
-| 123 | **Custom properties with custom property config** - Add DateTime custom property for domain | Add DateTime custom property for domain |
-| 124 | **Custom properties with custom property config** - Add DateTime custom property for dashboardDataModel | Add DateTime custom property for dashboardDataModel |
-| 125 | **Custom properties with custom property config** - Add DateTime custom property for metric | Add DateTime custom property for metric |
-| 126 | **Custom properties with custom property config** - Add DateTime custom property for chart | Add DateTime custom property for chart |
+| 1 | **Api Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Api Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Api Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Api Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Api Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Api Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Api Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Api Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Api Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Api Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Api Collection
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Api Collection** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Api Collection** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Api Collection** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Api Collection** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Api Collection** - Update description | Tests description updates  Edits the service description |
+| 6 | **Api Collection** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Api Collection** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Api Collection** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Api Collection** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Api Collection** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
+| 11 | **Api Collection** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Database Service
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Database Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Database Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Database Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Database Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Database Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Database Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Database Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Database Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Database Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Database Service** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
+| 11 | **Database Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Dashboard Service
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Dashboard Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Dashboard Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Dashboard Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Dashboard Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Dashboard Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Dashboard Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Dashboard Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Dashboard Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Dashboard Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Dashboard Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Messaging Service
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Messaging Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Messaging Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Messaging Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Messaging Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Messaging Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Messaging Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Messaging Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Messaging Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Messaging Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Messaging Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Mlmodel Service
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Mlmodel Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Mlmodel Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Mlmodel Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Mlmodel Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Mlmodel Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Mlmodel Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Mlmodel Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Mlmodel Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Mlmodel Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Mlmodel Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Pipeline Service
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pipeline Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Pipeline Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Pipeline Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Pipeline Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Pipeline Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Pipeline Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Pipeline Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Pipeline Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Pipeline Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Pipeline Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Search Index Service
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Search Index Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Search Index Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Search Index Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Search Index Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Search Index Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Search Index Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Search Index Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Search Index Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Search Index Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Search Index Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Storage Service
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Storage Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Storage Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Storage Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Storage Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Storage Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Storage Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Storage Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Storage Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Storage Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Storage Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Database
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Database** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Database** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Database** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Database** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Database** - Certification Add Remove | Tests certification lifecycle  Adds a certification to the service, updates it, and removes it |
+| 6 | **Database** - Update description | Tests description updates  Edits the service description |
+| 7 | **Database** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 8 | **Database** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 9 | **Database** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 10 | **Database** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 11 | **Database** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
+| 12 | **Database** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
+| 13 | **Database** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Database Schema
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Database Schema** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Database Schema** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Database Schema** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Database Schema** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Database Schema** - Certification Add Remove | Tests certification lifecycle  Adds a certification to the service, updates it, and removes it |
+| 6 | **Database Schema** - Update description | Tests description updates  Edits the service description |
+| 7 | **Database Schema** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 8 | **Database Schema** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 9 | **Database Schema** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 10 | **Database Schema** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 11 | **Database Schema** - Set & Update table-cp, string, integer, markdown, number, duration, email, enum, sqlQuery, timestamp, entityReference, entityReferenceList, timeInterval, time-cp, date-cp, dateTime-cp Custom Property  | Tests custom property management  Sets and updates supported custom property types on the service |
+| | ↳ *Set ${...} Custom Property* | |
+| | ↳ *Update ${...} Custom Property* | |
+| 12 | **Database Schema** - Follow & Un-follow entity for Database Entity | Tests follow and unfollow actions  Follows the service and then unfollows it to verify state changes |
+| 13 | **Database Schema** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Drive Service
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Drive Service** - Domain Add, Update and Remove | Tests domain management on services  Adds a domain, switches to another, then removes it from the service |
+| 2 | **Drive Service** - User as Owner Add, Update and Remove | Tests user ownership management  Adds user owners, updates the owner list, and removes owners from the service |
+| 3 | **Drive Service** - Team as Owner Add, Update and Remove | Tests team ownership management  Adds team owners, updates the list, and removes teams from the service |
+| 4 | **Drive Service** - Tier Add, Update and Remove | Tests tier management  Assigns a tier to the service, updates it, and removes it |
+| 5 | **Drive Service** - Update description | Tests description updates  Edits the service description |
+| 6 | **Drive Service** - Tag Add, Update and Remove | Tests tag management  Adds tags to the service, updates them, and removes them |
+| 7 | **Drive Service** - Glossary Term Add, Update and Remove | Tests glossary term management  Assigns glossary terms to the service, updates them, and removes them |
+| 8 | **Drive Service** - Announcement create, edit & delete | Tests announcement lifecycle  Creates, edits, and deletes an announcement on the service |
+| 9 | **Drive Service** - Inactive Announcement create & delete | Tests inactive announcements  Creates an inactive announcement and then deletes it |
+| 10 | **Drive Service** - Update displayName | Tests display name updates  Renames the service by updating its display name |
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | Delete Api Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 2 | Delete Api Collection | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 3 | Delete Database Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 4 | Delete Dashboard Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 5 | Delete Messaging Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 6 | Delete Mlmodel Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 7 | Delete Pipeline Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 8 | Delete Search Index Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 9 | Delete Storage Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 10 | Delete Database | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 11 | Delete Database Schema | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
+| 12 | Delete Drive Service | Tests service deletion  Soft deletes the service and then hard deletes it to remove it permanently |
+| | ↳ *Soft delete* | |
+| | ↳ *Hard delete* | |
 
 </details>
 
 <details open>
-<summary>📄 <b>DataContracts.spec.ts</b> (46 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/DataContracts.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataContracts.spec.ts)
-
-### Data Contracts
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts** - Create Data Contract and validate for Table | Create Data Contract and validate for Table |
-| 2 | **Data Contracts** - Create Data Contract and validate for Topic | Create Data Contract and validate for Topic |
-| 3 | **Data Contracts** - Create Data Contract and validate for Dashboard | Create Data Contract and validate for Dashboard |
-| 4 | **Data Contracts** - Create Data Contract and validate for DashboardDataModel | Create Data Contract and validate for DashboardDataModel |
-| 5 | **Data Contracts** - Create Data Contract and validate for Pipeline | Create Data Contract and validate for Pipeline |
-| 6 | **Data Contracts** - Create Data Contract and validate for MlModel | Create Data Contract and validate for MlModel |
-| 7 | **Data Contracts** - Create Data Contract and validate for Container | Create Data Contract and validate for Container |
-| 8 | **Data Contracts** - Create Data Contract and validate for SearchIndex | Create Data Contract and validate for SearchIndex |
-| 9 | **Data Contracts** - Create Data Contract and validate for Store Procedure | Create Data Contract and validate for Store Procedure |
-| 10 | **Data Contracts** - Create Data Contract and validate for ApiEndpoint | Create Data Contract and validate for ApiEndpoint |
-| 11 | **Data Contracts** - Create Data Contract and validate for Api Collection | Create Data Contract and validate for Api Collection |
-| 12 | **Data Contracts** - Create Data Contract and validate for Chart | Create Data Contract and validate for Chart |
-| 13 | **Data Contracts** - Create Data Contract and validate for Directory | Create Data Contract and validate for Directory |
-| 14 | **Data Contracts** - Create Data Contract and validate for File | Create Data Contract and validate for File |
-| 15 | **Data Contracts** - Create Data Contract and validate for Spreadsheet | Create Data Contract and validate for Spreadsheet |
-| 16 | **Data Contracts** - Create Data Contract and validate for Worksheet | Create Data Contract and validate for Worksheet |
-| 17 | **Data Contracts** - Create Data Contract and validate for Database | Create Data Contract and validate for Database |
-| 18 | **Data Contracts** - Create Data Contract and validate for Database Schema | Create Data Contract and validate for Database Schema |
-| 19 | **Data Contracts** - Pagination in Schema Tab with Selection Persistent | Pagination in Schema Tab with Selection Persistent |
-| 20 | **Data Contracts** - Semantic with Contains Operator should work for Tier, Tag and Glossary | Semantic with Contains Operator should work for Tier, Tag and Glossary |
-| 21 | **Data Contracts** - Semantic with Not_Contains Operator should work for Tier, Tag and Glossary | Semantic with Not_Contains Operator should work for Tier, Tag and Glossary |
-| 22 | **Data Contracts** - Nested Column should not be selectable | Nested Column should not be selectable |
-| 23 | **Data Contracts** - Operation on Old Schema Columns Contract | Operation on Old Schema Columns Contract |
-| 24 | **Data Contracts** - should allow adding a semantic with multiple rules | Allow adding a semantic with multiple rules |
-| 25 | **Data Contracts** - should allow adding a second semantic and verify its rule | Allow adding a second semantic and verify its rule |
-| 26 | **Data Contracts** - should allow editing a semantic and reflect changes | Allow editing a semantic and reflect changes |
-| 27 | **Data Contracts** - should allow deleting a semantic and remove it from the list | Allow deleting a semantic and remove it from the list |
-| 28 | **Data Contracts** - Add and update Security and SLA tabs | Add and update Security and SLA tabs |
-
-### Data Contracts With Persona Table
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Table** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Topic
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Topic** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Dashboard
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Dashboard** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona DashboardDataModel
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona DashboardDataModel** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Pipeline
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Pipeline** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona MlModel
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona MlModel** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Container
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Container** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona SearchIndex
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona SearchIndex** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Store Procedure
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Store Procedure** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona ApiEndpoint
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona ApiEndpoint** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Api Collection
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Api Collection** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Chart
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Chart** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Directory
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Directory** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona File
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona File** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Spreadsheet
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Spreadsheet** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Worksheet
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Worksheet** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Database
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Database** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-### Data Contracts With Persona Database Schema
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts With Persona Database Schema** - Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona | Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona |
-
-</details>
-
-<details open>
-<summary>📄 <b>EntityPermissions.spec.ts</b> (40 tests)</summary>
+<summary>📄 <b>EntityPermissions.spec.ts</b> (40 tests, 40 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/EntityPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/EntityPermissions.spec.ts)
 
@@ -1470,7 +1628,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (40 tests)</summary>
+<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (40 tests, 40 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts)
 
@@ -1532,349 +1690,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>DataContractsSemanticRules.spec.ts</b> (40 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/DataContractsSemanticRules.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataContractsSemanticRules.spec.ts)
-
-### Data Contracts Semantics Rule Owner
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts Semantics Rule Owner** - Validate Owner Rule Is | Validate Owner Rule Is |
-| 2 | **Data Contracts Semantics Rule Owner** - Validate Owner Rule Is_Not | Validate Owner Rule Is_Not |
-| 3 | **Data Contracts Semantics Rule Owner** - Validate Owner Rule Any_In | Validate Owner Rule Any_In |
-| 4 | **Data Contracts Semantics Rule Owner** - Validate Owner Rule Not_In | Validate Owner Rule Not_In |
-| 5 | **Data Contracts Semantics Rule Owner** - Validate Owner Rule Is_Set | Validate Owner Rule Is_Set |
-| 6 | **Data Contracts Semantics Rule Owner** - Validate Owner Rule Is_Not_Set | Validate Owner Rule Is_Not_Set |
-
-### Data Contracts Semantics Rule Description
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts Semantics Rule Description** - Validate Description Rule Contains | Validate Description Rule Contains |
-| 2 | **Data Contracts Semantics Rule Description** - Validate Description Rule Not Contains | Validate Description Rule Not Contains |
-| 3 | **Data Contracts Semantics Rule Description** - Validate Description Rule Is_Set | Validate Description Rule Is_Set |
-| 4 | **Data Contracts Semantics Rule Description** - Validate Description Rule Is_Not_Set | Validate Description Rule Is_Not_Set |
-
-### Data Contracts Semantics Rule Domain
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts Semantics Rule Domain** - Validate Domain Rule Is | Validate Domain Rule Is |
-| 2 | **Data Contracts Semantics Rule Domain** - Validate Domain Rule Is Not | Validate Domain Rule Is Not |
-| 3 | **Data Contracts Semantics Rule Domain** - Validate Domain Rule Any_In | Validate Domain Rule Any_In |
-| 4 | **Data Contracts Semantics Rule Domain** - Validate Domain Rule Not_In | Validate Domain Rule Not_In |
-| 5 | **Data Contracts Semantics Rule Domain** - Validate Domain Rule Is_Set | Validate Domain Rule Is_Set |
-| 6 | **Data Contracts Semantics Rule Domain** - Validate Domain Rule Is_Not_Set | Validate Domain Rule Is_Not_Set |
-
-### Data Contracts Semantics Rule Version
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts Semantics Rule Version** - Validate Entity Version Is | Validate Entity Version Is |
-| 2 | **Data Contracts Semantics Rule Version** - Validate Entity Version Is Not | Validate Entity Version Is Not |
-| 3 | **Data Contracts Semantics Rule Version** - Validate Entity Version Less than < | Validate Entity Version Less than < |
-| 4 | **Data Contracts Semantics Rule Version** - Validate Entity Version Greater than > | Validate Entity Version Greater than > |
-| 5 | **Data Contracts Semantics Rule Version** - Validate Entity Version Less than equal <= | Validate Entity Version Less than equal <= |
-| 6 | **Data Contracts Semantics Rule Version** - Validate Entity Version Greater than equal >= | Validate Entity Version Greater than equal >= |
-
-### Data Contracts Semantics Rule DataProduct
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts Semantics Rule DataProduct** - Validate DataProduct Rule Is | Validate DataProduct Rule Is |
-| 2 | **Data Contracts Semantics Rule DataProduct** - Validate DataProduct Rule Is Not | Validate DataProduct Rule Is Not |
-| 3 | **Data Contracts Semantics Rule DataProduct** - Validate DataProduct Rule Any_In | Validate DataProduct Rule Any_In |
-| 4 | **Data Contracts Semantics Rule DataProduct** - Validate DataProduct Rule Not_In | Validate DataProduct Rule Not_In |
-| 5 | **Data Contracts Semantics Rule DataProduct** - Validate DataProduct Rule Is_Set | Validate DataProduct Rule Is_Set |
-| 6 | **Data Contracts Semantics Rule DataProduct** - Validate DataProduct Rule Is_Not_Set | Validate DataProduct Rule Is_Not_Set |
-
-### Data Contracts Semantics Rule DisplayName
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts Semantics Rule DisplayName** - Validate DisplayName Rule Is | Validate DisplayName Rule Is |
-| 2 | **Data Contracts Semantics Rule DisplayName** - Validate DisplayName Rule Is Not | Validate DisplayName Rule Is Not |
-| 3 | **Data Contracts Semantics Rule DisplayName** - Validate DisplayName Rule Any_In | Validate DisplayName Rule Any_In |
-| 4 | **Data Contracts Semantics Rule DisplayName** - Validate DisplayName Rule Not_In | Validate DisplayName Rule Not_In |
-| 5 | **Data Contracts Semantics Rule DisplayName** - Validate DisplayName Rule Is_Set | Validate DisplayName Rule Is_Set |
-| 6 | **Data Contracts Semantics Rule DisplayName** - Validate DisplayName Rule Is_Not_Set | Validate DisplayName Rule Is_Not_Set |
-
-### Data Contracts Semantics Rule Updated on
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Contracts Semantics Rule Updated on** - Validate UpdatedOn Rule Between | Validate UpdatedOn Rule Between |
-| 2 | **Data Contracts Semantics Rule Updated on** - Validate UpdatedOn Rule Not_Between | Validate UpdatedOn Rule Not_Between |
-| 3 | **Data Contracts Semantics Rule Updated on** - Validate UpdatedOn Rule Less than | Validate UpdatedOn Rule Less than |
-| 4 | **Data Contracts Semantics Rule Updated on** - Validate UpdatedOn Rule Greater than | Validate UpdatedOn Rule Greater than |
-| 5 | **Data Contracts Semantics Rule Updated on** - Validate UpdatedOn Rule Less than Equal | Validate UpdatedOn Rule Less than Equal |
-| 6 | **Data Contracts Semantics Rule Updated on** - Validate UpdatedOn Rule Greater Than Equal | Validate UpdatedOn Rule Greater Than Equal |
-
-</details>
-
-<details open>
-<summary>📄 <b>Users.spec.ts</b> (28 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts)
-
-### User with Admin Roles
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **User with Admin Roles** - Update own admin details | Update own admin details |
-| 2 | **User with Admin Roles** - Create and Delete user | Create and Delete user |
-| 3 | **User with Admin Roles** - Admin soft & hard delete and restore user | Admin soft & hard delete and restore user |
-| 4 | **User with Admin Roles** - Admin soft & hard delete and restore user from profile page | Admin soft & hard delete and restore user from profile page |
-
-### User with Data Consumer Roles
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **User with Data Consumer Roles** - Token generation & revocation for Data Consumer | Token generation & revocation for Data Consumer |
-| 2 | **User with Data Consumer Roles** - Update token expiration for Data Consumer | Update token expiration for Data Consumer |
-| 3 | **User with Data Consumer Roles** - User should have only view permission for glossary and tags for Data Consumer | User should have only view permission for glossary and tags for Data Consumer |
-| 4 | **User with Data Consumer Roles** - Operations for settings page for Data Consumer | Operations for settings page for Data Consumer |
-| 5 | **User with Data Consumer Roles** - Permissions for table details page for Data Consumer | Permissions for table details page for Data Consumer |
-| 6 | **User with Data Consumer Roles** - Update user details for Data Consumer | Update user details for Data Consumer |
-| 7 | **User with Data Consumer Roles** - Reset Password for Data Consumer | Reset Password for Data Consumer |
-
-### User with Data Steward Roles
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **User with Data Steward Roles** - Update user details for Data Steward | Update user details for Data Steward |
-| 2 | **User with Data Steward Roles** - Token generation & revocation for Data Steward | Token generation & revocation for Data Steward |
-| 3 | **User with Data Steward Roles** - Update token expiration for Data Steward | Update token expiration for Data Steward |
-| 4 | **User with Data Steward Roles** - Operations for settings page for Data Steward | Operations for settings page for Data Steward |
-| 5 | **User with Data Steward Roles** - Check permissions for Data Steward | Permissions for Data Steward |
-| 6 | **User with Data Steward Roles** - Reset Password for Data Steward | Reset Password for Data Steward |
-
-### User Profile Feed Interactions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **User Profile Feed Interactions** - Should navigate to user profile from feed card avatar click | Navigate to user profile from feed card avatar click |
-| 2 | **User Profile Feed Interactions** - Close the profile dropdown after redirecting to user profile page | Close the profile dropdown after redirecting to user profile page |
-
-### User Profile Dropdown Persona Interactions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **User Profile Dropdown Persona Interactions** - Should display persona dropdown with pagination | Display persona dropdown with pagination |
-| 2 | **User Profile Dropdown Persona Interactions** - Should display default persona tag correctly | Display default persona tag correctly |
-| 3 | **User Profile Dropdown Persona Interactions** - Should switch personas correctly | Switch personas correctly |
-| 4 | **User Profile Dropdown Persona Interactions** - Should handle persona sorting correctly | Handle persona sorting correctly |
-| 5 | **User Profile Dropdown Persona Interactions** - Should revert to default persona after page refresh when non-default is selected | Revert to default persona after page refresh when non-default is selected |
-| 6 | **User Profile Dropdown Persona Interactions** - Should handle default persona change and removal correctly | Handle default persona change and removal correctly |
-
-### User Profile Persona Interactions
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **User Profile Persona Interactions** - Should add, remove, and navigate to persona pages for Personas section | Add, remove, and navigate to persona pages for Personas section |
-| 2 | **User Profile Persona Interactions** - Should add, remove, and navigate to persona pages for Default Persona section | Add, remove, and navigate to persona pages for Default Persona section |
-
-### Users Performance around application with multiple team inheriting roles and policy
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Users Performance around application with multiple team inheriting roles and policy** - User Performance across different entities pages | User Performance across different entities pages |
-
-</details>
-
-<details open>
-<summary>📄 <b>CustomizeDetailPage.spec.ts</b> (24 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts)
-
-### Persona customize UI tab
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Persona customize UI tab** - should show all the customize options | Show all the customize options |
-| 2 | **Persona customize UI tab** - should show all the data assets customize options | Show all the data assets customize options |
-| 3 | **Persona customize UI tab** - should show all the governance customize options | Show all the governance customize options |
-| 4 | **Persona customize UI tab** - Navigation check default state | Navigation check default state |
-| 5 | **Persona customize UI tab** - customize navigation should work | Customize navigation should work |
-
-### Persona customization
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Persona customization** - Table - customization should work | Table - customization should work |
-| 2 | **Persona customization** - Topic - customization should work | Topic - customization should work |
-| 3 | **Persona customization** - Dashboard - customization should work | Dashboard - customization should work |
-| 4 | **Persona customization** - Ml Model - customization should work | Ml Model - customization should work |
-| 5 | **Persona customization** - Pipeline - customization should work | Pipeline - customization should work |
-| 6 | **Persona customization** - Dashboard Data Model - customization should work | Dashboard Data Model - customization should work |
-| 7 | **Persona customization** - API Collection - customization should work | API Collection - customization should work |
-| 8 | **Persona customization** - Search Index - customization should work | Search Index - customization should work |
-| 9 | **Persona customization** - Container - customization should work | Container - customization should work |
-| 10 | **Persona customization** - Database - customization should work | Database - customization should work |
-| 11 | **Persona customization** - Database Schema - customization should work | Database Schema - customization should work |
-| 12 | **Persona customization** - Stored Procedure - customization should work | Stored Procedure - customization should work |
-| 13 | **Persona customization** - API Endpoint - customization should work | API Endpoint - customization should work |
-| 14 | **Persona customization** - Domain - customization should work | Domain - customization should work |
-| 15 | **Persona customization** - Glossary - customization should work | Glossary - customization should work |
-| 16 | **Persona customization** - Glossary Term - customization should work | Glossary Term - customization should work |
-| 17 | **Persona customization** - Validate Glossary Term details page after customization of tabs | Validate Glossary Term details page after customization of tabs |
-| 18 | **Persona customization** - customize tab label should only render if it's customize by user | Customize tab label should only render if it's customize by user |
-| 19 | **Persona customization** - Domain - customize tab label should only render if it's customized by user | Domain - customize tab label should only render if it's customized by user |
-
-</details>
-
-<details open>
-<summary>📄 <b>CuratedAssets.spec.ts</b> (23 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/CuratedAssets.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CuratedAssets.spec.ts)
-
-### Curated Assets Widget
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Curated Assets Widget** - Test Tables with display name filter | Tables with display name filter |
-| 2 | **Curated Assets Widget** - Test Dashboards with display name filter | Dashboards with display name filter |
-| 3 | **Curated Assets Widget** - Test Pipelines with display name filter | Pipelines with display name filter |
-| 4 | **Curated Assets Widget** - Test Topics with display name filter | Topics with display name filter |
-| 5 | **Curated Assets Widget** - Test ML Model with display name filter | ML Model with display name filter |
-| 6 | **Curated Assets Widget** - Test Containers with display name filter | Containers with display name filter |
-| 7 | **Curated Assets Widget** - Test Search Indexes with display name filter | Search Indexes with display name filter |
-| 8 | **Curated Assets Widget** - Test Charts with display name filter | Charts with display name filter |
-| 9 | **Curated Assets Widget** - Test Stored Procedures with display name filter | Stored Procedures with display name filter |
-| 10 | **Curated Assets Widget** - Test Data Model with display name filter | Data Model with display name filter |
-| 11 | **Curated Assets Widget** - Test Glossary Terms with display name filter | Glossary Terms with display name filter |
-| 12 | **Curated Assets Widget** - Test Metrics with display name filter | Metrics with display name filter |
-| 13 | **Curated Assets Widget** - Test Databases with display name filter | Databases with display name filter |
-| 14 | **Curated Assets Widget** - Test Database Schemas with display name filter | Database Schemas with display name filter |
-| 15 | **Curated Assets Widget** - Test API Collections with display name filter | API Collections with display name filter |
-| 16 | **Curated Assets Widget** - Test API Endpoints with display name filter | API Endpoints with display name filter |
-| 17 | **Curated Assets Widget** - Test Data Products with display name filter | Data Products with display name filter |
-| 18 | **Curated Assets Widget** - Test Knowledge Pages with display name filter | Knowledge Pages with display name filter |
-| 19 | **Curated Assets Widget** - Entity type "ALL" with basic filter | Entity type "ALL" with basic filter |
-| 20 | **Curated Assets Widget** - Multiple entity types with OR conditions | Multiple entity types with OR conditions |
-| 21 | **Curated Assets Widget** - Multiple entity types with AND conditions | Multiple entity types with AND conditions |
-| 22 | **Curated Assets Widget** - Complex nested groups | Complex nested groups |
-| 23 | **Curated Assets Widget** - Placeholder validation - widget not visible without configuration | Placeholder validation - widget not visible without configuration |
-
-</details>
-
-<details open>
-<summary>📄 <b>ConditionalPermissions.spec.ts</b> (22 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/ConditionalPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ConditionalPermissions.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | User with owner permission can only view owned Api Services | User with owner permission can only view owned Api Services |
-| 2 | User with matchAnyTag permission can only view Api Services with the tag | User with matchAnyTag permission can only view Api Services with the tag |
-| 3 | User with owner permission can only view owned Storage Services | User with owner permission can only view owned Storage Services |
-| 4 | User with matchAnyTag permission can only view Storage Services with the tag | User with matchAnyTag permission can only view Storage Services with the tag |
-| 5 | User with owner permission can only view owned Dashboard Services | User with owner permission can only view owned Dashboard Services |
-| 6 | User with matchAnyTag permission can only view Dashboard Services with the tag | User with matchAnyTag permission can only view Dashboard Services with the tag |
-| 7 | User with owner permission can only view owned Mlmodel Services | User with owner permission can only view owned Mlmodel Services |
-| 8 | User with matchAnyTag permission can only view Mlmodel Services with the tag | User with matchAnyTag permission can only view Mlmodel Services with the tag |
-| 9 | User with owner permission can only view owned Pipeline Services | User with owner permission can only view owned Pipeline Services |
-| 10 | User with matchAnyTag permission can only view Pipeline Services with the tag | User with matchAnyTag permission can only view Pipeline Services with the tag |
-| 11 | User with owner permission can only view owned Search Services | User with owner permission can only view owned Search Services |
-| 12 | User with matchAnyTag permission can only view Search Services with the tag | User with matchAnyTag permission can only view Search Services with the tag |
-| 13 | User with owner permission can only view owned Database Services | User with owner permission can only view owned Database Services |
-| 14 | User with matchAnyTag permission can only view Database Services with the tag | User with matchAnyTag permission can only view Database Services with the tag |
-| 15 | User with owner permission can only view owned Messaging Services | User with owner permission can only view owned Messaging Services |
-| 16 | User with matchAnyTag permission can only view Messaging Services with the tag | User with matchAnyTag permission can only view Messaging Services with the tag |
-| 17 | User with owner permission can only view owned Database | User with owner permission can only view owned Database |
-| 18 | User with matchAnyTag permission can only view Database with the tag | User with matchAnyTag permission can only view Database with the tag |
-| 19 | User with owner permission can only view owned Database Schema | User with owner permission can only view owned Database Schema |
-| 20 | User with matchAnyTag permission can only view Database Schema with the tag | User with matchAnyTag permission can only view Database Schema with the tag |
-| 21 | User with owner permission can only view owned Container | User with owner permission can only view owned Container |
-| 22 | User with matchAnyTag permission can only view Container with the tag | User with matchAnyTag permission can only view Container with the tag |
-
-</details>
-
-<details open>
-<summary>📄 <b>Navbar.spec.ts</b> (22 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/Navbar.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/Navbar.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Search Term - All | Search Term - All |
-| 2 | Search Term - Database | Search Term - Database |
-| 3 | Search Term - Database Schema | Search Term - Database Schema |
-| 4 | Search Term - Table | Search Term - Table |
-| 5 | Search Term - Topic | Search Term - Topic |
-| 6 | Search Term - Dashboard | Search Term - Dashboard |
-| 7 | Search Term - Pipeline | Search Term - Pipeline |
-| 8 | Search Term - ML Model | Search Term - ML Model |
-| 9 | Search Term - Container | Search Term - Container |
-| 10 | Search Term - Stored Procedure | Search Term - Stored Procedure |
-| 11 | Search Term - Data Model | Search Term - Data Model |
-| 12 | Search Term - Glossary | Search Term - Glossary |
-| 13 | Search Term - Tag | Search Term - Tag |
-| 14 | Search Term - Search Index | Search Term - Search Index |
-| 15 | Search Term - Data Product | Search Term - Data Product |
-| 16 | Search Term - API Endpoint | Search Term - API Endpoint |
-| 17 | Search Term - API Collection | Search Term - API Collection |
-| 18 | Search Term - Metric | Search Term - Metric |
-| 19 | Search Term - Directory | Search Term - Directory |
-| 20 | Search Term - File | Search Term - File |
-| 21 | Search Term - Spreadsheet | Search Term - Spreadsheet |
-| 22 | Search Term - Worksheet | Search Term - Worksheet |
-
-</details>
-
-<details open>
-<summary>📄 <b>Teams.spec.ts</b> (19 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/Teams.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Teams.spec.ts)
-
-### Teams Page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Teams Page** - Teams Page Flow | Teams Page Flow |
-| 2 | **Teams Page** - Create a new public team | Create a new public team |
-| 3 | **Teams Page** - Create a new private team and check if its visible to admin in teams selection dropdown on user profile | Create a new private team and check if its visible to admin in teams selection dropdown on user profile |
-| 4 | **Teams Page** - Permanently deleting a team without soft deleting should work properly | Permanently deleting a team without soft deleting should work properly |
-| 5 | **Teams Page** - Team search should work properly | Team search should work properly |
-| 6 | **Teams Page** - Export team | Export team |
-| 7 | **Teams Page** - Team assets should | Team assets should |
-| 8 | **Teams Page** - Delete a user from the table | Delete a user from the table |
-| 9 | **Teams Page** - Verify breadcrumb navigation for a team with a dot in its name | Breadcrumb navigation for a team with a dot in its name |
-| 10 | **Teams Page** - Total User Count should be rendered | Total User Count should be rendered |
-| 11 | **Teams Page** - Show Deleted toggle should fetch teams with correct include parameter | Show Deleted toggle should fetch teams with correct include parameter |
-
-### Teams Page with EditUser Permission
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Teams Page with EditUser Permission** - Add and Remove User for Team | Add and Remove User for Team |
-
-### Teams Page with Data Consumer User
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Teams Page with Data Consumer User** - Should not have edit access on team page with no data available | Not have edit access on team page with no data available |
-| 2 | **Teams Page with Data Consumer User** - Should not have edit access on team page with data available | Not have edit access on team page with data available |
-
-### Teams Page action as Owner of Team
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Teams Page action as Owner of Team** - User as not owner should not have edit/create permission on Team | User as not owner should not have edit/create permission on Team |
-| 2 | **Teams Page action as Owner of Team** - Add New Team in BusinessUnit Team | Add New Team in BusinessUnit Team |
-| 3 | **Teams Page action as Owner of Team** - Add New Team in Department Team | Add New Team in Department Team |
-| 4 | **Teams Page action as Owner of Team** - Add New Team in Division Team | Add New Team in Division Team |
-| 5 | **Teams Page action as Owner of Team** - Add New User in Group Team | Add New User in Group Team |
-
-</details>
-
-<details open>
-<summary>📄 <b>EntitySummaryPanel.spec.ts</b> (16 tests)</summary>
+<summary>📄 <b>EntitySummaryPanel.spec.ts</b> (16 tests, 16 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/EntitySummaryPanel.spec.ts)
 
@@ -1902,7 +1718,70 @@
 </details>
 
 <details open>
-<summary>📄 <b>EntityVersionPages.spec.ts</b> (14 tests)</summary>
+<summary>📄 <b>ServiceEntityPermissions.spec.ts</b> (16 tests, 16 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts)
+
+### Api Service Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Api Service Permissions** - Api Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
+| 2 | **Api Service Permissions** - Api Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+
+### Dashboard Service Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Dashboard Service Permissions** - Dashboard Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
+| 2 | **Dashboard Service Permissions** - Dashboard Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+
+### Database Service Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Database Service Permissions** - Database Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
+| 2 | **Database Service Permissions** - Database Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+
+### Messaging Service Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Messaging Service Permissions** - Messaging Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
+| 2 | **Messaging Service Permissions** - Messaging Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+
+### Mlmodel Service Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Mlmodel Service Permissions** - Mlmodel Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
+| 2 | **Mlmodel Service Permissions** - Mlmodel Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+
+### Pipeline Service Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Pipeline Service Permissions** - Pipeline Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
+| 2 | **Pipeline Service Permissions** - Pipeline Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+
+### SearchIndex Service Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **SearchIndex Service Permissions** - SearchIndex Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
+| 2 | **SearchIndex Service Permissions** - SearchIndex Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+
+### Storage Service Permissions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Storage Service Permissions** - Storage Service allow common operations permissions | Tests allow permissions for common service operations  Verifies that a user with allow permissions can perform all common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations |
+| 2 | **Storage Service Permissions** - Storage Service deny common operations permissions | Tests deny permissions for common service operations  Verifies that a user with deny permissions cannot perform common operations on the service, including EditDescription, EditOwners, EditTier, EditDisplayName, EditTags, EditGlossaryTerms, EditCustomFields, and Delete operations. UI elements for these actions should be hidden or disabled |
+
+</details>
+
+<details open>
+<summary>📄 <b>EntityVersionPages.spec.ts</b> (14 tests, 70 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/EntityVersionPages.spec.ts)
 
@@ -1911,169 +1790,166 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | **Entity Version pages** - ApiEndpoint | ApiEndpoint |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 2 | **Entity Version pages** - Table | Table |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 3 | **Entity Version pages** - Store Procedure | Store Procedure |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 4 | **Entity Version pages** - Dashboard | Dashboard |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 5 | **Entity Version pages** - Pipeline | Pipeline |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 6 | **Entity Version pages** - Topic | Topic |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 7 | **Entity Version pages** - MlModel | MlModel |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 8 | **Entity Version pages** - Container | Container |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 9 | **Entity Version pages** - SearchIndex | SearchIndex |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 10 | **Entity Version pages** - DashboardDataModel | DashboardDataModel |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 11 | **Entity Version pages** - Directory | Directory |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 12 | **Entity Version pages** - File | File |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 13 | **Entity Version pages** - Spreadsheet | Spreadsheet |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 | 14 | **Entity Version pages** - Worksheet | Worksheet |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show column display name changes properly* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 
 </details>
 
 <details open>
-<summary>📄 <b>AutoPilot.spec.ts</b> (12 tests)</summary>
+<summary>📄 <b>ServiceEntityVersionPage.spec.ts</b> (12 tests, 48 scenarios)</summary>
 
-> Source: [`src/main/resources/ui/playwright/e2e/Features/AutoPilot.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/AutoPilot.spec.ts)
+> Source: [`src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/VersionPages/ServiceEntityVersionPage.spec.ts)
 
-### Rest
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Rest** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
-| 2 | **Rest** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
-
-### Metabase
+### Service Version pages
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Metabase** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
-| 2 | **Metabase** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
-
-### Mysql
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Mysql** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
-| 2 | **Mysql** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
-
-### Kafka
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Kafka** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
-| 2 | **Kafka** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
-
-### Mlflow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Mlflow** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
-| 2 | **Mlflow** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
-
-### Airflow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Airflow** - Create Service and check the AutoPilot status | Create Service and check the AutoPilot status |
-| 2 | **Airflow** - Agents created by AutoPilot should be deleted | Agents created by AutoPilot should be deleted |
+| 1 | **Service Version pages** - Api Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
+| 2 | **Service Version pages** - Api Collection | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
+| 3 | **Service Version pages** - Dashboard Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
+| 4 | **Service Version pages** - Database Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
+| 5 | **Service Version pages** - Messaging Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
+| 6 | **Service Version pages** - Mlmodel Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
+| 7 | **Service Version pages** - Pipeline Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
+| 8 | **Service Version pages** - SearchIndex Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
+| 9 | **Service Version pages** - Storage Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
+| 10 | **Service Version pages** - Database | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
+| 11 | **Service Version pages** - Database Schema | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
+| 12 | **Service Version pages** - Drive Service | Tests comprehensive version history tracking for service entities  This test validates the version history feature for service entities across multiple version increments. It verifies that the version page correctly displays visual diffs (additions, modifications, deletions) for: - Version 0.2: Initial changes including domain assignment, description updates, and tag additions (PersonalData.SpecialCategory, PII.Sensitive) - Version 0.3: Owner assignments showing user ownership changes - Version 0.3: Tier assignments displaying tier classification updates - Version 0.4: Soft deletion state with appropriate deleted badge visibility The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered in the UI to highlight what changed between versions |
+| | ↳ *should show edited tags and description changes* | |
+| | ↳ *should show owner changes* | |
+| | ↳ *should show tier changes* | |
+| | ↳ *should show version details after soft deleted* | |
 
 </details>
 
 <details open>
-<summary>📄 <b>FollowingWidget.spec.ts</b> (11 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/FollowingWidget.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/LandingPageWidgets/FollowingWidget.spec.ts)
-
-### Table
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Table** - Check followed entity present in following widget | Followed entity present in following widget |
-
-### Dashboard
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Dashboard** - Check followed entity present in following widget | Followed entity present in following widget |
-
-### Pipeline
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Pipeline** - Check followed entity present in following widget | Followed entity present in following widget |
-
-### Topic
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Topic** - Check followed entity present in following widget | Followed entity present in following widget |
-
-### Container
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Container** - Check followed entity present in following widget | Followed entity present in following widget |
-
-### MlModel
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **MlModel** - Check followed entity present in following widget | Followed entity present in following widget |
-
-### SearchIndex
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **SearchIndex** - Check followed entity present in following widget | Followed entity present in following widget |
-
-### ApiEndpoint
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **ApiEndpoint** - Check followed entity present in following widget | Followed entity present in following widget |
-
-### DashboardDataModel
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **DashboardDataModel** - Check followed entity present in following widget | Followed entity present in following widget |
-
-### Store Procedure
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Store Procedure** - Check followed entity present in following widget | Followed entity present in following widget |
-
-### Metric
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Metric** - Check followed entity present in following widget | Followed entity present in following widget |
-
-</details>
-
-<details open>
-<summary>📄 <b>RecentlyViewed.spec.ts</b> (11 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/RecentlyViewed.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/RecentlyViewed.spec.ts)
-
-### Recently viewed data assets
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Recently viewed data assets** - Check ApiEndpoint in recently viewed | ApiEndpoint in recently viewed |
-| 2 | **Recently viewed data assets** - Check Table in recently viewed | Table in recently viewed |
-| 3 | **Recently viewed data assets** - Check Store Procedure in recently viewed | Store Procedure in recently viewed |
-| 4 | **Recently viewed data assets** - Check Dashboard in recently viewed | Dashboard in recently viewed |
-| 5 | **Recently viewed data assets** - Check Pipeline in recently viewed | Pipeline in recently viewed |
-| 6 | **Recently viewed data assets** - Check Topic in recently viewed | Topic in recently viewed |
-| 7 | **Recently viewed data assets** - Check MlModel in recently viewed | MlModel in recently viewed |
-| 8 | **Recently viewed data assets** - Check Container in recently viewed | Container in recently viewed |
-| 9 | **Recently viewed data assets** - Check SearchIndex in recently viewed | SearchIndex in recently viewed |
-| 10 | **Recently viewed data assets** - Check DashboardDataModel in recently viewed | DashboardDataModel in recently viewed |
-| 11 | **Recently viewed data assets** - Check Metric in recently viewed | Metric in recently viewed |
-
-</details>
-
-<details open>
-<summary>📄 <b>RestoreEntityInheritedFields.spec.ts</b> (11 tests)</summary>
+<summary>📄 <b>RestoreEntityInheritedFields.spec.ts</b> (11 tests, 11 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts)
 
@@ -2146,7 +2022,494 @@
 </details>
 
 <details open>
-<summary>📄 <b>Pagination.spec.ts</b> (10 tests)</summary>
+<summary>📄 <b>BulkImport.spec.ts</b> (6 tests, 27 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts)
+
+### Bulk Import Export
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Bulk Import Export** - Database service | Database service |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *should export data database service details* | |
+| | ↳ *should import and edit with two additional database* | |
+| 2 | **Bulk Import Export** - Database | Database |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *should export data database details* | |
+| | ↳ *should import and edit with two additional database schema* | |
+| 3 | **Bulk Import Export** - Database Schema | Database Schema |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *should export data database schema details* | |
+| | ↳ *should import and edit with two additional table* | |
+| 4 | **Bulk Import Export** - Table | Table |
+| | ↳ *should export data table details* | |
+| | ↳ *should import and edit with two additional columns* | |
+| 5 | **Bulk Import Export** - Keyboard Delete selection | Keyboard Delete selection |
+| | ↳ *should export data database schema details* | |
+| | ↳ *should import and perform edit operation on entity* | |
+| | ↳ *should export data database schema details after edit changes* | |
+| | ↳ *Perform Column Select and Delete Operation* | |
+| | ↳ *Perform Cell Delete Operation and Save* | |
+| | ↳ *should verify the removed value from entity* | |
+| 6 | **Bulk Import Export** - Range selection | Range selection |
+| | ↳ *should export data database details* | |
+| | ↳ *should import and test range selection* | |
+| | ↳ *Ctrl+a should select all cells in the grid and deselect all cells by clicking on second cell of .rdg-row* | |
+| | ↳ *should select all the cells in the column by clicking on column header* | |
+| | ↳ *allow multiple column selection* | |
+| | ↳ *allow multiple column selection using keyboard* | |
+| | ↳ *allow multiple cell selection using mouse on rightDown and leftUp and extend selection using shift+click* | |
+| | ↳ *allow multiple cell selection using keyboard on rightDown and leftUp* | |
+| | ↳ *perform single cell copy-paste and undo-redo* | |
+| | ↳ *Select range, copy-paste and undo-redo* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>BulkEditEntity.spec.ts</b> (5 tests, 8 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts)
+
+### Bulk Edit Entity
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Bulk Edit Entity** - Database service | Database service |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action* | |
+| 2 | **Bulk Edit Entity** - Database | Database |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action* | |
+| 3 | **Bulk Edit Entity** - Database Schema | Database Schema |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action* | |
+| 4 | **Bulk Edit Entity** - Table | Table |
+| | ↳ *Perform bulk edit action* | |
+| 5 | **Bulk Edit Entity** - Glossary | Glossary |
+| | ↳ *Perform bulk edit action* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>QueryEntity.spec.ts</b> (3 tests, 8 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/QueryEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/QueryEntity.spec.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | Query Entity | Query Entity |
+| | ↳ *Create a new query entity* | |
+| | ↳ *Update owner, description and tag* | |
+| | ↳ *Update query and QueryUsedIn* | |
+| | ↳ *Verify query filter* | |
+| | ↳ *Verify vote for query* | |
+| | ↳ *Visit full screen view of query and Delete* | |
+| 2 | Verify query duration | Query duration |
+| 3 | Verify Query Pagination | Query Pagination |
+
+</details>
+
+<details open>
+<summary>📄 <b>EntityRightCollapsablePanel.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/EntityRightCollapsablePanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/EntityRightCollapsablePanel.spec.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | Show and Hide Right Collapsable Panel | Show and Hide Right Collapsable Panel |
+
+</details>
+
+
+---
+
+<div id="settings"></div>
+
+## Settings
+
+<details open>
+<summary>📄 <b>SettingsNavigationPage.spec.ts</b> (4 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/SettingsNavigationPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SettingsNavigationPage.spec.ts)
+
+### Settings Navigation Page Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Settings Navigation Page Tests** - should update navigation sidebar | Update navigation sidebar |
+| 2 | **Settings Navigation Page Tests** - should show navigation blocker when leaving with unsaved changes | Show navigation blocker when leaving with unsaved changes |
+| 3 | **Settings Navigation Page Tests** - should save changes and navigate when "Save changes" is clicked in blocker | Save changes and navigate when "Save changes" is clicked in blocker |
+| 4 | **Settings Navigation Page Tests** - should handle reset functionality and prevent navigation blocker after save | Handle reset functionality and prevent navigation blocker after save |
+
+</details>
+
+<details open>
+<summary>📄 <b>DataInsightSettings.spec.ts</b> (4 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/DataInsightSettings.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataInsightSettings.spec.ts)
+
+### Data Insight settings page should work properly
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Data Insight settings page should work properly** - Edit data insight application | Edit data insight application |
+| 2 | **Data Insight settings page should work properly** - Uninstall application | Uninstall application |
+| 3 | **Data Insight settings page should work properly** - Install application | Install application |
+| 4 | **Data Insight settings page should work properly** - Run application | Run application |
+
+</details>
+
+<details open>
+<summary>📄 <b>SearchSettings.spec.ts</b> (4 tests, 4 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/SearchSettings.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SearchSettings.spec.ts)
+
+### Search Settings Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Search Settings Tests** - Update global search settings | Update global search settings |
+| 2 | **Search Settings Tests** - Update entity search settings | Update entity search settings |
+| 3 | **Search Settings Tests** - Restore default search settings | Restore default search settings |
+
+### Search Preview test
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Search Preview test** - Search preview for searchable table | Search preview for searchable table |
+
+</details>
+
+<details open>
+<summary>📄 <b>LineageSettings.spec.ts</b> (2 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/LineageSettings.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/LineageSettings.spec.ts)
+
+### Lineage Settings Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Lineage Settings Tests** - Verify global lineage config | Global lineage config |
+| | ↳ *Lineage config should throw error if upstream depth is less than 0* | |
+| | ↳ *Update global lineage config and verify lineage for column layer* | |
+| | ↳ *Update global lineage config and verify lineage for entity layer* | |
+| | ↳ *Verify Upstream and Downstream expand collapse buttons* | |
+| | ↳ *Reset global lineage config and verify lineage* | |
+| 2 | **Lineage Settings Tests** - Verify lineage settings for PipelineViewMode as Edge | Lineage settings for PipelineViewMode as Edge |
+
+</details>
+
+<details open>
+<summary>📄 <b>CronValidations.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/CronValidations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CronValidations.spec.ts)
+
+### Cron Validations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Cron Validations** - Validate different cron expressions | Validate different cron expressions |
+
+</details>
+
+
+---
+
+<div id="personas-customizations"></div>
+
+## Personas & Customizations
+
+<details open>
+<summary>📄 <b>CustomizeDetailPage.spec.ts</b> (24 tests, 79 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CustomizeDetailPage.spec.ts)
+
+### Persona customize UI tab
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Persona customize UI tab** - should show all the customize options | Show all the customize options |
+| 2 | **Persona customize UI tab** - should show all the data assets customize options | Show all the data assets customize options |
+| 3 | **Persona customize UI tab** - should show all the governance customize options | Show all the governance customize options |
+| 4 | **Persona customize UI tab** - Navigation check default state | Navigation check default state |
+| 5 | **Persona customize UI tab** - customize navigation should work | Customize navigation should work |
+| | ↳ *hide navigation items and validate with persona* | |
+| | ↳ *show navigation items and validate with persona* | |
+
+### Persona customization
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Persona customization** - Table - customization should work | Table - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 2 | **Persona customization** - Topic - customization should work | Topic - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 3 | **Persona customization** - Dashboard - customization should work | Dashboard - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 4 | **Persona customization** - Ml Model - customization should work | Ml Model - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 5 | **Persona customization** - Pipeline - customization should work | Pipeline - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 6 | **Persona customization** - Dashboard Data Model - customization should work | Dashboard Data Model - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 7 | **Persona customization** - API Collection - customization should work | API Collection - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 8 | **Persona customization** - Search Index - customization should work | Search Index - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 9 | **Persona customization** - Container - customization should work | Container - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 10 | **Persona customization** - Database - customization should work | Database - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 11 | **Persona customization** - Database Schema - customization should work | Database Schema - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 12 | **Persona customization** - Stored Procedure - customization should work | Stored Procedure - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 13 | **Persona customization** - API Endpoint - customization should work | API Endpoint - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 14 | **Persona customization** - Domain - customization should work | Domain - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 15 | **Persona customization** - Glossary - customization should work | Glossary - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 16 | **Persona customization** - Glossary Term - customization should work | Glossary Term - customization should work |
+| | ↳ *pre-requisite* | |
+| | ↳ *should show all the tabs & widget as default when no customization is done* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 17 | **Persona customization** - Validate Glossary Term details page after customization of tabs | Validate Glossary Term details page after customization of tabs |
+| | ↳ *pre-requisite* | |
+| | ↳ *apply customization* | |
+| | ↳ *Validate customization* | |
+| 18 | **Persona customization** - customize tab label should only render if it's customize by user | Customize tab label should only render if it's customize by user |
+| | ↳ *pre-requisite* | |
+| | ↳ *apply tab label customization for Table* | |
+| | ↳ *validate applied label change and language support for page* | |
+| 19 | **Persona customization** - Domain - customize tab label should only render if it's customized by user | Domain - customize tab label should only render if it's customized by user |
+| | ↳ *pre-requisite* | |
+| | ↳ *apply tab label customization for Domain* | |
+| | ↳ *validate applied label change for Domain Documentation tab* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>CustomizeWidgets.spec.ts</b> (9 tests, 45 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts)
+
+### Widgets
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Widgets** - Activity Feed | Activity Feed |
+| | ↳ *Test widget header and navigation* | |
+| | ↳ *Test widget filters* | |
+| | ↳ *Test widget footer navigation* | |
+| | ↳ *Test widget customization* | |
+| 2 | **Widgets** - Data Assets | Data Assets |
+| | ↳ *Test widget header and navigation* | |
+| | ↳ *Test widget displays entities and navigation* | |
+| | ↳ *Test widget footer navigation* | |
+| | ↳ *Test widget customization* | |
+| 3 | **Widgets** - My Data | My Data |
+| | ↳ *Test widget header and navigation* | |
+| | ↳ *Test widget filters* | |
+| | ↳ *Test widget displays entities and navigation* | |
+| | ↳ *Test widget footer navigation* | |
+| | ↳ *Test widget customization* | |
+| 4 | **Widgets** - KPI | KPI |
+| | ↳ *Add KPI* | |
+| | ↳ *Test widget header and navigation* | |
+| | ↳ *Test widget footer navigation* | |
+| | ↳ *Test widget loads KPI data correctly* | |
+| | ↳ *Test widget customization* | |
+| 5 | **Widgets** - Total Data Assets | Total Data Assets |
+| | ↳ *Test widget header and navigation* | |
+| | ↳ *Test widget filters* | |
+| | ↳ *Test widget footer navigation* | |
+| | ↳ *Test widget customization* | |
+| 6 | **Widgets** - Following Assets | Following Assets |
+| | ↳ *Test widget header and navigation* | |
+| | ↳ *Test widget filters* | |
+| | ↳ *Test widget displays followed entities* | |
+| | ↳ *Test widget footer navigation* | |
+| | ↳ *Test widget customization* | |
+| 7 | **Widgets** - Domains | Domains |
+| | ↳ *Add widget* | |
+| | ↳ *Test widget header and navigation* | |
+| | ↳ *Test widget filters* | |
+| | ↳ *Test widget displays entities and navigation* | |
+| | ↳ *Test widget footer navigation* | |
+| | ↳ *Remove widget* | |
+| 8 | **Widgets** - My Tasks | My Tasks |
+| | ↳ *Create a task* | |
+| | ↳ *Add widget* | |
+| | ↳ *Test widget header and navigation* | |
+| | ↳ *Test widget filters* | |
+| | ↳ *Test widget displays entities and navigation* | |
+| | ↳ *Remove widget* | |
+| 9 | **Widgets** - Data Products | Data Products |
+| | ↳ *Add widget* | |
+| | ↳ *Test widget header and navigation* | |
+| | ↳ *Test widget filters* | |
+| | ↳ *Test widget displays entities and navigation* | |
+| | ↳ *Test widget footer navigation* | |
+| | ↳ *Remove widget* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>PersonaFlow.spec.ts</b> (6 tests, 11 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts)
+
+### Persona operations
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Persona operations** - Persona creation should work properly | Persona creation should work properly |
+| 2 | **Persona operations** - Persona update description flow should work properly | Persona update description flow should work properly |
+| 3 | **Persona operations** - Persona rename flow should work properly | Persona rename flow should work properly |
+| 4 | **Persona operations** - Remove users in persona should work properly | Remove users in persona should work properly |
+| 5 | **Persona operations** - Delete persona should work properly | Delete persona should work properly |
+
+### Default persona setting and removal flow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Default persona setting and removal flow** - Set and remove default persona should work properly | Set and remove default persona should work properly |
+| | ↳ *Admin creates a persona and sets the default persona* | |
+| | ↳ *User refreshes and checks the default persona is applied* | |
+| | ↳ *Changing default persona* | |
+| | ↳ *Verify changed default persona for new user* | |
+| | ↳ *Admin removes the default persona* | |
+| | ↳ *User refreshes and sees no default persona* | |
+
+</details>
+
+<details open>
+<summary>📄 <b>CustomizeLandingPage.spec.ts</b> (3 tests, 5 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeLandingPage.spec.ts)
+
+### Customize Landing Page Flow
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Customize Landing Page Flow** - Check all default widget present | All default widget present |
+| 2 | **Customize Landing Page Flow** - Add, Remove and Reset widget should work properly | Add, Remove and Reset widget should work properly |
+| | ↳ *Remove widget* | |
+| | ↳ *Add widget* | |
+| | ↳ *Resetting the layout flow should work properly* | |
+| 3 | **Customize Landing Page Flow** - Widget drag and drop reordering | Widget drag and drop reordering |
+
+</details>
+
+<details open>
+<summary>📄 <b>CustomThemeConfig.spec.ts</b> (2 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/CustomThemeConfig.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/CustomThemeConfig.spec.ts)
+
+### Custom Theme Config Page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Custom Theme Config Page** - Update and reset custom theme config | Update and reset custom theme config |
+| 2 | **Custom Theme Config Page** - Should call customMonogramUrlPath only once after save if the monogram is not valid | Call customMonogramUrlPath only once after save if the monogram is not valid |
+
+</details>
+
+
+---
+
+<div id="navigation"></div>
+
+## Navigation
+
+<details open>
+<summary>📄 <b>Navbar.spec.ts</b> (22 tests, 22 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/Navbar.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/Navbar.spec.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | Search Term - All | Search Term - All |
+| 2 | Search Term - Database | Search Term - Database |
+| 3 | Search Term - Database Schema | Search Term - Database Schema |
+| 4 | Search Term - Table | Search Term - Table |
+| 5 | Search Term - Topic | Search Term - Topic |
+| 6 | Search Term - Dashboard | Search Term - Dashboard |
+| 7 | Search Term - Pipeline | Search Term - Pipeline |
+| 8 | Search Term - ML Model | Search Term - ML Model |
+| 9 | Search Term - Container | Search Term - Container |
+| 10 | Search Term - Stored Procedure | Search Term - Stored Procedure |
+| 11 | Search Term - Data Model | Search Term - Data Model |
+| 12 | Search Term - Glossary | Search Term - Glossary |
+| 13 | Search Term - Tag | Search Term - Tag |
+| 14 | Search Term - Search Index | Search Term - Search Index |
+| 15 | Search Term - Data Product | Search Term - Data Product |
+| 16 | Search Term - API Endpoint | Search Term - API Endpoint |
+| 17 | Search Term - API Collection | Search Term - API Collection |
+| 18 | Search Term - Metric | Search Term - Metric |
+| 19 | Search Term - Directory | Search Term - Directory |
+| 20 | Search Term - File | Search Term - File |
+| 21 | Search Term - Spreadsheet | Search Term - Spreadsheet |
+| 22 | Search Term - Worksheet | Search Term - Worksheet |
+
+</details>
+
+<details open>
+<summary>📄 <b>Pagination.spec.ts</b> (10 tests, 10 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/Pagination.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Pagination.spec.ts)
 
@@ -2188,7 +2551,147 @@
 </details>
 
 <details open>
-<summary>📄 <b>ImpactAnalysis.spec.ts</b> (9 tests)</summary>
+<summary>📄 <b>NavigationBlocker.spec.ts</b> (5 tests, 5 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/NavigationBlocker.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/NavigationBlocker.spec.ts)
+
+### Navigation Blocker Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Navigation Blocker Tests** - should show navigation blocker modal when trying to navigate away with unsaved changes | Show navigation blocker modal when trying to navigate away with unsaved changes |
+| 2 | **Navigation Blocker Tests** - should confirm navigation when "Save changes" is clicked | Confirm navigation when "Save changes" is clicked |
+| 3 | **Navigation Blocker Tests** - should navigate to new page when "Leave" is clicked | Navigate to new page when "Leave" is clicked |
+| 4 | **Navigation Blocker Tests** - should not show navigation blocker after saving changes | Not show navigation blocker after saving changes |
+| 5 | **Navigation Blocker Tests** - should stay on current page and keep changes when X button is clicked | Stay on current page and keep changes when X button is clicked |
+
+</details>
+
+<details open>
+<summary>📄 <b>GlobalPageSize.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/GlobalPageSize.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/GlobalPageSize.spec.ts)
+
+### Table & Data Model columns table pagination
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Table & Data Model columns table pagination** - Page size should persist across different pages | Page size should persist across different pages |
+
+</details>
+
+
+---
+
+<div id="lineage-ui-"></div>
+
+## Lineage (UI)
+
+<details open>
+<summary>📄 <b>Lineage.spec.ts</b> (20 tests, 73 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts)
+
+### Test pagination in column level lineage
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Test pagination in column level lineage** - Verify column visibility across pagination pages | Column visibility across pagination pages |
+| | ↳ *Verify T1-P1: C1-C5 visible, C6-C11 hidden* | |
+| | ↳ *Verify T2-P1: C1-C5 visible, C6-C12 hidden* | |
+| | ↳ *Navigate to T1-P2 and verify visibility* | |
+| | ↳ *Navigate to T2-P2 and verify visibility* | |
+| | ↳ *Navigate to T1-P3 and verify visibility* | |
+| | ↳ *Navigate to T2-P3 and verify visibility* | |
+| 2 | **Test pagination in column level lineage** - Verify edges when no column is hovered or selected | Edges when no column is hovered or selected |
+| | ↳ *Verify T1-P1 and T2-P1: Only (T1,C1)-(T2,C1), (T1,C2)-(T2,C2), (T1,C3)-(T2,C3) edges visible* | |
+| | ↳ *Navigate to T2-P2 and verify (T1,C1)-(T2,C6), (T1,C2)-(T2,C7), (T1,C4)-(T2,C8), (T1,C5)-(T2,C8) edges visible* | |
+| | ↳ *Navigate to T1-P2 and verify (T1,C6)-(T2,C6), (T1,C7)-(T2,C7), (T1,C9)-(T2,C8) edges visible* | |
+| 3 | **Test pagination in column level lineage** - Verify columns and edges when a column is hovered | Columns and edges when a column is hovered |
+| | ↳ *Hover on (T1,C1) and verify highlighted columns and edges* | |
+| 4 | **Test pagination in column level lineage** - Verify columns and edges when a column is clicked | Columns and edges when a column is clicked |
+| | ↳ *Navigate to T1-P2 and T2-P2, click (T2,C6) and verify highlighted columns and edges* | |
+| 5 | **Test pagination in column level lineage** - Verify edges for column level lineage between 2 nodes when filter is toggled | Edges for column level lineage between 2 nodes when filter is toggled |
+| | ↳ *1. Load both the table* | |
+| | ↳ *2. Verify edges visible and hidden for page1 of both the tables* | |
+| | ↳ *3. Enable the filter for table1 by clicking filter button* | |
+| | ↳ *4. Verify that only columns with lineage are visible in table1* | |
+| | ↳ *5. Enable the filter for table2 by clicking filter button* | |
+| | ↳ *6. Verify that only columns with lineage are visible in table2* | |
+| | ↳ *7. Verify new edges are now visible.* | |
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | Lineage creation from Table entity | Lineage creation from Table entity |
+| | ↳ *Should create lineage for the entity* | |
+| | ↳ *Should create pipeline between entities* | |
+| | ↳ *Verify Lineage Export CSV* | |
+| | ↳ *Verify Lineage Export PNG* | |
+| | ↳ *Remove lineage between nodes for the entity* | |
+| | ↳ *Verify Lineage Config* | |
+| 2 | Lineage creation from Dashboard entity | Lineage creation from Dashboard entity |
+| | ↳ *Should create lineage for the entity* | |
+| | ↳ *Should create pipeline between entities* | |
+| | ↳ *Verify Lineage Export CSV* | |
+| | ↳ *Verify Lineage Export PNG* | |
+| | ↳ *Remove lineage between nodes for the entity* | |
+| | ↳ *Verify Lineage Config* | |
+| 3 | Lineage creation from Topic entity | Lineage creation from Topic entity |
+| | ↳ *Should create lineage for the entity* | |
+| | ↳ *Should create pipeline between entities* | |
+| | ↳ *Verify Lineage Export CSV* | |
+| | ↳ *Verify Lineage Export PNG* | |
+| | ↳ *Remove lineage between nodes for the entity* | |
+| | ↳ *Verify Lineage Config* | |
+| 4 | Lineage creation from MlModel entity | Lineage creation from MlModel entity |
+| | ↳ *Should create lineage for the entity* | |
+| | ↳ *Should create pipeline between entities* | |
+| | ↳ *Verify Lineage Export CSV* | |
+| | ↳ *Verify Lineage Export PNG* | |
+| | ↳ *Remove lineage between nodes for the entity* | |
+| | ↳ *Verify Lineage Config* | |
+| 5 | Lineage creation from Container entity | Lineage creation from Container entity |
+| | ↳ *Should create lineage for the entity* | |
+| | ↳ *Should create pipeline between entities* | |
+| | ↳ *Verify Lineage Export CSV* | |
+| | ↳ *Verify Lineage Export PNG* | |
+| | ↳ *Remove lineage between nodes for the entity* | |
+| | ↳ *Verify Lineage Config* | |
+| 6 | Lineage creation from SearchIndex entity | Lineage creation from SearchIndex entity |
+| | ↳ *Should create lineage for the entity* | |
+| | ↳ *Should create pipeline between entities* | |
+| | ↳ *Verify Lineage Export CSV* | |
+| | ↳ *Verify Lineage Export PNG* | |
+| | ↳ *Remove lineage between nodes for the entity* | |
+| | ↳ *Verify Lineage Config* | |
+| 7 | Lineage creation from ApiEndpoint entity | Lineage creation from ApiEndpoint entity |
+| | ↳ *Should create lineage for the entity* | |
+| | ↳ *Should create pipeline between entities* | |
+| | ↳ *Verify Lineage Export CSV* | |
+| | ↳ *Verify Lineage Export PNG* | |
+| | ↳ *Remove lineage between nodes for the entity* | |
+| | ↳ *Verify Lineage Config* | |
+| 8 | Lineage creation from Metric entity | Lineage creation from Metric entity |
+| | ↳ *Should create lineage for the entity* | |
+| | ↳ *Should create pipeline between entities* | |
+| | ↳ *Verify Lineage Export CSV* | |
+| | ↳ *Verify Lineage Export PNG* | |
+| | ↳ *Remove lineage between nodes for the entity* | |
+| | ↳ *Verify Lineage Config* | |
+| 9 | Verify column lineage between tables | Column lineage between tables |
+| 10 | Verify column lineage between table and topic | Column lineage between table and topic |
+| 11 | Verify column lineage between topic and api endpoint | Column lineage between topic and api endpoint |
+| 12 | Verify column lineage between table and api endpoint | Column lineage between table and api endpoint |
+| 13 | Verify function data in edge drawer | Function data in edge drawer |
+| 14 | Verify table search with special characters as handled | Table search with special characters as handled |
+| 15 | Verify cycle lineage should be handled properly | Cycle lineage should be handled properly |
+
+</details>
+
+<details open>
+<summary>📄 <b>ImpactAnalysis.spec.ts</b> (9 tests, 9 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/ImpactAnalysis.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/ImpactAnalysis.spec.ts)
 
@@ -2209,7 +2712,165 @@
 </details>
 
 <details open>
-<summary>📄 <b>TeamsDragAndDrop.spec.ts</b> (9 tests)</summary>
+<summary>📄 <b>PlatformLineage.spec.ts</b> (1 tests, 1 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/PlatformLineage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PlatformLineage.spec.ts)
+
+### Standalone Tests
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | Verify Platform Lineage View | Platform Lineage View |
+
+</details>
+
+
+---
+
+<div id="users-teams"></div>
+
+## Users & Teams
+
+<details open>
+<summary>📄 <b>Users.spec.ts</b> (28 tests, 33 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Users.spec.ts)
+
+### User with Admin Roles
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **User with Admin Roles** - Update own admin details | Update own admin details |
+| 2 | **User with Admin Roles** - Create and Delete user | Create and Delete user |
+| | ↳ *User shouldn't be allowed to create User with same Email* | |
+| 3 | **User with Admin Roles** - Admin soft & hard delete and restore user | Admin soft & hard delete and restore user |
+| 4 | **User with Admin Roles** - Admin soft & hard delete and restore user from profile page | Admin soft & hard delete and restore user from profile page |
+
+### User with Data Consumer Roles
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **User with Data Consumer Roles** - Token generation & revocation for Data Consumer | Token generation & revocation for Data Consumer |
+| 2 | **User with Data Consumer Roles** - Update token expiration for Data Consumer | Update token expiration for Data Consumer |
+| 3 | **User with Data Consumer Roles** - User should have only view permission for glossary and tags for Data Consumer | User should have only view permission for glossary and tags for Data Consumer |
+| 4 | **User with Data Consumer Roles** - Operations for settings page for Data Consumer | Operations for settings page for Data Consumer |
+| 5 | **User with Data Consumer Roles** - Permissions for table details page for Data Consumer | Permissions for table details page for Data Consumer |
+| 6 | **User with Data Consumer Roles** - Update user details for Data Consumer | Update user details for Data Consumer |
+| 7 | **User with Data Consumer Roles** - Reset Password for Data Consumer | Reset Password for Data Consumer |
+
+### User with Data Steward Roles
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **User with Data Steward Roles** - Update user details for Data Steward | Update user details for Data Steward |
+| 2 | **User with Data Steward Roles** - Token generation & revocation for Data Steward | Token generation & revocation for Data Steward |
+| 3 | **User with Data Steward Roles** - Update token expiration for Data Steward | Update token expiration for Data Steward |
+| 4 | **User with Data Steward Roles** - Operations for settings page for Data Steward | Operations for settings page for Data Steward |
+| 5 | **User with Data Steward Roles** - Check permissions for Data Steward | Permissions for Data Steward |
+| 6 | **User with Data Steward Roles** - Reset Password for Data Steward | Reset Password for Data Steward |
+
+### User Profile Feed Interactions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **User Profile Feed Interactions** - Should navigate to user profile from feed card avatar click | Navigate to user profile from feed card avatar click |
+| 2 | **User Profile Feed Interactions** - Close the profile dropdown after redirecting to user profile page | Close the profile dropdown after redirecting to user profile page |
+
+### User Profile Dropdown Persona Interactions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **User Profile Dropdown Persona Interactions** - Should display persona dropdown with pagination | Display persona dropdown with pagination |
+| 2 | **User Profile Dropdown Persona Interactions** - Should display default persona tag correctly | Display default persona tag correctly |
+| 3 | **User Profile Dropdown Persona Interactions** - Should switch personas correctly | Switch personas correctly |
+| 4 | **User Profile Dropdown Persona Interactions** - Should handle persona sorting correctly | Handle persona sorting correctly |
+| 5 | **User Profile Dropdown Persona Interactions** - Should revert to default persona after page refresh when non-default is selected | Revert to default persona after page refresh when non-default is selected |
+| 6 | **User Profile Dropdown Persona Interactions** - Should handle default persona change and removal correctly | Handle default persona change and removal correctly |
+
+### User Profile Persona Interactions
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **User Profile Persona Interactions** - Should add, remove, and navigate to persona pages for Personas section | Add, remove, and navigate to persona pages for Personas section |
+| | ↳ *Navigate to persona page by clicking on persona chip* | |
+| | ↳ *Navigate back to user profile* | |
+| | ↳ *Remove personas from user profile* | |
+| 2 | **User Profile Persona Interactions** - Should add, remove, and navigate to persona pages for Default Persona section | Add, remove, and navigate to persona pages for Default Persona section |
+| | ↳ *Add default persona to user profile* | |
+| | ↳ *Navigate to persona page by clicking on default persona chip* | |
+| | ↳ *Navigate back to user profile* | |
+| | ↳ *Remove default persona from user profile* | |
+
+### Users Performance around application with multiple team inheriting roles and policy
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Users Performance around application with multiple team inheriting roles and policy** - User Performance across different entities pages | User Performance across different entities pages |
+
+</details>
+
+<details open>
+<summary>📄 <b>Teams.spec.ts</b> (19 tests, 31 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/Teams.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Teams.spec.ts)
+
+### Teams Page
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Teams Page** - Teams Page Flow | Teams Page Flow |
+| | ↳ *Create a new team* | |
+| | ↳ *Add owner to created team* | |
+| | ↳ *Update email of created team* | |
+| | ↳ *Add user to created team* | |
+| | ↳ *Remove added user from created team* | |
+| | ↳ *Join team should work properly* | |
+| | ↳ *Update display name for created team* | |
+| | ↳ *Update description for created team* | |
+| | ↳ *Leave team flow should work properly* | |
+| | ↳ *Soft Delete Team* | |
+| | ↳ *Hard Delete Team* | |
+| 2 | **Teams Page** - Create a new public team | Create a new public team |
+| 3 | **Teams Page** - Create a new private team and check if its visible to admin in teams selection dropdown on user profile | Create a new private team and check if its visible to admin in teams selection dropdown on user profile |
+| 4 | **Teams Page** - Permanently deleting a team without soft deleting should work properly | Permanently deleting a team without soft deleting should work properly |
+| 5 | **Teams Page** - Team search should work properly | Team search should work properly |
+| 6 | **Teams Page** - Export team | Export team |
+| 7 | **Teams Page** - Team assets should | Team assets should |
+| 8 | **Teams Page** - Delete a user from the table | Delete a user from the table |
+| 9 | **Teams Page** - Verify breadcrumb navigation for a team with a dot in its name | Breadcrumb navigation for a team with a dot in its name |
+| 10 | **Teams Page** - Total User Count should be rendered | Total User Count should be rendered |
+| 11 | **Teams Page** - Show Deleted toggle should fetch teams with correct include parameter | Show Deleted toggle should fetch teams with correct include parameter |
+
+### Teams Page with EditUser Permission
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Teams Page with EditUser Permission** - Add and Remove User for Team | Add and Remove User for Team |
+| | ↳ *Add user in Team from the placeholder* | |
+| | ↳ *Add user in Team for the header manage area* | |
+| | ↳ *Remove user from Team* | |
+
+### Teams Page with Data Consumer User
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Teams Page with Data Consumer User** - Should not have edit access on team page with no data available | Not have edit access on team page with no data available |
+| 2 | **Teams Page with Data Consumer User** - Should not have edit access on team page with data available | Not have edit access on team page with data available |
+
+### Teams Page action as Owner of Team
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Teams Page action as Owner of Team** - User as not owner should not have edit/create permission on Team | User as not owner should not have edit/create permission on Team |
+| 2 | **Teams Page action as Owner of Team** - Add New Team in BusinessUnit Team | Add New Team in BusinessUnit Team |
+| 3 | **Teams Page action as Owner of Team** - Add New Team in Department Team | Add New Team in Department Team |
+| 4 | **Teams Page action as Owner of Team** - Add New Team in Division Team | Add New Team in Division Team |
+| 5 | **Teams Page action as Owner of Team** - Add New User in Group Team | Add New User in Group Team |
+
+</details>
+
+<details open>
+<summary>📄 <b>TeamsDragAndDrop.spec.ts</b> (9 tests, 9 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/TeamsDragAndDrop.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TeamsDragAndDrop.spec.ts)
 
@@ -2230,28 +2891,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>CustomizeWidgets.spec.ts</b> (9 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/CustomizeWidgets.spec.ts)
-
-### Widgets
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Widgets** - Activity Feed | Activity Feed |
-| 2 | **Widgets** - Data Assets | Data Assets |
-| 3 | **Widgets** - My Data | My Data |
-| 4 | **Widgets** - KPI | KPI |
-| 5 | **Widgets** - Total Data Assets | Total Data Assets |
-| 6 | **Widgets** - Following Assets | Following Assets |
-| 7 | **Widgets** - Domains | Domains |
-| 8 | **Widgets** - My Tasks | My Tasks |
-| 9 | **Widgets** - Data Products | Data Products |
-
-</details>
-
-<details open>
-<summary>📄 <b>UserDetails.spec.ts</b> (8 tests)</summary>
+<summary>📄 <b>UserDetails.spec.ts</b> (8 tests, 8 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/UserDetails.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/UserDetails.spec.ts)
 
@@ -2271,44 +2911,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>Collect.spec.ts</b> (7 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/Collect.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/Collect.spec.ts)
-
-### Collect end point should work properly
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Collect end point should work properly** - Visit Settings page should trigger collect API | Visit Settings page should trigger collect API |
-| 2 | **Collect end point should work properly** - Visit Explore page should trigger collect API | Visit Explore page should trigger collect API |
-| 3 | **Collect end point should work properly** - Visit Quality page should trigger collect API | Visit Quality page should trigger collect API |
-| 4 | **Collect end point should work properly** - Visit Incident Manager page should trigger collect API | Visit Incident Manager page should trigger collect API |
-| 5 | **Collect end point should work properly** - Visit Insights page should trigger collect API | Visit Insights page should trigger collect API |
-| 6 | **Collect end point should work properly** - Visit Glossary page should trigger collect API | Visit Glossary page should trigger collect API |
-| 7 | **Collect end point should work properly** - Visit Tags page should trigger collect API | Visit Tags page should trigger collect API |
-
-</details>
-
-<details open>
-<summary>📄 <b>BulkImport.spec.ts</b> (6 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts)
-
-### Bulk Import Export
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Bulk Import Export** - Database service | Database service |
-| 2 | **Bulk Import Export** - Database | Database |
-| 3 | **Bulk Import Export** - Database Schema | Database Schema |
-| 4 | **Bulk Import Export** - Table | Table |
-| 5 | **Bulk Import Export** - Keyboard Delete selection | Keyboard Delete selection |
-| 6 | **Bulk Import Export** - Range selection | Range selection |
-
-</details>
-
-<details open>
-<summary>📄 <b>OnlineUsers.spec.ts</b> (6 tests)</summary>
+<summary>📄 <b>OnlineUsers.spec.ts</b> (6 tests, 6 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OnlineUsers.spec.ts)
 
@@ -2326,58 +2929,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>BulkEditEntity.spec.ts</b> (5 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts)
-
-### Bulk Edit Entity
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Bulk Edit Entity** - Database service | Database service |
-| 2 | **Bulk Edit Entity** - Database | Database |
-| 3 | **Bulk Edit Entity** - Database Schema | Database Schema |
-| 4 | **Bulk Edit Entity** - Table | Table |
-| 5 | **Bulk Edit Entity** - Glossary | Glossary |
-
-</details>
-
-<details open>
-<summary>📄 <b>DescriptionSuggestion.spec.ts</b> (5 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/DescriptionSuggestion.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DescriptionSuggestion.spec.ts)
-
-### Description Suggestions Table Entity
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Description Suggestions Table Entity** - View, Close, Reject and Accept the Suggestions | View, Close, Reject and Accept the Suggestions |
-| 2 | **Description Suggestions Table Entity** - Reject All Suggestions | Reject All Suggestions |
-| 3 | **Description Suggestions Table Entity** - Fetch on avatar click and then all Pending Suggestions button click | Fetch on avatar click and then all Pending Suggestions button click |
-| 4 | **Description Suggestions Table Entity** - Should auto fetch more suggestions, when last user avatar is eliminated and there are more suggestions | Auto fetch more suggestions, when last user avatar is eliminated and there are more suggestions |
-| 5 | **Description Suggestions Table Entity** - Should fetch initial 10 suggestions on entity change from table1 to table2 | Fetch initial 10 suggestions on entity change from table1 to table2 |
-
-</details>
-
-<details open>
-<summary>📄 <b>NavigationBlocker.spec.ts</b> (5 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/NavigationBlocker.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/NavigationBlocker.spec.ts)
-
-### Navigation Blocker Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Navigation Blocker Tests** - should show navigation blocker modal when trying to navigate away with unsaved changes | Show navigation blocker modal when trying to navigate away with unsaved changes |
-| 2 | **Navigation Blocker Tests** - should confirm navigation when "Save changes" is clicked | Confirm navigation when "Save changes" is clicked |
-| 3 | **Navigation Blocker Tests** - should navigate to new page when "Leave" is clicked | Navigate to new page when "Leave" is clicked |
-| 4 | **Navigation Blocker Tests** - should not show navigation blocker after saving changes | Not show navigation blocker after saving changes |
-| 5 | **Navigation Blocker Tests** - should stay on current page and keep changes when X button is clicked | Stay on current page and keep changes when X button is clicked |
-
-</details>
-
-<details open>
-<summary>📄 <b>UserProfileOnlineStatus.spec.ts</b> (5 tests)</summary>
+<summary>📄 <b>UserProfileOnlineStatus.spec.ts</b> (5 tests, 5 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/UserProfileOnlineStatus.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/UserProfileOnlineStatus.spec.ts)
 
@@ -2394,39 +2946,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>Login.spec.ts</b> (5 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/Login.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Login.spec.ts)
-
-### Login flow should work properly
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Login flow should work properly** - Signup and Login with signed up credentials | Signup and Login with signed up credentials |
-| 2 | **Login flow should work properly** - Signin using invalid credentials | Signin using invalid credentials |
-| 3 | **Login flow should work properly** - Forgot password and login with new password | Forgot password and login with new password |
-| 4 | **Login flow should work properly** - Refresh should work | Refresh should work |
-| 5 | **Login flow should work properly** - accessing app with expired token should do auto renew token | Accessing app with expired token should do auto renew token |
-
-</details>
-
-<details open>
-<summary>📄 <b>QueryEntity.spec.ts</b> (3 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/QueryEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/QueryEntity.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Query Entity | Query Entity |
-| 2 | Verify query duration | Query duration |
-| 3 | Verify Query Pagination | Query Pagination |
-
-</details>
-
-<details open>
-<summary>📄 <b>TeamsHierarchy.spec.ts</b> (3 tests)</summary>
+<summary>📄 <b>TeamsHierarchy.spec.ts</b> (3 tests, 3 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/TeamsHierarchy.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/TeamsHierarchy.spec.ts)
 
@@ -2441,261 +2961,29 @@
 </details>
 
 <details open>
-<summary>📄 <b>Tour.spec.ts</b> (3 tests)</summary>
+<summary>📄 <b>PersonaDeletionUserProfile.spec.ts</b> (2 tests, 8 scenarios)</summary>
 
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/Tour.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/Tour.spec.ts)
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts)
 
-### Tour should work properly
+### User profile works after persona deletion
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Tour should work properly** - Tour should work from help section | Tour should work from help section |
-| 2 | **Tour should work properly** - Tour should work from welcome screen | Tour should work from welcome screen |
-| 3 | **Tour should work properly** - Tour should work from URL directly | Tour should work from URL directly |
+| 1 | **User profile works after persona deletion** - User profile loads correctly before and after persona deletion | User profile loads correctly before and after persona deletion |
+| | ↳ *Create persona with user* | |
+| | ↳ *Verify persona appears on user profile* | |
+| | ↳ *Delete the persona* | |
+| | ↳ *Verify user profile still loads after persona deletion* | |
+| 2 | **User profile works after persona deletion** - User profile loads correctly after DEFAULT persona deletion | User profile loads correctly after DEFAULT persona deletion |
+| | ↳ *Create default persona with user* | |
+| | ↳ *Verify default persona appears on user profile* | |
+| | ↳ *Delete the default persona* | |
+| | ↳ *Verify user profile still loads after DEFAULT persona deletion* | |
 
 </details>
 
 <details open>
-<summary>📄 <b>Policies.spec.ts</b> (3 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/Policies.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Policies.spec.ts)
-
-### Policy page should work properly
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Policy page should work properly** - Add new policy with invalid condition | Add new policy with invalid condition |
-| 2 | **Policy page should work properly** - Policy should have associated rules and teams | Policy should have associated rules and teams |
-| 3 | **Policy page should work properly** - Delete policy action from manage button options | Delete policy action from manage button options |
-
-</details>
-
-<details open>
-<summary>📄 <b>FrequentlyJoined.spec.ts</b> (2 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/FrequentlyJoined.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/FrequentlyJoined.spec.ts)
-
-### Frequently Joined
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Frequently Joined** - should display frequently joined columns | Display frequently joined columns |
-| 2 | **Frequently Joined** - should display frequently joined table | Display frequently joined table |
-
-</details>
-
-<details open>
-<summary>📄 <b>CustomThemeConfig.spec.ts</b> (2 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/CustomThemeConfig.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/CustomThemeConfig.spec.ts)
-
-### Custom Theme Config Page
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Custom Theme Config Page** - Update and reset custom theme config | Update and reset custom theme config |
-| 2 | **Custom Theme Config Page** - Should call customMonogramUrlPath only once after save if the monogram is not valid | Call customMonogramUrlPath only once after save if the monogram is not valid |
-
-</details>
-
-<details open>
-<summary>📄 <b>LoginConfiguration.spec.ts</b> (2 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/LoginConfiguration.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/LoginConfiguration.spec.ts)
-
-### Login configuration
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Login configuration** - update login configuration should work | Update login configuration should work |
-| 2 | **Login configuration** - reset login configuration should work | Reset login configuration should work |
-
-</details>
-
-<details open>
-<summary>📄 <b>dataInsightApp.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/dataInsightApp.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/dataInsightApp.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Run Data Insight application and wait until success | Run Data Insight application and wait until success |
-
-</details>
-
-<details open>
-<summary>📄 <b>entity-data.teardown.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/entity-data.teardown.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.teardown.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | cleanup entity data prerequisites | Cleanup entity data prerequisites |
-
-</details>
-
-<details open>
-<summary>📄 <b>entity-data.setup.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/entity-data.setup.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.setup.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | create entity data prerequisites | Create entity data prerequisites |
-
-</details>
-
-<details open>
-<summary>📄 <b>auth.setup.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/auth.setup.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | authenticate all users | Authenticate all users |
-
-</details>
-
-<details open>
-<summary>📄 <b>CronValidations.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/CronValidations.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CronValidations.spec.ts)
-
-### Cron Validations
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Cron Validations** - Validate different cron expressions | Validate different cron expressions |
-
-</details>
-
-<details open>
-<summary>📄 <b>Dimensionality.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/DataQuality/Dimensionality.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/DataQuality/Dimensionality.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Dimensionality Tests | Dimensionality Tests |
-
-</details>
-
-<details open>
-<summary>📄 <b>EntityRightCollapsablePanel.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/EntityRightCollapsablePanel.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/EntityRightCollapsablePanel.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Show and Hide Right Collapsable Panel | Show and Hide Right Collapsable Panel |
-
-</details>
-
-<details open>
-<summary>📄 <b>GlobalPageSize.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/GlobalPageSize.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/GlobalPageSize.spec.ts)
-
-### Table & Data Model columns table pagination
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Table & Data Model columns table pagination** - Page size should persist across different pages | Page size should persist across different pages |
-
-</details>
-
-<details open>
-<summary>📄 <b>Markdown.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Markdown.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Markdown.spec.ts)
-
-### Markdown
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Markdown** - should render markdown | Render markdown |
-
-</details>
-
-<details open>
-<summary>📄 <b>Permission.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/Permission.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Permission.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Permissions | Permissions |
-
-</details>
-
-<details open>
-<summary>📄 <b>SchemaDefinition.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/SchemaDefinition.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SchemaDefinition.spec.ts)
-
-### Schema definition (views)
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Schema definition (views)** - Verify schema definition (views) of table entity | Schema definition (views) of table entity |
-
-</details>
-
-<details open>
-<summary>📄 <b>ApiCollection.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiCollection.spec.ts)
-
-### API Collection Entity Special Test Cases
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **API Collection Entity Special Test Cases** - Verify Owner Propagation: owner should be propagated to the API Collection's API Endpoint | Owner Propagation: owner should be propagated to the API Collection's API Endpoint |
-
-</details>
-
-<details open>
-<summary>📄 <b>ApiDocs.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/ApiDocs.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ApiDocs.spec.ts)
-
-### API docs should work properly
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **API docs should work properly** - API docs should work properly | API docs should work properly |
-
-</details>
-
-<details open>
-<summary>📄 <b>AppBasic.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/AppBasic.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/AppBasic.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | should call installed app api and it should respond with 200 | Call installed app api and it should respond with 200 |
-
-</details>
-
-<details open>
-<summary>📄 <b>UsersPagination.spec.ts</b> (1 tests)</summary>
+<summary>📄 <b>UsersPagination.spec.ts</b> (1 tests, 1 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/UsersPagination.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/UsersPagination.spec.ts)
 
@@ -2707,119 +2995,6 @@
 
 </details>
 
-<details open>
-<summary>📄 <b>Bots.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Bots.spec.ts)
-
-### Bots Page should work properly
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Bots Page should work properly** - Bots Page should work properly | Bots Page should work properly |
-
-</details>
-
-<details open>
-<summary>📄 <b>HealthCheck.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/HealthCheck.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/HealthCheck.spec.ts)
-
-### Health Check for OpenMetadata
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Health Check for OpenMetadata** - All 5 checks should be successful | All 5 checks should be successful |
-
-</details>
-
-<details open>
-<summary>📄 <b>OmdURLConfiguration.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/OmdURLConfiguration.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/OmdURLConfiguration.spec.ts)
-
-### OM URL configuration
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **OM URL configuration** - update om url configuration should work | Update om url configuration should work |
-
-</details>
-
-
----
-
-<div id="settings"></div>
-
-## Settings
-
-<details open>
-<summary>📄 <b>SettingsNavigationPage.spec.ts</b> (4 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/SettingsNavigationPage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SettingsNavigationPage.spec.ts)
-
-### Settings Navigation Page Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Settings Navigation Page Tests** - should update navigation sidebar | Update navigation sidebar |
-| 2 | **Settings Navigation Page Tests** - should show navigation blocker when leaving with unsaved changes | Show navigation blocker when leaving with unsaved changes |
-| 3 | **Settings Navigation Page Tests** - should save changes and navigate when "Save changes" is clicked in blocker | Save changes and navigate when "Save changes" is clicked in blocker |
-| 4 | **Settings Navigation Page Tests** - should handle reset functionality and prevent navigation blocker after save | Handle reset functionality and prevent navigation blocker after save |
-
-</details>
-
-<details open>
-<summary>📄 <b>SearchSettings.spec.ts</b> (4 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/SearchSettings.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SearchSettings.spec.ts)
-
-### Search Settings Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Search Settings Tests** - Update global search settings | Update global search settings |
-| 2 | **Search Settings Tests** - Update entity search settings | Update entity search settings |
-| 3 | **Search Settings Tests** - Restore default search settings | Restore default search settings |
-
-### Search Preview test
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Search Preview test** - Search preview for searchable table | Search preview for searchable table |
-
-</details>
-
-<details open>
-<summary>📄 <b>DataInsightSettings.spec.ts</b> (4 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/DataInsightSettings.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataInsightSettings.spec.ts)
-
-### Data Insight settings page should work properly
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Data Insight settings page should work properly** - Edit data insight application | Edit data insight application |
-| 2 | **Data Insight settings page should work properly** - Uninstall application | Uninstall application |
-| 3 | **Data Insight settings page should work properly** - Install application | Install application |
-| 4 | **Data Insight settings page should work properly** - Run application | Run application |
-
-</details>
-
-<details open>
-<summary>📄 <b>LineageSettings.spec.ts</b> (2 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/LineageSettings.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/LineageSettings.spec.ts)
-
-### Lineage Settings Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Lineage Settings Tests** - Verify global lineage config | Global lineage config |
-| 2 | **Lineage Settings Tests** - Verify lineage settings for PipelineViewMode as Edge | Lineage settings for PipelineViewMode as Edge |
-
-</details>
-
 
 ---
 
@@ -2828,7 +3003,7 @@
 ## SSO
 
 <details open>
-<summary>📄 <b>SSOConfiguration.spec.ts</b> (10 tests)</summary>
+<summary>📄 <b>SSOConfiguration.spec.ts</b> (10 tests, 10 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts)
 
@@ -2857,7 +3032,7 @@
 ## RBAC
 
 <details open>
-<summary>📄 <b>SearchRBAC.spec.ts</b> (11 tests)</summary>
+<summary>📄 <b>SearchRBAC.spec.ts</b> (11 tests, 11 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/SearchRBAC.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/SearchRBAC.spec.ts)
 
@@ -2880,7 +3055,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>AddRoleAndAssignToUser.spec.ts</b> (3 tests)</summary>
+<summary>📄 <b>AddRoleAndAssignToUser.spec.ts</b> (3 tests, 3 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts)
 
@@ -2895,7 +3070,31 @@
 </details>
 
 <details open>
-<summary>📄 <b>Roles.spec.ts</b> (2 tests)</summary>
+<summary>📄 <b>Policies.spec.ts</b> (3 tests, 11 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/Policies.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Policies.spec.ts)
+
+### Policy page should work properly
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Policy page should work properly** - Add new policy with invalid condition | Add new policy with invalid condition |
+| | ↳ *Default Policies and Roles should be displayed* | |
+| | ↳ *Add new policy* | |
+| | ↳ *Edit policy description* | |
+| | ↳ *Edit policy display name* | |
+| | ↳ *Add new rule* | |
+| | ↳ *Edit rule name for created Rule* | |
+| | ↳ *Delete new rule* | |
+| | ↳ *Delete last rule and validate* | |
+| | ↳ *Delete created policy* | |
+| 2 | **Policy page should work properly** - Policy should have associated rules and teams | Policy should have associated rules and teams |
+| 3 | **Policy page should work properly** - Delete policy action from manage button options | Delete policy action from manage button options |
+
+</details>
+
+<details open>
+<summary>📄 <b>Roles.spec.ts</b> (2 tests, 9 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Roles.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Roles.spec.ts)
 
@@ -2904,6 +3103,14 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | Roles page should work properly | Roles page should work properly |
+| | ↳ *Add new role and check all tabs data* | |
+| | ↳ *Add new role without selecting data* | |
+| | ↳ *Edit created role* | |
+| | ↳ *Edit role display name* | |
+| | ↳ *Add new policy to created role* | |
+| | ↳ *Remove added policy from created role* | |
+| | ↳ *Check if last policy is not removed* | |
+| | ↳ *Delete created Role* | |
 | 2 | Delete role action from manage button options | Delete role action from manage button options |
 
 </details>
@@ -2911,101 +3118,22 @@
 
 ---
 
-<div id="personas-customizations"></div>
+<div id="onboarding"></div>
 
-## Personas & Customizations
-
-<details open>
-<summary>📄 <b>PersonaFlow.spec.ts</b> (6 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaFlow.spec.ts)
-
-### Persona operations
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Persona operations** - Persona creation should work properly | Persona creation should work properly |
-| 2 | **Persona operations** - Persona update description flow should work properly | Persona update description flow should work properly |
-| 3 | **Persona operations** - Persona rename flow should work properly | Persona rename flow should work properly |
-| 4 | **Persona operations** - Remove users in persona should work properly | Remove users in persona should work properly |
-| 5 | **Persona operations** - Delete persona should work properly | Delete persona should work properly |
-
-### Default persona setting and removal flow
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Default persona setting and removal flow** - Set and remove default persona should work properly | Set and remove default persona should work properly |
-
-</details>
+## Onboarding
 
 <details open>
-<summary>📄 <b>PersonaDeletionUserProfile.spec.ts</b> (2 tests)</summary>
+<summary>📄 <b>Tour.spec.ts</b> (3 tests, 3 scenarios)</summary>
 
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts)
+> Source: [`src/main/resources/ui/playwright/e2e/Flow/Tour.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/Tour.spec.ts)
 
-### User profile works after persona deletion
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **User profile works after persona deletion** - User profile loads correctly before and after persona deletion | User profile loads correctly before and after persona deletion |
-| 2 | **User profile works after persona deletion** - User profile loads correctly after DEFAULT persona deletion | User profile loads correctly after DEFAULT persona deletion |
-
-</details>
-
-
----
-
-<div id="lineage-ui-"></div>
-
-## Lineage (UI)
-
-<details open>
-<summary>📄 <b>Lineage.spec.ts</b> (20 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts)
-
-### Test pagination in column level lineage
+### Tour should work properly
 
 | # | Test Case | Description |
 |---|-----------|-------------|
-| 1 | **Test pagination in column level lineage** - Verify column visibility across pagination pages | Column visibility across pagination pages |
-| 2 | **Test pagination in column level lineage** - Verify edges when no column is hovered or selected | Edges when no column is hovered or selected |
-| 3 | **Test pagination in column level lineage** - Verify columns and edges when a column is hovered | Columns and edges when a column is hovered |
-| 4 | **Test pagination in column level lineage** - Verify columns and edges when a column is clicked | Columns and edges when a column is clicked |
-| 5 | **Test pagination in column level lineage** - Verify edges for column level lineage between 2 nodes when filter is toggled | Edges for column level lineage between 2 nodes when filter is toggled |
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Lineage creation from Table entity | Lineage creation from Table entity |
-| 2 | Lineage creation from Dashboard entity | Lineage creation from Dashboard entity |
-| 3 | Lineage creation from Topic entity | Lineage creation from Topic entity |
-| 4 | Lineage creation from MlModel entity | Lineage creation from MlModel entity |
-| 5 | Lineage creation from Container entity | Lineage creation from Container entity |
-| 6 | Lineage creation from SearchIndex entity | Lineage creation from SearchIndex entity |
-| 7 | Lineage creation from ApiEndpoint entity | Lineage creation from ApiEndpoint entity |
-| 8 | Lineage creation from Metric entity | Lineage creation from Metric entity |
-| 9 | Verify column lineage between tables | Column lineage between tables |
-| 10 | Verify column lineage between table and topic | Column lineage between table and topic |
-| 11 | Verify column lineage between topic and api endpoint | Column lineage between topic and api endpoint |
-| 12 | Verify column lineage between table and api endpoint | Column lineage between table and api endpoint |
-| 13 | Verify function data in edge drawer | Function data in edge drawer |
-| 14 | Verify table search with special characters as handled | Table search with special characters as handled |
-| 15 | Verify cycle lineage should be handled properly | Cycle lineage should be handled properly |
-
-</details>
-
-<details open>
-<summary>📄 <b>PlatformLineage.spec.ts</b> (1 tests)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Flow/PlatformLineage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PlatformLineage.spec.ts)
-
-### Standalone Tests
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | Verify Platform Lineage View | Platform Lineage View |
+| 1 | **Tour should work properly** - Tour should work from help section | Tour should work from help section |
+| 2 | **Tour should work properly** - Tour should work from welcome screen | Tour should work from welcome screen |
+| 3 | **Tour should work properly** - Tour should work from URL directly | Tour should work from URL directly |
 
 </details>
 
@@ -3017,7 +3145,7 @@
 ## App Marketplace
 
 <details open>
-<summary>📄 <b>DataInsightReportApplication.spec.ts</b> (4 tests)</summary>
+<summary>📄 <b>DataInsightReportApplication.spec.ts</b> (4 tests, 4 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/DataInsightReportApplication.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/DataInsightReportApplication.spec.ts)
 
@@ -3033,7 +3161,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>SearchIndexApplication.spec.ts</b> (1 tests)</summary>
+<summary>📄 <b>SearchIndexApplication.spec.ts</b> (1 tests, 7 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/SearchIndexApplication.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/SearchIndexApplication.spec.ts)
 
@@ -3042,6 +3170,52 @@
 | # | Test Case | Description |
 |---|-----------|-------------|
 | 1 | Search Index Application | Search Index Application |
+| | ↳ *Visit Application page* | |
+| | ↳ *Verify last execution run* | |
+| | ↳ *View App Run Config* | |
+| | ↳ *Edit application* | |
+| | ↳ *Uninstall application* | |
+| | ↳ *Install application* | |
+| | ↳ *Run application* | |
+
+</details>
+
+
+---
+
+<div id="authentication"></div>
+
+## Authentication
+
+<details open>
+<summary>📄 <b>Login.spec.ts</b> (5 tests, 5 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/Login.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Login.spec.ts)
+
+### Login flow should work properly
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Login flow should work properly** - Signup and Login with signed up credentials | Signup and Login with signed up credentials |
+| 2 | **Login flow should work properly** - Signin using invalid credentials | Signin using invalid credentials |
+| 3 | **Login flow should work properly** - Forgot password and login with new password | Forgot password and login with new password |
+| 4 | **Login flow should work properly** - Refresh should work | Refresh should work |
+| | ↳ *Login and wait for refresh call is made* | |
+| 5 | **Login flow should work properly** - accessing app with expired token should do auto renew token | Accessing app with expired token should do auto renew token |
+
+</details>
+
+<details open>
+<summary>📄 <b>LoginConfiguration.spec.ts</b> (2 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Pages/LoginConfiguration.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/LoginConfiguration.spec.ts)
+
+### Login configuration
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Login configuration** - update login configuration should work | Update login configuration should work |
+| 2 | **Login configuration** - reset login configuration should work | Reset login configuration should work |
 
 </details>
 

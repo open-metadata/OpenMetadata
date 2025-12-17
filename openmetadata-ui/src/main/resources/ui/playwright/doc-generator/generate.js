@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
 const fs = require('fs');
 const path = require('path');
@@ -10,6 +22,17 @@ const PLAYWRIGHT_DIR = path.resolve(__dirname, '../e2e');
 const OUTPUT_DIR = path.resolve(__dirname, '../docs');
 
 const DOMAIN_MAPPING = {
+  // Overrides (Must be at the top to take precedence over generic keys like 'Pipeline')
+  'TestSuitePipeline': { domain: 'Observability', name: 'Data Quality' },
+  'TestSuiteMultiPipeline': { domain: 'Observability', name: 'Data Quality' },
+  'ObservabilityAlerts': { domain: 'Observability', name: 'Alerts & Notifications' },
+  'NotificationAlerts': { domain: 'Observability', name: 'Alerts & Notifications' },
+  'DataQualityAndProfiler': { domain: 'Observability', name: 'Profiler' },
+  'ProfilerConfigurationPage': { domain: 'Observability', name: 'Profiler' },
+  'TestCases': { domain: 'Observability', name: 'Data Quality' },
+  'TestCase': { domain: 'Observability', name: 'Data Quality' }, // Matches TestCaseVersionPage, AddTestCaseNewFlow
+  'IncidentManager': { domain: 'Observability', name: 'Incident Manager' },
+
   // Governance
   'Automator': { domain: 'Governance', name: 'Automator' },
   'Glossary': { domain: 'Governance', name: 'Glossary' },
@@ -19,26 +42,45 @@ const DOMAIN_MAPPING = {
   'Metric': { domain: 'Governance', name: 'Metrics' },
   'KnowledgeCenter': { domain: 'Governance', name: 'Knowledge Center' },
   'CustomProperty': { domain: 'Governance', name: 'Custom Properties' },
+  'Customproperties': { domain: 'Governance', name: 'Custom Properties' }, // Fix for casing
   'Domain': { domain: 'Governance', name: 'Domains & Data Products' },
   'DataProduct': { domain: 'Governance', name: 'Domains & Data Products' }, // Alias
+  'DataContract': { domain: 'Governance', name: 'Data Contracts' },
 
   // Platform
   'RBAC': { domain: 'Platform', name: 'RBAC' },
   'Role': { domain: 'Platform', name: 'RBAC' },
   'Policy': { domain: 'Platform', name: 'RBAC' },
+  'Policies': { domain: 'Platform', name: 'RBAC' },
   'SSO': { domain: 'Platform', name: 'SSO' },
+  'User': { domain: 'Platform', name: 'Users & Teams' },
+  'Team': { domain: 'Platform', name: 'Users & Teams' },
   'Persona': { domain: 'Platform', name: 'Personas & Customizations' },
   'Customization': { domain: 'Platform', name: 'Personas & Customizations' },
+  'Customize': { domain: 'Platform', name: 'Personas & Customizations' },
+  'Theme': { domain: 'Platform', name: 'Personas & Customizations' },
   'AppMarketplace': { domain: 'Platform', name: 'App Marketplace' },
   'Application': { domain: 'Platform', name: 'App Marketplace' },
   'Settings': { domain: 'Platform', name: 'Settings' },
+  'Cron': { domain: 'Platform', name: 'Settings' },
   'Lineage': { domain: 'Platform', name: 'Lineage (UI)' }, // Default UI Lineage
+  'Impact': { domain: 'Platform', name: 'Lineage (UI)' },
+  'Entity': { domain: 'Platform', name: 'Entities' },
+  'Bulk': { domain: 'Platform', name: 'Entities' },
+  'Navbar': { domain: 'Platform', name: 'Navigation' },
+  'Navigation': { domain: 'Platform', name: 'Navigation' },
+  'PageSize': { domain: 'Platform', name: 'Navigation' },
+  'Pagination': { domain: 'Platform', name: 'Navigation' },
+  'Login': { domain: 'Platform', name: 'Authentication' },
+  'Auth': { domain: 'Platform', name: 'Authentication' },
+  'Tour': { domain: 'Platform', name: 'Onboarding' },
 
   // Discovery
   'Search': { domain: 'Discovery', name: 'Search' },
   'DataInsight': { domain: 'Discovery', name: 'Data Insights' },
   'Feed': { domain: 'Discovery', name: 'Feed' },
   'Conversation': { domain: 'Discovery', name: 'Feed' },
+  'Chat': { domain: 'Discovery', name: 'Feed' },
   'DataAsset': { domain: 'Discovery', name: 'Data Assets' }, // Generic bucket
   'Table': { domain: 'Discovery', name: 'Data Assets' },
   'Topic': { domain: 'Discovery', name: 'Data Assets' },
@@ -46,13 +88,18 @@ const DOMAIN_MAPPING = {
   'Pipeline': { domain: 'Discovery', name: 'Data Assets' },
   'Container': { domain: 'Discovery', name: 'Data Assets' },
   'Database': { domain: 'Discovery', name: 'Data Assets' },
+  'Schema': { domain: 'Discovery', name: 'Data Assets' },
   'Explore': { domain: 'Discovery', name: 'Explore' },
   'MyData': { domain: 'Discovery', name: 'My Data' },
+  'Curated': { domain: 'Discovery', name: 'Curated Assets' },
   'Home': { domain: 'Discovery', name: 'Home Page' },
   'Landing': { domain: 'Discovery', name: 'Home Page' },
+  'RecentlyViewed': { domain: 'Discovery', name: 'Home Page' },
+  'Following': { domain: 'Discovery', name: 'Home Page' },
 
   // Observability
   'Quality': { domain: 'Observability', name: 'Data Quality' },
+  'Dim': { domain: 'Observability', name: 'Data Quality' }, // Dimensionality
   'TestSuite': { domain: 'Observability', name: 'Data Quality' },
   'TestCase': { domain: 'Observability', name: 'Data Quality' },
   'Profiler': { domain: 'Observability', name: 'Profiler' },
@@ -65,6 +112,7 @@ const DOMAIN_MAPPING = {
   'Connector': { domain: 'Integration', name: 'Connectors' },
   'Service': { domain: 'Integration', name: 'Connectors' },
   'Ingestion': { domain: 'Integration', name: 'Connectors' },
+  'Query': { domain: 'Integration', name: 'Connectors' }, // QueryEntity
 };
 
 function getComponentInfo(fileName) {
@@ -147,6 +195,17 @@ function main() {
   // Generate Main Index (README.md)
   fs.writeFileSync(path.join(OUTPUT_DIR, 'README.md'), generateIndexMarkdown(components, stats));
   console.log(`   ✓ README.md`);
+
+  // 5. Stage files in Git
+  try {
+    const { execSync } = require('child_process');
+    console.log(`\n📦 Staging generated docs...`);
+    execSync('git add .', { cwd: OUTPUT_DIR, stdio: 'inherit' });
+    console.log(`   ✓ git add completed for ${OUTPUT_DIR}`);
+  } catch (error) {
+    console.error(`   ⚠️  Warning: Failed to stage files with git.`);
+    console.error(error.message);
+  }
 
   console.log(`\n✅ Success! Documentation generated in:`);
   console.log(`   ${OUTPUT_DIR}`);

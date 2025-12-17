@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 
 const REPO_BASE_URL = 'https://github.com/open-metadata/OpenMetadata';
 
@@ -30,6 +42,26 @@ function generateIndexMarkdown(components, stats) {
     domains[d].sort((a, b) => b.totalScenarios - a.totalScenarios);
   });
 
+  // Calculate accurate "Scenario" count (Test + Steps)
+  // Logic: 
+  // If a test has steps, Scenarios = Step Count.
+  // If a test has NO steps, Scenarios = 1 (The test itself).
+  let totalScenarios = 0;
+  components.forEach(c => {
+      c.files.forEach(f => {
+          // Process root tests
+          f.rootTests.forEach(t => {
+              totalScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
+          });
+          // Process describes
+          f.describes.forEach(d => {
+              d.tests.forEach(t => {
+                  totalScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
+              });
+          });
+      });
+  });
+
   let md = `# OpenMetadata E2E Test Documentation
 
 > **Auto-generated documentation** from Playwright source code.
@@ -41,7 +73,7 @@ function generateIndexMarkdown(components, stats) {
 | **Components** | ${stats.components} |
 | **Test Files** | ${stats.files} |
 | **Test Cases** | ${stats.tests} |
-| **Test Steps** | ${stats.steps} |
+| **Total Scenarios** | ${totalScenarios} 🚀 |
 
 ---
 
@@ -54,21 +86,34 @@ function generateIndexMarkdown(components, stats) {
     // Calculate Domain Stats
     const domainTests = comps.reduce((s, c) => s + c.totalTests, 0);
     const domainComponents = comps.length;
+    
+    let domainScenarios = 0;
+    comps.forEach(c => {
+        c.files.forEach(f => {
+            f.rootTests.forEach(t => domainScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1);
+            f.describes.forEach(d => d.tests.forEach(t => domainScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1));
+        });
+    });
 
     md += `## ${domainName}\n\n`;
-    md += `> **${domainComponents} Components** | **${domainTests} Tests**\n\n`;
+    md += `> **${domainComponents} Components** | **${domainTests} Tests** | **${domainScenarios} Scenarios**\n\n`;
 
     md += `| Component | Files | Tests | Total Scenarios | Skipped |\n`;
     md += `|-----------|-------|-------|-----------------|---------|\n`;
     
     comps.forEach(c => {
-      // Calculate skipped count
-      // Calculate skipped count
-      let skippedCount = 0;
+      let compScenarios = 0;
+      let skippedCount = 0; // Initialize skippedCount for each component
       c.files.forEach(file => {
-        file.rootTests.forEach(t => { if(t.isSkipped) skippedCount++; });
+        file.rootTests.forEach(t => { 
+            if(t.isSkipped) skippedCount++; 
+            compScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
+        });
         file.describes.forEach(d => {
-            d.tests.forEach(t => { if(t.isSkipped) skippedCount++; });
+            d.tests.forEach(t => { 
+                if(t.isSkipped) skippedCount++; 
+                compScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
+            });
         });
       });
 
@@ -77,7 +122,7 @@ function generateIndexMarkdown(components, stats) {
       const link = `./${domainName}.md#${anchor}`;
       const skippedBadge = skippedCount > 0 ? `🟡 ${skippedCount}` : '0';
       
-      md += `| [${c.name}](${link}) | ${c.files.length} | ${c.totalTests} | ${c.totalScenarios} | ${skippedBadge} |\n`;
+      md += `| [${c.name}](${link}) | ${c.files.length} | ${c.totalTests} | ${compScenarios} | ${skippedBadge} |\n`;
     });
     md += '\n';
   });
@@ -93,10 +138,25 @@ function generateDomainMarkdown(domainName, components) {
   // Stats for the Domain
   const totalTests = components.reduce((s, c) => s + c.totalTests, 0);
   const totalFiles = components.reduce((s, c) => s + c.files.length, 0);
+  
+  // Calculate Domain Total Scenarios
+  let domainScenarios = 0;
+  components.forEach(c => {
+      c.files.forEach(f => {
+          f.rootTests.forEach(t => {
+              domainScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
+          });
+          f.describes.forEach(d => {
+              d.tests.forEach(t => {
+                  domainScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1;
+              });
+          });
+      });
+  });
 
   let md = `[🏠 Home](./README.md) > **${domainName}**\n\n`;
   md += `# ${domainName}\n\n`;
-  md += `> **${components.length} Components** | **${totalFiles} Files** | **${totalTests} Tests**\n\n`;
+  md += `> **${components.length} Components** | **${totalFiles} Files** | **${totalTests} Tests** | **${domainScenarios} Scenarios** 🚀\n\n`;
 
   // Table of Contents for the page
   md += `## Table of Contents\n`;
@@ -128,9 +188,14 @@ function renderFileWithCollapse(file) {
   const relativePath = file.path.split('openmetadata-ui/')[1] || file.path; 
   const fileUrl = `${REPO_BASE_URL}/blob/main/openmetadata-ui/${relativePath}`;
   
+  // Calculate File Scenarios
+  let fileScenarios = 0;
+  file.rootTests.forEach(t => fileScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1);
+  file.describes.forEach(d => d.tests.forEach(t => fileScenarios += (t.steps && t.steps.length > 0) ? t.steps.length : 1));
+
   // Collapsible Details Block
   let md = `<details open>\n`;
-  md += `<summary>📄 <b>${file.fileName}</b> (${file.totalTests} tests)</summary>\n\n`;
+  md += `<summary>📄 <b>${file.fileName}</b> (${file.totalTests} tests, ${fileScenarios} scenarios)</summary>\n\n`;
   
   md += `> Source: [\`${relativePath}\`](${fileUrl})\n\n`;
 
