@@ -274,13 +274,34 @@ export class UserClass {
   async logout(page: Page) {
     await page.getByRole('menuitem', { name: 'Logout' }).click();
 
-    const waitLogout = page.waitForResponse('/api/v1/users/logout');
+    // Wait for logout confirmation modal specifically
+    await page
+      .locator('.ant-modal-body')
+      .filter({ hasText: 'Are you sure you want' })
+      .waitFor({ state: 'visible' });
+
+    const waitLogout = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users/logout') &&
+        response.request().method() === 'POST'
+    );
+    const waitSigninNavigation = page.waitForURL('**/signin');
+
+    // Block analytics collect calls to prevent 401 errors that cause
+    // page context to close in fast environments (AUT)
+    await page.route('**/analytics/web/events/collect', (route) => {
+      route.abort();
+    });
 
     await page.getByTestId('confirm-logout').click();
 
-    await waitLogout;
+    // Wait for both logout API and navigation to complete
+    await Promise.all([waitLogout, waitSigninNavigation]);
 
-    // Confirm the signin redirection to ensure the token is cleared
-    await page.waitForURL('**/signin');
+    // Ensure all network requests complete
+    await page.waitForLoadState('networkidle');
+
+    // Clean up the route interception
+    await page.unroute('**/analytics/web/events/collect');
   }
 }

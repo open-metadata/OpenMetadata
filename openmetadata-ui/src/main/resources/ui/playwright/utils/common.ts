@@ -584,13 +584,14 @@ export const getRandomLastName = () => {
 };
 
 export const generateRandomUsername = (prefix = '') => {
+  const timestamp = Date.now();
   const firstName = `${prefix}${getRandomFirstName()}`;
   const lastName = `${prefix}${getRandomLastName()}`;
 
   return {
     firstName,
     lastName,
-    email: `${firstName}.${lastName}@example.com`,
+    email: `${firstName}.${lastName}.${timestamp}@example.com`,
     password: 'User@OMD123',
   };
 };
