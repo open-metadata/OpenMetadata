@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch as MuiSwitch, SwitchProps, Typography } from '@mui/material';
+import {
+  Box,
+  Switch as MuiSwitch,
+  SwitchProps,
+  Typography,
+} from '@mui/material';
 import { FC, memo, useCallback } from 'react';
 
 interface MUISwitchProps extends Omit<SwitchProps, 'onChange'> {
@@ -33,14 +38,14 @@ const MUISwitch: FC<MUISwitchProps> = ({
   );
 
   return (
-    <div className="d-flex gap-2 items-center">
+    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
       <MuiSwitch checked={checked} onChange={handleChange} {...props} />
       {label && (
         <Typography fontWeight={500} variant="body2">
           {label}
         </Typography>
       )}
-    </div>
+    </Box>
   );
 };
 

@@ -43,8 +43,9 @@ const ChipSelect: FC<ChipSelectProps> = ({
           variant="body2">
           {label}
           {required && (
-            <Typography color="error" component="span">
-              {' *'}
+            // eslint-disable-next-line i18next/no-literal-string
+            <Typography color="error" component="span" sx={{ ml: 0.5 }}>
+              *
             </Typography>
           )}
         </Typography>
