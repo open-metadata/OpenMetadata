@@ -11,23 +11,23 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { SidebarItem } from '../../constant/sidebar';
-import { Domain } from '../../support/domain/Domain';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { UserClass } from '../../support/user/UserClass';
+import { SidebarItem } from '../../../constant/sidebar';
+import { Domain } from '../../../support/domain/Domain';
+import { EntityTypeEndpoint } from '../../../support/entity/Entity.interface';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { UserClass } from '../../../support/user/UserClass';
 import {
   createNewPage,
   descriptionBox,
   redirectToHomePage,
-} from '../../utils/common';
-import { addMultiOwner } from '../../utils/entity';
+} from '../../../utils/common';
+import { addMultiOwner } from '../../../utils/entity';
 import {
   addMultiOwnerInDialog,
   selectActiveGlossary,
-} from '../../utils/glossary';
-import { sidebarClick } from '../../utils/sidebar';
+} from '../../../utils/glossary';
+import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',

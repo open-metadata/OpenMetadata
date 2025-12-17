@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { SidebarItem } from '../../constant/sidebar';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { UserClass } from '../../support/user/UserClass';
+import { SidebarItem } from '../../../constant/sidebar';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { UserClass } from '../../../support/user/UserClass';
 import {
   createNewPage,
   descriptionBox,
   redirectToHomePage,
-} from '../../utils/common';
-import { selectActiveGlossary } from '../../utils/glossary';
-import { sidebarClick } from '../../utils/sidebar';
+} from '../../../utils/common';
+import { selectActiveGlossary } from '../../../utils/glossary';
+import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -70,6 +70,7 @@ test.describe('Create Glossary With All Optional Fields', () => {
     await createResponse;
 
     await expect(page).toHaveURL(/\/glossary\//, { timeout: 10000 });
+
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByTestId('entity-header-name')).toHaveText(
@@ -126,6 +127,7 @@ test.describe('Create Glossary With Mutually Exclusive', () => {
     await createResponse;
 
     await expect(page).toHaveURL(/\/glossary\//, { timeout: 10000 });
+
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByTestId('entity-header-name')).toHaveText(
@@ -186,9 +188,9 @@ test.describe('Create Term With Synonyms', () => {
       page.locator('[role="dialog"].edit-glossary-modal')
     ).not.toBeVisible({ timeout: 5000 });
 
-    await expect(
-      page.locator(`[data-row-key*="${termName}"]`)
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`[data-row-key*="${termName}"]`)).toBeVisible({
+      timeout: 10000,
+    });
   });
 });
 
@@ -228,6 +230,7 @@ test.describe('Create Term With References', () => {
       await addRefBtn.click();
 
       await expect(termModal.locator('#name-0')).toBeVisible();
+
       await termModal.locator('#name-0').fill('Reference1');
       await termModal.locator('#url-0').fill('https://example.com/ref1');
     }
@@ -244,9 +247,9 @@ test.describe('Create Term With References', () => {
       page.locator('[role="dialog"].edit-glossary-modal')
     ).not.toBeVisible({ timeout: 5000 });
 
-    await expect(
-      page.locator(`[data-row-key*="${termName}"]`)
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`[data-row-key*="${termName}"]`)).toBeVisible({
+      timeout: 10000,
+    });
   });
 });
 
@@ -426,9 +429,7 @@ test.describe('Remove Reviewer From Glossary', () => {
 
     const reviewerSection = page.locator('[data-testid="glossary-reviewer"]');
 
-    if (
-      await reviewerSection.isVisible({ timeout: 3000 }).catch(() => false)
-    ) {
+    if (await reviewerSection.isVisible({ timeout: 3000 }).catch(() => false)) {
       const editBtn = reviewerSection.locator(
         '[data-testid="edit-reviewer-button"]'
       );
@@ -765,9 +766,9 @@ test.describe('Create Term With Tags', () => {
       page.locator('[role="dialog"].edit-glossary-modal')
     ).not.toBeVisible({ timeout: 5000 });
 
-    await expect(
-      page.locator(`[data-row-key*="${termName}"]`)
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`[data-row-key*="${termName}"]`)).toBeVisible({
+      timeout: 10000,
+    });
   });
 });
 

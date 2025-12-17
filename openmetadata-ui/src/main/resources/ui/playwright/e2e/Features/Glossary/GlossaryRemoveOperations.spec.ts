@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { UserClass } from '../../support/user/UserClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { addMultiOwner, assignTag, removeTag } from '../../utils/entity';
-import { removeReviewer } from '../../utils/glossary';
+import { EntityTypeEndpoint } from '../../../support/entity/Entity.interface';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { UserClass } from '../../../support/user/UserClass';
+import { createNewPage, redirectToHomePage } from '../../../utils/common';
+import { addMultiOwner, assignTag, removeTag } from '../../../utils/entity';
+import { removeReviewer } from '../../../utils/glossary';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',

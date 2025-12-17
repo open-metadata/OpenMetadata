@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { SidebarItem } from '../../constant/sidebar';
-import { TableClass } from '../../support/entity/TableClass';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { SidebarItem } from '../../../constant/sidebar';
+import { TableClass } from '../../../support/entity/TableClass';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import {
   dragAndDropTerm,
   performExpandAll,
   selectActiveGlossary,
-} from '../../utils/glossary';
-import { sidebarClick } from '../../utils/sidebar';
+} from '../../../utils/glossary';
+import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -81,6 +81,7 @@ test.describe.skip('Delete Glossary with Tagged Assets', () => {
 
     // Verify glossary term tag is present on the table (in glossary-container)
     const glossaryContainer = page.getByTestId('glossary-container');
+
     await expect(glossaryContainer).toBeVisible();
     await expect(
       glossaryContainer.getByText(glossaryTerm.responseData.displayName)
@@ -249,6 +250,7 @@ test.describe('Delete Term with Tagged Assets', () => {
 
     // Verify glossary term tag is present on the table (in KnowledgePanel)
     const glossaryTermsPanel = page.getByTestId('KnowledgePanel.GlossaryTerms');
+
     await expect(glossaryTermsPanel).toBeVisible();
     await expect(
       glossaryTermsPanel.getByText(glossaryTerm.responseData.displayName)
@@ -296,6 +298,7 @@ test.describe('Delete Term with Tagged Assets', () => {
     const termText = page
       .getByTestId('KnowledgePanel.GlossaryTerms')
       .getByText(glossaryTerm.responseData.displayName);
+
     await expect(termText).not.toBeVisible();
   });
 });
@@ -381,7 +384,10 @@ test.describe('Delete Term with Children and Tagged Assets', () => {
     // Check table1 has parent term tag
     await tableEntity1.visitEntityPage(page);
     await page.waitForLoadState('networkidle');
-    const glossaryTermsPanel1 = page.getByTestId('KnowledgePanel.GlossaryTerms');
+    const glossaryTermsPanel1 = page.getByTestId(
+      'KnowledgePanel.GlossaryTerms'
+    );
+
     await expect(glossaryTermsPanel1).toBeVisible();
     await expect(
       glossaryTermsPanel1.getByText(parentTerm.responseData.displayName)
@@ -391,7 +397,10 @@ test.describe('Delete Term with Children and Tagged Assets', () => {
     await redirectToHomePage(page);
     await tableEntity2.visitEntityPage(page);
     await page.waitForLoadState('networkidle');
-    const glossaryTermsPanel2 = page.getByTestId('KnowledgePanel.GlossaryTerms');
+    const glossaryTermsPanel2 = page.getByTestId(
+      'KnowledgePanel.GlossaryTerms'
+    );
+
     await expect(glossaryTermsPanel2).toBeVisible();
     await expect(
       glossaryTermsPanel2.getByText(childTerm.responseData.displayName)
@@ -436,6 +445,7 @@ test.describe('Delete Term with Children and Tagged Assets', () => {
     await redirectToHomePage(page);
     await tableEntity1.visitEntityPage(page);
     await page.waitForLoadState('networkidle');
+
     await expect(
       page
         .getByTestId('KnowledgePanel.GlossaryTerms')
@@ -446,6 +456,7 @@ test.describe('Delete Term with Children and Tagged Assets', () => {
     await redirectToHomePage(page);
     await tableEntity2.visitEntityPage(page);
     await page.waitForLoadState('networkidle');
+
     await expect(
       page
         .getByTestId('KnowledgePanel.GlossaryTerms')

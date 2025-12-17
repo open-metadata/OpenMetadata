@@ -11,26 +11,26 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { SidebarItem } from '../../constant/sidebar';
-import { Domain } from '../../support/domain/Domain';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { TeamClass } from '../../support/team/TeamClass';
-import { UserClass } from '../../support/user/UserClass';
+import { SidebarItem } from '../../../constant/sidebar';
+import { Domain } from '../../../support/domain/Domain';
+import { EntityTypeEndpoint } from '../../../support/entity/Entity.interface';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { TeamClass } from '../../../support/team/TeamClass';
+import { UserClass } from '../../../support/user/UserClass';
 import {
   createNewPage,
   descriptionBox,
   redirectToHomePage,
-} from '../../utils/common';
-import { addMultiOwner } from '../../utils/entity';
+} from '../../../utils/common';
+import { addMultiOwner } from '../../../utils/entity';
 import {
   addMultiOwnerInDialog,
   addTeamAsReviewer,
   selectActiveGlossary,
-} from '../../utils/glossary';
-import { sidebarClick } from '../../utils/sidebar';
-import { performUserLogin } from '../../utils/user';
+} from '../../../utils/glossary';
+import { sidebarClick } from '../../../utils/sidebar';
+import { performUserLogin } from '../../../utils/user';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',

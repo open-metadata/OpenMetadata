@@ -11,24 +11,24 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { SidebarItem } from '../../constant/sidebar';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
+import { SidebarItem } from '../../../constant/sidebar';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { UserClass } from '../../../support/user/UserClass';
+import { performAdminLogin } from '../../../utils/admin';
 import {
   createNewPage,
   descriptionBox,
   redirectToHomePage,
-} from '../../utils/common';
+} from '../../../utils/common';
 import {
   confirmationDragAndDropGlossary,
   dragAndDropTerm,
   performExpandAll,
   selectActiveGlossary,
-} from '../../utils/glossary';
-import { sidebarClick } from '../../utils/sidebar';
-import { performUserLogin } from '../../utils/user';
+} from '../../../utils/glossary';
+import { sidebarClick } from '../../../utils/sidebar';
+import { performUserLogin } from '../../../utils/user';
 
 test.describe('Term Status Transitions', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });

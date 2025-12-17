@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { SidebarItem } from '../../constant/sidebar';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { selectActiveGlossary } from '../../utils/glossary';
-import { sidebarClick } from '../../utils/sidebar';
+import { SidebarItem } from '../../../constant/sidebar';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { createNewPage, redirectToHomePage } from '../../../utils/common';
+import { selectActiveGlossary } from '../../../utils/glossary';
+import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',

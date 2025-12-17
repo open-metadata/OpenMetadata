@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../utils/common';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { createNewPage } from '../../../utils/common';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
