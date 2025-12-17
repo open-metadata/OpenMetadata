@@ -1125,7 +1125,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
 
     baseQueryBuilder.minimumShouldMatch(1);
-    requestBuilder.query(baseQueryBuilder.build());
+    Query originalQuery = baseQueryBuilder.build();
+    requestBuilder.query(originalQuery);
 
     // Add fqnParts aggregation to fetch parent terms
     requestBuilder.aggregation(
@@ -1150,12 +1151,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           parentTermQueries.add(matchQuery);
         }
 
-        // Replace the query entirely with parent term queries (not combine)
-        Query parentTermQuery =
+        // Combine the original query with parent term queries to preserve relevance scores
+        Query combinedQuery =
             Query.of(
                 q ->
                     q.bool(
                         b -> {
+                          // Add the original query as a should clause to preserve high scores
+                          b.should(originalQuery);
+                          // Add parent term queries as should clauses to fetch hierarchy
                           parentTermQueries.forEach(b::should);
                           if (indexName.equalsIgnoreCase(glossaryTermIndex)) {
                             b.must(m -> m.match(ma -> ma.field("entityStatus").query("Approved")));
@@ -1163,11 +1167,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                           b.minimumShouldMatch("1");
                           return b;
                         }));
-        requestBuilder.query(parentTermQuery);
+        requestBuilder.query(combinedQuery);
       }
     }
 
-    // Add sorting by fullyQualifiedName for consistent hierarchy ordering
+    // Add sorting by score first for relevance, then by fullyQualifiedName for consistent hierarchy
+    // ordering
+    requestBuilder.sort("_score", SortOrder.Desc, null);
     requestBuilder.sort("fullyQualifiedName", SortOrder.Asc, "keyword");
 
     return requestBuilder;
