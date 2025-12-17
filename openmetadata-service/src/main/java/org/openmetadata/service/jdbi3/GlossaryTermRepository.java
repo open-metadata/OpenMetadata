@@ -47,8 +47,10 @@ import com.google.gson.Gson;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -91,6 +93,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -1766,5 +1769,40 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             .getGlossaryTermCountIgnoreCase(
                 entity.getGlossary().getFullyQualifiedName(), entity.getName())
         > 0;
+  }
+
+  @Override
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    Fields fields =
+        getFields("owners,reviewers,tags,relatedTerms,synonyms,references,extension,parent");
+    GlossaryTerm glossaryTerm = getByName(null, name, fields);
+    GlossaryRepository glossaryRepository =
+        (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
+    Glossary glossary =
+        glossaryRepository.get(null, glossaryTerm.getGlossary().getId(), Fields.EMPTY_FIELDS);
+
+    List<GlossaryTerm> terms;
+    if (recursive) {
+      terms = listAllForCSV(fields, glossaryTerm.getFullyQualifiedName());
+    } else {
+      terms = new ArrayList<>();
+      terms.add(glossaryTerm);
+    }
+
+    terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    return new GlossaryRepository.GlossaryCsv(glossary, user).exportCsv(terms);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    GlossaryTerm glossaryTerm = getByName(null, name, Fields.EMPTY_FIELDS);
+    GlossaryRepository glossaryRepository =
+        (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
+    Glossary glossary =
+        glossaryRepository.get(null, glossaryTerm.getGlossary().getId(), Fields.EMPTY_FIELDS);
+
+    GlossaryRepository.GlossaryCsv glossaryCsv = new GlossaryRepository.GlossaryCsv(glossary, user);
+    return glossaryCsv.importCsv(csv, dryRun);
   }
 }
