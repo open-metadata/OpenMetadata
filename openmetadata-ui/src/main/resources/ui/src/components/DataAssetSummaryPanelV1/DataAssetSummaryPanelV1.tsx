@@ -81,7 +81,7 @@ export const DataAssetSummaryPanelV1 = ({
   onDescriptionUpdate,
   onLinkClick,
   lineageData,
-  isLineageLoading = true,
+  isLineageLoading = false,
   onLineageClick,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
@@ -180,7 +180,12 @@ export const DataAssetSummaryPanelV1 = ({
         };
       }
 
-      if (isUndefined(lineageData) || lineageData === null || isEmpty(dataAsset.fullyQualifiedName)) {
+      if (
+        isLineageLoading ||
+        isUndefined(lineageData) ||
+        lineageData === null ||
+        isEmpty(dataAsset.fullyQualifiedName)
+      ) {
         return {
           upstreamCount: 0,
           downstreamCount: 0,
@@ -206,7 +211,7 @@ export const DataAssetSummaryPanelV1 = ({
         downstreamCount: downstreamNodes.length,
         shouldShowLineageSection: true,
       };
-    }, [lineageData, entityType, dataAsset.fullyQualifiedName]);
+    }, [lineageData, entityType, dataAsset.fullyQualifiedName, isLineageLoading]);
 
   const fetchIncidentCount = useCallback(async () => {
     if (

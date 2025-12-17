@@ -258,18 +258,21 @@ export default function EntitySummaryPanel({
   }, [entityType]);
 
   const fetchLineageData = useCallback(async () => {
-    const fqn = entityDetails?.details?.fullyQualifiedName;
+    const currentFqn = entityDetails?.details?.fullyQualifiedName;
 
-    if (!fqn || !entityType) {
+    if (!currentFqn || !entityType) {
       setIsLineageLoading(false);
       setLineageData(null);
+
       return;
     }
 
     try {
+      // Mark lineage as loading for the *current* entity.
       setIsLineageLoading(true);
+
       const response = await getLineageDataByFQN({
-        fqn,
+        fqn: currentFqn,
         entityType,
         config: {
           // When called from lineage view, the parent component passes the user's configured depths.
@@ -279,12 +282,25 @@ export default function EntitySummaryPanel({
           pipelineViewMode: pipelineViewMode ?? PipelineViewMode.Node,
         },
       });
+
+      // If the user switched to another entity while this request was in-flight,
+      // ignore this stale response so we don't overwrite the newest lineage state.
+      if (entityDetails?.details?.fullyQualifiedName !== currentFqn) {
+        return;
+      }
+
       setLineageData(response);
     } catch (error) {
-      showErrorToast(error as AxiosError);
-      setLineageData(null);
+      // Only surface errors for the active entity.
+      if (entityDetails?.details?.fullyQualifiedName === currentFqn) {
+        showErrorToast(error as AxiosError);
+        setLineageData(null);
+      }
     } finally {
-      setIsLineageLoading(false);
+      // Avoid toggling the loader for an entity that is no longer active.
+      if (entityDetails?.details?.fullyQualifiedName === currentFqn) {
+        setIsLineageLoading(false);
+      }
     }
   }, [
     entityDetails?.details?.fullyQualifiedName,
@@ -403,6 +419,12 @@ export default function EntitySummaryPanel({
   // Reset activeTab to OVERVIEW when entity changes
   useEffect(() => {
     setActiveTab(EntityRightPanelTab.OVERVIEW);
+  }, [entityDetails?.details?.id]);
+
+  // Reset lineage data when entity changes to prevent stale data
+  useEffect(() => {
+    setLineageData(null);
+    setIsLineageLoading(false);
   }, [entityDetails?.details?.id]);
 
   useEffect(() => {
