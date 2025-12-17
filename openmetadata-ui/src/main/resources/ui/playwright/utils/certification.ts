@@ -11,31 +11,15 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { setClassificationDisabled, setTagDisabledByFqn } from './tag';
 
-export const setTagDisabled = async (
-  apiContext: APIRequestContext,
-  tagId: string,
-  disabled: boolean
-) => {
-  await apiContext.patch(`/api/v1/tags/${tagId}`, {
-    data: [{ op: disabled ? 'add' : 'remove', path: '/disabled', value: true }],
-    headers: { 'Content-Type': 'application/json-patch+json' },
-  });
-};
+export { setTagDisabled, setTagDisabledByFqn } from './tag';
 
 export const setCertificationClassificationDisabled = async (
   apiContext: APIRequestContext,
   disabled: boolean
 ) => {
-  const response = await apiContext.get(
-    '/api/v1/classifications/name/Certification'
-  );
-  const classification = await response.json();
-
-  await apiContext.patch(`/api/v1/classifications/${classification.id}`, {
-    data: [{ op: disabled ? 'add' : 'remove', path: '/disabled', value: true }],
-    headers: { 'Content-Type': 'application/json-patch+json' },
-  });
+  await setClassificationDisabled(apiContext, 'Certification', disabled);
 };
 
 export const openCertificationDropdown = async (page: Page) => {
@@ -62,26 +46,6 @@ export const SYSTEM_CERTIFICATION_TAGS = [
   'Certification.Silver',
   'Certification.Bronze',
 ];
-
-export const getTagByFqn = async (
-  apiContext: APIRequestContext,
-  tagFqn: string
-) => {
-  const response = await apiContext.get(
-    `/api/v1/tags/name/${encodeURIComponent(tagFqn)}`
-  );
-
-  return await response.json();
-};
-
-export const setTagDisabledByFqn = async (
-  apiContext: APIRequestContext,
-  tagFqn: string,
-  disabled: boolean
-) => {
-  const tag = await getTagByFqn(apiContext, tagFqn);
-  await setTagDisabled(apiContext, tag.id, disabled);
-};
 
 export const setAllSystemCertificationTagsDisabled = async (
   apiContext: APIRequestContext,
