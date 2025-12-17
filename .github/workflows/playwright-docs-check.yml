@@ -1,0 +1,75 @@
+name: Verify Playwright Documentation
+
+on:
+  pull_request:
+    paths:
+      - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/**/*.spec.ts'
+      - 'openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**'
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  verify-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'openmetadata-ui/src/main/resources/ui/package-lock.json'
+
+      - name: Install Dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        # We need browsers installed for 'playwright test --list' to work in some versions,
+        # although strictly speaking just listing shouldn't require binaries if configured right.
+        # Adding just in case.
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npx playwright install --with-deps
+
+      - name: Generate Documentation
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: node playwright/doc-generator/generate.js
+
+      - name: Check for Uncommitted Changes
+        id: check_changes
+        run: |
+          if [[ -n $(git status --porcelain openmetadata-ui/src/main/resources/ui/playwright/docs) ]]; then
+            echo "changes_exist=true" >> $GITHUB_OUTPUT
+            echo "❌ Documentation is outdated. Fixing it automatically..."
+          else
+            echo "changes_exist=false" >> $GITHUB_OUTPUT
+            echo "✅ Documentation is up to date."
+          fi
+
+      - name: Commit and Push Fixes
+        if: steps.check_changes.outputs.changes_exist == 'true'
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add playwright/docs
+          git commit -m "docs: auto-generate playwright documentation"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Comment on PR
+        if: steps.check_changes.outputs.changes_exist == 'true'
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **Playwright Documentation Updated** 🤖
+            
+            I detected outdated documentation and have automatically pushed a commit to fix it. 
+            No further action is required.
