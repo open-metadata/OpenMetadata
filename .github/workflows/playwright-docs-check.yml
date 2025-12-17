@@ -22,12 +22,12 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: 'openmetadata-ui/src/main/resources/ui/package-lock.json'
+          cache: 'yarn'
+          cache-dependency-path: 'openmetadata-ui/src/main/resources/ui/yarn.lock'
 
       - name: Install Dependencies
         working-directory: openmetadata-ui/src/main/resources/ui
-        run: npm ci
+        run: yarn install --frozen-lockfile
 
       - name: Install Playwright Browsers
         # We need browsers installed for 'playwright test --list' to work in some versions,
