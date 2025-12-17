@@ -11,19 +11,20 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
+import { Task } from '../../../generated/entity/data/pipeline';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
+import { TagLabel } from '../../../generated/type/tagLabel';
 
-export interface ColumnDetailPanelProps {
-  column: Column | null;
+export type ColumnOrTask = Column | Task;
+
+export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
+  column: T | null;
   tableFqn: string;
   isOpen: boolean;
   onClose: () => void;
-  onColumnUpdate?: (updatedColumn: Column) => void;
-  updateColumnDescription?: (
-    fqn: string,
-    description: string
-  ) => Promise<Column>;
-  updateColumnTags?: (fqn: string, tags: Column['tags']) => Promise<Column>;
+  onColumnUpdate?: (updatedColumn: T) => void;
+  updateColumnDescription?: (fqn: string, description: string) => Promise<T>;
+  updateColumnTags?: (fqn: string, tags: TagLabel[]) => Promise<T>;
   hasEditPermission?: {
     tags?: boolean;
     glossaryTerms?: boolean;
@@ -31,8 +32,8 @@ export interface ColumnDetailPanelProps {
     viewAllPermission?: boolean;
     customProperties?: boolean;
   };
-  allColumns?: Column[];
-  onNavigate?: (column: Column, index?: number) => void;
+  allColumns?: T[];
+  onNavigate?: (column: T, index?: number) => void;
   tableConstraints?: TableConstraint[];
   entityType?: EntityType;
 }

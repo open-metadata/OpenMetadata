@@ -122,6 +122,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     hasDescriptionEditAccess,
     hasTagEditAccess,
     hasGlossaryTermEditAccess,
+    hasCustomPropertiesViewAccess,
   } = useMemo(
     () => ({
       hasDescriptionEditAccess:
@@ -129,6 +130,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       hasTagEditAccess: permissions.EditAll || permissions.EditTags,
       hasGlossaryTermEditAccess:
         permissions.EditAll || permissions.EditGlossaryTerms,
+      hasCustomPropertiesViewAccess:
+        permissions.ViewAll || permissions.ViewCustomFields,
     }),
     [permissions]
   );
@@ -524,7 +527,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           glossaryTerms: hasGlossaryTermEditAccess,
           description: hasDescriptionEditAccess,
           viewAllPermission: permissions.ViewAll,
-          customProperties: false,
+          customProperties: hasCustomPropertiesViewAccess,
         }}
         isOpen={isColumnDetailOpen}
         tableFqn={entityFqn}
@@ -542,8 +545,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
               schema?.schemaFields ?? [],
               fqn
             );
+
             return updatedField as unknown as Column;
           }
+
           return selectedColumn as Column;
         }}
         updateColumnTags={async (fqn, tags) => {
@@ -556,8 +561,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
               schema?.schemaFields ?? [],
               fqn
             );
+
             return updatedField as unknown as Column;
           }
+
           return selectedColumn as Column;
         }}
         onClose={handleCloseColumnDetail}

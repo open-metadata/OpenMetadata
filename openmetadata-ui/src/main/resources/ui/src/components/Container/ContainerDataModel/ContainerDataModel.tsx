@@ -62,6 +62,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   hasDescriptionEditAccess,
   hasTagEditAccess,
   hasGlossaryTermEditAccess,
+  hasCustomPropertiesEditAccess,
   isReadOnly,
   onUpdate,
   entityFqn,
@@ -336,7 +337,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           glossaryTerms: hasGlossaryTermEditAccess,
           description: hasDescriptionEditAccess,
           viewAllPermission: false,
-          customProperties: false,
+          customProperties: hasCustomPropertiesEditAccess,
         }}
         isOpen={isColumnDetailOpen}
         tableFqn={entityFqn}
@@ -353,6 +354,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             containerDataModel?.columns ?? [],
             fqn
           );
+
           return updatedColumn as Column;
         }}
         updateColumnTags={async (fqn, tags) => {
@@ -364,6 +366,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             containerDataModel?.columns ?? [],
             fqn
           );
+
           return updatedColumn as Column;
         }}
         onClose={handleCloseColumnDetail}

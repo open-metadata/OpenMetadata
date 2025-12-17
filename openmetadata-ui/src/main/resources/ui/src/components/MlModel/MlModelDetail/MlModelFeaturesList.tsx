@@ -59,6 +59,11 @@ const MlModelFeaturesList = () => {
     [permissions]
   );
 
+  const hasViewCustomPropertiesPermission = useMemo(
+    () => permissions.ViewCustomFields || permissions.ViewAll,
+    [permissions]
+  );
+
   const handleFeaturesUpdate = useCallback(
     async (features: MlFeature[]) => {
       await onUpdate({ ...data, mlFeatures: features });
@@ -329,7 +334,7 @@ const MlModelFeaturesList = () => {
             glossaryTerms: hasEditGlossaryTermPermission,
             description: permissions.EditAll || permissions.EditDescription,
             viewAllPermission: permissions.ViewAll,
-            customProperties: false,
+            customProperties: hasViewCustomPropertiesPermission,
           }}
           isOpen={isColumnDetailOpen}
           tableFqn={entityFqn}
@@ -350,6 +355,7 @@ const MlModelFeaturesList = () => {
             const updatedFeature = updatedFeatures.find(
               (f) => f.fullyQualifiedName === fqn
             );
+
             return updatedFeature as unknown as Column;
           }}
           updateColumnTags={async (fqn, tags) => {
@@ -369,6 +375,7 @@ const MlModelFeaturesList = () => {
             const updatedFeature = updatedFeatures.find(
               (f) => f.fullyQualifiedName === fqn
             );
+
             return updatedFeature as unknown as Column;
           }}
           onClose={handleCloseColumnDetail}

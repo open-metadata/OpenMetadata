@@ -72,6 +72,7 @@ const props = {
   hasDescriptionEditAccess: true,
   hasTagEditAccess: true,
   hasGlossaryTermEditAccess: true,
+  hasCustomPropertiesEditAccess: true,
   isReadOnly: false,
   onUpdate: jest.fn(),
   entityFqn: 's3_storage_sample.departments',
@@ -252,8 +253,9 @@ describe('ContainerDataModel', () => {
       <MemoryRouter>
         <ContainerDataModel
           {...props}
-          isReadOnly
+          hasCustomPropertiesEditAccess={false}
           hasDescriptionEditAccess={false}
+          isReadOnly
         />
       </MemoryRouter>
     );

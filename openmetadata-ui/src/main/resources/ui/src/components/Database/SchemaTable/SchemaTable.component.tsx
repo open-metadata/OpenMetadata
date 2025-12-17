@@ -161,7 +161,7 @@ const SchemaTable = () => {
     editTagsPermission,
     editGlossaryTermsPermission,
     editDescriptionPermission,
-    editCustomAttributePermission,
+    viewCustomPropertiesPermission,
     editDisplayNamePermission,
     viewAllPermission,
   } = useMemo(
@@ -174,9 +174,8 @@ const SchemaTable = () => {
       editGlossaryTermsPermission:
         (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
         !deleted,
-      editCustomAttributePermission:
-        (tablePermissions.EditCustomFields || tablePermissions.EditAll) &&
-        !deleted,
+      viewCustomPropertiesPermission:
+        tablePermissions.ViewAll || tablePermissions.ViewCustomFields,
       editAllPermission: tablePermissions.EditAll && !deleted,
       editLineagePermission:
         (tablePermissions.EditAll || tablePermissions.EditLineage) && !deleted,
@@ -512,14 +511,14 @@ const SchemaTable = () => {
                   tableConstraints,
                 })}
                 <Typography.Text
-                  onClick={() => handleColumnClick(record)}
                   className={classNames(
                     'm-b-0 d-block break-word cursor-pointer',
                     {
                       'text-grey-600': !isEmpty(displayName),
                     }
                   )}
-                  data-testid="column-name">
+                  data-testid="column-name"
+                  onClick={() => handleColumnClick(record)}>
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
               </div>
@@ -834,7 +833,7 @@ const SchemaTable = () => {
           glossaryTerms: editGlossaryTermsPermission,
           description: editDescriptionPermission,
           viewAllPermission: viewAllPermission,
-          customProperties: editCustomAttributePermission,
+          customProperties: viewCustomPropertiesPermission,
         }}
         isOpen={isColumnDetailOpen}
         tableConstraints={table?.tableConstraints}

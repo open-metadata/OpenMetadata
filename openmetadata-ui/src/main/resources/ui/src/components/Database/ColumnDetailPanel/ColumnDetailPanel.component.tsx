@@ -22,7 +22,7 @@ import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
 import { ReactComponent as ArrowUp } from '../../../assets/svg/up-arrow-icon.svg';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
-import { TagSource } from '../../../generated/type/tagLabel';
+import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
@@ -50,11 +50,16 @@ import Loader from '../../common/Loader/Loader';
 import TagsSection from '../../common/TagsSection/TagsSection';
 import {
   ColumnDetailPanelProps,
+  ColumnOrTask,
   TestCaseStatusCounts,
 } from './ColumnDetailPanel.interface';
 import './ColumnDetailPanel.less';
 
-export const ColumnDetailPanel = ({
+const isColumn = (item: ColumnOrTask | null): item is Column => {
+  return item !== null && 'dataType' in item;
+};
+
+export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   column,
   isOpen,
   onClose,
@@ -66,7 +71,7 @@ export const ColumnDetailPanel = ({
   onNavigate,
   tableConstraints = [],
   entityType = EntityType.TABLE,
-}: ColumnDetailPanelProps) => {
+}: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
   const [isDescriptionLoading, setIsDescriptionLoading] = useState(false);
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
@@ -120,7 +125,7 @@ export const ColumnDetailPanel = ({
 
   // Flatten all columns including nested children for accurate counting and navigation
   const flattenedColumns = useMemo(
-    () => flattenColumns(allColumns),
+    () => flattenColumns(allColumns as Column[]),
     [allColumns]
   );
 
@@ -129,6 +134,7 @@ export const ColumnDetailPanel = ({
     if (!column?.fullyQualifiedName) {
       return 0;
     }
+
     return flattenedColumns.findIndex(
       (col) => col.fullyQualifiedName === column.fullyQualifiedName
     );
@@ -161,7 +167,7 @@ export const ColumnDetailPanel = ({
         );
 
         if (onColumnUpdate) {
-          onColumnUpdate(response);
+          onColumnUpdate(response as T);
         }
       } catch (error) {
         showErrorToast(
@@ -178,7 +184,7 @@ export const ColumnDetailPanel = ({
   );
 
   const handleTagsUpdate = useCallback(
-    async (updatedTags: Column['tags']) => {
+    async (updatedTags: TagLabel[]) => {
       if (!column?.fullyQualifiedName) {
         return;
       }
@@ -190,10 +196,13 @@ export const ColumnDetailPanel = ({
         // Use provided update function or fall back to default table API
         const updateFn =
           updateColumnTags ||
-          ((fqn: string, tags: Column['tags']) =>
-            updateTableColumn(fqn, { tags }));
+          ((fqn: string, tags: TagLabel[]) =>
+            updateTableColumn(fqn, { tags }) as Promise<T>);
 
-        const response = await updateFn(column.fullyQualifiedName, allTags);
+        const response = await updateFn(
+          column.fullyQualifiedName,
+          allTags ?? []
+        );
 
         showSuccessToast(
           t('server.update-entity-success', {
@@ -221,7 +230,7 @@ export const ColumnDetailPanel = ({
   );
 
   const handleGlossaryTermsUpdate = useCallback(
-    async (updatedGlossaryTerms: Column['tags']) => {
+    async (updatedGlossaryTerms: TagLabel[]) => {
       if (!column?.fullyQualifiedName) {
         return;
       }
@@ -235,10 +244,13 @@ export const ColumnDetailPanel = ({
         // Use provided update function or fall back to default table API
         const updateFn =
           updateColumnTags ||
-          ((fqn: string, tags: Column['tags']) =>
-            updateTableColumn(fqn, { tags }));
+          ((fqn: string, tags: TagLabel[]) =>
+            updateTableColumn(fqn, { tags }) as Promise<T>);
 
-        const response = await updateFn(column.fullyQualifiedName, allTags);
+        const response = await updateFn(
+          column.fullyQualifiedName,
+          allTags ?? []
+        );
 
         showSuccessToast(
           t('server.update-entity-success', {
@@ -294,10 +306,13 @@ export const ColumnDetailPanel = ({
         ? actualColumnIndex - 1
         : actualColumnIndex + 1;
       const targetColumn = flattenedColumns[targetIndex];
-      const originalIndex = findOriginalColumnIndex(targetColumn, allColumns);
+      const originalIndex = findOriginalColumnIndex(
+        targetColumn,
+        allColumns as Column[]
+      );
 
       onNavigate(
-        targetColumn,
+        targetColumn as T,
         originalIndex >= 0 ? originalIndex : targetIndex
       );
     },
@@ -430,6 +445,7 @@ export const ColumnDetailPanel = ({
     if (!column?.name) {
       return false;
     }
+
     return tableConstraints.some(
       (constraint: TableConstraint) =>
         constraint.constraintType === 'PRIMARY_KEY' &&
@@ -469,7 +485,7 @@ export const ColumnDetailPanel = ({
           </div>
         </Tooltip>
         <div className="d-flex items-center gap-2">
-          {getDataTypeDisplay(column) && (
+          {isColumn(column) && getDataTypeDisplay(column) && (
             <Chip
               className="data-type-chip"
               label={getDataTypeDisplay(column) || ''}
@@ -477,7 +493,7 @@ export const ColumnDetailPanel = ({
               variant="outlined"
             />
           )}
-          {isPrimaryKey && (
+          {isColumn(column) && isPrimaryKey && (
             <Chip
               className="data-type-chip"
               icon={<KeyIcon height={12} width={12} />}

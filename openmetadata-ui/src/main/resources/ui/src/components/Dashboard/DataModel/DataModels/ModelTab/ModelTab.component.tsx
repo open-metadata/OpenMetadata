@@ -147,6 +147,7 @@ const ModelTab = () => {
     hasEditTagsPermission,
     hasEditGlossaryTermPermission,
     editDisplayNamePermission,
+    viewCustomPropertiesPermission,
   } = useMemo(() => {
     return {
       hasEditDescriptionPermission:
@@ -156,6 +157,8 @@ const ModelTab = () => {
         permissions.EditAll || permissions.EditGlossaryTerms,
       editDisplayNamePermission:
         (permissions.EditDisplayName || permissions.EditAll) && !deleted,
+      viewCustomPropertiesPermission:
+        permissions.ViewAll || permissions.ViewCustomFields,
     };
   }, [permissions]);
 
@@ -486,7 +489,7 @@ const ModelTab = () => {
           glossaryTerms: hasEditGlossaryTermPermission,
           description: hasEditDescriptionPermission,
           viewAllPermission: permissions.ViewAll,
-          customProperties: false,
+          customProperties: viewCustomPropertiesPermission,
         }}
         isOpen={isColumnDetailOpen}
         tableFqn={entityFqn ?? ''}
