@@ -71,6 +71,7 @@ import {
   assignTag,
   assignTier,
 } from '../../utils/entity';
+import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -2331,9 +2332,11 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Navigate to persona details
-              await page
-                .getByTestId(`persona-details-card-${persona.data.name}`)
-                .click();
+              await navigateToPersonaWithPagination(
+                page,
+                persona.data.name,
+                true
+              );
               await page.getByRole('tab', { name: 'Users' }).click();
 
               // Add user to persona

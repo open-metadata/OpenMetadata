@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
@@ -129,12 +129,12 @@ export const deleteEdge = async (
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
   await page
-    .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
+    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
     .dispatchEvent('click');
 
-  await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
+  await page.getByTestId('add-pipeline').dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(page.getByRole('dialog').first()).toBeVisible();
 
   await page
     .locator(
@@ -419,10 +419,9 @@ export const applyPipelineFromModal = async (
   );
 
   await page
-    .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
-    .click({ force: true });
-
-  await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
+    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
+    .dispatchEvent('click');
+  await page.getByTestId('add-pipeline').dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*`
@@ -785,4 +784,31 @@ export const verifyLineageConfig = async (page: Page) => {
   const saveRes = page.waitForResponse('/api/v1/lineage/getLineage?**');
   await page.getByText('OK').click();
   await saveRes;
+};
+
+export const connectEdgeBetweenNodesViaAPI = (
+  apiContext: APIRequestContext,
+  fromEntity: { id: string; type: string },
+  toEntity: { id: string; type: string },
+  columnsLineage: Array<{ fromColumns: string[]; toColumn: string }>
+) => {
+  return apiContext.put('/api/v1/lineage/', {
+    data: {
+      edge: {
+        fromEntity,
+        toEntity,
+        lineageDetails: { columnsLineage, description: '' },
+      },
+    },
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+};
+
+export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
+  await page
+    .getByTestId(`lineage-node-${tableFqn}`)
+    .getByTestId('lineage-filter-button')
+    .click();
 };

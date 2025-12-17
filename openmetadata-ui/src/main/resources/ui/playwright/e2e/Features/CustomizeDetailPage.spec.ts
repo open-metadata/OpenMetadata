@@ -772,4 +772,114 @@ test.describe('Persona customization', () => {
       }
     );
   });
+
+  test("Domain - customize tab label should only render if it's customized by user", async ({
+    adminPage,
+    userPage,
+  }) => {
+    let entity:
+      | {
+          create: (context: APIRequestContext) => Promise<unknown>;
+          visitEntityPage: (page: Page) => Promise<unknown>;
+        }
+      | undefined = undefined;
+
+    await test.step('pre-requisite', async () => {
+      const { apiContext } = await getApiContext(adminPage);
+      // Ensure entity is created
+      entity = getCustomizeDetailsEntity(ECustomizedGovernance.DOMAIN);
+      await entity.create(apiContext);
+    });
+
+    await test.step('apply tab label customization for Domain', async () => {
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      await personaListResponse;
+
+      // Need to find persona card and click as the list might get paginated
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
+
+      await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+
+      await adminPage.getByText('Governance').click();
+      await adminPage.getByText('Domain', { exact: true }).click();
+
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        adminPage
+          .getByTestId('customize-tab-card')
+          .getByTestId(`tab-documentation`)
+      ).toBeVisible();
+
+      await adminPage
+        .getByTestId('customize-tab-card')
+        .getByTestId(`tab-documentation`)
+        .click();
+
+      await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
+
+      await expect(adminPage.getByRole('dialog')).toBeVisible();
+
+      await adminPage.getByRole('dialog').getByRole('textbox').clear();
+      await adminPage
+        .getByRole('dialog')
+        .getByRole('textbox')
+        .fill('Access Policy');
+
+      await adminPage
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Ok' })
+        .click();
+
+      await expect(
+        adminPage
+          .getByTestId('customize-tab-card')
+          .getByTestId(`tab-documentation`)
+      ).toHaveText('Access Policy');
+
+      await adminPage.getByTestId('save-button').click();
+
+      await toastNotification(
+        adminPage,
+        /^Page layout (created|updated) successfully\.$/
+      );
+    });
+
+    await test.step(
+      'validate applied label change for Domain Documentation tab',
+      async () => {
+        await redirectToHomePage(userPage);
+
+        const domainResponse = userPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/domains/name/') &&
+            response.status() === 200
+        );
+        await entity?.visitEntityPage(userPage);
+        await domainResponse;
+
+        await userPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Verify the custom tab name is displayed
+        await expect(
+          userPage.getByRole('tab', { name: 'Access Policy' })
+        ).toBeVisible();
+
+        // Verify other tabs still show default names
+        await expect(
+          userPage.getByRole('tab', { name: 'Sub Domains' })
+        ).toBeVisible();
+
+        await expect(
+          userPage.getByRole('tab', { name: 'Data Products' })
+        ).toBeVisible();
+      }
+    );
+  });
 });

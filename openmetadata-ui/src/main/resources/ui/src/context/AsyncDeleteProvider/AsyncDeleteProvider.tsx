@@ -33,6 +33,8 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
     useState<Partial<AsyncDeleteJob>>();
   const asyncDeleteJobRef = useRef<Partial<AsyncDeleteJob>>();
 
+  const pendingDeleteCallbacks = useRef<Map<string, () => void>>(new Map());
+
   const handleOnAsyncEntityDeleteConfirm = async ({
     entityName,
     entityId,
@@ -41,6 +43,7 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
     prepareType,
     isRecursiveDelete,
     afterDeleteAction,
+    onDeleteFailure,
   }: DeleteWidgetAsyncFormFields) => {
     try {
       const response = await deleteAsyncEntity(
@@ -62,7 +65,13 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
             })
         );
 
+        onDeleteFailure?.();
+
         return;
+      }
+
+      if (response.jobId && onDeleteFailure) {
+        pendingDeleteCallbacks.current.set(response.jobId, onDeleteFailure);
       }
 
       setAsyncDeleteJob(response);
@@ -98,6 +107,11 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
             entity: response.entityName,
           })
       );
+
+      const failureCallback = pendingDeleteCallbacks.current.get(
+        response.jobId
+      );
+      failureCallback?.();
     }
 
     if (response.status === 'COMPLETED') {
@@ -107,6 +121,8 @@ const AsyncDeleteProvider = ({ children }: AsyncDeleteProviderProps) => {
         })
       );
     }
+
+    pendingDeleteCallbacks.current.delete(response.jobId);
   };
 
   const activityFeedContextValues = useMemo(() => {
