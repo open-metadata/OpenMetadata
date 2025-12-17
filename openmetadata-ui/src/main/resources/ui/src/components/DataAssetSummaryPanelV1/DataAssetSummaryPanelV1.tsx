@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -182,8 +182,7 @@ export const DataAssetSummaryPanelV1 = ({
 
       if (
         isLineageLoading ||
-        isUndefined(lineageData) ||
-        lineageData === null ||
+        isNil(lineageData) ||
         isEmpty(dataAsset.fullyQualifiedName)
       ) {
         return {

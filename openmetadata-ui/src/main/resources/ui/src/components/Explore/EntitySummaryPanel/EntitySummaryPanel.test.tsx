@@ -119,34 +119,14 @@ jest.mock('../../../hooks/useEntityRules', () => ({
   })),
 }));
 
-jest.mock('../../../utils/SearchClassBase', () => {
-  const actual = jest.requireActual('../../../utils/SearchClassBase');
-  const originalInstance = actual.default;
-  
-  // Use Object.assign to copy all properties and methods
-  const mockSearchClassBase = Object.assign({}, originalInstance);
-  
-  // Copy prototype methods
-  const prototype = Object.getPrototypeOf(originalInstance);
-  Object.getOwnPropertyNames(prototype).forEach((name) => {
-    if (name !== 'constructor' && typeof prototype[name] === 'function') {
-      mockSearchClassBase[name] = prototype[name].bind(originalInstance);
-    }
-  });
-  
-  // Override getEntityLink to handle null/undefined gracefully
-  mockSearchClassBase.getEntityLink = jest.fn().mockImplementation((entity) => {
-    if (!entity || !entity.entityType) {
-      return '';
-    }
-    return originalInstance.getEntityLink(entity);
-  });
-  
-  return {
-    __esModule: true,
-    default: mockSearchClassBase,
-  };
-});
+jest.mock('../../../utils/SearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityLink: jest.fn().mockReturnValue('/entity/link'),
+    getEntityIcon: jest.fn().mockReturnValue(<span>Icon</span>),
+    getEntitySummaryComponent: jest.fn().mockReturnValue(null),
+  },
+}));
 
 describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
