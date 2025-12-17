@@ -61,7 +61,7 @@ SQLAlchemy-Utils==0.42.0
 SQLAlchemy==1.4.54
 SecretStorage==3.4.0
 WTForms==3.2.1
-Werkzeug==3.0.3
+Werkzeug==2.2.3
 a2wsgi==1.10.10
 adal==1.2.7
 adlfs==2025.8.0
