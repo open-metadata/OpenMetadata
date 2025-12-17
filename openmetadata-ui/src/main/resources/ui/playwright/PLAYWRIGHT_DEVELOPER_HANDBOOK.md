@@ -1,5 +1,14 @@
 # OpenMetadata Playwright Testing Handbook
 
+## Table of Contents
+
+- [Testing Philosophy](#testing-philosophy)
+- [Test Standards to Follow](#test-standards-to-follow)
+- [API Setups for Test Data](#api-setups-for-test-data)
+- [Locator Priority Order](#locator-priority-order)
+
+---
+
 ## Testing Philosophy
 
 We adopt a user-centric approach to testing that focuses on behavior rather than implementation.
