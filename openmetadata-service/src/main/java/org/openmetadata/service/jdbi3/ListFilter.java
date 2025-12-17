@@ -90,7 +90,11 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
-    return assignee == null ? "" : "assignee = :assignee";
+    if (assignee != null) {
+      queryParams.put("assignee", assignee);
+      return "assignee = :assignee";
+    }
+    return "";
   }
 
   private String getCreatedByCondition() {
@@ -105,7 +109,11 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getWorkflowDefinitionIdCondition() {
     String workflowDefinitionId = queryParams.get("workflowDefinitionId");
-    return workflowDefinitionId == null ? "" : "workflowDefinitionId = :workflowDefinitionId";
+    if (workflowDefinitionId != null) {
+      queryParams.put("workflowDefinitionId", workflowDefinitionId);
+      return "workflowDefinitionId = :workflowDefinitionId";
+    }
+    return "";
   }
 
   private String getEntityLinkCondition() {
@@ -150,6 +158,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (alertType == null) {
       return "";
     } else {
+      queryParams.put("alertType", alertType);
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
         return "JSON_EXTRACT(json, '$.alertType') = :alertType";
       } else {
@@ -163,6 +172,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (notificationTemplate == null) {
       return "";
     } else {
+      queryParams.put("notificationTemplate", notificationTemplate);
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
         return "JSON_EXTRACT(json, '$.notificationTemplate.id') = :notificationTemplate";
       } else {
@@ -173,9 +183,11 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getTestCaseResolutionStatusType() {
     String testFailureStatus = queryParams.get("testCaseResolutionStatusType");
-    return testFailureStatus == null
-        ? ""
-        : "testCaseResolutionStatusType = :testCaseResolutionStatusType";
+    if (testFailureStatus != null) {
+      queryParams.put("testCaseResolutionStatusType", testFailureStatus);
+      return "testCaseResolutionStatusType = :testCaseResolutionStatusType";
+    }
+    return "";
   }
 
   public String getIncludeCondition(String tableName) {
@@ -214,6 +226,7 @@ public class ListFilter extends Filter<ListFilter> {
     }
     // Special handling for pipeline_entity - use entity_relationship join
     if (tableName != null && tableName.equals("pipeline_entity")) {
+      queryParams.put("service", service);
       String entityIdColumn = tableName + ".id";
       return String.format(
           "(EXISTS (SELECT 1 FROM entity_relationship er JOIN pipeline_service_entity pse ON er.fromId = pse.id WHERE er.toId = %s AND er.fromEntity = 'pipelineService' AND er.toEntity = 'pipeline' AND er.relation = 0 AND pse.name = :service))",
@@ -228,6 +241,7 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     }
     if (tableName != null && tableName.equals("pipeline_entity")) {
+      queryParams.put("serviceType", serviceType);
       return String.format(
           "JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.serviceType')) = :serviceType", tableName);
     }
@@ -249,8 +263,11 @@ public class ListFilter extends Filter<ListFilter> {
 
     if (NULL_PARAM.equals(domainId)) {
       String entityType = getQueryParam("entityType");
-      String entityTypeCondition =
-          nullOrEmpty(entityType) ? "" : "AND entity_relationship.toEntity = :entityType";
+      String entityTypeCondition = "";
+      if (!nullOrEmpty(entityType)) {
+        queryParams.put("entityType", entityType);
+        entityTypeCondition = "AND entity_relationship.toEntity = :entityType";
+      }
       return String.format(
           "(%s NOT IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' %s AND relation=10))",
           entityIdColumn, entityTypeCondition);
@@ -287,6 +304,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (tier == null || tier.isEmpty()) {
       return "";
     }
+    queryParams.put("tier", tier);
     String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
     return String.format(
         "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.tagFQN = :tier))",
@@ -315,7 +333,8 @@ public class ListFilter extends Filter<ListFilter> {
     if (directoryFqn == null) {
       return "";
     }
-    return "directoryFqn = :directory";
+    queryParams.put("directoryFqn", directoryFqn);
+    return "directoryFqn = :directoryFqn";
   }
 
   public String getSpreadsheetCondition(String tableName) {
@@ -330,6 +349,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (fileType == null) {
       return "";
     }
+    queryParams.put("fileType", fileType);
     return "fileType = :fileType";
   }
 
@@ -441,12 +461,15 @@ public class ListFilter extends Filter<ListFilter> {
     String type = getQueryParam("testCaseType");
 
     if (entityFQN != null) {
-      if (includeAllTests) {
-        queryParams.put("entityFQNLikePattern", escape(entityFQN) + Entity.SEPARATOR + "%");
-        conditions.add("(entityFQN LIKE :entityFQNLikePattern OR entityFQN = :entityFQN)");
-      } else {
-        conditions.add("entityFQN = :entityFQN");
-      }
+      // EntityLink gets validated in the resource layer
+      // EntityLink entityLinkParsed = EntityLink.parse(entityLink);
+      // filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
+      conditions.add(
+          includeAllTests
+              ? String.format(
+                  "(entityFQN LIKE '%s%s%%' OR entityFQN = '%s')",
+                  escape(entityFQN), Entity.SEPARATOR, escapeApostrophe(entityFQN))
+              : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN)));
     }
 
     if (testSuiteId != null) {
