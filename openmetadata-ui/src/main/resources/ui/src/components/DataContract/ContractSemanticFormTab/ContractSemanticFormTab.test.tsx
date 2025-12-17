@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
 import '@testing-library/jest-dom';
 import {

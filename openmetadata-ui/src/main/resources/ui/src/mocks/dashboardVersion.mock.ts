@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
- 
 
 import { DashboardVersionProp } from '../components/Dashboard/DashboardVersion/DashboardVersion.interface';
 import { Dashboard, DashboardType } from '../generated/entity/data/dashboard';

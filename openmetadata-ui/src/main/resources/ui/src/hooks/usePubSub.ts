@@ -34,7 +34,6 @@ export const useSub = <T = any>(
     return () => {
       emitter.off(event, callback);
     };
-     
   }, dependencies ?? []);
 
   return unsubscribe;

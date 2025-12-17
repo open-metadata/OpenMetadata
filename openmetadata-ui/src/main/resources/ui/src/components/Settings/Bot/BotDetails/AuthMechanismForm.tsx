@@ -106,7 +106,6 @@ const AuthMechanismForm: FC<Props> = ({
           config_value: scimConfig,
         });
       } catch (error) {
-         
         showErrorToast(error as AxiosError);
       }
     }

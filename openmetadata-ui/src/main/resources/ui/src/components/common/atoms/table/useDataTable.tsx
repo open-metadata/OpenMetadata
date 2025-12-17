@@ -101,9 +101,7 @@ export const useDataTable = <T extends { id: string }>(
                     isSelected={listing.isSelected(entity.id)}
                     key={entity.id}
                     onEntityClick={
-                      listing.actionHandlers.onEntityClick ||
-                       
-                      (() => {})
+                      listing.actionHandlers.onEntityClick || (() => {})
                     }
                     onSelect={listing.handleSelect}
                   />
@@ -119,9 +117,7 @@ export const useDataTable = <T extends { id: string }>(
                   isSelected: listing.isSelected(entity.id),
                   onSelect: listing.handleSelect,
                   onEntityClick:
-                    listing.actionHandlers.onEntityClick ||
-                     
-                    (() => {}),
+                    listing.actionHandlers.onEntityClick || (() => {}),
                   enableSelection,
                 });
 

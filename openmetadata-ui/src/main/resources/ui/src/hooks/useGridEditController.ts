@@ -400,7 +400,6 @@ export function useGridEditController({
       gridContainer.removeEventListener('mouseover', onMouseOver);
       window.removeEventListener('mouseup', onMouseUp);
     };
-     
   }, [gridContainer, isSelecting]);
 
   // Keyboard event handlers for range selection, undo/redo, and select all
