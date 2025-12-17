@@ -1157,10 +1157,19 @@ test.describe('Glossary tests', () => {
           name: glossaryTerm1.responseData.displayName,
         })
       ).toBeVisible();
+
+      await test.step('Delete glossary to verify broken relation', async () => {
+        await glossary1.delete(apiContext);
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary2.data.displayName);
+
+        // check .ant-alert-error is not visible
+        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+      });
     } finally {
       await glossaryTerm1.delete(apiContext);
       await glossaryTerm2.delete(apiContext);
-      await glossary1.delete(apiContext);
       await glossary2.delete(apiContext);
       await afterAction();
     }
@@ -1360,7 +1369,6 @@ test.describe('Glossary tests', () => {
   test('Async Delete - WebSocket failure triggers recovery', async ({
     browser,
   }) => {
-    
     // Create page and set up mocked WebSocket BEFORE navigation
     const page = await browser.newPage();
     await setupMockedWebSocket(page);
@@ -1434,6 +1442,7 @@ test.describe('Glossary tests', () => {
       await expect(
         page.getByRole('menuitem', { name: glossaryB.data.displayName })
       ).not.toBeVisible();
+
       await expectGlossaryVisible(page, glossaryC.data.displayName);
     } finally {
       await glossaryC.delete(apiContext);
@@ -1445,7 +1454,7 @@ test.describe('Glossary tests', () => {
     browser,
   }) => {
     test.slow(true);
-    
+
     // Create page and set up mocked WebSocket BEFORE navigation
     const page = await browser.newPage();
     await setupMockedWebSocket(page);
@@ -1490,6 +1499,7 @@ test.describe('Glossary tests', () => {
       await expect(
         page.getByRole('menuitem', { name: glossaryA.data.displayName })
       ).not.toBeVisible();
+
       await expectGlossaryVisible(page, glossaryB.data.displayName);
       await expectGlossaryVisible(page, glossaryC.data.displayName);
     } finally {
