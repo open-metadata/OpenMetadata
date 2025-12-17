@@ -721,10 +721,13 @@ test.describe.serial('Test pagination in column level lineage', () => {
     table1.entity.columns = table1Columns;
     table2.entity.columns = table2Columns;
 
-    await Promise.all([table1.create(apiContext), table2.create(apiContext)]);
+    const [table1Response, table2Response] = await Promise.all([
+      table1.create(apiContext),
+      table2.create(apiContext),
+    ]);
 
-    table1Fqn = get(table1, 'entityResponseData.fullyQualifiedName');
-    table2Fqn = get(table2, 'entityResponseData.fullyQualifiedName');
+    table1Fqn = get(table1Response, 'entity.fullyQualifiedName');
+    table2Fqn = get(table2Response, 'entity.fullyQualifiedName');
 
     await addPipelineBetweenNodes(page, table1, table2);
 
@@ -748,58 +751,64 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await expect(table2Node).toBeVisible();
 
     await page.getByTestId('full-screen').click();
+    const table1ColumnFqn = table1Response.entity.columns?.map(
+      (col: { fullyQualifiedName: string }) => col.fullyQualifiedName
+    ) as string[];
+    const table2ColumnFqn = table2Response.entity.columns?.map(
+      (col: { fullyQualifiedName: string }) => col.fullyQualifiedName
+    ) as string[];
 
     await test.step('Add edges between T1-P1 and T2-P1', async () => {
       await connectEdgeBetweenNodesViaAPI(
         apiContext,
         {
-          id: table1Fqn,
-          type: table1.getType(),
+          id: table1Response.entity.id,
+          type: 'table',
         },
         {
-          id: table2Fqn,
-          type: table2.getType(),
+          id: table2Response.entity.id,
+          type: 'table',
         },
         [
           {
-            fromColumns: [table1Columns[0].name],
-            toColumn: table2Columns[0].name,
+            fromColumns: [table1ColumnFqn[0]],
+            toColumn: table2ColumnFqn[0],
           },
           {
-            fromColumns: [table1Columns[1].name],
-            toColumn: table2Columns[1].name,
+            fromColumns: [table1ColumnFqn[1]],
+            toColumn: table2ColumnFqn[1],
           },
           {
-            fromColumns: [table1Columns[2].name],
-            toColumn: table2Columns[2].name,
+            fromColumns: [table1ColumnFqn[2]],
+            toColumn: table2ColumnFqn[2],
           },
           {
-            fromColumns: [table1Columns[0].name],
-            toColumn: table2Columns[5].name,
+            fromColumns: [table1ColumnFqn[0]],
+            toColumn: table2ColumnFqn[5],
           },
           {
-            fromColumns: [table1Columns[1].name],
-            toColumn: table2Columns[6].name,
+            fromColumns: [table1ColumnFqn[1]],
+            toColumn: table2ColumnFqn[6],
           },
           {
-            fromColumns: [table1Columns[3].name],
-            toColumn: table2Columns[7].name,
+            fromColumns: [table1ColumnFqn[3]],
+            toColumn: table2ColumnFqn[7],
           },
           {
-            fromColumns: [table1Columns[4].name],
-            toColumn: table2Columns[7].name,
+            fromColumns: [table1ColumnFqn[4]],
+            toColumn: table2ColumnFqn[7],
           },
           {
-            fromColumns: [table1Columns[5].name],
-            toColumn: table2Columns[5].name,
+            fromColumns: [table1ColumnFqn[5]],
+            toColumn: table2ColumnFqn[5],
           },
           {
-            fromColumns: [table1Columns[6].name],
-            toColumn: table2Columns[6].name,
+            fromColumns: [table1ColumnFqn[6]],
+            toColumn: table2ColumnFqn[6],
           },
           {
-            fromColumns: [table1Columns[8].name],
-            toColumn: table2Columns[7].name,
+            fromColumns: [table1ColumnFqn[8]],
+            toColumn: table2ColumnFqn[7],
           },
         ]
       );

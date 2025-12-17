@@ -374,14 +374,17 @@ export const useAssetSelectionContent = ({
           quickFilterQuery as QueryFilterInterface
         );
 
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        !isLoading &&
-          fetchEntities({
-            searchText: search,
-            page: pageNumber + 1,
-            index: activeFilter,
-            updatedQueryFilter: combinedQueryFilter,
-          });
+        if (isLoading) {
+          // No need to fetchEntities if already loading
+          return;
+        }
+
+        fetchEntities({
+          searchText: search,
+          page: pageNumber + 1,
+          index: activeFilter,
+          updatedQueryFilter: combinedQueryFilter,
+        });
       }
     },
     [
