@@ -13,6 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const { generateDomainMarkdown, generateIndexMarkdown } = require('./markdown.js');
 const { loadTestsFromPlaywright } = require('./playwright-loader.js');
 
@@ -198,7 +199,6 @@ function main() {
 
   // 5. Stage files in Git
   try {
-    const { execSync } = require('child_process');
     console.log(`\n📦 Staging generated docs...`);
     execSync('git add .', { cwd: OUTPUT_DIR, stdio: 'inherit' });
     console.log(`   ✓ git add completed for ${OUTPUT_DIR}`);

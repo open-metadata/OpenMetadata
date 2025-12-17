@@ -223,9 +223,9 @@ function renderTable(tests, fileUrl, prefix = '') {
   
   tests.forEach((test, idx) => {
     const badge = test.isSkipped ? ' ⏭️' : '';
-    // Escape pipes in names to avoid breaking tables
-    const name = test.name.replace(/\|/g, '\\|');
-    const desc = (test.description || '-').replace(/\|/g, '\\|');
+    // Escape backslashes first, then pipes to avoid breaking tables
+    const name = test.name.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+    const desc = (test.description || '-').replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
     
     // Bold specific parts for readability (e.g., Entity Names)
     const formattedName = name.includes('→') 
@@ -240,7 +240,7 @@ function renderTable(tests, fileUrl, prefix = '') {
 
     // Render Steps as sub-rows if needed
     test.steps.forEach(step => {
-       const stepName = step.name.replace(/\|/g, '\\|');
+       const stepName = step.name.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
        md += `| | ↳ *${stepName}* | |\n`;
     });
   });
