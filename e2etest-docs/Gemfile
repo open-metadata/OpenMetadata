@@ -1,4 +1,0 @@
-source "https://rubygems.org"
-
-# Use github-pages gem which handles all dependencies
-gem "github-pages", group: :jekyll_plugins

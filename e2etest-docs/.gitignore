@@ -1,8 +1,0 @@
-_site/
-.jekyll-cache/
-.jekyll-metadata
-Gemfile.lock
-.bundle/
-vendor/
-node_modules/
-scripts/dist/
