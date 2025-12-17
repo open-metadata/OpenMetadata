@@ -51,6 +51,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   fieldsWithNullValues = [],
   defaultQueryFilter,
   showSelectedCounts = false,
+  optionPageSize,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -92,12 +93,13 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
     } else {
       const [res, tierTags] = await Promise.all([
         getAggregationOptions(
-          index,
+          Array.isArray(index) ? index.join(',') : index,
           key,
           '',
           JSON.stringify(combinedQueryFilter),
           independent,
-          showDeleted
+          showDeleted,
+          optionPageSize
         ),
         key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier', limit: 50 })

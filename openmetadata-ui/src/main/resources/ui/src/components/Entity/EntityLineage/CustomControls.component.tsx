@@ -33,7 +33,10 @@ import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter
 import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
 import { ReactComponent as SettingsOutlined } from '../../../assets/svg/ic-settings-gear.svg';
 import { LINEAGE_DROPDOWN_ITEMS } from '../../../constants/AdvancedSearch.constants';
-import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
+import {
+  AGGREGATE_PAGE_SIZE_LARGE,
+  FULLSCREEN_QUERY_PARAM_KEY,
+} from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
@@ -511,6 +514,7 @@ const CustomControls: FC<{
               defaultQueryFilter={queryFilter}
               fields={selectedQuickFilters}
               index={SearchIndex.ALL}
+              optionPageSize={AGGREGATE_PAGE_SIZE_LARGE}
               showDeleted={false}
               onFieldValueSelect={handleQuickFiltersValueSelect}
             />

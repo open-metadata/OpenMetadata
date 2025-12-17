@@ -17,7 +17,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import { ColumnsType } from 'antd/es/table';
 import Card from 'antd/lib/card/Card';
 import classNames from 'classnames';
-import { isEmpty, map, sortBy } from 'lodash';
+import { get, isEmpty, map, sortBy } from 'lodash';
 import QueryString from 'qs';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -656,7 +656,20 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           lineageDirection === LineageDirection.Downstream
             ? 'fromEntity'
             : 'toEntity',
-        sorter: true,
+        sorter: (a, b) => {
+          const key =
+            lineageDirection === LineageDirection.Downstream
+              ? 'column.fromEntity'
+              : 'column.toEntity';
+          const columnA = getPartialNameFromTableFQN(get(a, key, ''), [
+            FqnPart.Table,
+          ]);
+          const columnB = getPartialNameFromTableFQN(get(b, key, ''), [
+            FqnPart.Table,
+          ]);
+
+          return columnA.localeCompare(columnB);
+        },
         render: (record?: SearchSourceAlias & { type: EntityType }) => (
           <Link
             to={getEntityLinkFromType(
@@ -685,7 +698,20 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           lineageDirection === LineageDirection.Downstream
             ? 'column.fromColumns'
             : 'column.toColumn',
-        sorter: true,
+        sorter: (a, b) => {
+          const key =
+            lineageDirection === LineageDirection.Downstream
+              ? 'column.fromColumns.0'
+              : 'column.toColumn';
+          const columnA = getPartialNameFromTableFQN(get(a, key, ''), [
+            FqnPart.Column,
+          ]);
+          const columnB = getPartialNameFromTableFQN(get(b, key, ''), [
+            FqnPart.Column,
+          ]);
+
+          return columnA.localeCompare(columnB);
+        },
         render: columnNameRender,
       },
       {
@@ -698,7 +724,20 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           lineageDirection === LineageDirection.Upstream
             ? 'fromEntity'
             : 'toEntity',
-        sorter: true,
+        sorter: (a, b) => {
+          const key =
+            lineageDirection === LineageDirection.Upstream
+              ? 'column.fromEntity'
+              : 'column.toEntity';
+          const columnA = getPartialNameFromTableFQN(get(a, key, ''), [
+            FqnPart.Table,
+          ]);
+          const columnB = getPartialNameFromTableFQN(get(b, key, ''), [
+            FqnPart.Table,
+          ]);
+
+          return columnA.localeCompare(columnB);
+        },
         render: (record?: SearchSourceAlias & { type?: EntityType }) => (
           <Link
             to={getEntityLinkFromType(
@@ -727,7 +766,20 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           lineageDirection === LineageDirection.Upstream
             ? 'column.fromColumns'
             : 'column.toColumn',
-        sorter: true,
+        sorter: (a, b) => {
+          const key =
+            lineageDirection === LineageDirection.Upstream
+              ? 'column.fromColumns.0'
+              : 'column.toColumn';
+          const columnA = getPartialNameFromTableFQN(get(a, key, ''), [
+            FqnPart.Column,
+          ]);
+          const columnB = getPartialNameFromTableFQN(get(b, key, ''), [
+            FqnPart.Column,
+          ]);
+
+          return columnA.localeCompare(columnB);
+        },
         render: columnNameRender,
       },
       ...tableColumns.slice(1),
