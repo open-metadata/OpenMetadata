@@ -53,6 +53,7 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.domains.DataProductResource.DataProductList;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
 public class DataProductResourceTest extends EntityResourceTest<DataProduct, CreateDataProduct> {
@@ -799,5 +800,224 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     WebTarget target = getResource("dataProducts/assets/counts");
     Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
     return response.readEntity(new GenericType<Map<String, Integer>>() {});
+  }
+
+  @Test
+  void testRenameDataProduct(TestInfo test) throws IOException {
+    // Create a data product
+    DomainResourceTest domainTest = new DomainResourceTest();
+    Domain domain = domainTest.createEntity(domainTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+    DataProduct dataProduct =
+        createEntity(
+            createRequest(getEntityName(test)).withDomains(List.of(domain.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    String oldName = dataProduct.getName();
+    String oldFqn = dataProduct.getFullyQualifiedName();
+    String newName = "renamed-" + oldName;
+
+    // Rename the data product using PATCH
+    String json = JsonUtils.pojoToJson(dataProduct);
+    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+    fieldUpdated(change, "name", oldName, newName);
+    dataProduct.setName(newName);
+    // FQN for data product is quoted name
+    dataProduct.setFullyQualifiedName(FullyQualifiedName.quoteName(newName));
+
+    dataProduct = patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the data product was renamed
+    assertEquals(newName, dataProduct.getName());
+    assertNotEquals(oldFqn, dataProduct.getFullyQualifiedName());
+
+    // Verify we can get by new FQN
+    DataProduct getByFqn = getEntityByName(dataProduct.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertEquals(newName, getByFqn.getName());
+
+    // Verify old FQN no longer works
+    assertThatThrownBy(() -> getEntityByName(oldFqn, ADMIN_AUTH_HEADERS))
+        .isInstanceOf(HttpResponseException.class);
+  }
+
+  @Test
+  void testRenameDataProductWithAssets(TestInfo test) throws IOException {
+    // Disable domain validation rule since test tables may not have matching domain
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      // Create a domain and data product
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain domain = domainTest.createEntity(domainTest.createRequest(test), ADMIN_AUTH_HEADERS);
+
+      DataProduct dataProduct =
+          createEntity(
+              createRequest(getEntityName(test))
+                  .withDomains(List.of(domain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      String oldFqn = dataProduct.getFullyQualifiedName();
+
+      // Add an asset to the data product
+      TableResourceTest tableTest = new TableResourceTest();
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, 1)), ADMIN_AUTH_HEADERS);
+      bulkAddAssets(
+          dataProduct.getFullyQualifiedName(),
+          new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+      // Verify asset count and that table has the data product reference
+      ResultList<EntityReference> assets =
+          getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(1, assets.getPaging().getTotal());
+
+      // Verify the table has the data product in its dataProducts field
+      Table tableWithDataProducts =
+          tableTest.getEntity(table.getId(), "dataProducts", ADMIN_AUTH_HEADERS);
+      assertNotNull(tableWithDataProducts.getDataProducts());
+      assertEquals(1, tableWithDataProducts.getDataProducts().size());
+      assertEquals(oldFqn, tableWithDataProducts.getDataProducts().get(0).getFullyQualifiedName());
+
+      String oldName = dataProduct.getName();
+      String newName = "renamed-" + oldName;
+      String newFqn = FullyQualifiedName.quoteName(newName);
+
+      // Rename the data product
+      String json = JsonUtils.pojoToJson(dataProduct);
+      ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+      fieldUpdated(change, "name", oldName, newName);
+      dataProduct.setName(newName);
+      dataProduct.setFullyQualifiedName(newFqn);
+
+      dataProduct =
+          patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+      // Verify the data product was renamed
+      assertEquals(newName, dataProduct.getName());
+      assertEquals(newFqn, dataProduct.getFullyQualifiedName());
+
+      // Verify assets are still associated with the renamed data product
+      assets = getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(1, assets.getPaging().getTotal());
+      assertEquals(table.getId(), assets.getData().getFirst().getId());
+
+      // Verify the table's dataProducts field has the UPDATED FQN
+      tableWithDataProducts =
+          tableTest.getEntity(table.getId(), "dataProducts", ADMIN_AUTH_HEADERS);
+      assertNotNull(tableWithDataProducts.getDataProducts());
+      assertEquals(1, tableWithDataProducts.getDataProducts().size());
+      assertEquals(
+          newFqn,
+          tableWithDataProducts.getDataProducts().get(0).getFullyQualifiedName(),
+          "Table's dataProducts reference should have updated FQN after rename");
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
+
+  @Test
+  void testRenameDataProductSearchIndexUpdate(TestInfo test)
+      throws IOException, InterruptedException {
+    // Disable domain validation rule since test tables may not have matching domain
+    String domainValidationRule = "Data Product Domain Validation";
+    EntityResourceTest.toggleRule(domainValidationRule, false);
+
+    try {
+      // Use simple alphanumeric names to avoid URL encoding issues in search queries
+      String timestamp = String.valueOf(System.currentTimeMillis());
+      String simpleName = "searchIndexTestDP" + timestamp;
+      String simpleDomainName = "searchIndexTestDomain" + timestamp;
+      String simpleTableName = "searchIndexTestTable" + timestamp;
+
+      // Create a domain and data product
+      DomainResourceTest domainTest = new DomainResourceTest();
+      Domain domain =
+          domainTest.createEntity(domainTest.createRequest(simpleDomainName), ADMIN_AUTH_HEADERS);
+
+      DataProduct dataProduct =
+          createEntity(
+              createRequest(simpleName).withDomains(List.of(domain.getFullyQualifiedName())),
+              ADMIN_AUTH_HEADERS);
+
+      String oldFqn = dataProduct.getFullyQualifiedName();
+
+      // Add an asset to the data product
+      TableResourceTest tableTest = new TableResourceTest();
+      Table table =
+          tableTest.createEntity(tableTest.createRequest(simpleTableName), ADMIN_AUTH_HEADERS);
+      bulkAddAssets(
+          dataProduct.getFullyQualifiedName(),
+          new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+      // Wait for search index to be updated
+      Thread.sleep(2000);
+
+      // Verify asset can be found via search with old FQN
+      String searchQuery = "dataProducts.fullyQualifiedName:" + escapeSearchQuery(oldFqn);
+      String searchResponse = searchWithQuery("table_search_index", searchQuery);
+      assertTrue(
+          searchResponse.contains(table.getName()),
+          "Table should be found in search with old dataProduct FQN");
+
+      String oldName = dataProduct.getName();
+      String newName = "renamed-" + oldName;
+      String newFqn = FullyQualifiedName.quoteName(newName);
+
+      // Rename the data product
+      String json = JsonUtils.pojoToJson(dataProduct);
+      ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+      fieldUpdated(change, "name", oldName, newName);
+      dataProduct.setName(newName);
+      dataProduct.setFullyQualifiedName(newFqn);
+
+      dataProduct =
+          patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+      // Wait for search index to be updated
+      Thread.sleep(2000);
+
+      // Verify asset can be found via search with NEW FQN
+      searchQuery = "dataProducts.fullyQualifiedName:" + escapeSearchQuery(newFqn);
+      searchResponse = searchWithQuery("table_search_index", searchQuery);
+      assertTrue(
+          searchResponse.contains(table.getName()),
+          "Table should be found in search with new dataProduct FQN after rename");
+
+    } finally {
+      EntityResourceTest.toggleRule(domainValidationRule, true);
+    }
+  }
+
+  private String searchWithQuery(String indexName, String query) throws HttpResponseException {
+    WebTarget target =
+        getResource(
+            String.format(
+                "search/query?q=%s&index=%s&from=0&deleted=false&size=100", query, indexName));
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
+  private String escapeSearchQuery(String value) {
+    // Escape special characters for Elasticsearch query
+    return value.replace("\"", "\\\"");
+  }
+
+  /**
+   * Helper method to rename a data product and verify the change.
+   */
+  public void renameDataProductAndCheck(DataProduct dataProduct, String newName)
+      throws IOException {
+    String oldName = dataProduct.getName();
+    String json = JsonUtils.pojoToJson(dataProduct);
+    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+    fieldUpdated(change, "name", oldName, newName);
+    dataProduct.setName(newName);
+    dataProduct.setFullyQualifiedName(FullyQualifiedName.quoteName(newName));
+    patchEntityAndCheck(dataProduct, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // GET the data product and verify it was renamed
+    DataProduct updated = getEntity(dataProduct.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(newName, updated.getName());
   }
 }

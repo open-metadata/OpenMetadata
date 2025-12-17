@@ -38,15 +38,13 @@ describe('ImportStatus component', () => {
     expect(
       await screen.findByText('label.number-of-rows:')
     ).toBeInTheDocument();
-    expect(processed.textContent).toStrictEqual(
+    expect(processed.textContent).toBe(
       `${mockCsvImportResult.numberOfRowsProcessed}`
     );
     expect(await screen.findByText('label.passed:')).toBeInTheDocument();
-    expect(pass.textContent).toStrictEqual(
-      `${mockCsvImportResult.numberOfRowsPassed}`
-    );
+    expect(pass.textContent).toBe(`${mockCsvImportResult.numberOfRowsPassed}`);
     expect(await screen.findByText('label.failed:')).toBeInTheDocument();
-    expect(failed.textContent).toStrictEqual(
+    expect(failed.textContent).toBe(
       `${mockCsvImportResult.numberOfRowsFailed}`
     );
   });

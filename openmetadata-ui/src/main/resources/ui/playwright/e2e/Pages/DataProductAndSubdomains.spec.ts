@@ -60,29 +60,37 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByTestId('domain-details-add-button').click();
       await page.getByRole('menuitem', { name: 'Data Products' }).click();
 
-      // Wait for modal
-      await page.waitForSelector('[role="dialog"]', { state: 'visible' });
+      // Wait for the Add Data Product form to appear
+      await page.waitForSelector('[data-testid="add-domain"]', {
+        state: 'visible',
+        timeout: 10000,
+      });
 
-      // Fill the form
+      // Fill the form - use locator for MUI TextField input
       const dpName = `PW-DataProduct-${uuid()}`;
-      await page.locator('#name').fill(dpName);
+      await page.getByTestId('name').locator('input').fill(dpName);
 
-      // Add description
-      await page.locator('.toastui-editor-contents').first().click();
+      // Add description using the description editor (contenteditable div)
+      const descriptionEditor = page
+        .locator('[contenteditable="true"]')
+        .first();
+      await descriptionEditor.waitFor({ state: 'visible', timeout: 10000 });
+      await descriptionEditor.click();
       await page.keyboard.type('Test data product description');
 
-      // Save
+      // Save using the drawer's Save button (form is in dialog mode)
       const createRes = page.waitForResponse('/api/v1/dataProducts');
-      await page.getByTestId('save-data-product').click();
+      await page.getByRole('button', { name: 'Save' }).click();
       await createRes;
 
-      await toastNotification(page, /added/i);
+      await toastNotification(page, /Data Product created successfully/i);
 
       // Verify data product was created - navigate to Data Products tab
       await page.getByTestId('data_products').click();
       await page.waitForLoadState('networkidle');
 
-      await expect(page.getByTestId(dpName)).toBeVisible();
+      // Data product cards use testid pattern: explore-card-{name}
+      await expect(page.getByTestId(`explore-card-${dpName}`)).toBeVisible();
     } finally {
       await domain.delete(apiContext);
       await afterAction();
@@ -103,25 +111,24 @@ test.describe('Data Product Comprehensive Tests', () => {
       // Click edit description
       await page.getByTestId('edit-description').click();
 
-      // Wait for editor to appear
-      await page.waitForSelector('.toastui-editor-contents', {
-        state: 'visible',
-      });
+      // Wait for editor modal to appear (contenteditable div in dialog)
+      const editor = page.locator('[contenteditable="true"]').first();
+      await editor.waitFor({ state: 'visible', timeout: 10000 });
 
       // Clear and add new description
-      await page.locator('.toastui-editor-contents').first().click();
+      await editor.click();
       await page.keyboard.press('Meta+A');
       await page.keyboard.type('Updated data product description');
 
-      // Save
+      // Save using the modal's Save button
       const patchRes = page.waitForResponse('/api/v1/dataProducts/*');
-      await page.getByTestId('save').click();
+      await page.getByRole('button', { name: 'Save' }).click();
       await patchRes;
 
       // Verify description was updated
       await expect(
         page.getByText('Updated data product description')
-      ).toBeVisible();
+      ).toBeVisible({ timeout: 10000 });
     } finally {
       await dataProduct.delete(apiContext);
       await domain.delete(apiContext);
@@ -152,8 +159,9 @@ test.describe('Data Product Comprehensive Tests', () => {
 
       // Search for user with retry mechanism (ES indexing can take time)
       const searchBar = page.getByTestId('searchbar');
+      // Use displayName for selecting from list (UI shows displayName)
       const expertItem = page.getByRole('listitem', {
-        name: user.getUserName(),
+        name: user.getUserDisplayName(),
         exact: true,
       });
       const maxRetries = 5;
@@ -165,6 +173,7 @@ test.describe('Data Product Comprehensive Tests', () => {
             res.url().includes('/api/v1/search/query') &&
             res.url().includes('user_search_index')
         );
+        // Search using name field
         await searchBar.fill(user.getUserName());
         await searchResponse;
         await page.waitForSelector('[data-testid="loader"]', {
@@ -189,9 +198,9 @@ test.describe('Data Product Comprehensive Tests', () => {
       await page.getByTestId('selectable-list-update-btn').click();
       await patchRes;
 
-      // Verify expert is displayed
+      // Verify expert is displayed (UI shows displayName)
       await expect(page.getByTestId('owner-link')).toContainText(
-        user.getUserName()
+        user.getUserDisplayName()
       );
     } finally {
       await dataProduct.delete(apiContext);
@@ -227,8 +236,8 @@ test.describe('Data Product Comprehensive Tests', () => {
       // Wait for search results
       await page.waitForResponse('/api/v1/search/query*');
 
-      // Select the tag
-      await page.getByTestId('tag-PersonalData.Personal').click();
+      // Select the tag (use first() to handle duplicates)
+      await page.getByTestId('tag-PersonalData.Personal').first().click();
 
       // Save
       const patchRes = page.waitForResponse('/api/v1/dataProducts/*');
@@ -281,10 +290,12 @@ test.describe('Data Product Comprehensive Tests', () => {
       // Wait for modal
       await page.waitForSelector('[data-testid="asset-selection-modal"]', {
         state: 'visible',
+        timeout: 10000,
       });
 
       // Wait for search results to load
       await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000); // Allow search index to populate
 
       // Search for table
       const searchRes = page.waitForResponse('/api/v1/search/query*');
@@ -295,15 +306,21 @@ test.describe('Data Product Comprehensive Tests', () => {
       await searchRes;
       await page.waitForLoadState('networkidle');
 
-      // Select the table by clicking on the checkbox
-      const tableCard = page.locator(
-        `[data-testid="table-${table.entityResponseData.fullyQualifiedName}"]`
-      );
-      if (await tableCard.isVisible()) {
-        await tableCard.click();
+      // Select the table by clicking the checkbox in the card
+      const tableCheckbox = page
+        .getByTestId('asset-selection-modal')
+        .locator(`[data-testid*="${table.entityResponseData.name}"]`)
+        .first();
+
+      if (await tableCheckbox.isVisible()) {
+        await tableCheckbox.click();
       } else {
-        // Try alternative selector
-        await page.getByText(table.entityResponseData.name).first().click();
+        // Try clicking the text directly
+        await page
+          .getByTestId('asset-selection-modal')
+          .getByText(table.entityResponseData.name)
+          .first()
+          .click();
       }
 
       // Save
@@ -444,12 +461,13 @@ test.describe('Multiple Subdomains Tests', () => {
       await page.getByTestId(nestedSubDomain.data.name).click();
       await page.waitForLoadState('networkidle');
 
-      // Verify breadcrumb shows parent domain and subdomain (using partial text match)
-      const breadcrumb = page.locator('[data-testid="breadcrumb"]');
+      // Verify we're on the nested subdomain page
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(nestedSubDomain.data.displayName);
 
-      await expect(breadcrumb).toContainText('Domains');
-      // Parent domain should be in breadcrumb
-      await expect(breadcrumb.getByRole('link').first()).toBeVisible();
+      // Verify parent subdomain is accessible via breadcrumb
+      await expect(page.getByRole('link', { name: 'Domains' })).toBeVisible();
 
       await nestedSubDomain.delete(apiContext);
       await subDomain1.delete(apiContext);

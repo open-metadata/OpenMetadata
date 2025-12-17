@@ -545,10 +545,10 @@ describe('Test EntityLineageUtils utility', () => {
 
       const result = createNewEdge(edge as Edge);
 
-      expect(result.edge.fromEntity.id).toEqual('fromEntityId');
-      expect(result.edge.fromEntity.type).toEqual('fromEntityType');
-      expect(result.edge.toEntity.id).toEqual('toEntityId');
-      expect(result.edge.toEntity.type).toEqual('toEntityType');
+      expect(result.edge.fromEntity.id).toBe('fromEntityId');
+      expect(result.edge.fromEntity.type).toBe('fromEntityType');
+      expect(result.edge.toEntity.id).toBe('toEntityId');
+      expect(result.edge.toEntity.type).toBe('toEntityType');
       expect(result.edge.lineageDetails).toBeDefined();
       expect(result.edge.lineageDetails?.columnsLineage).toBeDefined();
     });
@@ -716,7 +716,7 @@ describe('Test EntityLineageUtils utility', () => {
 
       expect(result.childrenHeight).toBeGreaterThan(0);
       expect(result.childrenFlatten.length).toBeGreaterThan(0);
-      expect(result.childrenHeading).toEqual('label.column-plural');
+      expect(result.childrenHeading).toBe('label.column-plural');
     });
   });
 

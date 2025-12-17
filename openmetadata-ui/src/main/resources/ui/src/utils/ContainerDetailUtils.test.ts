@@ -151,7 +151,7 @@ describe('getContainerDetailPath', () => {
     const containerFQN = 'my-container';
     const path = getEntityDetailsPath(EntityType.CONTAINER, containerFQN);
 
-    expect(path).toEqual(`/container/${containerFQN}`);
+    expect(path).toBe(`/container/${containerFQN}`);
   });
 
   it('returns the correct path with tab', () => {
@@ -159,7 +159,7 @@ describe('getContainerDetailPath', () => {
     const tab = 'my-tab';
     const path = getEntityDetailsPath(EntityType.CONTAINER, containerFQN, tab);
 
-    expect(path).toEqual(`/container/${containerFQN}/${tab}`);
+    expect(path).toBe(`/container/${containerFQN}/${tab}`);
   });
 
   it('updateContainerColumnDescription method should update the column', () => {

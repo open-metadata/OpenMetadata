@@ -62,33 +62,45 @@ test.describe('Domain Owner Management', () => {
       });
 
       // Switch to Users tab
-      const userListResponse = page.waitForResponse(
-        '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
-      );
       await page.getByRole('tab', { name: 'Users' }).click();
-      await userListResponse;
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
-      // Search for user
-      const searchUser = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(user.getUserName())}*`
-      );
-      await page
-        .getByTestId('owner-select-users-search-bar')
-        .fill(user.getUserName());
-      await searchUser;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      // Click on user in list
+      // Search for user with retry mechanism (ES indexing can take time)
+      const searchBar = page.getByTestId('owner-select-users-search-bar');
+      // Use displayName for selecting from list (UI shows displayName)
       const ownerItem = page.getByRole('listitem', {
-        name: user.getUserName(),
+        name: user.getUserDisplayName(),
         exact: true,
       });
-      await ownerItem.waitFor({ state: 'visible' });
+      const maxRetries = 5;
+
+      for (let retry = 0; retry < maxRetries; retry++) {
+        await searchBar.clear();
+        const searchResponse = page.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/search/query') &&
+            res.url().includes('user_search_index')
+        );
+        // Search using name field
+        await searchBar.fill(user.getUserName());
+        await searchResponse;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const isVisible = await ownerItem.isVisible().catch(() => false);
+        if (isVisible) {
+          break;
+        }
+
+        if (retry < maxRetries - 1) {
+          await page.waitForTimeout(2000);
+        }
+      }
+
+      await ownerItem.waitFor({ state: 'visible', timeout: 5000 });
       await ownerItem.click();
 
       // Click update button and wait for patch
@@ -101,13 +113,13 @@ test.describe('Domain Owner Management', () => {
         state: 'detached',
       });
 
-      // Verify owner was added by checking that edit-owner button now appears (it only shows when owner exists)
+      // Verify owner was added by checking that edit-owner button now appears
       await expect(page.getByTestId('edit-owner')).toBeVisible({
         timeout: 10000,
       });
 
-      // Verify the owner name is visible on the page
-      await expect(page.getByText(user.responseData.displayName)).toBeVisible();
+      // Verify owner link is visible (UI shows avatar with link, not plain text)
+      await expect(page.getByTestId('owner-link').first()).toBeVisible();
     } finally {
       await domain.delete(apiContext);
       await user.delete(apiContext);
@@ -149,7 +161,8 @@ test.describe('Domain Owner Management', () => {
       await expect(page.getByTestId('edit-owner')).toBeVisible({
         timeout: 10000,
       });
-      await expect(page.getByText(user.responseData.displayName)).toBeVisible();
+      // Verify owner link is visible (UI shows avatar with link, not plain text)
+      await expect(page.getByTestId('owner-link').first()).toBeVisible();
 
       // Click edit owner button
       await page.getByTestId('edit-owner').click();
@@ -208,8 +221,9 @@ test.describe('Domain Expert Management', () => {
 
       // Search for user with retry mechanism (ES indexing can take time)
       const searchBar = page.getByTestId('searchbar');
+      // Use displayName for selecting from list (UI shows displayName)
       const expertItem = page.getByRole('listitem', {
-        name: user.getUserName(),
+        name: user.getUserDisplayName(),
         exact: true,
       });
       const maxRetries = 5;
@@ -222,6 +236,7 @@ test.describe('Domain Expert Management', () => {
             res.url().includes('/api/v1/search/query') &&
             res.url().includes('user_search_index')
         );
+        // Search using name field
         await searchBar.fill(user.getUserName());
         await searchResponse;
         await page.waitForSelector('[data-testid="loader"]', {
@@ -248,10 +263,10 @@ test.describe('Domain Expert Management', () => {
       await page.getByTestId('selectable-list-update-btn').click();
       await patchRes;
 
-      // Verify expert is displayed
+      // Verify expert is displayed (UI shows displayName, not username)
       await expect(
         page.getByTestId('domain-expert-name').getByTestId('owner-link')
-      ).toContainText(user.getUserName());
+      ).toContainText(user.getUserDisplayName());
     } finally {
       await domain.delete(apiContext);
       await user.delete(apiContext);
@@ -392,33 +407,45 @@ test.describe('Data Product UI Operations', () => {
       });
 
       // Switch to Users tab
-      const userListResponse = page.waitForResponse(
-        '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
-      );
       await page.getByRole('tab', { name: 'Users' }).click();
-      await userListResponse;
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
-      // Search for user
-      const searchUser = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(user.getUserName())}*`
-      );
-      await page
-        .getByTestId('owner-select-users-search-bar')
-        .fill(user.getUserName());
-      await searchUser;
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      // Click on user in list
+      // Search for user with retry mechanism (ES indexing can take time)
+      const searchBar = page.getByTestId('owner-select-users-search-bar');
+      // Use displayName for selecting from list (UI shows displayName)
       const ownerItem = page.getByRole('listitem', {
-        name: user.getUserName(),
+        name: user.getUserDisplayName(),
         exact: true,
       });
-      await ownerItem.waitFor({ state: 'visible' });
+      const maxRetries = 5;
+
+      for (let retry = 0; retry < maxRetries; retry++) {
+        await searchBar.clear();
+        const searchResponse = page.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/search/query') &&
+            res.url().includes('user_search_index')
+        );
+        // Search using name field
+        await searchBar.fill(user.getUserName());
+        await searchResponse;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const isVisible = await ownerItem.isVisible().catch(() => false);
+        if (isVisible) {
+          break;
+        }
+
+        if (retry < maxRetries - 1) {
+          await page.waitForTimeout(2000);
+        }
+      }
+
+      await ownerItem.waitFor({ state: 'visible', timeout: 5000 });
       await ownerItem.click();
 
       // Click update button and wait for patch
@@ -436,8 +463,8 @@ test.describe('Data Product UI Operations', () => {
         timeout: 10000,
       });
 
-      // Verify the owner name is visible on the page
-      await expect(page.getByText(user.responseData.displayName)).toBeVisible();
+      // Verify owner link is visible (UI shows avatar with link, not plain text)
+      await expect(page.getByTestId('owner-link').first()).toBeVisible();
     } finally {
       await dataProduct.delete(apiContext);
       await domain.delete(apiContext);
@@ -480,21 +507,17 @@ test.describe('Entity Domain Assignment', () => {
         state: 'detached',
       });
 
-      // Find the domain node in tree by its data-testid and click the checkbox
+      // Find the domain node in tree by its data-testid
       const domainTreeNode = page.getByTestId(
         `tag-${domain.responseData.fullyQualifiedName}`
       );
       await domainTreeNode.waitFor({ state: 'visible' });
 
-      // Click the checkbox (ant-tree-checkbox) within the tree node
-      const checkbox = domainTreeNode.locator('.ant-tree-checkbox');
-      await checkbox.click();
-
-      // Click save button
+      // In single-select mode, clicking the tree node directly saves
       const patchRes = page.waitForResponse(
         (req) => req.request().method() === 'PATCH'
       );
-      await page.getByTestId('saveAssociatedTag').click();
+      await domainTreeNode.click();
       await patchRes;
 
       // Wait for popover to close
@@ -565,21 +588,17 @@ test.describe('Entity Domain Assignment', () => {
         state: 'detached',
       });
 
-      // Find the domain node in tree and click checkbox to deselect (already checked)
+      // Find the domain node in tree (already selected, will have ant-tree-node-selected class)
       const domainTreeNode = page.getByTestId(
         `tag-${domain.responseData.fullyQualifiedName}`
       );
       await domainTreeNode.waitFor({ state: 'visible' });
 
-      // Click the checkbox to deselect
-      const checkbox = domainTreeNode.locator('.ant-tree-checkbox');
-      await checkbox.click();
-
-      // Click save button
+      // In single-select mode, clicking the already-selected item deselects and saves
       const patchRes = page.waitForResponse(
         (req) => req.request().method() === 'PATCH'
       );
-      await page.getByTestId('saveAssociatedTag').click();
+      await domainTreeNode.click();
       await patchRes;
 
       // Wait for popover to close

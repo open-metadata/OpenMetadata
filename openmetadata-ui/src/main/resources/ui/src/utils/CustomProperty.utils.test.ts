@@ -35,13 +35,13 @@ describe('CustomProperty.utils', () => {
   it('getCustomPropertyEntityPathname should return empty string if entityPath is not found', () => {
     const entityType = 'randomEntity';
 
-    expect(getCustomPropertyEntityPathname(entityType)).toEqual('');
+    expect(getCustomPropertyEntityPathname(entityType)).toBe('');
   });
 
   it('getCustomPropertyEntityPathname should return empty string if entityType is empty', () => {
     const entityType = 'glossary';
 
-    expect(getCustomPropertyEntityPathname(entityType)).toEqual('glossaries');
+    expect(getCustomPropertyEntityPathname(entityType)).toBe('glossaries');
   });
 
   describe('getCustomPropertyDateTimeDefaultFormat', () => {

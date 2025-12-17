@@ -118,7 +118,7 @@ describe('StringsUtils', () => {
     const expectedCSV = `Name,Age,City\n"John","30","New York"\n"Jane","25","San Francisco"\n"Bob","35","Chicago"`;
 
     expect(jsonToCSV(jsonData, headers)).toEqual(expectedCSV);
-    expect(jsonToCSV(jsonData, [])).toEqual('');
-    expect(jsonToCSV([], headers)).toEqual('');
+    expect(jsonToCSV(jsonData, [])).toBe('');
+    expect(jsonToCSV([], headers)).toBe('');
   });
 });
