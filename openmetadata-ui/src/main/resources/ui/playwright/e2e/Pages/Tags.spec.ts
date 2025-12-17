@@ -26,7 +26,12 @@ import {
 } from '../../utils/common';
 import { addMultiOwner, removeOwner } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
-import { addTagToTableColumn, submitForm, validateForm } from '../../utils/tag';
+import {
+  addTagToTableColumn,
+  setTagDisabled,
+  submitForm,
+  validateForm,
+} from '../../utils/tag';
 
 const NEW_CLASSIFICATION = {
   name: `PlaywrightClassification-${uuid()}`,
@@ -676,4 +681,39 @@ test('Verify Owner Add Delete', async ({ page }) => {
     type: 'Users',
     dataTestId: 'classification-owner-name',
   });
+});
+
+test('Disabled tag should not allow adding assets from Assets tab', async ({
+  browser,
+  page,
+}) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+
+  try {
+    // Disable the tag via API
+    await setTagDisabled(apiContext, tag1.responseData.id, true);
+
+    // Visit the disabled tag page
+    await tag1.visitPage(page);
+
+    await page.waitForSelector(
+      '[data-testid="tags-container"] [data-testid="loader"]',
+      { state: 'detached' }
+    );
+
+    // Verify the disabled badge is visible
+    await expect(page.getByTestId('disabled')).toBeVisible();
+
+    // Go to Assets tab
+    await page.getByTestId('assets').click();
+
+    // Verify the "Add Assets" button is NOT visible for disabled tag
+    await expect(
+      page.getByTestId('data-classification-add-button')
+    ).not.toBeVisible();
+  } finally {
+    // Re-enable the tag for cleanup
+    await setTagDisabled(apiContext, tag1.responseData.id, false);
+    await afterAction();
+  }
 });
