@@ -27,7 +27,7 @@ jobs:
 
       - name: Install Dependencies
         working-directory: openmetadata-ui/src/main/resources/ui
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-scripts
 
       - name: Install Playwright Browsers
         # We need browsers installed for 'playwright test --list' to work in some versions,
