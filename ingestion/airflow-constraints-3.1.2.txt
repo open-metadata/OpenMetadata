@@ -61,7 +61,7 @@ SQLAlchemy-Utils==0.42.0
 SQLAlchemy==1.4.54
 SecretStorage==3.4.0
 WTForms==3.2.1
-Werkzeug==2.2.3
+Werkzeug==3.0.3
 a2wsgi==1.10.10
 adal==1.2.7
 adlfs==2025.8.0
@@ -585,7 +585,7 @@ pytz==2025.2
 pywinrm==0.5.0
 pyzmq==27.1.0
 qdrant-client==1.15.1
-ray==2.47.1
+ray==2.52.0
 reactivex==4.0.4
 redis==5.2.1
 redshift-connector==2.1.7
@@ -637,7 +637,7 @@ sqlalchemy_drill==1.1.9
 sqlparse==0.5.3
 sshtunnel==0.4.0
 stack-data==0.6.3
-starlette==0.48.0
+starlette==0.49.1
 statsd==4.0.1
 std-uritemplate==2.0.8
 structlog==25.5.0
@@ -674,7 +674,7 @@ tzlocal==5.3.1
 uc-micro-py==1.0.3
 universal_pathlib==0.2.6
 uritemplate==4.2.0
-urllib3==2.5.0
+urllib3==2.6.0
 uuid6==2025.0.1
 uv==0.9.7
 uvicorn==0.38.0
