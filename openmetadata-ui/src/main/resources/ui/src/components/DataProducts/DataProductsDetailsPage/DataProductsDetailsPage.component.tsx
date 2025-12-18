@@ -772,7 +772,6 @@ const DataProductsDetailsPage = ({
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
-        allowRename
       />
       <EntityDeleteModal
         bodyText={getEntityDeleteMessage(dataProduct.name, '')}
