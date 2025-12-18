@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button } from '@mui/material';
+import { Button, IconButton } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-filter.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
@@ -37,6 +38,8 @@ interface LineageNodeLabelProps {
   node: SourceType;
   isChildrenListExpanded?: boolean;
   toggleColumnsList?: () => void;
+  toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
+  isOnlyShowColumnsWithLineageFilterActive?: boolean;
 }
 
 interface LineageNodeLabelPropsExtended
@@ -171,11 +174,14 @@ const EntityFooter = ({
   isChildrenListExpanded,
   node,
   toggleColumnsList,
+  toggleOnlyShowColumnsWithLineageFilterActive,
+  isOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelPropsExtended) => {
   const { children, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node.id]
   );
+  const { isEditMode } = useLineageProvider();
 
   const childrenCount = children.length;
 
@@ -190,6 +196,14 @@ const EntityFooter = ({
       toggleColumnsList?.();
     },
     [toggleColumnsList]
+  );
+
+  const handleOnlyShowColumnsWithLineage = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      toggleOnlyShowColumnsWithLineageFilterActive?.();
+    },
+    [toggleOnlyShowColumnsWithLineageFilterActive]
   );
 
   if (childrenCount === 0) {
@@ -209,6 +223,16 @@ const EntityFooter = ({
         {childrenInfoDropdownLabel}
       </Button>
       <TestSuiteSummaryContainer node={node} />
+      <IconButton
+        className={classNames(
+          'only-show-columns-with-lineage-filter-button',
+          isOnlyShowColumnsWithLineageFilterActive && 'active'
+        )}
+        data-testid="lineage-filter-button"
+        disabled={isEditMode}
+        onClick={handleOnlyShowColumnsWithLineage}>
+        <FilterIcon height={20} width={20} />
+      </IconButton>
     </div>
   );
 };
@@ -217,14 +241,22 @@ const LineageNodeLabelV1 = ({
   node,
   isChildrenListExpanded,
   toggleColumnsList,
+  toggleOnlyShowColumnsWithLineageFilterActive,
+  isOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelProps) => {
   return (
     <div className="custom-node-label-container m-0">
       <EntityLabel node={node} />
       <EntityFooter
         isChildrenListExpanded={isChildrenListExpanded}
+        isOnlyShowColumnsWithLineageFilterActive={
+          isOnlyShowColumnsWithLineageFilterActive
+        }
         node={node}
         toggleColumnsList={toggleColumnsList}
+        toggleOnlyShowColumnsWithLineageFilterActive={
+          toggleOnlyShowColumnsWithLineageFilterActive
+        }
       />
     </div>
   );
