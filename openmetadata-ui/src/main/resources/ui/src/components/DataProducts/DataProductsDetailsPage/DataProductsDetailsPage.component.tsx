@@ -413,12 +413,13 @@ const DataProductsDetailsPage = ({
 
   const onNameSave = (obj: { name: string; displayName?: string }) => {
     if (dataProduct) {
-      const { displayName } = obj;
+      const { displayName, name } = obj;
       let updatedDetails = cloneDeep(dataProduct);
 
       updatedDetails = {
         ...dataProduct,
         displayName: displayName?.trim(),
+        name: name?.trim(),
       };
 
       onUpdate(updatedDetails);
@@ -761,6 +762,7 @@ const DataProductsDetailsPage = ({
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
+        allowRename
       />
       <EntityDeleteModal
         bodyText={getEntityDeleteMessage(dataProduct.name, '')}
