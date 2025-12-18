@@ -42,6 +42,10 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.search.ColumnFilterMatcher;
+import org.openmetadata.service.search.ColumnMetadataCache;
+import org.openmetadata.service.search.LineagePathPreserver;
+import org.openmetadata.service.search.QueryFilterParser;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -296,6 +300,41 @@ public class ESLineageGraphBuilder {
   }
 
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
+    // Check if we need path-preserving filters
+    boolean needsPathPreservation =
+        Boolean.TRUE.equals(lineageRequest.getPreservePaths())
+            && hasNodeLevelFilters(lineageRequest.getQueryFilter());
+
+    SearchLineageResult result;
+
+    if (needsPathPreservation) {
+      // Fetch unfiltered lineage (only structural filters)
+      SearchLineageRequest unfilteredRequest =
+          JsonUtils.deepCopy(lineageRequest, SearchLineageRequest.class)
+              .withQueryFilter(getStructuralFilterOnly(lineageRequest.getQueryFilter()));
+      result = searchLineageInternal(unfilteredRequest);
+
+      // Apply node-level filters in-memory with path preservation
+      result = applyInMemoryFiltersWithPathPreservation(result, lineageRequest);
+    } else {
+      // No path preservation needed - apply filters at ES level
+      result = searchLineageInternal(lineageRequest);
+    }
+
+    // Apply column filters
+    if (!nullOrEmpty(lineageRequest.getColumnFilter())) {
+      result = applyColumnFiltering(result, lineageRequest);
+    }
+
+    return result;
+  }
+
+  /**
+   * Internal method to fetch lineage without path preservation logic.
+   * This is the original searchLineage implementation.
+   */
+  private SearchLineageResult searchLineageInternal(SearchLineageRequest lineageRequest)
+      throws IOException {
     SearchLineageResult result =
         new SearchLineageResult()
             .withNodes(new HashMap<>())
@@ -350,6 +389,41 @@ public class ESLineageGraphBuilder {
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
+    // Check if we need path-preserving filters
+    boolean needsPathPreservation =
+        Boolean.TRUE.equals(lineageRequest.getPreservePaths())
+            && hasNodeLevelFilters(lineageRequest.getQueryFilter());
+
+    SearchLineageResult result;
+
+    if (needsPathPreservation) {
+      // Fetch unfiltered lineage (only structural filters)
+      SearchLineageRequest unfilteredRequest =
+          JsonUtils.deepCopy(lineageRequest, SearchLineageRequest.class)
+              .withQueryFilter(getStructuralFilterOnly(lineageRequest.getQueryFilter()));
+      result = searchLineageWithDirectionInternal(unfilteredRequest);
+
+      // Apply node-level filters in-memory with path preservation
+      result = applyInMemoryFiltersWithPathPreservation(result, lineageRequest);
+    } else {
+      // No path preservation needed - apply filters at ES level
+      result = searchLineageWithDirectionInternal(lineageRequest);
+    }
+
+    // Apply column filters
+    if (!nullOrEmpty(lineageRequest.getColumnFilter())) {
+      result = applyColumnFiltering(result, lineageRequest);
+    }
+
+    return result;
+  }
+
+  /**
+   * Internal method to fetch lineage with direction without path preservation logic.
+   * This is the original searchLineageWithDirection implementation.
+   */
+  private SearchLineageResult searchLineageWithDirectionInternal(
+      SearchLineageRequest lineageRequest) throws IOException {
     SearchLineageResult result =
         new SearchLineageResult()
             .withNodes(new HashMap<>())
@@ -931,5 +1005,176 @@ public class ESLineageGraphBuilder {
     }
     int toIndex = Math.min(from + size, list.size());
     return list.subList(from, toIndex);
+  }
+
+  /**
+   * Applies node-level filters in-memory on unfiltered result while preserving paths.
+   * This method filters nodes based on the queryFilter and traces paths from root to matching nodes.
+   */
+  private SearchLineageResult applyInMemoryFiltersWithPathPreservation(
+      SearchLineageResult unfilteredResult, SearchLineageRequest request) {
+
+    if (unfilteredResult == null || request == null) {
+      return unfilteredResult;
+    }
+
+    String queryFilter = request.getQueryFilter();
+    if (nullOrEmpty(queryFilter)) {
+      return unfilteredResult;
+    }
+
+    // Find matching nodes by applying filter in-memory
+    Set<String> matchingNodes = new HashSet<>();
+    matchingNodes.add(request.getFqn()); // Always include root
+
+    for (Map.Entry<String, NodeInformation> entry : unfilteredResult.getNodes().entrySet()) {
+      if (matchesNodeFilter(entry.getValue(), queryFilter)) {
+        matchingNodes.add(entry.getKey());
+      }
+    }
+
+    // Use LineagePathPreserver to trace paths and preserve edges
+    return LineagePathPreserver.preservePathsWithEdges(
+        unfilteredResult, request.getFqn(), matchingNodes);
+  }
+
+  /**
+   * Checks if a node matches the filter criteria (in-memory).
+   * Parses ES Query DSL or query strings and matches against entity fields.
+   */
+  private boolean matchesNodeFilter(NodeInformation node, String queryFilter) {
+    if (node == null || node.getEntity() == null || nullOrEmpty(queryFilter)) {
+      return false;
+    }
+
+    Map<String, Object> entityMap = JsonUtils.getMap(node.getEntity());
+
+    // Parse the query filter to extract field-value pairs
+    Map<String, List<String>> parsedFilter = QueryFilterParser.parseFilter(queryFilter);
+
+    // Match entity against parsed filter
+    return QueryFilterParser.matchesFilter(entityMap, parsedFilter);
+  }
+
+  /**
+   * Separates structural filters (deleted, etc.) from node filters (owner, tags, etc.)
+   * for path-preserving filter logic.
+   */
+  private String getStructuralFilterOnly(String queryFilter) {
+    // For now, structural filters are limited to 'deleted' field
+    // Node-level filters will be applied in post-processing
+    if (nullOrEmpty(queryFilter)) {
+      return null;
+    }
+
+    // If query contains only structural filters, return as-is
+    // Otherwise, return null to fetch unfiltered and apply filters later
+    if (queryFilter.contains("deleted")
+        && !queryFilter.contains("owner")
+        && !queryFilter.contains("tag")
+        && !queryFilter.contains("domain")
+        && !queryFilter.contains("service")) {
+      return queryFilter;
+    }
+
+    return null;
+  }
+
+  /**
+   * Checks if the query filter contains node-level filters that require path preservation.
+   */
+  private boolean hasNodeLevelFilters(String queryFilter) {
+    if (nullOrEmpty(queryFilter)) {
+      return false;
+    }
+
+    // Common node-level filter fields
+    return queryFilter.contains("owner")
+        || queryFilter.contains("tag")
+        || queryFilter.contains("domain")
+        || queryFilter.contains("service")
+        || queryFilter.contains("tier")
+        || queryFilter.contains("displayName")
+        || queryFilter.contains("description");
+  }
+
+  /**
+   * Applies column filtering with metadata support (tags, glossary terms).
+   * Checks if the filter requires metadata and loads column metadata from parent entities if needed.
+   */
+  private SearchLineageResult applyColumnFiltering(
+      SearchLineageResult result, SearchLineageRequest request) throws IOException {
+    if (result == null || nullOrEmpty(request.getColumnFilter())) {
+      return result;
+    }
+
+    // Check if filter requires metadata (tag/glossary)
+    if (requiresMetadataFilter(request.getColumnFilter())) {
+      // Extract all column FQNs from edges
+      Set<String> columnFqns = extractAllColumnFqns(result);
+
+      if (!columnFqns.isEmpty()) {
+        // Load column metadata from parent entities
+        ColumnMetadataCache cache = new ColumnMetadataCache();
+        cache.loadColumnMetadata(columnFqns, this::fetchEntityDocument);
+
+        // Apply filtering with metadata
+        return LineagePathPreserver.filterByColumnsWithMetadata(
+            result, request.getColumnFilter(), request.getFqn(), cache);
+      }
+    }
+
+    // Fall back to name-only filtering
+    return LineagePathPreserver.filterByColumns(
+        result, request.getColumnFilter(), request.getFqn());
+  }
+
+  /**
+   * Checks if column filter requires metadata (tags, glossary terms).
+   */
+  private boolean requiresMetadataFilter(String columnFilter) {
+    if (nullOrEmpty(columnFilter)) {
+      return false;
+    }
+
+    String lowerFilter = columnFilter.toLowerCase();
+    return lowerFilter.contains("tag:") || lowerFilter.contains("glossary:");
+  }
+
+  /**
+   * Extracts all column FQNs from lineage edges for metadata loading.
+   */
+  private Set<String> extractAllColumnFqns(SearchLineageResult result) {
+    Set<String> columnFqns = new HashSet<>();
+
+    if (result.getUpstreamEdges() != null) {
+      result
+          .getUpstreamEdges()
+          .values()
+          .forEach(edge -> columnFqns.addAll(ColumnFilterMatcher.extractColumnFqns(edge)));
+    }
+
+    if (result.getDownstreamEdges() != null) {
+      result
+          .getDownstreamEdges()
+          .values()
+          .forEach(edge -> columnFqns.addAll(ColumnFilterMatcher.extractColumnFqns(edge)));
+    }
+
+    return columnFqns;
+  }
+
+  /**
+   * Fetches entity document from ES by FQN.
+   * Used as EntityDocumentFetcher for ColumnMetadataCache.
+   */
+  private Map<String, Object> fetchEntityDocument(String fqn) throws IOException {
+    return EsUtils.searchEntityByKey(
+        esClient,
+        null,
+        GLOBAL_SEARCH_ALIAS,
+        FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
+        Pair.of(FullyQualifiedName.buildHash(fqn), fqn),
+        SOURCE_FIELDS_TO_EXCLUDE);
   }
 }
