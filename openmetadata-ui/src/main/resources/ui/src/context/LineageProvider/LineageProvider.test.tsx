@@ -50,6 +50,7 @@ const DummyChildrenComponent = () => {
     onColumnClick,
     updateEntityData,
     onLineageEditClick,
+    newlyLoadedNodeIds,
   } = useLineageProvider();
 
   const nodeData = {
@@ -113,6 +114,9 @@ const DummyChildrenComponent = () => {
       <button data-testid="editLineage" onClick={onLineageEditClick}>
         Edit Lineage
       </button>
+      <div data-testid="newly-loaded-node-ids">
+        {newlyLoadedNodeIds.join(',')}
+      </div>
     </div>
   );
 };
@@ -502,5 +506,59 @@ describe('LineageProvider', () => {
     fireEvent.click(columnClick);
 
     expect(edgeDrawer).not.toBeInTheDocument();
+  });
+
+  it('should populate newlyLoadedNodeIds when loading child nodes', async () => {
+    (getLineageDataByFQN as jest.Mock)
+      .mockResolvedValueOnce({
+        nodes: [],
+        edges: [],
+      })
+      .mockResolvedValueOnce({
+        nodes: {
+          'new-node-1': {
+            entity: {
+              id: 'new-node-1',
+              fullyQualifiedName: 'new-node-1',
+              type: 'table',
+            },
+          },
+          'new-node-2': {
+            entity: {
+              id: 'new-node-2',
+              fullyQualifiedName: 'new-node-2',
+              type: 'table',
+            },
+          },
+          'load-more': {
+            entity: {
+              id: 'load-more-node',
+              fullyQualifiedName: 'load-more',
+              type: 'load-more',
+            },
+          },
+        },
+        edges: [],
+        downstreamEdges: {},
+        upstreamEdges: {},
+      });
+
+    render(
+      <LineageProvider>
+        <DummyChildrenComponent />
+      </LineageProvider>
+    );
+
+    const loadButton = screen.getByTestId('load-nodes');
+    const newlyLoadedDisplay = screen.getByTestId('newly-loaded-node-ids');
+
+    expect(newlyLoadedDisplay.textContent).toBe('');
+
+    fireEvent.click(loadButton);
+
+    await screen.findByText('new-node-1,new-node-2');
+
+    expect(newlyLoadedDisplay.textContent).toBe('new-node-1,new-node-2');
+    expect(newlyLoadedDisplay.textContent).not.toContain('load-more-node');
   });
 });
