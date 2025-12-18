@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, IconButton } from '@mui/material';
+import { Button, IconButton, Tooltip } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-filter.svg';
@@ -177,6 +178,7 @@ const EntityFooter = ({
   toggleOnlyShowColumnsWithLineageFilterActive,
   isOnlyShowColumnsWithLineageFilterActive,
 }: LineageNodeLabelPropsExtended) => {
+  const { t } = useTranslation();
   const { children, childrenHeading } = useMemo(
     () => getEntityChildrenAndLabel(node),
     [node.id]
@@ -223,16 +225,18 @@ const EntityFooter = ({
         {childrenInfoDropdownLabel}
       </Button>
       <TestSuiteSummaryContainer node={node} />
-      <IconButton
-        className={classNames(
-          'only-show-columns-with-lineage-filter-button',
-          isOnlyShowColumnsWithLineageFilterActive && 'active'
-        )}
-        data-testid="lineage-filter-button"
-        disabled={isEditMode}
-        onClick={handleOnlyShowColumnsWithLineage}>
-        <FilterIcon height={20} width={20} />
-      </IconButton>
+      <Tooltip title={t('message.only-show-columns-with-lineage')}>
+        <IconButton
+          className={classNames(
+            'only-show-columns-with-lineage-filter-button',
+            isOnlyShowColumnsWithLineageFilterActive && 'active'
+          )}
+          data-testid="lineage-filter-button"
+          disabled={isEditMode}
+          onClick={handleOnlyShowColumnsWithLineage}>
+          <FilterIcon height={20} width={20} />
+        </IconButton>
+      </Tooltip>
     </div>
   );
 };

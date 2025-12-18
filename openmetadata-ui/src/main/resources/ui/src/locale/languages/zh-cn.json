@@ -2462,6 +2462,7 @@
     "onboarding-stay-up-to-date-description": "关注您经常使用的数据集以获取最新信息",
     "only-image-files-supported": "仅支持图片文件",
     "only-reviewers-can-approve-or-reject": "只有审核员可以批准或拒绝",
+    "only-show-columns-with-lineage": "仅显示具有血缘关系的列",
     "optional-configuration-update-description-dbt": "可选配置, 选择是否从 dbt 更新描述",
     "owners-coverage-widget-description": "服务中所有数据资产的所有者覆盖率。<0>了解更多。</0>",
     "page-is-not-available": "您要查找的页面不可用",
