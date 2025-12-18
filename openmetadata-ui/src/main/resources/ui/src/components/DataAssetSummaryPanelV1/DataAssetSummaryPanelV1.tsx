@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -23,7 +23,6 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../utils/date-time/DateTimeUtils';
-import { getUpstreamDownstreamNodesEdges } from '../../utils/EntityLineageUtils';
 import { getEntityChildDetails } from '../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
@@ -80,8 +79,6 @@ export const DataAssetSummaryPanelV1 = ({
   onGlossaryTermsUpdate,
   onDescriptionUpdate,
   onLinkClick,
-  lineageData,
-  isLineageLoading = false,
   onLineageClick,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
@@ -170,52 +167,10 @@ export const DataAssetSummaryPanelV1 = ({
     );
   }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
 
-  const { upstreamCount, downstreamCount, shouldShowLineageSection } =
-    useMemo(() => {
-      if (!ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
-        return {
-          upstreamCount: 0,
-          downstreamCount: 0,
-          shouldShowLineageSection: false,
-        };
-      }
-
-      if (
-        isLineageLoading ||
-        isNil(lineageData) ||
-        isEmpty(dataAsset.fullyQualifiedName)
-      ) {
-        return {
-          upstreamCount: 0,
-          downstreamCount: 0,
-          shouldShowLineageSection: true,
-        };
-      }
-
-      const nodes = Object.values(lineageData.nodes).map((node) => node.entity);
-      const edges = [
-        ...Object.values(lineageData.upstreamEdges),
-        ...Object.values(lineageData.downstreamEdges),
-      ];
-
-      const { upstreamNodes, downstreamNodes } =
-        getUpstreamDownstreamNodesEdges(
-          edges,
-          nodes,
-          dataAsset.fullyQualifiedName!
-        );
-
-      return {
-        upstreamCount: upstreamNodes.length,
-        downstreamCount: downstreamNodes.length,
-        shouldShowLineageSection: true,
-      };
-    }, [
-      lineageData,
-      entityType,
-      dataAsset.fullyQualifiedName,
-      isLineageLoading,
-    ]);
+  const shouldShowLineageSection = useMemo(
+    () => ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType),
+    [entityType]
+  );
 
   const fetchIncidentCount = useCallback(async () => {
     if (
@@ -500,9 +455,8 @@ export const DataAssetSummaryPanelV1 = ({
             )}
             {shouldShowLineageSection && (
               <LineageSection
-                downstreamCount={downstreamCount}
-                isLoading={isLineageLoading}
-                upstreamCount={upstreamCount}
+                entityFqn={dataAsset.fullyQualifiedName}
+                entityType={entityType}
                 onLineageClick={onLineageClick}
               />
             )}

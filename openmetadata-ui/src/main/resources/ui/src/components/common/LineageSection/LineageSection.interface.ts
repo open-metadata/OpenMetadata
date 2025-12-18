@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { EntityType } from '../../../enums/entity.enum';
+
 export interface LineageSectionProps {
-  upstreamCount: number;
-  downstreamCount: number;
-  isLoading?: boolean;
+  entityFqn?: string;
+  entityType?: EntityType;
   onLineageClick?: () => void;
 }

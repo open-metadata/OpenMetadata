@@ -18,10 +18,14 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import React from 'react';
+import { AxiosError } from 'axios';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DownstreamIcon } from '../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../assets/svg/lineage-upstream-icon.svg';
+import { LineagePagingInfo } from '../../../components/LineageTable/LineageTable.interface';
+import { getLineagePagingData } from '../../../rest/lineageAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import { LineageSectionProps } from './LineageSection.interface';
 import {
@@ -31,13 +35,51 @@ import {
 } from './LineageSection.styles';
 
 const LineageSection: React.FC<LineageSectionProps> = ({
-  upstreamCount,
-  downstreamCount,
-  isLoading = false,
+  entityFqn,
+  entityType,
   onLineageClick,
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const [lineagePagingInfo, setLineagePagingInfo] =
+    useState<LineagePagingInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchLineagePagingData = useCallback(async () => {
+    if (!entityFqn || !entityType) {
+      setIsLoading(false);
+      setLineagePagingInfo(null);
+
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await getLineagePagingData({
+        fqn: entityFqn,
+        type: entityType,
+      });
+
+      setLineagePagingInfo(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      setLineagePagingInfo(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [entityFqn, entityType]);
+
+  useEffect(() => {
+    fetchLineagePagingData();
+  }, [fetchLineagePagingData]);
+
+  // Get count for depth 1 entities only
+  const upstreamCount =
+    lineagePagingInfo?.upstreamDepthInfo?.find((info) => info.depth === 1)
+      ?.entityCount ?? 0;
+  const downstreamCount =
+    lineagePagingInfo?.downstreamDepthInfo?.find((info) => info.depth === 1)
+      ?.entityCount ?? 0;
 
   const handleClick = () => {
     onLineageClick?.();
