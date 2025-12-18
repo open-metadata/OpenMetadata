@@ -30,8 +30,7 @@ public class MigrationUtil {
       }
 
       BiPredicate<String, Double> shouldMerge =
-          (field, factor) ->
-              field.contains("percentileRank") && (factor == 0.05 || factor == 0.1 || factor == 2);
+          (field, factor) -> field.contains("percentileRank") && (factor == 0.05 || factor == 0.1);
 
       boolean updated =
           SearchSettingsMergeUtil.mergeFieldValueBoosts(
