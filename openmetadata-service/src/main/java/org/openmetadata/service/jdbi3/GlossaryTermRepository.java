@@ -1799,9 +1799,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     GlossaryTerm glossaryTerm = getByName(null, name, Fields.EMPTY_FIELDS);
     GlossaryRepository glossaryRepository =
         (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
-    Glossary glossary =
-        glossaryRepository.get(null, glossaryTerm.getGlossary().getId(), Fields.EMPTY_FIELDS);
 
+    Glossary glossary =
+        glossaryRepository.getByName(
+            null, glossaryTerm.getGlossary().getName(), Fields.EMPTY_FIELDS);
     GlossaryRepository.GlossaryCsv glossaryCsv = new GlossaryRepository.GlossaryCsv(glossary, user);
     return glossaryCsv.importCsv(csv, dryRun);
   }
