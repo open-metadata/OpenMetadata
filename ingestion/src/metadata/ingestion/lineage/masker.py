@@ -99,8 +99,8 @@ def mask_literals_with_sqlfluff(
 
         if parsed is None:
             hash_prefix = f"[{query_hash}] " if query_hash else ""
-            logger.warning(
-                f"{hash_prefix}Skipping SqlFluff query masking as parser result is None"
+            logger.debug(
+                f"{hash_prefix}Skipping SqlFluff query masking as parsed result is None"
             )
             return query
 
@@ -144,7 +144,7 @@ def mask_query(
     elapsed = time.time() - start_time
 
     elapsed_str = pretty_print_time_duration(elapsed)
-    logger.info(f"{hash_prefix}Query masking completed in {elapsed_str}")
+    logger.debug(f"{hash_prefix}Query masking completed in {elapsed_str}")
 
     return masked_query
 
@@ -159,21 +159,19 @@ def mask_query_impl(
     """
     Mask a query using SqlGlot, SqlFluff, or SqlParse based on the analyzer used.
     """
-    masking_parser = parser
     hash_prefix = f"[{query_hash}] " if query_hash else ""
 
     try:
         if masked_query_cache.get((query, dialect)):
             return masked_query_cache.get((query, dialect))
         if parser_required and not parser:
-            logger.warning(
-                f"{hash_prefix}Query masking skipped as no parser available."
-            )
+            logger.debug(f"{hash_prefix}Query masking skipped as no parser available.")
             return None
 
+        masking_parser = parser
         # Since SqlGlot generalizes query structures/syntax, we will use
         # SqlParse for masking if SqlGlot is used for parsing
-        if isinstance(parser._analyzer, SqlGlotLineageAnalyzer):
+        if parser and isinstance(parser._analyzer, SqlGlotLineageAnalyzer):
             masking_parser = LineageRunner(query, analyzer=SqlParseLineageAnalyzer)
             len(masking_parser.source_tables)
 
@@ -181,6 +179,8 @@ def mask_query_impl(
             # Try to create a parser with the same fallback strategy as LineageParser
             # but since we are not using SqlGlot for masking, we skip it here.
             # Try SqlFluff, then SqlParse
+            # TODO: Evaluate if sqlparse should be the first choice here since it is
+            # faster and almost same support as sqlfluff for masking literals.
             try:
                 masking_parser = LineageRunner(
                     query, dialect=dialect, analyzer=SqlFluffLineageAnalyzer
@@ -191,8 +191,8 @@ def mask_query_impl(
                 len(masking_parser.source_tables)
 
         logger.debug(
-            f"Query masking started using {masking_parser._analyzer.__class__.__name__}"
-            f" for parser {parser._analyzer.__class__.__name__}"
+            f"{hash_prefix}Query masking started using [{masking_parser._analyzer.__class__.__name__}]"
+            f" for parser [{parser and parser._analyzer.__class__.__name__}]"
         )
 
         # Check which analyzer was used based on _analyzer attribute
@@ -205,7 +205,7 @@ def mask_query_impl(
                 query, masking_parser, query_hash
             )
         else:
-            logger.warning(
+            logger.debug(
                 f"{hash_prefix}Query masking skipped as no parser._analyzer available."
                 f" Analyzer: {masking_parser._analyzer}"
             )
@@ -214,6 +214,6 @@ def mask_query_impl(
         masked_query_cache[(query, dialect)] = masked_query
         return masked_query
     except Exception as exc:
-        logger.warning(f"{hash_prefix}Failed to mask query: {exc}")
-        logger.warning(traceback.format_exc())
+        logger.debug(f"{hash_prefix}Failed to mask query: {exc}")
+        logger.debug(traceback.format_exc())
     return None

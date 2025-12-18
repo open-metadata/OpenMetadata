@@ -20,7 +20,7 @@ from unittest import TestCase
 import pytest
 
 from ingestion.tests.unit.lineage.queries.helpers import assert_masked_query
-from metadata.ingestion.lineage.masker import masked_query_cache
+from metadata.ingestion.lineage.masker import mask_query, masked_query_cache
 from metadata.ingestion.lineage.models import Dialect
 
 
@@ -245,6 +245,50 @@ class TestQueryMasker(TestCase):
             # verify cache clearance
             masked_query_cache.clear()
             self.assertNotIn(cache_key, masked_query_cache)
+
+    def test_masking_when_no_parser(self):
+        """
+        Test that masking works as expected when no parser is provided.
+        """
+        query_test_cases = [
+            {
+                "query": """SELECT * FROM user WHERE id=123;""",
+                "expected": """SELECT * FROM user WHERE id=?;""",
+                "dialect": Dialect.ANSI.value,
+            },
+        ]
+
+        masked_query_cache.clear()
+        masked_query = mask_query(
+            query_test_cases[0]["query"],
+            dialect=query_test_cases[0]["dialect"],
+            parser=None,
+            parser_required=False,
+        )
+
+        assert masked_query == query_test_cases[0]["expected"]
+
+    def test_masking_when_no_parser_but_required(self):
+        """
+        Test that masking returns None when no parser is provided but required.
+        """
+        query_test_cases = [
+            {
+                "query": """SELECT * FROM user WHERE id=123;""",
+                "expected": None,
+                "dialect": Dialect.ANSI.value,
+            },
+        ]
+
+        masked_query_cache.clear()
+        masked_query = mask_query(
+            query_test_cases[0]["query"],
+            dialect=query_test_cases[0]["dialect"],
+            parser=None,
+            parser_required=True,
+        )
+
+        assert masked_query is None
 
     # Dialect specific query masking tests
 
