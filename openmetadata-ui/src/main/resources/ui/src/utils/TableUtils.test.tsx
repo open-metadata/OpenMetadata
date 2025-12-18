@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { EntityTabs } from '../enums/entity.enum';
 import { TagLabel } from '../generated/entity/data/container';
 import { Column, DataType } from '../generated/entity/data/table';
+import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
 import {
   ExtraTableDropdownOptions,
   findColumnByEntityLink,
@@ -21,6 +23,7 @@ import {
   getSafeExpandAllKeys,
   getSchemaDepth,
   getSchemaFieldCount,
+  getTableDetailPageBaseTabs,
   getTagsWithoutTier,
   getTierTags,
   isLargeSchema,
@@ -911,6 +914,87 @@ describe('TableUtils', () => {
         expect(result).toContain('level1_field2');
         expect(result).toContain('level2_field1');
       });
+    });
+  });
+
+  const mockProps = {
+    activeTab: EntityTabs.DBT,
+    deleted: false,
+    editCustomAttributePermission: true,
+    editLineagePermission: true,
+    feedCount: {
+      closedTaskCount: 0,
+      conversationCount: 0,
+      mentionCount: 0,
+      openTaskCount: 0,
+      totalCount: 0,
+      totalTasksCount: 0,
+    },
+    fetchTableDetails: jest.fn(),
+    getEntityFeedCount: jest.fn(),
+    handleFeedCount: jest.fn(),
+    isTourOpen: false,
+    isViewTableType: true,
+    queryCount: 0,
+    viewAllPermission: true,
+    viewQueriesPermission: true,
+    viewSampleDataPermission: true,
+    viewProfilerPermission: true,
+    tablePermissions: {
+      Create: true,
+      Delete: true,
+      EditAll: true,
+      EditCertification: true,
+      EditCustomFields: true,
+      EditDataProfile: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditEntityRelationship: true,
+      EditGlossaryTerms: true,
+      EditLineage: true,
+      EditOwners: true,
+      EditQueries: true,
+      EditSampleData: true,
+      EditTags: true,
+      EditTests: true,
+      EditTier: true,
+      ViewAll: true,
+      ViewBasic: true,
+      ViewDataProfile: true,
+      ViewProfilerGlobalConfiguration: true,
+      ViewQueries: true,
+      ViewSampleData: true,
+      ViewTests: true,
+      ViewUsage: true,
+    } as OperationPermission,
+    tableDetails: { ...MOCK_TABLE, dataModel: MOCK_TABLE_DBT },
+  };
+
+  describe('TableDetailPage Tabs', () => {
+    it('dbt tab should render dbtSourceProject with value', () => {
+      const result = getTableDetailPageBaseTabs(mockProps);
+      const stringifyResult = JSON.stringify(result[7].children);
+
+      expect(stringifyResult).toContain('label.dbt-source-project:');
+      expect(stringifyResult).toContain(
+        '{"data-testid":"dbt-source-project-id","children":"jaffle_shop"}'
+      );
+    });
+
+    it('dbt tab should render dbtSourceProject with value No data placeholder', () => {
+      const result = getTableDetailPageBaseTabs({
+        ...mockProps,
+        tableDetails: {
+          ...MOCK_TABLE,
+          dataModel: { ...MOCK_TABLE_DBT, dbtSourceProject: undefined },
+        },
+      });
+      const stringifyResult = JSON.stringify(result[7].children);
+
+      expect(stringifyResult).toContain('label.dbt-source-project:');
+      expect(stringifyResult).toContain(
+        '{"data-testid":"dbt-source-project-id","children":"--"}'
+      );
     });
   });
 });

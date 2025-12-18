@@ -20,8 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   FieldProp,
   FieldTypes,
@@ -40,6 +42,7 @@ const AddGlossaryTermForm = ({
   formRef: form,
 }: AddGlossaryTermFormProps) => {
   const { currentUser } = useApplicationStore();
+  const { entityRules } = useEntityRules(EntityType.GLOSSARY_TERM);
   const selectedOwners =
     Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
   const { t } = useTranslation();
@@ -330,7 +333,10 @@ const AddGlossaryTermForm = ({
           type="primary"
         />
       ),
-      multiple: { user: true, team: false },
+      multiple: {
+        user: entityRules.canAddMultipleUserOwners,
+        team: entityRules.canAddMultipleTeamOwner,
+      },
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {

@@ -429,9 +429,22 @@ mvn verify            # Run integration tests
 ```bash
 cd openmetadata-ui/src/main/resources/ui
 yarn lint:fix         # Fix ESLint issues
-yarn pretty           # Format with Prettier  
+yarn pretty           # Format with Prettier
 yarn license-header-fix  # Add license headers
+yarn pre-commit       # Run precommit checks (lint-staged): license headers, i18n sync, organize imports, ESLint, and Prettier
 ```
+
+**IMPORTANT: Precommit Hook Standards**
+- The project uses `lint-staged` with `husky` for precommit checks
+- When making UI changes, ALWAYS run `yarn pre-commit` before committing
+- Precommit automatically runs:
+  1. License header insertion (`yarn license-header-fix`)
+  2. i18n localization sync (`yarn i18n`)
+  3. Import organization (`organize-imports-cli`)
+  4. ESLint with auto-fix (`./lint-staged-eslint.sh`)
+  5. Prettier formatting (`prettier --write`)
+- These checks run on staged files only (via lint-staged)
+- CI will reject commits that don't pass these checks
 
 ### Python
 ```bash
@@ -511,17 +524,22 @@ ALWAYS run these validation steps:
 # Java formatting
 mvn spotless:apply
 
-# Frontend linting
-cd openmetadata-ui/src/main/resources/ui && yarn lint:fix
+# Frontend precommit checks (PREFERRED - runs all formatting and linting)
+cd openmetadata-ui/src/main/resources/ui && yarn pre-commit
 
-# Python formatting  
+# OR run individual frontend checks
+cd openmetadata-ui/src/main/resources/ui && yarn lint:fix && yarn pretty
+
+# Python formatting
 make py_format
 
 # Run tests relevant to your changes
 mvn test                     # For Java changes
-yarn test                    # For UI changes  
+yarn test                    # For UI changes
 make unit_ingestion_dev_env  # For Python changes
 ```
+
+**Note**: The project uses Git hooks (husky + lint-staged) that automatically run precommit checks on staged files. The `yarn pre-commit` command manually runs the same checks.
 
 ### CI Build Expectations
 - **Maven Build**: 45-60 minutes
@@ -545,5 +563,103 @@ make unit_ingestion_dev_env  # For Python changes
 - Default admin token expires, generate new ones for production
 - Database migrations are automatically applied on startup
 - HTTPS is required for production deployments
+
+## UI Pull Request Review Guidelines
+
+**IMPORTANT: When reviewing UI pull requests, you MUST follow the comprehensive guidelines in [/openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md](../openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md)**
+
+### Critical UI Standards to Enforce
+
+#### Type Safety (Zero Tolerance)
+- ❌ **REJECT**: Any use of `any` type in TypeScript
+- ✅ **REQUIRE**: Proper type imports from `generated/` or `@rjsf/utils`
+- ✅ **REQUIRE**: Defined interfaces for all component props in `.interface.ts` files
+
+#### Internationalization (Zero Tolerance)
+- ❌ **REJECT**: Any hardcoded string literals in UI components
+- ✅ **REQUIRE**: All user-facing text uses `useTranslation` hook: `const { t } = useTranslation()`
+- ✅ **REQUIRE**: Translation keys like `t('label.key')` from locale files
+
+#### MUI Migration (Preferred)
+- ⚠️ **FLAG**: New features using Ant Design components (should use MUI v7.3.1)
+- ✅ **PREFER**: MUI components and theme tokens from `openmetadata-ui-core-components`
+- ❌ **REJECT**: Hardcoded colors instead of theme tokens
+
+#### Code Quality (Must Pass)
+- ❌ **REJECT**: ESLint errors or warnings
+- ❌ **REJECT**: Console.log statements in production code
+- ❌ **REJECT**: Unnecessary comments explaining obvious code
+- ✅ **REQUIRE**: Proper import organization (external → internal → relative → assets)
+
+#### React Patterns (Must Follow)
+- ✅ **REQUIRE**: Functional components only (no class components)
+- ✅ **REQUIRE**: Proper dependency arrays in `useEffect`, `useCallback`, `useMemo`
+- ✅ **REQUIRE**: Loading states as `useState<Record<string, boolean>>({})`
+- ✅ **REQUIRE**: Error handling with `showErrorToast`/`showSuccessToast` from ToastUtils
+- ✅ **REQUIRE**: Navigation with `useNavigate`, not direct history manipulation
+
+#### File Naming (Must Follow)
+- ✅ **REQUIRE**: Components named as `ComponentName.component.tsx`
+- ✅ **REQUIRE**: Interfaces named as `ComponentName.interface.ts`
+- ✅ **REQUIRE**: Custom hooks prefixed with `use` and placed in `src/hooks/`
+
+### PR Review Checklist
+
+When reviewing a UI PR, verify ALL of these:
+
+1. **Pre-merge Commands Pass**:
+   ```bash
+   yarn lint              # Must pass with zero errors
+   yarn test              # All tests must pass
+   yarn build             # Build must succeed
+   ```
+
+2. **Type Safety**: Search for `any` type usage - must be zero occurrences
+3. **i18n Compliance**: Search for hardcoded strings - must use translation keys
+4. **Import Organization**: Check import order follows standard
+5. **MUI Usage**: New components prefer MUI over Ant Design
+6. **No Debug Code**: No console.log, commented code, or debug statements
+7. **Performance**: Proper memoization, no unnecessary re-renders
+8. **Accessibility**: Semantic HTML, ARIA labels, keyboard navigation
+9. **Screenshots Provided**: UI changes include visual evidence
+
+### Auto-Reject Conditions
+
+Immediately flag these for revision:
+- Any `any` type usage
+- Hardcoded UI strings (not using `t()`)
+- ESLint errors
+- Failed tests or build
+- Missing prop interfaces
+- Console.log statements
+- Ant Design components in new features (without justification)
+
+### Review Response Template
+
+Use this template when reviewing UI PRs:
+
+```markdown
+## UI PR Review
+
+### ✅ Passed Checks
+- [List what meets standards]
+
+### ❌ Required Changes
+- [List blocking issues with file:line references]
+
+### ⚠️ Suggestions
+- [List non-blocking improvements]
+
+### 📋 Verification
+- [ ] `yarn lint` passes
+- [ ] `yarn test` passes
+- [ ] `yarn build` succeeds
+- [ ] No `any` types
+- [ ] No hardcoded strings
+- [ ] Proper MUI usage
+- [ ] Screenshots provided
+
+See [UI_PR_REVIEW_GUIDELINES.md](../openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md) for complete checklist.
+```
 
 Remember: This is a complex multi-language project. Build times are substantial. NEVER cancel long-running builds or tests. Always validate changes with real user scenarios before considering the work complete.

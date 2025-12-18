@@ -1,0 +1,53 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { EntityTags } from 'Models';
+import { LineageData } from '../../components/Lineage/Lineage.interface';
+import { EntityType } from '../../enums/entity.enum';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { EntityReference } from '../../generated/type/entityReference';
+import { TagLabel } from '../../generated/type/tagLabel';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../utils/EntityUtils';
+import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
+
+export type DataAssetSummaryPanelProps = {
+  panelPath?: string;
+  tags?: EntityTags[];
+  componentType?: DRAWER_NAVIGATION_OPTIONS;
+  isLoading?: boolean;
+  highlights?: SearchedDataProps['data'][number]['highlight'];
+  dataAsset: SearchedDataProps['data'][number]['_source'] & {
+    dataProducts: DataProduct[];
+  };
+  entityType: EntityType;
+  isDomainVisible?: boolean;
+  isLineageView?: boolean;
+  lineageData?: LineageData | null;
+  isLineageLoading?: boolean;
+  onOwnerUpdate?: (updatedOwners: EntityReference[]) => void;
+  onDomainUpdate?: (updatedDomains: EntityReference[]) => void;
+  onTierUpdate?: (updatedTier?: TagLabel) => void;
+  onTagsUpdate?: (updatedTags: TagLabel[]) => void;
+  onDataProductsUpdate?: (updatedDataProducts: EntityReference[]) => void;
+  onGlossaryTermsUpdate?: (updatedGlossaryTerms: TagLabel[]) => void;
+  onDescriptionUpdate?: (updatedDescription: string) => void;
+  onLinkClick?: () => void;
+  onLineageClick?: () => void;
+};
+
+export interface TestCaseStatusCounts {
+  success: number;
+  failed: number;
+  aborted: number;
+  ack: number;
+  total: number;
+}

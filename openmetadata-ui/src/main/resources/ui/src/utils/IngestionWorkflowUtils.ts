@@ -26,6 +26,7 @@ import databaseLineagePipeline from '../jsons/ingestionSchemas/databaseServiceQu
 import databaseUsagePipeline from '../jsons/ingestionSchemas/databaseServiceQueryUsagePipeline.json';
 import dataInsightPipeline from '../jsons/ingestionSchemas/dataInsightPipeline.json';
 import dbtPipeline from '../jsons/ingestionSchemas/dbtPipeline.json';
+import driveMetadataPipeline from '../jsons/ingestionSchemas/driveServiceMetadataPipeline.json';
 import messagingMetadataPipeline from '../jsons/ingestionSchemas/messagingServiceMetadataPipeline.json';
 import metadataToElasticSearchPipeline from '../jsons/ingestionSchemas/metadataToElasticSearchPipeline.json';
 import mlModelMetadataPipeline from '../jsons/ingestionSchemas/mlmodelServiceMetadataPipeline.json';
@@ -56,6 +57,8 @@ export const getMetadataSchemaByServiceCategory = (
       return storageMetadataPipeline;
     case ServiceCategory.SEARCH_SERVICES:
       return searchMetadataPipeline;
+    case ServiceCategory.DRIVE_SERVICES:
+      return driveMetadataPipeline;
 
     default:
       return {};

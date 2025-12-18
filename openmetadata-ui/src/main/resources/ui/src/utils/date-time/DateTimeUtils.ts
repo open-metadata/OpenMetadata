@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { capitalize, isNil, toInteger, toNumber } from 'lodash';
+import cronstrue from 'cronstrue';
+import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
+import { getCurrentLocaleForConstrue } from '../i18next/i18nextUtil';
 import i18next from '../i18next/LocalUtil';
 
 export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
@@ -46,6 +48,24 @@ export const formatDate = (date?: number, supportUTC = false) => {
   return supportUTC
     ? dateTime.toUTC().toLocaleString(DateTime.DATE_MED)
     : dateTime.setLocale(i18next.language).toLocaleString(DateTime.DATE_MED);
+};
+
+/**
+ * @param date EPOCH millis
+ * @returns Formatted month for valid input. Format: MMM (e.g. Jan, Feb, Mar)
+ */
+export const formatMonth = (date?: number) => {
+  if (isNil(date) || isNaN(date)) {
+    return '';
+  }
+
+  const dateTime = DateTime.fromMillis(date, { locale: i18next.language });
+
+  if (!dateTime.isValid) {
+    return '';
+  }
+
+  return dateTime.toFormat('MMM');
 };
 
 /**
@@ -102,7 +122,7 @@ export const formatDateTimeWithTimezone = (timeStamp: number): string => {
  * @returns Formatted duration for valid input. Format: 00:09:31
  */
 export const formatTimeDurationFromSeconds = (seconds: number) =>
-  !isNil(seconds) ? Duration.fromObject({ seconds }).toFormat('hh:mm:ss') : '';
+  isNil(seconds) ? '' : Duration.fromObject({ seconds }).toFormat('hh:mm:ss');
 
 /**
  *
@@ -132,11 +152,11 @@ export const customFormatDateTime = (
  * @returns
  */
 export const getRelativeTime = (timeStamp?: number): string => {
-  return !isNil(timeStamp)
-    ? DateTime.fromMillis(timeStamp, {
+  return isNil(timeStamp)
+    ? ''
+    : DateTime.fromMillis(timeStamp, {
         locale: i18next.language,
-      }).toRelative() ?? ''
-    : '';
+      }).toRelative() ?? '';
 };
 
 /**
@@ -225,7 +245,7 @@ export const isValidDateFormat = (format: string) => {
     const dt = DateTime.fromFormat(DateTime.now().toFormat(format), format);
 
     return dt.isValid;
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -265,7 +285,7 @@ export const calculateInterval = (
     const hours = Math.floor(duration.as('hours')) % 24;
 
     return `${days} Days, ${hours} Hours`;
-  } catch (error) {
+  } catch {
     return 'Invalid interval';
   }
 };
@@ -352,7 +372,7 @@ export const formatDuration = (ms: number) => {
   const hours = minutes / 60;
 
   const pluralize = (value: number, unit: string) =>
-    `${value.toFixed(2)} ${unit}${value !== 1 ? 's' : ''}`;
+    `${value.toFixed(2)} ${unit}${value === 1 ? '' : 's'}`;
 
   if (seconds < 60) {
     return pluralize(seconds, 'second');
@@ -375,6 +395,9 @@ export const getEndOfDayInMillis = (timestamp: number) =>
 export const getCurrentDayStartGMTinMillis = () =>
   DateTime.now().setZone('GMT').startOf('day').toMillis();
 
+export const getCurrentDayEndGMTinMillis = () =>
+  DateTime.now().setZone('GMT').endOf('day').toMillis();
+
 export const getDayAgoStartGMTinMillis = (days: number) =>
   DateTime.now().setZone('GMT').minus({ days }).startOf('day').toMillis();
 
@@ -385,4 +408,28 @@ export const getSevenDaysStartGMTArrayInMillis = () => {
   }
 
   return sevenDaysStartGMTArrayInMillis;
+};
+
+export const getScheduleDescriptionTexts = (scheduleInterval: string) => {
+  try {
+    const scheduleDescription = cronstrue.toString(scheduleInterval, {
+      use24HourTimeFormat: false,
+      verbose: true,
+      locale: getCurrentLocaleForConstrue(), // To get localized string
+    });
+
+    const firstSentenceEndIndex = scheduleDescription.indexOf(',');
+
+    const descriptionFirstPart = scheduleDescription
+      .slice(0, firstSentenceEndIndex)
+      .trim();
+
+    const descriptionSecondPart = capitalize(
+      scheduleDescription.slice(firstSentenceEndIndex + 1).trim()
+    );
+
+    return { descriptionFirstPart, descriptionSecondPart };
+  } catch {
+    return { descriptionFirstPart: '', descriptionSecondPart: '' };
+  }
 };

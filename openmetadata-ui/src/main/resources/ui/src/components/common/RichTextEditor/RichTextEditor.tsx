@@ -37,6 +37,8 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
       style,
       placeHolder,
       onTextChange,
+      extensionOptions,
+      showMenu = true,
     }: RichTextEditorProp,
     ref
   ) => {
@@ -67,11 +69,13 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
     return (
       <div className={classNames(className)} style={style} data-testid="editor">
         <BlockEditor
+          extensionOptions={extensionOptions}
           placeholder={placeHolder}
           ref={editorRef}
           autoFocus={autofocus}
           content={initialValue}
           menuType="bar"
+          showMenu={showMenu}
           editable={!readonly}
           onChange={onChangeHandler}
         />

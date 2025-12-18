@@ -15,6 +15,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
 
 export const deleteTestCase = async (page: Page, testCaseName: string) => {
+  await page.getByTestId(`action-dropdown-${testCaseName}`).click();
   await page.getByTestId(`delete-${testCaseName}`).click();
   await page.fill('#deleteTextInput', 'DELETE');
 
@@ -35,9 +36,43 @@ export const visitDataQualityTab = async (page: Page, table: TableClass) => {
   const testCaseResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'
   );
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .click();
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
   await testCaseResponse;
+};
+
+export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
+  page: Page,
+  table: TableClass,
+  testCaseName: string
+) => {
+  await page
+    .getByRole('link', {
+      name: testCaseName,
+    })
+    .click();
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('breadcrumb-link').nth(0)).toHaveText(
+    `${table.entityResponseData.service.displayName}/`
+  );
+  await expect(page.getByTestId('breadcrumb-link').nth(1)).toHaveText(
+    `${table.entityResponseData?.['database'].displayName}/`
+  );
+  await expect(page.getByTestId('breadcrumb-link').nth(2)).toHaveText(
+    `${table.entityResponseData?.['databaseSchema'].displayName}/`
+  );
+  await expect(page.getByTestId('breadcrumb-link').nth(3)).toHaveText(
+    `${table.entityResponseData?.displayName}/`
+  );
+
+  await page.getByTestId('breadcrumb-link').nth(3).click();
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };

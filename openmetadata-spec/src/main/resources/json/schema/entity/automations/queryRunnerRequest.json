@@ -1,0 +1,59 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/automations/queryRunnerRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryRunnerRequest",
+  "javaType": "org.openmetadata.schema.entity.automations.QueryRunnerRequest",
+  "description": "Query Runner Request",
+  "type": "object",
+  "properties": {
+    "connectionType": {
+      "description": "Type of the connection to test such as Snowflake, MySQL, Looker, etc.",
+      "type": "string"
+    },
+    "serviceName": {
+      "description": "Optional value that identifies this service name.",
+      "$ref": "../../type/basic.json#/definitions/entityName",
+      "default": null
+    },
+    "query": {
+      "description": "Query to be executed.",
+      "type": "string"
+    },
+    "transpile": {
+      "description": "Optional value to indicate if the query should be transpiled.",
+      "type": "boolean"
+    },
+    "ingestionRunner": {
+      "description": "Optional value of the ingestion runner name responsible for running the test",
+      "type": "string"
+    },
+    "userId": {
+      "description": "UUID of the user executing the query (extracted from JWT token in backend)",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "userConfigId": {
+      "description": "UUID of the user's QueryRunner config for this specific service (looked up by backend using userId + serviceName)",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "authType": {
+      "description": "Authentication type configured by admin in QueryRunnerConfig (e.g., Basic, ExternalOAuth, etc.). Used to determine which credential field to use from user config.",
+      "type": "string"
+    },
+    "role": {
+      "description": "Optional role to use for query execution (selected by user in QueryRunner Studio). Service-specific (e.g., Snowflake role).",
+      "type": "string",
+      "default": null
+    },
+    "database": {
+      "description": "Optional database/dataset to use for query execution (selected by user in QueryRunner Studio). Service-specific name (e.g., Snowflake database).",
+      "type": "string",
+      "default": null
+    },
+    "databaseSchema": {
+      "description": "Optional database schema to use for query execution (selected by user in QueryRunner Studio). Service-specific name (e.g., Snowflake schema). Named 'databaseSchema' instead of 'schema' to avoid conflicts with Pydantic's BaseModel.schema() method.",
+      "type": "string",
+      "default": null
+    }
+  },
+  "additionalProperties": false
+}

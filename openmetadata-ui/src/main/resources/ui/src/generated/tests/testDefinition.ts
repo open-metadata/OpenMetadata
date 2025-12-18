@@ -66,6 +66,11 @@ export interface TestDefinition {
     provider?:            ProviderType;
     supportedDataTypes?:  DataType[];
     /**
+     * List of services that this test definition supports. When empty, it implies all services
+     * are supported.
+     */
+    supportedServices?: string[];
+    /**
      * When `true` indicates the test case supports dynamic assertions.
      */
     supportsDynamicAssertion?: boolean;
@@ -162,6 +167,7 @@ export enum DataQualityDimensions {
     Completeness = "Completeness",
     Consistency = "Consistency",
     Integrity = "Integrity",
+    NoDimension = "NoDimension",
     SQL = "SQL",
     Uniqueness = "Uniqueness",
     Validity = "Validity",
@@ -357,6 +363,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -421,7 +428,7 @@ export enum DataType {
  * This schema defines the platform where tests are defined and ran.
  */
 export enum TestPlatform {
-    Dbt = "DBT",
+    Dbt = "dbt",
     Deequ = "Deequ",
     GreatExpectations = "GreatExpectations",
     OpenMetadata = "OpenMetadata",

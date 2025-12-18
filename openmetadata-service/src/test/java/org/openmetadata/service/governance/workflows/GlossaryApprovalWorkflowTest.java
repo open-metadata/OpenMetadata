@@ -53,11 +53,14 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
@@ -233,6 +236,79 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  public void testWorkflowInstancesApiWithSpecialCharacters() throws Exception {
+    // Test for the specific bug fix - glossary terms with single quotes in the name
+    // This test verifies the API can handle entityLink parameters with special characters
+
+    // Create glossary with stable name
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName("SpecialCharsGlossary")
+            .withDescription("Glossary for testing special characters");
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create term with single quote in name (this was causing SQL injection issues)
+    String termNameWithQuote = "Glo'ddd";
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName(termNameWithQuote)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Test term with single quote");
+    GlossaryTerm term = glossaryTermTest.createEntity(createTerm, ADMIN_AUTH_HEADERS);
+
+    // Verify the term was created successfully
+    assertEquals(EntityStatus.APPROVED, term.getEntityStatus());
+
+    // Construct the entityLink exactly as it would appear in the UI
+    String termFqn = glossary.getFullyQualifiedName() + "." + termNameWithQuote;
+    String entityLink = String.format("<#E::glossaryTerm::%s>", termFqn);
+
+    // Wait for potential workflow instance to be created
+    try {
+      UUID workflowInstanceId = waitForWorkflowInstanceByEntityLink(entityLink);
+      // If we get here, a workflow instance was created - that's fine, continue testing
+      LOG.info(
+          "Workflow instance created for term with special characters: {}", workflowInstanceId);
+    } catch (AssertionError e) {
+      // If no workflow instance is created, that's also fine - the main point is testing the API
+      LOG.info("No automatic workflow instance created, testing API call directly");
+    }
+
+    // The main test: Call the workflow instances API with entityLink containing single quote
+    // This should NOT throw a SQL exception after our fix
+    long now = System.currentTimeMillis();
+    long oneHourAgo = now - 3600_000L;
+
+    String url =
+        String.format(
+            "governance/workflowInstances?startTs=%d&endTs=%d&entityLink=%s&workflowDefinitionName=GlossaryTermApprovalWorkflow",
+            oneHourAgo, now, URLEncoder.encode(entityLink, StandardCharsets.UTF_8));
+
+    WebTarget target = getResource(url);
+    Invocation.Builder builder = target.request();
+    for (Map.Entry<String, String> entry : ADMIN_AUTH_HEADERS.entrySet()) {
+      builder = builder.header(entry.getKey(), entry.getValue());
+    }
+
+    // This should succeed without throwing UnableToCreateStatementException
+    String rawJson = builder.get(String.class);
+    assertNotNull(rawJson, "API response should not be null");
+
+    // Parse the response to ensure it's valid JSON
+    ResultList<WorkflowInstance> result =
+        JsonUtils.readValue(
+            rawJson,
+            new com.fasterxml.jackson.core.type.TypeReference<ResultList<WorkflowInstance>>() {});
+    assertNotNull(result, "Parsed result should not be null");
+
+    // The result may be empty (no workflow instances) or contain instances - both are valid
+    // The important thing is that the API call succeeded without SQL errors
+    LOG.info(
+        "Successfully called workflow instances API with special character entityLink. Found {} instances.",
+        result.getData().size());
+  }
+
+  @Test
   public void testGlossaryApprovalWorkflowWithReviewer() throws Exception {
     // Create glossary with reviewer and stable name
     CreateGlossary createGlossary =
@@ -281,13 +357,9 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
               return refreshed.getEntityStatus() == EntityStatus.IN_REVIEW;
             });
 
-    // Approve the term as reviewerUser
-    String json = JsonUtils.pojoToJson(term);
-    term.setEntityStatus(EntityStatus.APPROVED);
-
+    // Get reviewer headers for resolving the task
     Map<String, String> reviewerHeaders =
         authHeaders(reviewerUser.getName() + "@open-metadata.org");
-    term = glossaryTermTest.patchEntity(term.getId(), json, term, reviewerHeaders);
 
     // Find the open approval task for the term via API
     String about = String.format("<#E::glossaryTerm::%s>", term.getFullyQualifiedName());
@@ -311,8 +383,12 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
         threads.getData().stream()
             .filter(t -> t.getTask() != null) // First ensure the thread has a task
             .filter(t -> t.getTask().getType() == TaskType.RequestApproval) // Then check task type
+            .filter(t -> t.getTask().getId() != null) // Ensure task has valid ID
             .findFirst()
-            .orElseThrow(() -> new AssertionError("No open approval task found"));
+            .orElseThrow(() -> new AssertionError("No open approval task with valid ID found"));
+
+    // Verify ChangeEvent was created for the workflow-generated approval task
+    verifyChangeEventForTask(taskThread);
 
     // Prepare the resolve payload
     ResolveTask resolveTask = new ResolveTask().withNewValue("approved");
@@ -322,7 +398,7 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
 
     // Wait for workflow instance to finish
     WorkflowInstance instance =
-        waitForWorkflowInstanceCompletion(workflowInstanceId, "ApprovedEndAfterApproval");
+        waitForWorkflowInstanceCompletion(workflowInstanceId, "ApprovalEnd");
 
     // Fetch workflow states using the enhanced API that gets states from latest workflow instance
     List<WorkflowInstanceState> states =
@@ -333,21 +409,18 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
     // Sort states by timestamp before asserting
     states.sort(Comparator.comparing(WorkflowInstanceState::getTimestamp));
 
-    // [GlossaryTermCreated, CheckGlossaryTermHasReviewers, CheckIfGlossaryTermUpdatedByIsReviewer,
-    // CheckGlossaryTermIsReadyToBeReviewed, SetGlossaryTermStatusToInReview, ApproveGlossaryTerm,
-    // SetGlossaryTermStatusToApprovedAfterApproval, ApprovedEndAfterApproval]
-
-    // Assert the expected sequence of workflow states for reviewer approval
+    // Assert the expected sequence of workflow states for the update path
     List<String> expectedStages =
         List.of(
             "GlossaryTermCreated",
             "CheckGlossaryTermHasReviewers",
             "CheckIfGlossaryTermUpdatedByIsReviewer",
             "CheckGlossaryTermIsReadyToBeReviewed",
-            "SetGlossaryTermStatusToInReview",
-            "ApproveGlossaryTerm",
-            "SetGlossaryTermStatusToApprovedAfterApproval",
-            "ApprovedEndAfterApproval");
+            "CheckIfGlossaryTermIsNew",
+            "SetGlossaryTermStatusToInReviewForUpdate",
+            "ApprovalForUpdates",
+            "SetGlossaryTermStatusToApprovedAfterReview",
+            "ApprovalEnd");
     assertWorkflowStatesSequence(states, expectedStages);
 
     // Assert specific displayNames for known stages based on the actual workflow definition
@@ -359,10 +432,11 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
                 "Check if Glossary Term Updated By is Reviewer",
             "CheckGlossaryTermIsReadyToBeReviewed",
                 "Check if Glossary Term is Ready to be Reviewed",
-            "SetGlossaryTermStatusToInReview", "Set Status to 'In Review'",
-            "ApproveGlossaryTerm", "Create User Approval Task",
-            "SetGlossaryTermStatusToApprovedAfterApproval", "Set Status to 'Approved'",
-            "ApprovedEndAfterApproval", "Glossary Term Status: Approved");
+            "CheckIfGlossaryTermIsNew", "Check if Glossary Term is New",
+            "SetGlossaryTermStatusToInReviewForUpdate", "Set Status to 'In Review' (Update)",
+            "ApprovalForUpdates", "Review Changes for Updates",
+            "SetGlossaryTermStatusToApprovedAfterReview", "Set Status to 'Approved' (After Review)",
+            "ApprovalEnd", "Approved After Unified Review");
     assertStageDisplayNames(states, expectedDisplayNames);
 
     // Assert that the workflow instance is finished
@@ -597,6 +671,31 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
         assertFalse(actualDisplayName.trim().isEmpty(), "DisplayName should not be empty");
       }
     }
+  }
+
+  private void verifyChangeEventForTask(Thread taskThread) {
+    long latestOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    List<String> changeEventJsonList =
+        Entity.getCollectionDAO().changeEventDAO().list(100, Math.max(0, latestOffset - 100));
+
+    ChangeEvent matchingEvent =
+        changeEventJsonList.stream()
+            .map(json -> JsonUtils.readValue(json, ChangeEvent.class))
+            .filter(event -> event.getEntityType().equals(Entity.THREAD))
+            .filter(event -> event.getEntityId().equals(taskThread.getId()))
+            .filter(event -> event.getEventType().equals(EventType.THREAD_CREATED))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(
+        matchingEvent,
+        String.format(
+            "ChangeEvent with type THREAD_CREATED should exist for task thread ID: %s",
+            taskThread.getId()));
+
+    assertNotNull(matchingEvent.getUserName(), "ChangeEvent userName should not be null");
+    assertNotNull(matchingEvent.getTimestamp(), "ChangeEvent timestamp should not be null");
+    assertNotNull(matchingEvent.getEntity(), "ChangeEvent entity should not be null");
   }
 
   private void manuallyTriggerWorkflowSignal(String entityLink) {

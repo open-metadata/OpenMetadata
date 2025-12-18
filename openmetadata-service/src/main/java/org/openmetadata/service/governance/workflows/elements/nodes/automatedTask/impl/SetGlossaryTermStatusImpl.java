@@ -10,7 +10,7 @@ import jakarta.json.JsonPatch;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -24,6 +24,7 @@ import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
+@Deprecated
 @Slf4j
 public class SetGlossaryTermStatusImpl implements JavaDelegate {
   private Expression statusExpr;

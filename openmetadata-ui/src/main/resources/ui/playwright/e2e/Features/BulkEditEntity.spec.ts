@@ -15,10 +15,11 @@ import { expect, test } from '@playwright/test';
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { SERVICE_TYPE } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
   descriptionBoxReadOnly,
@@ -49,9 +50,16 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
+const user1 = new UserClass();
+const user2 = new UserClass();
+const glossary = new Glossary();
+const glossaryTerm = new GlossaryTerm(glossary);
+const domain1 = new Domain();
+const domain2 = new Domain();
+
 const glossaryDetails = {
-  name: EntityDataClass.glossaryTerm1.data.name,
-  parent: EntityDataClass.glossary1.data.name,
+  name: glossaryTerm.data.name,
+  parent: glossary.data.name,
 };
 
 const databaseSchemaDetails1 = {
@@ -70,19 +78,16 @@ const columnDetails1 = {
 };
 
 test.describe('Bulk Edit Entity', () => {
-  test.beforeAll('setup pre-test', async ({ browser }, testInfo) => {
+  test.beforeAll('setup pre-test', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    testInfo.setTimeout(90000);
-    await EntityDataClass.preRequisitesForTests(apiContext);
-    await afterAction();
-  });
+    await user1.create(apiContext);
+    await user2.create(apiContext);
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
+    await domain1.create(apiContext);
+    await domain2.create(apiContext);
 
-  test.afterAll('Cleanup', async ({ browser }, testInfo) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    testInfo.setTimeout(90000);
-    await EntityDataClass.postRequisitesForTests(apiContext);
     await afterAction();
   });
 
@@ -109,7 +114,7 @@ test.describe('Bulk Edit Entity', () => {
     await test.step('Perform bulk edit action', async () => {
       const databaseDetails = {
         ...createDatabaseRowDetails(),
-        domains: EntityDataClass.domain1.responseData,
+        domains: domain1.responseData,
         glossary: glossaryDetails,
       };
 
@@ -145,14 +150,16 @@ test.describe('Bulk Edit Entity', () => {
           ...databaseDetails,
           name: table.database.name,
           owners: [
-            EntityDataClass.user1.responseData?.['displayName'],
-            EntityDataClass.user2.responseData?.['displayName'],
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
           ],
           retentionPeriod: undefined,
           sourceUrl: undefined,
         },
         page,
-        customPropertyRecord
+        customPropertyRecord,
+        undefined,
+        true
       );
 
       await page.getByRole('button', { name: 'Next' }).click();
@@ -191,10 +198,10 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page.getByTestId(EntityDataClass.user1.responseData?.['displayName'])
+        page.getByTestId(user1.responseData?.['displayName'])
       ).toBeVisible();
       await expect(
-        page.getByTestId(EntityDataClass.user2.responseData?.['displayName'])
+        page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
 
       // Verify Tags
@@ -212,7 +219,7 @@ test.describe('Bulk Edit Entity', () => {
 
       await expect(
         page.getByRole('link', {
-          name: EntityDataClass.glossaryTerm1.data.displayName,
+          name: glossaryTerm.data.displayName,
         })
       ).toBeVisible();
     });
@@ -280,13 +287,15 @@ test.describe('Bulk Edit Entity', () => {
           ...databaseSchemaDetails1,
           name: table.schema.name,
           owners: [
-            EntityDataClass.user1.responseData?.['displayName'],
-            EntityDataClass.user2.responseData?.['displayName'],
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
           ],
-          domains: EntityDataClass.domain1.responseData,
+          domains: domain1.responseData,
         },
         page,
-        customPropertyRecord
+        customPropertyRecord,
+        undefined,
+        true
       );
 
       await page.getByRole('button', { name: 'Next' }).click();
@@ -327,11 +336,11 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page.getByTestId(EntityDataClass.user1.responseData?.['displayName'])
+        page.getByTestId(user1.responseData?.['displayName'])
       ).toBeVisible();
 
       await expect(
-        page.getByTestId(EntityDataClass.user2.responseData?.['displayName'])
+        page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
 
       await page.getByTestId('column-display-name').click();
@@ -354,7 +363,7 @@ test.describe('Bulk Edit Entity', () => {
 
       await expect(
         page.getByRole('link', {
-          name: EntityDataClass.glossaryTerm1.data.displayName,
+          name: glossaryTerm.data.displayName,
         })
       ).toBeVisible();
     });
@@ -420,13 +429,15 @@ test.describe('Bulk Edit Entity', () => {
           ...tableDetails1,
           name: table.entity.name,
           owners: [
-            EntityDataClass.user1.responseData?.['displayName'],
-            EntityDataClass.user2.responseData?.['displayName'],
+            user1.responseData?.['displayName'],
+            user2.responseData?.['displayName'],
           ],
-          domains: EntityDataClass.domain1.responseData,
+          domains: domain1.responseData,
         },
         page,
-        customPropertyRecord
+        customPropertyRecord,
+        undefined,
+        true
       );
 
       await page.getByRole('button', { name: 'Next' }).click();
@@ -464,16 +475,16 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Domain
       await expect(page.getByTestId('domain-link')).toContainText(
-        EntityDataClass.domain1.responseData.displayName
+        domain1.responseData.displayName
       );
 
       // Verify Owners
       await expect(
-        page.getByTestId(EntityDataClass.user1.responseData?.['displayName'])
+        page.getByTestId(user1.responseData?.['displayName'])
       ).toBeVisible();
 
       await expect(
-        page.getByTestId(EntityDataClass.user2.responseData?.['displayName'])
+        page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
 
       // Verify Tags
@@ -491,7 +502,7 @@ test.describe('Bulk Edit Entity', () => {
 
       await expect(
         page.getByRole('link', {
-          name: EntityDataClass.glossaryTerm1.data.displayName,
+          name: glossaryTerm.data.displayName,
         })
       ).toBeVisible();
     });
@@ -583,7 +594,7 @@ test.describe('Bulk Edit Entity', () => {
 
       await expect(
         page.getByRole('link', {
-          name: EntityDataClass.glossaryTerm1.data.displayName,
+          name: glossaryTerm.data.displayName,
         })
       ).toBeVisible();
     });
@@ -626,14 +637,16 @@ test.describe('Bulk Edit Entity', () => {
         {
           ...additionalGlossaryTerm,
           name: glossaryTerm.data.name,
-          owners: [EntityDataClass.user1.responseData?.['displayName']],
-          reviewers: [EntityDataClass.user2.responseData?.['displayName']],
+          owners: [user1.responseData?.['displayName']],
+          reviewers: [user2.responseData?.['displayName']],
           relatedTerm: {
             parent: glossary.data.name,
             name: glossaryTerm.data.name,
           },
         },
-        page
+        page,
+        undefined,
+        true
       );
 
       await page.getByRole('button', { name: 'Next' }).click();
@@ -689,12 +702,12 @@ test.describe('Bulk Edit Entity', () => {
 
       // Verify Owners
       await expect(
-        page.getByTestId(EntityDataClass.user1.responseData?.['displayName'])
+        page.getByTestId(user1.responseData?.['displayName'])
       ).toBeVisible();
 
       // Verify Reviewers
       await expect(
-        page.getByTestId(EntityDataClass.user2.responseData?.['displayName'])
+        page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
     });
 

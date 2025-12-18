@@ -60,6 +60,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.services.CreateApiService;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
@@ -69,6 +70,7 @@ import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -98,6 +100,7 @@ import org.openmetadata.service.resources.dqtests.TestDefinitionResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.mlmodels.MlModelResourceTest;
+import org.openmetadata.service.resources.services.APIServiceResourceTest;
 import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.resources.teams.RoleResourceTest;
@@ -691,11 +694,11 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
     assertNotNull(upstreamZeroResult);
     // Debug output
-    // For depth=0, expect starting node + immediate upstreams
-    assertEquals(2, upstreamZeroResult.getNodes().size());
-    assertTrue(upstreamZeroResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    // For depth=1, expect starting node + nothing else
+    assertEquals(1, upstreamZeroResult.getNodes().size());
+    assertFalse(upstreamZeroResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
     assertTrue(upstreamZeroResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
-    assertEquals(1, upstreamZeroResult.getUpstreamEdges().size());
+    assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
     assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
 
     // Test DOWNSTREAM direction for tableB (should find B -> C)
@@ -711,11 +714,11 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     SearchLineageResult downstreamResult =
         TestUtils.get(downstreamTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
 
-    // Assertions for downstream: should find tableB -> tableC, upstream=0 will still return you
-    // tableA upstream connection
+    // Assertions for downstream: should find tableB -> tableC, upstream=0 will should not return
+    // anything
     assertNotNull(downstreamResult);
-    assertEquals(3, downstreamResult.getNodes().size());
-    assertTrue(downstreamResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    assertEquals(2, downstreamResult.getNodes().size());
+    assertFalse(downstreamResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
     assertTrue(downstreamResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
     assertTrue(downstreamResult.getNodes().containsKey(tableC.getFullyQualifiedName()));
 
@@ -726,10 +729,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertEquals(tableC.getId(), downstreamEdge.getToEntity().getId());
 
     // 1 upstream is there, for upstreamDepth = 0
-    assertEquals(1, downstreamResult.getUpstreamEdges().size());
-    upstreamEdge = downstreamResult.getUpstreamEdges().values().iterator().next();
-    assertEquals(tableA.getId(), upstreamEdge.getFromEntity().getId());
-    assertEquals(tableB.getId(), upstreamEdge.getToEntity().getId());
+    assertEquals(0, downstreamResult.getUpstreamEdges().size());
 
     // Clean up
     deleteEdge(tableA, tableB);
@@ -1032,6 +1032,70 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     deleteEdge(TABLES.get(3), TABLES.get(4));
     deleteEdge(TABLES.get(5), TABLES.get(6));
     deleteEdge(TABLES.get(6), TABLES.get(7));
+  }
+
+  @Order(14)
+  @Test
+  void test_searchLineageForServiceEntity(TestInfo test) throws IOException {
+    // Test that lineage search works correctly for service entities (apiService, databaseService)
+
+    // Create an API service
+    APIServiceResourceTest apiServiceResourceTest = new APIServiceResourceTest();
+    CreateApiService createApiService =
+        apiServiceResourceTest
+            .createRequest(test)
+            .withName("test_lineage_api_service")
+            .withServiceType(CreateApiService.ApiServiceType.Rest)
+            .withConnection(TestUtils.API_SERVICE_CONNECTION);
+
+    ApiService apiService =
+        apiServiceResourceTest.createEntity(createApiService, ADMIN_AUTH_HEADERS);
+
+    // Test searching lineage for the API service entity
+    WebTarget target = getResource("lineage/getLineage");
+    target = target.queryParam("fqn", apiService.getFullyQualifiedName());
+    target = target.queryParam("type", "apiService");
+    target = target.queryParam("upstreamDepth", 0);
+    target = target.queryParam("downstreamDepth", 0);
+
+    SearchLineageResult result =
+        TestUtils.get(target, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Verify the API service was found in search
+    assertNotNull(result, "Search lineage result should not be null");
+    assertNotNull(result.getNodes(), "Nodes map should not be null");
+    assertEquals(1, result.getNodes().size(), "Should find exactly one node");
+    assertTrue(
+        result.getNodes().containsKey(apiService.getFullyQualifiedName()),
+        "Should contain the API service in nodes");
+
+    // Verify the node information
+    NodeInformation nodeInfo = result.getNodes().get(apiService.getFullyQualifiedName());
+    assertNotNull(nodeInfo, "Node information should not be null");
+    assertEquals(
+        "apiService", nodeInfo.getEntity().get("entityType"), "Entity type should be apiService");
+
+    // Test with includeDeleted=false (the original issue scenario)
+    WebTarget targetWithDeletedFalse = getResource("lineage/getLineage");
+    targetWithDeletedFalse =
+        targetWithDeletedFalse.queryParam("fqn", apiService.getFullyQualifiedName());
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("type", "apiService");
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("upstreamDepth", 0);
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("downstreamDepth", 0);
+    targetWithDeletedFalse = targetWithDeletedFalse.queryParam("includeDeleted", false);
+
+    SearchLineageResult resultWithDeleted =
+        TestUtils.get(targetWithDeletedFalse, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
+
+    // Verify the API service is still found with includeDeleted=false
+    assertNotNull(resultWithDeleted, "Result with includeDeleted=false should not be null");
+    assertEquals(
+        1,
+        resultWithDeleted.getNodes().size(),
+        "Should still find the API service with includeDeleted=false");
+
+    // Cleanup
+    apiServiceResourceTest.deleteEntity(apiService.getId(), ADMIN_AUTH_HEADERS);
   }
 
   public Edge getEdge(Table from, Table to) {

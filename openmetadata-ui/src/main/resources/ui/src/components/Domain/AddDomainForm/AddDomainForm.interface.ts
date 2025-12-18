@@ -13,6 +13,7 @@
 import { FormInstance } from 'antd';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import { Domain } from '../../../generated/entity/domains/domain';
 import { DomainFormType } from '../DomainPage.interface';
 
 export interface AddDomainFormProps {
@@ -22,4 +23,5 @@ export interface AddDomainFormProps {
   formRef?: FormInstance<CreateDomain | CreateDataProduct>;
   loading: boolean;
   type: DomainFormType;
+  parentDomain?: Domain; // Optional - present when creating from domain details
 }

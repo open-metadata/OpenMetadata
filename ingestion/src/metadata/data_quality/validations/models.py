@@ -2,7 +2,7 @@
 
 from typing import List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -23,13 +23,19 @@ class TableParameter(BaseModel):
     database_service_type: DatabaseServiceType
     privateKey: Optional[CustomSecretStr]
     passPhrase: Optional[CustomSecretStr]
+    key_columns: Optional[list[str]] = None
+    extra_columns: Optional[list[str]] = None
 
 
 class TableDiffRuntimeParameters(BaseModel):
     table1: TableParameter
     table2: TableParameter
-    keyColumns: List[str]
-    extraColumns: List[str]
+    keyColumns: Optional[List[str]] = Field(
+        ..., deprecated="Please use `tableX.key_columns` instead"
+    )
+    extraColumns: Optional[List[str]] = Field(
+        ..., deprecated="Please use `tableX.extra_columns` instead"
+    )
     whereClause: Optional[str]
     table_profile_config: Optional[TableProfilerConfig]
 

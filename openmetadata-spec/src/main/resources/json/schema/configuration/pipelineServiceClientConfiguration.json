@@ -64,6 +64,10 @@
       "additionalProperties": {
         ".{1,}": { "type": "string" }
       }
+    },
+    "logStorageConfiguration": {
+      "description": "Configuration for pipeline log storage. If not specified, uses default log storage through the pipeline service client.",
+      "$ref": "logStorageConfiguration.json"
     }
   },
   "required": [

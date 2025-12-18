@@ -54,7 +54,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.util.EnumSet;
 import java.util.Objects;
-import java.util.Optional;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -73,7 +72,6 @@ import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.search.IndexMappingLoader;
@@ -81,9 +79,6 @@ import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
-import org.openmetadata.service.cache.CachedCollectionDAO;
-import org.openmetadata.service.cache.RedisCacheBundle;
-import org.openmetadata.service.cache.RelationshipCache;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
@@ -107,13 +102,14 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
 import org.openmetadata.service.monitoring.EventMonitorPublisher;
+import org.openmetadata.service.monitoring.JettyMetricsIntegration;
+import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -127,14 +123,19 @@ import org.openmetadata.service.security.AuthCallbackServlet;
 import org.openmetadata.service.security.AuthLoginServlet;
 import org.openmetadata.service.security.AuthLogoutServlet;
 import org.openmetadata.service.security.AuthRefreshServlet;
+import org.openmetadata.service.security.AuthServeletHandlerFactory;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ContainerRequestFilterManager;
+import org.openmetadata.service.security.DelegatingContainerRequestFilter;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -151,7 +152,6 @@ import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CustomParameterNameProvider;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
-import org.pac4j.core.util.CommonHelper;
 import org.quartz.SchedulerException;
 
 /** Main catalog application */
@@ -160,7 +160,7 @@ import org.quartz.SchedulerException;
     info =
         @Info(
             title = "OpenMetadata APIs",
-            version = "1.8.0",
+            version = "1.9.8",
             description = "Common types and API definition for OpenMetadata",
             contact =
                 @Contact(
@@ -185,6 +185,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected Limits limits;
 
   protected Jdbi jdbi;
+  private Environment environment;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -198,6 +199,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           CertificateException,
           KeyStoreException,
           NoSuchAlgorithmException {
+
+    this.environment = environment;
+
+    OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
+
     validateConfiguration(catalogConfig);
 
     // Instantiate incident severity classifier
@@ -231,8 +237,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);
 
-    // Initialize Redis Cache if enabled
-    initializeCache(catalogConfig, environment);
+    SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
+
+    // Instantiate JWT Token Generator
+    JWTTokenGenerator.getInstance()
+        .init(
+            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+            catalogConfig.getJwtTokenConfiguration());
 
     initializeWebsockets(catalogConfig, environment);
 
@@ -242,12 +253,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // init Entity Masker
     EntityMaskerFactory.createEntityMasker();
-
-    // Instantiate JWT Token Generator
-    JWTTokenGenerator.getInstance()
-        .init(
-            catalogConfig.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
-            catalogConfig.getJwtTokenConfiguration());
 
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
@@ -266,14 +271,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             .buildValidatorFactory()
             .getValidator());
 
-    // Validate flyway Migrations
+    // Validate native migrations
     validateMigrations(jdbi, catalogConfig);
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
 
     // Register Authenticator
-    registerAuthenticator(catalogConfig);
+    registerAuthenticator(SecurityConfigurationManager.getInstance());
 
     // Register Limits
     registerLimits(catalogConfig);
@@ -339,6 +344,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
+
+    // Register User Metrics Servlet
+    registerUserMetricsServlet(environment);
   }
 
   protected void registerMCPServer(
@@ -375,57 +383,61 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerAuthServlets(OpenMetadataApplicationConfig config, Environment environment) {
-    if (config.getAuthenticationConfiguration() != null
-        && config
-            .getAuthenticationConfiguration()
-            .getClientType()
-            .equals(ClientType.CONFIDENTIAL)) {
-      CommonHelper.assertNotNull(
-          "OidcConfiguration", config.getAuthenticationConfiguration().getOidcConfiguration());
-
-      // Set up a Session Manager
-      MutableServletContextHandler contextHandler = environment.getApplicationContext();
-      SessionHandler sessionHandler = contextHandler.getSessionHandler();
-      if (sessionHandler == null) {
-        sessionHandler = new SessionHandler();
-        contextHandler.setSessionHandler(sessionHandler);
-      }
-
-      SessionCookieConfig cookieConfig =
-          Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
-      cookieConfig.setHttpOnly(true);
-      cookieConfig.setSecure(isHttps(config));
-      cookieConfig.setMaxAge(
-          config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
-      cookieConfig.setPath("/");
-      sessionHandler.setMaxInactiveInterval(
-          config.getAuthenticationConfiguration().getOidcConfiguration().getSessionExpiry());
-
-      AuthenticationCodeFlowHandler authenticationCodeFlowHandler =
-          new AuthenticationCodeFlowHandler(
-              config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
-
-      // Register Servlets
-      ServletHolder authLoginHolder =
-          new ServletHolder(new AuthLoginServlet(authenticationCodeFlowHandler));
-      authLoginHolder.setName("oauth_login");
-      environment.getApplicationContext().addServlet(authLoginHolder, "/api/v1/auth/login");
-
-      ServletHolder authCallbackHolder =
-          new ServletHolder(new AuthCallbackServlet(authenticationCodeFlowHandler));
-      authCallbackHolder.setName("auth_callback");
-      environment.getApplicationContext().addServlet(authCallbackHolder, "/callback");
-
-      ServletHolder authLogoutHolder =
-          new ServletHolder(new AuthLogoutServlet(authenticationCodeFlowHandler));
-      authLogoutHolder.setName("auth_logout");
-      environment.getApplicationContext().addServlet(authLogoutHolder, "/api/v1/auth/logout");
-
-      ServletHolder refreshHolder =
-          new ServletHolder(new AuthRefreshServlet(authenticationCodeFlowHandler));
-      refreshHolder.setName("auth_refresh");
-      environment.getApplicationContext().addServlet(refreshHolder, "/api/v1/auth/refresh");
+    AuthServeletHandlerRegistry.setHandler(AuthServeletHandlerFactory.getHandler(config));
+    // Set up a Session Manager
+    MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    SessionHandler sessionHandler = contextHandler.getSessionHandler();
+    if (contextHandler.getSessionHandler() == null) {
+      sessionHandler = new SessionHandler();
+      contextHandler.setSessionHandler(sessionHandler);
     }
+
+    SessionCookieConfig cookieConfig =
+        Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
+    cookieConfig.setHttpOnly(true);
+    cookieConfig.setSecure(
+        isHttps(config) || config.getAuthenticationConfiguration().getForceSecureSessionCookie());
+
+    // Get session expiry - use OIDC config if available, otherwise default
+    int sessionExpiry = 604800; // Default 7 days in seconds
+    if (SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration() != null
+        && SecurityConfigurationManager.getCurrentAuthConfig()
+                .getOidcConfiguration()
+                .getSessionExpiry()
+            >= 3600) {
+      sessionExpiry =
+          SecurityConfigurationManager.getCurrentAuthConfig()
+              .getOidcConfiguration()
+              .getSessionExpiry();
+    }
+
+    cookieConfig.setMaxAge(sessionExpiry);
+    cookieConfig.setPath("/");
+    sessionHandler.setMaxInactiveInterval(sessionExpiry);
+
+    // Register Servlets
+    ServletHolder authLoginHolder = new ServletHolder(new AuthLoginServlet());
+    authLoginHolder.setName("oauth_login");
+    environment.getApplicationContext().addServlet(authLoginHolder, "/api/v1/auth/login");
+
+    ServletHolder authCallbackHolder = new ServletHolder(new AuthCallbackServlet());
+    authCallbackHolder.setName("auth_callback");
+    environment.getApplicationContext().addServlet(authCallbackHolder, "/callback");
+
+    ServletHolder authLogoutHolder = new ServletHolder(new AuthLogoutServlet());
+    authLogoutHolder.setName("auth_logout");
+    environment.getApplicationContext().addServlet(authLogoutHolder, "/api/v1/auth/logout");
+
+    ServletHolder refreshHolder = new ServletHolder(new AuthRefreshServlet());
+    refreshHolder.setName("auth_refresh");
+    environment.getApplicationContext().addServlet(refreshHolder, "/api/v1/auth/refresh");
+  }
+
+  private void registerUserMetricsServlet(Environment environment) {
+    ServletHolder userMetricsHolder = new ServletHolder(new UserMetricsServlet());
+    userMetricsHolder.setName("user_metrics");
+    environment.getAdminContext().addServlet(userMetricsHolder, "/user-metrics");
+    LOG.info("Registered UserMetricsServlet on admin port at /user-metrics");
   }
 
   public static boolean isHttps(OpenMetadataApplicationConfig configuration) {
@@ -487,21 +499,20 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OMWebConfiguration webConfiguration,
       Environment environment) {
 
+    LOG.info("Registering Asset Servlet with basePath: {}", config.getBasePath());
+    LOG.info("Application Context Path: {}", environment.getApplicationContext().getContextPath());
+
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet =
         new OpenMetadataAssetServlet(
             config.getBasePath(), "/assets", "/", "index.html", webConfiguration);
     environment.servlets().addServlet("static", assetServlet).addMapping("/*");
+
+    LOG.info("Asset Servlet registered with mapping: /*");
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
     CollectionDAO originalDAO = jdbi.onDemand(CollectionDAO.class);
-
-    // Wrap with caching decorator if cache is available
-    if (RelationshipCache.isAvailable()) {
-      LOG.info("Wrapping CollectionDAO with caching support");
-      return new CachedCollectionDAO(originalDAO);
-    }
 
     LOG.info("Using original CollectionDAO without caching");
     return originalDAO;
@@ -511,10 +522,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
 
-    if (catalogConfig.getAuthenticationConfiguration() != null
-        && catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)) {
-
-      // Ensure we have a session handler
+    // Ensure we have a session handler
+    if (SecurityConfigurationManager.getCurrentAuthConfig() != null
+        && SecurityConfigurationManager.getCurrentAuthConfig()
+            .getProvider()
+            .equals(AuthProvider.SAML)) {
       MutableServletContextHandler contextHandler = environment.getApplicationContext();
       if (contextHandler.getSessionHandler() == null) {
         contextHandler.setSessionHandler(new SessionHandler());
@@ -522,21 +534,15 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
       // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
+
       contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
       contextHandler.addServlet(
-          new ServletHolder(
-              new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration())),
-          "/api/v1/saml/acs");
+          new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
       contextHandler.addServlet(
           new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
       contextHandler.addServlet(
           new ServletHolder(new SamlTokenRefreshServlet()), "/api/v1/saml/refresh");
-      contextHandler.addServlet(
-          new ServletHolder(
-              new SamlLogoutServlet(
-                  catalogConfig.getAuthenticationConfiguration(),
-                  catalogConfig.getAuthorizerConfiguration())),
-          "/api/v1/saml/logout");
+      contextHandler.addServlet(new ServletHolder(new SamlLogoutServlet()), "/api/v1/saml/logout");
     }
   }
 
@@ -575,26 +581,14 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Add Micrometer bundle for Prometheus metrics
     bootstrap.addBundle(new org.openmetadata.service.monitoring.MicrometerBundle());
 
+    // Add Cache bundle for Redis/cache support
+    bootstrap.addBundle(new org.openmetadata.service.cache.CacheBundle());
+
     super.initialize(bootstrap);
   }
 
   private void validateMigrations(Jdbi jdbi, OpenMetadataApplicationConfig conf)
       throws IOException {
-    LOG.info("Validating Flyway migrations");
-    Optional<String> lastMigrated = Migration.lastMigrated(jdbi);
-    String maxMigration = Migration.lastMigrationFile(conf.getMigrationConfiguration());
-    if (lastMigrated.isEmpty()) {
-      throw new IllegalStateException(
-          "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/openmetadata-ops.sh migrate` at least once.");
-    }
-    if (lastMigrated.get().compareTo(maxMigration) < 0) {
-      throw new IllegalStateException(
-          "There are pending migrations to be run on the database."
-              + " Please backup your data and run `./bootstrap/openmetadata-ops.sh migrate`."
-              + " You can find more information on upgrading OpenMetadata at"
-              + " https://docs.open-metadata.org/deployment/upgrade ");
-    }
-
     LOG.info("Validating native migrations");
     ConnectionType connectionType =
         ConnectionType.from(conf.getDataSourceFactory().getDriverClass());
@@ -604,6 +598,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             conf.getMigrationConfiguration().getNativePath(),
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
+            conf.getMigrationConfiguration().getFlywayPath(),
             conf,
             false);
     migrationWorkflow.loadMigrations();
@@ -623,6 +618,52 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
+  public void reinitializeAuthSystem(
+      OpenMetadataApplicationConfig config, Environment environment) {
+    try {
+      LOG.info("Starting authentication system reinitialization");
+      AuthServeletHandlerRegistry.setHandler(AuthServeletHandlerFactory.getHandler(config));
+
+      // Update JWT configuration first
+      JWTTokenGenerator.getInstance()
+          .init(
+              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              config.getJwtTokenConfiguration());
+
+      // Re-register authenticator with new config
+      registerAuthenticator(SecurityConfigurationManager.getInstance());
+      reRegisterAuthorizer(config, environment);
+      config.setAuthenticationConfiguration(SecurityConfigurationManager.getCurrentAuthConfig());
+      authenticatorHandler.init(config);
+
+      // Re-register servlets
+      if (AuthServeletHandlerFactory.getHandler(config) instanceof AuthenticationCodeFlowHandler) {
+        AuthenticationCodeFlowHandler.getInstance(
+                SecurityConfigurationManager.getCurrentAuthConfig(),
+                SecurityConfigurationManager.getCurrentAuthzConfig())
+            .updateConfiguration(
+                SecurityConfigurationManager.getCurrentAuthConfig(),
+                SecurityConfigurationManager.getCurrentAuthzConfig());
+      }
+
+      // Reinitialize SAML settings if SAML is enabled
+      if (SecurityConfigurationManager.getCurrentAuthConfig() != null
+          && SecurityConfigurationManager.getCurrentAuthConfig()
+              .getProvider()
+              .equals(AuthProvider.SAML)) {
+        LOG.info("Reinitializing SAML settings during authentication reinitialization");
+        registerSamlServlets(config, environment);
+      }
+
+      LOG.info("Successfully reinitialized authentication system");
+    } catch (Exception e) {
+      LOG.error("Failed to reinitialize authentication system", e);
+      // Trigger rollback in AuthenticationConfigurationManager
+      // Rollback is handled internally by SecurityConfigurationManager
+      throw new RuntimeException("Authentication system reinitialization failed", e);
+    }
+  }
+
   private void registerAuthorizer(
       OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws NoSuchMethodException,
@@ -630,9 +671,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           IllegalAccessException,
           InvocationTargetException,
           InstantiationException {
-    AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
+    AuthorizerConfiguration authorizerConf = SecurityConfigurationManager.getCurrentAuthzConfig();
     AuthenticationConfiguration authenticationConfiguration =
-        catalogConfig.getAuthenticationConfiguration();
+        SecurityConfigurationManager.getCurrentAuthConfig();
+    DelegatingContainerRequestFilter delegatingFilter = new DelegatingContainerRequestFilter();
+    environment.jersey().register(delegatingFilter);
     // to authenticate request while opening websocket connections
     if (authorizerConf != null) {
       authorizer =
@@ -649,19 +692,55 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                 .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
                 .newInstance(authenticationConfiguration, authorizerConf);
         LOG.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
-        environment.jersey().register(filter);
+        ContainerRequestFilterManager.getInstance().registerFilter(filter);
       }
     } else {
       LOG.info("Authorizer config not set, setting noop authorizer");
       authorizer = new NoopAuthorizer();
       ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
-      environment.jersey().register(filter);
+      ContainerRequestFilterManager.getInstance().registerFilter(filter);
     }
   }
 
-  private void registerAuthenticator(OpenMetadataApplicationConfig catalogConfig) {
+  private void reRegisterAuthorizer(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment)
+      throws NoSuchMethodException,
+          ClassNotFoundException,
+          IllegalAccessException,
+          InvocationTargetException,
+          InstantiationException {
+    AuthorizerConfiguration authorizerConf = SecurityConfigurationManager.getCurrentAuthzConfig();
     AuthenticationConfiguration authenticationConfiguration =
-        catalogConfig.getAuthenticationConfiguration();
+        SecurityConfigurationManager.getCurrentAuthConfig();
+    // to authenticate request while opening websocket connections
+    if (authorizerConf != null) {
+      authorizer =
+          Class.forName(authorizerConf.getClassName())
+              .asSubclass(Authorizer.class)
+              .getConstructor()
+              .newInstance();
+      String filterClazzName = authorizerConf.getContainerRequestFilter();
+      ContainerRequestFilter filter;
+      if (!StringUtils.isEmpty(filterClazzName)) {
+        filter =
+            Class.forName(filterClazzName)
+                .asSubclass(ContainerRequestFilter.class)
+                .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
+                .newInstance(authenticationConfiguration, authorizerConf);
+        LOG.info("Re Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
+        ContainerRequestFilterManager.getInstance().registerFilter(filter);
+      }
+    } else {
+      LOG.info("Authorizer config not set, setting noop authorizer");
+      authorizer = new NoopAuthorizer();
+      ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
+      ContainerRequestFilterManager.getInstance().registerFilter(filter);
+    }
+  }
+
+  private void registerAuthenticator(SecurityConfigurationManager catalogConfig) {
+    AuthenticationConfiguration authenticationConfiguration =
+        SecurityConfigurationManager.getCurrentAuthConfig();
     switch (authenticationConfiguration.getProvider()) {
       case BASIC -> authenticatorHandler = new BasicAuthenticator();
       case LDAP -> authenticatorHandler = new LdapAuthenticator();
@@ -669,6 +748,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // For all other types, google, okta etc. auth is handled externally
       authenticatorHandler = new NoopAuthenticator();
     }
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticatorHandler);
   }
 
   private void registerLimits(OpenMetadataApplicationConfig serverConfig)
@@ -741,9 +821,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.initialize();
     CollectionRegistry.getInstance()
-        .registerResources(jdbi, environment, config, authorizer, authenticatorHandler, limits);
+        .registerResources(
+            jdbi,
+            environment,
+            config,
+            authorizer,
+            SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
+            limits);
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
+
+    // Register Jetty metrics for monitoring
+    JettyMetricsIntegration.registerJettyMetrics(environment);
 
     // RDF resources are now automatically registered via @Collection annotation
     if (config.getRdfConfiguration() != null
@@ -768,11 +857,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     SocketAddressFilter socketAddressFilter;
     String pathSpec = "/api/v1/push/feed/*";
+
+    LOG.info("Initializing WebSockets");
+    LOG.info("WebSocket pathSpec: {}", pathSpec);
+    LOG.info(
+        "Application Context Path during WebSocket init: {}",
+        environment.getApplicationContext().getContextPath());
+
     if (catalogConfig.getAuthorizerConfiguration() != null) {
       socketAddressFilter =
           new SocketAddressFilter(
-              catalogConfig.getAuthenticationConfiguration(),
-              catalogConfig.getAuthorizerConfiguration());
+              SecurityConfigurationManager.getCurrentAuthConfig(),
+              SecurityConfigurationManager.getCurrentAuthzConfig());
     } else {
       socketAddressFilter = new SocketAddressFilter();
     }
@@ -780,7 +876,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
-    environment.getApplicationContext().setContextPath("/");
     FilterHolder socketAddressFilterHolder = new FilterHolder();
     socketAddressFilterHolder.setFilter(socketAddressFilter);
     environment
@@ -803,24 +898,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
-    }
-  }
-
-  private void initializeCache(
-      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
-    if (catalogConfig.getCacheConfiguration() != null
-        && catalogConfig.getCacheConfiguration().isEnabled()) {
-      LOG.info("Initializing Redis cache");
-      try {
-        RedisCacheBundle cacheBundle = new RedisCacheBundle();
-        cacheBundle.run(catalogConfig, environment);
-        LOG.info("Redis cache initialized successfully");
-      } catch (Exception e) {
-        LOG.error("Failed to initialize Redis cache", e);
-        throw new RuntimeException("Failed to initialize Redis cache", e);
-      }
-    } else {
-      LOG.info("Redis cache is disabled");
     }
   }
 

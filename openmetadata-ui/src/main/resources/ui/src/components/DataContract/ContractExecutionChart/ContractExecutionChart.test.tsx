@@ -24,6 +24,11 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { getAllContractResults } from '../../../rest/contractAPI';
+import {
+  createContractExecutionCustomScale,
+  generateMonthTickPositions,
+  processContractExecutionData,
+} from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ContractExecutionChart from './ContractExecutionChart.component';
 
@@ -35,14 +40,81 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
-  formatDateTime: jest.fn((timestamp) =>
-    new Date(timestamp).toLocaleDateString()
+jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
+  processContractExecutionData: jest.fn((data) =>
+    data.map((item: any, index: number) => ({
+      name: `${item.timestamp}_${index}`,
+      displayTimestamp: item.timestamp,
+      value: 1,
+      status: item.contractExecutionStatus,
+      failed: item.contractExecutionStatus === 'Failed' ? 1 : 0,
+      success: item.contractExecutionStatus === 'Success' ? 1 : 0,
+      aborted: item.contractExecutionStatus === 'Aborted' ? 1 : 0,
+      data: item,
+    }))
   ),
+  createContractExecutionCustomScale: jest.fn(() => {
+    const scale: any = (value: any) => value;
+    scale.domain = jest.fn(() => scale);
+    scale.range = jest.fn(() => scale);
+    scale.ticks = jest.fn(() => []);
+    scale.tickFormat = jest.fn();
+    scale.bandwidth = jest.fn(() => 20);
+    scale.copy = jest.fn(() => scale);
+    scale.nice = jest.fn(() => scale);
+    scale.type = 'band';
+
+    return scale;
+  }),
+  generateMonthTickPositions: jest.fn((data) =>
+    data.length > 0 ? [data[0].name] : []
+  ),
+  formatContractExecutionTick: jest.fn((value) => {
+    const timestamp = value.split('_')[0];
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return monthNames[new Date(Number(timestamp)).getMonth()];
+  }),
+}));
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  formatMonth: jest.fn((timestamp) => {
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return monthNames[new Date(timestamp).getMonth()];
+  }),
   getCurrentMillis: jest.fn(() => 1640995200000), // Fixed timestamp
   getEpochMillisForPastDays: jest.fn(
     (days) => 1640995200000 - days * 24 * 60 * 60 * 1000
   ),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
 jest.mock('../../common/DatePickerMenu/DatePickerMenu.component', () => {
@@ -110,12 +182,10 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
-        'label.contract-execution-history': 'Contract Execution History',
-        'message.contract-execution-history-description':
-          'View contract execution history over time',
         'label.success': 'Success',
         'label.failed': 'Failed',
         'label.aborted': 'Aborted',
+        'label.running': 'Running',
       };
 
       return translations[key] || key;
@@ -163,10 +233,6 @@ describe('ContractExecutionChart', () => {
 
       render(<ContractExecutionChart contract={mockContract} />);
 
-      expect(screen.getByTestId('expandable-card')).toBeInTheDocument();
-      expect(
-        screen.getByText('Contract Execution History')
-      ).toBeInTheDocument();
       expect(screen.getByTestId('loader')).toBeInTheDocument();
     });
 
@@ -180,17 +246,6 @@ describe('ContractExecutionChart', () => {
       expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
       expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
     });
-
-    it('should display chart title and description', () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      expect(
-        screen.getByText('Contract Execution History')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText('View contract execution history over time')
-      ).toBeInTheDocument();
-    });
   });
 
   describe('Data Fetching', () => {
@@ -200,6 +255,7 @@ describe('ContractExecutionChart', () => {
       expect(getAllContractResults).toHaveBeenCalledWith('contract-1', {
         startTs: expect.any(Number),
         endTs: expect.any(Number),
+        limit: 10000,
       });
 
       await waitFor(() => {
@@ -235,6 +291,7 @@ describe('ContractExecutionChart', () => {
       expect(getAllContractResults).toHaveBeenLastCalledWith('contract-1', {
         startTs: 1640908800000,
         endTs: 1640995200000,
+        limit: 10000,
       });
     });
   });
@@ -250,23 +307,48 @@ describe('ContractExecutionChart', () => {
         );
 
         expect(chartData).toHaveLength(3);
+        // Data should now have unique names with timestamp_index format
         expect(chartData[0]).toEqual({
-          name: 1640995200000,
+          name: '1640995200000_0',
+          displayTimestamp: 1640995200000,
+          value: 1,
+          status: ContractExecutionStatus.Success,
           failed: 0,
           success: 1,
           aborted: 0,
+          data: {
+            contractExecutionStatus: 'Success',
+            id: 'result-1',
+            timestamp: 1640995200000,
+          },
         });
         expect(chartData[1]).toEqual({
-          name: 1640995260000,
+          name: '1640995260000_1',
+          displayTimestamp: 1640995260000,
+          value: 1,
+          status: ContractExecutionStatus.Failed,
           failed: 1,
           success: 0,
           aborted: 0,
+          data: {
+            contractExecutionStatus: 'Failed',
+            id: 'result-2',
+            timestamp: 1640995260000,
+          },
         });
         expect(chartData[2]).toEqual({
-          name: 1640995320000,
+          name: '1640995320000_2',
+          displayTimestamp: 1640995320000,
+          value: 1,
+          status: ContractExecutionStatus.Aborted,
           failed: 0,
           success: 0,
           aborted: 1,
+          data: {
+            contractExecutionStatus: 'Aborted',
+            id: 'result-3',
+            timestamp: 1640995320000,
+          },
         });
       });
     });
@@ -297,16 +379,12 @@ describe('ContractExecutionChart', () => {
       expect(await screen.findByTestId('bar-chart')).toBeInTheDocument();
       expect(await screen.findByTestId('cartesian-grid')).toBeInTheDocument();
       expect(await screen.findByTestId('x-axis')).toBeInTheDocument();
-      expect(await screen.findByTestId('legend')).toBeInTheDocument();
     });
 
-    it('should render bars for each status type', async () => {
+    it('should render bars for each status type without stacking', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
-      //   expect(screen.getByTestId('bar-success')).toBeInTheDocument();
-      //   expect(screen.getByTestId('bar-failed')).toBeInTheDocument();
-      //   expect(screen.getByTestId('bar-aborted')).toBeInTheDocument();
-
+      // Bars should not have stackId anymore - they render individually
       expect(await screen.findByTestId('bar-success')).toHaveTextContent(
         'Success'
       );
@@ -316,6 +394,9 @@ describe('ContractExecutionChart', () => {
       expect(await screen.findByTestId('bar-aborted')).toHaveTextContent(
         'Aborted'
       );
+      expect(await screen.findByTestId('bar-running')).toHaveTextContent(
+        'Running'
+      );
     });
 
     it('should use correct colors for bars', async () => {
@@ -324,7 +405,7 @@ describe('ContractExecutionChart', () => {
       await waitFor(() => {
         expect(screen.getByTestId('bar-success')).toHaveAttribute(
           'data-fill',
-          '#48ca9e'
+          '#039855'
         );
         expect(screen.getByTestId('bar-failed')).toHaveAttribute(
           'data-fill',
@@ -332,8 +413,51 @@ describe('ContractExecutionChart', () => {
         );
         expect(screen.getByTestId('bar-aborted')).toHaveAttribute(
           'data-fill',
-          '#ffbe0e'
+          '#f79009'
         );
+        expect(screen.getByTestId('bar-running')).toHaveAttribute(
+          'data-fill',
+          '#175cd3'
+        );
+      });
+    });
+  });
+
+  describe('Utility Functions Integration', () => {
+    it('should call processContractExecutionData with correct data', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => {
+        expect(processContractExecutionData).toHaveBeenCalledWith(
+          mockContractResults
+        );
+      });
+    });
+
+    it('should call createContractExecutionCustomScale with processed data', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => {
+        expect(createContractExecutionCustomScale).toHaveBeenCalled();
+      });
+    });
+
+    it('should call generateMonthTickPositions with processed data', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => {
+        expect(generateMonthTickPositions).toHaveBeenCalled();
+      });
+    });
+
+    it('should use formatContractExecutionTick for tick formatting', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => {
+        const xAxis = screen.getByTestId('x-axis');
+
+        expect(xAxis).toBeInTheDocument();
+        // The formatter function is passed to XAxis
       });
     });
   });
@@ -345,6 +469,7 @@ describe('ContractExecutionChart', () => {
       expect(getAllContractResults).toHaveBeenCalledWith('contract-1', {
         startTs: expect.any(Number),
         endTs: 1640995200000, // Fixed current time
+        limit: 10000,
       });
     });
 
@@ -366,24 +491,6 @@ describe('ContractExecutionChart', () => {
     });
   });
 
-  describe('Component Structure', () => {
-    it('should have correct CSS classes', async () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      expect(screen.getByTestId('expandable-card')).toHaveClass(
-        'expandable-card-contract'
-      );
-    });
-
-    it('should display card title structure correctly', () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      const cardTitle = screen.getByTestId('card-title');
-
-      expect(cardTitle).toBeInTheDocument();
-    });
-  });
-
   describe('Loading States', () => {
     it('should show loading state during data fetch', () => {
       (getAllContractResults as jest.Mock).mockImplementation(
@@ -393,7 +500,6 @@ describe('ContractExecutionChart', () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
       expect(screen.getByTestId('loader')).toBeInTheDocument();
-      expect(screen.queryByTestId('date-picker-menu')).not.toBeInTheDocument();
     });
 
     it('should hide loading state after data is loaded', async () => {

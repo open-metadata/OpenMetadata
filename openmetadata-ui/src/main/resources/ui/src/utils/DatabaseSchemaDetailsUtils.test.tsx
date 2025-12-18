@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useNavigate } from 'react-router-dom';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 
@@ -30,13 +31,18 @@ jest.mock(
   })
 );
 
-const mockNavigate = jest.fn();
-
 jest.mock('react-router-dom', () => ({
-  useNavigate: mockNavigate,
+  useNavigate: jest.fn(),
 }));
 
+const mockNavigate = jest.fn();
+
 describe('ExtraDatabaseSchemaDropdownOptions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+  });
+
   it('should render import button when user has editAll permission', () => {
     const permission = {
       ViewAll: false,

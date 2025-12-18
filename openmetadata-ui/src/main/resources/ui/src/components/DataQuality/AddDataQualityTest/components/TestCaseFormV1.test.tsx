@@ -10,14 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import { forwardRef } from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, forwardRef } from 'react';
+import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
@@ -158,9 +153,15 @@ jest.mock('crypto-random-string-with-promisify-polyfill', () =>
 );
 
 jest.mock('../../../../rest/testAPI', () => ({
-  getListTestDefinitions: jest.fn().mockResolvedValue(mockTestDefinitions),
+  getListTestDefinitions: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTestDefinitions)),
   getListTestCase: jest.fn().mockResolvedValue({ data: [] }),
+  getListTestCaseBySearch: jest.fn().mockResolvedValue({ data: [] }),
   getTestCaseByFqn: jest.fn().mockResolvedValue(MOCK_TEST_CASE[0]),
+  createTestCase: jest
+    .fn()
+    .mockResolvedValue({ id: 'new-test-case-id', name: 'new_test_case' }),
   TestCaseType: {
     all: 'all',
     table: 'table',
@@ -175,11 +176,15 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
 }));
 
 jest.mock('../../../../rest/searchAPI', () => ({
-  searchQuery: jest.fn().mockResolvedValue(mockTableSearchResults),
+  searchQuery: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockTableSearchResults)),
 }));
 
 jest.mock('../../../../rest/tableAPI', () => ({
-  getTableDetailsByFQN: jest.fn().mockResolvedValue(MOCK_TABLE),
+  getTableDetailsByFQN: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(MOCK_TABLE)),
 }));
 
 jest.mock('../../../common/RichTextEditor/RichTextEditor', () =>
@@ -310,6 +315,12 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   }),
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
+}));
+
+// Mock formUtils to prevent scroll issues in tests
+jest.mock('../../../../utils/formUtils', () => ({
+  ...jest.requireActual('../../../../utils/formUtils'),
+  createScrollToErrorHandler: jest.fn(() => jest.fn()),
 }));
 
 describe('TestCaseFormV1 Component', () => {
@@ -937,6 +948,63 @@ describe('TestCaseFormV1 Component', () => {
         },
         { timeout: 5000 }
       );
+    });
+  });
+
+  describe('Test Case Name Validation', () => {
+    it('should render test case name field with validation rules', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      const testNameField = screen.getByTestId('test-case-name');
+
+      expect(testNameField).toBeInTheDocument();
+
+      // Test that the field accepts input
+      await act(async () => {
+        fireEvent.change(testNameField, {
+          target: { value: 'valid_test_name' },
+        });
+      });
+
+      expect(testNameField).toHaveValue('valid_test_name');
+    });
+
+    it('should accept valid test case names without validation errors', async () => {
+      render(<TestCaseFormV1 {...mockProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-form-v1')).toBeInTheDocument();
+      });
+
+      const testNameField = screen.getByTestId('test-case-name');
+
+      // Test valid name format
+      const validName = 'table_column_count_equals';
+
+      await act(async () => {
+        fireEvent.change(testNameField, { target: { value: validName } });
+        fireEvent.blur(testNameField);
+      });
+
+      // Field should accept the valid input
+      expect(testNameField).toHaveValue(validName);
+    });
+
+    it('should have TEST_CASE_NAME_REGEX validation configured', () => {
+      // Test that TEST_CASE_NAME_REGEX pattern is correctly configured
+      // Test forbidden characters
+      expect(TEST_CASE_NAME_REGEX.test('test::case')).toBe(false);
+      expect(TEST_CASE_NAME_REGEX.test('test"case')).toBe(false);
+      expect(TEST_CASE_NAME_REGEX.test('test>case')).toBe(false);
+
+      // Test allowed characters
+      expect(TEST_CASE_NAME_REGEX.test('table_column_count_equals')).toBe(true);
+      expect(TEST_CASE_NAME_REGEX.test('valid.test.name')).toBe(true);
+      expect(TEST_CASE_NAME_REGEX.test('test case with spaces')).toBe(true);
     });
   });
 

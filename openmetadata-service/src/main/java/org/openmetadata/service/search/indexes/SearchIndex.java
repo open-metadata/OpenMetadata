@@ -50,7 +50,6 @@ public interface SearchIndex {
   Set<String> DEFAULT_EXCLUDED_FIELDS =
       Set.of(
           "changeDescription",
-          "votes",
           "incrementalChangeDescription",
           "upstreamLineage.pipeline.changeDescription",
           "upstreamLineage.pipeline.incrementalChangeDescription",
@@ -112,6 +111,17 @@ public interface SearchIndex {
             ? 0
             : Math.max(entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes(), 0);
     map.put("totalVotes", totalVotes);
+
+    if (entity.getVotes() != null) {
+      Map<String, Object> votesMap = new HashMap<>();
+      votesMap.put(
+          "upVotes", entity.getVotes().getUpVotes() != null ? entity.getVotes().getUpVotes() : 0);
+      votesMap.put(
+          "downVotes",
+          entity.getVotes().getDownVotes() != null ? entity.getVotes().getDownVotes() : 0);
+      map.put("votes", votesMap);
+    }
+
     map.put("descriptionStatus", getDescriptionStatus(entity));
 
     Map<String, ChangeSummary> changeSummaryMap = SearchIndexUtils.getChangeSummaryMap(entity);
@@ -125,11 +135,8 @@ public interface SearchIndex {
     map.put("fqnParts", getFQNParts(entity.getFullyQualifiedName()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
     TagLabel tierTag = new ParseTags(Entity.getEntityTags(entityType, entity)).getTierTag();
-    Optional.ofNullable(tierTag)
-        .filter(tier -> tier.getTagFQN() != null && !tier.getTagFQN().isEmpty())
-        .ifPresent(tier -> map.put("tier", tier));
-    Optional.ofNullable(entity.getCertification())
-        .ifPresent(assetCertification -> map.put("certification", assetCertification));
+    map.put("tier", tierTag);
+    map.put("certification", entity.getCertification());
     return map;
   }
 
@@ -187,12 +194,23 @@ public interface SearchIndex {
       EntityReference entity, List<CollectionDAO.EntityRelationshipRecord> records) {
     List<EsLineageData> data = new ArrayList<>();
     for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : records) {
-      EntityReference ref =
-          Entity.getEntityReferenceById(
-              entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
-      LineageDetails lineageDetails =
-          JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
-      data.add(buildEntityLineageData(ref, entity, lineageDetails));
+      try {
+        EntityReference ref =
+            Entity.getEntityReferenceById(
+                entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
+        LineageDetails lineageDetails =
+            JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
+        data.add(buildEntityLineageData(ref, entity, lineageDetails));
+      } catch (EntityNotFoundException ex) {
+        // Upstream entity was deleted but lineage relationship still exists
+        // Skip this lineage edge gracefully to prevent search indexing failure
+        LOG.warn(
+            "Upstream entity '{}' (ID: {}) not found for entity '{}'. Skipping lineage edge. Error: {}",
+            entityRelationshipRecord.getType(),
+            entityRelationshipRecord.getId(),
+            entity.getFullyQualifiedName(),
+            ex.getMessage());
+      }
     }
     return data;
   }

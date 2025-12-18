@@ -189,13 +189,14 @@ class DataSource(BaseModel):
             # The source is a CalculationView, AttributeView or AnalyticView
             # package from <resourceUri>/SFLIGHT.MODELING/calculationviews/CV_SFLIGHT_SBOOK</resourceUri>
             package = self.location.split("/")[1]
+            view_name = self.location.split("/")[3]
             fqn_ = fqn.build(
                 metadata=metadata,
                 entity_type=Table,
                 service_name=service_name,
                 database_name=None,
                 schema_name=SYS_BIC_SCHEMA_NAME,
-                table_name=f"{package}/{self.name}",
+                table_name=f"{package}/{view_name}",
             )
 
         return metadata.get_by_name(entity=Table, fqn=fqn_)
@@ -340,40 +341,6 @@ class ParsedLineage(BaseModel):
                 )
 
 
-def _get_column_datasources(
-    entry: ET.Element, datasource_map: Optional[DataSourceMap] = None
-) -> Set[DataSource]:
-    """Read a DataSource from the CDATA XML"""
-    if (
-        datasource_map
-        and entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value) in datasource_map
-    ):
-        # If the datasource is in the map, we'll traverse all intermediate logical
-        # datasources until we arrive to a table or view.
-        # Note that we can have multiple sources for a single column, e.g., columns
-        # coming from a JOIN
-        return set(
-            _traverse_ds(
-                current_column=entry.get(CDATAKeys.COLUMN_NAME.value),
-                ds_origin_list=[],
-                current_ds=datasource_map[
-                    entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value)
-                ],
-                datasource_map=datasource_map,
-            )
-        )
-
-    # If we don't have any logical sources (projections, aggregations, etc.) We'll stick to
-    # a single table origin
-    return {
-        DataSource(
-            name=entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value),
-            location=entry.get(CDATAKeys.SCHEMA_NAME.value),
-            source_type=ViewType.DATA_BASE_TABLE,
-        )
-    }
-
-
 def _get_column_datasources_with_names(
     entry: ET.Element, datasource_map: Optional[DataSourceMap] = None
 ) -> List[Tuple[DataSource, str, Optional[str]]]:
@@ -392,6 +359,7 @@ def _get_column_datasources_with_names(
             current_ds=datasource_map[entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value)],
             datasource_map=datasource_map,
             formula=None,
+            _visited=set(),
         )
         return ds_col_pairs
 
@@ -409,56 +377,13 @@ def _get_column_datasources_with_names(
     ]
 
 
-def _traverse_ds(
-    current_column: str,
-    ds_origin_list: List[DataSource],
-    current_ds: DataSource,
-    datasource_map: Optional[DataSourceMap],
-) -> List[DataSource]:
-    """
-    Traverse the ds dict jumping from target -> source columns and getting the right parent.
-    We keep inspecting current datasources and will append to the origin list the ones
-    that are not LOGICAL
-    """
-    if current_ds.source_type != ViewType.LOGICAL:
-        ds_origin_list.append(current_ds)
-
-    else:
-        # Based on our current column, find the parents from the mappings in the current_ds
-        current_ds_mapping: Optional[DataSourceMapping] = current_ds.mapping.get(
-            current_column
-        )
-
-        if current_ds_mapping:
-            for parent in current_ds_mapping.parents:
-                parent_ds = datasource_map.get(parent.parent)
-                if not parent_ds:
-                    raise CDATAParsingError(
-                        f"Can't find parent [{parent.parent}] for column [{current_column}]"
-                    )
-
-                # Traverse from the source column in the parent mapping
-                _traverse_ds(
-                    current_column=parent.source,
-                    ds_origin_list=ds_origin_list,
-                    current_ds=parent_ds,
-                    datasource_map=datasource_map,
-                )
-        else:
-            logger.info(
-                f"Can't find mapping for column [{current_column}] in [{current_ds}]. "
-                f"This might be a constant or derived column."
-            )
-
-    return ds_origin_list
-
-
 def _traverse_ds_with_columns(
     current_column: str,
     ds_origin_list: List[Tuple[DataSource, str, Optional[str]]],
     current_ds: DataSource,
     datasource_map: Optional[DataSourceMap],
     formula: Optional[str] = None,
+    _visited: Optional[set] = set(),
 ) -> List[Tuple[DataSource, str, Optional[str]]]:
     """
     Traverse the ds dict jumping from target -> source columns and getting the right parent.
@@ -466,6 +391,16 @@ def _traverse_ds_with_columns(
     that are not LOGICAL, along with the final column name and formula.
     Returns a list of tuples (DataSource, column_name, formula).
     """
+    # Create visit key for this node
+    visit_key = (current_ds.name, current_column)
+
+    # Check if we've already processed this node
+    if visit_key in _visited:
+        return ds_origin_list
+
+    # Add to visited set
+    _visited.add(visit_key)
+
     if current_ds.source_type != ViewType.LOGICAL:
         # This is a final datasource, append it with the current column name and formula
         ds_origin_list.append((current_ds, current_column, formula))
@@ -496,6 +431,7 @@ def _traverse_ds_with_columns(
                     current_ds=parent_ds,
                     datasource_map=datasource_map,
                     formula=formula,
+                    _visited=_visited,
                 )
         else:
             logger.info(

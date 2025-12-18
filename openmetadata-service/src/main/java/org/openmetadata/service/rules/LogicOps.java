@@ -28,8 +28,11 @@ public class LogicOps {
 
   public enum CustomLogicOps {
     LENGTH("length"),
+    CONTAINS("contains"),
     IS_REVIEWER("isReviewer"),
-    IS_OWNER("isOwner");
+    IS_OWNER("isOwner"),
+    IS_UPDATED_BEFORE("isUpdatedBefore"),
+    IS_UPDATED_AFTER("isUpdatedAfter");
 
     public final String key;
 
@@ -53,6 +56,31 @@ public class LogicOps {
             return 0;
           }
           return args.length;
+        });
+
+    jsonLogic.addOperation(
+        "contains",
+        (args) -> {
+          if (nullOrEmpty(args) || args.length < 2) {
+            return false;
+          }
+
+          Object value = args[0];
+          Object container = args[1];
+
+          // If either value or container is null/empty, the rule is broken
+          if (CommonUtil.nullOrEmpty(value) || CommonUtil.nullOrEmpty(container)) {
+            return false;
+          }
+
+          if (container instanceof List<?> list) {
+            return list.contains(value);
+          } else if (container.getClass().isArray()) {
+            Object[] array = (Object[]) container;
+            return Arrays.asList(array).contains(value);
+          } else {
+            return container.toString().contains(value.toString());
+          }
         });
 
     // {"isReviewer": { var: "updatedBy"} }
@@ -84,6 +112,38 @@ public class LogicOps {
               JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
               throws JsonLogicEvaluationException {
             return evaluateUserInRole(evaluator, arguments, data, "owners");
+          }
+        });
+
+    // {"isUpdatedBefore": 1609459200000} - Check if entity was updated before timestamp
+    jsonLogic.addOperation(
+        new JsonLogicExpression() {
+          @Override
+          public String key() {
+            return CustomLogicOps.IS_UPDATED_BEFORE.key;
+          }
+
+          @Override
+          public Object evaluate(
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+              throws JsonLogicEvaluationException {
+            return JsonLogicUtils.evaluateIsUpdatedBefore(evaluator, arguments, data);
+          }
+        });
+
+    // {"isUpdatedAfter": 1609459200000} - Check if entity was updated after timestamp
+    jsonLogic.addOperation(
+        new JsonLogicExpression() {
+          @Override
+          public String key() {
+            return CustomLogicOps.IS_UPDATED_AFTER.key;
+          }
+
+          @Override
+          public Object evaluate(
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+              throws JsonLogicEvaluationException {
+            return JsonLogicUtils.evaluateIsUpdatedAfter(evaluator, arguments, data);
           }
         });
   }

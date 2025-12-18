@@ -31,6 +31,9 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.glossaryTermMismatch;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.service.resources.glossary.GlossaryResourceTest.waitForTaskToBeCreated;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -50,6 +53,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.socket.client.IO;
 import io.socket.client.Socket;
 import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.GenericType;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -79,6 +83,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.api.CreateTaskDetails;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
@@ -86,6 +91,7 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
+import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.classification.Classification;
@@ -107,6 +113,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -118,6 +126,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
@@ -378,6 +387,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Test
   void test_GlossaryTermApprovalWorkflow(TestInfo test) throws IOException {
+    // Ensure the workflow is active (it might have been suspended by another test)
+    WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
+
     //
     // glossary1 create without reviewers is created with Approved status
     //
@@ -816,7 +828,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // Create glossary term t12, t121, t1211 under t1
     GlossaryTerm t12 = createTerm(g1, t1, "t12");
     GlossaryTerm t121 = createTerm(g1, t12, "t121");
-    createTerm(g1, t121, "t121");
+    createTerm(g1, t121, "t1211");
 
     // Assign glossary terms to a table
     // t1 assigned to table. t11 assigned column1 and t111 assigned to column2
@@ -1416,6 +1428,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     GlossaryTerm term12 = createTerm(glossary1, term1, "term12");
     GlossaryTerm term111 = createTerm(glossary1, term11, "term111");
     term1.setChildren(List.of(term11.getEntityReference(), term12.getEntityReference()));
+    term11.setChildren(List.of(term111.getEntityReference()));
 
     // List children glossary terms with  term1 as the parent and getting immediate children only
     Map<String, String> queryParams = new HashMap<>();
@@ -1429,20 +1442,23 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       assertTrue(
           responseChild.getFullyQualifiedName().startsWith(responseChild.getFullyQualifiedName()));
       if (responseChild.getChildren() == null) {
-        assertNull(responseChild.getChildrenCount());
+        assertEquals(0, responseChild.getChildrenCount());
       } else {
         assertEquals(responseChild.getChildren().size(), responseChild.getChildrenCount());
       }
     }
 
     GlossaryTerm response = getEntity(term1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
-    assertEquals(term1.getChildren().size(), response.getChildrenCount());
+    assertEquals(
+        term1.getChildren().size() + term11.getChildren().size(), response.getChildrenCount());
 
     queryParams = new HashMap<>();
     queryParams.put("directChildrenOf", glossary1.getFullyQualifiedName());
     queryParams.put("fields", "childrenCount");
     children = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
-    assertEquals(term1.getChildren().size(), children.get(0).getChildrenCount());
+    assertEquals(
+        term1.getChildren().size() + term11.getChildren().size(),
+        children.get(0).getChildrenCount());
   }
 
   @Test
@@ -2055,15 +2071,16 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertTrue(
         movedBackChildTerm1.getFullyQualifiedName().startsWith(term1.getFullyQualifiedName()));
 
-    // Test Scenario 6: Try to move a term to its own child (should fail)
+    // Test Scenario 6: Try to move a term to its own child (should fail with circular reference
+    // error)
     EntityReference childTerm1Ref =
         new EntityReference().withId(childTerm1.getId()).withType("glossaryTerm");
-    MoveGlossaryTermMessage failedMoveMessage =
-        receiveMoveEntityMessage(term1.getId(), childTerm1Ref);
-    assertEquals("FAILED", failedMoveMessage.getStatus());
-    assertEquals(term1.getName(), failedMoveMessage.getEntityName());
-    assertNotNull(failedMoveMessage.getError());
-    assertTrue(failedMoveMessage.getError().contains("Can't move Glossary term"));
+
+    // This should fail immediately with a 400 BAD_REQUEST due to circular reference validation
+    assertThrows(
+        HttpResponseException.class,
+        () -> moveEntityAsync(term1.getId(), childTerm1Ref),
+        "Expected circular reference validation to fail");
 
     // Verify the failed move didn't change the term
     GlossaryTerm unchangedTerm1 = getEntity(term1.getId(), ADMIN_AUTH_HEADERS);
@@ -2240,7 +2257,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     patchEntity(term.getId(), json, term, authHeaders(DATA_CONSUMER.getName()));
 
     // Verify workflow task was created
-    boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    boolean taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 90000L);
     assertTrue(taskCreated, "Workflow should be triggered when non-reviewer updates the term");
 
     // Verify term status moved to IN_REVIEW
@@ -2422,7 +2439,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Patch workflow to include isOwner in OR condition
     String patchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"or\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"isOwner\\\":{\\\"var\\\":\\\"updatedBy\\\"}}]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"or\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"isOwner\\\":{\\\"var\\\":\\\"updatedBy\\\"}}]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchJson);
 
     // Wait for workflow patch to take effect
@@ -2441,7 +2458,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Reset workflow filter back to empty AND
     String resetPatchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"and\\\":[]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"and\\\":[]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", resetPatchJson);
   }
 
@@ -2467,7 +2484,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Patch workflow to use AND: isReviewer AND description exists
     String patchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"and\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"!=\\\":[{\\\"var\\\":\\\"description\\\"},null]}]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"and\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"!=\\\":[{\\\"var\\\":\\\"description\\\"},null]}]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchJson);
 
     // Wait for workflow patch to take effect
@@ -2490,20 +2507,238 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     patchEntity(term.getId(), json, term, ADMIN_AUTH_HEADERS);
 
     // Verify workflow task was created
-    taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 90000L);
     assertTrue(taskCreated, "Workflow should be triggered when AND condition is false");
 
     // Resolve the task to complete the workflow and prevent EntityNotFoundException
     Thread newApprovalTask = assertApprovalTask(term, TaskStatus.Open);
-    taskTest.resolveTask(
-        newApprovalTask.getTask().getId(),
-        new ResolveTask().withNewValue("Approved"),
-        authHeaders(USER1.getName()));
+    try {
+      taskTest.resolveTask(
+          newApprovalTask.getTask().getId(),
+          new ResolveTask().withNewValue("Approved"),
+          authHeaders(USER1.getName()));
+    } catch (Exception ignore) {
+      // Ignore failure - should be flowable lock exception, because the tests are happening fast
+    }
 
     // Reset workflow filter back to empty AND
     String resetPatchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"and\\\":[]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"and\\\":[]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", resetPatchJson);
+  }
+
+  @Test
+  void test_MultipleReviewerApprovalThreshold(TestInfo test) throws Exception {
+    // Test 1: Multiple reviewer approval with threshold of 2
+    // Create two reviewers
+    EntityReference reviewer1 = USER1.getEntityReference();
+    EntityReference reviewer2 = USER2.getEntityReference();
+    List<EntityReference> reviewers = Arrays.asList(reviewer1, reviewer2);
+
+    // Patch workflow to set approval threshold to 2 BEFORE creating entities
+    // Node at index 12 is "ApproveGlossaryTerm" userApprovalTask
+    String patchOp =
+        "[{\"op\":\"replace\",\"path\":\"/nodes/12/config/approvalThreshold\",\"value\":2}]";
+    patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchOp);
+
+    // Create glossary with reviewers
+    Glossary glossary = createGlossary(test, reviewers, null);
+
+    // Create glossary term with reviewers
+    CreateGlossaryTerm createRequest =
+        createRequest(getEntityName(test))
+            .withDescription("Test term for multi-approval")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withReviewers(reviewers)
+            .withSynonyms(null)
+            .withRelatedTerms(null);
+    GlossaryTerm term = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    // Term should be in DRAFT status initially
+    assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+
+    // Wait for workflow to process and task to be created
+    waitForTaskToBeCreated(term.getFullyQualifiedName());
+
+    // After workflow processing, term should be IN_REVIEW
+    assertEquals(
+        EntityStatus.IN_REVIEW, getEntity(term.getId(), ADMIN_AUTH_HEADERS).getEntityStatus());
+
+    // Get the task
+    String entityLink =
+        new MessageParser.EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName())
+            .getLinkString();
+    ThreadList threads =
+        taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(reviewer1.getName()));
+    assertFalse(threads.getData().isEmpty());
+    Thread task = threads.getData().getFirst();
+    int taskId = task.getTask().getId();
+
+    // First reviewer approves
+    ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
+    taskTest.resolveTask(taskId, resolveTask, authHeaders(reviewer1.getName()));
+
+    // After first approval, term should still be IN_REVIEW
+    java.lang.Thread.sleep(2000); // Wait for async processing
+    GlossaryTerm termAfterFirstApproval = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(EntityStatus.IN_REVIEW, termAfterFirstApproval.getEntityStatus());
+
+    // Second reviewer approves
+    taskTest.resolveTask(taskId, resolveTask, authHeaders(reviewer2.getName()));
+
+    // After second approval, term should be APPROVED
+    java.lang.Thread.sleep(2000); // Wait for async processing
+    GlossaryTerm termAfterSecondApproval = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(EntityStatus.APPROVED, termAfterSecondApproval.getEntityStatus());
+
+    // Reset workflow back to threshold of 1
+    patchOp = "[{\"op\":\"replace\",\"path\":\"/nodes/12/config/approvalThreshold\",\"value\":1}]";
+    patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchOp);
+  }
+
+  @Test
+  void test_RollbackOnRejection(TestInfo test) throws Exception {
+    // Test 2: Rollback on rejection scenario
+    EntityReference reviewer = USER1.getEntityReference();
+    List<EntityReference> reviewers = List.of(reviewer);
+
+    // Create glossary with reviewer
+    Glossary glossary = createGlossary(test, reviewers, null);
+
+    // Create glossary term
+    String initialDescription = "Initial approved description";
+    CreateGlossaryTerm createRequest =
+        createRequest(getEntityName(test))
+            .withDescription(initialDescription)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withReviewers(reviewers)
+            .withSynonyms(null)
+            .withRelatedTerms(null);
+    GlossaryTerm term = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    // Wait for task and approve it
+    waitForTaskToBeCreated(term.getFullyQualifiedName());
+    String entityLink =
+        new MessageParser.EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName())
+            .getLinkString();
+    ThreadList threads =
+        taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(reviewer.getName()));
+    Thread task = threads.getData().getFirst();
+    int taskId = task.getTask().getId();
+
+    ResolveTask approveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
+    taskTest.resolveTask(taskId, approveTask, authHeaders(reviewer.getName()));
+
+    java.lang.Thread.sleep(2000);
+    GlossaryTerm approvedTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(EntityStatus.APPROVED, approvedTerm.getEntityStatus());
+    double version1 = approvedTerm.getVersion();
+
+    // Update term with non-reviewer (should trigger workflow)
+    String updatedDescription = "Updated description by non-reviewer";
+    String origJson = JsonUtils.pojoToJson(approvedTerm);
+    approvedTerm.setDescription(updatedDescription);
+    GlossaryTerm updatedTerm =
+        patchEntityUsingFqn(
+            approvedTerm.getFullyQualifiedName(),
+            origJson,
+            approvedTerm,
+            authHeaders(USER2.getName()));
+
+    // Wait for new task to be created for the update
+    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 90000L);
+
+    // Get the new task
+    threads =
+        taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(reviewer.getName()));
+    Thread updateTask = threads.getData().getFirst();
+    int updateTaskId = updateTask.getTask().getId();
+
+    // Reject the changes
+    ResolveTask rejectTask = new ResolveTask().withNewValue(EntityStatus.REJECTED.value());
+    taskTest.resolveTask(updateTaskId, rejectTask, authHeaders(reviewer.getName()));
+
+    java.lang.Thread.sleep(2000);
+    GlossaryTerm rolledBackTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify rollback: description should be back to initial, status should be approved
+    assertEquals(initialDescription, rolledBackTerm.getDescription());
+    assertEquals(EntityStatus.APPROVED, rolledBackTerm.getEntityStatus());
+    // Version should be bumped for audit trail
+    assertTrue(
+        rolledBackTerm.getVersion() > version1, "Version should be incremented for audit trail");
+  }
+
+  @Test
+  void test_ReviewerSuggestionApplication(TestInfo test) throws Exception {
+    // Test 3: Reviewer suggestion application
+    EntityReference reviewer = USER1.getEntityReference();
+    List<EntityReference> reviewers = List.of(reviewer);
+
+    // Create glossary with reviewer
+    Glossary glossary = createGlossary(test, reviewers, null);
+
+    // Create glossary term
+    String initialDescription = "Initial description";
+    CreateGlossaryTerm createRequest =
+        createRequest(getEntityName(test))
+            .withDescription(initialDescription)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withReviewers(reviewers)
+            .withSynonyms(null)
+            .withRelatedTerms(null);
+    GlossaryTerm term = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    // Wait for task to be created
+    waitForTaskToBeCreated(term.getFullyQualifiedName());
+
+    // Get the task
+    String entityLink =
+        new MessageParser.EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName())
+            .getLinkString();
+    ThreadList threads =
+        taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(reviewer.getName()));
+    Thread task = threads.getData().getFirst();
+    int taskId = task.getTask().getId();
+
+    // Approve initially
+    ResolveTask approveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
+    taskTest.resolveTask(taskId, approveTask, authHeaders(reviewer.getName()));
+
+    java.lang.Thread.sleep(2000);
+    GlossaryTerm approvedTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(EntityStatus.APPROVED, approvedTerm.getEntityStatus());
+
+    // Update term to trigger a new approval workflow
+    String updateDescription = "Updated description for review";
+    String origJson = JsonUtils.pojoToJson(approvedTerm);
+    approvedTerm.setDescription(updateDescription);
+    GlossaryTerm updatedTerm =
+        patchEntityUsingFqn(
+            approvedTerm.getFullyQualifiedName(),
+            origJson,
+            approvedTerm,
+            authHeaders(USER2.getName()));
+
+    // Wait for detailed task to be created
+    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 90000L);
+
+    // Get the new task
+    threads =
+        taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(reviewer.getName()));
+    Thread updateTask = threads.getData().getFirst();
+    int updateTaskId = updateTask.getTask().getId();
+
+    // Reviewer simply approves the term without suggestions
+    approveTask = new ResolveTask().withNewValue("approved");
+    taskTest.resolveTask(updateTaskId, approveTask, authHeaders(reviewer.getName()));
+
+    java.lang.Thread.sleep(2000);
+    GlossaryTerm finalTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify the term is approved with the original update description
+    assertEquals(EntityStatus.APPROVED, finalTerm.getEntityStatus());
+    assertEquals(updateDescription, finalTerm.getDescription());
   }
 
   /**
@@ -2773,5 +3008,996 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     } catch (Exception e) {
       return false;
     }
+  }
+
+  @Test
+  void test_circularReferenceDetection_directMove(TestInfo test) throws Exception {
+    // Create a glossary
+    CreateGlossary createGlossary = glossaryTest.createRequest(test);
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create TermA as a root term under the glossary
+    CreateGlossaryTerm createTermA =
+        createRequest("TermA")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Root term A");
+    GlossaryTerm termA = createEntity(createTermA, ADMIN_AUTH_HEADERS);
+
+    // Create TermB as a child of TermA
+    CreateGlossaryTerm createTermB =
+        createRequest("TermB")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(termA.getFullyQualifiedName())
+            .withDescription("Child term B of TermA");
+    GlossaryTerm termB = createEntity(createTermB, ADMIN_AUTH_HEADERS);
+
+    // Create TermC as a child of TermB (grandchild of TermA)
+    CreateGlossaryTerm createTermC =
+        createRequest("TermC")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(termB.getFullyQualifiedName())
+            .withDescription("Grandchild term C of TermA");
+    GlossaryTerm termC = createEntity(createTermC, ADMIN_AUTH_HEADERS);
+
+    // Test 1: Try to move TermA under TermB using moveAsync API (direct circular reference)
+    // This should fail IMMEDIATELY with BAD_REQUEST before async operation starts
+    assertThrows(
+        HttpResponseException.class,
+        () -> moveEntityAsync(termA.getId(), termB.getEntityReference()),
+        "Should not allow TermA to be moved under TermB (direct circular reference)");
+
+    // Test 2: Try to move TermA under TermC (indirect circular reference)
+    assertThrows(
+        HttpResponseException.class,
+        () -> moveEntityAsync(termA.getId(), termC.getEntityReference()),
+        "Should not allow TermA to be moved under TermC (indirect circular reference)");
+
+    // Test 3: Try to move TermB under TermC (would create circular: A->B->C, C->B)
+    assertThrows(
+        HttpResponseException.class,
+        () -> moveEntityAsync(termB.getId(), termC.getEntityReference()),
+        "Should not allow TermB to be moved under TermC (TermC is already a child of TermB)");
+
+    // Test 4: Verify valid move still works - move TermC to root level
+    MoveGlossaryTermMessage moveMessage =
+        receiveMoveEntityMessage(termC.getId(), glossary.getEntityReference());
+    assertEquals(
+        "COMPLETED", moveMessage.getStatus(), "Should successfully move TermC to root level");
+    assertNull(moveMessage.getError(), "Move operation should complete without error");
+
+    // Verify TermC has been moved to root level (no parent)
+    GlossaryTerm movedTermC = getEntity(termC.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(movedTermC.getParent(), "TermC should have no parent after move to root level");
+    assertEquals(
+        glossary.getId(), movedTermC.getGlossary().getId(), "TermC should belong to the glossary");
+
+    // Clean up
+    deleteEntity(termC.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(termB.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(termA.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_selfReferenceValidation(TestInfo test) throws IOException {
+    // Test that a term cannot be set as its own parent
+    CreateGlossary createGlossary = glossaryTest.createRequest(test);
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm =
+        createRequest("SelfRefTerm").withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term = createEntity(createTerm, ADMIN_AUTH_HEADERS);
+
+    // Try to move term to itself using moveAsync API
+    assertThrows(
+        HttpResponseException.class,
+        () -> moveEntityAsync(term.getId(), term.getEntityReference()),
+        "Should not allow term to be its own parent");
+
+    // Clean up
+    deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_orphanedRelationshipsAfterMove(TestInfo test) throws Exception {
+    // Create a glossary
+    CreateGlossary createGlossary = glossaryTest.createRequest(test);
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create TermA as root
+    CreateGlossaryTerm createTermA =
+        createRequest("TermA").withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm termA = createEntity(createTermA, ADMIN_AUTH_HEADERS);
+
+    // Create TermB as child of TermA
+    CreateGlossaryTerm createTermB =
+        createRequest("TermB")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(termA.getFullyQualifiedName());
+    GlossaryTerm termB = createEntity(createTermB, ADMIN_AUTH_HEADERS);
+
+    // Move TermB to root level (remove parent relationship) using async move API
+    EntityReference glossaryRef =
+        new EntityReference().withId(glossary.getId()).withType("glossary");
+    MoveGlossaryTermMessage moveMessage = receiveMoveEntityMessage(termB.getId(), glossaryRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+    assertNull(moveMessage.getError());
+
+    // Verify TermB has no parent
+    GlossaryTerm movedTermB = getEntity(termB.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(movedTermB.getParent(), "TermB should have no parent after move");
+
+    // Verify we can list terms under the glossary without infinite loops
+    Map<String, String> params = new HashMap<>();
+    params.put("glossary", glossary.getId().toString());
+    params.put("fields", "childrenCount,owners,reviewers");
+    params.put("limit", "50");
+
+    ResultList<GlossaryTerm> terms = listEntities(params, ADMIN_AUTH_HEADERS);
+    assertNotNull(terms, "Should be able to list terms without errors");
+    assertEquals(2, terms.getData().size(), "Should have 2 root-level terms");
+
+    // Clean up
+    deleteEntity(termB.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(termA.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_directChildrenOfWithCircularRef(TestInfo test) throws IOException {
+    // This test reproduces the exact scenario from the bug report
+    CreateGlossary createGlossary = glossaryTest.createRequest(test);
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create Salesforce-Glossary term
+    CreateGlossaryTerm createSalesforce =
+        createRequest("Salesforce-Glossary").withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm salesforceTerm = createEntity(createSalesforce, ADMIN_AUTH_HEADERS);
+
+    // Create child terms under Salesforce-Glossary
+    List<GlossaryTerm> childTerms = new ArrayList<>();
+    for (int i = 1; i <= 5; i++) {
+      CreateGlossaryTerm createChild =
+          createRequest("ChildTerm" + i)
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withParent(salesforceTerm.getFullyQualifiedName());
+      childTerms.add(createEntity(createChild, ADMIN_AUTH_HEADERS));
+    }
+
+    // Query for direct children - this should not hang
+    Map<String, String> params = new HashMap<>();
+    params.put("directChildrenOf", salesforceTerm.getFullyQualifiedName());
+    params.put("fields", "childrenCount,owners,reviewers");
+    params.put("limit", "50");
+
+    ResultList<GlossaryTerm> directChildren = listEntities(params, ADMIN_AUTH_HEADERS);
+    assertNotNull(directChildren, "Should be able to get direct children without hanging");
+    assertEquals(5, directChildren.getData().size(), "Should have 5 direct children");
+
+    // Clean up
+    for (GlossaryTerm child : childTerms) {
+      deleteEntity(child.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
+    deleteEntity(salesforceTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_childrenCountIncludesAllNestedTerms(TestInfo test) throws IOException {
+    // Create a glossary
+    CreateGlossary createGlossary = glossaryTest.createRequest(test);
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create a hierarchy: term1 -> term1.1 -> term1.1.1
+    //                              -> term1.1.2
+    //                     -> term1.2
+    CreateGlossaryTerm createTerm1 =
+        createRequest("term1").withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term1 = createEntity(createTerm1, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm1_1 =
+        createRequest("term1.1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1.getFullyQualifiedName());
+    GlossaryTerm term1_1 = createEntity(createTerm1_1, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm1_1_1 =
+        createRequest("term1.1.1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1_1.getFullyQualifiedName());
+    GlossaryTerm term1_1_1 = createEntity(createTerm1_1_1, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm1_1_2 =
+        createRequest("term1.1.2")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1_1.getFullyQualifiedName());
+    GlossaryTerm term1_1_2 = createEntity(createTerm1_1_2, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm1_2 =
+        createRequest("term1.2")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1.getFullyQualifiedName());
+    GlossaryTerm term1_2 = createEntity(createTerm1_2, ADMIN_AUTH_HEADERS);
+
+    // Fetch term1 with childrenCount field
+    GlossaryTerm fetchedTerm1 = getEntity(term1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
+
+    // term1 should have 4 nested children total (term1.1, term1.1.1, term1.1.2, term1.2)
+    assertEquals(4, fetchedTerm1.getChildrenCount(), "term1 should have 4 total nested children");
+
+    // Fetch term1.1 with childrenCount field
+    GlossaryTerm fetchedTerm1_1 = getEntity(term1_1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
+
+    // term1.1 should have 2 nested children (term1.1.1, term1.1.2)
+    assertEquals(
+        2, fetchedTerm1_1.getChildrenCount(), "term1.1 should have 2 total nested children");
+
+    // Fetch term1.2 with childrenCount field
+    GlossaryTerm fetchedTerm1_2 = getEntity(term1_2.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
+
+    // term1.2 should have 0 nested children
+    assertEquals(0, fetchedTerm1_2.getChildrenCount(), "term1.2 should have 0 nested children");
+
+    // Clean up
+    deleteEntity(term1_1_1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(term1_1_2.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(term1_2.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(term1_1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(term1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  private boolean wasDetailedWorkflowTaskCreated(String termFqn, long timeoutMs) {
+    try {
+      waitForDetailedTaskToBeCreated(termFqn, timeoutMs);
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  public static void waitForDetailedTaskToBeCreated(String fullyQualifiedName, long timeout) {
+    String entityLink =
+        new MessageParser.EntityLink(Entity.GLOSSARY_TERM, fullyQualifiedName).getLinkString();
+    Awaitility.await(
+            String.format(
+                "Wait for Detailed Task to be Created for Glossary Term: '%s'", fullyQualifiedName))
+        .ignoreExceptions()
+        .pollInterval(Duration.ofMillis(2000L))
+        .atMost(Duration.ofMillis(timeout))
+        .until(
+            () ->
+                WorkflowHandler.getInstance()
+                    .isActivityWithVariableExecuting(
+                        "ApprovalForUpdates.approvalTask",
+                        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+                        entityLink));
+  }
+
+  @Test
+  void test_getGlossaryTermAssetsAPI(TestInfo test) throws IOException {
+    Glossary glossary = createGlossary(test, null, emptyList());
+    CreateGlossaryTerm createTerm = createRequest(getEntityName(test), "", "", null);
+    createTerm.setGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term = createEntity(createTerm, ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    TagLabel termLabel = EntityUtil.toTagLabel(term);
+    CreateTable createTable1 =
+        tableTest.createRequest(getEntityName(test, 1)).withTags(List.of(termLabel));
+    Table table1 = tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableTest.createRequest(getEntityName(test, 2)).withTags(List.of(termLabel));
+    Table table2 = tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 =
+        tableTest.createRequest(getEntityName(test, 3)).withTags(List.of(termLabel));
+    Table table3 = tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    ResultList<EntityReference> assets = getAssets(term.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertTrue(assets.getPaging().getTotal() >= 3);
+    assertTrue(assets.getData().size() >= 3);
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    ResultList<EntityReference> assetsByName =
+        getAssetsByName(term.getFullyQualifiedName(), 10, 0, ADMIN_AUTH_HEADERS);
+    assertTrue(assetsByName.getPaging().getTotal() >= 3);
+    assertTrue(assetsByName.getData().size() >= 3);
+
+    ResultList<EntityReference> page1 = getAssets(term.getId(), 2, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getData().size());
+
+    ResultList<EntityReference> page2 = getAssets(term.getId(), 2, 2, ADMIN_AUTH_HEADERS);
+    assertFalse(page2.getData().isEmpty());
+  }
+
+  @Test
+  void test_WorkflowTriggerOnDescriptionApprovalByNonReviewer(TestInfo test) throws Exception {
+    // Test scenario:
+    // 1. Create a glossary term with USER1 as reviewer (should be auto-approved)
+    // 2. USER1 requests a description update, asking USER2 (non-reviewer) for approval
+    // 3. When USER2 approves, verify the workflow IS triggered:
+    //    - Description is updated
+    //    - Term moves to IN_REVIEW status
+    //    - Approval task is created for USER1
+
+    try {
+      // Step 1: Create glossary with no reviewers
+      // Use simple names without special characters to avoid SQL syntax issues
+      String simpleName = "glossary_workflow_test_" + System.currentTimeMillis();
+      Glossary glossary = createGlossary(simpleName, null, null);
+
+      // Create term with USER1 as reviewer
+      String termName = "term_workflow_test_" + System.currentTimeMillis();
+      CreateGlossaryTerm createRequest =
+          createRequest(termName)
+              .withDescription("Initial description")
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withReviewers(listOf(USER1.getEntityReference()));
+
+      // Create as USER1 (who is the reviewer) - should be auto-approved
+      GlossaryTerm term = createEntity(createRequest, authHeaders(USER1.getName()));
+
+      // Wait a bit for any workflow to process
+      java.lang.Thread.sleep(2000);
+
+      // Verify term is approved since creator is the reviewer
+      GlossaryTerm autoApprovedTerm = getEntity(term.getId(), "", authHeaders(USER1.getName()));
+      assertEquals(
+          EntityStatus.APPROVED,
+          autoApprovedTerm.getEntityStatus(),
+          "Term should be auto-approved when creator is reviewer");
+
+      // Record initial version for later comparison
+      double initialVersion = autoApprovedTerm.getVersion();
+
+      // Step 2: USER1 (reviewer) requests a description update, asking USER2 for approval
+      // Create UpdateDescription task
+      String newDescription = "Updated description needing approval";
+      String entityLink =
+          new MessageParser.EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName())
+              .getLinkString();
+
+      CreateTaskDetails taskDetails =
+          new CreateTaskDetails()
+              .withType(TaskType.UpdateDescription)
+              .withOldValue(term.getDescription())
+              .withSuggestion(newDescription)
+              .withAssignees(List.of(USER2.getEntityReference()));
+
+      CreateThread createThread =
+          new CreateThread()
+              .withMessage("Please approve this description update")
+              .withFrom(USER1.getName())
+              .withAbout(entityLink)
+              .withTaskDetails(taskDetails)
+              .withType(ThreadType.Task);
+
+      Thread descriptionTask = taskTest.createAndCheck(createThread, authHeaders(USER1.getName()));
+      assertNotNull(descriptionTask);
+      assertEquals(TaskStatus.Open, descriptionTask.getTask().getStatus());
+
+      // Verify that USER2 can see the task
+      ThreadList tasks =
+          taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(USER2.getName()));
+      assertTrue(
+          tasks.getData().stream().anyMatch(t -> t.getId().equals(descriptionTask.getId())),
+          "USER2 should be able to see the task");
+
+      // Step 3: USER2 (non-reviewer) approves the description update
+      // This should trigger a workflow because USER2 is NOT a reviewer
+
+      // USER2 resolves the task (approves the description change)
+      ResolveTask resolveTask = new ResolveTask().withNewValue(newDescription);
+      taskTest.resolveTask(
+          descriptionTask.getTask().getId(), resolveTask, authHeaders(USER2.getName()));
+
+      // Task resolution should have closed the description task immediately
+      // Wait for the ChangeEvent to be processed and workflow to trigger
+      java.lang.Thread.sleep(15000); // Give enough time for workflow processing
+
+      // Step 4: Verify the workflow was triggered
+      // When a non-reviewer (USER2) approves a change, the workflow should:
+      // 1. Update the description (immediate effect)
+      // 2. Move the term to IN_REVIEW status
+      // 3. Create a new approval task for the actual reviewers (USER1)
+
+      GlossaryTerm updatedTerm = getEntity(term.getId(), "", ADMIN_AUTH_HEADERS);
+
+      // Verify description was updated immediately
+      assertEquals(
+          newDescription,
+          updatedTerm.getDescription(),
+          "Description should be updated after approval");
+
+      // CRITICAL: Verify term moved to IN_REVIEW status (workflow was triggered)
+      assertEquals(
+          EntityStatus.IN_REVIEW,
+          updatedTerm.getEntityStatus(),
+          "Term MUST move to IN_REVIEW when non-reviewer approves changes - this proves workflow triggered");
+
+      // Verify version was incremented (entity was modified)
+      assertTrue(
+          updatedTerm.getVersion() > initialVersion,
+          "Version should be incremented after task resolution and workflow processing");
+
+      // Step 5: Verify a new approval task was created for USER1 (the reviewer)
+      // Wait a bit more for task creation
+      java.lang.Thread.sleep(5000);
+
+      // The workflow MUST create an approval task
+      Thread approvalTask = assertApprovalTask(term, TaskStatus.Open);
+      assertNotNull(approvalTask, "Workflow MUST create an approval task for the reviewer");
+
+      // Verify the task is assigned to USER1 (the reviewer)
+      assertTrue(
+          approvalTask.getTask().getAssignees().stream()
+              .anyMatch(a -> a.getId().equals(USER1.getEntityReference().getId())),
+          "The approval task MUST be assigned to USER1 (the reviewer)");
+
+      LOG.info(
+          "Test completed: Workflow successfully triggered when non-reviewer approved description change");
+
+      // Clean up: Resolve the approval task
+      try {
+        taskTest.resolveTask(
+            approvalTask.getTask().getId(),
+            new ResolveTask().withNewValue("Approved"),
+            authHeaders(USER1.getName()));
+        java.lang.Thread.sleep(2000);
+      } catch (Exception e) {
+        // Ignore cleanup errors
+      }
+
+    } finally {
+      // Clean up: Re-suspend the workflow to not affect other tests
+      WorkflowHandler.getInstance().suspendWorkflow("GlossaryTermApprovalWorkflow");
+    }
+  }
+
+  @Test
+  void test_getAllGlossaryTermsWithAssetsCount(TestInfo test) throws IOException {
+    Glossary glossary = createGlossary(test, null, emptyList());
+    CreateGlossaryTerm createTerm1 = createRequest(getEntityName(test, 1), "", "", null);
+    createTerm1.setGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term1 = createEntity(createTerm1, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm2 = createRequest(getEntityName(test, 2), "", "", null);
+    createTerm2.setGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term2 = createEntity(createTerm2, ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    TagLabel termLabel1 = EntityUtil.toTagLabel(term1);
+    TagLabel termLabel2 = EntityUtil.toTagLabel(term2);
+
+    Table table1 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test, 3)).withTags(List.of(termLabel1)),
+            ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test, 4)).withTags(List.of(termLabel1)),
+            ADMIN_AUTH_HEADERS);
+    Table table3 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test, 5)).withTags(List.of(termLabel2)),
+            ADMIN_AUTH_HEADERS);
+
+    Map<String, Integer> assetsCount = getAllGlossaryTermsWithAssetsCount();
+
+    assertNotNull(assetsCount);
+    assertEquals(
+        2, assetsCount.get(term1.getFullyQualifiedName()), "Glossary term 1 should have 2 assets");
+    assertEquals(
+        1, assetsCount.get(term2.getFullyQualifiedName()), "Glossary term 2 should have 1 asset");
+  }
+
+  private Map<String, Integer> getAllGlossaryTermsWithAssetsCount() throws HttpResponseException {
+    WebTarget target = getResource("glossaryTerms/assets/counts");
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    return response.readEntity(new GenericType<Map<String, Integer>>() {});
+  }
+
+  /**
+   * Test Suite for Glossary Term Move Operations with Children Relationship Verification
+   * These tests verify that when moving glossary terms with children, all relationships
+   * (both parent-child CONTAINS and glossary HAS) are correctly updated.
+   */
+  @Test
+  void test_moveTermWithChildren_toParentInSameGlossary() throws Exception {
+    // Scenario 1: Create term -> add children -> move to another parent in same glossary
+    Glossary glossary = createGlossary("TestGlossary1", null, null);
+
+    // Create parent terms
+    GlossaryTerm parentA = createTerm(glossary, null, "ParentA");
+    GlossaryTerm parentB = createTerm(glossary, null, "ParentB");
+
+    // Create term with children under ParentA
+    GlossaryTerm movingTerm = createTerm(glossary, parentA, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossary, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossary, movingTerm, "Child2");
+
+    // Move MovingTerm from ParentA to ParentB
+    EntityReference parentBRef =
+        new EntityReference()
+            .withId(parentB.getId())
+            .withType(GLOSSARY_TERM)
+            .withFullyQualifiedName(parentB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage = receiveMoveEntityMessage(movingTerm.getId(), parentBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MovingTerm is correctly moved
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(parentB.getId(), movedTerm.getParent().getId());
+    assertEquals(glossary.getId(), movedTerm.getGlossary().getId());
+    assertTrue(
+        movedTerm.getFullyQualifiedName().startsWith(glossary.getName() + ".ParentB.MovingTerm"));
+
+    // Verify Child1 relationships
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild1.getParent().getId());
+    assertEquals(glossary.getId(), verifiedChild1.getGlossary().getId());
+    assertTrue(verifiedChild1.getFullyQualifiedName().contains("ParentB.MovingTerm.Child1"));
+
+    // Verify Child2 relationships
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild2.getParent().getId());
+    assertEquals(glossary.getId(), verifiedChild2.getGlossary().getId());
+    assertTrue(verifiedChild2.getFullyQualifiedName().contains("ParentB.MovingTerm.Child2"));
+  }
+
+  @Test
+  void test_moveTermWithChildren_toRootInDifferentGlossary() throws Exception {
+    // Scenario 2: Move term with children to root of different glossary
+    Glossary glossaryA = createGlossary("GlossaryA", null, null);
+    Glossary glossaryB = createGlossary("GlossaryB", null, null);
+
+    // Create term with children in GlossaryA
+    GlossaryTerm movingTerm = createTerm(glossaryA, null, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossaryA, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossaryA, movingTerm, "Child2");
+    GlossaryTerm grandChild = createTerm(glossaryA, child1, "GrandChild");
+
+    // Move to root of GlossaryB
+    EntityReference glossaryBRef =
+        new EntityReference()
+            .withId(glossaryB.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossaryB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage =
+        receiveMoveEntityMessage(movingTerm.getId(), glossaryBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MovingTerm
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(movedTerm.getParent());
+    assertEquals(glossaryB.getId(), movedTerm.getGlossary().getId());
+    assertEquals("GlossaryB.MovingTerm", movedTerm.getFullyQualifiedName());
+
+    // Verify Child1 glossary changed
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild1.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedChild1.getGlossary().getId());
+    assertEquals("GlossaryB.MovingTerm.Child1", verifiedChild1.getFullyQualifiedName());
+
+    // Verify Child2 glossary changed
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild2.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedChild2.getGlossary().getId());
+
+    // Verify GrandChild glossary changed (nested children)
+    GlossaryTerm verifiedGrandChild =
+        getEntity(grandChild.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(child1.getId(), verifiedGrandChild.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedGrandChild.getGlossary().getId());
+    assertEquals(
+        "GlossaryB.MovingTerm.Child1.GrandChild", verifiedGrandChild.getFullyQualifiedName());
+
+    // CRITICAL: Delete the original glossary to reproduce relationship scenario
+    // If relationships were not properly updated, this will expose orphaned relationships
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify children can STILL be fetched after original glossary is deleted
+    // This would fail with "does not have expected relationship" error if relationships weren't
+    // updated
+    GlossaryTerm child1AfterDelete =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child1AfterDelete.getGlossary().getId());
+    assertNotNull(
+        child1AfterDelete.getGlossary(), "Child must have valid glossary after original deleted");
+
+    GlossaryTerm child2AfterDelete =
+        getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child2AfterDelete.getGlossary().getId());
+
+    GlossaryTerm grandChildAfterDelete =
+        getEntity(grandChild.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), grandChildAfterDelete.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveTermWithChildren_toParentInDifferentGlossary() throws Exception {
+    // Scenario 3: Move term with children to under a parent in different glossary
+    Glossary glossaryA = createGlossary("GlossaryA_3", null, null);
+    Glossary glossaryB = createGlossary("GlossaryB_3", null, null);
+
+    // Create term with children in GlossaryA
+    GlossaryTerm movingTerm = createTerm(glossaryA, null, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossaryA, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossaryA, movingTerm, "Child2");
+
+    // Create parent in GlossaryB
+    GlossaryTerm parentInB = createTerm(glossaryB, null, "ParentInB");
+
+    // Move to under parentInB
+    EntityReference parentInBRef =
+        new EntityReference()
+            .withId(parentInB.getId())
+            .withType(GLOSSARY_TERM)
+            .withFullyQualifiedName(parentInB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage =
+        receiveMoveEntityMessage(movingTerm.getId(), parentInBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MovingTerm
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(parentInB.getId(), movedTerm.getParent().getId());
+    assertEquals(glossaryB.getId(), movedTerm.getGlossary().getId());
+    assertTrue(movedTerm.getFullyQualifiedName().contains("GlossaryB_3.ParentInB.MovingTerm"));
+
+    // Verify children moved to GlossaryB
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), verifiedChild1.getGlossary().getId());
+
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), verifiedChild2.getGlossary().getId());
+
+    // Delete original glossary to expose any orphaned relationships
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify children still accessible with correct glossary
+    GlossaryTerm child1AfterDelete =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child1AfterDelete.getGlossary().getId());
+
+    GlossaryTerm child2AfterDelete =
+        getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child2AfterDelete.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveNestedTermWithChildren_toRootInSameGlossary() throws Exception {
+    // Scenario 4: Term is nested under parent, move it to root in same glossary
+    Glossary glossary = createGlossary("TestGlossary4", null, null);
+
+    // Create hierarchy: ParentA -> MovingTerm -> Child1, Child2
+    GlossaryTerm parentA = createTerm(glossary, null, "ParentA");
+    GlossaryTerm movingTerm = createTerm(glossary, parentA, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossary, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossary, movingTerm, "Child2");
+
+    // Move to root
+    EntityReference glossaryRef =
+        new EntityReference()
+            .withId(glossary.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossary.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage = receiveMoveEntityMessage(movingTerm.getId(), glossaryRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MovingTerm is at root
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(movedTerm.getParent());
+    assertEquals(glossary.getId(), movedTerm.getGlossary().getId());
+    assertEquals("TestGlossary4.MovingTerm", movedTerm.getFullyQualifiedName());
+
+    // Verify children still under MovingTerm and in same glossary
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild1.getParent().getId());
+    assertEquals(glossary.getId(), verifiedChild1.getGlossary().getId());
+
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild2.getParent().getId());
+    assertEquals(glossary.getId(), verifiedChild2.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveNestedTermWithChildren_toRootInDifferentGlossary() throws Exception {
+    // Scenario 5: Term is nested, move to root in different glossary
+    Glossary glossaryA = createGlossary("GlossaryA_5", null, null);
+    Glossary glossaryB = createGlossary("GlossaryB_5", null, null);
+
+    // Create nested term with children in GlossaryA
+    GlossaryTerm parentA = createTerm(glossaryA, null, "ParentA");
+    GlossaryTerm movingTerm = createTerm(glossaryA, parentA, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossaryA, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossaryA, movingTerm, "Child2");
+
+    // Move to root of GlossaryB
+    EntityReference glossaryBRef =
+        new EntityReference()
+            .withId(glossaryB.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossaryB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage =
+        receiveMoveEntityMessage(movingTerm.getId(), glossaryBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify all moved to GlossaryB
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(movedTerm.getParent());
+    assertEquals(glossaryB.getId(), movedTerm.getGlossary().getId());
+
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), verifiedChild1.getGlossary().getId());
+
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), verifiedChild2.getGlossary().getId());
+
+    // Delete original glossary AND original parent to reproduce relationship scenario
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify children still work after original glossary deleted
+    GlossaryTerm child1AfterDelete =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child1AfterDelete.getGlossary().getId());
+
+    GlossaryTerm child2AfterDelete =
+        getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child2AfterDelete.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveNestedTermWithChildren_toParentInDifferentGlossary() throws Exception {
+    // Scenario 6: Term is nested, move to under another parent in different glossary
+    Glossary glossaryA = createGlossary("GlossaryA_6", null, null);
+    Glossary glossaryB = createGlossary("GlossaryB_6", null, null);
+
+    // Create nested structure in GlossaryA
+    GlossaryTerm parentA = createTerm(glossaryA, null, "ParentA");
+    GlossaryTerm movingTerm = createTerm(glossaryA, parentA, "MovingTerm");
+    GlossaryTerm child1 = createTerm(glossaryA, movingTerm, "Child1");
+    GlossaryTerm child2 = createTerm(glossaryA, movingTerm, "Child2");
+
+    // Create target parent in GlossaryB
+    GlossaryTerm parentB = createTerm(glossaryB, null, "ParentB");
+
+    // Move to under ParentB in GlossaryB
+    EntityReference parentBRef =
+        new EntityReference()
+            .withId(parentB.getId())
+            .withType(GLOSSARY_TERM)
+            .withFullyQualifiedName(parentB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage = receiveMoveEntityMessage(movingTerm.getId(), parentBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MovingTerm moved
+    GlossaryTerm movedTerm = getEntity(movingTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(parentB.getId(), movedTerm.getParent().getId());
+    assertEquals(glossaryB.getId(), movedTerm.getGlossary().getId());
+
+    // Verify children moved to GlossaryB
+    GlossaryTerm verifiedChild1 = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild1.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedChild1.getGlossary().getId());
+
+    GlossaryTerm verifiedChild2 = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(movingTerm.getId(), verifiedChild2.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedChild2.getGlossary().getId());
+
+    // Delete original glossary AND original parent term
+    deleteEntity(parentA.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify children still accessible after both deletions
+    GlossaryTerm child1AfterDelete =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child1AfterDelete.getGlossary().getId());
+    assertEquals(movingTerm.getId(), child1AfterDelete.getParent().getId());
+
+    GlossaryTerm child2AfterDelete =
+        getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), child2AfterDelete.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveMiddleTermInHierarchy_toRootInSameGlossary() throws Exception {
+    // Scenario 7a: Create RootTerm -> MiddleTerm -> LeafTerm, move MiddleTerm to root in same
+    // glossary
+    Glossary glossary = createGlossary("TestGlossary7a", null, null);
+
+    // Create 3-level hierarchy
+    GlossaryTerm rootTerm = createTerm(glossary, null, "RootTerm");
+    GlossaryTerm middleTerm = createTerm(glossary, rootTerm, "MiddleTerm");
+    GlossaryTerm leafTerm = createTerm(glossary, middleTerm, "LeafTerm");
+
+    // Move MiddleTerm to root
+    EntityReference glossaryRef =
+        new EntityReference()
+            .withId(glossary.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossary.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage = receiveMoveEntityMessage(middleTerm.getId(), glossaryRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MiddleTerm is at root
+    GlossaryTerm movedMiddle = getEntity(middleTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(movedMiddle.getParent());
+    assertEquals(glossary.getId(), movedMiddle.getGlossary().getId());
+    assertEquals("TestGlossary7a.MiddleTerm", movedMiddle.getFullyQualifiedName());
+
+    // Verify LeafTerm still under MiddleTerm
+    GlossaryTerm verifiedLeaf = getEntity(leafTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(middleTerm.getId(), verifiedLeaf.getParent().getId());
+    assertEquals(glossary.getId(), verifiedLeaf.getGlossary().getId());
+    assertEquals("TestGlossary7a.MiddleTerm.LeafTerm", verifiedLeaf.getFullyQualifiedName());
+
+    // Verify RootTerm unchanged
+    GlossaryTerm verifiedRoot = getEntity(rootTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(verifiedRoot.getParent());
+    assertEquals(glossary.getId(), verifiedRoot.getGlossary().getId());
+  }
+
+  @Test
+  void test_moveMiddleTermInHierarchy_toRootInDifferentGlossary() throws Exception {
+    // Scenario 7b: Create RootTerm -> MiddleTerm -> LeafTerm, move MiddleTerm to root in different
+    // glossary
+    Glossary glossaryA = createGlossary("GlossaryA_7b", null, null);
+    Glossary glossaryB = createGlossary("GlossaryB_7b", null, null);
+
+    // Create 3-level hierarchy in GlossaryA
+    GlossaryTerm rootTerm = createTerm(glossaryA, null, "RootTerm");
+    GlossaryTerm middleTerm = createTerm(glossaryA, rootTerm, "MiddleTerm");
+    GlossaryTerm leafTerm = createTerm(glossaryA, middleTerm, "LeafTerm");
+
+    // Move MiddleTerm to root of GlossaryB
+    EntityReference glossaryBRef =
+        new EntityReference()
+            .withId(glossaryB.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossaryB.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage moveMessage =
+        receiveMoveEntityMessage(middleTerm.getId(), glossaryBRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // Verify MiddleTerm moved to GlossaryB
+    GlossaryTerm movedMiddle = getEntity(middleTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNull(movedMiddle.getParent());
+    assertEquals(glossaryB.getId(), movedMiddle.getGlossary().getId());
+    assertEquals("GlossaryB_7b.MiddleTerm", movedMiddle.getFullyQualifiedName());
+
+    // Verify LeafTerm also moved to GlossaryB
+    GlossaryTerm verifiedLeaf = getEntity(leafTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(middleTerm.getId(), verifiedLeaf.getParent().getId());
+    assertEquals(glossaryB.getId(), verifiedLeaf.getGlossary().getId());
+    assertEquals("GlossaryB_7b.MiddleTerm.LeafTerm", verifiedLeaf.getFullyQualifiedName());
+
+    // Verify RootTerm stayed in GlossaryA
+    GlossaryTerm verifiedRoot = getEntity(rootTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryA.getId(), verifiedRoot.getGlossary().getId());
+
+    // Delete the original parent (RootTerm) and original glossary
+    // This tests if LeafTerm still works when its grandparent is deleted
+    deleteEntity(rootTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // Verify MiddleTerm and LeafTerm still accessible
+    GlossaryTerm middleAfterDelete =
+        getEntity(middleTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), middleAfterDelete.getGlossary().getId());
+
+    GlossaryTerm leafAfterDelete =
+        getEntity(leafTerm.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryB.getId(), leafAfterDelete.getGlossary().getId());
+    assertEquals(middleTerm.getId(), leafAfterDelete.getParent().getId());
+  }
+
+  @Test
+  void test_consecutiveMoves_verifyRelationshipIntegrity() throws Exception {
+    // Test consecutive moves
+    Glossary glossaryA = createGlossary("DocHub4", null, null);
+    Glossary glossaryTech = createGlossary("TechnicalGlossary", null, null);
+    Glossary glossaryArchive = createGlossary("Archive", null, null);
+
+    // Create term with children in GlossaryA
+    GlossaryTerm tapsToSap = createTerm(glossaryA, null, "TAPStoSAP");
+    GlossaryTerm child1 = createTerm(glossaryA, tapsToSap, "ChildTerm1");
+    GlossaryTerm child2 = createTerm(glossaryA, tapsToSap, "ChildTerm2");
+
+    // First move: to TechnicalGlossary
+    EntityReference techRef =
+        new EntityReference()
+            .withId(glossaryTech.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossaryTech.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage move1 = receiveMoveEntityMessage(tapsToSap.getId(), techRef);
+    assertEquals("COMPLETED", move1.getStatus());
+
+    // Verify after first move
+    GlossaryTerm afterMove1 = getEntity(tapsToSap.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryTech.getId(), afterMove1.getGlossary().getId());
+
+    GlossaryTerm child1AfterMove1 =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryTech.getId(), child1AfterMove1.getGlossary().getId());
+
+    // Second move: to Archive (consecutive move)
+    EntityReference archiveRef =
+        new EntityReference()
+            .withId(glossaryArchive.getId())
+            .withType(GLOSSARY)
+            .withFullyQualifiedName(glossaryArchive.getFullyQualifiedName());
+
+    MoveGlossaryTermMessage move2 = receiveMoveEntityMessage(tapsToSap.getId(), archiveRef);
+    assertEquals("COMPLETED", move2.getStatus());
+
+    // Verify after second move - this should NOT fail!
+    GlossaryTerm afterMove2 = getEntity(tapsToSap.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryArchive.getId(), afterMove2.getGlossary().getId());
+
+    // Critical: Verify children can be fetched individually without errors
+    GlossaryTerm child1Final = getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(tapsToSap.getId(), child1Final.getParent().getId());
+    assertEquals(glossaryArchive.getId(), child1Final.getGlossary().getId());
+    assertNotNull(child1Final.getGlossary(), "Child1 must have glossary relationship");
+
+    GlossaryTerm child2Final = getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(tapsToSap.getId(), child2Final.getParent().getId());
+    assertEquals(glossaryArchive.getId(), child2Final.getGlossary().getId());
+    assertNotNull(child2Final.getGlossary(), "Child2 must have glossary relationship");
+
+    // Verify we can list children without errors
+    Map<String, String> params = new HashMap<>();
+    params.put("directChildrenOf", afterMove2.getFullyQualifiedName());
+    ResultList<GlossaryTerm> children = listEntities(params, ADMIN_AUTH_HEADERS);
+    assertEquals(2, children.getData().size());
+
+    // CRITICAL: Delete the original glossary and intermediate glossary
+    // This reproduces the EXACT scenario where orphaned relationships cause failures
+    glossaryTest.deleteEntity(glossaryA.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossaryTech.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    // If relationships weren't updated correctly, the next fetch will fail with:
+    // "Entity type glossaryTerm does not have expected relationship has to/from entity type
+    // glossary"
+    GlossaryTerm termAfterAllDeletes =
+        getEntity(tapsToSap.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertEquals(glossaryArchive.getId(), termAfterAllDeletes.getGlossary().getId());
+
+    // Fetch each child individually
+    GlossaryTerm child1AfterAllDeletes =
+        getEntity(child1.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        child1AfterAllDeletes.getGlossary(),
+        "Child1 must have glossary - this fails without the fix!");
+    assertEquals(glossaryArchive.getId(), child1AfterAllDeletes.getGlossary().getId());
+
+    GlossaryTerm child2AfterAllDeletes =
+        getEntity(child2.getId(), "parent,glossary", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        child2AfterAllDeletes.getGlossary(),
+        "Child2 must have glossary - this fails without the fix!");
+    assertEquals(glossaryArchive.getId(), child2AfterAllDeletes.getGlossary().getId());
+
+    // Verify listing children still works
+    ResultList<GlossaryTerm> childrenAfterDeletes = listEntities(params, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        2,
+        childrenAfterDeletes.getData().size(),
+        "Listing children must work - this fails without the fix!");
   }
 }

@@ -12,7 +12,7 @@
  */
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
 import {
@@ -27,7 +27,7 @@ import {
   upperCase,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import { CSSProperties, Fragment } from 'react';
+import { CSSProperties, Fragment, lazy, Suspense } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
@@ -85,17 +85,22 @@ import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg'
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as DirectoryIcon } from '../assets/svg/ic-directory.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as DriveServiceIcon } from '../assets/svg/ic-drive-service.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
+import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
+import { ReactComponent as SpreadsheetIcon } from '../assets/svg/ic-spreadsheet.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as WorksheetIcon } from '../assets/svg/ic-worksheet.svg';
 import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
 import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
@@ -122,26 +127,25 @@ import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/Acti
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
+import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
-import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DE_ACTIVE_COLOR } from '../constants/constants';
+import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ExportTypes } from '../constants/Export.constants';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -183,6 +187,12 @@ import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
+
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -458,6 +468,16 @@ export const getEntityIcon = (
     ['location']: LocationIcon,
     [EntityType.QUERY]: QueryIcon,
     [SearchIndex.QUERY]: QueryIcon,
+    [EntityType.DIRECTORY]: DirectoryIcon,
+    [SearchIndex.DIRECTORY_SEARCH_INDEX]: DirectoryIcon,
+    [EntityType.FILE]: FileIcon,
+    [SearchIndex.FILE_SEARCH_INDEX]: FileIcon,
+    [EntityType.SPREADSHEET]: SpreadsheetIcon,
+    [SearchIndex.SPREADSHEET_SEARCH_INDEX]: SpreadsheetIcon,
+    [EntityType.WORKSHEET]: WorksheetIcon,
+    [SearchIndex.WORKSHEET_SEARCH_INDEX]: WorksheetIcon,
+    [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
+    [SearchIndex.DRIVE_SERVICE]: DriveServiceIcon,
   };
 
   switch (indexType) {
@@ -478,6 +498,10 @@ export const getEntityIcon = (
 
   // If icon is not found, return null
   return Icon ? <Icon className={className} style={style} /> : null;
+};
+
+export const getEntityTypeIcon = (entityType?: string) => {
+  return searchClassBase.getEntityIcon(entityType ?? '');
 };
 
 export const getServiceIcon = (source: SourceType) => {
@@ -761,12 +785,12 @@ export const getTableDetailPageBaseTabs = ({
   getEntityFeedCount,
   handleFeedCount,
   viewAllPermission,
+  viewCustomPropertiesPermission,
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
   editLineagePermission,
   fetchTableDetails,
-  testCaseSummary,
   isViewTableType,
   labelMap,
 }: TableDetailPageTabProps): TabProps[] => {
@@ -881,10 +905,9 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.PROFILER,
       children: (
-        <TableProfiler
+        <DataObservabilityTab
           permissions={tablePermissions}
           table={tableDetails}
-          testCaseSummary={testCaseSummary}
         />
       ),
     },
@@ -897,14 +920,14 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
             entity={tableDetails as SourceType}
             entityType={EntityType.TABLE}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
     },
     {
@@ -956,11 +979,30 @@ export const getTableDetailPageBaseTabs = ({
             get(tableDetails, 'dataModel.rawSql', '')
           }
           title={
-            <Space className="p-y-xss">
-              <Typography.Text className="text-grey-muted">
-                {`${t('label.path')}:`}
-              </Typography.Text>
-              <Typography.Text>{tableDetails?.dataModel?.path}</Typography.Text>
+            <Space className="p-y-xss" size="small">
+              <div>
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.dbt-source-project')}: `}
+                </Typography.Text>
+                <Typography.Text data-testid="dbt-source-project-id">
+                  {tableDetails?.dataModel?.dbtSourceProject ??
+                    NO_DATA_PLACEHOLDER}
+                </Typography.Text>
+              </div>
+
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+
+              <div>
+                <Typography.Text className="text-grey-muted">
+                  {`${t('label.path')}: `}
+                </Typography.Text>
+                <Typography.Text>
+                  {tableDetails?.dataModel?.path}
+                </Typography.Text>
+              </div>
             </Space>
           }
         />
@@ -998,9 +1040,7 @@ export const getTableDetailPageBaseTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
-          isActive={activeTab === EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
       ),
@@ -1023,7 +1063,7 @@ export const getTableDetailPageBaseTabs = ({
         <CustomPropertyTable<EntityType.TABLE>
           entityType={EntityType.TABLE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
     },
@@ -1116,21 +1156,31 @@ export const tableConstraintRendererBasedOnType = (
  * @param columns Table Columns for creating options in table constraint form
  * @returns column options with label and value
  */
-export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
+export const getColumnOptionsFromTableColumn = (
+  columns: Column[],
+  useFullyQualifiedName = false
+) => {
   const options: {
     label: string;
     value: string;
   }[] = [];
 
   columns.forEach((item) => {
-    if (!isEmpty(item.children)) {
-      options.push(...getColumnOptionsFromTableColumn(item.children ?? []));
-    }
-
     options.push({
       label: item.name,
-      value: item.name,
+      value: useFullyQualifiedName
+        ? item.fullyQualifiedName ?? item.name
+        : item.name,
     });
+
+    if (!isEmpty(item.children)) {
+      options.push(
+        ...getColumnOptionsFromTableColumn(
+          item.children ?? [],
+          useFullyQualifiedName
+        )
+      );
+    }
   });
 
   return options;

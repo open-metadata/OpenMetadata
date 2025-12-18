@@ -96,6 +96,27 @@
       ]
     },
     {
+      "name": "color",
+      "required": false,
+      "description": "Hex color code to customize the appearance of the glossary term in UI.",
+      "examples": [
+        "`#FF5733` - Red color",
+        "`#00FF00` - Green color",
+        "`#0000FF` - Blue color",
+        "`#123456` - Custom color"
+      ]
+    },
+    {
+      "name": "iconURL",
+      "required": false,
+      "description": "URL to an icon image to display with the glossary term.",
+      "examples": [
+        "`https://example.com/icon.png`",
+        "`https://example.com/icons/term-icon.svg`",
+        "`https://cdn.example.com/glossary/icon.jpg`"
+      ]
+    },
+    {
       "name": "extension",
       "required": false,
       "description": "Custom property values added to the glossary term. Each field value (property and its value) is separated by `;` and internal values can be separated by `|`. For `entityReferenceList` type property, pass `type1:fqn1|type2:fqn2`. For single `entityReference` type property, pass `type:fqn`. Similarly, for `enumMultiSelect`, pass values separated by `|`, and for `enumSingleSelect`, pass a single value along with the property name. For `timeInterval` property type, pass the `startTime:endTime` to the property name. If the field value itself contains delimiter values like `,` and `;` or newline they need to be quoted, and the quotation needs to be further escaped. In general, if passing multiple field values separated by `;`, the extension column value needs to be quoted.",

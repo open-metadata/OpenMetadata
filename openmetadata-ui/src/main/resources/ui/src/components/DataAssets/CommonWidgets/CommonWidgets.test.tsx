@@ -60,7 +60,7 @@ jest.mock('../../../utils/CommonWidget/CommonWidgetClassBase', () => ({
 }));
 
 jest.mock('../../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue({}),
+  ownerTableObject: jest.fn().mockReturnValue([{}]),
 }));
 
 const mockGenericContext = {
@@ -75,8 +75,14 @@ const mockGenericContext = {
   permissions: {
     EditAll: true,
     ViewAll: true,
+    ViewCustomFields: true,
   },
   onUpdate: jest.fn(),
+  entityRules: {
+    canAddMultipleUserOwners: true,
+    canAddMultipleTeamOwner: true,
+    canAddMultipleDataProducts: true,
+  },
 };
 
 describe('CommonWidgets', () => {
@@ -233,7 +239,7 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('owner-label-widget')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-expert-name')).toBeInTheDocument();
   });
 
   it('should call commonWidgetClassBase.getCommonWidgetsFromConfig for unknown widget type', () => {
@@ -255,5 +261,130 @@ describe('CommonWidgets', () => {
     expect(
       commonWidgetClassBase.getCommonWidgetsFromConfig
     ).toHaveBeenCalledWith(widgetConfig);
+  });
+
+  describe('ViewCustomFields Permission Tests', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should render custom properties widget when ViewCustomFields is true', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        permissions: {
+          EditAll: true,
+          ViewAll: true,
+          ViewCustomFields: true,
+        },
+      });
+
+      const widgetConfig = {
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        x: 0,
+        y: 0,
+        w: 1,
+        h: 1,
+      };
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={widgetConfig}
+        />
+      );
+
+      expect(
+        screen.getByTestId('custom-properties-widget')
+      ).toBeInTheDocument();
+    });
+
+    it('should render custom properties widget when ViewCustomFields is false', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        permissions: {
+          EditAll: true,
+          ViewAll: true,
+          ViewCustomFields: false,
+        },
+      });
+
+      const widgetConfig = {
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        x: 0,
+        y: 0,
+        w: 1,
+        h: 1,
+      };
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={widgetConfig}
+        />
+      );
+
+      expect(
+        screen.getByTestId('custom-properties-widget')
+      ).toBeInTheDocument();
+    });
+
+    it('should render custom properties widget when ViewCustomFields is undefined', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        permissions: {
+          EditAll: true,
+          ViewAll: true,
+        },
+      });
+
+      const widgetConfig = {
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        x: 0,
+        y: 0,
+        w: 1,
+        h: 1,
+      };
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={widgetConfig}
+        />
+      );
+
+      expect(
+        screen.getByTestId('custom-properties-widget')
+      ).toBeInTheDocument();
+    });
+
+    it('should render custom properties widget for different entity types', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        permissions: {
+          EditAll: true,
+          ViewAll: true,
+          ViewCustomFields: true,
+        },
+      });
+
+      const widgetConfig = {
+        i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+        x: 0,
+        y: 0,
+        w: 1,
+        h: 1,
+      };
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.DASHBOARD}
+          widgetConfig={widgetConfig}
+        />
+      );
+
+      expect(
+        screen.getByTestId('custom-properties-widget')
+      ).toBeInTheDocument();
+    });
   });
 });
