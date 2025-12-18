@@ -307,8 +307,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         : actualColumnIndex + 1;
       const targetColumn = flattenedColumns[targetIndex];
       const originalIndex = findOriginalColumnIndex(
-        targetColumn,
-        allColumns as Column[]
+        targetColumn as T,
+        allColumns ?? []
       );
 
       onNavigate(

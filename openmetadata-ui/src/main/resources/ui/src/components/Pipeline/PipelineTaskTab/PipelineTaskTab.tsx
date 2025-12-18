@@ -195,6 +195,10 @@ export const PipelineTaskTab = () => {
     setSelectedTask(updatedTask);
   };
 
+  const handleTaskNavigate = (task: Task) => {
+    setSelectedTask(task);
+  };
+
   const onTaskUpdate = async (taskDescription: string) => {
     if (editTask) {
       const updatedTasks = [...(pipelineDetails.tasks ?? [])];
@@ -426,6 +430,7 @@ export const PipelineTaskTab = () => {
         updateColumnTags={handleTaskTagsUpdate}
         onClose={handleDetailPanelClose}
         onColumnUpdate={handleTaskDetailUpdate}
+        onNavigate={handleTaskNavigate}
       />
     </div>
   );

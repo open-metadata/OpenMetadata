@@ -163,7 +163,12 @@ import {
 } from '../generated/entity/data/table';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { Field } from '../generated/type/schema';
-import { LabelType, State, TagLabel, TagSource } from '../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../generated/type/tagLabel';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -1487,6 +1492,7 @@ export const flattenColumns = <T extends { children?: T[] }>(
       result.push(...flattenColumns(item.children));
     }
   });
+
   return result;
 };
 
@@ -1506,9 +1512,12 @@ export const findFieldByFQN = <
     }
     if (item.children && item.children.length > 0) {
       const found = findFieldByFQN(item.children, targetFqn);
-      if (found) return found;
+      if (found) {
+        return found;
+      }
     }
   }
+
   return undefined;
 };
 
@@ -1522,6 +1531,7 @@ export const getDataTypeDisplay = (
   if (!column) {
     return undefined;
   }
+
   return column.dataTypeDisplay || String(column.dataType || '');
 };
 
@@ -1567,9 +1577,11 @@ export const mergeGlossaryWithTags = (
  * @param allColumns Array of all columns
  * @returns Index of the column in allColumns, or -1 if not found
  */
-export const findOriginalColumnIndex = (
-  column: Column,
-  allColumns: Column[]
+export const findOriginalColumnIndex = <
+  T extends { fullyQualifiedName?: string }
+>(
+  column: T,
+  allColumns: T[]
 ): number => {
   return allColumns.findIndex(
     (col) => col.fullyQualifiedName === column.fullyQualifiedName
