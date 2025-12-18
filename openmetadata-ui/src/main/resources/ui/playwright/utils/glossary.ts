@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
+import { ASSET_FILTER_NAMES } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
@@ -43,7 +44,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { addMultiOwner } from './entity';
+import { addMultiOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
 
@@ -343,7 +344,8 @@ export const verifyGlossaryDetails = async (
         page
           .getByTestId('glossary-right-panel-owner-link')
           .getByTestId('owner-label')
-      ).toContainText(owner.name);
+          .getByTestId(owner.name)
+      ).toBeVisible();
     }
   }
 
@@ -689,7 +691,7 @@ export const updateGlossaryTermDataFromTree = async (
 export const validateGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
-  status: 'Draft' | 'Approved',
+  status: 'Draft' | 'In Review' | 'Approved',
   isGlossaryTermPage = false
 ) => {
   // eslint-disable-next-line no-useless-escape
@@ -721,14 +723,22 @@ export const validateGlossaryTerm = async (
     await expect(page.locator(termSelector)).toBeVisible();
     await expect(page.locator(termSelector)).toContainText(term.name);
     await expect(page.locator(statusSelector)).toBeVisible();
-    await expect(page.locator(statusSelector)).toContainText(status);
+
+    // If status is Draft, then check for either Draft or In Review
+    if (status === 'Draft') {
+      await expect(page.locator(statusSelector)).toContainText(
+        /Draft|In Review/
+      );
+    } else {
+      await expect(page.locator(statusSelector)).toContainText(status);
+    }
   }
 };
 
 export const createGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
-  status: 'Draft' | 'Approved',
+  status: 'Draft' | 'In Review' | 'Approved',
   validateCreateForm = true,
   isGlossaryTermPage = false
 ) => {
@@ -761,6 +771,10 @@ export const checkAssetsCount = async (page: Page, assetsCount: number) => {
   await expect(
     page.locator('[data-testid="assets"] [data-testid="filter-count"]')
   ).toHaveText(assetsCount.toString());
+
+  if (assetsCount > 0) {
+    await expect(page.getByTestId('pagination')).toBeVisible();
+  }
 };
 
 export const addAssetToGlossaryTerm = async (
@@ -770,7 +784,7 @@ export const addAssetToGlossaryTerm = async (
 ) => {
   if (!hasExistingAssets) {
     await page.waitForSelector(
-      'text=Adding a new Asset is easy, just give it a spin!'
+      "text=Looks like you haven't added any data assets yet."
     );
   }
 
@@ -781,6 +795,18 @@ export const addAssetToGlossaryTerm = async (
   await expect(
     page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
   ).toContainText('Add Assets');
+
+  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+
+  await expect(
+    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+  ).toBeVisible();
+
+  const filterButton = page.locator(
+    '[data-testid="asset-selection-modal"] .feed-filter-icon'
+  );
+
+  await expect(filterButton).not.toBeVisible();
 
   for (const asset of assets) {
     const entityFqn = get(asset, 'entityResponseData.fullyQualifiedName');
@@ -808,7 +834,149 @@ export const addAssetToGlossaryTerm = async (
   }
 
   await page.click('[data-testid="save-btn"]');
-  await checkAssetsCount(page, assets.length);
+};
+
+const testFilterWithSpecificOption = async (
+  page: Page,
+  filterWrapper: Locator,
+  filterName: string,
+  optionTestId: string,
+  expectedQueryFilterValue: string
+) => {
+  const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
+  await filter.click();
+
+  await page.waitForSelector('[data-testid="drop-down-menu"]');
+
+  await page.locator(`[data-testid="${optionTestId}"]`).click();
+
+  const filterResponse = page.waitForResponse(
+    `/api/v1/search/query?*query_filter=*${expectedQueryFilterValue}*`
+  );
+
+  await page.getByTestId('update-btn').click();
+
+  await filterResponse;
+
+  await expect(
+    page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
+  ).toBeVisible();
+
+  const clearFilterResponse = page.waitForResponse('/api/v1/search/query?*');
+
+  await page
+    .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
+    .click();
+
+  await clearFilterResponse;
+};
+
+const testFilterWithFirstOption = async (
+  page: Page,
+  filterWrapper: Locator,
+  filterName: string
+) => {
+  const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
+  await filter.click();
+
+  await page.waitForSelector('[data-testid="drop-down-menu"]');
+
+  const options = page.locator('[data-testid="drop-down-menu"]');
+  await waitForAllLoadersToDisappear(page);
+  const firstOption = options.first();
+  const noDataPlaceholder = page.getByText(/No data available/i);
+  if (await noDataPlaceholder.isVisible()) {
+    await page.getByTestId('close-btn').click();
+  } else {
+    const optionCount = await firstOption.count();
+    if (optionCount > 0) {
+      const filterResponse = page.waitForResponse(
+        '/api/v1/search/query?*query_filter=*'
+      );
+
+      await firstOption.click();
+      await page.getByTestId('update-btn').click();
+
+      await filterResponse;
+
+      await expect(
+        page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
+      ).toBeVisible();
+
+      const clearFilterResponse = page.waitForResponse(
+        '/api/v1/search/query?*'
+      );
+
+      await page
+        .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
+        .click();
+
+      await clearFilterResponse;
+    }
+  }
+};
+
+export const verifyAssetModalFilters = async (
+  page: Page,
+  hasExistingAssets = false
+) => {
+  if (!hasExistingAssets) {
+    await page.waitForSelector(
+      "text=Looks like you haven't added any data assets yet."
+    );
+  }
+
+  await page.click('[data-testid="glossary-term-add-button-menu"]');
+  await page.getByRole('menuitem', { name: 'Assets' }).click();
+
+  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
+  ).toContainText('Add Assets');
+
+  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+
+  await expect(
+    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+  ).toBeVisible();
+
+  const filterButton = page.locator(
+    '[data-testid="asset-selection-modal"] .feed-filter-icon'
+  );
+
+  await expect(filterButton).not.toBeVisible();
+
+  for (const filterName of ASSET_FILTER_NAMES) {
+    await expect(
+      page.locator(`[data-testid="search-dropdown-${filterName}"]`)
+    ).toBeVisible();
+  }
+
+  const filterWrapper = page.locator('.asset-filters-wrapper');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await testFilterWithSpecificOption(
+    page,
+    filterWrapper,
+    'Entity Type',
+    'table',
+    'table'
+  );
+
+  await testFilterWithSpecificOption(
+    page,
+    filterWrapper,
+    'Service Type',
+    'mysql',
+    'mysql'
+  );
+
+  await testFilterWithFirstOption(page, filterWrapper, 'Tag');
+
+  await testFilterWithFirstOption(page, filterWrapper, 'Domains');
+
+  await testFilterWithFirstOption(page, filterWrapper, 'Tier');
+  await testFilterWithFirstOption(page, filterWrapper, 'Owners');
 };
 
 export const updateNameForGlossaryTerm = async (
@@ -1596,7 +1764,7 @@ export const checkGlossaryTermDetails = async (
 };
 
 export const setupGlossaryDenyPermissionTest = async (
-  apiContext: any,
+  apiContext: APIRequestContext,
   isGlossary?: boolean
 ) => {
   // Create all necessary resources

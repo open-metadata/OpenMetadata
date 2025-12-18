@@ -12,6 +12,7 @@
  */
 
 import {
+  TestCaseDimensionResult,
   TestCaseParameterValue,
   TestCaseResult,
 } from '../../../../generated/tests/testCase';
@@ -19,7 +20,7 @@ import {
 export interface TestSummaryGraphProps {
   testCaseParameterValue?: TestCaseParameterValue[];
   testCaseName: string;
-  testCaseResults: TestCaseResult[];
+  testCaseResults: TestCaseResult[] | TestCaseDimensionResult[];
   selectedTimeRange: string;
   minHeight?: number;
   testDefinitionName?: string;

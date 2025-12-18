@@ -107,6 +107,9 @@ jest.mock('utils/i18next/LocalUtil', () => ({
   }),
   detectBrowserLanguage: jest.fn().mockReturnValue('en-US'),
   t: (key) => key,
+  translateWithNestedKeys: jest.fn((key, params) => {
+    return params ? `${key}_${JSON.stringify(params)}` : key;
+  }),
   dir: jest.fn().mockReturnValue('ltr'),
 }));
 /**
@@ -136,6 +139,7 @@ jest.mock('./utils/TableColumn.util', () => ({
   dataProductTableObject: jest.fn().mockReturnValue([]),
   tagTableObject: jest.fn().mockReturnValue([]),
   columnFilterIcon: jest.fn(),
+  descriptionTableObject: jest.fn().mockReturnValue([]),
 }));
 
 /**
@@ -161,90 +165,22 @@ jest.mock('./utils/EnvironmentUtils', () => ({
 
 /**
  * Mock MUI theme to provide proper theme context
+ * Note: We keep the actual ThemeProvider so tests can wrap components properly
  */
 jest.mock('@mui/material/styles', () => {
   const actual = jest.requireActual('@mui/material/styles');
-  const { createTheme } = actual;
-
-  const createMockPalette = () => {
-    return new Proxy(
-      {},
-      {
-        get: (target, prop) => {
-          if (typeof prop === 'string') {
-            return new Proxy(
-              {},
-              {
-                get: (colorTarget, colorProp) => {
-                  return `#mock-${prop}-${String(colorProp)}`;
-                },
-              }
-            );
-          }
-
-          return undefined;
-        },
-      }
-    );
-  };
-
-  const baseTheme = createTheme();
-  const mockTheme = {
-    ...baseTheme,
-    palette: {
-      ...baseTheme.palette,
-      allShades: createMockPalette(),
-    },
-  };
 
   return {
     ...actual,
-    useTheme: jest.fn().mockReturnValue(mockTheme),
-    ThemeProvider: ({ children }) => children,
-  };
-});
-
-/**
- * Mock @mui/system useTheme to provide theme context
- */
-jest.mock('@mui/system', () => {
-  const actual = jest.requireActual('@mui/system');
-
-  const createMockPalette = () => {
-    return new Proxy(
-      {},
-      {
-        get: () => new Proxy({}, { get: () => '#mock-color' }),
-      }
-    );
-  };
-
-  // Use a minimal but complete theme structure
-  const mockTheme = {
-    palette: { allShades: createMockPalette() },
-    spacing: (factor) => `${8 * (factor || 1)}px`,
-    breakpoints: { up: () => '', down: () => '', values: {} },
-    transitions: {
-      create: () => '',
-      duration: {},
-      easing: {},
-      getAutoHeightDuration: () => 200,
-    },
-    shadows: new Array(25).fill('none'),
-    shape: { borderRadius: 4 },
-    zIndex: {},
-  };
-
-  return {
-    ...actual,
-    useTheme: jest.fn().mockReturnValue(mockTheme),
   };
 });
 
 /**
  * Mock @mui/styled-engine to prevent styled-components/emotion conflicts in tests
+ * Note: We keep ThemeContext from the actual package to allow ThemeProvider to work properly
  */
 jest.mock('@mui/styled-engine', () => {
+  const actual = jest.requireActual('@mui/styled-engine');
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const React = require('react');
 
@@ -255,13 +191,42 @@ jest.mock('@mui/styled-engine', () => {
   };
 
   return {
+    ...actual,
     __esModule: true,
     default: styled,
     styled,
-    ThemeProvider: ({ children }) => children,
     keyframes: () => 'mock-keyframes',
     css: (...args) => args,
     internal_mutateStyles: jest.fn(),
     internal_serializeStyles: jest.fn(),
+  };
+});
+
+/**
+ * Mock @mui/material components for consistent testing
+ */
+jest.mock('@mui/material', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const React = require('react');
+
+  const styled = (component) => () => component;
+
+  return {
+    ...jest.requireActual('@mui/material'),
+    Button: React.forwardRef(({ children, onClick, ...props }, ref) =>
+      React.createElement(
+        'button',
+        { ...props, onClick, ref, 'data-testid': props['data-testid'] },
+        children
+      )
+    ),
+    Grid: React.forwardRef(({ children, ...props }, ref) =>
+      React.createElement(
+        'div',
+        { ...props, ref, 'data-testid': props['data-testid'] },
+        children
+      )
+    ),
+    styled,
   };
 });

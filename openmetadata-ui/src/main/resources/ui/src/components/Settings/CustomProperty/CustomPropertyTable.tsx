@@ -24,8 +24,8 @@ import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../common/Table/Table';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import './custom-property-table.less';
@@ -193,22 +193,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
           return <Typography.Text>{config}</Typography.Text>;
         },
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        width: 300,
-        render: (text) =>
-          text ? (
-            <RichTextEditorPreviewerNew markdown={text ?? ''} />
-          ) : (
-            <Typography.Text
-              className="text-grey-muted "
-              data-testid="no-description">
-              {t('label.no-description')}
-            </Typography.Text>
-          ),
-      },
+      ...descriptionTableObject<CustomProperty>({ width: 300 }),
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',
@@ -223,7 +208,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                   ? t('label.edit-entity', {
                       entity: t('label.property'),
                     })
-                  : NO_PERMISSION_FOR_ACTION
+                  : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
                 className="cursor-pointer p-0"
@@ -244,7 +229,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
                   ? t('label.delete-entity', {
                       entity: t('label.property'),
                     })
-                  : NO_PERMISSION_FOR_ACTION
+                  : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
                 className="cursor-pointer p-0"

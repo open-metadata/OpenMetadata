@@ -13,7 +13,7 @@
 
 import { Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEqual, isUndefined, uniqWith } from 'lodash';
+import { isEqual, isUndefined, toLower, uniqWith } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,6 +34,7 @@ import {
   getQuickFilterWithDeletedFlag,
 } from '../../utils/ExplorePage/ExplorePageUtils';
 import { getAggregationOptions } from '../../utils/ExploreUtils';
+import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 import SearchDropdown from '../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../SearchDropdown/SearchDropdown.interface';
@@ -108,7 +109,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
       if (key === TIER_FQN_KEY && tierTags) {
         const options = tierTags.data.map((option) => {
           const bucketItem = buckets.find(
-            (item) => item.key === option.fullyQualifiedName
+            (item) => toLower(item.key) === toLower(option.fullyQualifiedName)
           );
 
           return {
@@ -207,11 +208,12 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             highlight
             fixedOrderOptions={field.key === TIER_FQN_KEY}
             hasNullOption={hasNullOption}
+            hideCounts={fields.hideCounts ?? false}
             independent={independent}
             index={index as ExploreSearchIndex}
             isSuggestionsLoading={isOptionsLoading}
             key={field.key}
-            label={field.label}
+            label={translateWithNestedKeys(field.label, field.labelKeyOptions)}
             options={options ?? []}
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}

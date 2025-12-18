@@ -1,8 +1,11 @@
 package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
+import java.util.List;
 import java.util.regex.Pattern;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to split a string by a delimiter.
@@ -34,5 +37,18 @@ public class SplitHelper implements HandlebarsHelper {
           String delimiter = delimiterParam.toString();
           return textToSplit.split(Pattern.quote(delimiter));
         });
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("split")
+        .withDescription("Split string into array by delimiter")
+        .withCursorOffset(8)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{split }}")
+                    .withExample("{{#each (split fieldName \".\")}}{{this}}{{/each}}")));
   }
 }

@@ -49,7 +49,10 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import {
+  getPrioritizedEditPermission,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
 import {
@@ -276,6 +279,7 @@ function DirectoryDetails({
     editAllPermission,
     editLineagePermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   } = useMemo(
     () => ({
       editTagsPermission:
@@ -305,6 +309,10 @@ function DirectoryDetails({
           Operation.EditLineage
         ) && !deleted,
       viewAllPermission: directoryPermissions.ViewAll,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        directoryPermissions,
+        Operation.ViewCustomFields
+      ),
     }),
     [directoryPermissions, deleted]
   );
@@ -344,7 +352,7 @@ function DirectoryDetails({
         <CustomPropertyTable<EntityType.DIRECTORY>
           entityType={EntityType.DIRECTORY}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
         />
       ),
       activeTab,
@@ -379,6 +387,7 @@ function DirectoryDetails({
     editLineagePermission,
     editAllPermission,
     viewAllPermission,
+    viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
     async (newCertification?: Tag) => {

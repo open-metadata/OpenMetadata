@@ -31,75 +31,24 @@ jest.mock('react-i18next', () => ({
     },
   }),
 }));
-// Mock react-awesome-query-builder to avoid date picker issues
-jest.mock('@react-awesome-query-builder/antd', () => {
-  const mockConfig = {
-    types: {
-      multiselect: {
-        widgets: {},
-      },
-      text: {},
-      number: {},
-      boolean: {},
-      date: {},
-      time: {},
-      datetime: {},
-      select: {},
-      treeselect: {},
-    },
-    widgets: {},
-    operators: {},
-    settings: {},
-  };
+
+jest.mock('@mui/material', () => {
+  const actual = jest.requireActual('@mui/material');
 
   return {
-    Config: mockConfig,
-    Utils: {},
-    // Default export
-    __esModule: true,
-    default: mockConfig,
+    ...actual,
+    Link: jest.fn().mockImplementation(({ children, ...props }) => (
+      <a data-testid="mui-link" {...props}>
+        {children}
+      </a>
+    )),
+    Divider: jest
+      .fn()
+      .mockImplementation(({ className, ...props }) => (
+        <div className={className} data-testid="mui-divider" {...props} />
+      )),
   };
 });
-
-// Mock LazyLog to avoid environment-specific issues
-jest.mock('@melloware/react-logviewer', () => ({
-  LazyLog: jest
-    .fn()
-    .mockImplementation(({ text }) => (
-      <pre data-testid="lazy-log-content">{text}</pre>
-    )),
-}));
-
-// Mock utils that depend on query builder
-jest.mock('../../../../utils/AdvancedSearchClassBase', () => ({
-  __esModule: true,
-  default: {
-    autocomplete: jest.fn().mockReturnValue(jest.fn()),
-    getQbConfigs: jest.fn().mockReturnValue({}),
-  },
-}));
-
-jest.mock('../../../../utils/CuratedAssetsUtils', () => ({
-  __esModule: true,
-  default: jest.fn(),
-}));
-
-// Mock all utils that depend on JSONLogicSearchClassBase
-jest.mock('../../../../utils/JSONLogicSearchClassBase', () => ({
-  __esModule: true,
-  default: class MockJSONLogicSearchClassBase {
-    baseConfig = { types: {}, widgets: {}, operators: {}, settings: {} };
-    configTypes = {};
-  },
-}));
-
-jest.mock('../../../../utils/AdvancedSearchUtils', () => ({
-  __esModule: true,
-  default: jest.fn(),
-  getInitialIndex: jest.fn(),
-  getDropDownOptions: jest.fn(),
-  getOptionsObject: jest.fn(),
-}));
 
 jest.mock(
   '../../../DataQuality/IncidentManager/Severity/Severity.component',
@@ -112,46 +61,17 @@ jest.mock(
       )),
   })
 );
-// Mock antd components
+
 jest.mock('antd', () => {
-  const MockCollapse: any = jest
-    .fn()
-    .mockImplementation(({ children, className, ...props }) => (
-      <div className={className} data-testid="collapse" {...props}>
-        {children}
-      </div>
-    ));
-  MockCollapse.Panel = jest
-    .fn()
-    .mockImplementation(({ children, className, header, ...props }) => (
-      <div className={className} data-testid="collapse-panel" {...props}>
-        <div data-testid="collapse-panel-header">{header}</div>
-        {children}
-      </div>
-    ));
+  const actual = jest.requireActual('antd');
 
   return {
-    Link: jest.fn().mockImplementation(({ children, ...props }) => (
-      <a data-testid="link" {...props}>
-        {children}
-      </a>
-    )),
+    ...actual,
     Avatar: jest.fn().mockImplementation(({ children, ...props }) => (
       <div data-testid="avatar" {...props}>
         {children}
       </div>
     )),
-    Button: jest
-      .fn()
-      .mockImplementation(({ children, onClick, className, ...props }) => (
-        <button
-          className={className}
-          data-testid="button"
-          onClick={onClick}
-          {...props}>
-          {children}
-        </button>
-      )),
     Card: jest.fn().mockImplementation(({ children, className, ...props }) => (
       <div className={className} data-testid="card" {...props}>
         {children}
@@ -181,25 +101,19 @@ jest.mock('antd', () => {
       )),
     Tabs: jest
       .fn()
-      .mockImplementation(
-        ({ children, items, activeKey, onChange, ...props }) => (
-          <div data-active-key={activeKey} data-testid="tabs" {...props}>
-            <div data-testid="tab-headers">
-              {items.map((item: any) => (
-                <button
-                  data-testid={`tab-${item.key}`}
-                  key={item.key}
-                  onClick={() => onChange?.(item.key)}>
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <div data-testid="tab-content">
-              {items.find((item: any) => item.key === activeKey)?.children}
-            </div>
+      .mockImplementation(({ items, activeKey, onChange, ...props }) => (
+        <div data-active-key={activeKey} data-testid="tabs" {...props}>
+          <div data-testid="tab-headers">
+            {items.map((item: any) => (
+              <div data-testid={`tab-${item.key}`} key={item.key}>
+                {item.label}
+                <button onClick={() => onChange?.(item.key)}>change</button>
+              </div>
+            ))}
           </div>
-        )
-      ),
+          {items.find((item: any) => item.key === activeKey)?.children}
+        </div>
+      )),
     Typography: {
       Text: jest
         .fn()
@@ -225,23 +139,17 @@ jest.mock('antd', () => {
             {children}
           </h1>
         )),
+      Paragraph: jest
+        .fn()
+        .mockImplementation(({ children, className, ...props }) => (
+          <p
+            className={className}
+            data-testid="typography-paragraph"
+            {...props}>
+            {children}
+          </p>
+        )),
     },
-    Collapse: MockCollapse,
-    Divider: jest
-      .fn()
-      .mockImplementation(({ className, ...props }) => (
-        <div className={className} data-testid="divider" {...props} />
-      )),
-    Tooltip: jest.fn().mockImplementation(({ children, title, ...props }) => (
-      <div data-testid="tooltip" data-title={title} {...props}>
-        {children}
-      </div>
-    )),
-    Space: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <div className={className} data-testid="space" {...props}>
-        {children}
-      </div>
-    )),
   };
 });
 
@@ -284,14 +192,19 @@ jest.mock('../../../common/StatusBadge/StatusBadgeV2.component', () => {
   ));
 });
 
-// Mock Transi18next component
-jest.mock('../../../../utils/CommonUtils', () => ({
-  Transi18next: jest
+// Mock SearchBarComponent
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
+  __esModule: true,
+  default: jest
     .fn()
-    .mockImplementation(({ i18nKey, renderElement, values }) => (
-      <div data-testid="trans-component">
-        {i18nKey} - {JSON.stringify(values)}
-        {renderElement}
+    .mockImplementation(({ onSearch, placeholder, searchValue }) => (
+      <div data-testid="search-bar">
+        <input
+          data-testid="search-input"
+          placeholder={placeholder}
+          value={searchValue}
+          onChange={(e) => onSearch(e.target.value)}
+        />
       </div>
     )),
 }));
@@ -317,6 +230,43 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockReturnValue(1234567890),
   getEpochMillisForPastDays: jest.fn().mockReturnValue(1234567890),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+}));
+
+jest.mock('../../../../utils/EntityUtils', () => ({
+  getColumnNameFromEntityLink: jest
+    .fn()
+    .mockImplementation((entityLink: string) => {
+      if (entityLink.includes('::columns::')) {
+        const parts = entityLink.split('::columns::');
+
+        return parts[parts.length - 1];
+      }
+
+      return null;
+    }),
+}));
+
+jest.mock('../../../../utils/RouterUtils', () => ({
+  getTestCaseDetailPagePath: jest.fn().mockReturnValue('/test-case-path'),
+}));
+
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockImplementation(({ owners, placeHolder }) => {
+    if (owners && owners.length > 0) {
+      const owner = owners[0];
+
+      return (
+        <div data-testid="owner-label">
+          <div data-testid="avatar">{owner.displayName?.charAt(0) || 'U'}</div>
+          <span>{owner.displayName || owner.name || 'Unknown'}</span>
+        </div>
+      );
+    }
+
+    return <span data-testid="owner-placeholder">{placeHolder || '--'}</span>;
+  }),
 }));
 
 const mockEntityFQN = 'test.entity.fqn';
@@ -459,29 +409,14 @@ describe('DataQualityTab', () => {
       render(<DataQualityTab {...defaultProps} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('trans-component')).toBeInTheDocument();
+        expect(
+          screen.getByText('message.no-data-quality-test-message')
+        ).toBeInTheDocument();
       });
-    });
-
-    it('should render documentation link when no test cases', async () => {
-      const { listTestCases } = jest.requireMock('../../../../rest/testAPI');
-      const { getListTestCaseIncidentStatus } = jest.requireMock(
-        '../../../../rest/incidentManagerAPI'
-      );
-
-      listTestCases.mockResolvedValue({ data: [] });
-      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
-
-      render(<DataQualityTab {...defaultProps} />);
 
       await waitFor(() => {
-        const docLink = screen.getByTitle(
-          'Data Quality Profiler Documentation'
-        );
-
-        expect(docLink).toBeInTheDocument();
-        expect(docLink).toHaveAttribute('target', '_blank');
-        expect(docLink).toHaveAttribute('rel', 'noreferrer');
+        expect(listTestCases).toHaveBeenCalled();
+        expect(getListTestCaseIncidentStatus).toHaveBeenCalled();
       });
     });
   });
@@ -563,7 +498,7 @@ describe('DataQualityTab', () => {
           return card !== null;
         });
 
-        expect(failedStatusBadges).toHaveLength(1);
+        expect(failedStatusBadges).toHaveLength(2); // Failed test case with incidentId has 2 badges (Failed + Assigned)
       });
     });
 
@@ -597,7 +532,7 @@ describe('DataQualityTab', () => {
       const failedButton = screen.getByTestId('test-failed');
       fireEvent.click(failedButton);
 
-      expect(screen.getByText('ASSIGNED')).toBeInTheDocument();
+      expect(screen.getByText('Assigned')).toBeInTheDocument();
     });
   });
 
@@ -740,7 +675,9 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen.getByTestId('tab-incidents');
+      const incidentsTab = screen
+        .getByTestId('tab-incidents')
+        .querySelector('button') as HTMLElement;
       fireEvent.click(incidentsTab);
 
       expect(
@@ -753,10 +690,14 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen.getByTestId('tab-incidents');
+      const incidentsTab = screen
+        .getByTestId('tab-incidents')
+        .querySelector('button') as HTMLElement;
       fireEvent.click(incidentsTab);
 
-      const dataQualityTab = screen.getByTestId('tab-data-quality');
+      const dataQualityTab = screen
+        .getByTestId('tab-data-quality')
+        .querySelector('button') as HTMLElement;
       fireEvent.click(dataQualityTab);
 
       expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
@@ -780,7 +721,9 @@ describe('DataQualityTab', () => {
         screen.getByTestId('data-quality-section');
       });
 
-      const incidentsTab = screen.getByTestId('tab-incidents');
+      const incidentsTab = screen
+        .getByTestId('tab-incidents')
+        .querySelector('button') as HTMLElement;
       fireEvent.click(incidentsTab);
     });
 
@@ -791,13 +734,11 @@ describe('DataQualityTab', () => {
     });
 
     it('should render incident status counts', () => {
-      // Use getAllByText to get all elements with the same text
-      const newIncidentCounts = screen.getAllByText('01');
-      const resolvedIncidentCounts = screen.getAllByText('00');
+      const incidentCounts = screen.getAllByText('01');
+      const resolvedIncidentCount = screen.getAllByText('00');
 
-      expect(newIncidentCounts.length).toBeGreaterThan(0); // New incidents
-      expect(newIncidentCounts.length).toBeGreaterThan(0); // Assigned incidents
-      expect(resolvedIncidentCounts.length).toBeGreaterThan(0); // Resolved incidents
+      expect(incidentCounts.length).toBeGreaterThan(0);
+      expect(resolvedIncidentCount.length).toBeGreaterThan(0);
     });
 
     it('should render incident filter buttons', () => {
@@ -864,6 +805,9 @@ describe('DataQualityTab', () => {
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalled();
+        expect(
+          screen.getAllByTestId('no-data-placeholder').length
+        ).toBeGreaterThan(0);
       });
     });
 
@@ -964,7 +908,9 @@ describe('DataQualityTab', () => {
       render(<DataQualityTab {...defaultProps} />);
 
       await waitFor(() => {
-        const incidentsTab = screen.getByTestId('tab-incidents');
+        const incidentsTab = screen
+          .getByTestId('tab-incidents')
+          .querySelector('button') as HTMLElement;
         fireEvent.click(incidentsTab);
 
         const assignedButton = screen.getByRole('button', {
@@ -972,7 +918,9 @@ describe('DataQualityTab', () => {
         });
         fireEvent.click(assignedButton);
 
-        expect(screen.getByText('--')).toBeInTheDocument();
+        expect(
+          screen.getByText('label.no-entity - {"entity":"label.assignee"}')
+        ).toBeInTheDocument();
       });
     });
   });
@@ -985,9 +933,7 @@ describe('DataQualityTab', () => {
       );
 
       listTestCases.mockResolvedValue({ data: mockTestCases });
-      getListTestCaseIncidentStatus.mockImplementation(
-        () => new Promise(() => undefined)
-      );
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: mockIncidents });
 
       render(<DataQualityTab {...defaultProps} />);
 
@@ -996,12 +942,14 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen.getByTestId('tab-incidents');
+      const incidentsTab = screen
+        .getByTestId('tab-incidents')
+        .querySelector('button') as HTMLElement;
       fireEvent.click(incidentsTab);
 
-      // Wait for the incidents tab to load and show the loader
+      // Verify incidents tab content is displayed
       await waitFor(() => {
-        expect(screen.getByTestId('loader')).toBeInTheDocument();
+        expect(screen.getByText('label.new')).toBeInTheDocument();
       });
     });
   });

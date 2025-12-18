@@ -15,9 +15,9 @@ import { CustomPropertySupportedEntityList } from '../../constant/customProperty
 import { GlobalSettingOptions, ServiceTypes } from '../../constant/settings';
 import {
   assignDataProduct,
-  assignDomain,
+  assignSingleSelectDomain,
   removeDataProduct,
-  removeDomain,
+  removeSingleSelectDomain,
 } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
@@ -149,17 +149,17 @@ export class EntityClass {
     dataProduct2: DataProduct['responseData'],
     dataProduct3: DataProduct['responseData']
   ) {
-    await assignDomain(page, domain1);
-    await assignDataProduct(page, domain1, dataProduct1);
-    await assignDataProduct(page, domain1, dataProduct2, 'Edit');
+    await assignSingleSelectDomain(page, domain1);
+    await assignDataProduct(page, domain1, [dataProduct1]);
+    await assignDataProduct(page, domain1, [dataProduct2], 'Edit');
     await removeDataProduct(page, dataProduct1);
     await removeDataProduct(page, dataProduct2);
-    await removeDomain(page, domain1);
+    await removeSingleSelectDomain(page, domain1);
 
-    await assignDomain(page, domain2);
-    await assignDataProduct(page, domain2, dataProduct3);
+    await assignSingleSelectDomain(page, domain2);
+    await assignDataProduct(page, domain2, [dataProduct3]);
     await removeDataProduct(page, dataProduct3);
-    await removeDomain(page, domain2);
+    await removeSingleSelectDomain(page, domain2);
   }
 
   async owner(

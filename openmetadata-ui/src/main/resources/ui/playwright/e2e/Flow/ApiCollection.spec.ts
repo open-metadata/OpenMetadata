@@ -45,8 +45,8 @@ test.describe('API Collection Entity Special Test Cases', () => {
     await test.step(
       "Verify user Owner Propagation: owner should be propagated to the API Collection's API Endpoint",
       async () => {
-        const OWNER1 = EntityDataClass.user1.getUserName();
-        const OWNER2 = EntityDataClass.user2.getUserName();
+        const OWNER1 = EntityDataClass.user1.getUserDisplayName();
+        const OWNER2 = EntityDataClass.user2.getUserDisplayName();
         await addMultiOwner({
           page,
           ownerNames: [OWNER1, OWNER2],

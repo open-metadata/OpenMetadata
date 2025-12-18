@@ -7,11 +7,13 @@ import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.timestampToString;
 import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
+import static org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource.COLLECTION_PATH;
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -25,7 +27,11 @@ import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import jakarta.validation.Validator;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -35,15 +41,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -53,6 +62,8 @@ import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -67,6 +78,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
@@ -80,6 +92,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
+import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
@@ -149,10 +162,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
-            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes'");
+            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
+            + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
+            + "'setOpenMetadataUrl', 'configureEmailSettings', 'install-app', 'delete-app', 'create-user', 'reset-password', "
+            + "'syncAlertOffset', 'analyze-tables', 'cleanup-flowable-history'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
+    LOG.info(
+        "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
     return 0;
   }
 
@@ -777,6 +794,47 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "tagUsageCleanup",
+      description =
+          "Cleans up orphaned tag usages where referenced tags or glossary terms no longer exist. "
+              + "By default, runs in dry-run mode to only identify orphaned tag usages.")
+  public Integer cleanupOrphanedTagUsages(
+      @Option(
+              names = {"--delete"},
+              description =
+                  "Actually delete the orphaned tag usages. Without this flag, the command only identifies orphaned tag usages (dry-run mode).",
+              defaultValue = "false")
+          boolean delete,
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "1000",
+              description = "Number of tag usages to process in each batch.")
+          int batchSize) {
+    try {
+      boolean dryRun = !delete;
+      LOG.info("Running Tag Usage Cleanup. Dry run: {}, Batch size: {}", dryRun, batchSize);
+      parseConfig();
+
+      TagUsageCleanup cleanup = new TagUsageCleanup(collectionDAO, dryRun);
+      TagUsageCleanup.TagCleanupResult result = cleanup.performCleanup(batchSize);
+
+      LOG.info("Total tag usages scanned: {}", result.getTotalTagUsagesScanned());
+      LOG.info("Orphaned tag usages found: {}", result.getOrphanedTagUsagesFound());
+      LOG.info("Tag usages deleted: {}", result.getTagUsagesDeleted());
+
+      if (dryRun && result.getOrphanedTagUsagesFound() > 0) {
+        LOG.info("To actually delete these orphaned tag usages, run with --delete");
+        return 1;
+      }
+
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup orphaned tag usages due to ", e);
+      return 1;
+    }
+  }
+
   @Command(name = "reindex", description = "Re Indexes data into search engine from command line.")
   public Integer reIndex(
       @Option(
@@ -878,6 +936,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
       TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
       TypeRegistry.instance().initialize(typeRepository);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+
+      // Prepare search repository for reindexing (e.g., initialize vector services)
+      searchRepository.prepareForReindex();
+
       String appName = "SearchIndexingApplication";
       // Handle entityStr with or without quotes
       String cleanEntityStr = entityStr;
@@ -1340,11 +1402,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
   @Command(name = "deploy-pipelines", description = "Deploy all the service pipelines.")
   public Integer deployPipelines() {
     try {
-      LOG.info("Deploying Pipelines");
+      LOG.info("Deploying Pipelines via API");
       parseConfig();
-      PipelineServiceClientInterface pipelineServiceClient =
-          PipelineServiceClientFactory.createPipelineServiceClient(
-              config.getPipelineServiceClientConfiguration());
       IngestionPipelineRepository pipelineRepository =
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       List<IngestionPipeline> pipelines =
@@ -1354,10 +1413,22 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.debug(String.format("Pipelines %d", pipelines.size()));
       List<String> columns = Arrays.asList("Name", "Type", "Service Name", "Status");
       List<List<String>> pipelineStatuses = new ArrayList<>();
-      for (IngestionPipeline pipeline : pipelines) {
-        deployPipeline(pipeline, pipelineServiceClient, pipelineStatuses);
+
+      if (!pipelines.isEmpty()) {
+        deployPipelinesViaAPI(pipelines, pipelineStatuses);
       }
+
       printToAsciiTable(columns, pipelineStatuses, "No Pipelines Found");
+
+      // Check if any pipeline deployments failed by examining the status column
+      boolean hasFailures =
+          pipelineStatuses.stream().anyMatch(status -> status.get(3).startsWith("FAILED"));
+
+      if (hasFailures) {
+        LOG.error("Some pipeline deployments failed. Check the table above for details.");
+        return 1;
+      }
+
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
@@ -1485,7 +1556,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private Set<String> getAllIndices() {
     Set<String> indices = new HashSet<>();
     try {
-      SearchClient<?> searchClient = searchRepository.getSearchClient();
+      SearchClient searchClient = searchRepository.getSearchClient();
 
       if (searchClient instanceof ElasticSearchClient) {
         es.org.elasticsearch.client.Request request =
@@ -1609,6 +1680,58 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "cleanup-flowable-history",
+      description =
+          "Cleans up old workflow deployments and history. "
+              + "For Periodic Batch workflows: cleans up both deployments and history. "
+              + "For Event Based workflows: cleans up only history. "
+              + "By default, runs in dry-run mode to only analyze what would be cleaned.")
+  public Integer cleanupFlowableHistory(
+      @Option(
+              names = {"--delete"},
+              defaultValue = "false",
+              description =
+                  "Actually perform the cleanup. Without this flag, the command only analyzes what would be cleaned (dry-run mode).")
+          boolean delete,
+      @Option(
+              names = {"--runtime-batch-size"},
+              defaultValue = "1000",
+              description = "Batch size for runtime instance cleanup.")
+          int runtimeBatchSize,
+      @Option(
+              names = {"--history-batch-size"},
+              defaultValue = "1000",
+              description = "Batch size for history instance cleanup.")
+          int historyBatchSize) {
+    try {
+      boolean dryRun = !delete;
+      LOG.info("Running Flowable workflow cleanup. Dry run: {}", dryRun);
+
+      parseConfig();
+      initializeCollectionRegistry();
+      SettingsCache.initialize(config);
+      initializeSecurityConfig();
+      WorkflowHandler.initialize(config);
+
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      FlowableCleanup cleanup = new FlowableCleanup(workflowHandler, dryRun);
+      FlowableCleanup.FlowableCleanupResult result =
+          cleanup.performCleanup(historyBatchSize, runtimeBatchSize);
+
+      if (dryRun && !result.getCleanedWorkflows().isEmpty()) {
+        LOG.info("Dry run completed. To actually perform the cleanup, run with --delete");
+        return 1;
+      }
+
+      LOG.info("Flowable cleanup completed successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to cleanup Flowable history due to ", e);
+      return 1;
+    }
+  }
+
   private void analyzeEntityTable(String entity) {
     try {
       EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entity);
@@ -1619,40 +1742,247 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
-  private void deployPipeline(
-      IngestionPipeline pipeline,
-      PipelineServiceClientInterface pipelineServiceClient,
-      List<List<String>> pipelineStatuses) {
+  private void deployPipelinesViaAPI(
+      List<IngestionPipeline> pipelines, List<List<String>> pipelineStatuses) {
     try {
-      LOG.debug(String.format("deploying pipeline %s", pipeline.getName()));
-      pipeline.setOpenMetadataServerConnection(
-          new OpenMetadataConnectionBuilder(config, pipeline).build());
-      secretsManager.decryptIngestionPipeline(pipeline);
-      ServiceEntityInterface service =
-          Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
-      pipelineServiceClient.deployPipeline(pipeline, service);
+      // Get ingestion-bot JWT token
+      String jwtToken = getIngestionBotToken();
+      if (jwtToken == null) {
+        throw new RuntimeException("Failed to retrieve ingestion-bot JWT token");
+      }
+
+      // Get server API URL from config
+      String serverUrl = getServerApiUrl();
+      if (serverUrl == null) {
+        throw new RuntimeException("SERVER_HOST_API_URL not configured");
+      }
+      LOG.info("Deploying pipelines to server URL: {}", serverUrl);
+
+      // Create HTTP client
+      HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
+
+      // Process pipelines in chunks of 20
+      int chunkSize = 20;
+      int totalPipelines = pipelines.size();
+      LOG.info(
+          "Deploying {} pipelines via bulk API calls in chunks of {}", totalPipelines, chunkSize);
+
+      List<List<IngestionPipeline>> pipelineChunks = chunkList(pipelines, chunkSize);
+
+      for (int chunkIndex = 0; chunkIndex < pipelineChunks.size(); chunkIndex++) {
+        List<IngestionPipeline> chunk = pipelineChunks.get(chunkIndex);
+        LOG.info(
+            "Processing chunk {} of {} (pipelines {}-{})",
+            chunkIndex + 1,
+            pipelineChunks.size(),
+            chunkIndex * chunkSize + 1,
+            Math.min((chunkIndex + 1) * chunkSize, totalPipelines));
+
+        deployPipelineChunk(client, jwtToken, serverUrl, chunk, pipelineStatuses);
+      }
+
+      LOG.info("Completed bulk deployment of {} pipelines", totalPipelines);
     } catch (Exception e) {
-      LOG.error(
-          String.format(
-              "Failed to deploy pipeline %s of type %s for service %s",
-              pipeline.getName(),
-              pipeline.getPipelineType().value(),
-              pipeline.getService().getName()),
-          e);
-      pipeline.setDeployed(false);
-    } finally {
-      LOG.debug("update the pipeline");
-      collectionDAO.ingestionPipelineDAO().update(pipeline);
-      pipelineStatuses.add(
-          Arrays.asList(
-              pipeline.getName(),
-              pipeline.getPipelineType().value(),
-              pipeline.getService().getName(),
-              pipeline.getDeployed().toString()));
+      LOG.error("Failed to deploy pipelines via API", e);
+      // Mark all pipelines as failed
+      for (IngestionPipeline pipeline : pipelines) {
+        pipelineStatuses.add(
+            Arrays.asList(
+                pipeline.getName(),
+                pipeline.getPipelineType().value(),
+                pipeline.getService().getName(),
+                "FAILED - " + e.getMessage()));
+      }
     }
   }
 
-  private void parseConfig() throws Exception {
+  private void deployPipelineChunk(
+      HttpClient client,
+      String jwtToken,
+      String serverUrl,
+      List<IngestionPipeline> pipelineChunk,
+      List<List<String>> pipelineStatuses) {
+    try {
+      // Collect pipeline IDs for this chunk
+      List<UUID> pipelineIds =
+          pipelineChunk.stream().map(IngestionPipeline::getId).collect(Collectors.toList());
+
+      // Make bulk deploy API call for this chunk
+      String jsonBody = JsonUtils.pojoToJson(pipelineIds);
+
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(URI.create(serverUrl + COLLECTION_PATH + "bulk/deploy"))
+              .header("Authorization", "Bearer " + jwtToken)
+              .header("Content-Type", "application/json")
+              .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+              .timeout(Duration.ofMinutes(2))
+              .build();
+
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+      if (response.statusCode() == 200) {
+        LOG.debug("Chunk deployment completed successfully");
+        // Parse response and update status table for this chunk
+        updatePipelineStatuses(pipelineChunk, response.body(), pipelineStatuses);
+      } else {
+        LOG.error(
+            "Chunk deployment failed with status: {} - {}", response.statusCode(), response.body());
+        // Mark chunk pipelines as failed
+        for (IngestionPipeline pipeline : pipelineChunk) {
+          pipelineStatuses.add(
+              Arrays.asList(
+                  pipeline.getName(),
+                  pipeline.getPipelineType().value(),
+                  pipeline.getService().getName(),
+                  "FAILED - HTTP " + response.statusCode()));
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to deploy pipeline chunk", e);
+      // Mark chunk pipelines as failed
+      for (IngestionPipeline pipeline : pipelineChunk) {
+        pipelineStatuses.add(
+            Arrays.asList(
+                pipeline.getName(),
+                pipeline.getPipelineType().value(),
+                pipeline.getService().getName(),
+                "FAILED - " + e));
+      }
+    }
+  }
+
+  private <T> List<List<T>> chunkList(List<T> list, int chunkSize) {
+    List<List<T>> chunks = new ArrayList<>();
+    for (int i = 0; i < list.size(); i += chunkSize) {
+      int end = Math.min(list.size(), i + chunkSize);
+      chunks.add(list.subList(i, end));
+    }
+    return chunks;
+  }
+
+  private String getIngestionBotToken() {
+    try {
+      // Use the same pattern as OpenMetadataConnectionBuilder
+      BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+
+      // First get the bot entity
+      Bot bot =
+          botRepository.getByName(null, Entity.INGESTION_BOT_NAME, new EntityUtil.Fields(Set.of()));
+      if (bot == null || bot.getBotUser() == null) {
+        LOG.error("Ingestion bot not found or bot has no associated user");
+        return null;
+      }
+
+      // Get the bot user with authentication mechanism
+      User botUser =
+          userRepository.getByName(
+              null,
+              bot.getBotUser().getFullyQualifiedName(),
+              new EntityUtil.Fields(Set.of("authenticationMechanism")));
+
+      if (botUser == null || botUser.getAuthenticationMechanism() == null) {
+        LOG.error("Bot user not found or missing authentication mechanism");
+        return null;
+      }
+
+      // Extract and decrypt the JWT token
+      AuthenticationMechanism authMechanism = botUser.getAuthenticationMechanism();
+      if (authMechanism.getAuthType() != AuthenticationMechanism.AuthType.JWT) {
+        LOG.error("Bot user does not have JWT authentication mechanism");
+        return null;
+      }
+
+      JWTAuthMechanism jwtAuthMechanism =
+          JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
+
+      // Decrypt the JWT token - this is the crucial step that was missing
+      secretsManager.decryptJWTAuthMechanism(jwtAuthMechanism);
+      String token = jwtAuthMechanism.getJWTToken();
+      if (secretsManager.isSecret(token)) {
+        return secretsManager.getSecretValue(token);
+      }
+      return jwtAuthMechanism.getJWTToken();
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve ingestion-bot token", e);
+      return null;
+    }
+  }
+
+  private String getServerApiUrl() {
+    if (config.getPipelineServiceClientConfiguration() != null
+        && config.getPipelineServiceClientConfiguration().getMetadataApiEndpoint() != null) {
+      String serverUrl = config.getPipelineServiceClientConfiguration().getMetadataApiEndpoint();
+      return serverUrl.endsWith("/") ? serverUrl : serverUrl + "/";
+    }
+    return null;
+  }
+
+  private void updatePipelineStatuses(
+      List<IngestionPipeline> pipelines, String responseBody, List<List<String>> pipelineStatuses) {
+    try {
+      // Parse the bulk deploy response to typed PipelineServiceClientResponse objects
+      List<PipelineServiceClientResponse> responses =
+          JsonUtils.readValue(
+              responseBody, new TypeReference<List<PipelineServiceClientResponse>>() {});
+
+      // Log the parsed responses for debugging
+      LOG.info("Received {} deployment responses", responses.size());
+      for (int i = 0; i < responses.size(); i++) {
+        PipelineServiceClientResponse response = responses.get(i);
+        String pipelineName = i < pipelines.size() ? pipelines.get(i).getName() : "unknown";
+        LOG.info(
+            "Pipeline {}: code={}, platform={}, reason={}",
+            pipelineName,
+            response.getCode(),
+            response.getPlatform(),
+            response.getReason() != null ? response.getReason() : "N/A");
+      }
+
+      // Correlate responses with pipelines by position (assuming same order)
+      for (int i = 0; i < pipelines.size(); i++) {
+        IngestionPipeline pipeline = pipelines.get(i);
+        String status;
+
+        if (i < responses.size()) {
+          PipelineServiceClientResponse response = responses.get(i);
+          Integer code = response.getCode();
+          String reason = response.getReason();
+
+          if (code != null && (code == 200 || code == 201)) {
+            status = "DEPLOYED";
+          } else if (code != null) {
+            status = "FAILED - " + code + (reason != null ? ": " + reason : "");
+          } else {
+            status = "UNKNOWN";
+          }
+        } else {
+          status = "NO_RESPONSE";
+        }
+
+        pipelineStatuses.add(
+            Arrays.asList(
+                pipeline.getName(),
+                pipeline.getPipelineType().value(),
+                pipeline.getService().getName(),
+                status));
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to parse bulk deploy response, using default status", e);
+      // Fallback to showing all as failed in display
+      for (IngestionPipeline pipeline : pipelines) {
+        pipelineStatuses.add(
+            Arrays.asList(
+                pipeline.getName(),
+                pipeline.getPipelineType().value(),
+                pipeline.getService().getName(),
+                "FAILED"));
+      }
+    }
+  }
+
+  public void parseConfig() throws Exception {
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     objectMapper.registerSubtypes(AuditExcludeFilterFactory.class, AuditOnlyFilterFactory.class);
     Validator validator = Validators.newValidator();
@@ -1704,6 +2034,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     Entity.initializeRepositories(config, jdbi);
     ConnectionType connType = ConnectionType.from(config.getDataSourceFactory().getDriverClass());
     DatasourceConfig.initialize(connType.label);
+    OpenMetadataApplicationConfigHolder.initialize(config);
   }
 
   // This was before handled via flyway's clean command.

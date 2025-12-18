@@ -20,4 +20,12 @@ public interface HandlebarsHelper {
    * @param handlebars The Handlebars instance to register with
    */
   void register(Handlebars handlebars);
+
+  /**
+   * Provide metadata about this helper for API discovery. Each helper documents itself for UI
+   * integration.
+   *
+   * @return Metadata containing helper name, description, and usage examples
+   */
+  HandlebarsHelperMetadata getMetadata();
 }

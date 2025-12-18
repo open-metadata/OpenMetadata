@@ -26,17 +26,33 @@ export default defineConfig(({ mode }) => {
     env.DEV_SERVER_TARGET ||
     'http://localhost:8585/';
 
-  // Dynamically set base path from environment variable or use '/' as default
-  const basePath = env.BASE_PATH || '/';
-
+  // Use empty base so dynamic imports use relative paths
+  // The actual BASE_PATH is injected at runtime by the Java backend via ${basePath} replacement
   return {
-    base: basePath,
+    base: '',
     plugins: [
       {
         name: 'html-transform',
         transformIndexHtml(html: string) {
-          // Replace ${basePath} in all places except script src (handled by Vite's base config)
-          return html.replace(/\$\{basePath\}/g, basePath);
+          // Don't replace ${basePath} placeholder - it will be replaced at runtime by Java backend
+          // Add ${basePath} prefix to asset paths (with or without leading slash)
+          return html
+            .replace(
+              /(<script[^>]*src=["'])(\.\/)?assets\//g,
+              '$1${basePath}assets/'
+            )
+            .replace(
+              /(<link[^>]*href=["'])(\.\/)?assets\//g,
+              '$1${basePath}assets/'
+            )
+            .replace(
+              /(<img[^>]*src=["'])(\.\/)?assets\//g,
+              '$1${basePath}assets/'
+            )
+            .replace(
+              /(<img[^>]*src=["'])(\.\/)?images\//g,
+              '$1${basePath}images/'
+            );
         },
       },
       react(),

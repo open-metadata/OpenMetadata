@@ -15,7 +15,9 @@ import { Button, Card, Form, Typography } from 'antd';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
+import { EntityType } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields } from '../../../utils/formUtils';
@@ -37,6 +39,7 @@ export const ContractDetailFormTab: React.FC<{
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const { entityRules } = useEntityRules(EntityType.TABLE);
 
   const fields: FieldProp[] = [
     {
@@ -61,7 +64,10 @@ export const ContractDetailFormTab: React.FC<{
       props: {
         owner: initialValues?.owners,
         hasPermission: true,
-        multiple: { user: true, team: false },
+        multiple: {
+          user: entityRules.canAddMultipleUserOwners,
+          team: entityRules.canAddMultipleTeamOwner,
+        },
         placeholder: t('label.please-select-entity', {
           entity: t('label.owner-plural'),
         }),

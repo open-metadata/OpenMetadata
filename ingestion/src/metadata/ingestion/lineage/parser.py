@@ -50,7 +50,7 @@ DictConfigurator.configure = configure
 logger = ingestion_logger()
 
 # max lineage parsing wait in second when using specific dialect
-LINEAGE_PARSING_TIMEOUT = 10
+LINEAGE_PARSING_TIMEOUT = 30
 
 
 class LineageParser:
@@ -457,6 +457,18 @@ class LineageParser:
         # We remove queries of the type 'COPY table FROM path' since they are data manipulation statement and do not
         # provide value for user
         if insensitive_match(clean_query, "^COPY.*"):
+            return None
+
+        # Filter out CREATE TRIGGER statements - they don't provide lineage information
+        if insensitive_match(
+            clean_query, r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+"
+        ):
+            return None
+
+        # Filter out CREATE FUNCTION/PROCEDURE statements - they don't provide lineage information
+        if insensitive_match(
+            clean_query, r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?:FUNCTION|PROCEDURE)\s+"
+        ):
             return None
 
         return clean_query.strip()

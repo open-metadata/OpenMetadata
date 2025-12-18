@@ -36,7 +36,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { addOwner } from './entity';
+import { addOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
 const waitForAssetModalInitialLoad = async (page: Page) => {
@@ -430,7 +430,7 @@ export const addAssetsToDomain = async (
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
-    'Adding a new Asset is easy, just give it a spin!'
+    "Looks like you haven't added any data assets yet."
   );
 
   await page.getByTestId('domain-details-add-button').click();
@@ -482,6 +482,7 @@ export const addAssetsToDomain = async (
   await searchRes;
 
   await page.reload();
+  await waitForAllLoadersToDisappear(page);
   await page.waitForLoadState('networkidle');
 
   await checkAssetsCount(page, assets.length);
@@ -533,7 +534,7 @@ export const addAssetsToDataProduct = async (
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
-    'Adding a new Asset is easy, just give it a spin!'
+    "Looks like you haven't added any data assets yet."
   );
 
   await page.getByTestId('data-product-details-add-button').click();

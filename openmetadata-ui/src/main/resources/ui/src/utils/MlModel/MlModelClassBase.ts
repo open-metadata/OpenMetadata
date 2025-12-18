@@ -40,6 +40,7 @@ export interface MlModelDetailPageTabProps {
   editLineagePermission: boolean;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   fetchMlModel: () => void;
   handleFeedCount: (data: FeedCounts) => void;
   mlModelDetail: Mlmodel;

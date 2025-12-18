@@ -19,7 +19,6 @@ import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/A
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
@@ -44,7 +43,7 @@ import { exportDatabaseDetailsInCSV } from '../../rest/databaseAPI';
 import { getEntityImportPath, getEntityName } from '../EntityUtils';
 import { t } from '../i18next/LocalUtil';
 import { getEntityDetailsPath } from '../RouterUtils';
-import { ownerTableObject } from '../TableColumn.util';
+import { descriptionTableObject, ownerTableObject } from '../TableColumn.util';
 import { getUsagePercentile } from '../TableUtils';
 import { DatabaseDetailPageTabProps } from './DatabaseClassBase';
 
@@ -97,19 +96,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
       </div>
     ),
   },
-  {
-    title: t('label.description'),
-    dataIndex: 'description',
-    key: 'description',
-    render: (text: string) =>
-      text?.trim() ? (
-        <RichTextEditorPreviewerNew markdown={text} />
-      ) : (
-        <span className="text-grey-muted">
-          {t('label.no-entity', { entity: t('label.description') })}
-        </span>
-      ),
-  },
+  ...descriptionTableObject<DatabaseSchema>(),
   ...ownerTableObject<DatabaseSchema>(),
   {
     title: t('label.usage'),
@@ -124,7 +111,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
 export const getDatabasePageBaseTabs = ({
   activeTab,
   database,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   schemaInstanceCount,
   feedCount,
   handleFeedCount,
@@ -175,9 +162,7 @@ export const getDatabasePageBaseTabs = ({
     {
       label: (
         <TabsLabel
-          isBeta
           id={EntityTabs.CONTRACT}
-          isActive={activeTab === EntityTabs.CONTRACT}
           name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
         />
       ),
@@ -199,7 +184,7 @@ export const getDatabasePageBaseTabs = ({
         <CustomPropertyTable<EntityType.DATABASE>
           entityType={EntityType.DATABASE}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
           isVersionView={false}
         />
       ),

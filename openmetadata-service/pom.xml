@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.10.0-SNAPSHOT</version>
+    <version>1.12.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -16,7 +16,7 @@
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
-    <org.testcontainers.version>1.20.3</org.testcontainers.version>
+    <org.testcontainers.version>1.20.4</org.testcontainers.version>
     <awssdk.version>2.30.19</awssdk.version>
     <azure-identity.version>1.14.0</azure-identity.version>
     <azure-kv.version>4.10.0</azure-kv.version>
@@ -33,7 +33,7 @@
     <aws.sdk.version>2.31.1</aws.sdk.version>
     <bedrock.runtime.version>2.31.1</bedrock.runtime.version>
     <jetty.version>11.0.25</jetty.version>
-    <logback-core.version>1.5.18</logback-core.version>
+    <logback-core.version>1.5.19</logback-core.version>
     <logback-classic.version>1.5.18</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
     <kubernetes-client.version>24.0.0</kubernetes-client.version>
@@ -548,19 +548,19 @@
     <dependency>
       <groupId>io.minio</groupId>
       <artifactId>minio</artifactId>
-      <version>8.5.17</version>
+      <version>8.6.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
-      <version>1.19.3</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>minio</artifactId>
-      <version>1.19.3</version>
+      <version>${org.testcontainers.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -1169,6 +1169,7 @@
                   <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>
+                  <api.version>1.44</api.version>
                 </systemPropertyVariables>
               </configuration>
               <executions>
@@ -1209,6 +1210,7 @@
                   <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
                   <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
                   <runESTestCases>false</runESTestCases>
+                  <api.version>1.44</api.version>
                 </systemPropertyVariables>
               </configuration>
               <executions>
@@ -1259,6 +1261,7 @@
                   <runESTestCases>false</runESTestCases>
                   <enableCache>true</enableCache>
                   <cacheType>redis</cacheType>
+                  <api.version>1.44</api.version>
                 </systemPropertyVariables>
               </configuration>
               <executions>
@@ -1299,6 +1302,7 @@
                   <runESTestCases>false</runESTestCases>
                   <enableRdf>true</enableRdf>
                   <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                  <api.version>1.44</api.version>
                 </systemPropertyVariables>
               </configuration>
               <executions>
@@ -1349,6 +1353,7 @@
                   <runESTestCases>false</runESTestCases>
                   <enableCache>true</enableCache>
                   <cacheType>redis</cacheType>
+                  <api.version>1.44</api.version>
                 </systemPropertyVariables>
               </configuration>
               <executions>

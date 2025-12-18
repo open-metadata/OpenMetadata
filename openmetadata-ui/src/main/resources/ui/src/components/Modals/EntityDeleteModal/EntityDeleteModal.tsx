@@ -13,7 +13,8 @@
 
 import { Button, Input, InputRef, Modal, Typography } from 'antd';
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { EntityDeleteModalProp } from './EntityDeleteModal.interface';
 
@@ -114,16 +115,16 @@ const EntityDeleteModal = ({
               }
               values={{
                 entityName: entityName,
+                brandName: brandClassBase.getPageTitle(),
               }}
             />
           )}
         </div>
         <Typography className="mb-2">
-          <Trans
-            i18nKey="label.type-to-confirm"
-            values={{ text: t('label.delete-uppercase') }}>
-            <strong />
-          </Trans>
+          <Transi18next
+            i18nKey="message.type-delete-to-confirm"
+            renderElement={<strong />}
+          />
         </Typography>
         <Input
           autoComplete="off"

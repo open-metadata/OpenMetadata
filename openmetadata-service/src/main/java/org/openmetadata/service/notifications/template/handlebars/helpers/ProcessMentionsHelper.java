@@ -14,11 +14,14 @@
 package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.StringEscapeUtils;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Handlebars helper that processes mention tags in message text.
@@ -143,5 +146,18 @@ public class ProcessMentionsHelper implements HandlebarsHelper {
     mentionMatcher.appendTail(final_result);
 
     return final_result.toString();
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("processMentions")
+        .withDescription("Convert @mentions to clickable links")
+        .withCursorOffset(19)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{{processMentions }}}")
+                    .withExample("{{{processMentions message}}}")));
   }
 }

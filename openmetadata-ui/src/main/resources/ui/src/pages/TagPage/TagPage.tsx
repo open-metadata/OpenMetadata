@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
+import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
@@ -204,6 +205,11 @@ const TagPage = () => {
     [tagFqn]
   );
 
+  const showDisableOption = useMemo(
+    () => tagPermissions.EditAll && !tagItem?.deleted,
+    [tagPermissions.EditAll, tagItem?.deleted]
+  );
+
   const fetchCurrentTagPermission = async () => {
     if (!tagItem?.id) {
       return;
@@ -302,6 +308,16 @@ const TagPage = () => {
     }
   };
 
+  const handleEnableDisableTagClick = useCallback(async () => {
+    if (tagItem) {
+      const updatedTag = {
+        ...tagItem,
+        disabled: !tagItem.disabled,
+      };
+      await updateTag(updatedTag);
+    }
+  }, [tagItem, updateTag]);
+
   const handleTagDelete = async (id: string) => {
     try {
       await deleteTag(id);
@@ -378,7 +394,9 @@ const TagPage = () => {
   const handleAssetSave = useCallback(() => {
     fetchClassificationTagAssets();
     assetTabRef.current?.refreshAssets();
-    activeTab !== TagTabs.ASSETS && activeTabHandler(TagTabs.ASSETS);
+    if (activeTab !== TagTabs.ASSETS) {
+      activeTabHandler(TagTabs.ASSETS);
+    }
   }, [assetTabRef]);
 
   const manageButtonContent: ItemType[] = [
@@ -417,6 +435,32 @@ const TagPage = () => {
             onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
               e.domEvent.stopPropagation();
               setIsStyleEditing(true);
+              setShowActions(false);
+            },
+          },
+        ]
+      : []),
+    ...(showDisableOption
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={
+                  tagItem?.disabled
+                    ? t('message.enable-tag-description')
+                    : t('message.disable-tag-description')
+                }
+                icon={IconDisableTag}
+                id="enable-disable-tag"
+                name={
+                  tagItem?.disabled ? t('label.enable') : t('label.disable')
+                }
+              />
+            ),
+            key: 'disable-button',
+            onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
+              e.domEvent.stopPropagation();
+              handleEnableDisableTagClick();
               setShowActions(false);
             },
           },
@@ -617,12 +661,12 @@ const TagPage = () => {
   useEffect(() => {
     getTagData();
     fetchClassificationTagAssets();
-    fetchFeedCount();
   }, [tagFqn]);
 
   useEffect(() => {
     if (tagItem) {
       fetchCurrentTagPermission();
+      fetchFeedCount();
     }
   }, [tagItem]);
 
@@ -718,7 +762,13 @@ const TagPage = () => {
           onUpdate={(updatedData: Tag) =>
             Promise.resolve(updateTag(updatedData))
           }>
-          <Col span={24} style={{ overflowY: 'auto' }}>
+          <Col
+            span={24}
+            style={{
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              height: 'calc(100vh - 170px)',
+            }}>
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab}
