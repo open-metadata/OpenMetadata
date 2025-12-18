@@ -77,6 +77,13 @@ SUPPORTED_DIALECTS = [
     Dialects.UnityCatalog,
 ]
 
+class SchemaDiffResult(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
+
+    serviceType: str
+    fullyQualifiedTableName: str
+    schema: Dict[str, ColType]
 class ColumnDiffResult(BaseModel):
     class Config:
         arbitrary_types_allowed = True
@@ -84,8 +91,8 @@ class ColumnDiffResult(BaseModel):
     removed: List[str]
     added: List[str]
     changed: List[str]
-    schemaTable1: Dict[str, ColType]
-    schemaTable2: Dict[str, ColType]
+    schemaTable1: SchemaDiffResult
+    schemaTable2: SchemaDiffResult
 
 def build_sample_where_clause(
     table: TableParameter, key_columns: List[str], salt: str, hex_nounce: str
@@ -246,7 +253,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
         if column_diff:
             # If there are column differences, we set extra_columns to the common columns for the diff
-            common_columns = list(set(column_diff.schemaTable1.keys()) & set(column_diff.schemaTable2.keys()))
+            common_columns = list(set(column_diff.schemaTable1.schema.keys()) & set(column_diff.schemaTable2.schema.keys()))
             self.runtime_params.extraColumns = common_columns
             self.runtime_params.table1.extra_columns = common_columns
             self.runtime_params.table2.extra_columns = common_columns
@@ -603,8 +610,16 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 removed=removed,
                 added=added,
                 changed=changed,
-                schemaTable1=dict(schema_table1),
-                schemaTable2=dict(schema_table2),
+                schemaTable1=SchemaDiffResult(
+                    serviceType=self.runtime_params.table1.database_service_type.name,
+                    fullyQualifiedTableName=self.runtime_params.table1.path,
+                    schema=dict(schema_table1),
+                ),
+                schemaTable2=SchemaDiffResult(
+                    serviceType=self.runtime_params.table2.database_service_type.name,
+                    fullyQualifiedTableName=self.runtime_params.table2.path,
+                    schema=dict(schema_table2),
+                ),
             )
         return None
 

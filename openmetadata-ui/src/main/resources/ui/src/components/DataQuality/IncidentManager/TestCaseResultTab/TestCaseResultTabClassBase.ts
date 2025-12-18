@@ -18,7 +18,11 @@ export interface AdditionalComponentInterface {
 }
 
 class TestCaseResultTabClassBase {
-  public getAdditionalComponents(): Array<AdditionalComponentInterface> {
+  public getAdditionalComponents(
+    testCaseData?: TestCase
+  ): Array<AdditionalComponentInterface> {
+    void testCaseData;
+
     return [];
   }
 
