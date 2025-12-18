@@ -98,7 +98,7 @@ MOCK_DATABRICKS_NATIVE_EXP = """let
 in
     Source"""
 
-MOCK_DATABRICKS_NATIVE_QUERY_EXP= """let 
+MOCK_DATABRICKS_NATIVE_QUERY_EXP = """let 
     Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path,  
         [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]) 
         {[Name="DEMO_STAGE",Kind="Database"]}[Data],  
