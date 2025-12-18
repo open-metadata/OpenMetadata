@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -358,14 +359,7 @@ export async function navigateToExploreAndSelectTable(
 ) {
   await redirectToExplorePage(page);
 
-  await page
-    .waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-      timeout: 15000,
-    })
-    .catch(() => {
-      // Loader might not appear, continue
-    });
+  await waitForAllLoadersToDisappear(page);
 
   const permissionsResponse = page.waitForResponse((response) =>
     response.url().includes('/permissions')
@@ -374,5 +368,4 @@ export async function navigateToExploreAndSelectTable(
   await openEntitySummaryPanel(page, entityName);
 
   await permissionsResponse;
-  await page.waitForLoadState('networkidle');
 }
