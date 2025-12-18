@@ -79,6 +79,7 @@ const columnDetails1 = {
 
 test.describe('Bulk Edit Entity', () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
+    test.slow();
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await user1.create(apiContext);
@@ -709,6 +710,111 @@ test.describe('Bulk Edit Entity', () => {
       await expect(
         page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
+    });
+
+    await glossary.delete(apiContext);
+    await afterAction();
+  });
+
+  test('Glossary Term (Nested)', async ({ page }) => {
+    test.slow();
+
+    const additionalNestedGlossaryTerm = createGlossaryTermRowDetails();
+    const glossary = new Glossary();
+    const parentGlossaryTerm = new GlossaryTerm(glossary);
+    // Create a nested glossary term under the parent term
+    const nestedGlossaryTerm = new GlossaryTerm(glossary);
+
+    const { apiContext, afterAction } = await getApiContext(page);
+    await glossary.create(apiContext);
+    await parentGlossaryTerm.create(apiContext);
+
+    // Set the parent for the nested term
+    nestedGlossaryTerm.data.parent = parentGlossaryTerm.responseData.fullyQualifiedName;
+    nestedGlossaryTerm.data.fullyQualifiedName = `${parentGlossaryTerm.responseData.fullyQualifiedName}."${nestedGlossaryTerm.data.name}"`;
+    await nestedGlossaryTerm.create(apiContext);
+
+    await test.step('Perform bulk edit action on nested glossary term', async () => {
+      // Navigate to the parent glossary term page
+      await parentGlossaryTerm.visitPage(page);
+
+      // Visit the glossary terms tab
+      await page.click('[data-testid="terms"]');
+
+      // Click on bulk edit button for the glossary term
+      await page.click('[data-testid="bulk-edit-table"]');
+
+      // Adding some assertion to make sure that CSV loaded correctly
+      await expect(page.locator('.rdg-header-row')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Previous' })
+      ).not.toBeVisible();
+
+      // Adding manual wait for the file to load
+      await page.waitForTimeout(500);
+
+      // Click on first cell and edit
+      await page.click('.rdg-cell[role="gridcell"]');
+
+      // Click on first cell and edit the nested glossary term
+      await fillGlossaryRowDetails(
+        {
+          ...additionalNestedGlossaryTerm,
+          name: nestedGlossaryTerm.data.name,
+          owners: [user1.responseData?.['displayName']],
+          reviewers: [user2.responseData?.['displayName']],
+          relatedTerm: {
+            parent: glossary.data.name,
+            name: parentGlossaryTerm.data.name,
+          },
+        },
+        page,
+        undefined,
+        true
+      );
+
+      await page.getByRole('button', { name: 'Next' }).click();
+      const loader = page.locator(
+        '.inovua-react-toolkit-load-mask__background-layer'
+      );
+
+      await loader.waitFor({ state: 'hidden' });
+
+      await validateImportStatus(page, {
+        passed: '2',
+        processed: '2',
+        failed: '0',
+      });
+
+      await page.waitForSelector('.rdg-header-row', {
+        state: 'visible',
+      });
+
+      const rowStatus = ['Entity updated'];
+
+      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+
+      const updateButtonResponse = page.waitForResponse(
+        `/api/v1/glossaryTerms/name/*/importAsync?*dryRun=false*`
+      );
+
+      await page.getByRole('button', { name: 'Update' }).click();
+      await page
+        .locator('.inovua-react-toolkit-load-mask__background-layer')
+        .waitFor({ state: 'detached' });
+
+      await updateButtonResponse;
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await toastNotification(
+        page,
+        /details updated successfully/
+      );
+
     });
 
     await glossary.delete(apiContext);

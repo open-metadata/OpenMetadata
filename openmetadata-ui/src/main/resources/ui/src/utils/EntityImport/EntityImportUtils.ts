@@ -97,6 +97,9 @@ export const getImportValidateAPIEntityType = (entityType: EntityType) => {
 
     case EntityType.GLOSSARY_TERM:
       return importGlossaryInCSVFormat;
+    
+    case EntityType.GLOSSARY:
+      return importGlossaryInCSVFormat;
 
     default:
       return importEntityInCSVFormat;
