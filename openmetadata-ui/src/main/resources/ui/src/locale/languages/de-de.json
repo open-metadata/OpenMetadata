@@ -2400,6 +2400,7 @@
     "no-kpi": "Definieren Sie Schlüsselkennzahlen, um Auswirkungen zu überwachen und fundiertere Entscheidungen zu treffen.",
     "no-kpi-available-add-new-one": "Keine KPIs verfügbar. Klicken Sie auf die Schaltfläche 'KPI hinzufügen', um einen hinzuzufügen.",
     "no-kpi-found": "Kein KPI mit dem Namen {{name}} gefunden",
+    "no-lineage-available": "Keine Lineage-Verbindungen gefunden",
     "no-match-found": "Keine Übereinstimmung gefunden",
     "no-mentions": "Es gibt keine Instanzen, in denen Sie oder Ihr Team in Aktivitäten erwähnt wurden",
     "no-notification-found": "Keine Benachrichtigungen gefunden",

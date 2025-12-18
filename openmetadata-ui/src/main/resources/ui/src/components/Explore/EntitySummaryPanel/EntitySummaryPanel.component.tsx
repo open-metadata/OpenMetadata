@@ -18,6 +18,7 @@ import classNames from 'classnames';
 import { get } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { LineageData } from '../../../components/Lineage/Lineage.interface';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -25,7 +26,7 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
@@ -34,12 +35,18 @@ import { TagLabel } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
 import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
+import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
+import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
-import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../../../rest/databaseAPI';
 import { getDomainByName } from '../../../rest/domainAPI';
+import { getDriveAssetByFqn } from '../../../rest/driveAPI';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
@@ -58,12 +65,14 @@ import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
+import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
@@ -94,9 +103,9 @@ export default function EntitySummaryPanel({
   };
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { getEntityPermission } = usePermissionProvider();
-  const [isPermissionLoading, setIsPermissionLoading] =
-    useState<boolean>(false);
+  const [isPermissionLoading, setIsPermissionLoading] = useState<boolean>(true);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
@@ -149,6 +158,8 @@ export default function EntitySummaryPanel({
         getMlModelByFQN(fqn, { fields: commonFields }),
       [EntityType.DATABASE]: (fqn: string) =>
         getDatabaseDetailsByFQN(fqn, { fields: commonFields }),
+      [EntityType.DATABASE_SCHEMA]: (fqn: string) =>
+        getDatabaseSchemaDetailsByFQN(fqn, { fields: commonFields }),
       [EntityType.DASHBOARD_DATA_MODEL]: (fqn: string) =>
         getDataModelByFqn(fqn, { fields: commonFields }),
       [EntityType.SEARCH_INDEX]: (fqn: string) =>
@@ -163,6 +174,18 @@ export default function EntitySummaryPanel({
         getChartByFqn(fqn, { fields: commonFields }),
       [EntityType.METRIC]: (fqn: string) =>
         getMetricByFqn(fqn, { fields: commonFields }),
+      [EntityType.API_ENDPOINT]: (fqn: string) =>
+        getApiEndPointByFQN(fqn, { fields: commonFields }),
+      [EntityType.API_COLLECTION]: (fqn: string) =>
+        getApiCollectionByFQN(fqn, { fields: commonFields }),
+      [EntityType.DIRECTORY]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.DIRECTORY, commonFields),
+      [EntityType.FILE]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.FILE, commonFields),
+      [EntityType.SPREADSHEET]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.SPREADSHEET, commonFields),
+      [EntityType.WORKSHEET]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.WORKSHEET, commonFields),
       [EntityType.DATA_PRODUCT]: (fqn: string) =>
         getDataProductByName(fqn, { fields: commonFields }),
       [EntityType.DOMAIN]: (fqn: string) =>
@@ -235,15 +258,21 @@ export default function EntitySummaryPanel({
   }, [entityType]);
 
   const fetchLineageData = useCallback(async () => {
-    const fqn = entityDetails?.details?.fullyQualifiedName;
-    if (!fqn || !entityType) {
+    const currentFqn = entityDetails?.details?.fullyQualifiedName;
+
+    if (!currentFqn || !entityType) {
+      setIsLineageLoading(false);
+      setLineageData(null);
+
       return;
     }
 
     try {
+      // Mark lineage as loading for the *current* entity.
       setIsLineageLoading(true);
+
       const response = await getLineageDataByFQN({
-        fqn,
+        fqn: currentFqn,
         entityType,
         config: {
           // When called from lineage view, the parent component passes the user's configured depths.
@@ -253,12 +282,25 @@ export default function EntitySummaryPanel({
           pipelineViewMode: pipelineViewMode ?? PipelineViewMode.Node,
         },
       });
+
+      // If the user switched to another entity while this request was in-flight,
+      // ignore this stale response so we don't overwrite the newest lineage state.
+      if (entityDetails?.details?.fullyQualifiedName !== currentFqn) {
+        return;
+      }
+
       setLineageData(response);
     } catch (error) {
-      showErrorToast(error as AxiosError);
-      setLineageData(null);
+      // Only surface errors for the active entity.
+      if (entityDetails?.details?.fullyQualifiedName === currentFqn) {
+        showErrorToast(error as AxiosError);
+        setLineageData(null);
+      }
     } finally {
-      setIsLineageLoading(false);
+      // Avoid toggling the loader for an entity that is no longer active.
+      if (entityDetails?.details?.fullyQualifiedName === currentFqn) {
+        setIsLineageLoading(false);
+      }
     }
   }, [
     entityDetails?.details?.fullyQualifiedName,
@@ -358,6 +400,16 @@ export default function EntitySummaryPanel({
     [updateEntityData]
   );
 
+  const handleLineageClick = useCallback(() => {
+    const fqn = entityDetails?.details?.fullyQualifiedName;
+    const type = entityDetails?.details?.entityType as EntityType;
+
+    if (fqn && type) {
+      const lineageUrl = getEntityDetailsPath(type, fqn, EntityTabs.LINEAGE);
+      navigate(lineageUrl);
+    }
+  }, [entityDetails, navigate]);
+
   useEffect(() => {
     if (id) {
       fetchResourcePermission(id);
@@ -369,6 +421,12 @@ export default function EntitySummaryPanel({
     setActiveTab(EntityRightPanelTab.OVERVIEW);
   }, [entityDetails?.details?.id]);
 
+  // Reset lineage data when entity changes to prevent stale data
+  useEffect(() => {
+    setLineageData(null);
+    setIsLineageLoading(false);
+  }, [entityDetails?.details?.id]);
+
   useEffect(() => {
     if (activeTab === EntityRightPanelTab.CUSTOM_PROPERTIES) {
       fetchEntityData();
@@ -377,8 +435,18 @@ export default function EntitySummaryPanel({
       fetchLineageData();
     } else if (activeTab === EntityRightPanelTab.OVERVIEW) {
       fetchEntityData();
+      if (entityType && ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
+        fetchLineageData();
+      }
     }
-  }, [activeTab]);
+  }, [
+    activeTab,
+    entityType,
+    entityDetails?.details?.fullyQualifiedName,
+    fetchEntityData,
+    fetchEntityTypeDetail,
+    fetchLineageData,
+  ]);
 
   const viewPermission = useMemo(
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
@@ -449,11 +517,14 @@ export default function EntitySummaryPanel({
         }
         entityType={type}
         highlights={highlights}
+        isLineageLoading={isLineageLoading}
+        lineageData={lineageData}
         panelPath={panelPath}
         onDataProductsUpdate={handleDataProductsUpdate}
         onDescriptionUpdate={handleDescriptionUpdate}
         onDomainUpdate={handleDomainUpdate}
         onGlossaryTermsUpdate={handleGlossaryTermsUpdate}
+        onLineageClick={handleLineageClick}
         onLinkClick={handleClosePanel}
         onOwnerUpdate={handleOwnerUpdate}
         onTagsUpdate={handleTagsUpdate}
@@ -473,6 +544,9 @@ export default function EntitySummaryPanel({
     handleDataProductsUpdate,
     handleDescriptionUpdate,
     handleGlossaryTermsUpdate,
+    handleLineageClick,
+    lineageData,
+    isLineageLoading,
   ]);
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),

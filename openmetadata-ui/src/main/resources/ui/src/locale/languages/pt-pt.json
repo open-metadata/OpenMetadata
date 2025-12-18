@@ -2400,6 +2400,7 @@
     "no-kpi": "Defina indicadores-chave de desempenho para monitorizar impacto e tomar decisões mais inteligentes.",
     "no-kpi-available-add-new-one": "Nenhum KPI disponível. Clique no botão Adicionar KPI para adicionar um.",
     "no-kpi-found": "Nenhum KPI encontrado com o nome {{name}}",
+    "no-lineage-available": "Nenhuma conexão de lineage encontrada",
     "no-match-found": "Nenhuma correspondência encontrada",
     "no-mentions": "Não há instâncias em que você ou sua equipa foram mencionados em atividades",
     "no-notification-found": "Nenhuma notificação encontrada",
