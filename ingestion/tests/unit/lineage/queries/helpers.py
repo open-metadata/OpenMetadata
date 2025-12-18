@@ -32,9 +32,13 @@ class TestColumnQualifierTuple(NamedTuple):
 
 
 @timeout(seconds=LINEAGE_PARSING_TIMEOUT)
-def _create_lineage_runner_with_timeout(sql: str, dialect: str, analyzer):
+def _create_lineage_runner_with_timeout_for_table_lineage(
+    sql: str, dialect: str, analyzer: type, parser_name: str
+) -> LineageRunner:
     """
-    Create LineageRunner with timeout protection.
+    Create LineageRunner with timeout protection for table lineage tests.
+    Here, we don't want to process column lineage.
+
     The actual parsing happens here, so we need the timeout at this level.
     """
     import time
@@ -44,13 +48,41 @@ def _create_lineage_runner_with_timeout(sql: str, dialect: str, analyzer):
 
     # Force parsing by accessing properties
     source_count = len(lr.source_tables)
+    target_count = len(lr.target_tables)
+    elapsed = time.time() - start
+
+    # Clean, informative logging
+    print(
+        f"\n[{parser_name}] ✓ Parsed in {elapsed:.3f}s: "
+        f"{source_count} sources, {target_count} targets"
+    )
+
+    return lr
+
+
+@timeout(seconds=LINEAGE_PARSING_TIMEOUT)
+def _create_lineage_runner_with_timeout_for_column_lineage(
+    sql: str, dialect: str, analyzer: type, parser_name: str
+) -> LineageRunner:
+    """
+    Create LineageRunner with timeout protection for column lineage tests.
+    The actual parsing happens here, so we need the timeout at this level.
+    """
+    import time
+
+    start = time.time()
+    lr = LineageRunner(sql, dialect=dialect, analyzer=analyzer)
+
+    # Force parsing by accessing properties
+    source_count = len(lr.source_tables)
+    target_count = len(lr.target_tables)
     column_count = len(lr.get_column_lineage())
     elapsed = time.time() - start
 
     # Clean, informative logging
     print(
-        f"\n[{analyzer.__name__}] ✓ Parsed in {elapsed:.3f}s: "
-        f"{source_count} sources, {column_count} column lineages"
+        f"\n[{parser_name}] ✓ Parsed in {elapsed:.3f}s: "
+        f"{source_count} sources, {target_count} targets, {column_count} column lineages"
     )
 
     return lr
@@ -83,9 +115,13 @@ def assert_table_lineage(
             if expected is None
             else {Table(t) if isinstance(t, str) else t for t in expected}
         )
-        assert (
-            actual == expected
-        ), f"\n\t{parser_prefix}Expected {_type} Table: {expected}\n\t{parser_prefix}Actual {_type} Table: {actual}"
+        assert actual == expected, (
+            f"\n\t{parser_prefix}Expected Lineage: {expected}"
+            f"\n\t{parser_prefix}Actual Lineage:   {actual}"
+            f"\n\t{parser_prefix}Differences:"
+            f"\n\t - Missing: {expected-actual}"
+            f"\n\t - Extra:   {actual-expected}"
+        )
 
 
 def assert_column_lineage(
@@ -130,8 +166,11 @@ def assert_column_lineage(
     actual = {(lineage[0], lineage[-1]) for lineage in set(lr.get_column_lineage())}
 
     assert set(actual) == expected, (
-        f"\n\t{parser_prefix}Expected Lineage: {expected}\n\t{parser_prefix}Actual Lineage: {actual}"
-        f"\n\t{parser_prefix}Differences: {expected-actual} vs {actual-expected}"
+        f"\n\t{parser_prefix}Expected Lineage: {expected}"
+        f"\n\t{parser_prefix}Actual Lineage:   {actual}"
+        f"\n\t{parser_prefix}Differences:"
+        f"\n\t - Missing: {expected-actual}"
+        f"\n\t - Extra:   {actual-expected}"
     )
 
 
@@ -234,56 +273,99 @@ def assert_table_lineage_equal(
     :param skip_graph_check: Skip graph isomorphism check (useful when parsers differ in column lineage)
     """
     runners = []
+    failed = False
+    failed_reason = ""
 
     # SqlGlot (first)
     if test_sqlglot:
         try:
-            lr_sqlglot = _create_lineage_runner_with_timeout(
-                sql, dialect, SqlGlotLineageAnalyzer
+            lr_sqlglot = _create_lineage_runner_with_timeout_for_table_lineage(
+                sql, dialect, SqlGlotLineageAnalyzer, "SqlGlot"
             )
             assert_table_lineage(
                 lr_sqlglot, source_tables, target_tables, parser_name="SqlGlot"
             )
             runners.append(("sqlglot", lr_sqlglot))
+            print("[SqlGlot] ✅ Table lineage assertion passed.")
         except TimeoutError:
-            raise AssertionError(
-                f"[SqlGlot] ⏱️  Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
+            message = (
+                f"[SqlGlot] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
                 f"(SQL length: {len(sql)} chars, dialect: {dialect})"
             )
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except AssertionError as ae:
+            message = f"[SqlGlot] ❌ Table lineage assertion failed: {str(ae)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except Exception as e:
+            message = f"[SqlGlot] ❌ Unexpected error: {str(e)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
 
     # SqlFluff (second)
     if test_sqlfluff:
         try:
-            lr_sqlfluff = _create_lineage_runner_with_timeout(
-                sql, dialect, SqlFluffLineageAnalyzer
+            lr_sqlfluff = _create_lineage_runner_with_timeout_for_table_lineage(
+                sql, dialect, SqlFluffLineageAnalyzer, "SqlFluff"
             )
             assert_table_lineage(
                 lr_sqlfluff, source_tables, target_tables, parser_name="SqlFluff"
             )
             runners.append(("sqlfluff", lr_sqlfluff))
+            print("[SqlFluff] ✅ Table lineage assertion passed.")
         except TimeoutError:
-            raise AssertionError(
-                f"[SqlFluff] ⏱️  Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
+            message = (
+                f"[SqlFluff] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
                 f"(SQL length: {len(sql)} chars, dialect: {dialect})"
             )
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except AssertionError as ae:
+            message = f"[SqlFluff] ❌ Table lineage assertion failed: {str(ae)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except Exception as e:
+            message = f"[SqlFluff] ❌ Unexpected error: {str(e)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
 
     # SqlParse (third)
     if test_sqlparse:
         try:
-            lr_sqlparse = _create_lineage_runner_with_timeout(
-                sql, dialect, SqlParseLineageAnalyzer
+            lr_sqlparse = _create_lineage_runner_with_timeout_for_table_lineage(
+                sql, dialect, SqlParseLineageAnalyzer, "SqlParse"
             )
             assert_table_lineage(
                 lr_sqlparse, source_tables, target_tables, parser_name="SqlParse"
             )
             runners.append(("sqlparse", lr_sqlparse))
+            print("[SqlParse] ✅ Table lineage assertion passed.")
         except TimeoutError:
-            raise AssertionError(
-                f"[SqlParse] ⏱️  Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
+            message = (
+                f"[SqlParse] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
                 f"(SQL length: {len(sql)} chars, dialect: {dialect})"
             )
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except AssertionError as ae:
+            message = f"[SqlParse] ❌ Table lineage assertion failed: {str(ae)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except Exception as e:
+            message = f"[SqlParse] ❌ Unexpected error: {str(e)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
 
-    # Compare graphs between all enabled parsers - ALL must match
     if len(runners) > 1 and not skip_graph_check:
         print(
             f"\n[Graph Check] Comparing table lineage graphs across {len(runners)} parsers..."
@@ -312,13 +394,38 @@ def assert_table_lineage_equal(
                         name1,
                         name2,
                     )
+                    print(
+                        f"[Graph Check] ✅ Table lineage graph comparison passed "
+                        f"between {name1} ({nodes1}n/{edges1}e) and {name2} ({nodes2}n/{edges2}e)."
+                    )
                 except TimeoutError:
-                    raise AssertionError(
-                        f"[Graph Check] ⏱️  Table lineage graph comparison timeout "
+                    message = (
+                        f"[Graph Check] ⏱️ Table lineage graph comparison timeout "
                         f"between {name1} ({nodes1}n/{edges1}e) and {name2} ({nodes2}n/{edges2}e) "
                         f"after {LINEAGE_PARSING_TIMEOUT}s"
                     )
-        print("[Graph Check] All table lineage graph checks complete!")
+                    failed = True
+                    failed_reason += f"{message}\n\n"
+                    print(message)
+                except AssertionError as ae:
+                    message = (
+                        f"[Graph Check] ❌ Table lineage graph comparison failed"
+                        f" between {name1} and {name2}: {str(ae)}"
+                    )
+                    failed = True
+                    failed_reason += f"{message}\n\n"
+                    print(message)
+                except Exception as e:
+                    message = (
+                        f"[Graph Check] ❌ Unexpected error during table lineage graph "
+                        f"comparison between {name1} and {name2}: {str(e)}"
+                    )
+                    failed = True
+                    failed_reason += f"{message}\n\n"
+                    print(message)
+
+    if failed:
+        raise AssertionError(failed_reason)
 
 
 def assert_column_lineage_equal(
@@ -346,48 +453,92 @@ def assert_column_lineage_equal(
     :param skip_graph_check: Skip graph isomorphism check (useful when parsers differ in column lineage)
     """
     runners = []
+    failed = False
+    failed_reason = ""
 
     # SqlGlot (first)
     if test_sqlglot:
         try:
-            lr_sqlglot = _create_lineage_runner_with_timeout(
-                sql, dialect, SqlGlotLineageAnalyzer
+            lr_sqlglot = _create_lineage_runner_with_timeout_for_column_lineage(
+                sql, dialect, SqlGlotLineageAnalyzer, "SqlGlot"
             )
             assert_column_lineage(lr_sqlglot, column_lineages, parser_name="SqlGlot")
             runners.append(("sqlglot", lr_sqlglot))
+            print("[SqlGlot] ✅ Column lineage assertion passed.")
         except TimeoutError:
-            raise AssertionError(
-                f"[SqlGlot] ⏱️  Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
+            message = (
+                f"[SqlGlot] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
                 f"(SQL length: {len(sql)} chars, dialect: {dialect})"
             )
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except AssertionError as ae:
+            message = f"[SqlGlot] ❌ Column lineage assertion failed: {str(ae)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except Exception as e:
+            message = f"[SqlGlot] ❌ Unexpected error: {str(e)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
 
     # SqlFluff (second)
     if test_sqlfluff:
         try:
-            lr_sqlfluff = _create_lineage_runner_with_timeout(
-                sql, dialect, SqlFluffLineageAnalyzer
+            lr_sqlfluff = _create_lineage_runner_with_timeout_for_column_lineage(
+                sql, dialect, SqlFluffLineageAnalyzer, "SqlFluff"
             )
             assert_column_lineage(lr_sqlfluff, column_lineages, parser_name="SqlFluff")
             runners.append(("sqlfluff", lr_sqlfluff))
+            print("[SqlFluff] ✅ Column lineage assertion passed.")
         except TimeoutError:
-            raise AssertionError(
-                f"[SqlFluff] ⏱️  Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
+            message = (
+                f"[SqlFluff] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
                 f"(SQL length: {len(sql)} chars, dialect: {dialect})"
             )
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except AssertionError as ae:
+            message = f"[SqlFluff] ❌ Column lineage assertion failed: {str(ae)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except Exception as e:
+            message = f"[SqlFluff] ❌ Unexpected error: {str(e)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
 
     # SqlParse (third)
     if test_sqlparse:
         try:
-            lr_sqlparse = _create_lineage_runner_with_timeout(
-                sql, dialect, SqlParseLineageAnalyzer
+            lr_sqlparse = _create_lineage_runner_with_timeout_for_column_lineage(
+                sql, dialect, SqlParseLineageAnalyzer, "SqlParse"
             )
             assert_column_lineage(lr_sqlparse, column_lineages, parser_name="SqlParse")
             runners.append(("sqlparse", lr_sqlparse))
+            print("[SqlParse] ✅ Column lineage assertion passed.")
         except TimeoutError:
-            raise AssertionError(
-                f"[SqlParse] ⏱️  Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
+            message = (
+                f"[SqlParse] ⏱️ Parsing timeout after {LINEAGE_PARSING_TIMEOUT}s "
                 f"(SQL length: {len(sql)} chars, dialect: {dialect})"
             )
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except AssertionError as ae:
+            message = f"[SqlParse] ❌ Column lineage assertion failed: {str(ae)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
+        except Exception as e:
+            message = f"[SqlParse] ❌ Unexpected error: {str(e)}"
+            failed = True
+            failed_reason += f"{message}\n\n"
+            print(message)
 
     # Compare graphs between all enabled parsers - ALL must match
     if not skip_graph_check:
@@ -412,13 +563,38 @@ def assert_column_lineage_equal(
                         name1,
                         name2,
                     )
+                    print(
+                        f"[Graph Check] ✅ Column lineage graph comparison passed "
+                        f"between {name1} ({nodes1}n/{edges1}e) and {name2} ({nodes2}n/{edges2}e)."
+                    )
                 except TimeoutError:
-                    raise AssertionError(
-                        f"[Graph Check] ⏱️  Column lineage graph comparison timeout "
+                    message = (
+                        f"[Graph Check] ⏱️ Column lineage graph comparison timeout "
                         f"between {name1} ({nodes1}n/{edges1}e) and {name2} ({nodes2}n/{edges2}e) "
                         f"after {LINEAGE_PARSING_TIMEOUT}s"
                     )
-        print("[Graph Check] Column lineage graph checks complete!")
+                    failed = True
+                    failed_reason += f"{message}\n\n"
+                    print(message)
+                except AssertionError as ae:
+                    message = (
+                        f"[Graph Check] ❌ Column lineage graph comparison failed"
+                        f" between {name1} and {name2}: {str(ae)}"
+                    )
+                    failed = True
+                    failed_reason += f"{message}\n\n"
+                    print(message)
+                except Exception as e:
+                    message = (
+                        f"[Graph Check] ❌ Unexpected error during column lineage graph "
+                        f"comparison between {name1} and {name2}: {str(e)}"
+                    )
+                    failed = True
+                    failed_reason += f"{message}\n\n"
+                    print(message)
+
+    if failed:
+        raise AssertionError(failed_reason)
 
 
 def assert_lr_graphs_match(
