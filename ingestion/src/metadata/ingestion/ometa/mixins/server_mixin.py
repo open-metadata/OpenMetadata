@@ -48,15 +48,13 @@ class OMetaServerMixin:
     """
 
     client: REST
-    _server_version = None
-    _client_version = None
 
     @property
     def server_version(self) -> str:
         """
         Server version property
         """
-        if self._server_version is None:
+        if not hasattr(self, "_server_version") or self._server_version is None:
             self._server_version = self.get_server_version()
         return self._server_version
 
@@ -65,7 +63,7 @@ class OMetaServerMixin:
         """
         Client version property
         """
-        if self._client_version is None:
+        if not hasattr(self, "_client_version") or self._client_version is None:
             self._client_version = get_client_version()
         return self._client_version
 
