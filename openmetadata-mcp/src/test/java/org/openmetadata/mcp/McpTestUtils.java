@@ -48,7 +48,7 @@ public class McpTestUtils {
    */
   public static Map<String, Object> createInitializeRequest() {
     Map<String, Object> params = new HashMap<>();
-    params.put("protocolVersion", "2024-11-05");
+    params.put("protocolVersion", "2025-06-18");
     params.put(
         "capabilities",
         Map.of(

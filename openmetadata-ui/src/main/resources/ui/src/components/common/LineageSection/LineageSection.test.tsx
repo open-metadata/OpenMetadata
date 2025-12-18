@@ -35,7 +35,7 @@ describe('LineageSection', () => {
   describe('Rendering - Loading State', () => {
     it('renders title and loader when isLoading is true', () => {
       render(
-        <LineageSection downstreamCount={0} isLoading upstreamCount={0} />
+        <LineageSection isLoading downstreamCount={0} upstreamCount={0} />
       );
 
       expect(screen.getByText('label.lineage')).toBeInTheDocument();
@@ -44,7 +44,7 @@ describe('LineageSection', () => {
 
     it('does not render upstream/downstream counts when loading', () => {
       render(
-        <LineageSection downstreamCount={5} isLoading upstreamCount={10} />
+        <LineageSection isLoading downstreamCount={5} upstreamCount={10} />
       );
 
       expect(screen.queryByTestId('upstream-lineage')).not.toBeInTheDocument();
@@ -186,7 +186,7 @@ describe('LineageSection', () => {
   describe('Edge Cases - State Transitions', () => {
     it('transitions from loading to no lineage correctly', () => {
       const { rerender } = render(
-        <LineageSection downstreamCount={0} isLoading upstreamCount={0} />
+        <LineageSection isLoading downstreamCount={0} upstreamCount={0} />
       );
 
       expect(screen.getByTestId('loader')).toBeInTheDocument();
@@ -210,7 +210,7 @@ describe('LineageSection', () => {
 
     it('transitions from loading to with data correctly', () => {
       const { rerender } = render(
-        <LineageSection downstreamCount={0} isLoading upstreamCount={0} />
+        <LineageSection isLoading downstreamCount={0} upstreamCount={0} />
       );
 
       expect(screen.getByTestId('loader')).toBeInTheDocument();
@@ -230,31 +230,31 @@ describe('LineageSection', () => {
 
     it('transitions from data to loading correctly', () => {
       const { rerender } = render(
-        <LineageSection downstreamCount={5} isLoading={false} upstreamCount={10} />
+        <LineageSection
+          downstreamCount={5}
+          isLoading={false}
+          upstreamCount={10}
+        />
       );
 
       expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument();
       expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
 
       rerender(
-        <LineageSection downstreamCount={5} isLoading upstreamCount={10} />
+        <LineageSection isLoading downstreamCount={5} upstreamCount={10} />
       );
 
       expect(screen.getByTestId('loader')).toBeInTheDocument();
-      expect(
-        screen.queryByTestId('upstream-lineage')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('upstream-lineage')).not.toBeInTheDocument();
     });
 
     it('handles loading state with non-zero counts', () => {
       render(
-        <LineageSection downstreamCount={10} isLoading upstreamCount={20} />
+        <LineageSection isLoading downstreamCount={10} upstreamCount={20} />
       );
 
       expect(screen.getByTestId('loader')).toBeInTheDocument();
-      expect(
-        screen.queryByTestId('upstream-lineage')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('upstream-lineage')).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('downstream-lineage')
       ).not.toBeInTheDocument();
