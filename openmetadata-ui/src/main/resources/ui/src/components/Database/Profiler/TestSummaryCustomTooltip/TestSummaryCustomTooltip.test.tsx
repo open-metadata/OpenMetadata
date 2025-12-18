@@ -61,7 +61,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTimeLong: jest
     .fn()
     .mockReturnValue('Jan 3, 2024, 6:45 PM (UTC+05:30)'),
-  convertMillisecondsToHumanReadableFormat: jest
+  convertSecondsToHumanReadableFormat: jest
     .fn()
     .mockReturnValue('7Y 2M 22d 9m 24s'),
 }));
@@ -88,29 +88,29 @@ describe('Test TestSummaryCustomTooltip component', () => {
     expect(
       await screen.findByTestId('test-summary-tooltip-container')
     ).toBeInTheDocument();
-    expect((await screen.findByTestId('status')).textContent).toEqual('Failed');
-    expect((await screen.findByTestId('minValueLength')).textContent).toEqual(
+    expect((await screen.findByTestId('status')).textContent).toBe('Failed');
+    expect((await screen.findByTestId('minValueLength')).textContent).toBe(
       '12'
     );
-    expect((await screen.findByTestId('maxValueLength')).textContent).toEqual(
+    expect((await screen.findByTestId('maxValueLength')).textContent).toBe(
       '24'
     );
-    expect((await screen.findByTestId('passedRows')).textContent).toEqual('4');
-    expect((await screen.findByTestId('failedRows')).textContent).toEqual('2');
+    expect((await screen.findByTestId('passedRows')).textContent).toBe('4');
+    expect((await screen.findByTestId('failedRows')).textContent).toBe('2');
     expect(
       (await screen.findByTestId('passedRowsPercentage')).textContent
-    ).toEqual('60%');
+    ).toBe('60%');
     expect(
       (await screen.findByTestId('failedRowsPercentage')).textContent
-    ).toEqual('40%');
+    ).toBe('40%');
     expect(screen.queryByText('name')).not.toBeInTheDocument();
   });
 
   it('should display freshness in values in milliseconds', async () => {
     render(<TestSummaryCustomTooltip {...mockPropsWithFreshness} />);
 
-    expect((await screen.findByTestId('status')).textContent).toEqual('Failed');
-    expect((await screen.findByTestId('freshness')).textContent).toEqual(
+    expect((await screen.findByTestId('status')).textContent).toBe('Failed');
+    expect((await screen.findByTestId('freshness')).textContent).toBe(
       '7Y 2M 22d 9m 24s'
     );
   });
