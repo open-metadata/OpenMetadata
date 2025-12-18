@@ -17,8 +17,9 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
-import { setPersonaAsDefault } from '../../utils/persona';
+import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -26,12 +27,6 @@ const PERSONA_DETAILS = {
   name: `test-persona-${uuid()}`,
   displayName: `Test Persona ${uuid()}`,
   description: `Test persona for deletion ${uuid()}.`,
-};
-
-const DEFAULT_PERSONA_DETAILS = {
-  name: `default-persona-${uuid()}`,
-  displayName: `Default Persona ${uuid()}`,
-  description: `Default persona for deletion ${uuid()}.`,
 };
 
 test.describe.serial('User profile works after persona deletion', () => {
@@ -99,9 +94,19 @@ test.describe.serial('User profile works after persona deletion', () => {
         .click();
       await page.getByTestId('selectable-list-update-btn').click();
 
+      const createPersona = page.waitForResponse('/api/v1/personas');
+      const listPersonas = page.waitForResponse('/api/v1/personas?*');
+
       await page.getByRole('button', { name: 'Create' }).click();
 
+      await createPersona;
+      await listPersonas;
+
+      await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
+
       // Verify persona was created
+      await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, false);
+
       await expect(
         page.getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
       ).toBeVisible();
@@ -135,15 +140,12 @@ test.describe.serial('User profile works after persona deletion', () => {
 
     // Step 3: Delete the persona
     await test.step('Delete the persona', async () => {
+      const listPersonas = page.waitForResponse('/api/v1/personas?*');
       await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
+      await listPersonas;
+      await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
 
-      await page
-        .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-        .click();
+      await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name);
       await page.waitForLoadState('networkidle');
 
       await page.click('[data-testid="manage-button"]');
@@ -212,220 +214,6 @@ test.describe.serial('User profile works after persona deletion', () => {
           if (personaText && !personaText.includes('No persona assigned')) {
             throw new Error(`User still shows deleted persona: ${personaText}`);
           }
-        }
-      }
-    );
-  });
-
-  // Mark as skipped since manual testing confirms this works
-  // The test fails due to timing/caching issues in the test environment
-  // but manual testing confirms default persona deletion works correctly
-  test.skip('User profile loads correctly after DEFAULT persona deletion', async ({
-    page,
-  }) => {
-    // Step 1: Create persona and set it as default for user
-    await test.step('Create default persona with user', async () => {
-      await redirectToHomePage(page);
-      await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      // Create persona
-      await page.getByTestId('add-persona-button').click();
-
-      await validateFormNameFieldInput({
-        page,
-        value: DEFAULT_PERSONA_DETAILS.name,
-        fieldName: 'Name',
-        fieldSelector: '[data-testid="name"]',
-        errorDivSelector: '#name_help',
-      });
-
-      await page
-        .getByTestId('displayName')
-        .fill(DEFAULT_PERSONA_DETAILS.displayName);
-      await page
-        .locator(descriptionBox)
-        .fill(DEFAULT_PERSONA_DETAILS.description);
-
-      // Add user to persona during creation
-      const userListResponse = page.waitForResponse(
-        '/api/v1/users?limit=*&isBot=false*'
-      );
-      await page.getByTestId('add-users').click();
-      await userListResponse;
-
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      const searchUser = page.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(
-          user.responseData.displayName
-        )}*`
-      );
-      await page.getByTestId('searchbar').fill(user.responseData.displayName);
-      await searchUser;
-
-      await page
-        .getByRole('listitem', { name: user.responseData.displayName })
-        .click();
-      await page.getByTestId('selectable-list-update-btn').click();
-
-      await page.getByRole('button', { name: 'Create' }).click();
-
-      // Verify persona was created
-      await expect(
-        page.getByTestId(`persona-details-card-${DEFAULT_PERSONA_DETAILS.name}`)
-      ).toBeVisible();
-
-      // Set this persona as default
-      await page
-        .getByTestId(`persona-details-card-${DEFAULT_PERSONA_DETAILS.name}`)
-        .click();
-      await page.waitForLoadState('networkidle');
-
-      // Use the helper function to set as default
-      await setPersonaAsDefault(page);
-
-      // Go back to personas list
-      await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
-    });
-
-    // Step 2: Navigate directly to user profile and verify default persona is shown
-    await test.step(
-      'Verify default persona appears on user profile',
-      async () => {
-        // Go directly to user profile URL
-        await page.goto(
-          `http://localhost:8585/users/${user.responseData.name}`
-        );
-        await page.waitForLoadState('networkidle');
-
-        // Check if persona appears on the user profile
-        const personaCard = page.getByTestId('persona-details-card');
-
-        await expect(personaCard).toBeVisible();
-
-        // Look for both regular persona and default persona sections
-        await personaCard
-          .locator('[data-testid="persona-list"]')
-          .first()
-          .textContent();
-
-        // Check if default persona text exists
-        const defaultPersonaSections = personaCard.locator(
-          '[data-testid="persona-list"]'
-        );
-        const count = await defaultPersonaSections.count();
-
-        for (let i = 0; i < count; i++) {
-          const text = await defaultPersonaSections.nth(i).textContent();
-          if (text?.includes('Default Persona')) {
-            const parentDiv = defaultPersonaSections.nth(i).locator('..');
-            const siblingText = await parentDiv.locator('..').textContent();
-
-            if (!siblingText?.includes('No default persona')) {
-              // User has default persona assigned
-            }
-          }
-        }
-      }
-    );
-
-    // Step 3: Delete the default persona
-    await test.step('Delete the default persona', async () => {
-      await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-
-      await page
-        .getByTestId(`persona-details-card-${DEFAULT_PERSONA_DETAILS.name}`)
-        .click();
-      await page.waitForLoadState('networkidle');
-
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="delete-button-title"]');
-
-      await expect(page.locator('.ant-modal-header')).toContainText(
-        DEFAULT_PERSONA_DETAILS.displayName
-      );
-
-      await page.click(`[data-testid="hard-delete-option"]`);
-
-      await expect(
-        page.locator('[data-testid="confirm-button"]')
-      ).toBeDisabled();
-
-      await page
-        .locator('[data-testid="confirmation-text-input"]')
-        .fill(DELETE_TERM);
-
-      const deleteResponse = page.waitForResponse(
-        `/api/v1/personas/*?hardDelete=true&recursive=false`
-      );
-
-      await expect(
-        page.locator('[data-testid="confirm-button"]')
-      ).not.toBeDisabled();
-
-      await page.click('[data-testid="confirm-button"]');
-      await deleteResponse;
-
-      await page.waitForURL('**/settings/persona');
-    });
-
-    // Step 4: Go back to user profile and verify it still loads after default persona deletion
-    await test.step(
-      'Verify user profile still loads after DEFAULT persona deletion',
-      async () => {
-        // Go directly to user profile URL again
-        await page.goto(
-          `http://localhost:8585/users/${user.responseData.name}`
-        );
-        await page.waitForLoadState('networkidle');
-
-        // User profile should load without errors
-        // Check if the user name is displayed (this means the page loaded)
-        const userName = page.getByTestId('nav-user-name');
-
-        await expect(userName).toBeVisible();
-
-        // Verify the persona card shows "No default persona" now
-        const personaCard = page.getByTestId('persona-details-card');
-
-        await expect(personaCard).toBeVisible();
-
-        // Check all persona sections
-        const defaultPersonaSections = personaCard.locator(
-          '[data-testid="persona-list"]'
-        );
-        const count = await defaultPersonaSections.count();
-
-        let foundDefaultPersonaSection = false;
-        for (let i = 0; i < count; i++) {
-          const text = await defaultPersonaSections.nth(i).textContent();
-          if (text?.includes('Default Persona')) {
-            foundDefaultPersonaSection = true;
-            const parentDiv = defaultPersonaSections.nth(i).locator('..');
-            const siblingContent = await parentDiv.locator('..').textContent();
-
-            // Should show "No default persona" after deletion
-            if (!siblingContent?.includes('No default persona')) {
-              throw new Error(
-                `User still shows deleted default persona in profile`
-              );
-            }
-          }
-        }
-
-        if (!foundDefaultPersonaSection) {
-          // No default persona section found, which is also acceptable
         }
       }
     );
