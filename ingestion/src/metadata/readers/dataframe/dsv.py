@@ -33,9 +33,13 @@ from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 TSV_SEPARATOR = "\t"
 CSV_SEPARATOR = ","
+MAXIMUM_CHUNKS = 5
 
 
 class DSVDataFrameReader(DataFrameReader):
@@ -58,6 +62,7 @@ class DSVDataFrameReader(DataFrameReader):
         path: str,
         storage_options: Optional[Dict[str, Any]] = None,
         compression: Optional[str] = None,
+        max_chunks: Optional[int] = MAXIMUM_CHUNKS,
     ) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
@@ -74,19 +79,40 @@ class DSVDataFrameReader(DataFrameReader):
             compression=compression,
             encoding_errors="ignore",
         ) as reader:
+            chunk_count = 0
             for chunks in reader:
                 chunk_list.append(chunks)
+
+                chunk_count += 1
+                if chunk_count >= max_chunks:
+                    logger.info(
+                        f"Reached max_chunks limit ({max_chunks}) for file: {path}. "
+                        f"File may contain more data."
+                    )
+                    break
 
         return DatalakeColumnWrapper(dataframes=chunk_list)
 
     @singledispatchmethod
     def _read_dsv_dispatch(
-        self, config_source: ConfigSource, key: str, bucket_name: str
+        self,
+        config_source: ConfigSource,
+        key: str,
+        bucket_name: str,
+        max_chunks: Optional[int] = MAXIMUM_CHUNKS,
     ) -> DatalakeColumnWrapper:
-        raise FileFormatException(config_source=config_source, file_name=key)
+        raise FileFormatException(
+            config_source=config_source, file_name=key, max_chunks=max_chunks
+        )
 
     @_read_dsv_dispatch.register
-    def _(self, _: GCSConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+    def _(
+        self,
+        _: GCSConfig,
+        key: str,
+        bucket_name: str,
+        max_chunks: Optional[int] = MAXIMUM_CHUNKS,
+    ) -> DatalakeColumnWrapper:
         """
         Read the CSV file from the gcs bucket and return a dataframe
         """
@@ -96,10 +122,18 @@ class DSVDataFrameReader(DataFrameReader):
             compression = "gzip"
 
         path = f"gs://{bucket_name}/{key}"
-        return self.read_from_pandas(path=path, compression=compression)
+        return self.read_from_pandas(
+            path=path, compression=compression, max_chunks=max_chunks
+        )
 
     @_read_dsv_dispatch.register
-    def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+    def _(
+        self,
+        _: S3Config,
+        key: str,
+        bucket_name: str,
+        max_chunks: Optional[int] = MAXIMUM_CHUNKS,
+    ) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         # Determine compression based on file extension
@@ -119,13 +153,28 @@ class DSVDataFrameReader(DataFrameReader):
             chunksize=CHUNKSIZE,
             compression=compression,
         ) as reader:
+            chunk_count = 0
             for chunks in reader:
                 chunk_list.append(chunks)
+
+                chunk_count += 1
+                if chunk_count >= max_chunks:
+                    logger.info(
+                        f"Reached max_chunks limit ({max_chunks}) for S3 file: s3://{bucket_name}/{key}. "
+                        f"File may contain more data."
+                    )
+                    break
 
         return DatalakeColumnWrapper(dataframes=chunk_list)
 
     @_read_dsv_dispatch.register
-    def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
+    def _(
+        self,
+        _: AzureConfig,
+        key: str,
+        bucket_name: str,
+        max_chunks: Optional[int] = MAXIMUM_CHUNKS,
+    ) -> DatalakeColumnWrapper:
         # Determine compression based on file extension
         compression = None
         if key.endswith(".gz"):
@@ -141,22 +190,36 @@ class DSVDataFrameReader(DataFrameReader):
             path=path,
             storage_options=storage_options,
             compression=compression,
+            max_chunks=max_chunks,
         )
 
     @_read_dsv_dispatch.register
     def _(  # pylint: disable=unused-argument
-        self, _: LocalConfig, key: str, bucket_name: str
+        self,
+        _: LocalConfig,
+        key: str,
+        bucket_name: str,
+        max_chunks: Optional[int] = MAXIMUM_CHUNKS,
     ) -> DatalakeColumnWrapper:
         # Determine compression based on file extension
         compression = None
         if key.endswith(".gz"):
             compression = "gzip"
 
-        return self.read_from_pandas(path=key, compression=compression)
+        return self.read_from_pandas(
+            path=key, compression=compression, max_chunks=max_chunks
+        )
 
-    def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
+    def _read(
+        self,
+        *,
+        key: str,
+        bucket_name: str,
+        max_chunks: Optional[int] = MAXIMUM_CHUNKS,
+        **__,
+    ) -> DatalakeColumnWrapper:
         return self._read_dsv_dispatch(
-            self.config_source, key=key, bucket_name=bucket_name
+            self.config_source, key=key, bucket_name=bucket_name, max_chunks=max_chunks
         )
 
 
