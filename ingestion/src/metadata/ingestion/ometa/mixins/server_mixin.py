@@ -48,6 +48,26 @@ class OMetaServerMixin:
     """
 
     client: REST
+    _server_version = None
+    _client_version = None
+
+    @property
+    def server_version(self) -> str:
+        """
+        Server version property
+        """
+        if self._server_version is None:
+            self._server_version = self.get_server_version()
+        return self._server_version
+
+    @property
+    def client_version(self) -> str:
+        """
+        Client version property
+        """
+        if self._client_version is None:
+            self._client_version = get_client_version()
+        return self._client_version
 
     def get_server_version(self) -> str:
         """
@@ -68,16 +88,13 @@ class OMetaServerMixin:
         Validate Server & Client versions. They should match.
         Otherwise, raise VersionMismatchException
         """
-        server_version = self.get_server_version()
-        client_version = get_client_version()
-
         logger.info(
-            f"OpenMetadata client running with Server version [{server_version}] and Client version [{client_version}]"
+            f"OpenMetadata client running with Server version [{self.server_version}] and Client version [{self.client_version}]"
         )
 
-        if not match_versions(server_version, client_version):
+        if not match_versions(self.server_version, self.client_version):
             raise VersionMismatchException(
-                f"Server version is {server_version} vs. Client version {client_version}."
+                f"Server version is {self.server_version} vs. Client version {self.client_version}."
                 f" Major and minor versions should match."
             )
 
