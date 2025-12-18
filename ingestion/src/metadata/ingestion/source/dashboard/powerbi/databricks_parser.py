@@ -3,8 +3,8 @@ from typing import List, Optional
 
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.utils.logger import ingestion_logger
 from metadata.ingestion.source.dashboard.powerbi.models import Dataset
+from metadata.utils.logger import ingestion_logger
 
 NATIVE_QUERY_PARSER_EXPRESSION = re.compile(
     r"Value\.NativeQuery\(\s*"
@@ -57,8 +57,8 @@ def parse_databricks_native_query_source(
         details = groups.groupdict()
         catalog_info = details.get("catalog_info", "")
         catalog_parameters = details.get("catalog_parameters", "")
-        catalog_info_match = re.match(
-            r".*Catalog\s*=\s*(?P<catalog>[^,]+?)\s*,", catalog_info, re.DOTALL
+        catalog_info_match = re.search(
+            r"\[\s*,?\s*Catalog\s*=\s*(?P<catalog>[^,]+)\s*,", catalog_info, re.DOTALL
         )
         if not catalog_info_match:
             logger.error(f"Could not find catalog in info: {catalog_info}")
@@ -67,7 +67,7 @@ def parse_databricks_native_query_source(
             catalog_groups = catalog_info_match.groupdict()
             catalog = catalog_groups.get("catalog", None)
         database_match = re.search(
-            r'Name\s*=\s*(?P<database>[^,]+?)\s*,\s*Kind\s*=\s*"Database"',
+            r'Name\s*=\s*(?P<database>[^,]+)\s*,\s*Kind\s*=\s*"Database"',
             catalog_parameters,
         )
 
