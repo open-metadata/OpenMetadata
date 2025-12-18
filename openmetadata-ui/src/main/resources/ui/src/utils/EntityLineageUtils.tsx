@@ -160,6 +160,17 @@ export const centerNodePosition = (
   );
 };
 
+export const focusToCoordinates = (
+  position: { x: number; y: number },
+  reactFlowInstance?: ReactFlowInstance,
+  zoomValue?: number
+) => {
+  reactFlowInstance?.setCenter(position.x, position.y + NODE_HEIGHT / 2, {
+    zoom: zoomValue ?? ZOOM_VALUE,
+    duration: ZOOM_TRANSITION_DURATION,
+  });
+};
+
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
   return;
 };
@@ -247,6 +258,7 @@ const layoutOptions = {
   'elk.layered.spacing.nodeNodeBetweenLayers': 50,
   'elk.layered.nodePlacement.strategy': 'SIMPLE',
   'elk.partitioning.activate': 'true',
+  'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
 };
 
 const elk = new ELK();
