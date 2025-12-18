@@ -132,7 +132,7 @@ Use stable selectors that won't change with visual updates. Prefer `data-testid`
 
 2. **Global Setup Utilisation**: Setups/operations commonly used across multiple test files should be moved to global setups/fixtures. Ex. `auth.setup.ts`, `entity-data.setup.ts`, `playwright/e2e/fixtures/pages.ts`.
     - `auth.setup.ts` -> Used for signing in of users with different roles, which can be used in all tests.
-    - `entity-data.setup.ts` -> Each type of data asset is created to avoid the data creation in each test file. `Note: No edit/delete operations should be performed on these assets since it can impact the other tests`
+    - `entity-data.setup.ts` -> Each type of data asset is created to avoid the data creation in each test file. `Note: No edit/delete operations should be performed on these assets since it can impact the other tests. For such cases asset creation should be performed separately for that test in beforeAll.`
     - `playwright/e2e/fixtures/pages.ts` -> contains fixture-based setup of logged-in pages for users with different roles like admin, data consumer, data steward, etc. These pages can be directly used in the specs by using the exported `test` from the file.
 
 3. **Test Setups via API**: Setup operations should be handled via API rather than UI — see **[API Setups for Test Data](#api-setups-for-test-data)** for detailed patterns and examples.
