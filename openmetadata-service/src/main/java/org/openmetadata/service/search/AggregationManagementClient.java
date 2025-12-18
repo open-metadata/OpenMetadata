@@ -6,6 +6,7 @@ import java.io.IOException;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Interface for search aggregation operations.
@@ -34,6 +35,23 @@ public interface AggregationManagementClient {
    */
   DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException;
+
+  /**
+   * Execute a generic aggregation for data quality reporting with RBAC enforcement.
+   *
+   * @param query the search query
+   * @param index the index to search
+   * @param aggregationMetadata the aggregation metadata
+   * @param subjectContext the subject context for RBAC enforcement
+   * @return the data quality report
+   * @throws IOException if the aggregation operation fails
+   */
+  DataQualityReport genericAggregation(
+      String query,
+      String index,
+      SearchAggregation aggregationMetadata,
+      SubjectContext subjectContext)
+      throws IOException;
 
   /**
    * Execute an aggregation query and return aggregation results.
