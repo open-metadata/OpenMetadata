@@ -7,15 +7,15 @@
 | Metric | Count |
 |--------|-------|
 | **Components** | 30 |
-| **Test Files** | 137 |
-| **Test Cases** | 2191 |
-| **Total Scenarios** | 3088 🚀 |
+| **Test Files** | 139 |
+| **Test Cases** | 2211 |
+| **Total Scenarios** | 3107 🚀 |
 
 ---
 
 ## Governance
 
-> **6 Components** | **503 Tests** | **933 Scenarios**
+> **6 Components** | **509 Tests** | **939 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
@@ -23,23 +23,23 @@
 | [Data Contracts](./Governance.md#data-contracts) | 2 | 86 | 429 | 0 |
 | [Glossary](./Governance.md#glossary) | 6 | 52 | 84 | 0 |
 | [Domains & Data Products](./Governance.md#domains-data-products) | 4 | 35 | 57 | 0 |
-| [Tags](./Governance.md#tags) | 6 | 28 | 43 | 0 |
+| [Tags](./Governance.md#tags) | 7 | 34 | 49 | 0 |
 | [Metrics](./Governance.md#metrics) | 3 | 9 | 16 | 0 |
 
 ## Platform
 
-> **12 Components** | **1238 Tests** | **1615 Scenarios**
+> **12 Components** | **1256 Tests** | **1632 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Entities](./Platform.md#entities) | 15 | 926 | 1093 | 0 |
-| [Users & Teams](./Platform.md#users-teams) | 9 | 81 | 104 | 0 |
-| [Other](./Platform.md#other) | 17 | 60 | 71 | 0 |
+| [Entities](./Platform.md#entities) | 15 | 940 | 1107 | 0 |
+| [Users & Teams](./Platform.md#users-teams) | 9 | 80 | 100 | 0 |
+| [Other](./Platform.md#other) | 18 | 64 | 75 | 0 |
 | [Personas & Customizations](./Platform.md#personas-customizations) | 5 | 44 | 142 | 0 |
 | [Navigation](./Platform.md#navigation) | 4 | 38 | 38 | 0 |
-| [Lineage (UI)](./Platform.md#lineage-ui-) | 3 | 30 | 83 | 0 |
+| [Lineage (UI)](./Platform.md#lineage-ui-) | 3 | 32 | 87 | 0 |
 | [RBAC](./Platform.md#rbac) | 4 | 19 | 34 | 0 |
-| [Settings](./Platform.md#settings) | 5 | 15 | 19 | 0 |
+| [Settings](./Platform.md#settings) | 5 | 14 | 18 | 0 |
 | [SSO](./Platform.md#sso) | 1 | 10 | 10 | 0 |
 | [Authentication](./Platform.md#authentication) | 2 | 7 | 7 | 0 |
 | [App Marketplace](./Platform.md#app-marketplace) | 2 | 5 | 11 | 0 |
@@ -72,11 +72,11 @@
 
 ## Integration
 
-> **1 Components** | **56 Tests** | **59 Scenarios**
+> **1 Components** | **52 Tests** | **55 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Connectors](./Integration.md#connectors) | 5 | 56 | 59 | 0 |
+| [Connectors](./Integration.md#connectors) | 5 | 52 | 55 | 0 |
 
 
-*Last updated: 2025-12-17*
+*Last updated: 2025-12-18*

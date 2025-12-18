@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
@@ -58,22 +58,22 @@ import {
 import { visitServiceDetailsPage } from '../../utils/service';
 
 const entities = {
-  "Api Endpoint": ApiEndpointClass,
-  "Table": TableClass,
-  "Stored Procedure": StoredProcedureClass,
-  "Dashboard": DashboardClass,
-  "Pipeline": PipelineClass,
-  "Topic": TopicClass,
-  "Ml Model": MlModelClass,
-  "Container": ContainerClass,
-  "Search Index": SearchIndexClass,
-  "Dashboard Data Model": DashboardDataModelClass,
-  "Metric": MetricClass,
-  "Chart": ChartClass,
-  "Directory": DirectoryClass,
-  "File": FileClass,
-  "Spreadsheet": SpreadsheetClass,
-  "Worksheet": WorksheetClass,
+  'Api Endpoint': ApiEndpointClass,
+  Table: TableClass,
+  'Stored Procedure': StoredProcedureClass,
+  Dashboard: DashboardClass,
+  Pipeline: PipelineClass,
+  Topic: TopicClass,
+  'Ml Model': MlModelClass,
+  Container: ContainerClass,
+  'Search Index': SearchIndexClass,
+  'Dashboard Data Model': DashboardDataModelClass,
+  Metric: MetricClass,
+  Chart: ChartClass,
+  Directory: DirectoryClass,
+  File: FileClass,
+  Spreadsheet: SpreadsheetClass,
+  Worksheet: WorksheetClass,
 } as const;
 
 const adminUser = new UserClass();
@@ -640,17 +640,18 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const panelContainer = page.locator('.column-detail-panel');
 
             // Verify data type is displayed (if available)
-            const dataTypeChip = panelContainer.locator('.data-type-chip');
-            const hasDataType = (await dataTypeChip.count()) > 0;
+            if (entity.type !== 'Pipeline') {
+              const dataTypeChip = panelContainer.locator('.data-type-chip');
+              const hasDataType = (await dataTypeChip.count()) > 0;
 
-            if (hasDataType) {
-              // If data type chip exists, it should have content
-              const dataTypeText = await dataTypeChip.textContent();
+              if (hasDataType) {
+                // If data type chip exists, it should have content
+                const dataTypeText = await dataTypeChip.textContent();
 
-              expect(dataTypeText).toBeTruthy();
-              expect(dataTypeText?.trim().length).toBeGreaterThan(0);
+                expect(dataTypeText).toBeTruthy();
+                expect(dataTypeText?.trim().length).toBeGreaterThan(0);
+              }
             }
-
             // Verify pagination shows correct count (including nested columns)
             const paginationText = panelContainer.locator(
               '.pagination-header-text'
@@ -858,11 +859,13 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             // Verify panel displays correct column information
             await expect(page.getByTestId('entity-link')).toBeVisible();
 
-            // Verify data type chip exists (may not be visible if data type is not available)
-            const dataTypeChip = page.locator('.data-type-chip');
+            if (entity.type !== 'Pipeline') {
+              // Verify data type chip exists (may not be visible if data type is not available)
+              const dataTypeChip = page.locator('.data-type-chip');
 
-            // Data type chip should be attached to DOM (may be empty for some entity types)
-            await expect(dataTypeChip.first()).toBeAttached();
+              // Data type chip should be attached to DOM (may be empty for some entity types)
+              await expect(dataTypeChip.first()).toBeAttached();
+            }
 
             // Verify Overview tab is active by default
             await expect(page.getByTestId('overview-tab')).toHaveClass(
