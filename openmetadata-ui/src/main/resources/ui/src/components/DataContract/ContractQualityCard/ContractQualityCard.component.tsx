@@ -19,13 +19,14 @@ import { ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import { TEST_CASE_STATUS_ICON } from '../../../constants/DataQuality.constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { DataContract } from '../../../generated/entity/data/dataContract';
-import { TestCase, TestSummary } from '../../../generated/tests/testCase';
-import {
-  getListTestCaseBySearch,
-  getTestCaseExecutionSummary,
-} from '../../../rest/testAPI';
+import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
+import { Include } from '../../../generated/type/include';
+import { useFqn } from '../../../hooks/useFqn';
+import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import { getTestCaseDetailPagePath } from '../../../utils/RouterUtils';
+import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
@@ -34,33 +35,26 @@ import './contract-quality-card.less';
 const ContractQualityCard: React.FC<{
   contract: DataContract;
   contractStatus?: string;
-}> = ({ contract, contractStatus }) => {
+  latestContractResults?: DataContractResult;
+}> = ({ contract, contractStatus, latestContractResults }) => {
   const { t } = useTranslation();
+  const { fqn } = useFqn();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
-  const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
-  const [testCaseResult, setTestCaseResult] = useState<TestCase[]>([]);
-
-  const fetchTestCaseSummary = async () => {
-    try {
-      const response = await getTestCaseExecutionSummary(
-        contract?.testSuite?.id
-      );
-      setTestCaseSummary(response);
-    } catch {
-      // silent fail
-    }
-  };
+  const [testCase, setTestCase] = useState<TestCase[]>([]);
 
   const fetchTestCases = async () => {
     setIsTestCaseLoading(true);
     try {
-      const response = await getListTestCaseBySearch({
-        testSuiteId: contract?.testSuite?.id,
+      const { data } = await getListTestCaseBySearch({
         ...DEFAULT_SORT_ORDER,
+        entityLink: generateEntityLink(fqn ?? ''),
+        includeAllTests: true,
         limit: ES_MAX_PAGE_SIZE,
+        include: Include.NonDeleted,
       });
-      setTestCaseResult(response.data);
-    } catch {
+
+      setTestCase(data);
+    } catch (error) {
       showErrorToast(
         t('server.entity-fetch-error', {
           entity: t('label.test-case-plural'),
@@ -71,44 +65,73 @@ const ContractQualityCard: React.FC<{
     }
   };
 
-  const { showTestCaseSummaryChart, segmentWidths } = useMemo(() => {
-    const total = testCaseSummary?.total ?? 0;
-    const success = testCaseSummary?.success ?? 0;
-    const failed = testCaseSummary?.failed ?? 0;
-    const aborted = testCaseSummary?.aborted ?? 0;
+  const {
+    showTestCaseSummaryChart,
+    segmentWidths,
+    total,
+    success,
+    failed,
+    aborted,
+  } = useMemo(() => {
+    if (!latestContractResults?.qualityValidation) {
+      return {
+        showTestCaseSummaryChart: false,
+        segmentWidths: {
+          successPercent: 0,
+          failedPercent: 0,
+          abortedPercent: 0,
+        },
+        total: 0,
+        success: 0,
+        failed: 0,
+        aborted: 0,
+      };
+    }
+
+    const { qualityValidation } = latestContractResults;
+    const total = qualityValidation?.total ?? 0;
+    const success = qualityValidation?.passed ?? 0;
+    const failed = qualityValidation?.failed ?? 0;
+    const aborted = total - success - failed;
 
     const successPercent = (success / total) * 100;
     const failedPercent = (failed / total) * 100;
     const abortedPercent = (aborted / total) * 100;
 
     return {
-      showTestCaseSummaryChart: Boolean(total),
+      showTestCaseSummaryChart: true,
       segmentWidths: {
         successPercent,
         failedPercent,
         abortedPercent,
       },
+      total,
+      success,
+      failed,
+      aborted,
     };
-  }, [testCaseSummary]);
+  }, [latestContractResults?.qualityValidation]);
 
-  const getTestCaseStatusIcon = (record: TestCase) => (
-    <Icon
-      className="test-status-icon"
-      component={
-        TEST_CASE_STATUS_ICON[
-          (record?.testCaseResult?.testCaseStatus ??
-            'Queued') as keyof typeof TEST_CASE_STATUS_ICON
-        ]
-      }
-    />
-  );
+  const processedQualityExpectations = useMemo(() => {
+    const testCaseResultsMap = new Map(
+      testCase.map((result) => [result.id, result])
+    );
+
+    const mergedData = contract.qualityExpectations?.map((item) => ({
+      id: item.id,
+      name: item.name,
+      fullyQualifiedName: `${fqn}.${item.name}`,
+      testCaseStatus:
+        testCaseResultsMap.get(item.id)?.testCaseStatus ??
+        TestCaseStatus.Queued,
+    }));
+
+    return mergedData ?? [];
+  }, [contract, testCase]);
 
   useEffect(() => {
-    if (contract?.testSuite?.id) {
-      fetchTestCaseSummary();
-      fetchTestCases();
-    }
-  }, [contract]);
+    fetchTestCases();
+  }, []);
 
   if (isTestCaseLoading) {
     return <Loader />;
@@ -123,9 +146,7 @@ const ContractQualityCard: React.FC<{
               {`${t('label.total-entity', {
                 entity: t('label.test'),
               })}:`}{' '}
-              <span className="data-quality-total-test-value">
-                {testCaseSummary?.total || 8000}
-              </span>
+              <span className="data-quality-total-test-value">{total}</span>
             </Typography.Text>
 
             <div className="data-quality-line-chart-container">
@@ -154,27 +175,21 @@ const ContractQualityCard: React.FC<{
                 <div className="data-quality-legends-dot success" />
                 <Typography.Text className="data-quality-legends-label">
                   {`${t('label.success')}:`}{' '}
-                  <span className="data-quality-legends-value">
-                    {testCaseSummary?.success}
-                  </span>
+                  <span className="data-quality-legends-value">{success}</span>
                 </Typography.Text>
               </div>
               <div className="data-quality-legends-item">
                 <div className="data-quality-legends-dot failed" />
                 <Typography.Text className="data-quality-legends-label">
                   {`${t('label.failed')}:`}{' '}
-                  <span className="data-quality-legends-value">
-                    {testCaseSummary?.failed}
-                  </span>
+                  <span className="data-quality-legends-value">{failed}</span>
                 </Typography.Text>
               </div>
               <div className="data-quality-legends-item">
                 <div className="data-quality-legends-dot aborted" />
                 <Typography.Text className="data-quality-legends-label">
                   {`${t('label.aborted')}:`}{' '}
-                  <span className="data-quality-legends-value">
-                    {testCaseSummary?.aborted}
-                  </span>
+                  <span className="data-quality-legends-value">{aborted}</span>
                 </Typography.Text>
               </div>
             </div>
@@ -185,18 +200,19 @@ const ContractQualityCard: React.FC<{
           className="data-quality-test-item-container"
           direction="vertical"
           size={14}>
-          {testCaseResult.map((item) => {
+          {processedQualityExpectations.map((item) => {
             return (
               <div
                 className="data-quality-item d-flex items-center"
                 key={item.id}>
-                {getTestCaseStatusIcon(item)}
+                <Icon
+                  className="test-status-icon"
+                  component={TEST_CASE_STATUS_ICON[item.testCaseStatus]}
+                />
                 <div className="data-quality-item-content">
                   <Link
                     className="data-quality-item-name-link"
-                    to={getTestCaseDetailPagePath(
-                      item.fullyQualifiedName ?? ''
-                    )}>
+                    to={getTestCaseDetailPagePath(item.fullyQualifiedName)}>
                     {item.name}
                   </Link>
                 </div>

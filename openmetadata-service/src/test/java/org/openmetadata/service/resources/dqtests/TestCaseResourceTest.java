@@ -93,6 +93,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -105,6 +106,7 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -151,6 +153,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.data.DataContractResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -4595,6 +4598,169 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           listResults.getData().stream().allMatch(tc -> tc.getCreatedBy().equals(INGESTION_BOT)),
           "List endpoint should also filter by createdBy");
     }
+  }
+
+  @Test
+  void test_listTestCaseResultsFromSearchWithDataContractIdFilter(TestInfo testInfo)
+      throws HttpResponseException, ParseException, IOException {
+    // Create two tables for test case setup (each data contract needs its own table)
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable createTable1 = tableResourceTest.createRequest(testInfo, 1);
+    Table table1 = tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 = tableResourceTest.createRequest(testInfo, 2);
+    Table table2 = tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    // Create two data contracts - one for each table
+    DataContractResourceTest dataContractResourceTest = new DataContractResourceTest();
+    CreateDataContract createDataContract1 =
+        dataContractResourceTest.createRequest(testInfo, 1).withEntity(table1.getEntityReference());
+    DataContract dataContract1 =
+        dataContractResourceTest.createEntity(createDataContract1, ADMIN_AUTH_HEADERS);
+
+    CreateDataContract createDataContract2 =
+        dataContractResourceTest.createRequest(testInfo, 2).withEntity(table2.getEntityReference());
+    DataContract dataContract2 =
+        dataContractResourceTest.createEntity(createDataContract2, ADMIN_AUTH_HEADERS);
+
+    // Create test cases - one for each data contract and one without data contract
+    CreateTestCase createTestCase1 =
+        createRequest("test_case_1_" + testInfo.getDisplayName())
+            .withEntityLink(String.format("<#E::table::%s>", table1.getFullyQualifiedName()))
+            .withDataContract(dataContract1.getFullyQualifiedName());
+    TestCase testCase1 = createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase2 =
+        createRequest("test_case_2_" + testInfo.getDisplayName())
+            .withEntityLink(String.format("<#E::table::%s>", table2.getFullyQualifiedName()))
+            .withDataContract(dataContract2.getFullyQualifiedName());
+    TestCase testCase2 = createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase3 =
+        createRequest("test_case_3_" + testInfo.getDisplayName())
+            .withEntityLink(String.format("<#E::table::%s>", table1.getFullyQualifiedName()));
+    TestCase testCase3 = createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
+
+    // Create test case results for all test cases
+    Long currentTimestamp = System.currentTimeMillis();
+
+    // Create results for test case 1 (associated with dataContract1)
+    CreateTestCaseResult createTestCaseResult1 =
+        new CreateTestCaseResult()
+            .withResult("tested")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(currentTimestamp);
+    postTestCaseResult(
+        testCase1.getFullyQualifiedName(), createTestCaseResult1, ADMIN_AUTH_HEADERS);
+
+    // Create results for test case 2 (associated with dataContract2)
+    CreateTestCaseResult createTestCaseResult2 =
+        new CreateTestCaseResult()
+            .withResult("tested")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(currentTimestamp + 1000);
+    postTestCaseResult(
+        testCase2.getFullyQualifiedName(), createTestCaseResult2, ADMIN_AUTH_HEADERS);
+
+    // Create results for test case 3 (no data contract)
+    CreateTestCaseResult createTestCaseResult3 =
+        new CreateTestCaseResult()
+            .withResult("tested")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(currentTimestamp + 2000);
+    postTestCaseResult(
+        testCase3.getFullyQualifiedName(), createTestCaseResult3, ADMIN_AUTH_HEADERS);
+
+    // Wait for search index update
+    try {
+      java.lang.Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      java.lang.Thread.currentThread().interrupt();
+    }
+
+    // Test filtering by dataContract1 ID
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    ResultList<TestCaseResult> testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    // Should only return results for test case 1
+    assertEquals(1, testCaseResults.getData().size());
+    assertEquals(
+        testCase1.getFullyQualifiedName(), testCaseResults.getData().get(0).getTestCaseFQN());
+    assertEquals(TestCaseStatus.Success, testCaseResults.getData().get(0).getTestCaseStatus());
+
+    // Test filtering by dataContract2 ID
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract2.getId().toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    // Should only return results for test case 2
+    assertEquals(1, testCaseResults.getData().size());
+    assertEquals(
+        testCase2.getFullyQualifiedName(), testCaseResults.getData().get(0).getTestCaseFQN());
+    assertEquals(TestCaseStatus.Failed, testCaseResults.getData().get(0).getTestCaseStatus());
+
+    // Test filtering by non-existent data contract ID
+    queryParams.clear();
+    queryParams.put("dataContractId", UUID.randomUUID().toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    // Should return no results
+    assertEquals(0, testCaseResults.getData().size());
+
+    // Test combining dataContractId with other filters
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    queryParams.put("testCaseStatus", TestCaseStatus.Success.toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    // Should return the successful result for test case 1
+    assertEquals(1, testCaseResults.getData().size());
+    assertEquals(
+        testCase1.getFullyQualifiedName(), testCaseResults.getData().get(0).getTestCaseFQN());
+    assertEquals(TestCaseStatus.Success, testCaseResults.getData().get(0).getTestCaseStatus());
+
+    // Test combining dataContractId with conflicting status filter
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    queryParams.put("testCaseStatus", TestCaseStatus.Failed.toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    // Should return no results since dataContract1's test case succeeded
+    assertEquals(0, testCaseResults.getData().size());
+
+    // Test latest endpoint with dataContractId filter
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    TestCaseResult latestResult =
+        latestTestCaseResultFromSearch(
+            queryParams, dataContract1.getId().toString(), ADMIN_AUTH_HEADERS);
+
+    // Should return the latest result for dataContract1
+    assertNotNull(latestResult);
+    assertEquals(testCase1.getFullyQualifiedName(), latestResult.getTestCaseFQN());
+    assertEquals(TestCaseStatus.Success, latestResult.getTestCaseStatus());
+  }
+
+  public TestCaseResult latestTestCaseResultFromSearch(
+      Map<String, String> queryParams, String dataContractId, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/testCaseResults/search/latest");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    target = target.queryParam("dataContractId", dataContractId);
+    return TestUtils.get(target, TestCaseResult.class, authHeaders);
   }
 
   @Test

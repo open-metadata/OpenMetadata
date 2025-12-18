@@ -515,6 +515,52 @@
             "ignore_above": 256
           }
         }
+      },
+      "dataContract": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "name": {
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "displayName": {
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
+              }
+            }
+          },
+          "description": {
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "term_vector": "with_positions_offsets"
+          }
+        }
       }
     }
   }
