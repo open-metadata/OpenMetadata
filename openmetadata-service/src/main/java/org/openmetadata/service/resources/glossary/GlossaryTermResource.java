@@ -1089,7 +1089,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @PathParam("fqn")
           String fqn)
       throws IOException {
-    return exportCsvInternal(securityContext, fqn, true); // Changed to true for recursive export
+    return exportCsvInternal(securityContext, fqn, false);
   }
 
   @GET
@@ -1119,8 +1119,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
-    return exportCsvInternalAsync(
-        securityContext, fqn, true); // Changed to true for recursive export
+    return exportCsvInternalAsync(securityContext, fqn, false);
   }
 
   @PUT
@@ -1157,8 +1156,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("dryRun")
           boolean dryRun)
       throws IOException {
-    return importCsvInternal(
-        securityContext, fqn, csv, dryRun, true); // Changed to true for recursive import
+    return importCsvInternal(securityContext, fqn, csv, dryRun, false);
   }
 
   @PUT
@@ -1198,7 +1196,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @QueryParam("dryRun")
           @DefaultValue("true")
           boolean dryRun) {
-    return importCsvInternalAsync(
-        securityContext, fqn, csv, dryRun, true); // Changed to true for recursive import
+    return importCsvInternalAsync(securityContext, fqn, csv, dryRun, false);
   }
 }

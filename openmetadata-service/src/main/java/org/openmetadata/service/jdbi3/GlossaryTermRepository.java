@@ -1781,13 +1781,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     Glossary glossary =
         glossaryRepository.get(null, glossaryTerm.getGlossary().getId(), Fields.EMPTY_FIELDS);
 
-    List<GlossaryTerm> terms;
-    if (recursive) {
-      terms = listAllForCSV(fields, glossaryTerm.getFullyQualifiedName());
-    } else {
-      terms = new ArrayList<>();
-      terms.add(glossaryTerm);
-    }
+    List<GlossaryTerm> terms = listAllForCSV(fields, glossaryTerm.getFullyQualifiedName());
 
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new GlossaryRepository.GlossaryCsv(glossary, user).exportCsv(terms);
