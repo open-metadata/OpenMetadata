@@ -598,5 +598,72 @@ class OpenLineageUnitTest(unittest.TestCase):
             )
 
 
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_complete_events(self, mock_consumer_class):
+        """Test that get_pipelines_list returns COMPLETE events"""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "COMPLETE"
+        self.setup_mock_consumer_with_kafka_event(event)
+        
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+        
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "COMPLETE")
+
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_running_events(self, mock_consumer_class):
+        """Test that get_pipelines_list returns RUNNING events"""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "RUNNING"
+        self.setup_mock_consumer_with_kafka_event(event)
+        
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+        
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "RUNNING")
+
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_start_events(self, mock_consumer_class):
+        """Test that get_pipelines_list returns START events"""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "START"
+        self.setup_mock_consumer_with_kafka_event(event)
+        
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+        
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "START")
+
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_out_fail_events(self, mock_consumer_class):
+        """Test that get_pipelines_list filters out FAIL events"""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "FAIL"
+        self.setup_mock_consumer_with_kafka_event(event)
+        
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+        
+        self.assertEqual(len(results), 0)
+
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_out_abort_events(self, mock_consumer_class):
+        """Test that get_pipelines_list filters out ABORT events"""
+        event = copy.deepcopy(VALID_EVENT)
+        event["eventType"] = "ABORT"
+        self.setup_mock_consumer_with_kafka_event(event)
+        
+        result_generator = self.open_lineage_source.get_pipelines_list()
+        results = list(result_generator)
+        
+        self.assertEqual(len(results), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
