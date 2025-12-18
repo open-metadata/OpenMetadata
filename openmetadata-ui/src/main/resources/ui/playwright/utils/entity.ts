@@ -480,7 +480,7 @@ export const assignCertification = async (
   endpoint: string
 ) => {
   const certificationResponse = page.waitForResponse(
-    '/api/v1/tags?parent=Certification&limit=50'
+    '/api/v1/tags?*parent=Certification*'
   );
   await page.getByTestId('edit-certification').click();
   await certificationResponse;
@@ -1986,7 +1986,7 @@ export const checkExploreSearchFilter = async (
   const queryRes = page.waitForResponse(querySearchURL);
   await page.click('[data-testid="update-btn"]');
   await queryRes;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(
     page.getByTestId(
