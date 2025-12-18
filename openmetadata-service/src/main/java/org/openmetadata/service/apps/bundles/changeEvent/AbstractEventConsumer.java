@@ -71,10 +71,14 @@ public abstract class AbstractEventConsumer
   }
 
   private void init(JobExecutionContext context) {
-    EventSubscription sub =
-        (EventSubscription) context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
     this.jobDetail = context.getJobDetail();
-    this.eventSubscription = sub;
+    // EventSubscription is stored as JSON string in JobDataMap for JDBC JobStore compatibility
+    String subscriptionJson = (String) context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
+    this.eventSubscription = JsonUtils.readValue(subscriptionJson, EventSubscription.class);
+    if (this.eventSubscription == null) {
+      LOG.error("Failed to deserialize EventSubscription from JobDataMap");
+      return;
+    }
     EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
     this.offset = eventSubscriptionOffset.getCurrentOffset();
     this.startingOffset = eventSubscriptionOffset.getStartingOffset();
@@ -136,50 +140,50 @@ public abstract class AbstractEventConsumer
   }
 
   private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
-    EventSubscriptionOffset jobStoredOffset =
-        (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
-    // If the Job Data Map has the latest offset, use it
-    if (jobStoredOffset != null) {
-      return jobStoredOffset;
-    } else {
-      EventSubscriptionOffset eventSubscriptionOffset =
-          getStartingOffset(eventSubscription.getId());
-      // Update the Job Data Map with the latest offset
-      context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
-      return eventSubscriptionOffset;
+    // First try JobDataMap (stored as JSON string for serialization)
+    String offsetJson = (String) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
+    if (offsetJson != null) {
+      EventSubscriptionOffset offset =
+          JsonUtils.readValue(offsetJson, EventSubscriptionOffset.class);
+      if (offset != null) {
+        return offset;
+      }
     }
+
+    // Fall back to database - getStartingOffset returns current DB offset if no stored offset
+    EventSubscriptionOffset dbOffset = getStartingOffset(eventSubscription.getId());
+    if (dbOffset != null) {
+      // Update JobDataMap with the offset for next execution
+      context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(dbOffset));
+      return dbOffset;
+    }
+
+    // Should not reach here - getStartingOffset always returns a valid offset
+    LOG.warn("No offset found for subscription {}, using default", eventSubscription.getId());
+    return getStartingOffset(eventSubscription.getId());
   }
 
   private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap(JobExecutionContext context) {
-    Map<UUID, Destination<ChangeEvent>> dMap =
-        (Map<UUID, Destination<ChangeEvent>>)
-            context.getJobDetail().getJobDataMap().get(DESTINATION_MAP_KEY);
-    if (dMap == null) {
-      dMap = new HashMap<>();
-      for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
-        dMap.put(
-            subscriptionDest.getId(), AlertFactory.getAlert(eventSubscription, subscriptionDest));
-      }
-      context.getJobDetail().getJobDataMap().put(DESTINATION_MAP_KEY, dMap);
+    // Always rebuild the destination map - Destination objects are not serializable
+    // and should not be stored in JobDataMap with JDBC JobStore
+    Map<UUID, Destination<ChangeEvent>> dMap = new HashMap<>();
+    for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
+      dMap.put(
+          subscriptionDest.getId(), AlertFactory.getAlert(eventSubscription, subscriptionDest));
     }
     return dMap;
   }
 
   private AlertMetrics loadInitialMetrics() {
-    AlertMetrics metrics = (AlertMetrics) jobDetail.getJobDataMap().get(METRICS_EXTENSION);
-    if (metrics != null) {
-      return metrics;
-    } else {
-      String json =
-          Entity.getCollectionDAO()
-              .eventSubscriptionDAO()
-              .getSubscriberExtension(eventSubscription.getId().toString(), METRICS_EXTENSION);
-      if (json != null) {
-        return JsonUtils.readValue(json, AlertMetrics.class);
-      }
-      // Update the Job Data Map with the latest offset
-      return new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0);
+    // Always load metrics from database - AlertMetrics may not be serializable for JDBC JobStore
+    String json =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getSubscriberExtension(eventSubscription.getId().toString(), METRICS_EXTENSION);
+    if (json != null) {
+      return JsonUtils.readValue(json, AlertMetrics.class);
     }
+    return new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0);
   }
 
   @Override
@@ -208,7 +212,7 @@ public abstract class AbstractEventConsumer
   @Override
   public void commit(JobExecutionContext jobExecutionContext) {
     long currentTime = System.currentTimeMillis();
-    // Upsert Offset
+    // Upsert Offset to database (source of truth)
     EventSubscriptionOffset eventSubscriptionOffset =
         new EventSubscriptionOffset()
             .withCurrentOffset(offset)
@@ -223,12 +227,20 @@ public abstract class AbstractEventConsumer
             "eventSubscriptionOffset",
             JsonUtils.pojoToJson(eventSubscriptionOffset));
 
+    // Store offset as JSON string for JDBC JobStore serialization compatibility
     jobExecutionContext
         .getJobDetail()
         .getJobDataMap()
-        .put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
+        .put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(eventSubscriptionOffset));
 
-    // Upsert Metrics
+    // Store updated EventSubscription (with status changes) as JSON string
+    // This ensures status updates from job execution are persisted
+    jobExecutionContext
+        .getJobDetail()
+        .getJobDataMap()
+        .put(ALERT_INFO_KEY, JsonUtils.pojoToJson(eventSubscription));
+
+    // Upsert Metrics to database
     AlertMetrics metrics =
         new AlertMetrics()
             .withTotalEvents(alertMetrics.getTotalEvents())
@@ -244,10 +256,9 @@ public abstract class AbstractEventConsumer
             "alertMetrics",
             JsonUtils.pojoToJson(metrics));
 
-    jobExecutionContext.getJobDetail().getJobDataMap().put(METRICS_EXTENSION, alertMetrics);
-
-    // Populate the Destination map
-    jobExecutionContext.getJobDetail().getJobDataMap().put(DESTINATION_MAP_KEY, destinationMap);
+    // Note: We don't store AlertMetrics or destinationMap in JobDataMap
+    // as they are not serializable and would fail with JDBC JobStore.
+    // These are loaded fresh from DB/rebuilt on each job execution.
   }
 
   @Override
@@ -271,6 +282,11 @@ public abstract class AbstractEventConsumer
   public void execute(JobExecutionContext jobExecutionContext) {
     // Must Have , Before Execute the Init, Quartz Requires a Non-Arg Constructor
     this.init(jobExecutionContext);
+    // Check if initialization was successful
+    if (this.eventSubscription == null) {
+      LOG.error("Skipping job execution - EventSubscription could not be loaded");
+      return;
+    }
     long batchSize = 0;
     Map<ChangeEvent, Set<UUID>> eventsWithReceivers = new HashMap<>();
     try {
@@ -301,7 +317,9 @@ public abstract class AbstractEventConsumer
   }
 
   public EventSubscription getEventSubscription() {
-    return (EventSubscription) jobDetail.getJobDataMap().get(ALERT_INFO_KEY);
+    // Return the already loaded eventSubscription field
+    // (loaded from DB during init, not stored in JobDataMap for serialization compatibility)
+    return eventSubscription;
   }
 
   private Map<ChangeEvent, Set<UUID>> createEventsWithReceivers(List<ChangeEvent> events) {

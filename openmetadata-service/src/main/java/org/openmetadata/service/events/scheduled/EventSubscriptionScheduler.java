@@ -95,7 +95,8 @@ public class EventSubscriptionScheduler {
   private static final String SCHEDULER_NAME = "OMEventSubScheduler";
   // Thread count per server - increase for high subscription volumes
   // With N servers, total cluster capacity = N × SCHEDULER_THREAD_COUNT concurrent jobs
-  private static final int SCHEDULER_THREAD_COUNT = 10;
+  // Set to 50 to handle hundreds of concurrent subscriptions per server
+  private static final int SCHEDULER_THREAD_COUNT = 50;
 
   private static final Map<String, String> CLUSTERED_SCHEDULER_CONFIG = new HashMap<>();
 
@@ -126,8 +127,9 @@ public class EventSubscriptionScheduler {
     CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.clusterCheckinInterval", "20000");
 
     // Data source configuration (will be overridden with actual DB config)
+    // Connection pool sized to support concurrent job execution without contention
     CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.dataSource", "omDS");
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.dataSource.omDS.maxConnections", "5");
+    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.dataSource.omDS.maxConnections", "20");
     CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.dataSource.omDS.validationQuery", "select 1");
   }
 
@@ -295,8 +297,12 @@ public class EventSubscriptionScheduler {
   private JobDetail jobBuilder(
       AbstractEventConsumer publisher, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put(ALERT_INFO_KEY, eventSubscription);
-    dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId()));
+    // Store EventSubscription as JSON string for JDBC JobStore serialization compatibility
+    // JSON strings are serializable, unlike the EventSubscription object itself
+    dataMap.put(ALERT_INFO_KEY, JsonUtils.pojoToJson(eventSubscription));
+    EventSubscriptionOffset startingOffset = getStartingOffset(eventSubscription.getId());
+    // Store offset as JSON string for serialization compatibility
+    dataMap.put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(startingOffset));
     JobBuilder jobBuilder =
         JobBuilder.newJob(publisher.getClass())
             .withIdentity(jobIdentity, ALERT_JOB_GROUP)
@@ -354,12 +360,17 @@ public class EventSubscriptionScheduler {
         getEventSubscriptionFromScheduledJob(subscriptionId);
 
     if (eventSubscriptionOpt.isPresent()) {
-      return (SubscriptionStatus)
+      // Find the destination and get its status
+      Optional<SubscriptionDestination> destinationOpt =
           eventSubscriptionOpt.get().getDestinations().stream()
               .filter(destination -> destination.getId().equals(destinationId))
-              .map(SubscriptionDestination::getStatusDetails)
-              .findFirst()
-              .orElse(null);
+              .findFirst();
+      if (destinationOpt.isPresent()) {
+        Object status = destinationOpt.get().getStatusDetails();
+        // After JSON deserialization, statusDetails may be a Map instead of SubscriptionStatus
+        return convertToSubscriptionStatus(status);
+      }
+      return null;
     }
 
     EntityRepository<? extends EntityInterface> subscriptionRepository =
@@ -625,28 +636,50 @@ public class EventSubscriptionScheduler {
       JobDetail jobDetail =
           alertsScheduler.getJobDetail(new JobKey(id.toString(), ALERT_JOB_GROUP));
 
-      return Optional.ofNullable(jobDetail)
-          .map(detail -> (EventSubscription) detail.getJobDataMap().get(ALERT_INFO_KEY));
-
+      if (jobDetail != null) {
+        // JobDataMap stores EventSubscription as JSON string for JDBC JobStore compatibility
+        String subscriptionJson = (String) jobDetail.getJobDataMap().get(ALERT_INFO_KEY);
+        if (subscriptionJson != null) {
+          EventSubscription eventSubscription =
+              JsonUtils.readValue(subscriptionJson, EventSubscription.class);
+          // Return the subscription as-is - status is already set from job execution
+          return Optional.ofNullable(eventSubscription);
+        }
+      }
     } catch (SchedulerException ex) {
       LOG.error("Failed to get Event Subscription from Job, Subscription Id : {}", id, ex);
+    } catch (Exception ex) {
+      LOG.error("Failed to deserialize Event Subscription, Subscription Id : {}", id, ex);
     }
 
     return Optional.empty();
   }
 
   public Optional<EventSubscriptionOffset> getEventSubscriptionOffset(UUID subscriptionID) {
+    // Offset is stored in the database as the source of truth
+    EventSubscriptionOffset offset = getStartingOffset(subscriptionID);
+    if (offset != null && offset.getCurrentOffset() != null) {
+      return Optional.of(offset);
+    }
+
+    // Fall back to JobDataMap (stored as JSON string for serialization)
     try {
       JobDetail jobDetail =
           alertsScheduler.getJobDetail(new JobKey(subscriptionID.toString(), ALERT_JOB_GROUP));
       if (jobDetail != null) {
-        return Optional.ofNullable(
-            (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY));
+        String offsetJson = (String) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
+        if (offsetJson != null) {
+          EventSubscriptionOffset jobOffset =
+              JsonUtils.readValue(offsetJson, EventSubscriptionOffset.class);
+          if (jobOffset != null) {
+            return Optional.of(jobOffset);
+          }
+        }
       }
     } catch (Exception ex) {
       LOG.error(
-          "Failed to get Event Subscription from Job, Subscription Id : {}, Exception: ",
-          subscriptionID.toString(),
+          "Failed to get Event Subscription offset from Job, Subscription Id : {}",
+          subscriptionID,
           ex);
     }
     return Optional.empty();
@@ -680,6 +713,28 @@ public class EventSubscriptionScheduler {
 
   private static JobKey getJobKey(UUID subscriptionId) {
     return new JobKey(subscriptionId.toString(), ALERT_JOB_GROUP);
+  }
+
+  /**
+   * Converts a status object to SubscriptionStatus. After JSON deserialization, the statusDetails
+   * field (typed as Object in SubscriptionDestination) may be deserialized as a LinkedHashMap
+   * instead of SubscriptionStatus. This method handles the conversion.
+   */
+  private SubscriptionStatus convertToSubscriptionStatus(Object status) {
+    if (status == null) {
+      return null;
+    }
+    if (status instanceof SubscriptionStatus subscriptionStatus) {
+      return subscriptionStatus;
+    }
+    // After JSON deserialization, statusDetails becomes a Map - convert it to SubscriptionStatus
+    try {
+      String json = JsonUtils.pojoToJson(status);
+      return JsonUtils.readValue(json, SubscriptionStatus.class);
+    } catch (Exception e) {
+      LOG.error("Failed to convert status to SubscriptionStatus: {}", status, e);
+      return null;
+    }
   }
 
   public static void shutDown() throws SchedulerException {
