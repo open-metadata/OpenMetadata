@@ -480,6 +480,18 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
   test('Lineage Tab - No Lineage', async ({ adminPage }) => {
     const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+
+    const lineageSection = summaryPanel.locator(
+      '[data-testid="lineage-section"]'
+    );
+
+    if (await lineageSection.isVisible()) {
+      await expect(
+        summaryPanel.getByText(/no lineage connections found/i)
+      ).toBeVisible();
+    }
+
+    // Now test the Lineage tab
     const lineageTab = summaryPanel.getByRole('menuitem', {
       name: /lineage/i,
     });
@@ -524,6 +536,51 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       );
 
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+
+      // First verify the Overview tab shows lineage counts in LineageSection
+      await summaryPanel.getByRole('menuitem', {
+        name: /overview/i,
+      }).click();
+
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      const lineageSection = summaryPanel.locator(
+        '[data-testid="upstream-lineage"]'
+      );
+
+      if (await lineageSection.isVisible()) {
+        // Verify upstream and downstream counts are visible
+        const upstreamText = summaryPanel.getByText(/upstream:/i);
+        const downstreamText = summaryPanel.getByText(/downstream:/i);
+
+        await expect(upstreamText).toBeVisible();
+        await expect(downstreamText).toBeVisible();
+
+        // Verify the actual counts (should be 1 upstream and 1 downstream)
+        const upstreamCountElement = summaryPanel.locator(
+          '[data-testid="upstream-count"]'
+        );
+        const downstreamCountElement = summaryPanel.locator(
+          '[data-testid="downstream-count"]'
+        );
+
+        await expect(upstreamCountElement).toHaveText('1');
+        await expect(downstreamCountElement).toHaveText('1');
+
+        // Click on lineage section to navigate to lineage page
+        await lineageSection.click();
+
+        // Verify navigation to lineage route
+        await adminPage.waitForURL(/.*\/lineage$/);
+        expect(adminPage.url()).toContain('/lineage');
+
+        // Navigate back to explore and reopen the entity panel
+        await navigateToExploreAndSelectTable(adminPage);
+      }
+
+      // Now test the Lineage tab
       const lineageTab = summaryPanel.getByRole('menuitem', {
         name: /lineage/i,
       });
