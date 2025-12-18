@@ -2400,6 +2400,7 @@
     "no-kpi": "Etkileri izlemek ve daha akıllı kararlar almak için anahtar performans göstergelerini tanımlayın.",
     "no-kpi-available-add-new-one": "Kullanılabilir KPI yok. Bir tane eklemek için KPI Ekle düğmesine tıklayın.",
     "no-kpi-found": "{{name}} adında KPI bulunamadı",
+    "no-lineage-available": "Lineage bağlantıları bulunamadı",
     "no-match-found": "Eşleşme bulunamadı",
     "no-mentions": "Görünüşe göre siz ve ekibiniz tamamen temizsiniz – henüz herhangi bir aktivitede bahsetme yok. Harika çalışmaya devam edin!",
     "no-notification-found": "Bildirim bulunamadı",
