@@ -37,7 +37,15 @@ import {
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isEmpty, isEqual, isUndefined, map, startCase, uniqBy } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  map,
+  omitBy,
+  startCase,
+  uniqBy,
+} from 'lodash';
 import { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
@@ -73,6 +81,7 @@ import {
   TypedEvent,
 } from '../../generated/events/api/typedEvent';
 import {
+  Destination,
   EventFilterRule,
   HTTPMethod,
   InputType,
@@ -149,17 +158,13 @@ export const listLengthValidator =
   <T,>(name: string, minLengthRequired = 1) =>
   async (_: RuleObject, list: T[]) => {
     if (!list || list.length < minLengthRequired) {
-      return Promise.reject(
-        new Error(
-          t('message.length-validator-error', {
-            length: minLengthRequired,
-            field: name,
-          })
-        )
+      throw new Error(
+        t('message.length-validator-error', {
+          length: minLengthRequired,
+          field: name,
+        })
       );
     }
-
-    return Promise.resolve();
   };
 
 export const getAlertActionTypeDisplayName = (
@@ -217,8 +222,6 @@ export const searchEntity = async ({
       queryFilter,
       searchIndex,
     });
-    const searchIndexEntityTypeMapping =
-      searchClassBase.getSearchIndexEntityTypeMapping();
 
     return uniqBy(
       response.hits.hits.map((d) => {
@@ -233,7 +236,7 @@ export const searchEntity = async ({
         const value = setSourceAsValue
           ? JSON.stringify({
               ...d._source,
-              type: searchIndexEntityTypeMapping[d._index],
+              type: d._source.entityType,
             })
           : d._source.fullyQualifiedName ?? '';
 
@@ -472,6 +475,7 @@ export const getDestinationConfigField = (
                                 <Col>
                                   <Col>
                                     <Button
+                                      data-testid={`add-header-button-${fieldName}`}
                                       icon={<PlusOutlined />}
                                       type="primary"
                                       onClick={() => add({})}
@@ -562,6 +566,7 @@ export const getDestinationConfigField = (
                                 <Col>
                                   <Col>
                                     <Button
+                                      data-testid={`add-query-param-button-${fieldName}`}
                                       icon={<PlusOutlined />}
                                       type="primary"
                                       onClick={() => add({})}
@@ -1208,6 +1213,19 @@ export const getConfigQueryParamsArrayFromObject = (
         value,
       }));
 
+/**
+ * @description Normalizes destination config for comparison by converting headers and queryParams to array format
+ */
+export const normalizeDestinationConfig = (config?: Destination['config']) =>
+  omitBy(
+    {
+      ...config,
+      headers: getConfigHeaderArrayFromObject(config?.headers),
+      queryParams: getConfigQueryParamsArrayFromObject(config?.queryParams),
+    },
+    isUndefined
+  );
+
 export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]
 ) => {
@@ -1222,11 +1240,14 @@ export const getFormattedDestinations = (
 
     return {
       ...otherData,
-      config: {
-        ...config,
-        headers: isEmpty(headers) ? undefined : headers,
-        queryParams: isEmpty(queryParams) ? undefined : queryParams,
-      },
+      config: omitBy(
+        {
+          ...config,
+          headers: isEmpty(headers) ? undefined : headers,
+          queryParams: isEmpty(queryParams) ? undefined : queryParams,
+        },
+        isUndefined
+      ),
     };
   });
 
@@ -1415,14 +1436,12 @@ export const getAlertExtraInfo = (
   if (alertEventCountsLoading) {
     return (
       <>
-        {Array(3)
-          .fill(null)
-          .map((_, id) => (
-            <Fragment key={id}>
-              <Divider className="self-center" type="vertical" />
-              <Skeleton.Button active className="extra-info-skeleton" />
-            </Fragment>
-          ))}
+        {new Array(3).fill(null).map((_, id) => (
+          <Fragment key={id}>
+            <Divider className="self-center" type="vertical" />
+            <Skeleton.Button active className="extra-info-skeleton" />
+          </Fragment>
+        ))}
       </>
     );
   }

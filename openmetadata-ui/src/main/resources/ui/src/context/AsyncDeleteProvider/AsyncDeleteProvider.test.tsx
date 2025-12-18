@@ -175,4 +175,110 @@ describe('AsyncDeleteProvider', () => {
 
     expect(mockAfterDeleteAction).toHaveBeenCalledWith(true);
   });
+
+  it('should execute onDeleteFailure when websocket returns FAILED status', async () => {
+    const mockOnDeleteFailure = jest.fn();
+    (deleteAsyncEntity as jest.Mock).mockResolvedValueOnce(mockResponse);
+
+    const { result } = renderHook(() => useAsyncDeleteProvider(), { wrapper });
+
+    // First, initiate delete with onDeleteFailure callback
+    await act(async () => {
+      await result.current.handleOnAsyncEntityDeleteConfirm({
+        ...mockDeleteParams,
+        onDeleteFailure: mockOnDeleteFailure,
+      });
+    });
+
+    // Then simulate websocket FAILED response
+    const mockFailedWebsocketResponse: AsyncDeleteWebsocketResponse = {
+      status: 'FAILED',
+      jobId: mockResponse.jobId,
+      entityName: 'TestEntity',
+      error: 'Delete operation failed',
+    };
+
+    act(() => {
+      result.current.handleDeleteEntityWebsocketResponse(
+        mockFailedWebsocketResponse
+      );
+    });
+
+    expect(mockOnDeleteFailure).toHaveBeenCalled();
+    expect(showErrorToast).toHaveBeenCalledWith('Delete operation failed');
+  });
+
+  it('should not execute onDeleteFailure when websocket returns COMPLETED status', async () => {
+    const mockOnDeleteFailure = jest.fn();
+    (deleteAsyncEntity as jest.Mock).mockResolvedValueOnce(mockResponse);
+
+    const { result } = renderHook(() => useAsyncDeleteProvider(), { wrapper });
+
+    // First, initiate delete with onDeleteFailure callback
+    await act(async () => {
+      await result.current.handleOnAsyncEntityDeleteConfirm({
+        ...mockDeleteParams,
+        onDeleteFailure: mockOnDeleteFailure,
+      });
+    });
+
+    // Then simulate websocket COMPLETED response
+    const mockCompletedWebsocketResponse: AsyncDeleteWebsocketResponse = {
+      status: 'COMPLETED',
+      jobId: mockResponse.jobId,
+      entityName: 'TestEntity',
+      error: null,
+    };
+
+    act(() => {
+      result.current.handleDeleteEntityWebsocketResponse(
+        mockCompletedWebsocketResponse
+      );
+    });
+
+    expect(mockOnDeleteFailure).not.toHaveBeenCalled();
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'server.entity-deleted-successfully'
+    );
+  });
+
+  it('should cleanup callback from pending map after websocket response', async () => {
+    const mockOnDeleteFailure = jest.fn();
+    (deleteAsyncEntity as jest.Mock).mockResolvedValueOnce(mockResponse);
+
+    const { result } = renderHook(() => useAsyncDeleteProvider(), { wrapper });
+
+    // Initiate delete
+    await act(async () => {
+      await result.current.handleOnAsyncEntityDeleteConfirm({
+        ...mockDeleteParams,
+        onDeleteFailure: mockOnDeleteFailure,
+      });
+    });
+
+    // First websocket response
+    act(() => {
+      result.current.handleDeleteEntityWebsocketResponse({
+        status: 'FAILED',
+        jobId: mockResponse.jobId,
+        entityName: 'TestEntity',
+        error: 'Delete failed',
+      });
+    });
+
+    expect(mockOnDeleteFailure).toHaveBeenCalledTimes(1);
+
+    // Second websocket response with same jobId should not trigger callback again
+    act(() => {
+      result.current.handleDeleteEntityWebsocketResponse({
+        status: 'FAILED',
+        jobId: mockResponse.jobId,
+        entityName: 'TestEntity',
+        error: 'Delete failed again',
+      });
+    });
+
+    // Callback should still only be called once (cleanup worked)
+    expect(mockOnDeleteFailure).toHaveBeenCalledTimes(1);
+  });
 });
