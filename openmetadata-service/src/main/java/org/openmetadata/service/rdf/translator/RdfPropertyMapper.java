@@ -181,7 +181,7 @@ public class RdfPropertyMapper {
     Property property = createProperty(propertyId, model);
 
     if (value.isObject() && value.has("id") && value.has("type")) {
-      // Create reference to the entity
+      // Create reference to the entity (EntityReference)
       String refType = value.get("type").asText();
       String refId = value.get("id").asText();
       String refUri = baseUri + "entity/" + refType + "/" + refId;
@@ -202,11 +202,72 @@ public class RdfPropertyMapper {
             value.get("fullyQualifiedName").asText());
       }
 
+    } else if (value.isObject() && value.has("tagFQN")) {
+      // Handle TagLabel objects
+      addTagLabel(resource, property, value, model);
+
     } else if (value.isArray()) {
       // Handle array of references
       for (JsonNode item : value) {
         addEntityReference(resource, propertyId, item, model);
       }
+    }
+  }
+
+  private void addTagLabel(Resource resource, Property property, JsonNode tagLabel, Model model) {
+    String tagFqn = tagLabel.get("tagFQN").asText();
+
+    // Create a URI for the tag based on its FQN
+    // Convert FQN like "PII.None" to a valid URI
+    String tagUri = baseUri + "tag/" + tagFqn.replace(".", "/");
+    Resource tagResource = model.createResource(tagUri);
+
+    // Link the entity to the tag
+    resource.addProperty(property, tagResource);
+
+    // Add tag type
+    tagResource.addProperty(RDF.type, model.createResource(OM_NS + "Tag"));
+
+    // Add tagFQN as a property
+    tagResource.addProperty(model.createProperty(OM_NS, "tagFQN"), tagFqn);
+
+    // Add tag name if available
+    if (tagLabel.has("name")) {
+      tagResource.addProperty(RDFS.label, tagLabel.get("name").asText());
+    }
+
+    // Add displayName if available
+    if (tagLabel.has("displayName")) {
+      tagResource.addProperty(SKOS.prefLabel, tagLabel.get("displayName").asText());
+    }
+
+    // Add labelType
+    if (tagLabel.has("labelType")) {
+      tagResource.addProperty(
+          model.createProperty(OM_NS, "labelType"), tagLabel.get("labelType").asText());
+    }
+
+    // Add source (Classification or Glossary)
+    if (tagLabel.has("source")) {
+      String source = tagLabel.get("source").asText();
+      tagResource.addProperty(model.createProperty(OM_NS, "tagSource"), source);
+
+      // Also add appropriate type based on source
+      if ("Glossary".equals(source)) {
+        tagResource.addProperty(RDF.type, model.createResource(SKOS.getURI() + "Concept"));
+      }
+    }
+
+    // Add state
+    if (tagLabel.has("state")) {
+      tagResource.addProperty(
+          model.createProperty(OM_NS, "tagState"), tagLabel.get("state").asText());
+    }
+
+    // Add description if available
+    if (tagLabel.has("description")) {
+      tagResource.addProperty(
+          model.createProperty(DCT_NS, "description"), tagLabel.get("description").asText());
     }
   }
 

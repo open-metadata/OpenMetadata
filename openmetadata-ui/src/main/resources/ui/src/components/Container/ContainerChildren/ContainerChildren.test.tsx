@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getContainerChildrenByName } from '../../../rest/storageAPI';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import ContainerChildren from './ContainerChildren';
 
 jest.mock('../../common/NextPrevious/NextPrevious', () => {
@@ -77,7 +78,7 @@ describe('ContainerChildren', () => {
 
     expect(screen.getByTestId('container-list-table')).toBeInTheDocument();
     expect(screen.getByText('label.name')).toBeInTheDocument();
-    expect(screen.getByText('label.description')).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith();
   });
 
   it('Should not render pagination component when not visible', () => {
