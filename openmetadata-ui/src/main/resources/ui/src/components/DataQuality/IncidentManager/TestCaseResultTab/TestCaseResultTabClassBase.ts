@@ -19,10 +19,9 @@ export interface AdditionalComponentInterface {
 
 class TestCaseResultTabClassBase {
   public getAdditionalComponents(
-    testCaseData?: TestCase
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _testCaseData?: TestCase
   ): Array<AdditionalComponentInterface> {
-    void testCaseData;
-
     return [];
   }
 
