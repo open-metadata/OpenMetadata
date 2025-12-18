@@ -25,6 +25,7 @@ from great_expectations.core import ExpectationConfiguration
 from great_expectations.core.batch import Batch
 from great_expectations.core.batch_spec import (
     RuntimeDataBatchSpec,
+    RuntimeQueryBatchSpec,
     SqlAlchemyDatasourceBatchSpec,
 )
 from great_expectations.core.expectation_validation_result import (
@@ -68,6 +69,11 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.great_expectations.table_mapper import (
+    TableConfigMap,
+    TableMapper,
+    TablePart,
+)
 from metadata.great_expectations.utils.ometa_config_handler import (
     create_jinja_environment,
     create_ometa_connection_obj,
@@ -92,6 +98,10 @@ class OpenMetadataValidationAction(ValidationAction):
         database_service_name: name of the service for the table
         api_version: default to v1
         config_file_path: path to the open metadata config path
+        expectation_suite_table_config_map: optional mapping of expectation suite names
+            to table configurations. Used to route validation results to specific tables
+            in multi-table checkpoints.
+            Format: {"suite_name": {"database_name": "db", "schema_name": "schema", "table_name": "table"}}
     """
 
     def __init__(
@@ -104,6 +114,7 @@ class OpenMetadataValidationAction(ValidationAction):
         schema_name: Optional[str] = "default",
         database_name: Optional[str] = None,
         table_name: Optional[str] = None,
+        expectation_suite_table_config_map: Optional[Dict[str, Dict[str, str]]] = None,
     ):
         super().__init__(data_context, name=name)
         self.database_service_name = database_service_name
@@ -111,6 +122,17 @@ class OpenMetadataValidationAction(ValidationAction):
         self.table_name = table_name
         self.schema_name = schema_name  # for database without schema concept
         self.config_file_path = config_file_path
+        self.expectation_suite_table_config_map = (
+            expectation_suite_table_config_map or {}
+        )
+        self.table_mapper = TableMapper(
+            default_database_name=self.database_name,
+            default_schema_name=self.schema_name,
+            default_table_name=self.table_name,
+            expectation_suite_table_config_map=TableConfigMap.parse(
+                self.expectation_suite_table_config_map
+            ),
+        )
         self.ometa_conn = self._create_ometa_connection()
         self.expectation_suite = None
 
@@ -135,6 +157,8 @@ class OpenMetadataValidationAction(ValidationAction):
             checkpoint_identifier: identifier for the checkpoint
         """
 
+        expectation_suite_name = None
+
         if expectation_suite_identifier:
             expectation_suite_name = expectation_suite_identifier.expectation_suite_name
             self.expectation_suite = self.data_context.get_expectation_suite(
@@ -146,18 +170,37 @@ class OpenMetadataValidationAction(ValidationAction):
         if isinstance(check_point_spec, SqlAlchemyDatasourceBatchSpec):
             execution_engine_url = self._get_execution_engine_url(data_asset)
             table_entity = self._get_table_entity(
-                execution_engine_url.database
-                if not self.database_name
-                else self.database_name,
-                check_point_spec.get("schema_name", self.schema_name),
-                check_point_spec.get("table_name"),
+                self.table_mapper.get_part_name(
+                    TablePart.DATABASE, expectation_suite_name
+                )
+                or execution_engine_url.database,
+                check_point_spec.get(
+                    "schema_name",
+                    self.table_mapper.get_part_name(
+                        TablePart.SCHEMA, expectation_suite_name
+                    ),
+                ),
+                check_point_spec.get(
+                    "table_name",
+                    self.table_mapper.get_part_name(
+                        TablePart.TABLE, expectation_suite_name
+                    ),
+                ),
             )
 
-        elif isinstance(check_point_spec, RuntimeDataBatchSpec):
+        elif isinstance(check_point_spec, RuntimeDataBatchSpec) or isinstance(
+            check_point_spec, RuntimeQueryBatchSpec
+        ):
             table_entity = self._get_table_entity(
-                self.database_name,
-                self.schema_name,
-                self.table_name,
+                self.table_mapper.get_part_name(
+                    TablePart.DATABASE, expectation_suite_name
+                ),
+                self.table_mapper.get_part_name(
+                    TablePart.SCHEMA, expectation_suite_name
+                ),
+                self.table_mapper.get_part_name(
+                    TablePart.TABLE, expectation_suite_name
+                ),
             )
 
         if table_entity:
@@ -167,20 +210,24 @@ class OpenMetadataValidationAction(ValidationAction):
     @staticmethod
     def _get_checkpoint_batch_spec(
         data_asset: Union[Validator, DataAsset, Batch]
-    ) -> SqlAlchemyDatasourceBatchSpec:
+    ) -> Union[
+        SqlAlchemyDatasourceBatchSpec, RuntimeDataBatchSpec, RuntimeQueryBatchSpec
+    ]:
         """Return run meta and check instance of data_asset
 
         Args:
             data_asset: data assets of the checkpoint run
         Returns:
-            SqlAlchemyDatasourceBatchSpec
+            SqlAlchemyDatasourceBatchSpec, RuntimeDataBatchSpec, or RuntimeQueryBatchSpec
         Raises:
-            ValueError: if datasource not SqlAlchemyDatasourceBatchSpec raise
+            ValueError: if datasource not a supported batch spec type
         """
         batch_spec = data_asset.active_batch_spec
         if isinstance(batch_spec, SqlAlchemyDatasourceBatchSpec):
             return batch_spec
         if isinstance(batch_spec, RuntimeDataBatchSpec):
+            return batch_spec
+        if isinstance(batch_spec, RuntimeQueryBatchSpec):
             return batch_spec
         raise ValueError(
             f"Type `{type(batch_spec).__name__,}` is not supported."

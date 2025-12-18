@@ -163,8 +163,23 @@
             }
           }
 
-          .mapping-icon {
+          .only-show-columns-with-lineage-filter-button {
             cursor: pointer;
+            border: 1px solid transparent;
+            width: 25px;
+            height: 25px;
+            svg {
+              width: 14px;
+            }
+
+            &.active {
+              background-color: @primary-1;
+              color: @blue-7;
+            }
+
+            &:disabled:hover {
+              cursor: not-allowed;
+            }
           }
         }
       }

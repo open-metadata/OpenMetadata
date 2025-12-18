@@ -22,6 +22,7 @@ import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import { DESTINATION_DROPDOWN_TABS } from '../../constants/Alerts.constants';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { EventType, Status } from '../../generated/events/api/typedEvent';
 import {
   SubscriptionCategory,
@@ -34,6 +35,7 @@ import {
   mockTypedEvent3,
   mockTypedEvent4,
 } from '../../mocks/AlertUtil.mock';
+import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTermQuery } from '../SearchUtils';
 import {
@@ -53,9 +55,12 @@ import {
   getDisplayNameForEntities,
   getFieldByArgumentType,
   getFilteredDestinationOptions,
+  getFormattedDestinations,
   getFunctionDisplayName,
   getLabelsForEventDetails,
   listLengthValidator,
+  normalizeDestinationConfig,
+  searchEntity,
 } from './AlertsUtil';
 
 jest.mock('antd', () => ({
@@ -75,6 +80,14 @@ jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
 
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+}));
+
+jest.mock('../ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 describe('AlertsUtil tests', () => {
@@ -620,9 +633,9 @@ describe('getAlertEventsFilterLabels', () => {
       AlertRecentEventFilters.FAILED
     );
 
-    expect(allLabel).toStrictEqual('label.all');
-    expect(successLabel).toStrictEqual('label.successful');
-    expect(failedLabel).toStrictEqual('label.failed');
+    expect(allLabel).toBe('label.all');
+    expect(successLabel).toBe('label.successful');
+    expect(failedLabel).toBe('label.failed');
   });
 
   it('should return empty string for unknown filter', () => {
@@ -630,7 +643,7 @@ describe('getAlertEventsFilterLabels', () => {
       'unknown' as AlertRecentEventFilters
     );
 
-    expect(unknownLabel).toStrictEqual('');
+    expect(unknownLabel).toBe('');
   });
 });
 
@@ -1056,5 +1069,701 @@ describe('handleAlertSave - downstream notification fields', () => {
 
     expect(mappedDestinations[0]).toHaveProperty('notifyDownstream', undefined);
     expect(mappedDestinations[0]).toHaveProperty('downstreamDepth', undefined);
+  });
+
+  describe('searchEntity', () => {
+    const mockSearchQueryResponse = {
+      hits: {
+        hits: [
+          {
+            _source: {
+              displayName: 'Test Table',
+              fullyQualifiedName: 'test.database.table',
+              entityType: 'table',
+              name: 'table',
+            },
+            _index: 'table_search_index',
+          },
+          {
+            _source: {
+              displayName: 'Test User',
+              fullyQualifiedName: 'test.user',
+              entityType: 'user',
+              name: 'user',
+            },
+            _index: 'user_search_index',
+          },
+        ],
+      },
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should return search results with default options', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(searchQuery).toHaveBeenCalledWith({
+        query: 'test',
+        pageNumber: 1,
+        pageSize: 50,
+        queryFilter: undefined,
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Table',
+          value: 'test.database.table',
+        },
+        {
+          label: 'Test User',
+          value: 'test.user',
+        },
+      ]);
+    });
+
+    it('should return search results with showDisplayNameAsLabel false', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+        showDisplayNameAsLabel: false,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'test.database.table',
+          value: 'test.database.table',
+        },
+        {
+          label: 'test.user',
+          value: 'test.user',
+        },
+      ]);
+    });
+
+    it('should return search results with setSourceAsValue true and use entityType from source', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+        setSourceAsValue: true,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Table',
+          value: JSON.stringify({
+            displayName: 'Test Table',
+            fullyQualifiedName: 'test.database.table',
+            entityType: 'table',
+            name: 'table',
+            type: 'table',
+          }),
+        },
+        {
+          label: 'Test User',
+          value: JSON.stringify({
+            displayName: 'Test User',
+            fullyQualifiedName: 'test.user',
+            entityType: 'user',
+            name: 'user',
+            type: 'user',
+          }),
+        },
+      ]);
+    });
+
+    it('should handle search results with custom queryFilter', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+      const customQueryFilter = { isBot: 'false' };
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
+        queryFilter: customQueryFilter,
+      });
+
+      expect(searchQuery).toHaveBeenCalledWith({
+        query: 'test',
+        pageNumber: 1,
+        pageSize: 50,
+        queryFilter: customQueryFilter,
+        searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Table',
+          value: 'test.database.table',
+        },
+        {
+          label: 'Test User',
+          value: 'test.user',
+        },
+      ]);
+    });
+
+    it('should handle empty fullyQualifiedName gracefully', async () => {
+      const mockResponseWithEmptyFQN = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Test Entity',
+                entityType: 'test',
+              },
+              _index: 'test_search_index',
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(mockResponseWithEmptyFQN);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Entity',
+          value: '',
+        },
+      ]);
+    });
+
+    it('should remove duplicate entries based on label', async () => {
+      const mockResponseWithDuplicates = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Test Table',
+                fullyQualifiedName: 'test.database.table1',
+                entityType: 'table',
+              },
+              _index: 'table_search_index',
+            },
+            {
+              _source: {
+                displayName: 'Test Table', // Same display name
+                fullyQualifiedName: 'test.database.table2',
+                entityType: 'table',
+              },
+              _index: 'table_search_index',
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(mockResponseWithDuplicates);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      // Should only return one item due to duplicate label removal
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        label: 'Test Table',
+        value: 'test.database.table1',
+      });
+    });
+
+    it('should handle search API errors gracefully', async () => {
+      const mockError = new Error('API Error');
+      (searchQuery as jest.Mock).mockRejectedValue(mockError);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle missing entityType in source when setSourceAsValue is true', async () => {
+      const mockResponseWithoutEntityType = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Test Entity',
+                fullyQualifiedName: 'test.entity',
+                // entityType is missing
+              },
+              _index: 'test_search_index',
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(
+        mockResponseWithoutEntityType
+      );
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+        setSourceAsValue: true,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Entity',
+          value: JSON.stringify({
+            displayName: 'Test Entity',
+            fullyQualifiedName: 'test.entity',
+            type: undefined, // entityType is undefined, so type should be undefined
+          }),
+        },
+      ]);
+    });
+
+    it('should use entityType from source for type field when setSourceAsValue is true (regression test)', async () => {
+      const mockResponseWithEntityType = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Custom Entity',
+                fullyQualifiedName: 'custom.entity',
+                entityType: 'customType', // This should be used as the type field
+                name: 'customEntity',
+              },
+              _index: 'some_other_index', // This _index value should not be used for type
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(mockResponseWithEntityType);
+
+      const result = await searchEntity({
+        searchText: 'custom',
+        searchIndex: SearchIndex.TABLE,
+        setSourceAsValue: true,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Custom Entity',
+          value: JSON.stringify({
+            displayName: 'Custom Entity',
+            fullyQualifiedName: 'custom.entity',
+            entityType: 'customType',
+            name: 'customEntity',
+            type: 'customType', // Should use entityType from source, not from index mapping
+          }),
+        },
+      ]);
+    });
+  });
+});
+
+describe('normalizeDestinationConfig', () => {
+  it('should normalize config with headers and queryParams as objects to arrays', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token123',
+      },
+      queryParams: {
+        param1: 'value1',
+        param2: 'value2',
+      },
+      timeout: 30,
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [
+        { key: 'Content-Type', value: 'application/json' },
+        { key: 'Authorization', value: 'Bearer token123' },
+      ],
+      queryParams: [
+        { key: 'param1', value: 'value1' },
+        { key: 'param2', value: 'value2' },
+      ],
+      timeout: 30,
+    });
+  });
+
+  it('should handle config with undefined headers and queryParams', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      timeout: 30,
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      timeout: 30,
+    });
+  });
+
+  it('should handle config with empty headers and queryParams objects', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {},
+      queryParams: {},
+      timeout: 30,
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [],
+      queryParams: [],
+      timeout: 30,
+    });
+  });
+
+  it('should omit undefined values from config', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      queryParams: undefined,
+      timeout: undefined,
+      secretKey: 'secret123',
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [{ key: 'Content-Type', value: 'application/json' }],
+      secretKey: 'secret123',
+    });
+    expect(result).not.toHaveProperty('timeout');
+    expect(result).not.toHaveProperty('queryParams');
+  });
+
+  it('should handle undefined config', () => {
+    const result = normalizeDestinationConfig(undefined);
+
+    expect(result).toEqual({});
+  });
+
+  it('should handle config with only headers', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      headers: {
+        Authorization: 'Bearer token',
+      },
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      headers: [{ key: 'Authorization', value: 'Bearer token' }],
+    });
+  });
+
+  it('should handle config with only queryParams', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      queryParams: {
+        apiKey: 'key123',
+      },
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      queryParams: [{ key: 'apiKey', value: 'key123' }],
+    });
+  });
+
+  it('should preserve other config properties unchanged', () => {
+    const config = {
+      endpoint: 'https://example.com/webhook',
+      secretKey: 'secret',
+      sendToFollowers: true,
+      sendToOwners: false,
+      readTimeout: 60,
+      headers: {
+        'X-Custom-Header': 'value',
+      },
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual({
+      endpoint: 'https://example.com/webhook',
+      secretKey: 'secret',
+      sendToFollowers: true,
+      sendToOwners: false,
+      readTimeout: 60,
+      headers: [{ key: 'X-Custom-Header', value: 'value' }],
+    });
+  });
+});
+
+describe('getFormattedDestinations', () => {
+  it('should convert headers and queryParams from arrays to objects', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          headers: [
+            { key: 'Content-Type', value: 'application/json' },
+            { key: 'Authorization', value: 'Bearer token123' },
+          ],
+          queryParams: [
+            { key: 'param1', value: 'value1' },
+            { key: 'param2', value: 'value2' },
+          ],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer token123',
+          },
+          queryParams: {
+            param1: 'value1',
+            param2: 'value2',
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should omit empty headers and queryParams', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          headers: [],
+          queryParams: [],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as unknown as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ]);
+  });
+
+  it('should handle undefined headers and queryParams', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ]);
+  });
+
+  it('should remove destinationType from result', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        type: 'Webhook',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        type: 'Webhook',
+        config: {
+          endpoint: 'https://example.com/webhook',
+        },
+      },
+    ]);
+    expect(result?.[0]).not.toHaveProperty('destinationType');
+  });
+
+  it('should handle undefined destinations', () => {
+    const result = getFormattedDestinations(undefined);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should handle empty array', () => {
+    const result = getFormattedDestinations([]);
+
+    expect(result).toEqual([]);
+  });
+
+  it('should preserve other config properties', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          secretKey: 'secret123',
+          timeout: 30,
+          readTimeout: 60,
+          headers: [{ key: 'X-Custom', value: 'test' }],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as unknown as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          secretKey: 'secret123',
+          timeout: 30,
+          readTimeout: 60,
+          headers: {
+            'X-Custom': 'test',
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should handle multiple destinations', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example1.com/webhook',
+          headers: [{ key: 'Auth', value: 'token1' }],
+        },
+      },
+      {
+        destinationType: 'Slack',
+        category: 'External',
+        config: {
+          endpoint: 'https://slack.com/webhook',
+          queryParams: [{ key: 'channel', value: 'general' }],
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example1.com/webhook',
+          headers: {
+            Auth: 'token1',
+          },
+        },
+      },
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://slack.com/webhook',
+          queryParams: {
+            channel: 'general',
+          },
+        },
+      },
+    ]);
+  });
+
+  it('should omit undefined config values', () => {
+    const destinations = [
+      {
+        destinationType: 'Webhook',
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          timeout: undefined,
+          secretKey: 'secret',
+          readTimeout: undefined,
+        },
+      },
+    ];
+
+    const result = getFormattedDestinations(
+      destinations as unknown as ModifiedDestination[]
+    );
+
+    expect(result).toEqual([
+      {
+        category: 'External',
+        config: {
+          endpoint: 'https://example.com/webhook',
+          secretKey: 'secret',
+        },
+      },
+    ]);
+    expect(result?.[0]?.config).not.toHaveProperty('timeout');
+    expect(result?.[0]?.config).not.toHaveProperty('readTimeout');
   });
 });

@@ -50,6 +50,11 @@ test.describe('Bulk Re-Deploy pipelines ', () => {
     await redirectToHomePage(page);
   });
 
+  /**
+   * Re-deploy all TestSuite ingestion pipelines
+   * @description Navigates to Data Observability settings, selects multiple pipelines, triggers bulk redeploy,
+   * and verifies success confirmation.
+   */
   test('Re-deploy all test-suite ingestion pipelines', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.DATA_OBSERVABILITY);
 

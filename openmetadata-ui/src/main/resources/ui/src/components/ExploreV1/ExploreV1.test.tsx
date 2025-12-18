@@ -27,6 +27,7 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),
+  useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
 jest.mock('../Explore/ExploreTree/ExploreTree', () => {

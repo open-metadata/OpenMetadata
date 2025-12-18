@@ -147,11 +147,7 @@ export const UserProfileIcon = () => {
           className="w-full d-flex items-center persona-label cursor-pointer d-flex justify-between"
           data-testid="persona-label"
           onClick={() => handleSelectedPersonaChange(item)}>
-          <div
-            className="d-flex items-center default-persona-container"
-            style={{
-              flex: isDefaultPersona ? 2 : 'auto',
-            }}>
+          <div className="d-flex items-center default-persona-container">
             <Typography.Text ellipsis={{ tooltip: true }}>
               {getEntityName(item)}
             </Typography.Text>
@@ -165,9 +161,7 @@ export const UserProfileIcon = () => {
             )}
           </div>
 
-          <div className="flex-1">
-            <Radio checked={selectedPersona?.id === item.id} />
-          </div>
+          <Radio checked={selectedPersona?.id === item.id} />
         </div>
       );
     },

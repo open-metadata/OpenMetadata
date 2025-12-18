@@ -1,0 +1,458 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/ai/llmModel.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LLMModel",
+  "$comment": "@om-entity-type",
+  "description": "LLM Model entity representing a registered Large Language Model deployment, fine-tune, or base model. Models are independent entities that can be referenced by multiple AI agents.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.ai.LLMModel",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "modelType": {
+      "javaType": "org.openmetadata.schema.entity.ai.ModelType",
+      "description": "Type of LLM model",
+      "type": "string",
+      "enum": ["BaseModel", "FineTuned", "Quantized", "Distilled", "Adapter", "Custom"],
+      "javaEnums": [
+        {"name": "BaseModel"},
+        {"name": "FineTuned"},
+        {"name": "Quantized"},
+        {"name": "Distilled"},
+        {"name": "Adapter"},
+        {"name": "Custom"}
+      ]
+    },
+    "modelCapability": {
+      "type": "string",
+      "enum": ["TextGeneration", "CodeGeneration", "Embeddings", "Chat", "Vision", "Audio", "FunctionCalling", "ToolUse"]
+    },
+    "trainingMetadata": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.TrainingMetadata",
+      "description": "Training or fine-tuning metadata - critical for data lineage and impact analysis",
+      "additionalProperties": false,
+      "properties": {
+        "baseModel": {
+          "type": "string",
+          "description": "Base model this was trained/fine-tuned from"
+        },
+        "trainingType": {
+          "type": "string",
+          "enum": ["FullFineTune", "LoRA", "QLoRA", "PrefixTuning", "PromptTuning", "RLHF"]
+        },
+        "trainingDatasets": {
+          "$ref": "../../type/entityReferenceList.json",
+          "description": "Datasets used for training - KEY FOR DATA LINEAGE"
+        },
+        "validationDatasets": {
+          "$ref": "../../type/entityReferenceList.json",
+          "description": "Datasets used for validation"
+        },
+        "dataLineage": {
+          "type": "array",
+          "description": "Detailed data lineage for training - tracks exactly what data was used",
+          "items": {
+            "type": "object",
+            "properties": {
+              "dataset": {
+                "$ref": "../../type/entityReference.json"
+              },
+              "recordCount": {
+                "type": "integer",
+                "description": "Number of records used from this dataset"
+              },
+              "dateRange": {
+                "type": "object",
+                "properties": {
+                  "start": {"$ref": "../../type/basic.json#/definitions/timestamp"},
+                  "end": {"$ref": "../../type/basic.json#/definitions/timestamp"}
+                }
+              },
+              "columns": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Columns used from the dataset"
+              },
+              "piiHandling": {
+                "type": "string",
+                "description": "How PII was handled in this dataset"
+              },
+              "dataTransformations": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Transformations applied to the data"
+              },
+              "sensitivityLevel": {
+                "type": "string",
+                "enum": ["Public", "Internal", "Confidential", "Restricted"]
+              }
+            }
+          }
+        },
+        "trainingPeriod": {
+          "type": "object",
+          "properties": {
+            "startDate": {"$ref": "../../type/basic.json#/definitions/timestamp"},
+            "endDate": {"$ref": "../../type/basic.json#/definitions/timestamp"},
+            "durationHours": {"type": "number"}
+          }
+        },
+        "trainingCost": {
+          "type": "object",
+          "properties": {
+            "totalCost": {"type": "number"},
+            "currency": {"type": "string", "default": "USD"},
+            "computeHours": {"type": "number"},
+            "resourceType": {"type": "string"}
+          }
+        },
+        "hyperparameters": {
+          "type": "object",
+          "description": "Hyperparameters used for training",
+          "properties": {
+            "learningRate": {"type": "number"},
+            "batchSize": {"type": "integer"},
+            "epochs": {"type": "integer"},
+            "optimizer": {"type": "string"},
+            "warmupSteps": {"type": "integer"},
+            "weightDecay": {"type": "number"}
+          }
+        },
+        "trainingMetrics": {
+          "type": "object",
+          "description": "Metrics from training process",
+          "properties": {
+            "finalLoss": {"type": "number"},
+            "accuracy": {"type": "number"},
+            "perplexity": {"type": "number"},
+            "validationLoss": {"type": "number"}
+          }
+        },
+        "trainedBy": {"type": "string"},
+        "trainingJobId": {"type": "string"}
+      }
+    },
+    "modelEvaluation": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.ModelEvaluation",
+      "description": "Comprehensive evaluation metrics for the LLM model",
+      "additionalProperties": false,
+      "properties": {
+        "evaluatedAt": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "evaluationDataset": {
+          "$ref": "../../type/entityReference.json"
+        },
+        "accuracyMetrics": {
+          "type": "object",
+          "properties": {
+            "accuracy": {"type": "number"},
+            "precision": {"type": "number"},
+            "recall": {"type": "number"},
+            "f1Score": {"type": "number"},
+            "bleuScore": {"type": "number"},
+            "rougeScore": {"type": "number"}
+          }
+        },
+        "biasMetrics": {
+          "type": "object",
+          "description": "LLM BIAS EVALUATION - critical for governance",
+          "properties": {
+            "overallBiasScore": {
+              "type": "number",
+              "description": "Overall bias score 0-1, higher = more biased"
+            },
+            "demographicParity": {"type": "number"},
+            "equalizedOdds": {"type": "number"},
+            "disparateImpact": {"type": "number"},
+            "dimensionScores": {
+              "type": "object",
+              "properties": {
+                "gender": {"type": "number"},
+                "race": {"type": "number"},
+                "age": {"type": "number"},
+                "religion": {"type": "number"},
+                "disability": {"type": "number"},
+                "nationality": {"type": "number"},
+                "socioeconomic": {"type": "number"}
+              }
+            },
+            "testMethod": {"type": "string"},
+            "testDataset": {"$ref": "../../type/entityReference.json"}
+          }
+        },
+        "fairnessMetrics": {
+          "type": "object",
+          "properties": {
+            "groupFairness": {"type": "number"},
+            "individualFairness": {"type": "number"},
+            "counterfactualFairness": {"type": "number"}
+          }
+        },
+        "robustnessMetrics": {
+          "type": "object",
+          "properties": {
+            "adversarialRobustness": {"type": "number"},
+            "outlierSensitivity": {"type": "number"},
+            "noiseRobustness": {"type": "number"}
+          }
+        },
+        "safetyMetrics": {
+          "type": "object",
+          "properties": {
+            "toxicityScore": {"type": "number"},
+            "harmfulContentRate": {"type": "number"},
+            "piiLeakageRisk": {"type": "number"}
+          }
+        }
+      }
+    },
+    "modelSpecifications": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.ModelSpecifications",
+      "description": "Technical specifications of the model",
+      "additionalProperties": false,
+      "properties": {
+        "contextWindow": {
+          "type": "integer",
+          "description": "Context window size in tokens"
+        },
+        "maxOutputTokens": {
+          "type": "integer",
+          "description": "Maximum output tokens"
+        },
+        "parametersCount": {
+          "type": "string",
+          "description": "Number of parameters (e.g., '7B', '70B', '175B')"
+        },
+        "architecture": {
+          "type": "string",
+          "description": "Model architecture (e.g., 'Transformer', 'GPT', 'BERT')"
+        },
+        "quantization": {
+          "type": "string",
+          "description": "Quantization method if applicable"
+        }
+      }
+    },
+    "costMetrics": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.CostMetrics",
+      "description": "Cost metrics for using this model",
+      "additionalProperties": false,
+      "properties": {
+        "inputCostPer1kTokens": {
+          "type": "number",
+          "description": "Cost per 1000 input tokens"
+        },
+        "outputCostPer1kTokens": {
+          "type": "number",
+          "description": "Cost per 1000 output tokens"
+        },
+        "currency": {
+          "type": "string",
+          "default": "USD"
+        },
+        "estimatedMonthlyUsage": {
+          "type": "integer",
+          "description": "Estimated monthly token usage"
+        },
+        "estimatedMonthlyCost": {
+          "type": "number",
+          "description": "Estimated monthly cost"
+        }
+      }
+    },
+    "deploymentInfo": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.ai.DeploymentInfo",
+      "description": "Deployment information for the model",
+      "additionalProperties": false,
+      "properties": {
+        "deploymentType": {
+          "type": "string",
+          "enum": ["API", "SelfHosted", "Hybrid", "OnPremise"]
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "API endpoint for the model"
+        },
+        "region": {
+          "type": "string",
+          "description": "Deployment region"
+        },
+        "availabilityZones": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the LLM Model",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this LLM Model",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the LLM Model",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name for the LLM Model",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the LLM Model, its purpose, and capabilities",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "service": {
+      "description": "OPTIONAL reference to LLMService where this model is hosted",
+      "$ref": "../../type/entityReference.json"
+    },
+    "modelType": {
+      "$ref": "#/definitions/modelType"
+    },
+    "baseModel": {
+      "description": "Base model name (e.g., 'gpt-4', 'claude-3-opus', 'llama-2-70b')",
+      "type": "string"
+    },
+    "modelVersion": {
+      "description": "Version of the model",
+      "type": "string"
+    },
+    "modelProvider": {
+      "description": "Model provider (e.g., 'OpenAI', 'Anthropic', 'Meta')",
+      "type": "string"
+    },
+    "providerModelId": {
+      "description": "Provider's internal model ID",
+      "type": "string"
+    },
+    "capabilities": {
+      "description": "Capabilities of this model",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/modelCapability"
+      }
+    },
+    "modelSpecifications": {
+      "$ref": "#/definitions/modelSpecifications"
+    },
+    "trainingMetadata": {
+      "$ref": "#/definitions/trainingMetadata"
+    },
+    "modelEvaluation": {
+      "$ref": "#/definitions/modelEvaluation"
+    },
+    "usedByAgents": {
+      "description": "AI Agents that use this model",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "governanceStatus": {
+      "description": "Governance status - tracks unauthorized/shadow AI models",
+      "type": "string",
+      "enum": ["Approved", "PendingReview", "Rejected", "Unauthorized"]
+    },
+    "certifications": {
+      "description": "Certifications this model has received",
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "regulatoryCompliance": {
+      "description": "Regulatory compliance standards met",
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "costMetrics": {
+      "$ref": "#/definitions/costMetrics"
+    },
+    "deploymentInfo": {
+      "$ref": "#/definitions/deploymentInfo"
+    },
+    "owners": {
+      "description": "Owners of this LLM Model",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this LLM Model",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "domain": {
+      "description": "Domain the LLM Model belongs to",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts": {
+      "description": "Data products this model is part of",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "tags": {
+      "description": "Tags for this LLM Model",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch milliseconds",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this resource",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Change that led to this version",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true, indicates the entity has been soft deleted",
+      "type": "boolean",
+      "default": false
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "domains": {
+      "description": "Domains the LLMModel belongs to",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "votes": {
+      "description": "Votes on the entity",
+      "$ref": "../../type/votes.json"
+    },
+    "lifeCycle": {
+      "description": "Life Cycle properties of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    }
+  },
+  "required": ["id", "name", "modelType", "baseModel"],
+  "additionalProperties": false
+}

@@ -183,7 +183,6 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
               description = "Filter Disabled Classifications",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("disabled")
-          @DefaultValue("false")
           Boolean disabled,
       @Parameter(description = "Limit the number tags returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
@@ -207,10 +206,10 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter =
-        new ListFilter(include)
-            .addQueryParam("parent", parent)
-            .addQueryParam("classification.disabled", disabled);
+    ListFilter filter = new ListFilter(include).addQueryParam("parent", parent);
+    if (disabled != null) {
+      filter.addQueryParam("classification.disabled", disabled);
+    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

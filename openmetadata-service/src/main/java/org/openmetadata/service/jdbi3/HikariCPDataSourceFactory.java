@@ -298,7 +298,6 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
     props.putIfAbsent("prepStmtCacheSqlLimit", "2048");
     props.putIfAbsent("useServerPrepStmts", String.valueOf(useServerPrepStmts));
     props.putIfAbsent("rewriteBatchedStatements", "true");
-    props.putIfAbsent("useSSL", "false");
     props.putIfAbsent("useLocalSessionState", "true");
     props.putIfAbsent("useLocalTransactionState", "true");
     props.putIfAbsent("maintainTimeStats", "false");

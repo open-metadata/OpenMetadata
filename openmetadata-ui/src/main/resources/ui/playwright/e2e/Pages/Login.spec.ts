@@ -176,8 +176,12 @@ test.describe('Login flow should work properly', () => {
       await visitUserProfilePage(page1, testUser.responseData.name);
       await redirectToHomePage(page2);
       await visitUserProfilePage(page2, testUser.responseData.name);
+
+      await page1.close();
+      await page2.close();
     });
 
+    await browserContext.close();
     await afterAction();
   });
 
@@ -210,5 +214,9 @@ test.describe('Login flow should work properly', () => {
     await clickOutside(page2);
 
     await expect(page2.getByTestId('nav-user-name')).toContainText(/admin/i);
+
+    await page1.close();
+    await page2.close();
+    await browserContext.close();
   });
 });

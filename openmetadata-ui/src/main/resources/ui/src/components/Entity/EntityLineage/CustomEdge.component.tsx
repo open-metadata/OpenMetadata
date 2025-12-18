@@ -159,9 +159,13 @@ export const CustomEdge = ({
       targetHandle,
     });
 
+    const allColumnsInCurrentPages = new Set(
+      Object.values(columnsInCurrentPages).flat()
+    );
+
     return (
-      columnsInCurrentPages.includes(decodedHandles.sourceHandle ?? '') &&
-      columnsInCurrentPages.includes(decodedHandles.targetHandle ?? '')
+      allColumnsInCurrentPages.has(decodedHandles.sourceHandle ?? '') &&
+      allColumnsInCurrentPages.has(decodedHandles.targetHandle ?? '')
     );
   }, [columnsInCurrentPages, sourceHandle, targetHandle]);
 
@@ -186,6 +190,7 @@ export const CustomEdge = ({
 
     // For columns edges
     if (isColumnLineage) {
+      display = 'none';
       const noTracing = tracedNodes.length === 0 && tracedColumns.length === 0;
 
       if (isColumnHighlighted) {
@@ -195,8 +200,6 @@ export const CustomEdge = ({
           : theme.palette.primary.main;
       } else if (noTracing && areBothColumnHandlesPresentInCurrentPage) {
         display = 'block';
-      } else {
-        display = 'none';
       }
     }
 

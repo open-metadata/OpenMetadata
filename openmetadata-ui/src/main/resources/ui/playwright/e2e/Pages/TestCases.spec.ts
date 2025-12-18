@@ -23,6 +23,15 @@ import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+/**
+ * Table Difference test case
+ * @description Creates a `tableDiff` test by selecting a second table, setting key columns, use columns, and threshold;
+ * verifies visibility in the Data Quality tab, edits to add more columns, and finally deletes the test case.
+ * Steps
+ * 1. Navigate to entity → Data Observability → Table Profile.
+ * 2. Open Test Case form, select type `tableDiff`, pick Table 2 and its key columns; define Table 1 key/use columns and threshold.
+ * 3. Submit and verify in Data Quality tab; then edit to add additional key/use columns; delete at the end.
+ */
 test('Table difference test case', async ({ page }) => {
   test.slow();
 
@@ -50,6 +59,11 @@ test('Table difference test case', async ({ page }) => {
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
   try {
+    /**
+     * Step 1: Create table difference test case
+     * @description Opens the Test Case form, selects `tableDiff`, searches and selects Table 2, configures key columns
+     * for Table 1 and Table 2, sets threshold and use columns, submits, and verifies the test appears under Data Quality.
+     */
     await test.step('Create', async () => {
       await page.getByTestId('profiler-add-table-test-btn').click();
       const testCaseDoc = page.waitForResponse(
@@ -160,6 +174,11 @@ test('Table difference test case', async ({ page }) => {
       await expect(page.getByTestId(testCase.name)).toBeVisible();
     });
 
+    /**
+     * Step 2: Edit table difference test case
+     * @description Opens the edit drawer, verifies pre-filled key columns for both tables, adds an additional key column
+     * and use column, updates the test, and expects a success toast confirming the update.
+     */
     await test.step('Edit', async () => {
       await expect(
         page.getByTestId(testCase.name).getByRole('link')
@@ -250,6 +269,10 @@ test('Table difference test case', async ({ page }) => {
       await toastNotification(page, 'Test case updated successfully.');
     });
 
+    /**
+     * Step 3: Delete table difference test case
+     * @description Uses the shared delete helper to remove the created test case and validate cleanup.
+     */
     await test.step('Delete', async () => {
       await deleteTestCase(page, testCase.name);
     });
@@ -261,6 +284,15 @@ test('Table difference test case', async ({ page }) => {
   }
 });
 
+/**
+ * Custom SQL Query test case
+ * @description Creates a `tableCustomSQLQuery` test with SQL in CodeMirror, selects strategy and threshold; verifies,
+ * edits display name, SQL and strategy, updates threshold, and deletes the test case.
+ * Steps
+ * 1. Navigate to entity → Data Observability → Table Profile.
+ * 2. Open Test Case form, select `tableCustomSQLQuery`, input SQL, choose strategy (ROWS/COUNT), set threshold.
+ * 3. Submit and verify in Data Quality tab; then edit display name, SQL and strategy; delete at the end.
+ */
 test('Custom SQL Query', async ({ page }) => {
   test.slow();
 
@@ -286,6 +318,11 @@ test('Custom SQL Query', async ({ page }) => {
   await page.getByRole('tab', { name: 'Table Profile' }).click();
 
   try {
+    /**
+     * Step 1: Create custom SQL query test case
+     * @description Opens the Test Case form, selects `tableCustomSQLQuery`, enters SQL in CodeMirror, chooses a strategy
+     * and threshold, submits, and verifies the test appears in the Data Quality tab.
+     */
     await test.step('Create', async () => {
       await page.getByTestId('profiler-add-table-test-btn').click();
       const testCaseDoc = page.waitForResponse(
@@ -345,6 +382,11 @@ test('Custom SQL Query', async ({ page }) => {
       await expect(page.getByTestId(testCase.name)).toBeVisible();
     });
 
+    /**
+     * Step 2: Edit custom SQL query test case
+     * @description Opens the edit drawer, updates display name, SQL content and strategy, adjusts threshold,
+     * submits the update, and expects a success toast.
+     */
     await test.step('Edit', async () => {
       await expect(
         page.getByTestId(testCase.name).getByRole('link')
@@ -392,6 +434,10 @@ test('Custom SQL Query', async ({ page }) => {
       await toastNotification(page, 'Test case updated successfully.');
     });
 
+    /**
+     * Step 3: Delete custom SQL query test case
+     * @description Uses the shared delete helper to remove the created SQL test case and validate cleanup.
+     */
     await test.step('Delete', async () => {
       await deleteTestCase(page, testCase.name);
     });
@@ -401,6 +447,15 @@ test('Custom SQL Query', async ({ page }) => {
   }
 });
 
+/**
+ * Column Values To Be Not Null test case
+ * @description Creates a column-level `columnValuesToBeNotNull` test for a numeric column with description; verifies,
+ * edits display name and description, and deletes the test case.
+ * Steps
+ * 1. From entity page, open create test case (Column Level), select column and definition.
+ * 2. Fill name and description; submit; verify visibility in Data Quality tab.
+ * 3. Edit display name and description; delete the test case.
+ */
 test('Column Values To Be Not Null', async ({ page }) => {
   test.slow();
 
@@ -427,6 +482,11 @@ test('Column Values To Be Not Null', async ({ page }) => {
   await testCaseDoc;
 
   try {
+    /**
+     * Step 1: Create not-null column test case
+     * @description Switches to Column Level, selects a numeric column, picks `columnValuesToBeNotNull` definition,
+     * sets name and description, submits the form, and verifies visibility of the created test case.
+     */
     await test.step('Create', async () => {
       const testDefinitionResponse = page.waitForResponse(
         '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC'
@@ -490,6 +550,10 @@ test('Column Values To Be Not Null', async ({ page }) => {
       ).toBeVisible();
     });
 
+    /**
+     * Step 2: Edit not-null column test case
+     * @description Opens the edit drawer, updates display name and description content, submits, and expects a success toast.
+     */
     await test.step('Edit', async () => {
       await page
         .getByTestId(
@@ -519,6 +583,10 @@ test('Column Values To Be Not Null', async ({ page }) => {
       await toastNotification(page, 'Test case updated successfully.');
     });
 
+    /**
+     * Step 3: Delete not-null column test case
+     * @description Uses the shared delete helper to remove the created column-level test case and validate cleanup.
+     */
     await test.step('Delete', async () => {
       await deleteTestCase(page, NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name);
     });

@@ -493,11 +493,18 @@ test.describe('Mention notifications in Notification Box', () => {
 
       await editorLocator.fill('Hey ');
 
-      const userSuggestionsResponse = user1Page.waitForResponse(
-        `/api/v1/search/query?q=*${adminUser.responseData.name}***`
-      );
+      await editorLocator.click();
 
-      await editorLocator.pressSequentially(`@${adminUser.responseData.name}`);
+      await user1Page.keyboard.press('@');
+      const userSuggestionsResponse = user1Page.waitForResponse((response) => {
+        const url = response.url();
+
+        return (
+          url.includes('/api/v1/search/query') &&
+          url.includes(adminUser.responseData.displayName)
+        );
+      });
+      await editorLocator.pressSequentially(adminUser.responseData.displayName);
       await userSuggestionsResponse;
 
       await user1Page

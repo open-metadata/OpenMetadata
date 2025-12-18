@@ -94,11 +94,11 @@ export const editTags = async (
     .locator('[data-testid="selectable-list"]')
     .scrollIntoViewIfNeeded();
 
-    const searchTagResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(
-        tagName
-      )}*index=tag_search_index*`
-    );
+  const searchTagResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      tagName
+    )}*index=tag_search_index*`
+  );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
   await searchTagResponse;

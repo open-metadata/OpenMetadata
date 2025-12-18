@@ -531,21 +531,8 @@ public class EntityFieldUtils {
    */
   public static void updateEntityMetadata(EntityInterface entity, String user) {
     try {
-      // Set updatedBy if method exists
-      try {
-        Method setUpdatedBy = entity.getClass().getMethod("setUpdatedBy", String.class);
-        setUpdatedBy.invoke(entity, user);
-      } catch (NoSuchMethodException e) {
-        // Not all entities have updatedBy field
-      }
-
-      // Set updatedAt if method exists
-      try {
-        Method setUpdatedAt = entity.getClass().getMethod("setUpdatedAt", Long.class);
-        setUpdatedAt.invoke(entity, System.currentTimeMillis());
-      } catch (NoSuchMethodException e) {
-        // Not all entities have updatedAt field
-      }
+      entity.setUpdatedBy(user);
+      entity.setUpdatedAt(System.currentTimeMillis());
     } catch (Exception e) {
       LOG.debug("Failed to update entity metadata: {}", e.getMessage());
     }

@@ -66,12 +66,24 @@ CUTOFF_NODES = 20
 
 
 # pylint: disable=too-many-function-args,protected-access
-def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
+def get_column_fqn(
+    table_entity: Table,
+    column: str,
+    table: Optional[str] = None,
+    schema: Optional[str] = None,
+    database: Optional[str] = None,
+) -> Optional[str]:
     """
     Get fqn of column if exist in table entity
     """
-    if not table_entity:
+    if (
+        (not table_entity)
+        or (table and table != table_entity.name.root)
+        or (schema and schema != table_entity.databaseSchema.name)
+        or (database and database != table_entity.database.name)
+    ):
         return None
+
     for tbl_column in table_entity.columns or []:
         try:
             if column.lower() == tbl_column.name.root.lower():

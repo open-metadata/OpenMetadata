@@ -525,8 +525,13 @@ public class SystemRepository {
       validation.setLogStorage(logStorageValidation);
     }
 
+    addExtraValidations(applicationConfig, validation);
+
     return validation;
   }
+
+  public void addExtraValidations(
+      OpenMetadataApplicationConfig applicationConfig, ValidationResponse validation) {}
 
   private StepValidation getDatabaseValidation(OpenMetadataApplicationConfig applicationConfig) {
     try {

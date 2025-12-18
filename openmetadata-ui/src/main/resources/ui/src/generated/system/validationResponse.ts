@@ -38,6 +38,7 @@ export interface ValidationResponse {
      * Search instance connectivity check
      */
     searchInstance?: StepValidation;
+    [property: string]: any;
 }
 
 /**

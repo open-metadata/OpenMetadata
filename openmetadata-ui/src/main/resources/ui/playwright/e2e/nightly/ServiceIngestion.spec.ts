@@ -35,24 +35,24 @@ import {
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const table = new TableClass();
-const services = [
-  ApiIngestionClass,
+const services: Record<string, typeof ApiIngestionClass> = {
+  'Api Service': ApiIngestionClass,
   // Skipping S3 as it is failing intermittently in CI
   // Remove the comment when fixed: https://github.com/open-metadata/OpenMetadata/issues/23727
   // S3IngestionClass,
-  MetabaseIngestionClass,
-  MysqlIngestionClass,
-  BigQueryIngestionClass,
-  KafkaIngestionClass,
-  MlFlowIngestionClass,
-  SnowflakeIngestionClass,
-  SupersetIngestionClass,
-  PostgresIngestionClass,
-  RedshiftWithDBTIngestionClass,
-];
+  'Metabase Service': MetabaseIngestionClass,
+  'Mysql Service': MysqlIngestionClass,
+  'BigQuery Service': BigQueryIngestionClass,
+  'Kafka Service': KafkaIngestionClass,
+  'MlFlow Service': MlFlowIngestionClass,
+  'Snowflake Service': SnowflakeIngestionClass,
+  'Superset Service': SupersetIngestionClass,
+  'Postgres Service': PostgresIngestionClass,
+  'Redshift Service': RedshiftWithDBTIngestionClass,
+};
 
 if (process.env.PLAYWRIGHT_IS_OSS) {
-  services.push(AirflowIngestionClass);
+  services['Airflow Service'] = AirflowIngestionClass;
 }
 
 // use the admin user to login
@@ -62,7 +62,7 @@ test.use({
   video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
-services.forEach((ServiceClass) => {
+Object.entries(services).forEach(([key, ServiceClass]) => {
   const service = new ServiceClass();
 
   test.describe.configure({
@@ -70,52 +70,70 @@ services.forEach((ServiceClass) => {
     timeout: 11 * 60 * 1000,
   });
 
-  test.describe.serial(
-    service.serviceType,
-    PLAYWRIGHT_INGESTION_TAG_OBJ,
-    async () => {
-      test.beforeEach('Visit entity details page', async ({ page }) => {
-        await redirectToHomePage(page);
-        await settingClick(
-          page,
-          service.category as unknown as SettingOptionsType
-        );
-      });
-
-      test(`Create & Ingest ${service.serviceType} service`, async ({
+  test.describe.serial(key, PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
+    test.beforeEach('Visit entity details page', async ({ page }) => {
+      await redirectToHomePage(page);
+      await settingClick(
         page,
-      }) => {
-        await service.createService(page);
-      });
+        service.category as unknown as SettingOptionsType
+      );
+    });
 
-      test(`Update description and verify description after re-run`, async ({
-        page,
-      }) => {
-        await service.updateService(page);
-      });
+    /**
+     * Tests service creation and first ingestion run
+     * @description Creates the service and triggers ingestion
+     */
+    test(`Create & Ingest ${key} service`, async ({ page }) => {
+      await service.createService(page);
+    });
 
-      test(`Update schedule options and verify`, async ({ page }) => {
-        await service.updateScheduleOptions(page);
-      });
+    /**
+     * Tests description update persistence across reruns
+     * @description Updates service description and verifies it after rerun
+     */
+    test(`Update description and verify description after re-run`, async ({
+      page,
+    }) => {
+      await service.updateService(page);
+    });
 
-      if (
-        [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
-          service.serviceType
-        )
-      ) {
-        test(`Service specific tests`, async ({ page }) => {
-          await service.runAdditionalTests(page, test);
-        });
-      }
+    /**
+     * Tests schedule option updates
+     * @description Updates ingestion schedule options and verifies they persist
+     */
+    test(`Update schedule options and verify`, async ({ page }) => {
+      await service.updateScheduleOptions(page);
+    });
 
-      test(`Delete ${service.serviceType} service`, async ({ page }) => {
-        await service.deleteService(page);
+    if (
+      [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
+        service.serviceType
+      )
+    ) {
+      /**
+       * Tests database-specific ingestion behaviors
+       * @description Runs additional checks for Postgres, Redshift, and MySQL services
+       */
+      test(`Service specific tests`, async ({ page }) => {
+        await service.runAdditionalTests(page, test);
       });
     }
-  );
+
+    /**
+     * Tests service deletion flow
+     * @description Deletes the service and validates removal
+     */
+    test(`Delete ${key} service`, async ({ page }) => {
+      await service.deleteService(page);
+    });
+  });
 });
 
 test.describe('Service form', () => {
+  /**
+   * Tests validation for invalid service names
+   * @description Ensures required and character constraints surface errors on the name field
+   */
   test('name field should throw error for invalid name', async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.DATABASES);
@@ -165,6 +183,10 @@ test.describe('Service Ingestion Pagination', () => {
     await table.visitEntityPage(page);
   });
 
+  /**
+   * Tests default ingestion pagination size
+   * @description Verifies ingestion pipelines load with a default page size of 15
+   */
   test('Default Pagination size should be 15', async ({ page }) => {
     const servicePageResponse = page.waitForResponse(
       '/api/v1/services/databaseServices/name/*'

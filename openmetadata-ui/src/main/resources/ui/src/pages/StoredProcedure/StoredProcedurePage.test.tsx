@@ -137,10 +137,6 @@ jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <p>GenericTab</p>),
 }));
 
-jest.mock('../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue([{}]),
-}));
-
 jest.mock(
   '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
   () => ({

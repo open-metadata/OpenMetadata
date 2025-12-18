@@ -480,7 +480,7 @@ export const assignCertification = async (
   endpoint: string
 ) => {
   const certificationResponse = page.waitForResponse(
-    '/api/v1/tags?parent=Certification&limit=50'
+    '/api/v1/tags?*parent=Certification*'
   );
   await page.getByTestId('edit-certification').click();
   await certificationResponse;
@@ -588,16 +588,18 @@ export const updateDescriptionForChildren = async (
 
   await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
 
-  isEmpty(description)
-    ? await expect(
-        page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
-      ).toContainText('No Description')
-    : await expect(
-        page
-          .locator(`[${rowSelector}="${rowId}"]`)
-          .getByTestId('viewer-container')
-          .getByRole('paragraph')
-      ).toContainText(description);
+  if (isEmpty(description)) {
+    await expect(
+      page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
+    ).toContainText('No Description');
+  } else {
+    await expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
+        .getByTestId('viewer-container')
+        .getByRole('paragraph')
+    ).toContainText(description);
+  }
 };
 
 export const assignTag = async (
@@ -1504,9 +1506,11 @@ export const checkForEditActions = async ({
     }
 
     if (elementSelector === '[data-testid="entity-follow-button"]') {
-      deleted
-        ? await expect(page.locator(elementSelector)).not.toBeVisible()
-        : await expect(page.locator(elementSelector)).toBeVisible();
+      if (deleted) {
+        await expect(page.locator(elementSelector)).not.toBeVisible();
+      } else {
+        await expect(page.locator(elementSelector)).toBeVisible();
+      }
 
       continue;
     }
@@ -1986,7 +1990,7 @@ export const checkExploreSearchFilter = async (
   const queryRes = page.waitForResponse(querySearchURL);
   await page.click('[data-testid="update-btn"]');
   await queryRes;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await waitForAllLoadersToDisappear(page);
 
   await expect(
     page.getByTestId(

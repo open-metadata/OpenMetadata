@@ -42,11 +42,11 @@ import {
 import { useFqn } from '../../../../hooks/useFqn';
 import { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import {
-  getConfigHeaderArrayFromObject,
   getDestinationConfigField,
   getDestinationStatusAlertData,
   getFilteredDestinationOptions,
   getSubscriptionTypeOptions,
+  normalizeDestinationConfig,
 } from '../../../../utils/Alerts/AlertsUtil';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
@@ -83,15 +83,7 @@ function DestinationSelectItem({
         {
           type: destination.type,
           category: destination.category,
-          config: omitBy(
-            {
-              ...destination.config,
-              headers: getConfigHeaderArrayFromObject(
-                destination?.config?.headers
-              ),
-            },
-            isUndefined
-          ),
+          config: normalizeDestinationConfig(destination.config),
         }
       )
     );
@@ -376,13 +368,16 @@ function DestinationSelectItem({
                       }),
                     },
                     {
-                      message: t('message.value-must-be-greater-than', {
-                        field: t('label.downstream-depth'),
-                        minimum: 0,
-                      }),
                       validator: (_, value) => {
                         if (!isEmpty(value) && value <= 0) {
-                          return Promise.reject();
+                          return Promise.reject(
+                            new Error(
+                              t('message.value-must-be-greater-than', {
+                                field: t('label.downstream-depth'),
+                                minimum: 0,
+                              })
+                            )
+                          );
                         }
 
                         return Promise.resolve();
@@ -425,7 +420,11 @@ function DestinationSelectItem({
                           {`${t('label.status')}:`}
                         </Typography.Text>
                         <Typography.Text className="font-medium text-sm m-l-xss">
-                          {`${destinationStatusDetails?.statusCode} ${statusLabel} ${destinationStatusDetails?.reason}`}
+                          {`${
+                            destinationStatusDetails?.statusCode
+                          } ${statusLabel} ${
+                            destinationStatusDetails?.reason ?? ''
+                          }`}
                         </Typography.Text>
                       </>
                     }

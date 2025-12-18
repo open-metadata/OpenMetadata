@@ -34,10 +34,6 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.time_utils import (
-    get_beginning_of_day_timestamp_mill,
-    get_end_of_day_timestamp_mill,
-)
 from metadata.workflow.metadata import MetadataWorkflow
 
 Base = declarative_base()
@@ -87,6 +83,14 @@ class User(Base):
     signedup = Column(DateTime)
 
 
+class Order(Base):
+    __tablename__ = "orders"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
+    amount = Column(Integer)
+    order_date = Column(DateTime)
+
+
 class TestGreatExpectationIntegration1xx(TestCase):
     """Test great expectation integration"""
 
@@ -115,7 +119,12 @@ class TestGreatExpectationIntegration1xx(TestCase):
         except Exception as exc:
             LOGGER.warning(f"Table Already exists: {exc}")
 
-        data = [
+        try:
+            Order.__table__.create(bind=cls.engine)
+        except Exception as exc:
+            LOGGER.warning(f"Table Already exists: {exc}")
+
+        users_data = [
             User(
                 name="John",
                 fullname="John Doe",
@@ -145,7 +154,29 @@ class TestGreatExpectationIntegration1xx(TestCase):
                 signedup=datetime.now() - timedelta(days=1),
             ),
         ]
-        cls.session.add_all(data)
+        cls.session.add_all(users_data)
+
+        orders_data = [
+            Order(
+                id=1,
+                user_id=1,
+                amount=100,
+                order_date=datetime.now() - timedelta(days=5),
+            ),
+            Order(
+                id=2,
+                user_id=2,
+                amount=200,
+                order_date=datetime.now() - timedelta(days=3),
+            ),
+            Order(
+                id=3,
+                user_id=1,
+                amount=150,
+                order_date=datetime.now() - timedelta(days=1),
+            ),
+        ]
+        cls.session.add_all(orders_data)
         cls.session.commit()
 
         ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
@@ -172,11 +203,13 @@ class TestGreatExpectationIntegration1xx(TestCase):
         )
 
         User.__table__.drop(bind=cls.engine)
+        Order.__table__.drop(bind=cls.engine)
         cls.session.close()
 
     def test_great_expectation_integration(self):
         """
-        Test great expectation integration
+        Test great expectation integration with multi-table routing using expectation_suite_table_config_map
+        Tests Issue #22929: query-based validations routing to correct tables
         """
         self.install_gx_1xx()
         import great_expectations as gx
@@ -193,13 +226,20 @@ class TestGreatExpectationIntegration1xx(TestCase):
             OpenMetadataValidationAction1xx,
         )
 
-        table_entity = self.metadata.get_by_name(
+        # Verify both tables start with no test suites
+        users_table = self.metadata.get_by_name(
             entity=Table,
             fqn="test_sqlite.default.main.users",
             fields=["testSuite"],
         )
+        assert not users_table.testSuite
 
-        assert not table_entity.testSuite
+        orders_table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.default.main.orders",
+            fields=["testSuite"],
+        )
+        assert not orders_table.testSuite
 
         # GE config file
         ge_folder = os.path.join(
@@ -214,66 +254,114 @@ class TestGreatExpectationIntegration1xx(TestCase):
             connection_string=conn_string,
         )
 
-        data_asset = data_source.add_table_asset(
-            name="users", table_name="users", schema_name="main"
+        # Create query-based validation for users table
+        users_query = "SELECT id, name FROM users WHERE id > 0"
+        users_query_asset = data_source.add_query_asset(
+            name="users_query_asset",
+            query=users_query,
         )
-        batch_definition = data_asset.add_batch_definition_whole_table(
-            "batch definition"
+        users_batch_def = users_query_asset.add_batch_definition_whole_table(
+            "users_batch"
         )
-        batch = batch_definition.get_batch()
-        suite = context.suites.add(
-            gx.core.expectation_suite.ExpectationSuite(name="name")
+        users_suite = context.suites.add(
+            gx.core.expectation_suite.ExpectationSuite(name="users_query_suite")
         )
-        suite.add_expectation(
+        users_suite.add_expectation(
             gx.expectations.ExpectColumnValuesToNotBeNull(column="name")
         )
-
-        validation_definition = context.validation_definitions.add(
+        users_validation_def = context.validation_definitions.add(
             gx.core.validation_definition.ValidationDefinition(
-                name="validation definition",
-                data=batch_definition,
-                suite=suite,
+                name="users_validation",
+                data=users_batch_def,
+                suite=users_suite,
             )
         )
 
-        action_list = [
-            OpenMetadataValidationAction1xx(
-                database_service_name="test_sqlite",
-                database_name="default",
-                table_name="users",
-                schema_name="main",
-                config_file_path=ometa_config,
+        # Create query-based validation for orders table
+        orders_query = "SELECT id, amount FROM orders WHERE amount > 0"
+        orders_query_asset = data_source.add_query_asset(
+            name="orders_query_asset",
+            query=orders_query,
+        )
+        orders_batch_def = orders_query_asset.add_batch_definition_whole_table(
+            "orders_batch"
+        )
+        orders_suite = context.suites.add(
+            gx.core.expectation_suite.ExpectationSuite(name="orders_query_suite")
+        )
+        orders_suite.add_expectation(
+            gx.expectations.ExpectColumnValuesToNotBeNull(column="amount")
+        )
+        orders_validation_def = context.validation_definitions.add(
+            gx.core.validation_definition.ValidationDefinition(
+                name="orders_validation",
+                data=orders_batch_def,
+                suite=orders_suite,
             )
-        ]
+        )
+
+        # Define the config map to route results to correct tables
+        table_config_map = {
+            "users_query_suite": {
+                "database_name": "default",
+                "schema_name": "main",
+                "table_name": "users",
+            },
+            "orders_query_suite": {
+                "database_name": "default",
+                "schema_name": "main",
+                "table_name": "orders",
+            },
+        }
+
+        action = OpenMetadataValidationAction1xx(
+            database_service_name="test_sqlite",
+            database_name="default",
+            schema_name="main",
+            config_file_path=ometa_config,
+            expectation_suite_table_config_map=table_config_map,
+        )
 
         checkpoint = context.checkpoints.add(
             gx.checkpoint.checkpoint.Checkpoint(
-                name="checkpoint",
-                validation_definitions=[validation_definition],
-                actions=action_list,
+                name="multi_table_checkpoint",
+                validation_definitions=[users_validation_def, orders_validation_def],
+                actions=[action],
             )
         )
-        checkpoint.run()
+        result = checkpoint.run()
 
-        table_entity = self.metadata.get_by_name(
+        assert result.success
+
+        # Verify users table received its test results
+        users_table = self.metadata.get_by_name(
             entity=Table,
             fqn="test_sqlite.default.main.users",
             fields=["testSuite"],
         )
-
-        assert table_entity.testSuite
-        test_suite: TestSuite = self.metadata.get_by_id(
-            entity=TestSuite, entity_id=table_entity.testSuite.id, fields=["tests"]
+        assert users_table.testSuite
+        users_test_suite: TestSuite = self.metadata.get_by_id(
+            entity=TestSuite, entity_id=users_table.testSuite.id, fields=["tests"]
         )
-        assert len(test_suite.tests) == 1
-
-        test_case_results = self.metadata.get_test_case_results(
-            test_case_fqn=TEST_CASE_FQN,
-            start_ts=get_beginning_of_day_timestamp_mill(),
-            end_ts=get_end_of_day_timestamp_mill(),
+        assert len(users_test_suite.tests) >= 1
+        assert any(
+            "name" in str(test.fullyQualifiedName) for test in users_test_suite.tests
         )
 
-        assert test_case_results
+        # Verify orders table received its test results
+        orders_table = self.metadata.get_by_name(
+            entity=Table,
+            fqn="test_sqlite.default.main.orders",
+            fields=["testSuite"],
+        )
+        assert orders_table.testSuite
+        orders_test_suite: TestSuite = self.metadata.get_by_id(
+            entity=TestSuite, entity_id=orders_table.testSuite.id, fields=["tests"]
+        )
+        assert len(orders_test_suite.tests) >= 1
+        assert any(
+            "amount" in str(test.fullyQualifiedName) for test in orders_test_suite.tests
+        )
 
     def install_gx_1xx(self):
         """Install GX 1.x.x at runtime as we support 0.18.x and 1.x.x and setup will install 1 default version"""

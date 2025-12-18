@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Popover, Radio, Space, Spin, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Empty,
+  Popover,
+  Radio,
+  Space,
+  Spin,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -59,6 +68,7 @@ const Certification = ({
         parent: 'Certification',
         limit: 50,
         after: page > 1 ? paging.after : undefined,
+        disabled: false,
       });
 
       const { data, paging: newPaging } = response;
@@ -126,6 +136,17 @@ const Certification = ({
   };
 
   const certificationCardData = useMemo(() => {
+    if (certifications.length === 0 && !isLoadingCertificationData) {
+      return (
+        <Empty
+          description={t('label.no-entity-available', {
+            entity: t('label.certification-plural-lowercase'),
+          })}
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        />
+      );
+    }
+
     return (
       <div
         className="h-max-100 overflow-y-auto overflow-x-hidden"
@@ -177,7 +198,14 @@ const Certification = ({
         )}
       </div>
     );
-  }, [certifications, selectedCertification, hasContentLoading, handleScroll]);
+  }, [
+    certifications,
+    selectedCertification,
+    hasContentLoading,
+    handleScroll,
+    isLoadingCertificationData,
+    t,
+  ]);
 
   const handleCloseCertification = async () => {
     popoverRef.current?.close();

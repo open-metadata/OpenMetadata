@@ -26,7 +26,7 @@ import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
 } from '../../../../utils/RouterUtils';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
+import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import Table from '../../../common/Table/Table';
 
 const ListEntities = ({
@@ -76,15 +76,7 @@ const ListEntities = ({
           );
         },
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        width: 300,
-        render: (_, record) => (
-          <RichTextEditorPreviewerNew markdown={record?.description || ''} />
-        ),
-      },
+      ...descriptionTableObject<EntityReference>({ width: 300 }),
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',

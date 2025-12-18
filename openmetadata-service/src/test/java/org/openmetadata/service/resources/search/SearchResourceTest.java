@@ -2014,6 +2014,106 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
         });
   }
 
+  @Test
+  void testGlossaryTermHierarchySearchRelevanceScoring() throws IOException {
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+
+    try {
+      glossaryResourceTest.setup(null);
+      glossaryTermResourceTest.setup(null);
+    } catch (Exception e) {
+      LOG.warn("Some entities already exist - continuing with test execution");
+    }
+
+    String testPrefix = "hierarchy_relevance_test_" + System.currentTimeMillis();
+    List<Glossary> createdGlossaries = new ArrayList<>();
+    List<org.openmetadata.schema.entity.data.GlossaryTerm> createdTerms = new ArrayList<>();
+
+    try {
+      CreateGlossary createGlossary1 =
+          glossaryResourceTest.createRequest(testPrefix + "_glossary_low_score");
+      Glossary glossary1 = glossaryResourceTest.createEntity(createGlossary1, ADMIN_AUTH_HEADERS);
+      createdGlossaries.add(glossary1);
+
+      org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm1 =
+          glossaryTermResourceTest
+              .createRequest(testPrefix + "_term_description_match")
+              .withGlossary(glossary1.getFullyQualifiedName())
+              .withDisplayName("Product Feature")
+              .withDescription("This term describes Venta metrics and related analytics");
+      org.openmetadata.schema.entity.data.GlossaryTerm term1 =
+          glossaryTermResourceTest.createEntity(createTerm1, ADMIN_AUTH_HEADERS);
+      createdTerms.add(term1);
+
+      CreateGlossary createGlossary2 =
+          glossaryResourceTest.createRequest(testPrefix + "_glossary_high_score");
+      Glossary glossary2 = glossaryResourceTest.createEntity(createGlossary2, ADMIN_AUTH_HEADERS);
+      createdGlossaries.add(glossary2);
+
+      org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm2 =
+          glossaryTermResourceTest
+              .createRequest("Venta_Neta_" + testPrefix)
+              .withGlossary(glossary2.getFullyQualifiedName())
+              .withDisplayName("Venta Neta LW")
+              .withDescription("Last week net sales metric");
+      org.openmetadata.schema.entity.data.GlossaryTerm term2 =
+          glossaryTermResourceTest.createEntity(createTerm2, ADMIN_AUTH_HEADERS);
+      createdTerms.add(term2);
+
+      TestUtils.simulateWork(5);
+
+      String searchQuery = "Venta";
+
+      WebTarget target =
+          getResource("search/query")
+              .queryParam("q", searchQuery)
+              .queryParam("index", "glossary_term_search_index")
+              .queryParam("from", 0)
+              .queryParam("size", 25)
+              .queryParam("deleted", false)
+              .queryParam("track_total_hits", true)
+              .queryParam("getHierarchy", true);
+
+      String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+      assertNotNull(result);
+      assertFalse(result.isEmpty());
+
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode responseArray = mapper.readTree(result);
+      assertTrue(
+          responseArray.isArray(), "Response should be an array of glossaries with hierarchy");
+      assertTrue(responseArray.size() >= 2, "Should return at least 2 glossaries");
+
+      JsonNode firstGlossary = responseArray.get(0);
+      String firstGlossaryFqn = firstGlossary.get("fullyQualifiedName").asText();
+
+      assertEquals(
+          glossary2.getFullyQualifiedName(),
+          firstGlossaryFqn,
+          "Glossary with term having 'Venta' in name should appear first (higher relevance score)");
+
+      LOG.info(
+          "Hierarchy search relevance test passed - glossaries correctly sorted by highest-scoring child term");
+
+    } finally {
+      for (org.openmetadata.schema.entity.data.GlossaryTerm term : createdTerms) {
+        try {
+          glossaryTermResourceTest.deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary term {}: {}", term.getName(), e.getMessage());
+        }
+      }
+      for (Glossary glossary : createdGlossaries) {
+        try {
+          glossaryResourceTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary {}: {}", glossary.getName(), e.getMessage());
+        }
+      }
+    }
+  }
+
   private Response getEntityTypeCountsWithParams(
       String query, String index, Boolean deleted, String queryFilter, String postFilter) {
     WebTarget target = getResource("search/entityTypeCounts").queryParam("q", query);

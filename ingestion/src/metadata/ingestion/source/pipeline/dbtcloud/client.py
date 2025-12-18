@@ -286,4 +286,4 @@ class DBTCloudClient:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get models with lineage info: {exc}")
-        return None, None
+        return None, None, None

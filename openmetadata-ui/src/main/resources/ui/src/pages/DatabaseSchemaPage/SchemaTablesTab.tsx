@@ -23,7 +23,6 @@ import { useNavigate } from 'react-router-dom';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -70,6 +69,7 @@ import {
 import { stringToHTML } from '../../utils/StringsUtils';
 import {
   dataProductTableObject,
+  descriptionTableObject,
   domainTableObject,
   ownerTableObject,
   tagTableObject,
@@ -284,18 +284,7 @@ function SchemaTablesTab({
           );
         },
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        width: 400,
-        render: (text: string) =>
-          text?.trim() ? (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
-      },
+      ...descriptionTableObject<Table>({ width: 400 }),
       ...ownerTableObject<Table>(),
       ...domainTableObject<Table>(),
       ...dataProductTableObject<Table>(),

@@ -196,9 +196,24 @@ const CustomNodeV1 = (props: NodeProps) => {
     setIsChildrenListExpanded((prev) => !prev);
   }, []);
 
+  const [
+    isOnlyShowColumnsWithLineageFilterActive,
+    setIsOnlyShowColumnsWithLineageFilterActive,
+  ] = useState(false);
+
+  const toggleOnlyShowColumnsWithLineageFilterActive = useCallback(() => {
+    setIsOnlyShowColumnsWithLineageFilterActive((prev) => !prev);
+  }, []);
+
   useEffect(() => {
     setIsChildrenListExpanded(isColumnLayerEnabled);
   }, [isColumnLayerEnabled]);
+
+  useEffect(() => {
+    setIsOnlyShowColumnsWithLineageFilterActive(
+      isColumnLayerEnabled && !isEditMode
+    );
+  }, [isColumnLayerEnabled, isEditMode]);
 
   const containerClass = getNodeClassNames({
     isSelected,
@@ -231,8 +246,14 @@ const CustomNodeV1 = (props: NodeProps) => {
       <>
         <LineageNodeLabelV1
           isChildrenListExpanded={isChildrenListExpanded}
+          isOnlyShowColumnsWithLineageFilterActive={
+            isOnlyShowColumnsWithLineageFilterActive
+          }
           node={node}
           toggleColumnsList={toggleColumnsList}
+          toggleOnlyShowColumnsWithLineageFilterActive={
+            toggleOnlyShowColumnsWithLineageFilterActive
+          }
         />
         {isSelected && isEditMode && !isRootNode && (
           <LineageNodeRemoveButton onRemove={() => removeNodeHandler(props)} />
@@ -247,6 +268,12 @@ const CustomNodeV1 = (props: NodeProps) => {
     isEditMode,
     isRootNode,
     isChildrenListExpanded,
+    toggleColumnsList,
+    toggleOnlyShowColumnsWithLineageFilterActive,
+    removeNodeHandler,
+    props,
+    isOnlyShowColumnsWithLineageFilterActive,
+    isEditMode,
   ]);
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
@@ -307,6 +334,9 @@ const CustomNodeV1 = (props: NodeProps) => {
         <NodeChildren
           isChildrenListExpanded={isChildrenListExpanded}
           isConnectable={isConnectable}
+          isOnlyShowColumnsWithLineageFilterActive={
+            isOnlyShowColumnsWithLineageFilterActive
+          }
           node={node}
         />
       </div>

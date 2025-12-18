@@ -61,6 +61,7 @@ import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import {
   dataProductTableObject,
+  descriptionTableObject,
   domainTableObject,
   ownerTableObject,
   tagTableObject,
@@ -70,7 +71,6 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -277,20 +277,7 @@ export const DatabaseSchemaTable = ({
           />
         ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        width: 300,
-        render: (text: string) =>
-          text?.trim() ? (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ) : (
-            <span className="text-grey-muted">
-              {t('label.no-entity', { entity: t('label.description') })}
-            </span>
-          ),
-      },
+      ...descriptionTableObject<DatabaseSchema>({ width: 300 }),
       ...ownerTableObject<DatabaseSchema>(),
       ...domainTableObject<DatabaseSchema>(),
       ...dataProductTableObject<DatabaseSchema>(),

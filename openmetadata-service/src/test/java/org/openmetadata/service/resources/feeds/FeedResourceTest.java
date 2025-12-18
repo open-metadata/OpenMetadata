@@ -2605,4 +2605,45 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public static String buildTableFieldLink(String tableFqn, String field) {
     return String.format("<#E::table::%s::%s>", tableFqn, field);
   }
+
+  @Test
+  void post_createTasksConcurrently_200() throws HttpResponseException {
+    String about = String.format("<#E::%s::%s>", Entity.TABLE, TABLE.getFullyQualifiedName());
+    List<CreateThread> createThreads = new java.util.ArrayList<>();
+    for (int i = 0; i < 50; i++) {
+      createThreads.add(
+          new CreateThread()
+              .withFrom(USER.getName())
+              .withMessage("Concurrent task " + i)
+              .withAbout(about)
+              .withType(ThreadType.Task)
+              .withTaskDetails(
+                  new CreateTaskDetails()
+                      .withAssignees(List.of(USER2.getEntityReference()))
+                      .withType(RequestDescription)
+                      .withSuggestion("new description " + i)));
+    }
+
+    List<Thread> createdTasks =
+        createThreads.parallelStream()
+            .map(
+                createThread -> {
+                  try {
+                    return createThread(createThread, USER_AUTH_HEADERS);
+                  } catch (HttpResponseException e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .toList();
+
+    assertEquals(50, createdTasks.size());
+    List<Integer> taskIds = createdTasks.stream().map(t -> t.getTask().getId()).toList();
+    long distinctIds = taskIds.stream().distinct().count();
+    assertEquals(taskIds.size(), distinctIds, "All task IDs should be unique");
+
+    // Delete the created task threads
+    for (Thread thread : createdTasks) {
+      deleteThread(thread.getId(), USER_AUTH_HEADERS);
+    }
+  }
 }

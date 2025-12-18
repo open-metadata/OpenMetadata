@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Module to define helper methods for datalake and to fetch data and metadata 
+Module to define helper methods for datalake and to fetch data and metadata
 from different auths and different file systems.
 """
 import ast
@@ -86,7 +86,7 @@ def fetch_dataframe(
 
 def get_file_format_type(key_name, metadata_entry=None):
     for supported_types in SupportedTypes:
-        if key_name.endswith(supported_types.value):
+        if key_name.lower().endswith(supported_types.value.lower()):
             return supported_types
         if metadata_entry:
             entry: list = [
@@ -616,9 +616,11 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                     name=truncate_column_name(column_name),
                     displayName=column_name,
                     dataType=data_type,
-                    dataTypeDisplay=column_type
-                    if isinstance(column_type, str)
-                    else str(column_type),
+                    dataTypeDisplay=(
+                        column_type
+                        if isinstance(column_type, str)
+                        else str(column_type)
+                    ),
                 )
 
                 # Handle nested struct types
@@ -671,9 +673,9 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                     "name": truncate_column_name(child_name),
                     "displayName": child_name,
                     "dataType": data_type.value,
-                    "dataTypeDisplay": child_type
-                    if isinstance(child_type, str)
-                    else str(child_type),
+                    "dataTypeDisplay": (
+                        child_type if isinstance(child_type, str) else str(child_type)
+                    ),
                 }
 
                 # Recursively handle nested structs
