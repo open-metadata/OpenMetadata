@@ -2599,40 +2599,41 @@ public class EventSubscriptionResourceTest
     templateTest.deleteEntity(template2.getId(), ADMIN_AUTH_HEADERS);
   }
 
+  private void assertSqlInjectionAttempt(Map<String, String> params) throws IOException {
+    ResultList<EventSubscription> results = null;
+    try {
+      results = listEntities(params, ADMIN_AUTH_HEADERS);
+    } catch (HttpResponseException e) {
+      // SQL injection should not crash the server with a 500 error
+      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
+      return;
+    }
+
+    // If no exception is thrown, malicious input must not expose any data
+    assertNotNull(results, "Malicious input should not produce null results");
+    assertTrue(
+        results.getData() == null || results.getData().isEmpty(),
+        "Malicious input should return empty results");
+  }
+
   @Test
-  void test_sqlInjectionPrevention(TestInfo test) throws IOException {
+  void test_parameterizedQueriesPreventSqlInjection(TestInfo test) throws IOException {
     Map<String, String> sqlInjectionAttempts = new HashMap<>();
     sqlInjectionAttempts.put("alertType", "Observability' OR '1'='1");
-    try {
-      listEntities(sqlInjectionAttempts, ADMIN_AUTH_HEADERS);
-    } catch (HttpResponseException e) {
-      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
-    }
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
 
     sqlInjectionAttempts.clear();
     sqlInjectionAttempts.put("alertType", "Observability'--");
-    try {
-      listEntities(sqlInjectionAttempts, ADMIN_AUTH_HEADERS);
-    } catch (HttpResponseException e) {
-      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
-    }
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
 
     sqlInjectionAttempts.clear();
     sqlInjectionAttempts.put("alertType", "' UNION SELECT * FROM user_entity--");
-    try {
-      listEntities(sqlInjectionAttempts, ADMIN_AUTH_HEADERS);
-    } catch (HttpResponseException e) {
-      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
-    }
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
 
     sqlInjectionAttempts.clear();
     sqlInjectionAttempts.put(
         "notificationTemplate", "00000000-0000-0000-0000-000000000000' OR '1'='1");
-    try {
-      listEntities(sqlInjectionAttempts, ADMIN_AUTH_HEADERS);
-    } catch (HttpResponseException e) {
-      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
-    }
+    assertSqlInjectionAttempt(sqlInjectionAttempts);
 
     Map<String, String> validParams = new HashMap<>();
     validParams.put("alertType", "Observability");

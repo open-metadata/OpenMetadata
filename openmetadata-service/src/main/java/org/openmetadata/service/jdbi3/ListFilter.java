@@ -153,7 +153,7 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return "JSON_EXTRACT(json, '$.alertType') = :alertType";
+        return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.alertType')) = :alertType";
       } else {
         return "json->>'alertType' = :alertType";
       }
@@ -166,7 +166,7 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     } else {
       if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-        return "JSON_EXTRACT(json, '$.notificationTemplate.id') = :notificationTemplate";
+        return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.notificationTemplate.id')) = :notificationTemplate";
       } else {
         return "json->'notificationTemplate'->>'id' = :notificationTemplate";
       }
