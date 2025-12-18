@@ -29,6 +29,8 @@ import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 @Slf4j
 public class RdfRepository {
 
+  private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
+
   private final RdfConfiguration config;
   private final RdfStorageInterface storageService;
   private final JsonLdTranslator translator;
@@ -115,8 +117,6 @@ public class RdfRepository {
     }
 
     try {
-      // Clear the entity from its graph
-      String graphUri = config.getBaseUri().toString() + "graph/" + entityReference.getType();
       String entityUri =
           config.getBaseUri().toString()
               + "entity/"
@@ -124,13 +124,12 @@ public class RdfRepository {
               + "/"
               + entityReference.getId();
 
-      // Remove entity and all its relationships from all graphs
+      // Remove entity and all its relationships from the knowledge graph
       String sparqlUpdate =
           String.format(
               "DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }; "
-                  + "DELETE WHERE { GRAPH ?g { ?s ?p <%s> } }; "
-                  + "DELETE WHERE { GRAPH ?g { <%s> ?p ?o } }",
-              graphUri, entityUri, entityUri, entityUri);
+                  + "DELETE WHERE { GRAPH <%s> { ?s ?p <%s> } }",
+              KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Deleted entity {} from RDF store", entityReference.getId());
