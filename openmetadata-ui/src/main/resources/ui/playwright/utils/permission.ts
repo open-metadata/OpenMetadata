@@ -241,3 +241,45 @@ export const cleanupPermissions = async (apiContext: APIRequestContext) => {
     await policy.delete(apiContext);
   }
 };
+
+export const initializeUserWithViewOnlyPermissions = async (
+  page: Page,
+  testUser: UserClass
+) => {
+  await redirectToHomePage(page);
+  const { apiContext } = await getApiContext(page);
+
+  // Create user
+  await testUser.create(apiContext, false);
+
+  // Create policy with ViewAll permission only (no EditTags)
+  policy = new PolicyClass();
+
+  const policyRules = [...VIEW_ALL_RULE];
+
+  await policy.create(apiContext, policyRules);
+
+  // Create role and assign policy
+  role = new RolesClass();
+  await role.create(apiContext, [policy.responseData.name]);
+
+  // Assign role to user
+  await testUser.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'replace',
+        path: '/roles',
+        value: [
+          {
+            id: role.responseData.id,
+            type: 'role',
+            name: role.responseData.name,
+          },
+        ],
+      },
+    ],
+  });
+
+  return { apiContext, policy, role };
+};
