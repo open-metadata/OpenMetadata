@@ -2598,4 +2598,45 @@ public class EventSubscriptionResourceTest
     templateTest.deleteEntity(template1.getId(), ADMIN_AUTH_HEADERS);
     templateTest.deleteEntity(template2.getId(), ADMIN_AUTH_HEADERS);
   }
+
+  @Test
+  void test_sqlInjectionPrevention(TestInfo test) throws IOException {
+    Map<String, String> sqlInjectionAttempts = new HashMap<>();
+    sqlInjectionAttempts.put("alertType", "Observability' OR '1'='1");
+    try {
+      listEntities(sqlInjectionAttempts, ADMIN_AUTH_HEADERS);
+    } catch (HttpResponseException e) {
+      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
+    }
+
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put("alertType", "Observability'--");
+    try {
+      listEntities(sqlInjectionAttempts, ADMIN_AUTH_HEADERS);
+    } catch (HttpResponseException e) {
+      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
+    }
+
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put("alertType", "' UNION SELECT * FROM user_entity--");
+    try {
+      listEntities(sqlInjectionAttempts, ADMIN_AUTH_HEADERS);
+    } catch (HttpResponseException e) {
+      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
+    }
+
+    sqlInjectionAttempts.clear();
+    sqlInjectionAttempts.put(
+        "notificationTemplate", "00000000-0000-0000-0000-000000000000' OR '1'='1");
+    try {
+      listEntities(sqlInjectionAttempts, ADMIN_AUTH_HEADERS);
+    } catch (HttpResponseException e) {
+      assertTrue(e.getStatusCode() != 500, "SQL injection should not cause internal server error");
+    }
+
+    Map<String, String> validParams = new HashMap<>();
+    validParams.put("alertType", "Observability");
+    ResultList<EventSubscription> validResults = listEntities(validParams, ADMIN_AUTH_HEADERS);
+    assertNotNull(validResults, "Valid alertType should work correctly");
+  }
 }
