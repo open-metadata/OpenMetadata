@@ -28,6 +28,7 @@ import { Policy } from '../../../generated/entity/policies/policy';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getField } from '../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
@@ -220,7 +221,11 @@ const AddRolePage = () => {
                 entity: t('label.role'),
               })}
             </Typography.Paragraph>
-            <Typography.Text>{t('message.add-role-message')}</Typography.Text>
+            <Typography.Text>
+              {t('message.add-role-message', {
+                brandName: brandClassBase.getPageTitle(),
+              })}
+            </Typography.Text>
           </>
         ),
         className: 'content-resizable-panel-container',

@@ -533,11 +533,11 @@ public class WorkflowHandler {
     return namespacedVariables;
   }
 
-  public void resolveTask(UUID taskId) {
-    resolveTask(taskId, null);
+  public boolean resolveTask(UUID taskId) {
+    return resolveTask(taskId, null);
   }
 
-  public void resolveTask(UUID customTaskId, Map<String, Object> variables) {
+  public boolean resolveTask(UUID customTaskId, Map<String, Object> variables) {
     TaskService taskService = processEngine.getTaskService();
     LOG.debug("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);
     try {
@@ -589,18 +589,21 @@ public class WorkflowHandler {
                   });
           LOG.debug("[WorkflowTask] SUCCESS: Task '{}' resolved", customTaskId);
         }
+        return true;
       } else {
         LOG.warn("[WorkflowTask] NOT_FOUND: No Flowable task for customTaskId='{}'", customTaskId);
+        return false;
       }
     } catch (FlowableObjectNotFoundException ex) {
       LOG.error(
           "[WorkflowTask] ERROR: Flowable task not found for customTaskId='{}': {}",
           customTaskId,
           ex.getMessage());
+      return false;
     } catch (Exception e) {
       LOG.error(
           "[WorkflowTask] ERROR: Failed to resolve task '{}': {}", customTaskId, e.getMessage(), e);
-      throw e;
+      return false;
     }
   }
 
@@ -1239,7 +1242,6 @@ public class WorkflowHandler {
               handle -> {
                 try {
                   // Terminate both trigger and main workflow instances
-                  getInstance().terminateWorkflow(mainWorkflowDefinitionName);
 
                   // Now terminate the main workflow instances that contain the user tasks
                   for (WorkflowInstance instance : conflictingInstances) {

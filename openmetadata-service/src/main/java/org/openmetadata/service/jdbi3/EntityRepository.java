@@ -53,11 +53,13 @@ import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.populateTagLabel;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceListMatch;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -95,6 +97,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.Response.Status;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
@@ -213,6 +216,8 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -1867,30 +1872,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
       SearchListFilter searchListFilter,
       int limit,
       int offset,
-      String q,
-      String queryString)
-      throws IOException {
-    return listFromSearchWithOffset(
-        uriInfo, fields, searchListFilter, limit, offset, null, q, queryString);
-  }
-
-  public ResultList<T> listFromSearchWithOffset(
-      UriInfo uriInfo,
-      Fields fields,
-      SearchListFilter searchListFilter,
-      int limit,
-      int offset,
       SearchSortFilter searchSortFilter,
       String q,
-      String queryString)
+      String queryString,
+      SecurityContext securityContext)
       throws IOException {
     List<T> entityList = new ArrayList<>();
     Long total;
+    SubjectContext subjectContext = getSubjectContext(securityContext);
 
     if (limit > 0) {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
+              searchListFilter,
+              limit,
+              offset,
+              entityType,
+              searchSortFilter,
+              q,
+              queryString,
+              subjectContext);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
         T entity = JsonUtils.readOrConvertValueLenient(json, entityClass);
@@ -1900,7 +1901,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     } else {
       SearchResultListMapper results =
           searchRepository.listWithOffset(
-              searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
+              searchListFilter,
+              limit,
+              offset,
+              entityType,
+              searchSortFilter,
+              q,
+              queryString,
+              subjectContext);
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, total.intValue());
     }
@@ -4212,7 +4220,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
-        updateEntityStatus();
+        updateEntityStatus(consolidatingChanges);
         updateOwners();
         updateExtension(consolidatingChanges);
         updateTags(
@@ -4238,7 +4246,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateDeleted();
         updateDescription();
         updateDisplayName();
-        updateEntityStatus();
+        updateEntityStatus(consolidatingChanges);
         updateOwnersForImport();
         updateExtension(consolidatingChanges);
         updateTagsForImport(
@@ -4295,9 +4303,47 @@ public abstract class EntityRepository<T extends EntityInterface> {
       recordChange(FIELD_DISPLAY_NAME, original.getDisplayName(), updated.getDisplayName());
     }
 
-    private void updateEntityStatus() {
+    private void updateEntityStatus(boolean consolidatingChanges) {
       if (supportsEntityStatus) {
-        recordChange(FIELD_ENTITY_STATUS, original.getEntityStatus(), updated.getEntityStatus());
+        if (original.getEntityStatus().equals(updated.getEntityStatus())) {
+          return;
+        }
+        // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
+        if (!consolidatingChanges
+            && original.getEntityStatus() == EntityStatus.IN_REVIEW
+            && (updated.getEntityStatus() == EntityStatus.APPROVED
+                || updated.getEntityStatus() == EntityStatus.REJECTED)) {
+          checkUpdatedByReviewer(original, updated.getUpdatedBy());
+        }
+        recordChange("entityStatus", original.getEntityStatus(), updated.getEntityStatus());
+      }
+    }
+
+    public static void checkUpdatedByReviewer(EntityInterface entity, String updatedBy) {
+      // Only list of allowed reviewers can change the status from DRAFT to APPROVED
+      List<EntityReference> reviewers = entity.getReviewers();
+      if (!nullOrEmpty(reviewers)) {
+        // Updating user must be one of the reviewers
+        boolean isReviewer =
+            reviewers.stream()
+                .anyMatch(
+                    e -> {
+                      if (e.getType().equals(TEAM)) {
+                        Team team =
+                            Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                        return team.getUsers().stream()
+                            .anyMatch(
+                                u ->
+                                    u.getName().equals(updatedBy)
+                                        || u.getFullyQualifiedName().equals(updatedBy));
+                      } else {
+                        return e.getName().equals(updatedBy)
+                            || e.getFullyQualifiedName().equals(updatedBy);
+                      }
+                    });
+        if (!isReviewer) {
+          throw new AuthorizationException(notReviewer(updatedBy));
+        }
       }
     }
 
