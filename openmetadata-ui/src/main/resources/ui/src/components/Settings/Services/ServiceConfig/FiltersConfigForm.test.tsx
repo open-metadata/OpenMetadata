@@ -47,7 +47,11 @@ jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
     validConfig: {},
   }),
   getFilteredSchema: jest.fn((properties) => {
-    const { filter1, filter2, ...rest } = properties as Record<string, unknown>;
+    const {
+      filter1: _filter1,
+      filter2: _filter2,
+      ...rest
+    } = properties as Record<string, unknown>;
 
     return rest;
   }),

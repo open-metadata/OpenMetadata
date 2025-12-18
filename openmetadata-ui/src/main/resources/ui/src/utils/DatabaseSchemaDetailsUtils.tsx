@@ -46,7 +46,6 @@ export const getDataBaseSchemaPageBaseTabs = ({
   feedCount,
   activeTab,
   editCustomAttributePermission,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   storedProcedureCount,
   getEntityFeedCount,

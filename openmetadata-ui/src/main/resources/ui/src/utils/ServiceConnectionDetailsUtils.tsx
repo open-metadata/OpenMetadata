@@ -31,7 +31,7 @@ type KeyValuesProps = {
 // Renders a basic input field with label and optional tooltip
 const renderInputField = (
   key: string,
-  value: unknown,
+  value: string,
   description?: string,
   format?: string,
   title?: string
@@ -81,7 +81,7 @@ const renderInputField = (
 // Renders filter pattern fields
 const renderFilterPattern = (
   key: string,
-  value: unknown,
+  value: { includes: string[]; excludes: string[] },
   description?: string,
   title?: string
 ) => {

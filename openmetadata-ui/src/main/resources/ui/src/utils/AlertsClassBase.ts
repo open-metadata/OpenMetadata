@@ -118,7 +118,7 @@ class AlertsClassBase {
       this.getCommonAlertFieldsData(data, initialData);
     // Remove timeout from alert object since it's only for UI
 
-    const { timeout, readTimeout, ...finalData } = data;
+    const { timeout: _timeout, readTimeout: _readTimeout, ...finalData } = data;
 
     return {
       ...(finalData as CreateEventSubscription),

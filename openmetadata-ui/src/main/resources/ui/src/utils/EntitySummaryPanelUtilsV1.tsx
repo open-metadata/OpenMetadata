@@ -1012,7 +1012,7 @@ const DatabaseSchemasV1: React.FC<{
   entityInfo: any;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+}> = ({ entityInfo, loading }) => {
   const databaseSchemas = entityInfo.databaseSchemas || [];
 
   if (loading) {

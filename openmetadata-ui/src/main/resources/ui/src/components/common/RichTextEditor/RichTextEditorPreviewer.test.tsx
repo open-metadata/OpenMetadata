@@ -769,7 +769,7 @@ describe('Test RichTextEditor Previewer Component', () => {
   });
 
   it('Should render with default maxLength when not specified', () => {
-    const { maxLength, ...propsWithoutMaxLength } = mockProp;
+    const { maxLength: _maxLength, ...propsWithoutMaxLength } = mockProp;
     render(<RichTextEditorPreviewer {...propsWithoutMaxLength} />, {
       wrapper: MemoryRouter,
     });

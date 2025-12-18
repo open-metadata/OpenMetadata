@@ -832,6 +832,7 @@ class ServiceUtilClassBase {
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const widgets: Record<string, React.ComponentType<any>> = {
       AgentsStatusWidget,
       PlatformInsightsWidget,
@@ -878,6 +879,7 @@ class ServiceUtilClassBase {
   }
 
   public getAgentsTabWidgets() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const widgets: Record<string, React.ComponentType<any>> = {
       MetadataAgentsWidget,
     };

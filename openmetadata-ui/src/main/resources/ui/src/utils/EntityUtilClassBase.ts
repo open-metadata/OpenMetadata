@@ -684,7 +684,7 @@ class EntityUtilClassBase {
     );
   }
 
-  public shouldShowEntityStatus(entityType: string): boolean {
+  public shouldShowEntityStatus(_entityType: string): boolean {
     return false;
   }
 }
