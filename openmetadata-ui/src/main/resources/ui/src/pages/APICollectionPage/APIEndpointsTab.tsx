@@ -21,7 +21,6 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import TableAntd from '../../components/common/Table/Table';
 import { useGenericContext } from '../../components/Customization/GenericProvider/GenericProvider';
 import { API_COLLECTION_API_ENDPOINTS } from '../../constants/APICollection.constants';
@@ -58,6 +57,7 @@ import {
   highlightSearchText,
 } from '../../utils/EntityUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 interface APIEndpointsTabProps {
@@ -200,17 +200,7 @@ function APIEndpointsTab({
           return <Typography.Text>{requestMethod ?? NO_DATA}</Typography.Text>;
         },
       },
-      {
-        title: t('label.description'),
-        dataIndex: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        key: TABLE_COLUMNS_KEYS.DESCRIPTION,
-        render: (text: string) =>
-          text?.trim() ? (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
-      },
+      ...descriptionTableObject(),
     ],
     [searchValue, t]
   );

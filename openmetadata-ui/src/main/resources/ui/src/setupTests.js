@@ -138,6 +138,7 @@ jest.mock('./utils/TableColumn.util', () => ({
   dataProductTableObject: jest.fn().mockReturnValue([]),
   tagTableObject: jest.fn().mockReturnValue([]),
   columnFilterIcon: jest.fn(),
+  descriptionTableObject: jest.fn().mockReturnValue([]),
 }));
 
 /**
