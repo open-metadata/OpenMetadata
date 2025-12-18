@@ -29,7 +29,7 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 @Slf4j
 public class JenaFusekiStorage implements RdfStorageInterface {
 
-  private static final String DEFAULT_GRAPH = "https://open-metadata.org/graph/default";
+  private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String METADATA_GRAPH = "https://open-metadata.org/graph/metadata";
 
   private final RDFConnection connection;
@@ -97,17 +97,15 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public void storeEntity(String entityType, UUID entityId, Model entityModel) {
-    String graphUri = baseUri + "graph/" + entityType;
-
     try {
       String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
       String deleteQuery =
-          String.format("DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }", graphUri, entityUri);
+          String.format("DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }", KNOWLEDGE_GRAPH, entityUri);
 
       UpdateRequest deleteRequest = UpdateFactory.create(deleteQuery);
       connection.update(deleteRequest);
-      connection.load(graphUri, entityModel);
-      LOG.debug("Stored entity {} in graph {}", entityId, graphUri);
+      connection.load(KNOWLEDGE_GRAPH, entityModel);
+      LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
     } catch (Exception e) {
       LOG.error("Failed to store entity in Fuseki", e);
       throw new RuntimeException("Failed to store entity in RDF", e);
@@ -127,7 +125,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
                 + "  } "
                 + "}",
             baseUri,
-            DEFAULT_GRAPH,
+            KNOWLEDGE_GRAPH,
             baseUri,
             fromType,
             fromId,
@@ -185,7 +183,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   public void bulkStoreRelationships(List<RelationshipData> relationships) {
     StringBuilder insertData = new StringBuilder();
     insertData.append("PREFIX om: <").append(baseUri).append("ontology/> ");
-    insertData.append("INSERT DATA { GRAPH <").append(DEFAULT_GRAPH).append("> { ");
+    insertData.append("INSERT DATA { GRAPH <").append(KNOWLEDGE_GRAPH).append("> { ");
 
     for (RelationshipData rel : relationships) {
       insertData.append(
@@ -214,13 +212,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public Model getEntity(String entityType, UUID entityId) {
-    String graphUri = baseUri + "graph/" + entityType;
     String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
 
     String query =
         String.format(
             "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH <%s> { <%s> ?p ?o . BIND(<%s> as ?s) } }",
-            graphUri, entityUri, entityUri);
+            KNOWLEDGE_GRAPH, entityUri, entityUri);
 
     try {
       Query q = QueryFactory.create(query);
@@ -234,16 +231,14 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   @Override
   public void deleteEntity(String entityType, UUID entityId) {
-    String graphUri = baseUri + "graph/" + entityType;
     String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
 
-    // Delete entity from its graph and all relationships
+    // Delete entity and all its relationships from the knowledge graph
     String deleteQuery =
         String.format(
             "DELETE WHERE { GRAPH <%s> { <%s> ?p ?o } }; "
-                + "DELETE WHERE { GRAPH ?g { ?s ?p <%s> } }; "
-                + "DELETE WHERE { GRAPH ?g { <%s> ?p ?o } }",
-            graphUri, entityUri, entityUri, entityUri);
+                + "DELETE WHERE { GRAPH <%s> { ?s ?p <%s> } }",
+            KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri);
 
     try {
       UpdateRequest request = UpdateFactory.create(deleteQuery);
