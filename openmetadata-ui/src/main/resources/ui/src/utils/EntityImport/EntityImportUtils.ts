@@ -17,6 +17,7 @@ import { EntityType } from '../../enums/entity.enum';
 import {
   importEntityInCSVFormat,
   importGlossaryInCSVFormat,
+  importGlossaryTermInCSVFormat,
   importServiceInCSVFormat,
 } from '../../rest/importExportAPI';
 import { getEntityBreadcrumbs, getEntityName } from '../EntityUtils';
@@ -96,7 +97,7 @@ export const getImportValidateAPIEntityType = (entityType: EntityType) => {
       return importServiceInCSVFormat;
 
     case EntityType.GLOSSARY_TERM:
-      return importGlossaryInCSVFormat;
+      return importGlossaryTermInCSVFormat;
     
     case EntityType.GLOSSARY:
       return importGlossaryInCSVFormat;
