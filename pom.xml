@@ -158,7 +158,7 @@
     <json-patch.version>1.13</json-patch.version>
     <jetty.version>11.0.25</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
-    <mcp-sdk.version>0.11.2</mcp-sdk.version>
+    <mcp-sdk.version>0.14.0</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <flyway.version>9.22.3</flyway.version>
     <angus-mail.version>2.0.4</angus-mail.version>
