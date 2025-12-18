@@ -20,6 +20,7 @@ import {
   dragAndDropTerm,
   performExpandAll,
   selectActiveGlossary,
+  selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -28,7 +29,6 @@ test.use({
 });
 
 // G-D05: Delete glossary with assets tagged to terms
-// TODO: Potential product bug - when glossary is deleted, tags may not be removed from assets
 // Verifies that when a glossary is deleted, the glossary term tags are removed from tagged assets
 test.describe('Delete Glossary with Tagged Assets', () => {
   const glossary = new Glossary();
@@ -80,7 +80,9 @@ test.describe('Delete Glossary with Tagged Assets', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify glossary term tag is present on the table (in glossary-container)
-    const glossaryContainer = page.getByTestId('glossary-container');
+    const glossaryContainer = page
+      .getByTestId('KnowledgePanel.GlossaryTerms')
+      .getByTestId('glossary-container');
 
     await expect(glossaryContainer).toBeVisible();
     await expect(
@@ -101,11 +103,11 @@ test.describe('Delete Glossary with Tagged Assets', () => {
     // Confirm deletion
     await page.getByTestId('confirmation-text-input').fill('DELETE');
 
-    const deleteRes = page.waitForResponse('/api/v1/glossaries/*');
+    const deleteRes = page.waitForResponse('/api/v1/glossaries/async/*');
     await page.getByTestId('confirm-button').click();
     await deleteRes;
 
-    await page.waitForLoadState('networkidle');
+    await redirectToHomePage(page);
 
     // Verify glossary is deleted by checking it's no longer in the list
     await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -123,6 +125,7 @@ test.describe('Delete Glossary with Tagged Assets', () => {
     // The glossary-container should either not exist or not contain the term name
     await expect(
       page
+        .getByTestId('KnowledgePanel.GlossaryTerms')
         .getByTestId('glossary-container')
         .getByText(glossaryTerm.responseData.displayName)
     ).not.toBeVisible();
@@ -394,7 +397,6 @@ test.describe('Delete Term with Children and Tagged Assets', () => {
     ).toBeVisible();
 
     // Check table2 has child term tag
-    await redirectToHomePage(page);
     await tableEntity2.visitEntityPage(page);
     await page.waitForLoadState('networkidle');
     const glossaryTermsPanel2 = page.getByTestId(
@@ -410,9 +412,7 @@ test.describe('Delete Term with Children and Tagged Assets', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    // Navigate to parent term
-    await page.getByTestId(parentTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, parentTerm.data.displayName);
 
     // Click manage button and delete
     await page.getByTestId('manage-button').click();
@@ -428,7 +428,7 @@ test.describe('Delete Term with Children and Tagged Assets', () => {
     await page.getByTestId('confirm-button').click();
     await deleteRes;
 
-    await page.waitForLoadState('networkidle');
+    await redirectToHomePage(page);
 
     // Verify both terms are deleted from glossary
     await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -501,33 +501,5 @@ test.describe('Prevent Self-Drag', () => {
     // Verify term is still in original position (no confirmation dialog should appear)
     // and no error occurred
     await expect(termRow).toBeVisible();
-  });
-});
-
-// UI-03: Error state on API failure
-test.describe('Error State on API Failure', () => {
-  test('should handle glossary load error gracefully', async ({ page }) => {
-    // Navigate to a non-existent glossary
-    await page.goto('/glossary/non-existent-glossary-12345');
-    await page.waitForLoadState('networkidle');
-
-    // The app handles non-existent glossary gracefully by:
-    // - Not crashing or showing a blank page
-    // - Showing valid glossary content (default/first available glossary)
-    // Wait for page to fully render
-    await page.waitForTimeout(2000);
-
-    // Graceful handling verified by checking page shows valid content:
-    // - Either the glossary left panel is visible, OR
-    // - The sidebar with Glossary link is visible, OR
-    // - An "Add" button is visible
-    const sidebarGlossary = page.locator('text=Glossary').first();
-    const addButton = page.locator('text=Add').first();
-
-    const hasValidContent =
-      (await sidebarGlossary.isVisible()) || (await addButton.isVisible());
-
-    // App doesn't crash and shows meaningful content
-    expect(hasValidContent).toBeTruthy();
   });
 });

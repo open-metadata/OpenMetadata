@@ -19,6 +19,7 @@ import {
   changeTermHierarchyFromModal,
   performExpandAll,
   selectActiveGlossary,
+  selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -57,44 +58,13 @@ test.describe('Move Term to Root of Current Glossary', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
     await performExpandAll(page);
+    await selectActiveGlossaryTerm(page, childTerm.data.displayName);
 
-    // Navigate to child term by clicking on the term name link
-    await page.getByTestId(childTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
-
-    // Open change parent modal
-    await page.getByTestId('manage-button').click();
-    await page.getByTestId('change-parent-button').click();
-
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
-
-    // Select glossary as parent (root level)
-    await page.getByLabel('Select Parent').click();
-    await page.waitForSelector('.ant-select-dropdown', {
-      state: 'visible',
-    });
-
-    // Search for the glossary name to filter the dropdown
-    await page.getByLabel('Select Parent').fill(glossary.data.displayName);
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
-
-    // Click on the glossary item in dropdown using display name
-    const glossaryOption = page
-      .locator('.ant-select-dropdown')
-      .getByText(glossary.data.displayName, { exact: false });
-    await glossaryOption.first().click();
-
-    const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
-    await page
-      .getByTestId('change-parent-hierarchy-modal')
-      .getByRole('button', { name: 'Save' })
-      .click();
-    await saveRes;
-
-    await expect(
-      page.locator('[role="dialog"].change-parent-hierarchy-modal')
-    ).toBeHidden();
+    await changeTermHierarchyFromModal(
+      page,
+      glossary.responseData.displayName,
+      glossary.responseData.fullyQualifiedName
+    );
 
     // Verify term is now at root level (not nested under parent)
     await redirectToHomePage(page);
@@ -140,44 +110,13 @@ test.describe('Move Term to Root of Different Glossary', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary1.data.displayName);
+    await selectActiveGlossaryTerm(page, term.data.displayName);
 
-    // Navigate to term by clicking on the term name link
-    await page.getByTestId(term.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
-
-    // Open change parent modal
-    await page.getByTestId('manage-button').click();
-    await page.getByTestId('change-parent-button').click();
-
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
-
-    // Select glossary as parent (root level)
-    await page.getByLabel('Select Parent').click();
-    await page.waitForSelector('.ant-select-dropdown', {
-      state: 'visible',
-    });
-
-    // Search for the target glossary
-    await page.getByLabel('Select Parent').fill(glossary2.data.displayName);
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
-
-    // Click on the glossary item in dropdown
-    const glossaryOption = page
-      .locator('.ant-select-dropdown')
-      .getByText(glossary2.data.displayName, { exact: false });
-    await glossaryOption.first().click();
-
-    const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
-    await page
-      .getByTestId('change-parent-hierarchy-modal')
-      .getByRole('button', { name: 'Save' })
-      .click();
-    await saveRes;
-
-    await expect(
-      page.locator('[role="dialog"].change-parent-hierarchy-modal')
-    ).toBeHidden();
+    await changeTermHierarchyFromModal(
+      page,
+      glossary2.responseData.displayName,
+      glossary2.responseData.fullyQualifiedName
+    );
 
     // Verify term is now in glossary2
     await redirectToHomePage(page);
@@ -235,8 +174,8 @@ test.describe('Move Term with Children to Different Glossary', () => {
     // Move parent term (with child) to glossary2
     await changeTermHierarchyFromModal(
       page,
-      glossary2.data.displayName,
-      glossary2.responseData.name,
+      glossary2.responseData.displayName,
+      glossary2.responseData.fullyQualifiedName,
       false
     );
 
@@ -281,10 +220,7 @@ test.describe('Cancel Move Operation', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Navigate to term
-    await page.getByTestId(term.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, term.data.displayName);
 
     // Open change parent modal
     await page.getByTestId('manage-button').click();

@@ -23,6 +23,7 @@ import {
   addReferences,
   addRelatedTerms,
   addSynonyms,
+  openAddGlossaryTermModal,
   selectActiveGlossary,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';

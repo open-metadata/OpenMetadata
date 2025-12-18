@@ -19,6 +19,7 @@ import { PolicyClass } from '../support/access-control/PoliciesClass';
 import { RolesClass } from '../support/access-control/RolesClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
+import { PipelineClass } from '../support/entity/PipelineClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { Glossary } from '../support/glossary/Glossary';
@@ -779,7 +780,7 @@ export const checkAssetsCount = async (page: Page, assetsCount: number) => {
 
 export const addAssetToGlossaryTerm = async (
   page: Page,
-  assets: (TableClass | TopicClass | DashboardClass)[],
+  assets: (TableClass | TopicClass | DashboardClass | PipelineClass)[],
   hasExistingAssets = false
 ) => {
   if (!hasExistingAssets) {

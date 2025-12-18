@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage, redirectToHomePage } from '../../../utils/common';
@@ -41,136 +41,67 @@ test.describe('Glossary Voting', () => {
     await redirectToHomePage(page);
   });
 
-  test('should upvote glossary', async ({ page }) => {
-    await glossary.visitEntityPage(page);
+  const testVoting = async (
+    page: Page,
+    entity: Glossary | GlossaryTerm,
+    apiPath: 'glossaries' | 'glossaryTerms'
+  ) => {
+    await entity.visitEntityPage(page);
 
     const upvoteButton = page.getByTestId('up-vote-btn');
-
-    await expect(upvoteButton).toBeVisible();
-
-    // Click upvote
-    const voteResponse = page.waitForResponse('/api/v1/glossaries/*/vote');
-    await upvoteButton.click();
-    await voteResponse;
-
-    // Verify vote count increased
-    await expect(upvoteButton).toHaveClass(/\bactive\b/);
-  });
-
-  test('should downvote glossary', async ({ page }) => {
-    await glossary.visitEntityPage(page);
-
     const downvoteButton = page.getByTestId('down-vote-btn');
 
+    await expect(upvoteButton).toBeVisible();
     await expect(downvoteButton).toBeVisible();
 
-    // Click downvote
-    const voteResponse = page.waitForResponse('/api/v1/glossaries/*/vote');
+    const voteResponse1 = page.waitForResponse(`/api/v1/${apiPath}/*/vote`);
+    await upvoteButton.click();
+    await voteResponse1;
+
+    await expect(upvoteButton).toHaveClass(/\bactive\b/);
+
+    const voteResponse2 = page.waitForResponse(`/api/v1/${apiPath}/*/vote`);
     await downvoteButton.click();
-    await voteResponse;
+    await voteResponse2;
 
-    // Verify downvote is active
     await expect(downvoteButton).toHaveClass(/\bactive\b/);
-  });
+    await expect(upvoteButton).not.toHaveClass(/\bactive\b/);
 
-  test('should change vote on glossary from upvote to downvote', async ({
+    const voteResponse3 = page.waitForResponse(`/api/v1/${apiPath}/*/vote`);
+    await downvoteButton.click();
+    await voteResponse3;
+
+    await expect(downvoteButton).not.toHaveClass(/\bactive\b/);
+  };
+
+  test('should upvote, downvote, and remove vote on glossary', async ({
     page,
   }) => {
-    await glossary.visitEntityPage(page);
-
-    const upvoteButton = page.getByTestId('up-vote-btn');
-    const downvoteButton = page.getByTestId('down-vote-btn');
-
-    // First upvote
-    const voteResponse1 = page.waitForResponse('/api/v1/glossaries/*/vote');
-    await upvoteButton.click();
-    await voteResponse1;
-
-    await expect(upvoteButton).toHaveClass(/\bactive\b/);
-
-    // Then change to downvote
-    const voteResponse2 = page.waitForResponse('/api/v1/glossaries/*/vote');
-    await downvoteButton.click();
-    await voteResponse2;
-
-    // Verify downvote is now active and upvote is not
-    await expect(downvoteButton).toHaveClass(/\bactive\b/);
-    await expect(upvoteButton).not.toHaveClass(/\bactive\b/);
+    await testVoting(page, glossary, 'glossaries');
   });
 
-  test('should remove vote on glossary by clicking again', async ({ page }) => {
-    await glossary.visitEntityPage(page);
-
-    const upvoteButton = page.getByTestId('up-vote-btn');
-
-    // First upvote
-    const voteResponse1 = page.waitForResponse('/api/v1/glossaries/*/vote');
-    await upvoteButton.click();
-    await voteResponse1;
-
-    await expect(upvoteButton).toHaveClass(/\bactive\b/);
-
-    // Click again to remove vote
-    const voteResponse2 = page.waitForResponse('/api/v1/glossaries/*/vote');
-    await upvoteButton.click();
-    await voteResponse2;
-
-    // Verify vote is removed
-    await expect(upvoteButton).not.toHaveClass(/\bactive\b/);
-  });
-
-  test('should upvote glossary term', async ({ page }) => {
-    await glossaryTerm.visitEntityPage(page);
-
-    const upvoteButton = page.getByTestId('up-vote-btn');
-
-    await expect(upvoteButton).toBeVisible();
-
-    // Click upvote
-    const voteResponse = page.waitForResponse('/api/v1/glossaryTerms/*/vote');
-    await upvoteButton.click();
-    await voteResponse;
-
-    // Verify vote is active
-    await expect(upvoteButton).toHaveClass(/\bactive\b/);
-  });
-
-  test('should downvote glossary term', async ({ page }) => {
-    await glossaryTerm.visitEntityPage(page);
-
-    const downvoteButton = page.getByTestId('down-vote-btn');
-
-    await expect(downvoteButton).toBeVisible();
-
-    // Click downvote
-    const voteResponse = page.waitForResponse('/api/v1/glossaryTerms/*/vote');
-    await downvoteButton.click();
-    await voteResponse;
-
-    // Verify downvote is active
-    await expect(downvoteButton).toHaveClass(/\bactive\b/);
+  test('should upvote, downvote, and remove vote on glossary term', async ({
+    page,
+  }) => {
+    await testVoting(page, glossaryTerm, 'glossaryTerms');
   });
 
   test('should persist vote after page reload', async ({ page }) => {
     await glossary.visitEntityPage(page);
 
     const upvoteButton = page.getByTestId('up-vote-btn');
-
-    // First upvote
     const voteResponse = page.waitForResponse('/api/v1/glossaries/*/vote');
     await upvoteButton.click();
     await voteResponse;
 
     await expect(upvoteButton).toHaveClass(/\bactive\b/);
 
-    // Reload page and wait for vote button to be visible
-    const reloadResponse = page.waitForResponse('/api/v1/glossaries/*');
+    const reloadResponse = page.waitForResponse(
+      '/api/v1/glossaryTerms?directChildrenOf=*'
+    );
     await page.reload();
     await reloadResponse;
 
-    // Verify vote persists
-    const upvoteButtonAfterReload = page.getByTestId('up-vote-btn');
-
-    await expect(upvoteButtonAfterReload).toHaveClass(/\bactive\b/);
+    await expect(page.getByTestId('up-vote-btn')).toHaveClass(/\bactive\b/);
   });
 });
