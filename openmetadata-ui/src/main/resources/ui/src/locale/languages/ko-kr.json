@@ -2398,6 +2398,7 @@
     "no-kpi": "영향을 모니터링하고 더 스마트한 의사 결정을 내리기 위해 핵심 성과 지표를 정의하세요.",
     "no-kpi-available-add-new-one": "사용 가능한 KPI가 없습니다. KPI 추가 버튼을 클릭하여 추가하세요.",
     "no-kpi-found": "{{name}} 이름의 KPI를 찾을 수 없습니다",
+    "no-lineage-available": "lineage 연결을 찾을 수 없습니다",
     "no-match-found": "일치하는 항목을 찾을 수 없습니다",
     "no-mentions": "당신과 당신의 팀은 모두 괜찮아 보입니다 - 아직 어떤 활동에서도 언급되지 않았습니다. 계속 좋은 일을 하세요!",
     "no-notification-found": "알림을 찾을 수 없습니다",

@@ -2398,6 +2398,7 @@
     "no-kpi": "הגדר מדדי ביצוע מרכזיים כדי לעקוב אחר השפעה ולקבל החלטות חכמות יותר.",
     "no-kpi-available-add-new-one": "אין KPIים זמינים. לחץ על כפתור הוספת KPI כדי להוסיף אחד.",
     "no-kpi-found": "לא נמצא KPI עם השם {{name}}",
+    "no-lineage-available": "לא נמצאו קישורי lineage",
     "no-match-found": "לא נמצאה התאמה",
     "no-mentions": "אין מקרים בהם התייחסו אליך או לצוות שלך בפעולות כלשהן",
     "no-notification-found": "לא נמצאו הודעות",

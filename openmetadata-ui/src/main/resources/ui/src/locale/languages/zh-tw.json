@@ -2398,6 +2398,7 @@
     "no-kpi": "定義關鍵績效指標以監控影響並推動更明智的決策。",
     "no-kpi-available-add-new-one": "沒有可用的 KPI。點擊「新增 KPI」按鈕以新增一個。",
     "no-kpi-found": "找不到名稱為 {{name}} 的 KPI",
+    "no-lineage-available": "未找到 lineage 連接",
     "no-match-found": "找不到相符項目",
     "no-mentions": "看來您和您的團隊一切順利——目前還沒有在任何活動中被提及。繼續保持！",
     "no-notification-found": "找不到通知",

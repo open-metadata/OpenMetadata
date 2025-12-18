@@ -2398,6 +2398,7 @@
     "no-kpi": "Definieer prestatie-indicatoren om impact te volgen en slimmere beslissingen te nemen.",
     "no-kpi-available-add-new-one": "Er zijn geen KPI's beschikbaar. Klik op de knop KPI toevoegen om er een toe te voegen.",
     "no-kpi-found": "Geen KPI gevonden met de naam {{name}}",
+    "no-lineage-available": "Geen lineage-connecties gevonden",
     "no-match-found": "Geen overeenkomst gevonden",
     "no-mentions": "Er zijn geen gevallen waarin jij of jouw team zijn genoemd in activiteiten",
     "no-notification-found": "Geen meldingen gevonden",
