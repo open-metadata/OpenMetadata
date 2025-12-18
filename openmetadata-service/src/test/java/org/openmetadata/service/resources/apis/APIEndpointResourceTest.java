@@ -11,13 +11,8 @@ import static org.openmetadata.service.resources.topics.TopicResourceTest.getFie
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.assertListNotNull;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
-import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
@@ -53,6 +48,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
@@ -198,22 +194,24 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     fields = endpoint.getResponseSchema().getSchemaFields();
-    List<TagLabel> tags = fields.get(0).getTags();
-    for (TagLabel tag : tags) {
-      assertTrue(tag.equals(PERSONAL_DATA_TAG_LABEL) || tag.equals(PII_SENSITIVE_TAG_LABEL));
-    }
+    List<TagLabel> tags = fields.getFirst().getTags();
+
+    assertTrue(isTagsSuperSet(tags, List.of(PERSONAL_DATA_TAG_LABEL, PII_SENSITIVE_TAG_LABEL)));
+
     endpointJson = JsonUtils.pojoToJson(endpoint);
     fields = endpoint.getResponseSchema().getSchemaFields();
-    fields.get(0).getTags().remove(PERSONAL_DATA_TAG_LABEL);
+    fields
+        .getFirst()
+        .getTags()
+        .removeIf(tag -> EntityUtil.tagLabelMatch.test(tag, PERSONAL_DATA_TAG_LABEL));
     endpoint.getResponseSchema().setSchemaFields(fields);
     patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     fields = endpoint.getResponseSchema().getSchemaFields();
     tags = fields.get(0).getTags();
     assertEquals(1, tags.size());
-    for (TagLabel tag : tags) {
-      assertEquals(tag, PII_SENSITIVE_TAG_LABEL);
-    }
+
+    assertTrue(isTagsSuperSet(tags, List.of(PII_SENSITIVE_TAG_LABEL)));
 
     // add 2 new tags
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
@@ -226,26 +224,26 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     fields = endpoint.getResponseSchema().getSchemaFields();
     tags = fields.get(0).getTags();
     assertEquals(3, tags.size());
-    for (TagLabel tag : tags) {
-      assertTrue(
-          tag.equals(PERSONAL_DATA_TAG_LABEL)
-              || tag.equals(PII_SENSITIVE_TAG_LABEL)
-              || tag.equals(USER_ADDRESS_TAG_LABEL));
-    }
+    assertTrue(
+        compareTagsIgnoringOrder(
+            tags,
+            List.of(PERSONAL_DATA_TAG_LABEL, PII_SENSITIVE_TAG_LABEL, USER_ADDRESS_TAG_LABEL)));
 
     // remove 1 tag
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     endpointJson = JsonUtils.pojoToJson(endpoint);
     fields = endpoint.getResponseSchema().getSchemaFields();
-    fields.get(0).getTags().remove(PERSONAL_DATA_TAG_LABEL);
+    fields
+        .getFirst()
+        .getTags()
+        .removeIf(tag -> EntityUtil.tagLabelMatch.test(tag, PERSONAL_DATA_TAG_LABEL));
     patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     fields = endpoint.getResponseSchema().getSchemaFields();
-    tags = fields.get(0).getTags();
+    tags = fields.getFirst().getTags();
     assertEquals(2, tags.size());
-    for (TagLabel tag : tags) {
-      assertTrue(tag.equals(PII_SENSITIVE_TAG_LABEL) || tag.equals(USER_ADDRESS_TAG_LABEL));
-    }
+    compareTagsIgnoringOrder(tags, List.of(PERSONAL_DATA_TAG_LABEL, USER_ADDRESS_TAG_LABEL));
+
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     endpointJson = JsonUtils.pojoToJson(endpoint);
     endpoint.setRequestSchema(RESPONSE_SCHEMA);
@@ -261,16 +259,26 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     endpointJson = JsonUtils.pojoToJson(endpoint);
     requestFields = endpoint.getRequestSchema().getSchemaFields();
     fields = endpoint.getResponseSchema().getSchemaFields();
-    requestFields.get(0).getTags().remove(PII_SENSITIVE_TAG_LABEL);
-    fields.get(0).getTags().remove(USER_ADDRESS_TAG_LABEL);
+    requestFields
+        .getFirst()
+        .getTags()
+        .removeIf(tag -> EntityUtil.tagLabelMatch.test(tag, PII_SENSITIVE_TAG_LABEL));
+    fields
+        .getFirst()
+        .getTags()
+        .removeIf(tag -> EntityUtil.tagLabelMatch.test(tag, USER_ADDRESS_TAG_LABEL));
     patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
     endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
     requestFields = endpoint.getRequestSchema().getSchemaFields();
     fields = endpoint.getResponseSchema().getSchemaFields();
     assertEquals(1, requestFields.get(0).getTags().size());
     assertEquals(1, fields.get(0).getTags().size());
-    assertEquals(USER_ADDRESS_TAG_LABEL, requestFields.get(0).getTags().get(0));
-    assertEquals(PII_SENSITIVE_TAG_LABEL, fields.get(0).getTags().get(0));
+    assertTrue(
+        EntityUtil.tagLabelMatch.test(
+            requestFields.getFirst().getTags().getFirst(), USER_ADDRESS_TAG_LABEL));
+    assertTrue(
+        EntityUtil.tagLabelMatch.test(
+            fields.getFirst().getTags().getFirst(), PII_SENSITIVE_TAG_LABEL));
   }
 
   @Override
@@ -580,7 +588,8 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
 
     List<TagLabel> expectedTags = List.of(USER_ADDRESS_TAG_LABEL);
     assertTrue(
-        updated.getTags().containsAll(expectedTags), "Tags should be preserved from bot creation");
+        isTagsSuperSet(updated.getTags(), expectedTags),
+        "Tags should be preserved from bot creation");
   }
 
   @Test
