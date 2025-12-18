@@ -336,8 +336,7 @@ test.describe('Term Creation with All Fields', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Click add term button
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     // Fill required fields
     const termName = `FullTerm${Date.now()}`;

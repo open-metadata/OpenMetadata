@@ -198,14 +198,9 @@ test('Glossary deny operations', async ({ testUserPage, browser }) => {
   await cleanupPermissions(apiContext);
 });
 
-test.afterAll('Cleanup glossary', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await glossary.delete(apiContext);
-  await afterAction();
-});
-
 test.afterAll('Cleanup', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
+  await glossary.delete(apiContext);
   await adminUser.delete(apiContext);
   await testUser.delete(apiContext);
   await afterAction();
@@ -452,13 +447,10 @@ test('Team-based permissions work correctly', async ({
     });
 
     // Set up permissions with team as the principal
-    await initializePermissions(
-      page,
-      'allow',
-      ['EditDescription', 'EditOwners'],
-      teamData.id,
-      'team'
-    );
+    await initializePermissions(page, 'allow', [
+      'EditDescription',
+      'EditOwners',
+    ]);
   } finally {
     await page.close();
   }

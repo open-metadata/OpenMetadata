@@ -964,52 +964,6 @@ test.describe('Deep Nesting Handling', () => {
   });
 });
 
-// PF-06: 1000+ terms glossary (skipped by default - very slow)
-test.describe.skip('Large Scale Glossary (1000+ terms)', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-
-    // Create 100 terms (reduced from 1000 for practical testing)
-    for (let i = 0; i < 100; i++) {
-      await apiContext.post('/api/v1/glossaryTerms', {
-        data: {
-          glossary: glossary.responseData.id,
-          name: `StressTerm_${i}_${Date.now()}`,
-          displayName: `Stress Term ${i}`,
-          description: `Stress test term number ${i}`,
-        },
-      });
-    }
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should handle large glossary', async ({ page }) => {
-    test.slow(true);
-
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Should load initial batch
-    await page.waitForLoadState('networkidle');
-
-    // Verify table is functional
-    await expect(
-      page.locator('[data-testid="glossary-term-table"]')
-    ).toBeVisible();
-  });
-});
-
 // PF-07: Rapid operations (stress test)
 test.describe('Rapid Operations Stress Test', () => {
   const glossary = new Glossary();

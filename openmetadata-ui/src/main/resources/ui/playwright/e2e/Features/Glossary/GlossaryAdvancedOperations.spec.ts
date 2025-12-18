@@ -27,6 +27,7 @@ import { addMultiOwner } from '../../../utils/entity';
 import {
   addMultiOwnerInDialog,
   addTeamAsReviewer,
+  openAddGlossaryTermModal,
   selectActiveGlossary,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
@@ -609,8 +610,7 @@ test.describe('Term with Custom Style Color', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `ColorTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
@@ -654,8 +654,7 @@ test.describe('Term with Custom Style Icon', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `IconTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
@@ -1544,8 +1543,7 @@ test.describe('Create Term with Synonyms', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `SynonymTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
@@ -1591,9 +1589,7 @@ test.describe('Create Term with References', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
-
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `RefTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
@@ -1639,9 +1635,7 @@ test.describe('Create Term with Tags', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
-
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `TagTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
@@ -1697,9 +1691,7 @@ test.describe('Create Term with Owners', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
-
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `OwnerTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
@@ -1753,9 +1745,7 @@ test.describe('Term Status Draft without Reviewers', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
-
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `DraftTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
@@ -1965,8 +1955,7 @@ test.describe('Create Term with Related Terms', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `RelatedTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
@@ -2042,8 +2031,7 @@ test.describe('Term Inherits Glossary Reviewers', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `InheritReviewer${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
@@ -2229,8 +2217,7 @@ test.describe('Cancel Term Creation', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `CancelTermTest${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
@@ -2446,7 +2433,7 @@ test.describe('Filter by InReview Status', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Click on status filter
-    await page.click('[data-testid="status-dropdown"]');
+    await page.getByTestId('glossary-status-dropdown').click();
 
     // Select InReview filter
     await page.click('[data-testid="In Review"]');
@@ -2966,8 +2953,7 @@ test.describe('Long Term Name', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     // Create a long name (128 chars is typically the limit)
     const longName = 'A'.repeat(100) + Date.now().toString().slice(-10);
@@ -3005,8 +2991,7 @@ test.describe('Long Description', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `LongDesc${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);
@@ -3080,8 +3065,7 @@ test.describe('Term Name Length Validation', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     // Try to enter name exceeding 128 chars
     const tooLongName = 'B'.repeat(150);
@@ -3208,7 +3192,7 @@ test.describe('Filter by Multiple Statuses', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Click on status filter
-    await page.click('[data-testid="status-dropdown"]');
+    await page.getByTestId('glossary-status-dropdown').click();
 
     // Select Draft filter
     await page.click('[data-testid="Draft"]');
@@ -3256,7 +3240,7 @@ test.describe('Clear Status Filter', () => {
     ).toBeVisible();
 
     // Click on status filter and select Approved (term is Draft)
-    await page.click('[data-testid="status-dropdown"]');
+    await page.getByTestId('glossary-status-dropdown').click();
     await page.click('[data-testid="Approved"]');
     await page.waitForLoadState('networkidle');
 
@@ -3266,7 +3250,7 @@ test.describe('Clear Status Filter', () => {
     ).not.toBeVisible();
 
     // Clear the filter
-    await page.click('[data-testid="status-dropdown"]');
+    await page.getByTestId('glossary-status-dropdown').click();
     await page.click('[data-testid="Approved"]'); // Deselect
     await page.waitForLoadState('networkidle');
 
@@ -3402,8 +3386,7 @@ test.describe('Create Term with Custom Color', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termName = `ColorTerm${Date.now()}`;
     await page.fill('[data-testid="name"]', termName);

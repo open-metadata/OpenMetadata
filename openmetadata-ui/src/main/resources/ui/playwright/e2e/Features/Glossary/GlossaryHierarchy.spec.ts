@@ -110,7 +110,7 @@ test.describe('Move Term to Root of Current Glossary', () => {
 
 // H-M04: Move term to root of different glossary
 // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
-test.describe.skip('Move Term to Root of Different Glossary', () => {
+test.describe('Move Term to Root of Different Glossary', () => {
   const glossary1 = new Glossary();
   const glossary2 = new Glossary();
   const term = new GlossaryTerm(glossary1);
@@ -190,7 +190,7 @@ test.describe.skip('Move Term to Root of Different Glossary', () => {
 
 // H-M05: Move term with children to different glossary
 // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
-test.describe.skip('Move Term with Children to Different Glossary', () => {
+test.describe('Move Term with Children to Different Glossary', () => {
   const glossary1 = new Glossary();
   const glossary2 = new Glossary();
   const parentTerm = new GlossaryTerm(glossary1);

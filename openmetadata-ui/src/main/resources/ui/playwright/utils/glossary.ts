@@ -1862,3 +1862,8 @@ export const performExpandAll = async (page: Page) => {
     state: 'detached',
   });
 };
+
+export const openAddGlossaryTermModal = async (page: Page) => {
+  await page.click('[data-testid="add-new-tag-button-header"]');
+  await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+};

@@ -24,6 +24,7 @@ import {
 import {
   confirmationDragAndDropGlossary,
   dragAndDropTerm,
+  openAddGlossaryTermModal,
   performExpandAll,
   selectActiveGlossary,
 } from '../../../utils/glossary';
@@ -79,8 +80,7 @@ test.describe('Term Status Transitions', () => {
     await selectActiveGlossary(page, glossaryNoReviewers.data.displayName);
 
     // Click add term button
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     // Fill in term details
     const termName = `ApprovedTerm${Date.now()}`;
@@ -119,8 +119,7 @@ test.describe('Term Status Transitions', () => {
     await selectActiveGlossary(page, glossaryWithReviewer.data.displayName);
 
     // Click add term button
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     // Fill in term details
     const termName = `DraftTerm${Date.now()}`;
@@ -160,8 +159,7 @@ test.describe('Term Status Transitions', () => {
     await selectActiveGlossary(page, glossaryWithReviewer.data.displayName);
 
     // Click add term button
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     // Fill in term details
     const termName = `InheritReviewerTerm${Date.now()}`;
@@ -358,8 +356,7 @@ test.describe('Reviewer Permissions', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     await page.fill('[data-testid="name"]', termName);
     await page.locator(descriptionBox).fill('Term for review testing');
@@ -461,8 +458,7 @@ test.describe('Status Badge Visual', () => {
 
     // Create a term that will start as Draft
     const termName = `StatusBadgeTerm${Date.now()}`;
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     await page.fill('[data-testid="name"]', termName);
     await page.locator(descriptionBox).fill('Test term for status badge');
@@ -536,8 +532,7 @@ test.describe('Owner Cannot Approve Without Reviewer Role', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     await page.fill('[data-testid="name"]', termName);
     await page.locator(descriptionBox).fill('Term for owner approval test');
@@ -632,8 +627,7 @@ test.describe('Multiple Reviewers Any Can Approve', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     await page.fill('[data-testid="name"]', termName);
     await page.locator(descriptionBox).fill('Term for multiple reviewer test');
@@ -739,8 +733,7 @@ test.describe('Approve Term from Status Popover', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     await page.fill('[data-testid="name"]', termName);
     await page.locator(descriptionBox).fill('Term for status popover test');

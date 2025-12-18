@@ -18,7 +18,10 @@ import {
   descriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
-import { selectActiveGlossary } from '../../utils/glossary';
+import {
+  openAddGlossaryTermModal,
+  selectActiveGlossary,
+} from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({
@@ -125,8 +128,7 @@ test.describe('Term Form Validation - Empty Name', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
+    await openAddGlossaryTermModal(page);
 
     // Fill description but leave name empty
     await page.locator(descriptionBox).fill('Test term description');
@@ -159,8 +161,7 @@ test.describe('Term Form Validation - Empty Description', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
+    await openAddGlossaryTermModal(page);
 
     // Fill name but leave description empty
     await page.fill('[data-testid="name"]', 'TestTerm');

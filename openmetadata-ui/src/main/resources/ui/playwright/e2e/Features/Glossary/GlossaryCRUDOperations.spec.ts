@@ -20,7 +20,10 @@ import {
   descriptionBox,
   redirectToHomePage,
 } from '../../../utils/common';
-import { selectActiveGlossary } from '../../../utils/glossary';
+import {
+  openAddGlossaryTermModal,
+  selectActiveGlossary,
+} from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
@@ -160,8 +163,7 @@ test.describe('Create Term With Synonyms', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termModal = page.locator('.edit-glossary-modal');
     await termModal.getByTestId('name').fill(termName);
@@ -217,8 +219,7 @@ test.describe('Create Term With References', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termModal = page.locator('.edit-glossary-modal');
     await termModal.getByTestId('name').fill(termName);
@@ -732,8 +733,7 @@ test.describe('Create Term With Tags', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.click('[data-testid="add-new-tag-button-header"]');
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+    await openAddGlossaryTermModal(page);
 
     const termModal = page.locator('.edit-glossary-modal');
     await termModal.getByTestId('name').fill(termName);

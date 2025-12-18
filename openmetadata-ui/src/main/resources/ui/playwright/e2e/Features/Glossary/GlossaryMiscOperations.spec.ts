@@ -30,7 +30,7 @@ test.use({
 // G-D05: Delete glossary with assets tagged to terms
 // TODO: Potential product bug - when glossary is deleted, tags may not be removed from assets
 // Verifies that when a glossary is deleted, the glossary term tags are removed from tagged assets
-test.describe.skip('Delete Glossary with Tagged Assets', () => {
+test.describe('Delete Glossary with Tagged Assets', () => {
   const glossary = new Glossary();
   const glossaryTerm = new GlossaryTerm(glossary);
   const tableEntity = new TableClass();
