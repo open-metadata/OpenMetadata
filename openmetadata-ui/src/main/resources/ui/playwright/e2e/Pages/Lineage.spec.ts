@@ -23,6 +23,7 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
+  clickOutside,
   createNewPage,
   getApiContext,
   redirectToHomePage,
@@ -33,6 +34,7 @@ import {
   addColumnLineage,
   addPipelineBetweenNodes,
   applyPipelineFromModal,
+  clickLineageNode,
   connectEdgeBetweenNodes,
   connectEdgeBetweenNodesViaAPI,
   deleteEdge,
@@ -142,9 +144,8 @@ for (const EntityClass of entities) {
             entity,
             'entityResponseData.fullyQualifiedName'
           );
-          await page
-            .locator(`[data-testid="lineage-node-${toNodeFqn}"]`)
-            .click();
+
+          await clickLineageNode(page, toNodeFqn);
 
           await expect(
             page
@@ -169,9 +170,8 @@ for (const EntityClass of entities) {
           currentEntity,
           'entityResponseData.fullyQualifiedName'
         );
-        await page
-          .locator(`[data-testid="lineage-node-${fromNodeFqn}"]`)
-          .click();
+
+        await clickLineageNode(page, fromNodeFqn);
 
         for (const entity of entities) {
           await applyPipelineFromModal(page, currentEntity, entity, pipeline);
@@ -526,7 +526,7 @@ test('Verify table search with special characters as handled', async ({
 
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
 
-    await page.locator(`[data-testid="lineage-node-${dbFqn}"]`).click();
+    await clickLineageNode(page, dbFqn);
     await page.waitForLoadState('networkidle');
 
     await expect(
@@ -689,6 +689,110 @@ test('Verify cycle lineage should be handled properly', async ({ page }) => {
   }
 });
 
+test('Verify column layer is applied on entering edit mode', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+
+  await table.create(apiContext);
+
+  try {
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+
+    const columnLayerBtn = page.locator(
+      '[data-testid="lineage-layer-column-btn"]'
+    );
+
+    await test.step('Verify column layer is inactive initially', async () => {
+      await page.click('[data-testid="lineage-layer-btn"]');
+
+      await expect(columnLayerBtn).not.toHaveClass(/Mui-selected/);
+
+      await clickOutside(page);
+    });
+
+    await test.step(
+      'Enter edit mode and verify column layer is active',
+      async () => {
+        await editLineageClick(page);
+
+        await page.click('[data-testid="lineage-layer-btn"]');
+
+        await expect(columnLayerBtn).toHaveClass(/Mui-selected/);
+
+        await clickOutside(page);
+      }
+    );
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Verify there is no traced nodes and columns on exiting edit mode', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+
+  await table.create(apiContext);
+
+  try {
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+    const tableNode = page.locator(`[data-testid="lineage-node-${tableFqn}"]`);
+    const firstColumnName = get(table, 'entityResponseData.columns[0].name');
+    const firstColumn = page.locator(
+      `[data-testid="column-${tableFqn}.${firstColumnName}"]`
+    );
+
+    await test.step(
+      'Verify node tracing is cleared on exiting edit mode',
+      async () => {
+        await editLineageClick(page);
+
+        await expect(tableNode).not.toHaveClass(/custom-node-header-active/);
+
+        await tableNode.click({ position: { x: 5, y: 5 } });
+
+        await expect(tableNode).toHaveClass(/custom-node-header-active/);
+
+        await editLineageClick(page);
+
+        await expect(tableNode).not.toHaveClass(/custom-node-header-active/);
+      }
+    );
+
+    await test.step(
+      'Verify column tracing is cleared on exiting edit mode',
+      async () => {
+        await editLineageClick(page);
+
+        await firstColumn.click();
+
+        await expect(firstColumn).toHaveClass(
+          /custom-node-header-column-tracing/
+        );
+
+        await editLineageClick(page);
+
+        await toggleLineageFilters(page, tableFqn);
+
+        await expect(firstColumn).not.toHaveClass(
+          /custom-node-header-column-tracing/
+        );
+      }
+    );
+  } finally {
+    await table.delete(apiContext);
+    await afterAction();
+  }
+});
+
 test.describe.serial('Test pagination in column level lineage', () => {
   const generateColumnsWithNames = (count: number) => {
     const columns = [];
@@ -731,7 +835,7 @@ test.describe.serial('Test pagination in column level lineage', () => {
 
     await addPipelineBetweenNodes(page, table1, table2);
 
-    await activateColumnLayer(page);
+    await rearrangeNodes(page);
 
     await page.waitForSelector(
       `[data-testid="column-${table1Fqn}.${table1Columns[0].name}"]`,
@@ -1300,11 +1404,11 @@ test.describe.serial('Test pagination in column level lineage', () => {
   });
 
   test('Verify edges for column level lineage between 2 nodes when filter is toggled', async ({
-    browser,
+    page,
   }) => {
     test.slow();
 
-    const { page, afterAction } = await createNewPage(browser);
+    const { afterAction } = await getApiContext(page);
 
     try {
       await test.step('1. Load both the table', async () => {
