@@ -1122,7 +1122,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const handleEditGlossary = () => {
     navigate({
       pathname: getEntityBulkEditPath(
-        isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM,
+        EntityType.GLOSSARY_TERM,
         activeGlossary?.fullyQualifiedName ?? ''
       ),
     });
