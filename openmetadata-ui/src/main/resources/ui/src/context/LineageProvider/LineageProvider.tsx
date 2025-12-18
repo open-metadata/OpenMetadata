@@ -235,6 +235,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [columnsInCurrentPages, setColumnsInCurrentPages] = useState<
     Record<string, string[]>
   >({});
+  const [newlyLoadedNodeIds, setNewlyLoadedNodeIds] = useState<string[]>([]);
 
   // Add state for entityFqn that can be updated independently of URL params
   const [entityFqn, setEntityFqn] = useState<string>(decodedFqn);
@@ -610,6 +611,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         );
 
         const uniqueNodes = [...(entityLineage.nodes ?? [])];
+        const loadedNodeIds: string[] = [];
         for (const nNode of newNodes ?? []) {
           if (
             !uniqueNodes.some(
@@ -617,6 +619,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             )
           ) {
             uniqueNodes.push(nNode);
+            if (nNode.type !== EntityLineageNodeType.LOAD_MORE) {
+              loadedNodeIds.push(nNode.id);
+            }
           }
         }
 
@@ -668,6 +673,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             upstreamEdges: concatenatedLineageData.upstreamEdges,
           };
         });
+
+        setNewlyLoadedNodeIds(loadedNodeIds);
       } catch (err) {
         showErrorToast(
           err as AxiosError,
@@ -1846,6 +1853,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       useUpdateNodeInternals,
       columnsInCurrentPages,
       setColumnsInCurrentPages,
+      newlyLoadedNodeIds,
     };
   }, [
     dataQualityLineage,
@@ -1908,6 +1916,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     useUpdateNodeInternals,
     columnsInCurrentPages,
     setColumnsInCurrentPages,
+    newlyLoadedNodeIds,
   ]);
 
   useEffect(() => {
