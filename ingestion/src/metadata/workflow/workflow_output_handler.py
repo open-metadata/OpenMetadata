@@ -225,12 +225,16 @@ class WorkflowOutputHandler:
             data = [f for fs in all_data for f in fs]
             # create a dictionary with a key and a list of values from the list
             error_table = {k: [dic[k] for dic in data] for k in data[0]}
-            if len(list(error_table.items())[0][1]) > 100:
+            # We have noticed logging higher number of failures here kills
+            # the ingestion, the reason is unknown. Hence, we will be keeping
+            # the number of failures logged to a smaller number like 10.
+            # TODO: revisit this to see if we can increase this limit
+            if len(list(error_table.items())[0][1]) > 10:
                 log_ansi_encoded_string(
-                    bold=True, message="Showing only the first 100 failures:"
+                    bold=True, message="Showing the first 10 failures:"
                 )
-                # truncate list if number of values are over 100
-                error_table = {k: v[:100] for k, v in error_table.items()}
+                # truncate list if number of values are over 10
+                error_table = {k: v[:10] for k, v in error_table.items()}
             else:
                 log_ansi_encoded_string(bold=True, message="List of failures:")
 
