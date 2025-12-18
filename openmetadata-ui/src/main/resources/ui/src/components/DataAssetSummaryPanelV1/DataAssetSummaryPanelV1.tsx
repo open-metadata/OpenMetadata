@@ -457,6 +457,7 @@ export const DataAssetSummaryPanelV1 = ({
               <LineageSection
                 entityFqn={dataAsset.fullyQualifiedName}
                 entityType={entityType}
+                key={`lineage-${dataAsset.id}`}
                 onLineageClick={onLineageClick}
               />
             )}

@@ -19,13 +19,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { AxiosError } from 'axios';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DownstreamIcon } from '../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../assets/svg/lineage-upstream-icon.svg';
@@ -85,54 +79,34 @@ const LineageSection: React.FC<LineageSectionProps> = ({
   const [lineagePagingInfo, setLineagePagingInfo] =
     useState<LineagePagingInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const latestRequestIdRef = useRef(0);
-
-  const fetchLineagePagingData = useCallback(async () => {
-    const requestId = ++latestRequestIdRef.current;
-
-    if (!entityFqn || !entityType) {
-      setIsLoading(false);
-      setLineagePagingInfo(null);
-
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const response = await getLineagePagingData({
-        fqn: entityFqn,
-        type: entityType,
-      });
-
-      // Ignore stale requests (e.g., entity changes quickly)
-      if (requestId !== latestRequestIdRef.current) {
-        return;
-      }
-
-      setLineagePagingInfo(response);
-    } catch (error) {
-      if (requestId !== latestRequestIdRef.current) {
-        return;
-      }
-
-      showErrorToast(error as AxiosError);
-      setLineagePagingInfo(null);
-    } finally {
-      // Don't flip loading off if a newer request started after this one
-      if (requestId === latestRequestIdRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [entityFqn, entityType]);
 
   useEffect(() => {
-    fetchLineagePagingData();
+    const fetchLineagePagingData = async () => {
+      if (!entityFqn || !entityType) {
+        setIsLoading(false);
+        setLineagePagingInfo(null);
 
-    // Invalidate in-flight request on unmount / dependency change
-    return () => {
-      latestRequestIdRef.current += 1;
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const response = await getLineagePagingData({
+          fqn: entityFqn,
+          type: entityType,
+        });
+
+        setLineagePagingInfo(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+        setLineagePagingInfo(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
-  }, [fetchLineagePagingData]);
+
+    fetchLineagePagingData();
+  }, [entityFqn, entityType]);
 
   const { upstreamCount, downstreamCount } = useMemo(() => {
     // Get count for depth 1 entities only
