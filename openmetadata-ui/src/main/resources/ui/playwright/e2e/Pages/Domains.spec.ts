@@ -760,7 +760,7 @@ test.describe('Domains', () => {
 
       const saveResponse = userPage.waitForResponse(
         (req) =>
-          req.request().method() === 'patch' &&
+          req.request().method() === 'PATCH' &&
           req.request().url().includes('/api/v1/domains/')
       );
 
