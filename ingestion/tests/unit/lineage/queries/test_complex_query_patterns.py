@@ -2590,6 +2590,9 @@ class TestComplexQueryPatterns:
                 ),
             ],
             dialect=Dialect.POSTGRES.value,
+            # Graph: Graph check on this is randomly getting stuck and causing CI failures. So skipping graph check for now.
+            # ⏱️ Column lineage graph comparison timeout between sqlglot (18n/26e) and sqlfluff (18n/26e) after 10s
+            skip_graph_check=True,
         )
 
     def test_nested_join_05_cross_join_with_filtering(self):
