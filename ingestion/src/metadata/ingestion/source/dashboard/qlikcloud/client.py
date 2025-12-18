@@ -31,6 +31,8 @@ from metadata.ingestion.source.dashboard.qlikcloud.constants import (
 from metadata.ingestion.source.dashboard.qlikcloud.models import (
     QlikApp,
     QlikAppResponse,
+    QlikDataFile,
+    QlikDataFiles,
     QlikScriptResult,
     QlikSpace,
     QlikSpaceResponse,
@@ -187,9 +189,11 @@ class QlikCloudClient:
             script_tables = self.get_script_tables()
             if script_tables:
                 parsed_datamodels.extend(script_tables)
-
+            # get data files
             data_files = self.get_data_files()
-            return parsed_datamodels + data_files
+            if data_files:
+                parsed_datamodels.extend(data_files)
+            return parsed_datamodels
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard datamodels")
@@ -239,12 +243,14 @@ class QlikCloudClient:
             logger.warning("Failed to fetch the script tables")
         return script_tables
 
-    def get_data_files(self):
-        """Get data files from the dashboard script"""
+    def get_data_files(self) -> List[QlikDataFile]:
+        """Get data files from the Qlik API"""
+        data_files = []
         try:
-            api = f"/v1/data-files"
-            resp_files = self.client.get(api)
+            resp = self.client.get("/v1/data-files?includeAllSpaces=true")
+            parsed_resp = QlikDataFiles(**resp)
+            data_files = parsed_resp.data or []
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch data files")
-        return resp_files
+            logger.warning("Failed to fetch data files from api `/v1/data-files`")
+        return data_files
