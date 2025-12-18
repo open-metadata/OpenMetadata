@@ -27,6 +27,7 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { getClassifications } from '../../utils/TagsUtils';
 import TagsPage from './TagsPage';
 import {
@@ -330,10 +331,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue([{}]),
-}));
-
 jest.mock(
   '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
   () => ({
@@ -483,13 +480,12 @@ describe('Test TagsPage page', () => {
 
     const table = await findByTestId(container, 'table');
     const name = await findByText(container, 'label.tag');
-    const description = await findByText(container, 'label.description');
     const actions = await findByText(container, 'label.action-plural');
 
     expect(table).toBeInTheDocument();
     expect(actions).toBeInTheDocument();
     expect(name).toBeInTheDocument();
-    expect(description).toBeInTheDocument();
+    expect(descriptionTableObject).toHaveBeenCalledWith({ width: 300 });
   });
 
   it('Should render error placeholder if categories api fails', async () => {
