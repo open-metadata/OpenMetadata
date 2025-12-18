@@ -13,10 +13,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import { useEffect } from 'react';
-import { Edge } from 'reactflow';
+import { Edge, Node as ReactFlowNode } from 'reactflow';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/searchLineageRequest';
+import { LineageLayer } from '../../generated/settings/settings';
 import {
   getDataQualityLineage,
   getLineageDataByFQN,
@@ -232,6 +233,179 @@ describe('LineageProvider', () => {
     const edgeDrawer = screen.getByText('Entity Lineage Sidebar');
 
     expect(edgeDrawer).toBeInTheDocument();
+  });
+
+  it('should enable column layer when entering edit mode', () => {
+    const TestComponent = () => {
+      const { onLineageEditClick, activeLayer } = useLineageProvider();
+
+      return (
+        <div>
+          <button data-testid="edit-lineage" onClick={onLineageEditClick}>
+            Edit Lineage
+          </button>
+          <div data-testid="active-layers">{activeLayer.join(',')}</div>
+        </div>
+      );
+    };
+
+    render(
+      <LineageProvider>
+        <TestComponent />
+      </LineageProvider>
+    );
+
+    const editButton = screen.getByTestId('edit-lineage');
+    const activeLayers = screen.getByTestId('active-layers');
+
+    expect(activeLayers.textContent).not.toContain('ColumnLevelLineage');
+
+    fireEvent.click(editButton);
+
+    expect(activeLayers.textContent).toContain('ColumnLevelLineage');
+  });
+
+  it('should keep other layers unaffected while entering edit mode', () => {
+    const TestComponent = () => {
+      const { onLineageEditClick, onUpdateLayerView, activeLayer } =
+        useLineageProvider();
+
+      return (
+        <div>
+          <button
+            data-testid="add-column-lineage"
+            onClick={() =>
+              onUpdateLayerView([
+                ...activeLayer,
+                LineageLayer.ColumnLevelLineage,
+              ])
+            }>
+            Add Column Lineage
+          </button>
+          <button
+            data-testid="add-data-observability"
+            onClick={() =>
+              onUpdateLayerView([
+                ...activeLayer,
+                LineageLayer.DataObservability,
+              ])
+            }>
+            Add DataObservability
+          </button>
+          <button data-testid="edit-lineage" onClick={onLineageEditClick}>
+            Edit Lineage
+          </button>
+          <div data-testid="active-layers">{activeLayer.join(',')}</div>
+        </div>
+      );
+    };
+
+    render(
+      <LineageProvider>
+        <TestComponent />
+      </LineageProvider>
+    );
+
+    const addColumnLineageButton = screen.getByTestId('add-column-lineage');
+    const addDataObservabilityButton = screen.getByTestId(
+      'add-data-observability'
+    );
+    const editButton = screen.getByTestId('edit-lineage');
+    const activeLayers = screen.getByTestId('active-layers');
+
+    expect(activeLayers.textContent).not.toContain('ColumnLevelLineage');
+    expect(activeLayers.textContent).not.toContain('DataObservability');
+
+    fireEvent.click(addColumnLineageButton);
+
+    expect(activeLayers.textContent).toContain('ColumnLevelLineage');
+    expect(activeLayers.textContent).not.toContain('DataObservability');
+
+    fireEvent.click(addDataObservabilityButton);
+
+    expect(activeLayers.textContent).toContain('ColumnLevelLineage');
+    expect(activeLayers.textContent).toContain('DataObservability');
+
+    fireEvent.click(editButton);
+
+    expect(activeLayers.textContent).toContain('ColumnLevelLineage');
+    expect(activeLayers.textContent).toContain('DataObservability');
+  });
+
+  it('should remove traced nodes and columns while exiting edit mode', () => {
+    const mockNode: ReactFlowNode = {
+      id: 'test-node',
+      type: 'default',
+      position: { x: 0, y: 0 },
+      data: { node: { name: 'test', fullyQualifiedName: 'test-node-fqn' } },
+    };
+
+    const TestComponent = () => {
+      const {
+        onLineageEditClick,
+        tracedNodes,
+        tracedColumns,
+        isEditMode,
+        onColumnClick,
+        onNodeClick,
+      } = useLineageProvider();
+
+      return (
+        <div>
+          <button
+            data-testid="simulate-node-click"
+            onClick={() => onNodeClick(mockNode)}>
+            Simulate Node Click
+          </button>
+          <button
+            data-testid="simulate-column-click"
+            onClick={() => onColumnClick('test-column')}>
+            Simulate Column Click
+          </button>
+          <button data-testid="edit-lineage" onClick={onLineageEditClick}>
+            Edit Lineage
+          </button>
+          <div data-testid="is-edit-mode">{isEditMode.toString()}</div>
+          <div data-testid="traced-nodes">{tracedNodes.join(',')}</div>
+          <div data-testid="traced-columns">{tracedColumns.join(',')}</div>
+        </div>
+      );
+    };
+
+    render(
+      <LineageProvider>
+        <TestComponent />
+      </LineageProvider>
+    );
+
+    const editButton = screen.getByTestId('edit-lineage');
+    const simulateNodeClick = screen.getByTestId('simulate-node-click');
+    const simulateColumnClick = screen.getByTestId('simulate-column-click');
+    const isEditModeDisplay = screen.getByTestId('is-edit-mode');
+    const tracedNodesDisplay = screen.getByTestId('traced-nodes');
+    const tracedColumnsDisplay = screen.getByTestId('traced-columns');
+
+    expect(isEditModeDisplay.textContent).toBe('false');
+    expect(tracedNodesDisplay.textContent).toBe('');
+    expect(tracedColumnsDisplay.textContent).toBe('');
+
+    fireEvent.click(editButton);
+
+    expect(isEditModeDisplay.textContent).toBe('true');
+
+    fireEvent.click(simulateNodeClick);
+
+    expect(tracedNodesDisplay.textContent).toBe('test-node');
+
+    fireEvent.click(simulateColumnClick);
+
+    expect(tracedColumnsDisplay.textContent).toBe('test-column');
+
+    fireEvent.click(editButton);
+
+    expect(isEditModeDisplay.textContent).toBe('false');
+    expect(tracedNodesDisplay.textContent).toBe('');
+    expect(tracedColumnsDisplay.textContent).toBe('');
   });
 
   it('should show delete modal', async () => {

@@ -23,11 +23,11 @@ import {
   Divider as MuiDivider,
   Typography as MuiTypography,
 } from '@mui/material';
-import { EntityDetailUnion } from 'Models';
 import { Alert, Checkbox, Divider, List, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
+import { EntityDetailUnion } from 'Models';
 import { useSnackbar } from 'notistack';
 import VirtualList from 'rc-virtual-list';
 import { UIEventHandler, useCallback, useEffect, useState } from 'react';
@@ -71,6 +71,11 @@ import {
 } from '../../../utils/ExploreUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Banner from '../../common/Banner/Banner';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
 import {
   CSVExportJob,
   CSVExportResponse,
@@ -79,11 +84,6 @@ import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import Banner from '../../common/Banner/Banner';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../common/Loader/Loader';
-import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
-import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
 import './asset-selection-model.style.less';
 
 export interface AssetSelectionContentProps {
@@ -162,8 +162,6 @@ export const useAssetSelectionContent = ({
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
         setPageNumber(page);
         setAggregations(getAggregations(res?.aggregations));
-      } catch (_) {
-        // Nothing here
       } finally {
         setIsLoading(false);
       }
@@ -376,13 +374,17 @@ export const useAssetSelectionContent = ({
           quickFilterQuery as QueryFilterInterface
         );
 
-        !isLoading &&
-          fetchEntities({
-            searchText: search,
-            page: pageNumber + 1,
-            index: activeFilter,
-            updatedQueryFilter: combinedQueryFilter,
-          });
+        if (isLoading) {
+          // No need to fetchEntities if already loading
+          return;
+        }
+
+        fetchEntities({
+          searchText: search,
+          page: pageNumber + 1,
+          index: activeFilter,
+          updatedQueryFilter: combinedQueryFilter,
+        });
       }
     },
     [
@@ -522,10 +524,10 @@ export const useAssetSelectionContent = ({
           {t('label.cancel')}
         </Button>
         <Button
-          variant="contained"
           data-testid="save-btn"
           disabled={!selectedItems?.size || isLoading}
           loading={isSaveLoading || !isUndefined(assetJobResponse)}
+          variant="contained"
           onClick={onSaveAction}>
           {t('label.save')}
         </Button>
