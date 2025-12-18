@@ -106,7 +106,7 @@ describe('Test TestSummaryCustomTooltip component', () => {
     expect(screen.queryByText('name')).not.toBeInTheDocument();
   });
 
-  it('should display freshness in values in milliseconds', async () => {
+  it('should display freshness values in seconds', async () => {
     render(<TestSummaryCustomTooltip {...mockPropsWithFreshness} />);
 
     expect((await screen.findByTestId('status')).textContent).toBe('Failed');
