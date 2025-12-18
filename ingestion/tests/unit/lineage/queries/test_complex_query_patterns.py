@@ -6,8 +6,6 @@ a comprehensive set of complex real-world query patterns that stress-test the pa
 capabilities.
 """
 
-from unittest import TestCase
-
 from collate_sqllineage.core.models import DataFunction
 
 from ingestion.tests.unit.lineage.queries.helpers import (
@@ -18,7 +16,7 @@ from ingestion.tests.unit.lineage.queries.helpers import (
 from metadata.ingestion.lineage.models import Dialect
 
 
-class TestComplexQueryPatterns(TestCase):
+class TestComplexQueryPatterns:
     """Comprehensive test suite for complex SQL query patterns"""
 
     # ==================== JOIN PATTERNS ====================

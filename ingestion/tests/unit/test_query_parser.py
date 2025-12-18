@@ -15,12 +15,12 @@ Validate query parser logic
 
 from unittest import TestCase
 
+import pytest
 from collate_sqllineage.core.models import Column
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-import pytest
 
 
 class QueryParserTests(TestCase):
@@ -205,7 +205,7 @@ class QueryParserTests(TestCase):
 
     # TODO: Fix this case at the earliest
     @pytest.mark.skip(
-        reason="Flaky with sqlglot parser, returns no column lineages randomly."
+        reason="Flaky with sqlglot parser, returns no column lineage or correct column lineage randomly."
     )
     def test_ctes_column_lineage(self):
         """

@@ -17,9 +17,10 @@ Tests that memory limits are enforced correctly and only track function-specific
 import time
 import unittest
 
+import pytest
+
 from metadata.utils.memory_limit import MemoryLimitExceeded, memory_limit
 from metadata.utils.timeout import timeout
-import pytest
 
 
 class TestMemoryLimit(unittest.TestCase):
