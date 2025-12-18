@@ -140,6 +140,10 @@ Playwright is already included in the project dependencies. If you need to insta
 npx playwright install
 ```
 
+### Documentation
+
+For a detailed breakdown of all end-to-end tests, including test steps and coverage metrics, please refer to the **[E2E Test Documentation](./playwright/docs/README.md)**.
+
 ### Running Tests
 
 #### 1. Run All Tests
