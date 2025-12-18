@@ -14,7 +14,7 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage, redirectToHomePage } from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { selectActiveGlossary } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -23,266 +23,353 @@ test.use({
 });
 
 test.describe('Glossary Navigation', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   test('should navigate between tabs on glossary page', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await page.waitForLoadState('networkidle');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Verify Terms tab is visible and shows count
-    const termsTab = page.getByTestId('terms');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    await expect(termsTab).toBeVisible();
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      
+      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+      await loadResponse;
 
-    // Verify term is visible in the table
-    await expect(
-      page.locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
-    ).toBeVisible();
+      // Verify Terms tab is visible and shows count
+      const termsTab = page.getByTestId('terms');
 
-    // Click on Activity Feeds & Tasks tab
-    const activityTab = page.getByTestId('activity_feed');
-    await activityTab.click();
-    await page.waitForLoadState('networkidle');
+      await expect(termsTab).toBeVisible();
 
-    // Wait for loader to disappear
-    await page
-      .waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-        timeout: 5000,
-      })
-      .catch(() => {
-        // Loader may not appear if data loads quickly
-      });
+      // Verify term is visible in the table
+      await expect(
+        page.locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
+      ).toBeVisible();
 
-    // Verify we're on the activity feed tab by checking the tab is active
-    await expect(
-      page.locator('.ant-tabs-tab-active').getByTestId('activity_feed')
-    ).toBeVisible();
+      // Click on Activity Feeds & Tasks tab
+      const activityTab = page.getByTestId('activity_feed');
+      await activityTab.click();
+      
+      const activityLoadResponse = page.waitForResponse('/api/v1/feed*');
+      await activityLoadResponse;
 
-    // Click back on Terms tab
-    await termsTab.click();
-    await page.waitForLoadState('networkidle');
+      // Wait for loader to disappear
+      await page
+        .waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+          timeout: 5000,
+        })
+        .catch(() => {
+          // Loader may not appear if data loads quickly
+        });
 
-    // Verify term is still visible
-    await expect(
-      page.locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
-    ).toBeVisible();
+      // Verify we're on the activity feed tab by checking the tab is active
+      await expect(
+        page.locator('.ant-tabs-tab-active').getByTestId('activity_feed')
+      ).toBeVisible();
+
+      // Click back on Terms tab
+      await termsTab.click();
+      
+      const termsLoadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+      await termsLoadResponse;
+
+      // Verify term is still visible
+      await expect(
+        page.locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
+      ).toBeVisible();
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('should navigate between tabs on glossary term page', async ({
     page,
   }) => {
-    await glossaryTerm.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Verify Overview tab is active by default on term page
-    const overviewTab = page.getByTestId('overview');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    await expect(overviewTab).toBeVisible();
+      await glossaryTerm.visitEntityPage(page);
+      
+      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await loadResponse;
 
-    // Verify description is visible on Overview tab
-    await expect(page.getByTestId('asset-description-container')).toBeVisible();
+      // Verify Overview tab is active by default on term page
+      const overviewTab = page.getByTestId('overview');
 
-    // Check if Assets tab exists
-    const assetsTab = page.getByTestId('assets');
+      await expect(overviewTab).toBeVisible();
 
-    await expect(assetsTab).toBeVisible();
+      // Verify description is visible on Overview tab
+      await expect(page.getByTestId('asset-description-container')).toBeVisible();
 
-    // Click on Assets tab
-    await assetsTab.click();
-    await page.waitForLoadState('networkidle');
+      // Check if Assets tab exists
+      const assetsTab = page.getByTestId('assets');
 
-    // Wait for loader to disappear
-    await page
-      .waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-        timeout: 5000,
-      })
-      .catch(() => {
-        // Loader may not appear if data loads quickly
-      });
+      await expect(assetsTab).toBeVisible();
 
-    // Verify we're on the Assets tab by checking the tab is active
-    await expect(
-      page.locator('.ant-tabs-tab-active').getByTestId('assets')
-    ).toBeVisible();
+      // Click on Assets tab
+      await assetsTab.click();
+      
+      const assetsLoadResponse = page.waitForResponse('/api/v1/search/query*');
+      await assetsLoadResponse;
 
-    // Navigate back to Overview
-    await overviewTab.click();
-    await page.waitForLoadState('networkidle');
+      // Wait for loader to disappear
+      await page
+        .waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+          timeout: 5000,
+        })
+        .catch(() => {
+          // Loader may not appear if data loads quickly
+        });
 
-    // Verify we're back on overview with description visible
-    await expect(page.getByTestId('asset-description-container')).toBeVisible();
+      // Verify we're on the Assets tab by checking the tab is active
+      await expect(
+        page.locator('.ant-tabs-tab-active').getByTestId('assets')
+      ).toBeVisible();
+
+      // Navigate back to Overview
+      await overviewTab.click();
+
+      // Verify we're back on overview with description visible
+      await expect(page.getByTestId('asset-description-container')).toBeVisible();
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('should navigate via breadcrumbs', async ({ page }) => {
-    await glossaryTerm.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Verify breadcrumb is visible
-    const breadcrumb = page.getByTestId('breadcrumb');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    await expect(breadcrumb).toBeVisible();
+      await glossaryTerm.visitEntityPage(page);
+      
+      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await loadResponse;
 
-    // Click on Glossaries link in breadcrumb to go to glossary listing
-    await breadcrumb.getByRole('link', { name: 'Glossaries' }).click();
-    await page.waitForLoadState('networkidle');
+      // Verify breadcrumb is visible
+      const breadcrumb = page.getByTestId('breadcrumb');
 
-    // Verify we're on the glossary listing page
-    await expect(page.getByTestId('terms')).toBeVisible();
+      await expect(breadcrumb).toBeVisible();
+
+      // Click on Glossaries link in breadcrumb to go to glossary listing
+      const navResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+      await breadcrumb.getByRole('link', { name: 'Glossaries' }).click();
+      await navResponse;
+
+      // Verify we're on the glossary listing page
+      await expect(page.getByTestId('terms')).toBeVisible();
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // NAV-04: Deep link to nested term works
   test('should navigate to nested term via deep link', async ({ page }) => {
-    // Navigate directly to term page using URL
-    const termFqn = glossaryTerm.responseData.fullyQualifiedName;
-    await page.goto(
-      `/glossary/${encodeURIComponent(termFqn).replace(/%22/g, '"')}`
-    );
-    await page.waitForLoadState('networkidle');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Verify term page loads correctly
-    await expect(page.getByTestId('entity-header-display-name')).toContainText(
-      glossaryTerm.responseData.displayName
-    );
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    // Verify breadcrumb shows path (contains glossary name in FQN format)
-    const breadcrumb = page.getByTestId('breadcrumb');
+      // Navigate directly to term page using URL
+      const termFqn = glossaryTerm.responseData.fullyQualifiedName;
+      const navResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await page.goto(
+        `/glossary/${encodeURIComponent(termFqn).replace(/%22/g, '"')}`
+      );
+      await navResponse;
 
-    await expect(breadcrumb).toBeVisible();
-    // Breadcrumb contains the glossary FQN (name) not displayName
-    await expect(breadcrumb).toContainText(glossary.responseData.name);
-  });
-});
+      // Verify term page loads correctly
+      await expect(page.getByTestId('entity-header-display-name')).toContainText(
+        glossaryTerm.responseData.displayName
+      );
 
-// UI-01: Empty glossary state (no terms)
-test.describe('Empty Glossary State', () => {
-  const emptyGlossary = new Glossary();
+      // Verify breadcrumb shows path (contains glossary name in FQN format)
+      const breadcrumb = page.getByTestId('breadcrumb');
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await emptyGlossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await emptyGlossary.delete(apiContext);
-    await afterAction();
+      await expect(breadcrumb).toBeVisible();
+      // Breadcrumb contains the glossary FQN (name) not displayName
+      await expect(breadcrumb).toContainText(glossary.responseData.name);
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
+  // UI-01: Empty glossary state (no terms)
   test('should show empty state when glossary has no terms', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, emptyGlossary.data.displayName);
-    await page.waitForLoadState('networkidle');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const emptyGlossary = new Glossary();
 
-    // Verify empty state is shown - actual message in UI
-    await expect(
-      page.getByText('It appears that there are no Glossary Terms defined')
-    ).toBeVisible();
+    try {
+      await emptyGlossary.create(apiContext);
 
-    // Verify add term button is available
-    await expect(page.getByTestId('add-new-tag-button-header')).toBeVisible();
-  });
-});
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, emptyGlossary.data.displayName);
+      
+      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+      await loadResponse;
 
-// Activity Feed tests (AF-01, AF-02, AF-03, AF-04)
-test.describe('Glossary Activity Feed', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
+      // Verify empty state is shown - actual message in UI
+      await expect(
+        page.getByText('It appears that there are no Glossary Terms defined')
+      ).toBeVisible();
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossaryTerm.delete(apiContext);
-    await glossary.delete(apiContext);
-    await afterAction();
+      // Verify add term button is available
+      await expect(page.getByTestId('add-new-tag-button-header')).toBeVisible();
+    } finally {
+      await emptyGlossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // AF-01: View activity feed on glossary
   test('should view activity feed on glossary', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await page.waitForLoadState('networkidle');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-    // Click on Activity Feeds & Tasks tab
-    const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-    await activityTab.click();
-    await page.waitForLoadState('networkidle');
+    try {
+      await glossary.create(apiContext);
 
-    // Verify we're on the activity feed tab by checking the tab is active
-    await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      
+      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+      await loadResponse;
+
+      // Click on Activity Feeds & Tasks tab
+      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
+      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      await activityTab.click();
+      await feedResponse;
+
+      // Verify we're on the activity feed tab by checking the tab is active
+      await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // AF-02: View activity feed on term
   test('should view activity feed on glossary term', async ({ page }) => {
-    await glossaryTerm.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Click on Activity Feeds & Tasks tab
-    const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-    await activityTab.click();
-    await page.waitForLoadState('networkidle');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    // Verify we're on the activity feed tab by checking the tab is active
-    await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+      await glossaryTerm.visitEntityPage(page);
+      
+      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await loadResponse;
+
+      // Click on Activity Feeds & Tasks tab
+      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
+      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      await activityTab.click();
+      await feedResponse;
+
+      // Verify we're on the activity feed tab by checking the tab is active
+      await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // AF-03: Post comment on glossary
   test('should post comment on glossary activity feed', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await page.waitForLoadState('networkidle');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-    // Click on Activity Feeds & Tasks tab
-    const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-    await activityTab.click();
-    await page.waitForLoadState('networkidle');
+    try {
+      await glossary.create(apiContext);
 
-    // Verify the activity tab loads correctly
-    await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      
+      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+      await loadResponse;
+
+      // Click on Activity Feeds & Tasks tab
+      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
+      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      await activityTab.click();
+      await feedResponse;
+
+      // Verify the activity tab loads correctly
+      await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // AF-04: Post comment on term
   test('should post comment on glossary term activity feed', async ({
     page,
   }) => {
-    await glossaryTerm.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Click on Activity Feeds & Tasks tab
-    const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
-    await activityTab.click();
-    await page.waitForLoadState('networkidle');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    // Verify the activity tab loads correctly
-    await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+      await glossaryTerm.visitEntityPage(page);
+      
+      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await loadResponse;
+
+      // Click on Activity Feeds & Tasks tab
+      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
+      const feedResponse = page.waitForResponse('/api/v1/feed*');
+      await activityTab.click();
+      await feedResponse;
+
+      // Verify the activity tab loads correctly
+      await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 });
