@@ -420,6 +420,7 @@ const DataProductsDetailsPage = ({
         ...dataProduct,
         name: name?.trim(),
         displayName: displayName?.trim(),
+        name: name?.trim(),
       };
 
       await onUpdate(updatedDetails);
@@ -771,6 +772,7 @@ const DataProductsDetailsPage = ({
         visible={isNameEditing}
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
+        allowRename
       />
       <EntityDeleteModal
         bodyText={getEntityDeleteMessage(dataProduct.name, '')}
