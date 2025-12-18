@@ -1535,6 +1535,22 @@ public interface CollectionDAO {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
+    @SqlUpdate(
+        "UPDATE entity_relationship "
+            + "SET fromId = :newFromId "
+            + "WHERE fromId = :oldFromId "
+            + "AND fromEntity = :fromEntity "
+            + "AND toEntity = :toEntity "
+            + "AND relation = :relation "
+            + "AND toId IN (<toIds>)")
+    void bulkUpdateFromId(
+        @BindUUID("oldFromId") UUID oldFromId,
+        @BindUUID("newFromId") UUID newFromId,
+        @BindList("toIds") List<String> toIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
     //
     // Find to operations
     //
@@ -2186,7 +2202,10 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void updateTaskId();
 
-    @SqlQuery("SELECT id FROM task_sequence LIMIT 1")
+    @ConnectionAwareSqlQuery(value = "SELECT LAST_INSERT_ID()", connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT id FROM task_sequence LIMIT 1",
+        connectionType = POSTGRES)
     int getTaskId();
 
     @SqlQuery("SELECT json FROM thread_entity WHERE taskId = :id")
@@ -4450,128 +4469,67 @@ public interface CollectionDAO {
       return "fqnHash";
     }
 
-    @Override
-    default int listCount(ListFilter filter) {
+    private Pair<String, String> buildTagQueryConditions(ListFilter filter) {
       String parent = filter.getQueryParam("parent");
+      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
 
-      // If parent parameter is provided, filter tags by parent classification FQN
+      String baseJoin =
+          String.format(
+              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s' "
+                  + "INNER JOIN classification c ON er.fromId=c.id",
+              CONTAINS.ordinal(), Entity.CLASSIFICATION);
+
+      StringBuilder mySqlCondition = new StringBuilder(baseJoin);
+      StringBuilder postgresCondition = new StringBuilder(baseJoin);
+
       if (parent != null) {
         String parentFqnHash = FullyQualifiedName.buildHash(parent);
         filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
-        String condition = filter.getCondition("tag");
-        if (!condition.isEmpty()) {
-          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
-        } else {
-          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
-        }
-        return listCount(
-            getTableName(), getNameHashColumn(), filter.getQueryParams(), condition, condition);
+        mySqlCondition.append(" AND tag.fqnHash LIKE :parentFqnPrefix");
+        postgresCondition.append(" AND tag.fqnHash LIKE :parentFqnPrefix");
       }
-
-      // Original behavior for classification.disabled parameter
-      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
-      String condition =
-          String.format(
-              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
-                  + "INNER JOIN classification c on er.fromId=c.id",
-              CONTAINS.ordinal(), Entity.CLASSIFICATION);
-      String mySqlCondition = condition;
-      String postgresCondition = condition;
 
       if (disabled) {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = TRUE)",
-                postgresCondition);
-      } else {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
-                postgresCondition);
+        mySqlCondition.append(
+            " AND (JSON_EXTRACT(c.json, '$.disabled') = TRUE OR JSON_EXTRACT(tag.json, '$.disabled') = TRUE)");
+        postgresCondition.append(
+            " AND (COALESCE((c.json#>'{disabled}')::boolean, FALSE) = TRUE OR COALESCE((tag.json#>'{disabled}')::boolean, FALSE) = TRUE)");
+      } else if (filter.getQueryParam("classification.disabled") != null) {
+        mySqlCondition.append(
+            " AND (JSON_EXTRACT(c.json, '$.disabled') = FALSE AND JSON_EXTRACT(tag.json, '$.disabled') = FALSE)");
+        postgresCondition.append(
+            " AND (COALESCE((c.json#>'{disabled}')::boolean, FALSE) = FALSE AND COALESCE((tag.json#>'{disabled}')::boolean, FALSE) = FALSE)");
       }
 
-      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
-      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+      String tagCondition = filter.getCondition("tag");
+      if (!tagCondition.isEmpty()) {
+        mySqlCondition.append(" ").append(tagCondition);
+        postgresCondition.append(" ").append(tagCondition);
+      }
+
+      return Pair.of(mySqlCondition.toString(), postgresCondition.toString());
+    }
+
+    @Override
+    default int listCount(ListFilter filter) {
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listCount(
           getTableName(),
           getNameHashColumn(),
           filter.getQueryParams(),
-          mySqlCondition,
-          postgresCondition);
+          conditions.getLeft(),
+          conditions.getRight());
     }
 
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
-      String parent = filter.getQueryParam("parent");
-
-      // If parent parameter is provided, filter tags by parent classification FQN
-      if (parent != null) {
-        String parentFqnHash = FullyQualifiedName.buildHash(parent);
-        filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
-        String condition = filter.getCondition("tag");
-        if (!condition.isEmpty()) {
-          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
-        } else {
-          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
-        }
-        return listBefore(
-            getTableName(),
-            filter.getQueryParams(),
-            condition,
-            condition,
-            limit,
-            beforeName,
-            beforeId);
-      }
-
-      // Original behavior for classification.disabled parameter
-      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
-      String condition =
-          String.format(
-              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
-                  + "INNER JOIN classification c on er.fromId=c.id",
-              CONTAINS.ordinal(), Entity.CLASSIFICATION);
-
-      String mySqlCondition = condition;
-      String postgresCondition = condition;
-
-      if (disabled) {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
-                postgresCondition);
-      } else {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
-                postgresCondition);
-      }
-
-      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
-      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
-
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
-          mySqlCondition,
-          postgresCondition,
+          conditions.getLeft(),
+          conditions.getRight(),
           limit,
           beforeName,
           beforeId);
@@ -4579,66 +4537,12 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String parent = filter.getQueryParam("parent");
-
-      // If parent parameter is provided, filter tags by parent classification FQN
-      if (parent != null) {
-        String parentFqnHash = FullyQualifiedName.buildHash(parent);
-        filter.queryParams.put("parentFqnPrefix", parentFqnHash + ".%");
-        String condition = filter.getCondition("tag");
-        if (!condition.isEmpty()) {
-          condition = String.format("%s AND fqnHash LIKE :parentFqnPrefix", condition);
-        } else {
-          condition = "WHERE fqnHash LIKE :parentFqnPrefix";
-        }
-        return listAfter(
-            getTableName(),
-            filter.getQueryParams(),
-            condition,
-            condition,
-            limit,
-            afterName,
-            afterId);
-      }
-
-      // Original behavior for classification.disabled parameter
-      boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
-      String condition =
-          String.format(
-              "INNER JOIN entity_relationship er ON tag.id=er.toId AND er.relation=%s AND er.fromEntity='%s'  "
-                  + "INNER JOIN classification c on er.fromId=c.id",
-              CONTAINS.ordinal(), Entity.CLASSIFICATION);
-
-      String mySqlCondition = condition;
-      String postgresCondition = condition;
-
-      if (disabled) {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = TRUE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean) = TRUE)",
-                postgresCondition);
-      } else {
-        mySqlCondition =
-            String.format(
-                "%s AND (JSON_EXTRACT(c.json, '$.disabled') IS NULL OR JSON_EXTRACT(c.json, '$.disabled') = FALSE)",
-                mySqlCondition);
-        postgresCondition =
-            String.format(
-                "%s AND ((c.json#>'{disabled}') IS NULL OR ((c.json#>'{disabled}')::boolean)  = FALSE)",
-                postgresCondition);
-      }
-
-      mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
-      postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
+      Pair<String, String> conditions = buildTagQueryConditions(filter);
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
-          mySqlCondition,
-          postgresCondition,
+          conditions.getLeft(),
+          conditions.getRight(),
           limit,
           afterName,
           afterId);
