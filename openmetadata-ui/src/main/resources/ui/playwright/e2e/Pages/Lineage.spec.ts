@@ -296,6 +296,9 @@ test('Verify column lineage between table and topic', async ({ page }) => {
     `[data-testid="lineage-node-${topicServiceFqn}"]`
   );
 
+  // ensure node will be visible in the viewport
+  await performZoomOut(page);
+
   await expect(tableServiceNode).toBeVisible();
   await expect(topicServiceNode).toBeVisible();
 
