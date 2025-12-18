@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
@@ -57,24 +57,24 @@ import {
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 
-const entities = [
-  ApiEndpointClass,
-  TableClass,
-  StoredProcedureClass,
-  DashboardClass,
-  PipelineClass,
-  TopicClass,
-  MlModelClass,
-  ContainerClass,
-  SearchIndexClass,
-  DashboardDataModelClass,
-  MetricClass,
-  ChartClass,
-  DirectoryClass,
-  FileClass,
-  SpreadsheetClass,
-  WorksheetClass,
-] as const;
+const entities = {
+  "Api Endpoint": ApiEndpointClass,
+  "Table": TableClass,
+  "Stored Procedure": StoredProcedureClass,
+  "Dashboard": DashboardClass,
+  "Pipeline": PipelineClass,
+  "Topic": TopicClass,
+  "Ml Model": MlModelClass,
+  "Container": ContainerClass,
+  "Search Index": SearchIndexClass,
+  "Dashboard Data Model": DashboardDataModelClass,
+  "Metric": MetricClass,
+  "Chart": ChartClass,
+  "Directory": DirectoryClass,
+  "File": FileClass,
+  "Spreadsheet": SpreadsheetClass,
+  "Worksheet": WorksheetClass,
+} as const;
 
 const adminUser = new UserClass();
 const dataConsumerUser = new UserClass();
@@ -109,12 +109,12 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-entities.forEach((EntityClass) => {
+Object.entries(entities).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   const deleteEntity = new EntityClass();
   const entityName = entity.getType();
 
-  test.describe(entityName, () => {
+  test.describe(key, () => {
     const rowSelector =
       entity.type === 'MlModel' ? 'data-testid' : 'data-row-key';
 
@@ -130,6 +130,10 @@ entities.forEach((EntityClass) => {
       await entity.visitEntityPage(page);
     });
 
+    /**
+     * Tests domain management on entities
+     * @description Tests adding a domain to an entity, updating it to a different domain, and removing the domain
+     */
     test('Domain Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
@@ -143,6 +147,11 @@ entities.forEach((EntityClass) => {
       );
     });
 
+    /**
+     * Tests domain propagation from service to entity
+     * @description Verifies that a domain assigned to a service propagates to its child entities,
+     * and that removing the domain from the service removes it from the entity
+     */
     test('Domain Propagation', async ({ page }) => {
       const serviceCategory = entity.serviceCategory;
       if (serviceCategory && 'service' in entity) {
@@ -180,6 +189,10 @@ entities.forEach((EntityClass) => {
       }
     });
 
+    /**
+     * Tests user ownership management on entities
+     * @description Tests adding users as owners, updating owner list, and removing owners from an entity
+     */
     test('User as Owner Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
@@ -189,12 +202,21 @@ entities.forEach((EntityClass) => {
       await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
+    /**
+     * Tests team ownership management on entities
+     * @description Tests adding teams as owners, updating team owner list, and removing teams from an entity
+     */
     test('Team as Owner Add, Update and Remove', async ({ page }) => {
       const OWNER1 = EntityDataClass.team1.responseData.displayName;
       const OWNER2 = EntityDataClass.team2.responseData.displayName;
       await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
     });
 
+    /**
+     * Tests multi-user ownership with unsorted owner list
+     * @description Tests adding multiple owners in different order, removing individual owners,
+     * and verifying the owner list maintains proper state
+     */
     test('User as Owner with unsorted list', async ({ page }) => {
       test.slow(true);
 
@@ -245,6 +267,10 @@ entities.forEach((EntityClass) => {
       await afterAction();
     });
 
+    /**
+     * Tests tier management on entities
+     * @description Tests assigning a tier to an entity, updating it to a different tier, and removing the tier
+     */
     test('Tier Add, Update and Remove', async ({ page }) => {
       await entity.tier(
         page,
@@ -255,6 +281,10 @@ entities.forEach((EntityClass) => {
       );
     });
 
+    /**
+     * Tests certification management on entities
+     * @description Tests adding a certification badge to an entity, updating it to a different certification, and removing it
+     */
     test('Certification Add Remove', async ({ page }) => {
       await entity.certification(
         page,
@@ -265,6 +295,10 @@ entities.forEach((EntityClass) => {
     });
 
     if (['Dashboard', 'DashboardDataModel'].includes(entityName)) {
+      /**
+       * Tests project name visibility on Dashboard and DashboardDataModel pages
+       * @description Verifies that the project name is displayed on Dashboard and DashboardDataModel entity pages
+       */
       test(`${entityName} page should show the project name`, async ({
         page,
       }) => {
@@ -274,10 +308,18 @@ entities.forEach((EntityClass) => {
       });
     }
 
+    /**
+     * Tests description update functionality
+     * @description Tests adding and updating entity description
+     */
     test('Update description', async ({ page }) => {
       await entity.descriptionUpdate(page);
     });
 
+    /**
+     * Tests tag management on entities
+     * @description Tests adding tags to an entity, updating the tag selection, and removing tags
+     */
     test('Tag Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
@@ -290,6 +332,10 @@ entities.forEach((EntityClass) => {
       );
     });
 
+    /**
+     * Tests glossary term management on entities
+     * @description Tests assigning glossary terms to an entity, updating term selection, and removing glossary terms
+     */
     test('Glossary Term Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
@@ -311,6 +357,10 @@ entities.forEach((EntityClass) => {
         'Spreadsheet',
       ].includes(entity.type)
     ) {
+      /**
+       * Tests tag and glossary selector mutual exclusivity
+       * @description Verifies that opening the tag selector closes the glossary selector and vice versa
+       */
       test('Tag and Glossary Selector should close vice versa', async ({
         page,
       }) => {
@@ -361,6 +411,10 @@ entities.forEach((EntityClass) => {
       });
     }
 
+    /**
+     * Tests tag management for child entities
+     * @description Tests adding, updating, and removing tags on child entities within a parent entity
+     */
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
       test('Tag Add, Update and Remove for child entities', async ({
@@ -667,6 +721,10 @@ entities.forEach((EntityClass) => {
       });
     }
 
+    /**
+     * Tests glossary term management for child entities
+     * @description Tests adding, updating, and removing glossary terms on child entities within a parent entity
+     */
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
       test('Glossary Term Add, Update and Remove for child entities', async ({
@@ -747,6 +805,10 @@ entities.forEach((EntityClass) => {
         );
       });
 
+      /**
+       * Tests display name management for child entities
+       * @description Tests adding, updating, and removing display names on child entities
+       */
       if (['Table', 'DashboardDataModel'].includes(entity.type)) {
         test('DisplayName Add, Update and Remove for child entities', async ({
           page,
@@ -761,6 +823,10 @@ entities.forEach((EntityClass) => {
         });
       }
 
+      /**
+       * Tests description management for child entities
+       * @description Tests adding, updating, and removing descriptions on child entities within a parent entity
+       */
       test('Description Add, Update and Remove for child entities', async ({
         page,
       }) => {
@@ -895,21 +961,37 @@ entities.forEach((EntityClass) => {
       });
     }
 
+    /**
+     * Tests announcement lifecycle management
+     * @description Tests creating an announcement on an entity, editing it, and deleting it
+     */
     test(`Announcement create, edit & delete`, async ({ page }) => {
       test.slow();
 
       await entity.announcement(page);
     });
 
+    /**
+     * Tests inactive announcement management
+     * @description Tests creating an inactive announcement and then deleting it
+     */
     test(`Inactive Announcement create & delete`, async ({ page }) => {
       await entity.inactiveAnnouncement(page);
     });
 
+    /**
+     * Tests entity voting functionality
+     * @description Tests upvoting an entity and downvoting it, verifying vote state changes
+     */
     test(`UpVote & DownVote entity`, async ({ page }) => {
       await entity.upVote(page);
       await entity.downVote(page);
     });
 
+    /**
+     * Tests entity following functionality
+     * @description Tests following an entity and unfollowing it, verifying follow state changes
+     */
     test(`Follow & Un-follow entity`, async ({ page }) => {
       test.slow(true);
 
@@ -917,6 +999,10 @@ entities.forEach((EntityClass) => {
       await entity.followUnfollowEntity(page, entityName);
     });
 
+    /**
+     * Tests custom property management on supported entities
+     * @description Tests setting and updating various types of custom properties (String, Markdown, Integer, Boolean, Email, Date, List)
+     */
     // Create custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(entity.endpoint)) {
       const properties = Object.values(CustomPropertyTypeByName);
@@ -954,10 +1040,18 @@ entities.forEach((EntityClass) => {
       });
     }
 
+    /**
+     * Tests entity display name update
+     * @description Tests renaming an entity by updating its display name
+     */
     test(`Update displayName`, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);
     });
 
+    /**
+     * Tests access control for description editing with deny policy
+     * @description Tests that a user assigned a role with a deny rule for EditDescription cannot edit entity descriptions
+     */
     test('User should be denied access to edit description when deny policy rule is applied on an entity', async ({
       page,
       dataConsumerPage,
@@ -1016,6 +1110,11 @@ entities.forEach((EntityClass) => {
       await cleanupAfterAction();
     });
 
+    /**
+     * Tests tab switching between Data Observability and Activity Feed
+     * @description Tests switching from Data Observability tab (with profiler subtabs) to Activity Feed tab
+     * and verifies that the appropriate data loads for each tab
+     */
     // Add the data consumer test only for Table entity
     if (entityName === 'Table') {
       test('Switch from Data Observability tab to Activity Feed tab and verify data appears', async ({
@@ -1104,6 +1203,11 @@ entities.forEach((EntityClass) => {
         );
       });
 
+      /**
+       * Tests access control for table-level data access with deny policy
+       * @description Tests that a data consumer assigned a role with deny rules for ViewQueries and ViewSampleData
+       * cannot access those tabs on table entities
+       */
       test('Data Consumer should be denied access to queries and sample data tabs when deny policy rule is applied on table level', async ({
         page,
         dataConsumerPage,
@@ -1189,7 +1293,12 @@ entities.forEach((EntityClass) => {
     });
   });
 
-  test(`Delete ${deleteEntity.getType()}`, async ({ page }) => {
+  /**
+   * Tests entity deletion (soft and hard delete)
+   * @description Tests soft deleting an entity and then hard deleting it to completely remove it from the system
+
+   */
+  test(`Delete ${key}`, async ({ page }) => {
     // increase timeout as it using single test for multiple steps
     test.slow(true);
 
