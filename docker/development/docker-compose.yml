@@ -75,8 +75,11 @@ services:
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      
-      # Migration 
+
+      # Jetty 12 URI Compliance - UNSAFE allows special characters like / and " in entity names
+      SERVER_URI_COMPLIANCE: ${SERVER_URI_COMPLIANCE:-UNSAFE}
+
+      # Migration
       MIGRATION_LIMIT_PARAM: ${MIGRATION_LIMIT_PARAM:-1200}
 
       # OpenMetadata Server Authentication Configuration
@@ -294,6 +297,9 @@ services:
       SERVER_PORT: ${SERVER_PORT:-8585}
       SERVER_ADMIN_PORT: ${SERVER_ADMIN_PORT:-8586}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+      # Jetty 12 URI Compliance - UNSAFE allows special characters like / and " in entity names
+      SERVER_URI_COMPLIANCE: ${SERVER_URI_COMPLIANCE:-UNSAFE}
 
       # OpenMetadata Server Authentication Configuration
       AUTHORIZER_CLASS_NAME: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
