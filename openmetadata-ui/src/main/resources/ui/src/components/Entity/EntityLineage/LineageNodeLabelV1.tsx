@@ -225,7 +225,9 @@ const EntityFooter = ({
         {childrenInfoDropdownLabel}
       </Button>
       <TestSuiteSummaryContainer node={node} />
-      <Tooltip title={t('message.only-show-columns-with-lineage')}>
+      <Tooltip
+        placement="right"
+        title={t('message.only-show-columns-with-lineage')}>
         <IconButton
           className={classNames(
             'only-show-columns-with-lineage-filter-button',
