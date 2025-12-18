@@ -120,10 +120,9 @@ for (const EntityClass of entities) {
           await rearrangeNodes(page);
         }
 
-        await page.reload();
         const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        await page.reload();
         await lineageRes;
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="edit-lineage"]', {
           state: 'visible',
         });
