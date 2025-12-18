@@ -187,7 +187,9 @@ class QlikCloudClient:
             script_tables = self.get_script_tables()
             if script_tables:
                 parsed_datamodels.extend(script_tables)
-            return parsed_datamodels
+
+            data_files = self.get_data_files()
+            return parsed_datamodels + data_files
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard datamodels")
@@ -236,3 +238,13 @@ class QlikCloudClient:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the script tables")
         return script_tables
+
+    def get_data_files(self):
+        """Get data files from the dashboard script"""
+        try:
+            api = f"/v1/data-files"
+            resp_files = self.client.get(api)
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch data files")
+        return resp_files
