@@ -121,6 +121,7 @@ export const unmockDeleteApi = async (
 export const openDeleteModal = async (page: Page) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
+
   await expect(page.locator('[role="dialog"]')).toBeVisible();
 };
 
@@ -146,8 +147,7 @@ export const initiateDelete = async (page: Page) => {
 export const waitForGlossaryListRefetch = (page: Page) => {
   return page.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/glossaries') &&
-      response.status() === 200
+      response.url().includes('/api/v1/glossaries') && response.status() === 200
   );
 };
 
@@ -158,9 +158,7 @@ export const expectGlossaryVisible = async (
   page: Page,
   displayName: string
 ) => {
-  await expect(
-    page.getByRole('menuitem', { name: displayName })
-  ).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: displayName })).toBeVisible();
 };
 
 /**
