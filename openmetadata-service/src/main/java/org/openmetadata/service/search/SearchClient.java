@@ -88,6 +88,18 @@ public interface SearchClient
 
   String REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT =
       "ctx._source.dataProducts.removeIf(product -> product.fullyQualifiedName == params.fqn)";
+
+  String UPDATE_DATA_PRODUCT_FQN_SCRIPT =
+      """
+      if (ctx._source.containsKey('dataProducts') && ctx._source.dataProducts != null) {
+        for (int i = 0; i < ctx._source.dataProducts.size(); i++) {
+          if (ctx._source.dataProducts[i].containsKey('fullyQualifiedName') &&
+              ctx._source.dataProducts[i].fullyQualifiedName == params.oldFqn) {
+            ctx._source.dataProducts[i].fullyQualifiedName = params.newFqn;
+          }
+        }
+      }
+      """;
   String UPDATE_CERTIFICATION_SCRIPT =
       """
       if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {
@@ -457,6 +469,14 @@ public interface SearchClient
 
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
+
+  /**
+   * Update data product references in search indexes when a data product is renamed.
+   * This updates the fullyQualifiedName in the dataProducts array of all assets.
+   */
+  default void updateDataProductReferences(String oldFqn, String newFqn) {
+    // Default no-op implementation - override in concrete implementations
+  }
 
   void close();
 

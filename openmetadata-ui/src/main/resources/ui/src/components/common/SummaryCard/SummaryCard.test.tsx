@@ -63,8 +63,8 @@ describe('SummaryCard component', () => {
 
     expect(title).toBeInTheDocument();
     expect(description).toBeInTheDocument();
-    expect(title.textContent).toStrictEqual('summary title');
-    expect(description.textContent).toStrictEqual('description');
+    expect(title.textContent).toBe('summary title');
+    expect(description.textContent).toBe('description');
   });
 
   it("label should be inverse, if 'inverseLabel' is true", async () => {

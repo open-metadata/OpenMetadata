@@ -229,7 +229,7 @@ describe.skip('DataQualityTab test', () => {
 
     expect(testName).toBeInTheDocument();
     expect(tableLink).toBeInTheDocument();
-    expect(tableLink.textContent).toEqual(
+    expect(tableLink.textContent).toBe(
       'sample_data.ecommerce_db.shopify.dim_address'
     );
     expect(columnName).toBeInTheDocument();

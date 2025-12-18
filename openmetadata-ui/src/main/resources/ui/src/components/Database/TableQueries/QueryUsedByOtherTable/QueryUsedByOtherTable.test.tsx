@@ -66,9 +66,7 @@ describe('QueryUsedByOtherTable test', () => {
     const container = await screen.findByTestId('para-container');
 
     expect(viewMore).not.toBeInTheDocument();
-    expect(container.textContent).toEqual(
-      'message.query-used-by-other-tables:--'
-    );
+    expect(container.textContent).toBe('message.query-used-by-other-tables:--');
   });
 
   it('Should display select box if edit mode is true', async () => {

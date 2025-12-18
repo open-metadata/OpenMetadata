@@ -27,23 +27,23 @@ describe('Test Auth Provider utils', () => {
       'preferred_username',
     ]);
 
-    expect(name).toEqual('i_am_preferred_username');
-    expect(email).toEqual('i_am_preferred_username@');
-    expect(picture).toEqual('');
+    expect(name).toBe('i_am_preferred_username');
+    expect(email).toBe('i_am_preferred_username@');
+    expect(picture).toBe('');
   });
 
   it('getNameFromUserData should return name and email from claim: email', () => {
     const { name, email } = getNameFromUserData(userProfile, ['email']);
 
-    expect(name).toEqual('testUser');
-    expect(email).toEqual('testUser@gmail.com');
+    expect(name).toBe('testUser');
+    expect(email).toBe('testUser@gmail.com');
   });
 
   it('getNameFromUserData should return name and email from claim: sub', () => {
     const { name, email } = getNameFromUserData(userProfile, ['sub']);
 
-    expect(name).toEqual('i_am_sub');
-    expect(email).toEqual('i_am_sub@');
+    expect(name).toBe('i_am_sub');
+    expect(email).toBe('i_am_sub@');
   });
 
   it('getNameFromUserData should return email with principle domain from claim: sub', () => {
@@ -53,8 +53,8 @@ describe('Test Auth Provider utils', () => {
       'test.com'
     );
 
-    expect(name).toEqual('i_am_sub');
-    expect(email).toEqual('i_am_sub@test.com');
+    expect(name).toBe('i_am_sub');
+    expect(email).toBe('i_am_sub@test.com');
   });
 
   it('getNameFromUserData should fallback to next claim if first is not present', () => {
@@ -65,8 +65,8 @@ describe('Test Auth Provider utils', () => {
       'test.com'
     );
 
-    expect(name).toEqual('testUser');
-    expect(generatedEmail).toEqual('testUser@gmail.com');
+    expect(name).toBe('testUser');
+    expect(generatedEmail).toBe('testUser@gmail.com');
   });
 
   it('getNameFromUserData should respect domain present in claim over principleClaim', () => {
@@ -76,8 +76,8 @@ describe('Test Auth Provider utils', () => {
       'test.com'
     );
 
-    expect(name).toEqual('testUser');
-    expect(generatedEmail).toEqual('testUser@gmail.com');
+    expect(name).toBe('testUser');
+    expect(generatedEmail).toBe('testUser@gmail.com');
   });
 
   it('getNameFromUserData should handle the claim if it contains @', () => {
@@ -86,8 +86,8 @@ describe('Test Auth Provider utils', () => {
       ['preferred_username', 'email', 'sub']
     );
 
-    expect(name).toEqual('test');
-    expect(email).toEqual('test@gmail.com');
+    expect(name).toBe('test');
+    expect(email).toBe('test@gmail.com');
   });
 
   it('getNameFromUserData should add principle domain if domain is missing', () => {
@@ -97,8 +97,8 @@ describe('Test Auth Provider utils', () => {
       'test.com'
     );
 
-    expect(name).toEqual('i_am_preferred_username');
-    expect(email).toEqual('i_am_preferred_username@test.com');
+    expect(name).toBe('i_am_preferred_username');
+    expect(email).toBe('i_am_preferred_username@test.com');
   });
 
   it('getNameFromUserData should return picture details as it is', () => {
@@ -108,9 +108,9 @@ describe('Test Auth Provider utils', () => {
       'test.com'
     );
 
-    expect(name).toEqual('i_am_preferred_username');
-    expect(email).toEqual('i_am_preferred_username@test.com');
-    expect(picture).toEqual('test_picture');
+    expect(name).toBe('i_am_preferred_username');
+    expect(email).toBe('i_am_preferred_username@test.com');
+    expect(picture).toBe('test_picture');
   });
 });
 

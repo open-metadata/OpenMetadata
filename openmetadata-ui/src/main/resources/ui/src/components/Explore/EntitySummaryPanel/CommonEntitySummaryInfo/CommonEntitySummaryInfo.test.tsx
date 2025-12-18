@@ -46,10 +46,10 @@ describe('CommonEntitySummaryInfo component', () => {
 
     expect(externalURL).toHaveTextContent('Presto ETL');
 
-    expect(externalURL.getAttribute('href')).toEqual(
+    expect(externalURL.getAttribute('href')).toBe(
       'http://localhost:8080/tree?dag_id=presto_etl'
     );
-    expect(externalURL.getAttribute('target')).toEqual('_blank');
+    expect(externalURL.getAttribute('target')).toBe('_blank');
     expect(getByTestId(externalURL, 'external-link-icon')).toBeInTheDocument();
   });
 
@@ -86,11 +86,11 @@ describe('CommonEntitySummaryInfo component', () => {
     expect(serviceURL).toHaveTextContent('sample_airflow');
     expect(serviceURL).toHaveTextContent('sample_airflow');
 
-    expect(externalURL.getAttribute('href')).toEqual(
+    expect(externalURL.getAttribute('href')).toBe(
       'http://localhost:8080/tree?dag_id=presto_etl'
     );
-    expect(externalURL.getAttribute('target')).toEqual('_blank');
-    expect(serviceURL.getAttribute('href')).toEqual(
+    expect(externalURL.getAttribute('target')).toBe('_blank');
+    expect(serviceURL.getAttribute('href')).toBe(
       '/service/databaseServices/sample_airflow'
     );
     expect(getByTestId(externalURL, 'external-link-icon')).toBeInTheDocument();

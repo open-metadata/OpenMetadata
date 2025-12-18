@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
@@ -77,6 +78,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -96,6 +98,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    renameAllowed = true;
 
     // Initialize inherited field search
     if (searchRepository != null) {
@@ -475,9 +478,79 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      updateName(original, updated);
       // Assets cannot be updated via PUT/PATCH - use bulk APIs:
       // PUT /v1/dataProducts/{name}/assets/add
       // PUT /v1/dataProducts/{name}/assets/remove
+    }
+
+    /**
+     * Handle data product rename. When a data product is renamed:
+     * 1. Check if another data product with the same name already exists
+     * 2. Update the FQN of the data product
+     * 3. Update entity links in feed/comments
+     * 4. Update search indexes for assets referencing this data product
+     */
+    private void updateName(DataProduct original, DataProduct updated) {
+      if (original.getName().equals(updated.getName())) {
+        return;
+      }
+
+      // Check if a data product with the new name already exists
+      DataProduct existing = findByNameOrNull(FullyQualifiedName.quoteName(updated.getName()), ALL);
+      if (existing != null && !existing.getId().equals(original.getId())) {
+        throw new IllegalArgumentException(
+            entityNameAlreadyExists(DATA_PRODUCT, updated.getName()));
+      }
+
+      String oldFqn = original.getFullyQualifiedName();
+
+      // Update FQN based on new name
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
+
+      LOG.info("Data product name changed from {} to {}", original.getName(), updated.getName());
+      LOG.info("Data product FQN changed from {} to {}", oldFqn, newFqn);
+
+      // Record the name change
+      recordChange("name", original.getName(), updated.getName());
+
+      // Update entity links in feed/comments
+      updateEntityLinks(oldFqn, newFqn);
+
+      // Update search indexes for assets that reference this data product
+      updateAssetSearchIndexes(oldFqn, newFqn);
+    }
+
+    /**
+     * Update entity links in feed/comments when data product FQN changes.
+     */
+    private void updateEntityLinks(String oldFqn, String newFqn) {
+      // Update field relationships that reference this data product
+      daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+
+      // Update feed entries with old entity link
+      EntityLink newAbout = new EntityLink(DATA_PRODUCT, newFqn);
+      daoCollection
+          .feedDAO()
+          .updateByEntityId(newAbout.getLinkString(), original.getId().toString());
+    }
+
+    /**
+     * Update search indexes for assets that have this data product in their dataProducts field.
+     */
+    private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
+      if (searchRepository != null) {
+        try {
+          searchRepository.getSearchClient().updateDataProductReferences(oldFqn, newFqn);
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to update search indexes for data product rename from {} to {}: {}",
+              oldFqn,
+              newFqn,
+              e.getMessage());
+        }
+      }
     }
   }
 

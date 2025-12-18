@@ -76,7 +76,7 @@ describe('QueryCardExtraOption component test', () => {
     expect(badge).toBeInTheDocument();
 
     // there is 25 line in MOCK_QUERIES[0] query
-    expect(badge.textContent).toEqual('25 label.lines');
+    expect(badge.textContent).toBe('25 label.lines');
   });
 
   it('Line badge should show correct query lines', async () => {
@@ -89,7 +89,7 @@ describe('QueryCardExtraOption component test', () => {
     expect(badge).toBeInTheDocument();
 
     // there is 1 line in MOCK_QUERIES[1] query
-    expect(badge.textContent).toEqual('1 label.line');
+    expect(badge.textContent).toBe('1 label.line');
   });
 
   it('Up vote & down vote button should display respective count', async () => {

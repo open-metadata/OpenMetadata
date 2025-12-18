@@ -41,29 +41,27 @@ describe('Test EntityLink', () => {
   });
 
   it('Should return the entityType from entityLink', () => {
-    expect(EntityLink.getEntityType(entityLink)).toStrictEqual('table');
+    expect(EntityLink.getEntityType(entityLink)).toBe('table');
   });
 
   it('Should return the entityFqn from entityLink', () => {
-    expect(EntityLink.getEntityFqn(entityLink)).toStrictEqual(
+    expect(EntityLink.getEntityFqn(entityLink)).toBe(
       'sample_data.ecommerce_db.shopify.dim_address'
     );
   });
 
   it('Should return the entityField from entityLink', () => {
-    expect(EntityLink.getEntityField(entityLink)).toStrictEqual('description');
+    expect(EntityLink.getEntityField(entityLink)).toBe('description');
   });
 
   it('Should return the columnName from entityLink', () => {
-    expect(EntityLink.getTableColumnName(entityLinkWithColumn)).toStrictEqual(
+    expect(EntityLink.getTableColumnName(entityLinkWithColumn)).toBe(
       'address_id'
     );
   });
 
   it('Should return the column field from entityLink', () => {
-    expect(EntityLink.getTableColumnField(entityLinkWithColumn)).toStrictEqual(
-      'tags'
-    );
+    expect(EntityLink.getTableColumnField(entityLinkWithColumn)).toBe('tags');
   });
 
   it('Should return the undefined if columnName if not present in entityLink', () => {
@@ -80,27 +78,23 @@ describe('Test EntityLink', () => {
         'table',
         'sample_data.ecommerce_db.shopify.dim_address'
       )
-    ).toStrictEqual(
-      '<#E::table::sample_data.ecommerce_db.shopify.dim_address>'
-    );
+    ).toBe('<#E::table::sample_data.ecommerce_db.shopify.dim_address>');
   });
 
   it('Should return entityFqn from entityLink', () => {
-    expect(EntityLink.getEntityColumnFqn(entityLink)).toStrictEqual(
+    expect(EntityLink.getEntityColumnFqn(entityLink)).toBe(
       'sample_data.ecommerce_db.shopify.dim_address'
     );
   });
 
   it('Should return entityColumnFqn from entityLink for column', () => {
-    expect(EntityLink.getEntityColumnFqn(entityLinkWithColumn)).toStrictEqual(
+    expect(EntityLink.getEntityColumnFqn(entityLinkWithColumn)).toBe(
       'sample_data.ecommerce_db.shopify.dim_address.address_id'
     );
   });
 
   it('Should return entityColumnFqn from entityLink for nested column', () => {
-    expect(
-      EntityLink.getEntityColumnFqn(entityLinkWithNestedColumn)
-    ).toStrictEqual(
+    expect(EntityLink.getEntityColumnFqn(entityLinkWithNestedColumn)).toBe(
       'sample_data.ecommerce_db.shopify.dim_address."address_id.city"'
     );
   });
@@ -108,7 +102,7 @@ describe('Test EntityLink', () => {
   it('Should return the entity link for table without column name', () => {
     const entityLink = EntityLink.getTableEntityLink(tableFqn);
 
-    expect(entityLink).toStrictEqual(
+    expect(entityLink).toBe(
       '<#E::table::sample_data.ecommerce_db.shopify.dim_address>'
     );
   });
@@ -117,7 +111,7 @@ describe('Test EntityLink', () => {
     const columnName = '';
     const entityLink = EntityLink.getTableEntityLink(tableFqn, columnName);
 
-    expect(entityLink).toStrictEqual(
+    expect(entityLink).toBe(
       '<#E::table::sample_data.ecommerce_db.shopify.dim_address>'
     );
   });
@@ -126,7 +120,7 @@ describe('Test EntityLink', () => {
     const columnName = 'address_id';
     const entityLink = EntityLink.getTableEntityLink(tableFqn, columnName);
 
-    expect(entityLink).toStrictEqual(
+    expect(entityLink).toBe(
       '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::address_id>'
     );
   });
@@ -136,6 +130,6 @@ describe('Test EntityLink', () => {
       '<#E::table::pw-database-service-69e197ad.pw-database-76212f52.pw-database-schema-473d89b5.pw-table-c0cfe45a::columns::type>';
     const columnName = EntityLink.getTableColumnName(entityLink);
 
-    expect(columnName).toStrictEqual('type');
+    expect(columnName).toBe('type');
   });
 });

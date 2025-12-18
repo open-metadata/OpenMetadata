@@ -30,19 +30,19 @@ describe('getCronDefaultValue function', () => {
   it('should generate day cron expression if appType is internal and appName is not DataInsightsReportApplication', () => {
     const result = getCronDefaultValue('SearchIndexingApplication');
 
-    expect(result).toEqual('0 0 * * *');
+    expect(result).toBe('0 0 * * *');
   });
 
   it('should generate week cron expression if appName is DataInsightsReportApplication', () => {
     const result = getCronDefaultValue('DataInsightsReportApplication');
 
-    expect(result).toEqual('0 0 * * 0');
+    expect(result).toBe('0 0 * * 0');
   });
 
   it('should generate day cron expression if appType is external', () => {
     const result = getCronDefaultValue('DataInsightsApplication');
 
-    expect(result).toEqual('0 0 * * *');
+    expect(result).toBe('0 0 * * *');
   });
 });
 
