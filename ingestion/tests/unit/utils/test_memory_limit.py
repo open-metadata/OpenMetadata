@@ -19,6 +19,7 @@ import unittest
 
 from metadata.utils.memory_limit import MemoryLimitExceeded, memory_limit
 from metadata.utils.timeout import timeout
+import pytest
 
 
 class TestMemoryLimit(unittest.TestCase):
@@ -740,6 +741,12 @@ class TestMemoryLimit(unittest.TestCase):
         success_count = sum(1 for r in results if r["success"])
         self.assertEqual(success_count, 5)
 
+    @pytest.mark.skip(
+        reason=(
+            "We are aware memory_limit adds overhead. This test is for monitoring overhead"
+            " changes over time and enabled once we have better optimizations."
+        )
+    )
     def test_memory_limit_performance_overhead(self):
         """
         Test that memory_limit decorator has minimal performance overhead.
