@@ -122,6 +122,35 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
+/**
+ * Data Quality & Profiler — Comprehensive Coverage
+ * @description Validates test case creation, editing, deletion, and tagging across table and column levels.
+ * Covers Data Quality tab interactions, incident navigation, domain assignment, and profiler configuration.
+ *
+ * Preconditions
+ * - Admin-authenticated session.
+ * - Two tables created; table2 has a pre-existing test case with results.
+ * - Classifications, tags, and glossary terms are provisioned.
+ *
+ * Coverage
+ * - Test Cases: Create/Edit/Delete at table and column levels with tags and glossary terms.
+ * - Data Quality Tab: Navigation, test case list, filtering, and sorting.
+ * - Incidents: Breadcrumb navigation from test case to incident page.
+ * - Domains: Assignment and filtering.
+ * - Profiler: Configuration and results visualization.
+ *
+ * API Interactions
+ * - POST `/api/v1/dataQuality/testCases*` for test case creation/updates.
+ * - GET `/api/v1/dataQuality/testCases*` for fetching test cases.
+ * - GET/POST for tag and glossary term search and assignment.
+ * - Ingestion pipeline endpoints for test case deployment.
+ */
+
+/**
+ * Table test case
+ * @description Creates, edits, and deletes a table-level test case with tags and glossary terms.
+ * Verifies incident breadcrumb navigation and test case property changes.
+ */
 test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   test.slow();
 
@@ -137,6 +166,11 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await page.click('[data-testid="profiler-add-table-test-btn"]');
   await page.getByRole('menuitem', { name: 'Test case' }).click();
 
+  /**
+   * Step: Create table test case
+   * @description Creates a table-level test case with name, type, parameters, tags, and glossary terms.
+   * Deploys the test case via ingestion pipeline.
+   */
   await test.step('Create', async () => {
     await page.fill('[data-testid="test-case-name"]', NEW_TABLE_TEST_CASE.name);
     await page.click('[id="root\\/testType"]');
@@ -194,6 +228,10 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await expect(page.getByTestId(NEW_TABLE_TEST_CASE.name)).toBeVisible();
   });
 
+  /**
+   * Step: Edit test case
+   * @description Modifies test case parameters, replaces tags and glossary terms, and verifies updates persist.
+   */
   await test.step('Edit', async () => {
     await page
       .getByTestId(`action-dropdown-${NEW_TABLE_TEST_CASE.name}`)
@@ -273,6 +311,10 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.getByRole('button', { name: 'Cancel' }).click();
   });
 
+  /**
+   * Step: Incident page redirect
+   * @description Navigates to incident page via test case menu and verifies breadcrumb navigation.
+   */
   await test.step(
     'Redirect to IncidentPage and verify breadcrumb',
     async () => {
@@ -284,11 +326,20 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     }
   );
 
+  /**
+   * Step: Delete test case
+   * @description Removes the test case and confirms deletion.
+   */
   await test.step('Delete', async () => {
     await deleteTestCase(page, NEW_TABLE_TEST_CASE.name);
   });
 });
 
+/**
+ * Column test case
+ * @description Creates, edits, and deletes a column-level test case with tags and glossary terms.
+ * Validates parameter changes and property persistence.
+ */
 test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   test.slow();
 
@@ -307,6 +358,11 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await page.getByRole('menuitem', { name: 'Test case' }).click();
   await page.getByTestId('select-table-card').getByText('Column Level').click();
 
+  /**
+   * Step: Create column test case
+   * @description Creates a column-level test case by selecting a column, configuring test parameters,
+   * and adding tags and glossary terms.
+   */
   await test.step('Create', async () => {
     const testDefinitionResponse = page.waitForResponse(
       '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR'
@@ -444,6 +500,10 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.locator('button').getByText('Cancel').click();
   });
 
+  /**
+   * Step: Incident page redirect
+   * @description Navigates to incident page for the column test case and verifies breadcrumb.
+   */
   await test.step(
     'Redirect to IncidentPage and verify breadcrumb',
     async () => {
@@ -455,11 +515,20 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     }
   );
 
+  /**
+   * Step: Delete column test case
+   * @description Removes the column test case.
+   */
   await test.step('Delete', async () => {
     await deleteTestCase(page, NEW_COLUMN_TEST_CASE.name);
   });
 });
 
+/**
+ * Profiler matrix and test case visibility for roles
+ * @description Validates profiler matrix and test case graph visibility for admin, data consumer, and data steward roles.
+ * Verifies table profile data, test case results, and filtering.
+ */
 test(
   'Profiler matrix and test case graph should visible for admin, data consumer and data steward',
   PLAYWRIGHT_INGESTION_TAG_OBJ,
