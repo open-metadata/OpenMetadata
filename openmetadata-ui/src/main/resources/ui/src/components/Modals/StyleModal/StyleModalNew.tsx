@@ -12,9 +12,10 @@
  */
 
 import { Box } from '@mui/material';
-import { Form, FormProps, Modal } from 'antd';
+import { Form, Modal } from 'antd';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Style } from '../../../generated/type/schema';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
 import { MUIColorPicker } from '../../common/ColorPicker';
 import { DEFAULT_TAG_ICON, MUIIconPicker } from '../../common/IconPicker';
@@ -32,7 +33,7 @@ const StyleModalNew: FC<StyleModalProps> = ({
 
   const selectedColor = Form.useWatch('color', form);
 
-  const handleSubmit: FormProps['onFinish'] = async (values) => {
+  const handleSubmit = async (values: Style) => {
     try {
       setSaving(true);
       await onSubmit(values);

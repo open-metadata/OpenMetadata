@@ -198,7 +198,7 @@ const TagsV1 = ({
         to={redirectLink}>
         <TagChip
           icon={renderGeneratedTagIcon}
-          label={tag.displayName ?? tag.name ?? tagName ?? ''}
+          label={tag.displayName || tag.name || tagName || ''}
           labelDataTestId={`tag-${tag.tagFQN}`}
           sx={{
             pl: 1.5,

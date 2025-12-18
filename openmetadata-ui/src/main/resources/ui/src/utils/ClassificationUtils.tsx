@@ -71,26 +71,30 @@ export const getCommonColumns = (options?: {
       dataIndex: 'disabled',
       key: 'disabled',
       width: 100,
-      render: (_, record) => (
-        <Tooltip
-          title={
-            !canToggleDisable
-              ? options.isClassificationDisabled
-                ? t('message.disabled-classification-actions-message')
-                : t('message.no-permission-for-action')
-              : record.disabled
-              ? t('label.enable')
-              : t('label.disable')
-          }>
-          <Switch
-            checked={!record.disabled}
-            data-testid={`tag-disable-toggle-${record.name}`}
-            disabled={!canToggleDisable}
-            size="small"
-            onChange={() => options.handleToggleDisable?.(record)}
-          />
-        </Tooltip>
-      ),
+      render: (_, record) => {
+        let tooltipTitle: string;
+        if (canToggleDisable) {
+          tooltipTitle = record.disabled
+            ? t('label.enable')
+            : t('label.disable');
+        } else {
+          tooltipTitle = options.isClassificationDisabled
+            ? t('message.disabled-classification-actions-message')
+            : t('message.no-permission-for-action');
+        }
+
+        return (
+          <Tooltip title={tooltipTitle}>
+            <Switch
+              checked={!record.disabled}
+              data-testid={`tag-disable-toggle-${record.name}`}
+              disabled={!canToggleDisable}
+              size="small"
+              onChange={() => options.handleToggleDisable?.(record)}
+            />
+          </Tooltip>
+        );
+      },
     });
   }
 
