@@ -19,33 +19,77 @@ import {
   useTheme,
 } from '@mui/material';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DownstreamIcon } from '../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../assets/svg/lineage-upstream-icon.svg';
 import { LineagePagingInfo } from '../../../components/LineageTable/LineageTable.interface';
 import { getLineagePagingData } from '../../../rest/lineageAPI';
+import { getEntityCountAtDepth } from '../../../utils/EntityLineageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
-import { LineageSectionProps } from './LineageSection.interface';
+import {
+  LineageItemProps,
+  LineageSectionProps,
+} from './LineageSection.interface';
 import {
   getIconWrapperStyles,
   getSectionStyles,
   getTextStyles,
 } from './LineageSection.styles';
 
+const LineageItem = React.memo<LineageItemProps>(function LineageItem({
+  type,
+  Icon,
+  count,
+  onClick,
+  sectionSx,
+  iconWrapperSx,
+  textSx,
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <ButtonBase
+      data-testid={`${type}-lineage`}
+      sx={sectionSx}
+      onClick={onClick}>
+      <Box sx={iconWrapperSx}>
+        <Icon height={14} width={14} />
+      </Box>
+      <Stack direction="row" spacing={0.5}>
+        <Typography sx={textSx}>
+          {t('label.-with-colon', { text: t(`label.${type}`) })}
+        </Typography>
+        <Typography data-testid={`${type}-count`} sx={textSx}>
+          {count}
+        </Typography>
+      </Stack>
+    </ButtonBase>
+  );
+});
+
 const LineageSection: React.FC<LineageSectionProps> = ({
   entityFqn,
   entityType,
   onLineageClick,
 }) => {
-  const { t } = useTranslation();
   const theme = useTheme();
+  const { t } = useTranslation();
   const [lineagePagingInfo, setLineagePagingInfo] =
     useState<LineagePagingInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const latestRequestIdRef = useRef(0);
 
   const fetchLineagePagingData = useCallback(async () => {
+    const requestId = ++latestRequestIdRef.current;
+
     if (!entityFqn || !entityType) {
       setIsLoading(false);
       setLineagePagingInfo(null);
@@ -60,54 +104,60 @@ const LineageSection: React.FC<LineageSectionProps> = ({
         type: entityType,
       });
 
+      // Ignore stale requests (e.g., entity changes quickly)
+      if (requestId !== latestRequestIdRef.current) {
+        return;
+      }
+
       setLineagePagingInfo(response);
     } catch (error) {
+      if (requestId !== latestRequestIdRef.current) {
+        return;
+      }
+
       showErrorToast(error as AxiosError);
       setLineagePagingInfo(null);
     } finally {
-      setIsLoading(false);
+      // Don't flip loading off if a newer request started after this one
+      if (requestId === latestRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [entityFqn, entityType]);
 
   useEffect(() => {
     fetchLineagePagingData();
+
+    // Invalidate in-flight request on unmount / dependency change
+    return () => {
+      latestRequestIdRef.current += 1;
+    };
   }, [fetchLineagePagingData]);
 
-  // Get count for depth 1 entities only
-  const upstreamCount =
-    lineagePagingInfo?.upstreamDepthInfo?.find((info) => info.depth === 1)
-      ?.entityCount ?? 0;
-  const downstreamCount =
-    lineagePagingInfo?.downstreamDepthInfo?.find((info) => info.depth === 1)
-      ?.entityCount ?? 0;
+  const { upstreamCount, downstreamCount } = useMemo(() => {
+    // Get count for depth 1 entities only
+    const upstream = getEntityCountAtDepth(
+      lineagePagingInfo?.upstreamDepthInfo,
+      1
+    );
+    const downstream = getEntityCountAtDepth(
+      lineagePagingInfo?.downstreamDepthInfo,
+      1
+    );
 
-  const handleClick = () => {
+    return { upstreamCount: upstream, downstreamCount: downstream };
+  }, [lineagePagingInfo]);
+
+  const hasLineage = upstreamCount > 0 || downstreamCount > 0;
+
+  const handleClick = useCallback(() => {
     onLineageClick?.();
-  };
+  }, [onLineageClick]);
 
-  const renderLineageItem = (
-    type: 'upstream' | 'downstream',
-    Icon: React.FC<React.SVGProps<SVGSVGElement>>,
-    count: number,
-    gap: number
-  ) => (
-    <ButtonBase
-      data-testid={`${type}-lineage`}
-      sx={{ ...getSectionStyles(), gap }}
-      onClick={handleClick}>
-      <Box sx={getIconWrapperStyles(theme)}>
-        <Icon height={14} width={14} />
-      </Box>
-      <Stack direction="row" spacing={0.5}>
-        <Typography sx={getTextStyles(theme)}>
-          {t('label.-with-colon', { text: t(`label.${type}`) })}
-        </Typography>
-        <Typography data-testid={`${type}-count`} sx={getTextStyles(theme)}>
-          {count}
-        </Typography>
-      </Stack>
-    </ButtonBase>
-  );
+  const iconWrapperSx = useMemo(() => getIconWrapperStyles(theme), [theme]);
+  const textSx = useMemo(() => getTextStyles(theme), [theme]);
+  const upstreamSectionSx = useMemo(() => getSectionStyles(2.5), []);
+  const downstreamSectionSx = useMemo(() => getSectionStyles(2), []);
 
   return (
     <Box
@@ -127,7 +177,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
       </Typography>
       {isLoading ? (
         <Loader size="small" />
-      ) : upstreamCount === 0 && downstreamCount === 0 ? (
+      ) : !hasLineage ? (
         <Typography
           color={theme.palette.allShades?.gray?.[500]}
           fontSize={theme.typography.caption.fontSize}>
@@ -135,7 +185,15 @@ const LineageSection: React.FC<LineageSectionProps> = ({
         </Typography>
       ) : (
         <Stack direction="row" spacing={0} width="fit-content">
-          {renderLineageItem('upstream', UpstreamIcon, upstreamCount, 2.5)}
+          <LineageItem
+            Icon={UpstreamIcon}
+            count={upstreamCount}
+            iconWrapperSx={iconWrapperSx}
+            sectionSx={upstreamSectionSx}
+            textSx={textSx}
+            type="upstream"
+            onClick={handleClick}
+          />
           <Divider
             flexItem
             orientation="vertical"
@@ -146,14 +204,15 @@ const LineageSection: React.FC<LineageSectionProps> = ({
               borderColor: theme.palette.allShades?.gray?.[200],
             }}
           />
-          <Box>
-            {renderLineageItem(
-              'downstream',
-              DownstreamIcon,
-              downstreamCount,
-              2
-            )}
-          </Box>
+          <LineageItem
+            Icon={DownstreamIcon}
+            count={downstreamCount}
+            iconWrapperSx={iconWrapperSx}
+            sectionSx={downstreamSectionSx}
+            textSx={textSx}
+            type="downstream"
+            onClick={handleClick}
+          />
         </Stack>
       )}
     </Box>

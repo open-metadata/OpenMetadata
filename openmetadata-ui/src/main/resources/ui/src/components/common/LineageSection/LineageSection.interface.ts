@@ -11,10 +11,22 @@
  *  limitations under the License.
  */
 
+import { SxProps, Theme } from '@mui/material';
 import { EntityType } from '../../../enums/entity.enum';
 
 export interface LineageSectionProps {
   entityFqn?: string;
   entityType?: EntityType;
   onLineageClick?: () => void;
+}
+type LineageDirection = 'upstream' | 'downstream';
+
+export interface LineageItemProps {
+  type: LineageDirection;
+  Icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  count: number;
+  onClick?: () => void;
+  sectionSx: SxProps<Theme>;
+  iconWrapperSx: SxProps<Theme>;
+  textSx: SxProps<Theme>;
 }
