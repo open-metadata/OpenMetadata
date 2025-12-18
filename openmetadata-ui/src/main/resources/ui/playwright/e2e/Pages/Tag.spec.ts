@@ -254,7 +254,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await adminPage.click('[data-testid="add-new-tag-button"]');
 
-    await expect(adminPage.getByRole('form', { name: 'tags' })).toBeVisible();
+    await expect(adminPage.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(adminPage);
 

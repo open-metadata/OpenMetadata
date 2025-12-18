@@ -262,7 +262,7 @@ test('Classification Page', async ({ page }) => {
     await classification.visitPage(page);
     await page.click('[data-testid="add-classification"]');
 
-    await expect(page.getByRole('form', { name: 'tags' })).toBeVisible();
+    await expect(page.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(page);
 
@@ -297,7 +297,7 @@ test('Classification Page', async ({ page }) => {
 
     await page.click('[data-testid="add-new-tag-button"]');
 
-    await expect(page.getByRole('form', { name: 'tags' })).toBeVisible();
+    await expect(page.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(page);
 

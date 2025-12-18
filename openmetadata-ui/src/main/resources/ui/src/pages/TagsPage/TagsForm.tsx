@@ -221,6 +221,7 @@ const TagsForm = ({
       }>
       <Form
         className="tags-form"
+        data-testid="tags-form"
         form={formRef}
         initialValues={initialValues ?? DEFAULT_FORM_VALUE}
         layout="vertical"
