@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -267,11 +267,13 @@ const GlossaryPage = () => {
             (glossary) => glossary.fullyQualifiedName === glossaryFqn
           ) || glossaries[0]
         );
-        !glossaryFqn &&
-          glossaries[0].fullyQualifiedName &&
+
+        if (isNil(glossaryFqn) && glossaries[0].fullyQualifiedName) {
           navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
             replace: true,
           });
+        }
+
         setIsRightPanelLoading(false);
       }
     }
@@ -374,7 +376,9 @@ const GlossaryPage = () => {
             navigate(getGlossaryPath(response.fullyQualifiedName));
             fetchGlossaryList();
           }
-          shouldRefreshTerms && fetchGlossaryTermDetails();
+          if (shouldRefreshTerms) {
+            fetchGlossaryTermDetails();
+          }
         } else {
           throw t('server.entity-updating-error', {
             entity: t('label.glossary-term'),
