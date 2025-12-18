@@ -22,8 +22,8 @@ import { iconTooltipDataRender } from '../../utils/DomainUtils';
 import i18n from '../../utils/i18next/LocalUtil';
 
 export const getIconField = (selectedColor?: string): FieldProp => ({
-  name: 'iconURL',
-  id: 'root/iconURL',
+  name: ['style', 'iconURL'],
+  id: 'root/style/iconURL',
   label: <>{i18n.t('label.icon')}</>,
   muiLabel: <>{i18n.t('label.icon')}</>,
   required: false,
@@ -47,8 +47,8 @@ export const getIconField = (selectedColor?: string): FieldProp => ({
 });
 
 export const colorField: FieldProp = {
-  name: 'color',
-  id: 'root/color',
+  name: ['style', 'color'],
+  id: 'root/style/color',
   label: <>{i18n.t('label.color')}</>,
   muiLabel: <>{i18n.t('label.color')}</>,
   required: false,

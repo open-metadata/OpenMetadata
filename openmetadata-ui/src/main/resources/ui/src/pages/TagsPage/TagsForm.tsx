@@ -50,7 +50,7 @@ const TagsForm = ({
   isTier = false,
 }: RenameFormProps) => {
   const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
-  const selectedColor = Form.useWatch('color', formRef);
+  const selectedColor = Form.useWatch(['style', 'color'], formRef);
   const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
     'domains',
     formRef
@@ -64,13 +64,7 @@ const TagsForm = ({
   );
 
   useEffect(() => {
-    formRef?.setFieldsValue({
-      ...initialValues,
-      iconURL: initialValues?.style?.iconURL,
-      color: initialValues?.style?.color,
-      owners: initialValues?.owners,
-      domains: initialValues?.domains,
-    });
+    formRef?.setFieldsValue(initialValues);
   }, [initialValues, formRef]);
 
   const disableNameField = useMemo(

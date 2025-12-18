@@ -16,7 +16,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isUndefined, omit } from 'lodash';
+import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -490,17 +490,11 @@ const TagsPage = () => {
   };
 
   const handleAddTagSubmit = useCallback(
-    async (data: CreateTag) => {
-      const updatedData = omit(data, 'color', 'iconURL');
-      const style = {
-        color: data.color,
-        iconURL: data.iconURL,
-      };
-
+    async (data: CreateTag | Tag) => {
       if (editTag) {
-        await handleUpdatePrimaryTag({ ...editTag, ...updatedData, style });
+        await handleUpdatePrimaryTag({ ...editTag, ...data } as Tag);
       } else {
-        await handleCreatePrimaryTag({ ...updatedData, style });
+        await handleCreatePrimaryTag(data as CreateTag);
       }
     },
     [editTag, handleUpdatePrimaryTag, handleCreatePrimaryTag]

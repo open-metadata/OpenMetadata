@@ -42,8 +42,8 @@ export interface SubmitProps {
   iconURL?: string;
   color?: string;
   owners?: EntityReference[];
-  domains?: EntityReference[];
-  autoClassificationConfig?: AutoClassificationConfig | null;
+  domains?: EntityReference[] | string[];
+  autoClassificationConfigs: AutoClassificationConfig | null;
   autoClassificationEnabled?: boolean;
   autoClassificationPriority?: number;
 }
@@ -52,10 +52,7 @@ export interface RenameFormProps {
   formRef: FormInstance<SubmitProps>;
   isEditing: boolean;
   isTier: boolean;
-  initialValues?: Omit<
-    Tag & { autoClassificationConfig: AutoClassificationConfig },
-    'id'
-  >;
+  initialValues?: Tag;
   onSubmit: (value: CreateClassification) => Promise<void>;
   showMutuallyExclusive?: boolean;
   isClassification?: boolean;
