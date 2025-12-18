@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.sdk.client.OpenMetadata;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
@@ -11,8 +12,7 @@ import org.openmetadata.sdk.models.ListResponse;
 
 public class Domain extends org.openmetadata.schema.entity.domains.Domain {
 
-  public static Domain create(org.openmetadata.schema.entity.domains.Domain entity)
-      throws OpenMetadataException {
+  public static Domain create(CreateDomain entity) throws OpenMetadataException {
     return (Domain) OpenMetadata.client().domains().create(entity);
   }
 

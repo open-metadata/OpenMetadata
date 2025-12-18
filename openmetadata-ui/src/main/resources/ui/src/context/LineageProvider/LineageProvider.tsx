@@ -1122,12 +1122,23 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const onLineageEditClick = useCallback(() => {
+    const hasColumnLayer = activeLayer.includes(
+      LineageLayer.ColumnLevelLineage
+    );
+
+    if (!isEditMode && !hasColumnLayer) {
+      setActiveLayer((pre) => uniq([LineageLayer.ColumnLevelLineage, ...pre]));
+    } else if (isEditMode) {
+      setTracedNodes([]);
+      setTracedColumns([]);
+    }
+
     setIsEditMode((pre) => !pre);
     setActiveNode(undefined);
     setSelectedNode({} as SourceType);
     setSelectedEdge(undefined);
     setIsDrawerOpen(false);
-  }, []);
+  }, [isEditMode, activeLayer]);
 
   const onInitReactFlow = (reactFlowInstance: ReactFlowInstance) => {
     setReactFlowInstance(reactFlowInstance);
