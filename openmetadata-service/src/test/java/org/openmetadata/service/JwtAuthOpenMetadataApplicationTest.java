@@ -48,7 +48,6 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.flywaydb.core.Flyway;
-import org.glassfish.jersey.apache5.connector.Apache5ConnectorProvider;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.jdbi.v3.core.Jdbi;
@@ -81,6 +80,7 @@ import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.util.JdkHttpClientConnector;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
@@ -345,9 +345,9 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
   }
 
   private static void createClient() {
-    // Use Apache HttpClient 5.x connector - supports PATCH, lenient with empty PUT bodies
+    // Use custom JDK HttpClient connector - supports PATCH, handles empty PUT bodies, no Jetty deps
     ClientConfig config = new ClientConfig();
-    config.connectorProvider(new Apache5ConnectorProvider());
+    config.connectorProvider(new JdkHttpClientConnector.Provider());
     config.register(new JacksonFeature(APP.getObjectMapper()));
     // Set reasonable timeouts to prevent indefinite hangs
     config.property(ClientProperties.CONNECT_TIMEOUT, 30_000); // 30 seconds

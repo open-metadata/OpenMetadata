@@ -447,12 +447,7 @@
       <artifactId>everit-json-schema</artifactId>
     </dependency>
 
-    <!-- Use Apache HttpClient 5.x connector - supports PATCH, lenient with empty PUT bodies -->
-    <dependency>
-      <groupId>org.glassfish.jersey.connectors</groupId>
-      <artifactId>jersey-apache5-connector</artifactId>
-      <scope>test</scope>
-    </dependency>
+    <!-- No external Jersey connector needed - using custom JdkHttpClientConnector -->
 
 
     <dependency>
