@@ -19,6 +19,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipDAO;
@@ -81,22 +82,16 @@ class RdfIndexAppTest {
     }
 
     @Test
-    @DisplayName("Should have relevant relationship types defined")
-    void testRelevantRelationshipTypes() {
-      List<Integer> expectedRelationships =
-          List.of(
-              Relationship.UPSTREAM.ordinal(),
-              Relationship.CONTAINS.ordinal(),
-              Relationship.HAS.ordinal(),
-              Relationship.OWNS.ordinal(),
-              Relationship.PARENT_OF.ordinal(),
-              Relationship.CREATED.ordinal(),
-              Relationship.REVIEWS.ordinal(),
-              Relationship.APPLIED_TO.ordinal());
-
-      List<Integer> actualRelationships = getRelevantRelationships();
-      assertEquals(expectedRelationships.size(), actualRelationships.size());
-      assertTrue(actualRelationships.containsAll(expectedRelationships));
+    @DisplayName("Should have all relationship types defined for complete reindexing")
+    void testAllRelationshipTypes() {
+      List<Integer> actualRelationships = getAllRelationships();
+      // Should include ALL relationship types for complete bootstrap/reindex
+      assertEquals(Relationship.values().length, actualRelationships.size());
+      for (Relationship rel : Relationship.values()) {
+        assertTrue(
+            actualRelationships.contains(rel.ordinal()),
+            "Should contain " + rel.name() + " relationship");
+      }
     }
 
     private int getDefaultBatchSize() {
@@ -133,13 +128,13 @@ class RdfIndexAppTest {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Integer> getRelevantRelationships() {
+    private List<Integer> getAllRelationships() {
       try {
-        var field = RdfIndexApp.class.getDeclaredField("RDF_RELEVANT_RELATIONSHIPS");
+        var field = RdfIndexApp.class.getDeclaredField("ALL_RELATIONSHIPS");
         field.setAccessible(true);
         return (List<Integer>) field.get(null);
       } catch (Exception e) {
-        fail("Could not access RDF_RELEVANT_RELATIONSHIPS field");
+        fail("Could not access ALL_RELATIONSHIPS field");
         return List.of();
       }
     }
@@ -426,6 +421,157 @@ class RdfIndexAppTest {
       assertEquals("column", task.entityType());
       assertEquals(50, task.offset());
       assertEquals(2, task.retryCount());
+    }
+  }
+
+  @Nested
+  @DisplayName("Relationship Storage Tests")
+  class RelationshipStorageTests {
+
+    @Test
+    @DisplayName("Should query ALL relationship types when processing batch relationships")
+    void testProcessBatchRelationshipsQueriesAllTypes() throws Exception {
+      // Setup mock entities
+      List<EntityInterface> mockEntities = new ArrayList<>();
+      EntityInterface mockEntity = mock(EntityInterface.class);
+      UUID entityId = UUID.randomUUID();
+      when(mockEntity.getId()).thenReturn(entityId);
+      mockEntities.add(mockEntity);
+
+      // Setup mock relationship results (empty list is fine - we're testing the query params)
+      when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
+          .thenReturn(new ArrayList<>());
+      when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
+          .thenReturn(new ArrayList<>());
+
+      // Call processBatchRelationships via reflection
+      var method =
+          RdfIndexApp.class.getDeclaredMethod(
+              "processBatchRelationships", String.class, List.class);
+      method.setAccessible(true);
+      method.invoke(rdfIndexApp, "table", mockEntities);
+
+      // Verify findToBatchWithRelations was called with ALL relationship types
+      var captor = org.mockito.ArgumentCaptor.forClass(List.class);
+      verify(relationshipDAO).findToBatchWithRelations(anyList(), eq("table"), captor.capture());
+
+      @SuppressWarnings("unchecked")
+      List<Integer> queriedRelationships = captor.getValue();
+
+      // Should include ALL relationship types
+      assertEquals(
+          Relationship.values().length,
+          queriedRelationships.size(),
+          "Should query ALL relationship types, not a subset");
+
+      for (Relationship rel : Relationship.values()) {
+        assertTrue(
+            queriedRelationships.contains(rel.ordinal()),
+            "Should include " + rel.name() + " relationship in query");
+      }
+    }
+
+    @Test
+    @DisplayName("Should store relationships returned from batch query")
+    void testProcessBatchRelationshipsStoresResults() throws Exception {
+      // Setup mock entities
+      List<EntityInterface> mockEntities = new ArrayList<>();
+      EntityInterface mockEntity = mock(EntityInterface.class);
+      UUID entityId = UUID.randomUUID();
+      when(mockEntity.getId()).thenReturn(entityId);
+      mockEntities.add(mockEntity);
+
+      // Create mock relationship results
+      UUID fromId = UUID.randomUUID();
+      UUID toId = UUID.randomUUID();
+      List<EntityRelationshipObject> mockRelationships = new ArrayList<>();
+      mockRelationships.add(
+          EntityRelationshipObject.builder()
+              .fromId(fromId.toString())
+              .toId(toId.toString())
+              .fromEntity("table")
+              .toEntity("database")
+              .relation(Relationship.CONTAINS.ordinal())
+              .build());
+      mockRelationships.add(
+          EntityRelationshipObject.builder()
+              .fromId(fromId.toString())
+              .toId(UUID.randomUUID().toString())
+              .fromEntity("table")
+              .toEntity("user")
+              .relation(Relationship.OWNS.ordinal())
+              .build());
+
+      when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
+          .thenReturn(mockRelationships);
+      when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
+          .thenReturn(new ArrayList<>());
+
+      // Call processBatchRelationships
+      var method =
+          RdfIndexApp.class.getDeclaredMethod(
+              "processBatchRelationships", String.class, List.class);
+      method.setAccessible(true);
+      method.invoke(rdfIndexApp, "table", mockEntities);
+
+      // Verify bulkAddRelationships was called with the relationships
+      var captor = org.mockito.ArgumentCaptor.forClass(List.class);
+      verify(mockRdfRepository).bulkAddRelationships(captor.capture());
+
+      @SuppressWarnings("unchecked")
+      List<org.openmetadata.schema.type.EntityRelationship> storedRelationships = captor.getValue();
+
+      assertEquals(2, storedRelationships.size(), "Should store all relationships");
+      assertTrue(
+          storedRelationships.stream()
+              .anyMatch(r -> r.getRelationshipType() == Relationship.CONTAINS),
+          "Should include CONTAINS relationship");
+      assertTrue(
+          storedRelationships.stream().anyMatch(r -> r.getRelationshipType() == Relationship.OWNS),
+          "Should include OWNS relationship");
+    }
+
+    @Test
+    @DisplayName("Should handle lineage relationships with details separately")
+    void testProcessBatchRelationshipsHandlesLineageWithDetails() throws Exception {
+      // Setup mock entities
+      List<EntityInterface> mockEntities = new ArrayList<>();
+      EntityInterface mockEntity = mock(EntityInterface.class);
+      UUID entityId = UUID.randomUUID();
+      when(mockEntity.getId()).thenReturn(entityId);
+      mockEntities.add(mockEntity);
+
+      // Create mock lineage relationship with JSON details
+      UUID fromId = UUID.randomUUID();
+      UUID toId = UUID.randomUUID();
+      String lineageJson = "{\"sqlQuery\":\"SELECT * FROM source\"}";
+
+      List<EntityRelationshipObject> mockOutgoing = new ArrayList<>();
+      mockOutgoing.add(
+          EntityRelationshipObject.builder()
+              .fromId(fromId.toString())
+              .toId(toId.toString())
+              .fromEntity("table")
+              .toEntity("table")
+              .relation(Relationship.UPSTREAM.ordinal())
+              .json(lineageJson)
+              .build());
+
+      when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
+          .thenReturn(mockOutgoing);
+      when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
+          .thenReturn(new ArrayList<>());
+
+      // Call processBatchRelationships
+      var method =
+          RdfIndexApp.class.getDeclaredMethod(
+              "processBatchRelationships", String.class, List.class);
+      method.setAccessible(true);
+      method.invoke(rdfIndexApp, "table", mockEntities);
+
+      // Verify addLineageWithDetails was called (lineage with JSON should use special method)
+      verify(mockRdfRepository)
+          .addLineageWithDetails(eq("table"), eq(fromId), eq("table"), eq(toId), any());
     }
   }
 

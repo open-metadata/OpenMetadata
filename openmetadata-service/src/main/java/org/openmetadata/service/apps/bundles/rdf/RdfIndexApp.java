@@ -64,16 +64,10 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private static final int MAX_CONSUMER_THREADS = 5;
   private static final long WEBSOCKET_UPDATE_INTERVAL_MS = 2000;
 
-  private static final List<Integer> RDF_RELEVANT_RELATIONSHIPS =
-      List.of(
-          Relationship.UPSTREAM.ordinal(),
-          Relationship.CONTAINS.ordinal(),
-          Relationship.HAS.ordinal(),
-          Relationship.OWNS.ordinal(),
-          Relationship.PARENT_OF.ordinal(),
-          Relationship.CREATED.ordinal(),
-          Relationship.REVIEWS.ordinal(),
-          Relationship.APPLIED_TO.ordinal());
+  private static final List<Integer> ALL_RELATIONSHIPS =
+      java.util.Arrays.stream(Relationship.values())
+          .map(Relationship::ordinal)
+          .collect(Collectors.toList());
 
   private final RdfRepository rdfRepository;
   private volatile boolean stopped = false;
@@ -340,7 +334,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       List<EntityRelationshipObject> outgoingRelationships =
           collectionDAO
               .relationshipDAO()
-              .findToBatchWithRelations(entityIds, entityType, RDF_RELEVANT_RELATIONSHIPS);
+              .findToBatchWithRelations(entityIds, entityType, ALL_RELATIONSHIPS);
 
       List<EntityRelationshipObject> incomingLineage =
           collectionDAO
