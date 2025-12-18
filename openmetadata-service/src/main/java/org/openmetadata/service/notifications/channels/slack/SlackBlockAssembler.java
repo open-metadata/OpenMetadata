@@ -39,10 +39,6 @@ import org.commonmark.node.Text;
 import org.commonmark.node.ThematicBreak;
 
 final class SlackBlockAssembler extends AbstractVisitor {
-  private static final int SLACK_MAX_TEXT_LENGTH = 3000;
-  private static final int SLACK_MAX_TABLE_ROWS = 100;
-  private static final int SLACK_MAX_TABLE_COLS = 20;
-
   List<LayoutBlock> blocks = new ArrayList<>();
   StringBuilder currentText = new StringBuilder();
   private final SlackMarkdownFormatter inline = new SlackMarkdownFormatter();
@@ -291,15 +287,12 @@ final class SlackBlockAssembler extends AbstractVisitor {
 
     if (allRows.isEmpty()) return;
 
-    // Enforce Slack limits
-    int colCount =
-        Math.min(allRows.stream().mapToInt(List::size).max().orElse(0), SLACK_MAX_TABLE_COLS);
+    int colCount = allRows.stream().mapToInt(List::size).max().orElse(0);
     if (colCount == 0) return;
 
     List<List<SlackTableAttachment.TableCell>> slackRows = new ArrayList<>();
-    int rowLimit = Math.min(allRows.size(), SLACK_MAX_TABLE_ROWS);
 
-    for (int i = 0; i < rowLimit; i++) {
+    for (int i = 0; i < allRows.size(); i++) {
       List<String> row = allRows.get(i);
       List<SlackTableAttachment.TableCell> slackRow = new ArrayList<>();
       for (int j = 0; j < colCount; j++) {
@@ -334,9 +327,6 @@ final class SlackBlockAssembler extends AbstractVisitor {
     sb.append("|");
     for (int i = 0; i < colCount; i++) {
       String cell = i < cells.size() ? cells.get(i) : "";
-      if (cell.length() > colWidths[i]) {
-        cell = cell.substring(0, colWidths[i] - 3) + "...";
-      }
       sb.append(" ").append(padRight(cell, colWidths[i])).append(" |");
     }
     sb.append("\n");
@@ -358,24 +348,18 @@ final class SlackBlockAssembler extends AbstractVisitor {
   }
 
   LayoutBlock createHeaderBlock(String text) {
-    String plain = truncateContent(escapeMrkdwn(text), 150);
-    return HeaderBlock.builder().text(PlainTextObject.builder().text(plain).build()).build();
+    return HeaderBlock.builder()
+        .text(PlainTextObject.builder().text(escapeMrkdwn(text)).build())
+        .build();
   }
 
   LayoutBlock createSectionBlock(String text) {
-    String truncated = truncateContent(text, SLACK_MAX_TEXT_LENGTH);
-    return SectionBlock.builder()
-        .text(MarkdownTextObject.builder().text(truncated).build())
-        .build();
+    return SectionBlock.builder().text(MarkdownTextObject.builder().text(text).build()).build();
   }
 
   private LayoutBlock createCodeBlock(String code) {
     String body = code == null ? "" : code;
-    int fenceOverhead = 7;
-    int budget = Math.max(0, SLACK_MAX_TEXT_LENGTH - fenceOverhead);
-    String truncated =
-        body.length() <= budget ? body : body.substring(0, Math.max(0, budget - 1)) + "…";
-    String fenced = "```\n" + escapeMrkdwn(truncated) + "\n```";
+    String fenced = "```\n" + escapeMrkdwn(body) + "\n```";
     return SectionBlock.builder().text(MarkdownTextObject.builder().text(fenced).build()).build();
   }
 
@@ -432,11 +416,7 @@ final class SlackBlockAssembler extends AbstractVisitor {
 
   private String formatCodeForList(String code) {
     String body = code == null ? "" : code;
-    int fenceOverhead = 7;
-    int budget = Math.max(0, SLACK_MAX_TEXT_LENGTH - fenceOverhead);
-    String truncated =
-        body.length() <= budget ? body : body.substring(0, Math.max(0, budget - 1)) + "…";
-    return "```\n" + escapeMrkdwn(truncated) + "\n```";
+    return "```\n" + escapeMrkdwn(body) + "\n```";
   }
 
   private String formatBlockQuoteForList(BlockQuote blockQuote) {
@@ -608,12 +588,5 @@ final class SlackBlockAssembler extends AbstractVisitor {
     } catch (IllegalArgumentException ex) {
       return false;
     }
-  }
-
-  private String truncateContent(String content, int maxLength) {
-    if (content.length() <= maxLength) {
-      return content;
-    }
-    return content.substring(0, maxLength - 3) + "…";
   }
 }

@@ -25,6 +25,7 @@ import org.openmetadata.service.notifications.template.handlebars.helpers.Resolv
 import org.openmetadata.service.notifications.template.handlebars.helpers.SplitHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.StartsWithHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.TextDiffHelper;
+import org.openmetadata.service.notifications.template.handlebars.helpers.TruncateHelper;
 
 /**
  * Provider for Handlebars instances configured with all custom helpers for notification templates.
@@ -61,6 +62,7 @@ public class HandlebarsProvider {
         new AndHelper(),
         new NotHelper(),
         new TextDiffHelper(),
+        new TruncateHelper(),
         new CamelCaseToTitleHelper(),
         new ResolveDomainHelper(),
         new FormatDateHelper(),

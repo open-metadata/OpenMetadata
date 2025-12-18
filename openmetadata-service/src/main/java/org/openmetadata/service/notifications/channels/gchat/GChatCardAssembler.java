@@ -26,8 +26,6 @@ import org.commonmark.node.Text;
 import org.commonmark.node.ThematicBreak;
 
 final class GChatCardAssembler extends AbstractVisitor {
-  private static final int GCHAT_MAX_TEXT_LENGTH = 4096;
-
   List<GChatMessageV2.Section> sections = new ArrayList<>();
   List<GChatMessageV2.Widget> currentWidgets = new ArrayList<>();
   private final GChatMarkdownFormatter inline = new GChatMarkdownFormatter();
@@ -241,11 +239,6 @@ final class GChatCardAssembler extends AbstractVisitor {
         String key = i < headers.size() ? headers.get(i) : "Column " + (i + 1);
         String value = i < row.size() && row.get(i) != null ? row.get(i) : "";
 
-        // Truncate long values
-        if (value.length() > 60) {
-          value = value.substring(0, 57) + "…";
-        }
-
         // Format with monospace for alignment
         html.append("<code>")
             .append(
@@ -420,8 +413,8 @@ final class GChatCardAssembler extends AbstractVisitor {
   }
 
   private String formatCodeBlock(String code) {
-    String truncated = truncateContent(code == null ? "" : code);
-    return "```\n" + escapeHtml(truncated) + "\n```";
+    String body = code == null ? "" : code;
+    return "```\n" + escapeHtml(body) + "\n```";
   }
 
   private String formatBlockQuoteForList(BlockQuote blockQuote) {
@@ -456,8 +449,7 @@ final class GChatCardAssembler extends AbstractVisitor {
 
   private String safeText(String s) {
     if (s == null) return "";
-    if (s.length() <= GCHAT_MAX_TEXT_LENGTH) return s;
-    return s.substring(0, GCHAT_MAX_TEXT_LENGTH - 1) + "…";
+    return s;
   }
 
   private static Image getSingleImageOrNull(Paragraph p) {
@@ -466,13 +458,6 @@ final class GChatCardAssembler extends AbstractVisitor {
       return (Image) first;
     }
     return null;
-  }
-
-  private String truncateContent(String content) {
-    if (content.length() <= GChatCardAssembler.GCHAT_MAX_TEXT_LENGTH) {
-      return content;
-    }
-    return content.substring(0, GChatCardAssembler.GCHAT_MAX_TEXT_LENGTH - 3) + "…";
   }
 
   private static String extractPlainText(Node node) {

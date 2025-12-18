@@ -35,7 +35,6 @@ import org.commonmark.node.ThematicBreak;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
 
 final class TeamsCardAssembler extends AbstractVisitor {
-  private static final int TEAMS_MAX_TEXT_LENGTH = 5000;
   private static final TeamsMarkdownFormatter INLINE_FORMATTER = new TeamsMarkdownFormatter();
 
   private final List<TeamsMessage.BodyItem> body = new ArrayList<>();
@@ -274,7 +273,7 @@ final class TeamsCardAssembler extends AbstractVisitor {
     TeamsMessage.TextBlock codeText =
         TeamsMessage.TextBlock.builder()
             .type("TextBlock")
-            .text(truncate(literal))
+            .text(literal)
             .wrap(true)
             .fontType("Monospace")
             .size("Small")
@@ -302,7 +301,6 @@ final class TeamsCardAssembler extends AbstractVisitor {
 
     for (int i = 0; i < headers.size(); i++) {
       String val = (i < row.size() && row.get(i) != null) ? row.get(i) : "—";
-      if (val.length() > 80) val = val.substring(0, 77) + "…";
       tableRows.add(createDataRow(headers.get(i), val));
     }
 
@@ -431,7 +429,7 @@ final class TeamsCardAssembler extends AbstractVisitor {
 
   private TeamsMessage.TextBlock createTextBlock(String text, String style, int size) {
     TeamsMessage.TextBlock.TextBlockBuilder builder =
-        TeamsMessage.TextBlock.builder().type("TextBlock").text(truncate(text)).wrap(true);
+        TeamsMessage.TextBlock.builder().type("TextBlock").text(text).wrap(true);
     if ("heading".equals(style)) {
       builder.weight("Bolder");
       builder.size(
@@ -452,8 +450,8 @@ final class TeamsCardAssembler extends AbstractVisitor {
   }
 
   private String renderNodeToText(Node node) {
-    if (node instanceof FencedCodeBlock f) return truncate(f.getLiteral());
-    if (node instanceof IndentedCodeBlock i) return truncate(i.getLiteral());
+    if (node instanceof FencedCodeBlock f) return f.getLiteral();
+    if (node instanceof IndentedCodeBlock i) return i.getLiteral();
     return INLINE_FORMATTER.renderInlineChildren(node).trim();
   }
 
@@ -465,13 +463,6 @@ final class TeamsCardAssembler extends AbstractVisitor {
   }
 
   // --- Helpers: Formatting ---
-
-  private String truncate(String s) {
-    if (s == null) return "";
-    return s.length() <= TEAMS_MAX_TEXT_LENGTH
-        ? s
-        : s.substring(0, TEAMS_MAX_TEXT_LENGTH - 3) + "…";
-  }
 
   private static boolean isAllowedLinkUrl(String url) {
     if (url == null) return false;
