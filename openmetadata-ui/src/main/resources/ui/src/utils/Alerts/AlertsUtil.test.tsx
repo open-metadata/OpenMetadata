@@ -22,6 +22,7 @@ import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import { DESTINATION_DROPDOWN_TABS } from '../../constants/Alerts.constants';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { EventType, Status } from '../../generated/events/api/typedEvent';
 import {
   SubscriptionCategory,
@@ -59,6 +60,7 @@ import {
   getLabelsForEventDetails,
   listLengthValidator,
   normalizeDestinationConfig,
+  searchEntity,
 } from './AlertsUtil';
 
 jest.mock('antd', () => ({
@@ -78,6 +80,14 @@ jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
 
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+}));
+
+jest.mock('../ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 describe('AlertsUtil tests', () => {
@@ -1059,6 +1069,307 @@ describe('handleAlertSave - downstream notification fields', () => {
 
     expect(mappedDestinations[0]).toHaveProperty('notifyDownstream', undefined);
     expect(mappedDestinations[0]).toHaveProperty('downstreamDepth', undefined);
+  });
+
+  describe('searchEntity', () => {
+    const mockSearchQueryResponse = {
+      hits: {
+        hits: [
+          {
+            _source: {
+              displayName: 'Test Table',
+              fullyQualifiedName: 'test.database.table',
+              entityType: 'table',
+              name: 'table',
+            },
+            _index: 'table_search_index',
+          },
+          {
+            _source: {
+              displayName: 'Test User',
+              fullyQualifiedName: 'test.user',
+              entityType: 'user',
+              name: 'user',
+            },
+            _index: 'user_search_index',
+          },
+        ],
+      },
+    };
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should return search results with default options', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(searchQuery).toHaveBeenCalledWith({
+        query: 'test',
+        pageNumber: 1,
+        pageSize: 50,
+        queryFilter: undefined,
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Table',
+          value: 'test.database.table',
+        },
+        {
+          label: 'Test User',
+          value: 'test.user',
+        },
+      ]);
+    });
+
+    it('should return search results with showDisplayNameAsLabel false', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+        showDisplayNameAsLabel: false,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'test.database.table',
+          value: 'test.database.table',
+        },
+        {
+          label: 'test.user',
+          value: 'test.user',
+        },
+      ]);
+    });
+
+    it('should return search results with setSourceAsValue true and use entityType from source', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+        setSourceAsValue: true,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Table',
+          value: JSON.stringify({
+            displayName: 'Test Table',
+            fullyQualifiedName: 'test.database.table',
+            entityType: 'table',
+            name: 'table',
+            type: 'table',
+          }),
+        },
+        {
+          label: 'Test User',
+          value: JSON.stringify({
+            displayName: 'Test User',
+            fullyQualifiedName: 'test.user',
+            entityType: 'user',
+            name: 'user',
+            type: 'user',
+          }),
+        },
+      ]);
+    });
+
+    it('should handle search results with custom queryFilter', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+      const customQueryFilter = { isBot: 'false' };
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
+        queryFilter: customQueryFilter,
+      });
+
+      expect(searchQuery).toHaveBeenCalledWith({
+        query: 'test',
+        pageNumber: 1,
+        pageSize: 50,
+        queryFilter: customQueryFilter,
+        searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Table',
+          value: 'test.database.table',
+        },
+        {
+          label: 'Test User',
+          value: 'test.user',
+        },
+      ]);
+    });
+
+    it('should handle empty fullyQualifiedName gracefully', async () => {
+      const mockResponseWithEmptyFQN = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Test Entity',
+                entityType: 'test',
+              },
+              _index: 'test_search_index',
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(mockResponseWithEmptyFQN);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Entity',
+          value: '',
+        },
+      ]);
+    });
+
+    it('should remove duplicate entries based on label', async () => {
+      const mockResponseWithDuplicates = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Test Table',
+                fullyQualifiedName: 'test.database.table1',
+                entityType: 'table',
+              },
+              _index: 'table_search_index',
+            },
+            {
+              _source: {
+                displayName: 'Test Table', // Same display name
+                fullyQualifiedName: 'test.database.table2',
+                entityType: 'table',
+              },
+              _index: 'table_search_index',
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(mockResponseWithDuplicates);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      // Should only return one item due to duplicate label removal
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        label: 'Test Table',
+        value: 'test.database.table1',
+      });
+    });
+
+    it('should handle search API errors gracefully', async () => {
+      const mockError = new Error('API Error');
+      (searchQuery as jest.Mock).mockRejectedValue(mockError);
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+      });
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle missing entityType in source when setSourceAsValue is true', async () => {
+      const mockResponseWithoutEntityType = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Test Entity',
+                fullyQualifiedName: 'test.entity',
+                // entityType is missing
+              },
+              _index: 'test_search_index',
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(
+        mockResponseWithoutEntityType
+      );
+
+      const result = await searchEntity({
+        searchText: 'test',
+        searchIndex: SearchIndex.TABLE,
+        setSourceAsValue: true,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Test Entity',
+          value: JSON.stringify({
+            displayName: 'Test Entity',
+            fullyQualifiedName: 'test.entity',
+            type: undefined, // entityType is undefined, so type should be undefined
+          }),
+        },
+      ]);
+    });
+
+    it('should use entityType from source for type field when setSourceAsValue is true (regression test)', async () => {
+      const mockResponseWithEntityType = {
+        hits: {
+          hits: [
+            {
+              _source: {
+                displayName: 'Custom Entity',
+                fullyQualifiedName: 'custom.entity',
+                entityType: 'customType', // This should be used as the type field
+                name: 'customEntity',
+              },
+              _index: 'some_other_index', // This _index value should not be used for type
+            },
+          ],
+        },
+      };
+
+      (searchQuery as jest.Mock).mockResolvedValue(mockResponseWithEntityType);
+
+      const result = await searchEntity({
+        searchText: 'custom',
+        searchIndex: SearchIndex.TABLE,
+        setSourceAsValue: true,
+      });
+
+      expect(result).toEqual([
+        {
+          label: 'Custom Entity',
+          value: JSON.stringify({
+            displayName: 'Custom Entity',
+            fullyQualifiedName: 'custom.entity',
+            entityType: 'customType',
+            name: 'customEntity',
+            type: 'customType', // Should use entityType from source, not from index mapping
+          }),
+        },
+      ]);
+    });
   });
 });
 
