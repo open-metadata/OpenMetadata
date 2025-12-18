@@ -62,7 +62,11 @@ class CSVUtilsClassBase {
 
   public getEditor(
     column: string,
-    entityType: EntityType
+    entityType: EntityType,
+    multipleOwner: {
+      user: boolean;
+      team: boolean;
+    }
   ): ((props: RenderEditCellProps<any, any>) => ReactNode) | undefined {
     switch (column) {
       case 'owner':
@@ -99,7 +103,7 @@ class CSVUtilsClassBase {
           return (
             <UserTeamSelectableList
               hasPermission
-              multiple={{ user: true, team: false }}
+              multiple={multipleOwner}
               owner={ownerEntityRef}
               popoverProps={{
                 open: true,

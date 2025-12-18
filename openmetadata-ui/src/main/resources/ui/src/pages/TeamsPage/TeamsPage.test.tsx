@@ -16,10 +16,11 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TeamType } from '../../generated/entity/teams/team';
+import { Include } from '../../generated/type/include';
 import { mockUserData } from '../../mocks/MyDataPage.mock';
-import { MOCK_CURRENT_TEAM } from '../../mocks/Teams.mock';
+import { MOCK_CURRENT_TEAM, MOCK_TABLE_DATA } from '../../mocks/Teams.mock';
 import { searchQuery } from '../../rest/searchAPI';
-import { getTeamByName } from '../../rest/teamsAPI';
+import { getTeamByName, getTeams } from '../../rest/teamsAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TeamsPage from './TeamsPage';
 
@@ -39,8 +40,14 @@ jest.mock('../../components/Tag/TagsContainerV2/TagsContainerV2', () => {
   return jest.fn().mockImplementation(() => <p>testTagsContainerV2</p>);
 });
 
+const mockOnShowDeletedTeamChange = jest.fn();
+
 jest.mock('../../components/Settings/Team/TeamDetails/TeamDetailsV1', () => {
-  return jest.fn().mockImplementation(() => <p>TeamDetailsV1</p>);
+  return jest.fn().mockImplementation(({ onShowDeletedTeamChange }) => {
+    mockOnShowDeletedTeamChange.mockImplementation(onShowDeletedTeamChange);
+
+    return <p>TeamDetailsV1</p>;
+  });
 });
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -264,5 +271,87 @@ describe('Test Teams Page', () => {
     expect(searchQuery).not.toHaveBeenCalled();
 
     (getTeamByName as jest.Mock).mockReset();
+  });
+
+  describe('Test getTeams - Tests for fetching teams with flags', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      (getTeamByName as jest.Mock).mockImplementation(() =>
+        Promise.resolve(MOCK_CURRENT_TEAM)
+      );
+      (getTeams as jest.Mock).mockImplementation(() =>
+        Promise.resolve({ data: MOCK_TABLE_DATA })
+      );
+    });
+
+    it('should fetch non-deleted teams when showDeletedTeam is false (default)', async () => {
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+          ViewBasic: true,
+        })),
+      }));
+
+      await act(async () => {
+        render(<TeamsPage />);
+      });
+
+      expect(getTeams).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: Include.NonDeleted,
+        })
+      );
+    });
+
+    it('should fetch deleted teams when showDeletedTeam is toggled to true', async () => {
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+          ViewBasic: true,
+        })),
+      }));
+
+      await act(async () => {
+        render(<TeamsPage />);
+      });
+
+      (getTeams as jest.Mock).mockClear();
+
+      await act(async () => {
+        mockOnShowDeletedTeamChange();
+      });
+
+      expect(getTeams).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: Include.Deleted,
+        })
+      );
+    });
+
+    it('should fetch non-deleted teams when showDeletedTeam is toggled back to false', async () => {
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+          ViewBasic: true,
+        })),
+      }));
+
+      await act(async () => {
+        render(<TeamsPage />);
+      });
+
+      await act(async () => {
+        mockOnShowDeletedTeamChange();
+      });
+
+      (getTeams as jest.Mock).mockClear();
+
+      await act(async () => {
+        mockOnShowDeletedTeamChange();
+      });
+
+      expect(getTeams).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: Include.NonDeleted,
+        })
+      );
+    });
   });
 });

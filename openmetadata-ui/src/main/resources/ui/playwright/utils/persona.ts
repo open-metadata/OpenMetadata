@@ -44,11 +44,10 @@ export const updatePersonaDisplayName = async ({
  */
 export const navigateToPersonaSettings = async (page: Page) => {
   await redirectToHomePage(page);
+  const listPersonas = page.waitForResponse('/api/v1/personas?*');
   await settingClick(page, GlobalSettingOptions.PERSONA);
-  await page.waitForLoadState('networkidle');
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await listPersonas;
+  await waitForAllLoadersToDisappear(page, 'skeleton-loader');
 };
 
 /**
@@ -93,27 +92,6 @@ export const setPersonaAsDefault = async (page: Page) => {
   await setAsDefaultResponse;
 };
 
-/**
- * Remove persona default through the admin UI
- */
-export const removePersonaDefault = async (
-  page: Page,
-  personaName?: string
-) => {
-  await page.getByTestId(`persona-details-card-${personaName}`).click();
-
-  await page.getByTestId('manage-button').click();
-  await page.getByTestId('remove-default-button').click();
-
-  const removeDefaultResponse = page.waitForResponse('/api/v1/personas/*');
-  const removeDefaultConfirmationModal = page.getByTestId(
-    'default-persona-confirmation-modal'
-  );
-
-  await removeDefaultConfirmationModal.getByText('Yes').click();
-  await removeDefaultResponse;
-};
-
 export const navigateToPersonaWithPagination = async (
   page: Page,
   personaName: string,
@@ -126,7 +104,13 @@ export const navigateToPersonaWithPagination = async (
     // Check if element is visible on current page
     if (await locator.isVisible()) {
       if (click) {
+        const personaDetailsResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/personas/name/') &&
+            response.status() === 200
+        );
         await locator.click();
+        await personaDetailsResponse;
       }
 
       return;
@@ -142,4 +126,25 @@ export const navigateToPersonaWithPagination = async (
     await page.waitForLoadState('networkidle');
     await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
   }
+};
+
+/**
+ * Remove persona default through the admin UI
+ */
+export const removePersonaDefault = async (
+  page: Page,
+  personaName?: string
+) => {
+  await navigateToPersonaWithPagination(page, personaName ?? '');
+
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('remove-default-button').click();
+
+  const removeDefaultResponse = page.waitForResponse('/api/v1/personas/*');
+  const removeDefaultConfirmationModal = page.getByTestId(
+    'default-persona-confirmation-modal'
+  );
+
+  await removeDefaultConfirmationModal.getByText('Yes').click();
+  await removeDefaultResponse;
 };

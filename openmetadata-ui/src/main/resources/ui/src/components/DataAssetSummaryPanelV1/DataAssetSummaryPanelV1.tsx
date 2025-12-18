@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -19,15 +19,16 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../utils/date-time/DateTimeUtils';
+import { getUpstreamDownstreamNodesEdges } from '../../utils/EntityLineageUtils';
 import { getEntityChildDetails } from '../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../utils/EntityUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
 
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
@@ -45,21 +46,23 @@ import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import {
+  DataAssetSummaryPanelProps,
+  TestCaseStatusCounts,
+} from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
+import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../common/DescriptionSection/DescriptionSection';
 import DomainsSection from '../common/DomainsSection/DomainsSection';
 import GlossaryTermsSection from '../common/GlossaryTermsSection/GlossaryTermsSection';
+import LineageSection from '../common/LineageSection/LineageSection';
 import Loader from '../common/Loader/Loader';
 import OverviewSection from '../common/OverviewSection/OverviewSection';
 import OwnersSection from '../common/OwnersSection/OwnersSection';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsSection from '../common/TagsSection/TagsSection';
 import TierSection from '../common/TierSection/TierSection';
-import {
-  DataAssetSummaryPanelProps,
-  TestCaseStatusCounts,
-} from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
@@ -77,7 +80,9 @@ export const DataAssetSummaryPanelV1 = ({
   onGlossaryTermsUpdate,
   onDescriptionUpdate,
   onLinkClick,
-  isSideDrawer = false,
+  lineageData,
+  isLineageLoading = false,
+  onLineageClick,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
@@ -164,6 +169,48 @@ export const DataAssetSummaryPanelV1 = ({
       entityType === EntityType.DASHBOARD ? chartsDetailsLoading : false
     );
   }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
+
+  const { upstreamCount, downstreamCount, shouldShowLineageSection } =
+    useMemo(() => {
+      if (!ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
+        return {
+          upstreamCount: 0,
+          downstreamCount: 0,
+          shouldShowLineageSection: false,
+        };
+      }
+
+      if (
+        isLineageLoading ||
+        isNil(lineageData) ||
+        isEmpty(dataAsset.fullyQualifiedName)
+      ) {
+        return {
+          upstreamCount: 0,
+          downstreamCount: 0,
+          shouldShowLineageSection: true,
+        };
+      }
+
+      const nodes = Object.values(lineageData.nodes).map((node) => node.entity);
+      const edges = [
+        ...Object.values(lineageData.upstreamEdges),
+        ...Object.values(lineageData.downstreamEdges),
+      ];
+
+      const { upstreamNodes, downstreamNodes } =
+        getUpstreamDownstreamNodesEdges(
+          edges,
+          nodes,
+          dataAsset.fullyQualifiedName!
+        );
+
+      return {
+        upstreamCount: upstreamNodes.length,
+        downstreamCount: downstreamNodes.length,
+        shouldShowLineageSection: true,
+      };
+    }, [lineageData, entityType, dataAsset.fullyQualifiedName, isLineageLoading]);
 
   const fetchIncidentCount = useCallback(async () => {
     if (
@@ -446,6 +493,14 @@ export const DataAssetSummaryPanelV1 = ({
                 />
               )
             )}
+            {shouldShowLineageSection && (
+              <LineageSection
+                downstreamCount={downstreamCount}
+                isLoading={isLineageLoading}
+                upstreamCount={upstreamCount}
+                onLineageClick={onLineageClick}
+              />
+            )}
             <div>
               <OwnersSection
                 entityId={dataAsset.id}
@@ -503,9 +558,7 @@ export const DataAssetSummaryPanelV1 = ({
                 key={`tags-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
-                tags={dataAsset.tags?.filter(
-                  (tag: TagLabel) => tag.source !== TagSource.Glossary
-                )}
+                tags={dataAsset.tags}
                 onTagsUpdate={onTagsUpdate}
               />
             </div>
