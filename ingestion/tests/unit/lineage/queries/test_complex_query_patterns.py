@@ -2662,6 +2662,9 @@ class TestComplexQueryPatterns:
                 ),
             ],
             dialect=Dialect.MYSQL.value,
+            # Graph: Interestingly, this only times out in GH CI checks, not locally! So skipping graph check for now.
+            # ⏱️ Column lineage graph comparison timeout between sqlglot (31n/41e) and sqlfluff (31n/41e) after 10s
+            skip_graph_check=True,
         )
 
     def test_nested_join_06_join_with_derived_table(self):
