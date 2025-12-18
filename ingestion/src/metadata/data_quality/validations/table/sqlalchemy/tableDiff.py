@@ -83,7 +83,8 @@ class SchemaDiffResult(BaseModel):
 
     serviceType: str
     fullyQualifiedTableName: str
-    schema: Dict[str, ColType]
+    schema: Dict[str, Dict[str, str]]
+
 class ColumnDiffResult(BaseModel):
     class Config:
         arbitrary_types_allowed = True
@@ -613,12 +614,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 schemaTable1=SchemaDiffResult(
                     serviceType=self.runtime_params.table1.database_service_type.name,
                     fullyQualifiedTableName=self.runtime_params.table1.path,
-                    schema=dict(schema_table1),
+                    schema={c.name.root: {"type": c.dataTypeDisplay, "constraints": c.constraint.value} for c in self.runtime_params.table1.columns},
                 ),
                 schemaTable2=SchemaDiffResult(
                     serviceType=self.runtime_params.table2.database_service_type.name,
                     fullyQualifiedTableName=self.runtime_params.table2.path,
-                    schema=dict(schema_table2),
+                    schema={c.name.root: {"type": c.dataTypeDisplay, "constraints": c.constraint.value} for c in self.runtime_params.table2.columns},
                 ),
             )
         return None
