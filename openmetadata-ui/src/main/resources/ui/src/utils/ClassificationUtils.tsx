@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Space, Tooltip, Typography } from 'antd';
+import { Button, Space, Switch, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
@@ -53,50 +53,86 @@ export const getDeleteButtonData = (
   return { disableDeleteButton, disabledDeleteMessage };
 };
 
-export const getCommonColumns = (): ColumnsType<Tag> => [
-  {
-    title: t('label.tag'),
-    dataIndex: 'name',
-    key: 'name',
-    width: 200,
-    render: (_, record) => (
-      <div className="d-flex items-center gap-2">
-        {record.style?.iconURL && (
-          <img
-            data-testid="tag-icon"
-            height={16}
-            src={getTagImageSrc(record.style.iconURL)}
-            width={16}
+export const getCommonColumns = (options?: {
+  handleToggleDisable?: (tag: Tag) => void;
+  classificationPermissions?: OperationPermission;
+  isClassificationDisabled?: boolean;
+}): ColumnsType<Tag> => {
+  const columns: ColumnsType<Tag> = [];
+
+  if (options?.handleToggleDisable) {
+    const canToggleDisable =
+      options.classificationPermissions?.EditAll &&
+      !options.isClassificationDisabled;
+
+    columns.push({
+      title: t('label.enabled'),
+      dataIndex: 'disabled',
+      key: 'disabled',
+      width: 100,
+      render: (_, record) => (
+        <Tooltip
+          title={
+            !canToggleDisable
+              ? options.isClassificationDisabled
+                ? t('message.disabled-classification-actions-message')
+                : t('message.no-permission-for-action')
+              : record.disabled
+              ? t('label.enable')
+              : t('label.disable')
+          }>
+          <Switch
+            checked={!record.disabled}
+            data-testid={`tag-disable-toggle-${record.name}`}
+            disabled={!canToggleDisable}
+            size="small"
+            onChange={() => options.handleToggleDisable?.(record)}
           />
-        )}
-        <Link
-          className="m-b-0"
-          data-testid={record.name}
-          style={{ color: record.style?.color }}
-          to={getClassificationTagPath(record.fullyQualifiedName ?? '')}>
-          {record.name}
-        </Link>
-        {record.disabled ? (
-          <Badge
-            className="badge-grey"
-            count={t('label.disabled')}
-            data-testid={`tag-disabled-${record.name}`}
-          />
-        ) : null}
-      </div>
-    ),
-  },
-  {
-    title: t('label.display-name'),
-    dataIndex: 'displayName',
-    key: 'displayName',
-    width: 200,
-    render: (text) => (
-      <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
-    ),
-  },
-  ...descriptionTableObject<Tag>({ width: 300 }),
-];
+        </Tooltip>
+      ),
+    });
+  }
+
+  columns.push(
+    {
+      title: t('label.tag'),
+      dataIndex: 'name',
+      key: 'name',
+      width: 200,
+      render: (_, record) => (
+        <div className="d-flex items-center gap-2">
+          {record.style?.iconURL && (
+            <img
+              data-testid="tag-icon"
+              height={16}
+              src={getTagImageSrc(record.style.iconURL)}
+              width={16}
+            />
+          )}
+          <Link
+            className="m-b-0"
+            data-testid={record.name}
+            style={{ color: record.style?.color }}
+            to={getClassificationTagPath(record.fullyQualifiedName ?? '')}>
+            {record.name}
+          </Link>
+        </div>
+      ),
+    },
+    {
+      title: t('label.display-name'),
+      dataIndex: 'displayName',
+      key: 'displayName',
+      width: 200,
+      render: (text) => (
+        <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+      ),
+    },
+    ...descriptionTableObject<Tag>({ width: 300 })
+  );
+
+  return columns;
+};
 
 export const getTagsTableColumn = ({
   isClassificationDisabled,
@@ -106,6 +142,7 @@ export const getTagsTableColumn = ({
   handleActionDeleteTag,
   isVersionView,
   disableEditButton,
+  handleToggleDisable,
 }: {
   classificationPermissions: OperationPermission;
   isClassificationDisabled: boolean;
@@ -114,8 +151,13 @@ export const getTagsTableColumn = ({
   handleEditTagClick?: (selectedTag: Tag) => void;
   handleActionDeleteTag?: (record: Tag) => void;
   disableEditButton?: boolean;
+  handleToggleDisable?: (tag: Tag) => void;
 }): ColumnsType<Tag> => {
-  const columns: ColumnsType<Tag> = getCommonColumns();
+  const columns: ColumnsType<Tag> = getCommonColumns({
+    handleToggleDisable,
+    classificationPermissions,
+    isClassificationDisabled,
+  });
 
   if (!isVersionView) {
     columns.push({
