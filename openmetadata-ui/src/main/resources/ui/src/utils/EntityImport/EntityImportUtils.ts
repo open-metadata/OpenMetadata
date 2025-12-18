@@ -69,7 +69,7 @@ export const getBulkEntityBreadcrumbList = (
   isBulkEdit: boolean
 ): TitleBreadcrumbProps['titleLinks'] => {
   return [
-    ...(entityType === EntityType.GLOSSARY_TERM
+    ...(entityType === EntityType.GLOSSARY_TERM || entityType === EntityType.GLOSSARY
       ? [
           {
             name: i18n.t('label.glossary-plural'),
