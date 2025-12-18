@@ -11,6 +11,11 @@
       "type": "string",
       "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$|^$"
     },
+    "hoverColor": {
+      "description": "Primary color used in the UI, in hex code format or empty.",
+      "type": "string",
+      "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$|^$"
+    },
     "errorColor": {
       "description": "Color used to indicate errors in the UI, in hex code format or empty",
       "type": "string",

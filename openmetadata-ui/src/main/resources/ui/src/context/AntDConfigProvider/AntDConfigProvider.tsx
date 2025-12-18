@@ -42,15 +42,25 @@ const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
           );
       }
     });
+
+    // Use custom hover color if provided, otherwise use generated palette[1]
+    const hoverColor =
+      applicationConfig?.customTheme?.hoverColor ||
+      palette[1] ||
+      DEFAULT_THEME.hoverColor;
+
     document.documentElement.style.setProperty(
       `--ant-primary-color-hover`,
-      palette[6]
+      hoverColor
     );
     document.documentElement.style.setProperty(
       `--ant-primary-color-active`,
       palette[8]
     );
-  }, [applicationConfig?.customTheme?.primaryColor]);
+  }, [
+    applicationConfig?.customTheme?.primaryColor,
+    applicationConfig?.customTheme?.hoverColor,
+  ]);
 
   ConfigProvider.config({
     theme: {

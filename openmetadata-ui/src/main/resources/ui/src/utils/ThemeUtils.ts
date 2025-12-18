@@ -16,6 +16,7 @@ import { UIThemePreference } from '../generated/configuration/uiThemePreference'
 export const getThemeConfig = (theme?: UIThemePreference['customTheme']) => {
   return {
     primaryColor: theme?.primaryColor || DEFAULT_THEME.primaryColor,
+    hoverColor: theme?.hoverColor || DEFAULT_THEME.hoverColor,
     errorColor: theme?.errorColor || DEFAULT_THEME.errorColor,
     successColor: theme?.successColor || DEFAULT_THEME.successColor,
     warningColor: theme?.warningColor || DEFAULT_THEME.warningColor,

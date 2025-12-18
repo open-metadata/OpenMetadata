@@ -24,7 +24,7 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
@@ -42,6 +42,7 @@ import { Settings, SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
+import { generatePalette } from '../../styles/colorPallet';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import { getField } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
@@ -66,6 +67,13 @@ const AppearanceConfigSettingsPage = () => {
     ...applicationConfig?.customTheme,
   });
 
+  // Track if hover color was manually edited by user
+  const isHoverColorManuallyEdited = useRef<boolean>(false);
+  // Track the last primary color to detect changes
+  const lastPrimaryColor = useRef<string>(
+    applicationConfig?.customTheme?.primaryColor ?? ''
+  );
+
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
@@ -89,6 +97,7 @@ const AppearanceConfigSettingsPage = () => {
         },
         customTheme: {
           primaryColor: values?.primaryColor ?? '',
+          hoverColor: values?.hoverColor ?? '',
           errorColor: values?.errorColor ?? '',
           successColor: values?.successColor ?? '',
           warningColor: values?.warningColor ?? '',
@@ -120,6 +129,7 @@ const AppearanceConfigSettingsPage = () => {
         },
         customTheme: {
           primaryColor: '',
+          hoverColor: '',
           errorColor: '',
           successColor: '',
           warningColor: '',
@@ -135,6 +145,10 @@ const AppearanceConfigSettingsPage = () => {
         ...configValues,
         customTheme: getThemeConfig(configValues.customTheme),
       });
+
+      // Reset the manual edit flag
+      isHoverColorManuallyEdited.current = false;
+      lastPrimaryColor.current = '';
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -157,6 +171,22 @@ const AppearanceConfigSettingsPage = () => {
       ],
       props: {
         'data-testid': 'primaryColor',
+      },
+    },
+    {
+      name: 'hoverColor',
+      id: 'hoverColor',
+      label: 'Hover Color',
+      required: false,
+      type: FieldTypes.COLOR_PICKER,
+      rules: [
+        {
+          pattern: HEX_COLOR_CODE_REGEX,
+          message: t('message.hex-color-validation'),
+        },
+      ],
+      props: {
+        'data-testid': 'hoverColor',
       },
     },
     {
@@ -286,6 +316,45 @@ const AppearanceConfigSettingsPage = () => {
     },
   ];
 
+  const handleValuesChange = (
+    changedValues: Partial<
+      UIThemePreference['customLogoConfig'] & UIThemePreference['customTheme']
+    >,
+    allValues: UIThemePreference['customLogoConfig'] &
+      UIThemePreference['customTheme']
+  ) => {
+    // Check if primary color changed
+    if (
+      'primaryColor' in changedValues &&
+      changedValues.primaryColor !== lastPrimaryColor.current
+    ) {
+      lastPrimaryColor.current = changedValues.primaryColor ?? '';
+
+      // Always auto-generate hover color when primary color changes
+      if (changedValues.primaryColor) {
+        const palette = generatePalette(changedValues.primaryColor);
+        const generatedHoverColor = palette[2]; // 2nd element (index 3)
+
+        // Update form field
+        form.setFieldValue('hoverColor', generatedHoverColor);
+
+        // Update allValues with the generated hover color
+        allValues = { ...allValues, hoverColor: generatedHoverColor };
+
+        // Reset manual edit flag since primary color changed
+        isHoverColorManuallyEdited.current = false;
+      }
+    }
+
+    // Check if hover color was manually changed (without primary color change)
+    if ('hoverColor' in changedValues && !('primaryColor' in changedValues)) {
+      isHoverColorManuallyEdited.current = true;
+    }
+
+    // Update form state
+    setFormState({ ...allValues });
+  };
+
   useEffect(() => {
     const configValues = {
       ...applicationConfig?.customLogoConfig,
@@ -293,6 +362,11 @@ const AppearanceConfigSettingsPage = () => {
     };
     setFormState(configValues);
     form.setFieldsValue(configValues);
+
+    // Reset tracking refs when loading saved config
+    lastPrimaryColor.current =
+      applicationConfig?.customTheme?.primaryColor ?? '';
+    isHoverColorManuallyEdited.current = false;
   }, [applicationConfig]);
 
   return (
@@ -333,7 +407,7 @@ const AppearanceConfigSettingsPage = () => {
             }}
             layout="vertical"
             onFinish={handleSave}
-            onValuesChange={(_, allValues) => setFormState({ ...allValues })}>
+            onValuesChange={handleValuesChange}>
             <div className="white-label-card-wrapper m-b-md">
               <Card
                 className="white-label-config-card"
