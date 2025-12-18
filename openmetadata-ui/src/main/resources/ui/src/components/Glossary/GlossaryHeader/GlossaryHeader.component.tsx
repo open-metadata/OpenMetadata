@@ -365,7 +365,7 @@ const GlossaryHeader = ({
                   entity: t('label.glossary-term'),
                 })}
                 icon={StyleIcon}
-                id="rename-button"
+                id="edit-style-button"
                 name={t('label.style')}
               />
             ),

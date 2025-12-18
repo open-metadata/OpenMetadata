@@ -69,7 +69,7 @@ test.describe('Add Topic Asset to Glossary Term', () => {
 
     // Verify assets tab shows count
     await expect(
-      page.locator('[data-testid="assets"] [data-testid="filter-count"]')
+      page.getByTestId('assets').getByTestId('filter-count')
     ).toBeVisible();
   });
 });
@@ -105,7 +105,7 @@ test.describe('Add Pipeline Asset to Glossary Term', () => {
 
     // Verify assets tab shows count
     await expect(
-      page.locator('[data-testid="assets"] [data-testid="filter-count"]')
+      page.getByTestId('assets').getByTestId('filter-count')
     ).toBeVisible();
   });
 });
@@ -162,14 +162,15 @@ test.describe('Asset Card Summary Panel', () => {
     // Wait for assets to load
 
     // Check if assets tab is visible with count
-    const assetsTabCount = page.locator(
-      '[data-testid="assets"] [data-testid="filter-count"]'
-    );
+    const assetsTabCount = page
+      .getByTestId('assets')
+      .getByTestId('filter-count');
 
     if (await assetsTabCount.isVisible({ timeout: 5000 }).catch(() => false)) {
       // Click on the asset card link if available
       const assetLink = page
-        .locator('[data-testid="table-data-card"] [data-testid="entity-link"]')
+        .getByTestId('table-data-card')
+        .getByTestId('entity-link')
         .first();
 
       if (await assetLink.isVisible({ timeout: 3000 }).catch(() => false)) {
@@ -297,7 +298,7 @@ test.describe('Remove Asset from Glossary Term', () => {
 
     // Verify assets tab shows count
     await expect(
-      page.locator('[data-testid="assets"] [data-testid="filter-count"]')
+      page.getByTestId('assets').getByTestId('filter-count')
     ).toBeVisible();
 
     // Now try to remove the asset - look for remove/delete option
@@ -364,7 +365,7 @@ test.describe('Remove Asset via Entity Page', () => {
     await expect(entityHeader).toBeVisible({ timeout: 10000 });
 
     // Look for glossary term section
-    const glossarySection = page.locator('[data-testid="glossary-container"]');
+    const glossarySection = page.getByTestId('glossary-container');
 
     if (await glossarySection.isVisible({ timeout: 3000 }).catch(() => false)) {
       // Glossary term section exists - test passes
@@ -522,7 +523,7 @@ test.describe('Filter Assets by Entity Type', () => {
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
     // Verify assets tab is accessible and clickable
-    const assetsTab = page.locator('[data-testid="assets"]');
+    const assetsTab = page.getByTestId('assets');
 
     await expect(assetsTab).toBeVisible({ timeout: 10000 });
 
@@ -589,7 +590,7 @@ test.describe('Add Asset via Dropdown', () => {
 
         // Select the asset
         const assetCheckbox = page
-          .locator('[data-testid="asset-selection-modal"]')
+          .getByTestId('asset-selection-modal')
           .locator(`text=${topicEntity.entity.name}`)
           .first();
 
@@ -607,7 +608,7 @@ test.describe('Add Asset via Dropdown', () => {
 
     // Verify asset was added
     await expect(
-      page.locator('[data-testid="assets"] [data-testid="filter-count"]')
+      page.getByTestId('assets').getByTestId('filter-count')
     ).toBeVisible();
   });
 });
@@ -662,16 +663,14 @@ test.describe('Asset Cards Display', () => {
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
     // Verify assets tab shows count
-    const assetsCount = page.locator(
-      '[data-testid="assets"] [data-testid="filter-count"]'
-    );
+    const assetsCount = page.getByTestId('assets').getByTestId('filter-count');
 
     await expect(assetsCount).toBeVisible({ timeout: 10000 });
 
     // Verify asset card is displayed
     const assetCard = page
-      .locator('[data-testid="table-data-card"]')
-      .or(page.locator('[data-testid="entity-header-display-name"]'))
+      .getByTestId('table-data-card')
+      .or(page.getByTestId('entity-header-display-name'))
       .first();
 
     await expect(assetCard).toBeVisible({ timeout: 5000 });
@@ -681,8 +680,8 @@ test.describe('Asset Cards Display', () => {
 
     // Verify asset has entity type indicator
     const entityTypeIcon = page
-      .locator('[data-testid="table-data-card"]')
-      .locator('[data-testid="entity-link"]');
+      .getByTestId('table-data-card')
+      .getByTestId('entity-link');
 
     if (await entityTypeIcon.isVisible({ timeout: 2000 }).catch(() => false)) {
       await expect(entityTypeIcon).toBeVisible();
@@ -749,7 +748,7 @@ test.describe('Paginate Through Assets', () => {
     await goToAssetsTab(page, glossaryTerm.data.displayName);
 
     // Verify assets tab is accessible
-    const assetsTab = page.locator('[data-testid="assets"]');
+    const assetsTab = page.getByTestId('assets');
 
     await expect(assetsTab).toBeVisible({ timeout: 10000 });
 

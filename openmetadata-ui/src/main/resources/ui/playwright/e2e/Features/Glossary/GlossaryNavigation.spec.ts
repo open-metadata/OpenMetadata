@@ -97,9 +97,7 @@ test.describe('Glossary Navigation', () => {
     await expect(overviewTab).toBeVisible();
 
     // Verify description is visible on Overview tab
-    await expect(
-      page.locator('[data-testid="asset-description-container"]')
-    ).toBeVisible();
+    await expect(page.getByTestId('asset-description-container')).toBeVisible();
 
     // Check if Assets tab exists
     const assetsTab = page.getByTestId('assets');
@@ -130,9 +128,7 @@ test.describe('Glossary Navigation', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify we're back on overview with description visible
-    await expect(
-      page.locator('[data-testid="asset-description-container"]')
-    ).toBeVisible();
+    await expect(page.getByTestId('asset-description-container')).toBeVisible();
   });
 
   test('should navigate via breadcrumbs', async ({ page }) => {
@@ -140,7 +136,7 @@ test.describe('Glossary Navigation', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify breadcrumb is visible
-    const breadcrumb = page.locator('[data-testid="breadcrumb"]');
+    const breadcrumb = page.getByTestId('breadcrumb');
 
     await expect(breadcrumb).toBeVisible();
 
@@ -149,7 +145,7 @@ test.describe('Glossary Navigation', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify we're on the glossary listing page
-    await expect(page.locator('[data-testid="terms"]')).toBeVisible();
+    await expect(page.getByTestId('terms')).toBeVisible();
   });
 
   // NAV-04: Deep link to nested term works
@@ -167,7 +163,7 @@ test.describe('Glossary Navigation', () => {
     );
 
     // Verify breadcrumb shows path (contains glossary name in FQN format)
-    const breadcrumb = page.locator('[data-testid="breadcrumb"]');
+    const breadcrumb = page.getByTestId('breadcrumb');
 
     await expect(breadcrumb).toBeVisible();
     // Breadcrumb contains the glossary FQN (name) not displayName

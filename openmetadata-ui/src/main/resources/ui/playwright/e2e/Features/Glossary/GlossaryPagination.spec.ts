@@ -130,9 +130,7 @@ test.describe('Glossary tests', () => {
     await page.waitForResponse('api/v1/glossaryTerms?*');
 
     // Verify terms are visible again
-    await expect(
-      page.locator('[data-testid="glossary-terms-table"]')
-    ).toBeVisible();
+    await expect(page.getByTestId('glossary-terms-table')).toBeVisible();
   });
 
   test('should check for nested glossary term search', async ({ page }) => {

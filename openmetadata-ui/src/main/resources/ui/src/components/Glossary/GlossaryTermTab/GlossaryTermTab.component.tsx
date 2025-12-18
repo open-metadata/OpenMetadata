@@ -1152,6 +1152,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       <>
         <Input
           allowClear
+          data-testid="search-glossary-terms-input"
           placeholder={t('label.search-entity', {
             entity: t('label.term-plural'),
           })}

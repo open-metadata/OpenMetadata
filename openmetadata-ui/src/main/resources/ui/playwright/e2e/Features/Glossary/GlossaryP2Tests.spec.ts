@@ -974,7 +974,7 @@ test.describe('Drag Term with Children', () => {
         await parentDragHandle.dragTo(targetDragHandle);
 
         // Handle confirmation modal
-        const confirmModal = page.locator('[data-testid="confirmation-modal"]');
+        const confirmModal = page.getByTestId('confirmation-modal');
 
         if (
           await confirmModal.isVisible({ timeout: 3000 }).catch(() => false)
@@ -1055,7 +1055,7 @@ test.describe('Cancel Drag Term Operation', () => {
       await term1DragHandle.dragTo(term2DragHandle);
 
       // Wait for confirmation modal
-      const confirmModal = page.locator('[data-testid="confirmation-modal"]');
+      const confirmModal = page.getByTestId('confirmation-modal');
 
       if (await confirmModal.isVisible({ timeout: 2000 }).catch(() => false)) {
         // Cancel the operation
@@ -1375,7 +1375,7 @@ test.describe('Status Badge Display', () => {
     const termRow = page.locator(`[data-row-key="${termEscapedFqn}"]`);
 
     // Check for status badge/column
-    const statusCell = termRow.locator('[data-testid="status"]');
+    const statusCell = termRow.getByTestId('status');
 
     if (await statusCell.isVisible()) {
       // Verify status is shown (Draft, Approved, or InReview)
@@ -1470,7 +1470,7 @@ test.describe('Search No Results', () => {
 
       // Verify empty state or no results message
       const noDataMessage = page.getByText(/no.*found|no results|no data/i);
-      const emptyState = page.locator('[data-testid="no-data-placeholder"]');
+      const emptyState = page.getByTestId('no-data-placeholder');
       const tableRows = page.locator(
         '[data-testid="glossary-term-table"] tbody tr'
       );
@@ -1709,7 +1709,7 @@ test.describe('Navigate Between Versions', () => {
       await versionButton.click();
 
       // Check for version list/selector
-      const versionList = page.locator('[data-testid="version-list"]');
+      const versionList = page.getByTestId('version-list');
 
       if (await versionList.isVisible()) {
         const versionItems = versionList.locator(
@@ -1915,7 +1915,7 @@ test.describe('View Workflow History', () => {
     await glossaryTerm.visitEntityPage(page);
 
     // Look for status/workflow section
-    const statusSection = page.locator('[data-testid="status-badge"]');
+    const statusSection = page.getByTestId('status-badge');
 
     if (await statusSection.isVisible({ timeout: 3000 }).catch(() => false)) {
       // Hover to see history popover

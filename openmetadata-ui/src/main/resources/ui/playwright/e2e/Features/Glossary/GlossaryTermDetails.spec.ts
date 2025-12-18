@@ -257,9 +257,7 @@ test.describe('Edit Term via Table Modal', () => {
     await page.waitForSelector('[role="dialog"].edit-glossary-modal');
 
     // Verify the modal has the term name pre-filled
-    await expect(page.locator('[data-testid="name"]')).toHaveValue(
-      glossaryTerm.data.name
-    );
+    await expect(page.getByTestId('name')).toHaveValue(glossaryTerm.data.name);
 
     // Update the description
     const newDescription = 'Updated description via table edit modal';
@@ -269,10 +267,12 @@ test.describe('Edit Term via Table Modal', () => {
     // Add a synonym
     const newSynonym = 'TableEditSynonym';
     await page
-      .locator('[data-testid="synonyms"] input[type="search"]')
+      .getByTestId('synonyms')
+      .locator('input[type="search"]')
       .fill(newSynonym);
     await page
-      .locator('[data-testid="synonyms"] input[type="search"]')
+      .getByTestId('synonyms')
+      .locator('input[type="search"]')
       .press('Enter');
 
     // Save the changes
@@ -302,9 +302,9 @@ test.describe('Edit Term via Table Modal', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify the description was updated on the term details page
-    await expect(
-      page.locator('[data-testid="asset-description-container"]')
-    ).toContainText(newDescription);
+    await expect(page.getByTestId('asset-description-container')).toContainText(
+      newDescription
+    );
 
     // Verify the synonym was added
     await expect(page.getByTestId(newSynonym)).toBeVisible();
@@ -347,10 +347,12 @@ test.describe('Term Creation with All Fields', () => {
     const synonyms = ['synonym1', 'synonym2', 'alternative'];
     for (const synonym of synonyms) {
       await page
-        .locator('[data-testid="synonyms"] input[type="search"]')
+        .getByTestId('synonyms')
+        .locator('input[type="search"]')
         .fill(synonym);
       await page
-        .locator('[data-testid="synonyms"] input[type="search"]')
+        .getByTestId('synonyms')
+        .locator('input[type="search"]')
         .press('Enter');
     }
 
@@ -361,7 +363,7 @@ test.describe('Term Creation with All Fields', () => {
 
     // Add icon URL (custom style)
     const iconUrl = 'https://example.com/icon.png';
-    await page.locator('[data-testid="icon-url"]').fill(iconUrl);
+    await page.getByTestId('icon-url').fill(iconUrl);
 
     // Submit the term
     const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
@@ -396,8 +398,8 @@ test.describe('Term Creation with All Fields', () => {
     ).toBeVisible();
 
     // Verify description
-    await expect(
-      page.locator('[data-testid="asset-description-container"]')
-    ).toContainText('A comprehensive test term');
+    await expect(page.getByTestId('asset-description-container')).toContainText(
+      'A comprehensive test term'
+    );
   });
 });

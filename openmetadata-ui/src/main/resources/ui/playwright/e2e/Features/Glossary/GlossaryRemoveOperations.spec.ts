@@ -73,7 +73,7 @@ test.describe('Glossary Remove Operations', () => {
     // Remove owner - click the owner link to edit
     await page
       .getByTestId('glossary-right-panel-owner-link')
-      .locator('[data-testid="edit-owner"]')
+      .getByTestId('edit-owner')
       .click();
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -112,7 +112,7 @@ test.describe('Glossary Remove Operations', () => {
 
     // Verify reviewer is removed (Add button is shown)
     await expect(
-      page.locator('[data-testid="glossary-reviewer"] [data-testid="Add"]')
+      page.getByTestId('glossary-reviewer').getByTestId('Add')
     ).toBeVisible();
   });
 
@@ -141,7 +141,7 @@ test.describe('Glossary Remove Operations', () => {
     // Remove owner - click the edit icon
     await page
       .getByTestId('glossary-right-panel-owner-link')
-      .locator('[data-testid="edit-owner"]')
+      .getByTestId('edit-owner')
       .click();
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -182,7 +182,7 @@ test.describe('Glossary Remove Operations', () => {
 
     // Verify reviewer is removed (Add button is shown)
     await expect(
-      page.locator('[data-testid="glossary-reviewer"] [data-testid="Add"]')
+      page.getByTestId('glossary-reviewer').getByTestId('Add')
     ).toBeVisible();
   });
 
@@ -256,7 +256,7 @@ test.describe('Glossary Remove Operations', () => {
     await page.getByTestId('saveAssociatedTag').click();
 
     // Handle confirmation modal for glossary term tag updates
-    const confirmModal = page.locator('[data-testid="confirmation-modal"]');
+    const confirmModal = page.getByTestId('confirmation-modal');
 
     await expect(confirmModal).toBeVisible();
 
@@ -290,7 +290,7 @@ test.describe('Glossary Remove Operations', () => {
     await page.getByTestId('saveAssociatedTag').click();
 
     // Handle confirmation modal for glossary term tag updates
-    const confirmModal2 = page.locator('[data-testid="confirmation-modal"]');
+    const confirmModal2 = page.getByTestId('confirmation-modal');
 
     await expect(confirmModal2).toBeVisible();
 

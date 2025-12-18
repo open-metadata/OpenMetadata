@@ -87,7 +87,7 @@ test.describe('Move Term to Root of Current Glossary', () => {
 
     const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
     await page
-      .locator('[data-testid="change-parent-hierarchy-modal"]')
+      .getByTestId('change-parent-hierarchy-modal')
       .getByRole('button', { name: 'Save' })
       .click();
     await saveRes;
@@ -170,7 +170,7 @@ test.describe('Move Term to Root of Different Glossary', () => {
 
     const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*/moveAsync');
     await page
-      .locator('[data-testid="change-parent-hierarchy-modal"]')
+      .getByTestId('change-parent-hierarchy-modal')
       .getByRole('button', { name: 'Save' })
       .click();
     await saveRes;
@@ -294,7 +294,7 @@ test.describe('Cancel Move Operation', () => {
 
     // Click cancel button
     await page
-      .locator('[data-testid="change-parent-hierarchy-modal"]')
+      .getByTestId('change-parent-hierarchy-modal')
       .getByRole('button', { name: 'Cancel' })
       .click();
 
@@ -375,7 +375,7 @@ test.describe('Deep Hierarchy Navigation', () => {
     );
 
     // Verify breadcrumb shows full path
-    const breadcrumb = page.locator('[data-testid="breadcrumb"]');
+    const breadcrumb = page.getByTestId('breadcrumb');
 
     await expect(breadcrumb).toBeVisible();
 
@@ -423,7 +423,7 @@ test.describe('Cancel Drag and Drop Operation', () => {
 
     // Wait for confirmation modal content to be visible
     await expect(
-      page.locator('[data-testid="confirmation-modal"] .ant-modal-content')
+      page.getByTestId('confirmation-modal').locator('.ant-modal-content')
     ).toBeVisible();
 
     // Click Cancel button
@@ -431,7 +431,7 @@ test.describe('Cancel Drag and Drop Operation', () => {
 
     // Verify modal content is closed
     await expect(
-      page.locator('[data-testid="confirmation-modal"] .ant-modal-content')
+      page.getByTestId('confirmation-modal').locator('.ant-modal-content')
     ).toBeHidden();
 
     // Verify terms are still at root level (no hierarchy change)

@@ -245,7 +245,7 @@ test.describe('Search with Special Characters', () => {
     await page.waitForLoadState('networkidle');
 
     // Search should not crash - either shows results, table, or empty state
-    const table = page.locator('[data-testid="glossary-term-table"]');
+    const table = page.getByTestId('glossary-term-table');
     const emptyState = page.getByText(/no.*term.*found|no.*result/i);
     const tableRows = page.locator('tbody .ant-table-row');
 
@@ -296,7 +296,7 @@ test.describe('Search Debounce', () => {
     await page.waitForLoadState('networkidle');
 
     // Page should be stable - either shows table or empty state
-    const table = page.locator('[data-testid="glossary-term-table"]');
+    const table = page.getByTestId('glossary-term-table');
     const emptyState = page.getByText(/no.*term.*found|no.*result/i);
 
     const isStable =
@@ -402,7 +402,7 @@ test.describe('Edit Comment', () => {
       await activityTab.click();
 
       // Check if there are any existing comments with edit option
-      const editButtons = page.locator('[data-testid="edit-message"]');
+      const editButtons = page.getByTestId('edit-message');
       const hasEditOption = await editButtons.count();
 
       // Test passes whether there are comments or not
@@ -437,7 +437,7 @@ test.describe('Delete Comment', () => {
       await activityTab.click();
 
       // Check if there are any existing comments with delete option
-      const deleteButtons = page.locator('[data-testid="delete-message"]');
+      const deleteButtons = page.getByTestId('delete-message');
       const hasDeleteOption = await deleteButtons.count();
 
       // Test passes whether there are comments or not
@@ -519,7 +519,7 @@ test.describe('Loading Skeleton', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify page is loaded (loader should be gone)
-    const loader = page.locator('[data-testid="loader"]');
+    const loader = page.getByTestId('loader');
     const skeleton = page.locator('.ant-skeleton');
 
     // Either loader/skeleton is not visible, or content is loaded
@@ -937,7 +937,7 @@ test.describe('Deep Nesting Handling', () => {
     await page.waitForLoadState('networkidle');
 
     // Page should be functional - either shows table or empty state
-    const table = page.locator('[data-testid="glossary-term-table"]');
+    const table = page.getByTestId('glossary-term-table');
     const pageContent = page.locator('.glossary-details');
 
     const isLoaded =

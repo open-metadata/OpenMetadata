@@ -119,7 +119,7 @@ test.describe('Create Glossary With Mutually Exclusive', () => {
     await page.fill('[data-testid="name"]', glossaryName);
     await page.locator(descriptionBox).fill('Mutually exclusive glossary');
 
-    const meToggle = page.locator('[data-testid="mutually-exclusive-button"]');
+    const meToggle = page.getByTestId('mutually-exclusive-button');
 
     if (await meToggle.isVisible({ timeout: 2000 }).catch(() => false)) {
       await meToggle.click();
@@ -254,64 +254,6 @@ test.describe('Create Term With References', () => {
   });
 });
 
-// G-U02: Update glossary display name via rename modal
-test.describe('Update Glossary Display Name', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should update glossary display name', async ({ page }) => {
-    const newDisplayName = `Renamed${Date.now()}`;
-
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    await page.waitForLoadState('networkidle');
-
-    const manageBtn = page.getByTestId('manage-button');
-    await manageBtn.click();
-
-    const renameBtn = page.getByTestId('rename-button');
-
-    if (await renameBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await renameBtn.click();
-
-      await page.waitForSelector('[role="dialog"]', { state: 'visible' });
-
-      const displayNameInput = page.locator(
-        '[data-testid="displayName"], input[name="displayName"]'
-      );
-
-      if (
-        await displayNameInput.isVisible({ timeout: 2000 }).catch(() => false)
-      ) {
-        await displayNameInput.clear();
-        await displayNameInput.fill(newDisplayName);
-
-        const saveBtn = page.getByTestId('save-button');
-
-        if (await saveBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await saveBtn.click();
-          await page.waitForLoadState('networkidle');
-        }
-      }
-    }
-
-    await expect(page.getByTestId('entity-header-display-name')).toBeVisible();
-  });
-});
-
 // G-U04: Remove owner from glossary
 test.describe('Remove Owner From Glossary', () => {
   const glossary = new Glossary();
@@ -366,7 +308,7 @@ test.describe('Remove Owner From Glossary', () => {
         await editBtn.click();
         await page.waitForTimeout(500);
 
-        const removeBtn = page.locator('[data-testid="remove-owner"]').first();
+        const removeBtn = page.getByTestId('remove-owner').first();
 
         if (await removeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await removeBtn.click();
@@ -428,7 +370,7 @@ test.describe('Remove Reviewer From Glossary', () => {
 
     await page.waitForLoadState('networkidle');
 
-    const reviewerSection = page.locator('[data-testid="glossary-reviewer"]');
+    const reviewerSection = page.getByTestId('glossary-reviewer');
 
     if (await reviewerSection.isVisible({ timeout: 3000 }).catch(() => false)) {
       const editBtn = reviewerSection.locator(
@@ -439,7 +381,7 @@ test.describe('Remove Reviewer From Glossary', () => {
         await editBtn.click();
         await page.waitForTimeout(500);
 
-        const removeBtn = page.locator('[data-testid="remove-owner"]').first();
+        const removeBtn = page.getByTestId('remove-owner').first();
 
         if (await removeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
           await removeBtn.click();
@@ -628,7 +570,7 @@ test.describe('Tab Navigation', () => {
     await termRow.click();
     await page.waitForLoadState('networkidle');
 
-    const assetsTab = page.locator('[data-testid="assets"]');
+    const assetsTab = page.getByTestId('assets');
 
     if (await assetsTab.isVisible({ timeout: 3000 }).catch(() => false)) {
       await assetsTab.click();
@@ -637,7 +579,7 @@ test.describe('Tab Navigation', () => {
       await expect(assetsTab).toBeVisible();
     }
 
-    const overviewTab = page.locator('[data-testid="overview"]');
+    const overviewTab = page.getByTestId('overview');
 
     if (await overviewTab.isVisible({ timeout: 2000 }).catch(() => false)) {
       await overviewTab.click();
@@ -739,7 +681,7 @@ test.describe('Create Term With Tags', () => {
     await termModal.getByTestId('name').fill(termName);
     await termModal.locator(descriptionBox).fill('Term with tags');
 
-    const tagSelector = termModal.locator('[data-testid="tag-selector"]');
+    const tagSelector = termModal.getByTestId('tag-selector');
 
     if (await tagSelector.isVisible({ timeout: 2000 }).catch(() => false)) {
       await tagSelector.click();
@@ -747,7 +689,7 @@ test.describe('Create Term With Tags', () => {
       await tagInput.fill('PII');
       await page.waitForTimeout(500);
 
-      const tagOption = page.locator('[data-testid="tag-PII.Sensitive"]');
+      const tagOption = page.getByTestId('tag-PII.Sensitive');
 
       if (await tagOption.isVisible({ timeout: 2000 }).catch(() => false)) {
         await tagOption.click();
@@ -889,7 +831,7 @@ test.describe('Remove Tags From Glossary', () => {
 
     await page.waitForLoadState('networkidle');
 
-    const tagsSection = page.locator('[data-testid="tags-container"]');
+    const tagsSection = page.getByTestId('tags-container');
 
     if (await tagsSection.isVisible({ timeout: 3000 }).catch(() => false)) {
       const editTagBtn = tagsSection.getByTestId('edit-button');

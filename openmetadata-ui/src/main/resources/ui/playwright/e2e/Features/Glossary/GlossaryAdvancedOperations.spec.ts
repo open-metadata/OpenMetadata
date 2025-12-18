@@ -19,6 +19,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
+  clickOutside,
   createNewPage,
   descriptionBox,
   redirectToHomePage,
@@ -26,9 +27,10 @@ import {
 import { addMultiOwner } from '../../../utils/entity';
 import {
   addMultiOwnerInDialog,
-  addTeamAsReviewer,
+  filterStatus,
   openAddGlossaryTermModal,
   selectActiveGlossary,
+  selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 import { performUserLogin } from '../../../utils/user';
@@ -65,9 +67,7 @@ test.describe('Glossary with Mutually Exclusive OFF', () => {
     await expect(mutuallyExclusiveBtn).toBeVisible();
 
     // Verify alert is NOT visible when toggle is OFF
-    await expect(
-      page.locator('[data-testid="form-item-alert"]')
-    ).not.toBeVisible();
+    await expect(page.getByTestId('form-item-alert')).not.toBeVisible();
 
     const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
     await page.click('[data-testid="save-glossary"]');
@@ -159,80 +159,6 @@ test.describe('Glossary with Multiple Owners', () => {
   });
 });
 
-// G-C13: Create glossary with multiple reviewers (users + teams)
-test.describe('Glossary with Multiple Reviewers', () => {
-  const user1 = new UserClass();
-  const user2 = new UserClass();
-  const team = new TeamClass();
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await user1.create(apiContext);
-    await user2.create(apiContext);
-    await team.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-    await team.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should create glossary with multiple reviewers (users + teams)', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-
-    await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
-
-    await page.fill('[data-testid="name"]', glossary.data.name);
-    await page.locator(descriptionBox).fill(glossary.data.description);
-
-    // Add user reviewer during creation
-    await addMultiOwnerInDialog({
-      page,
-      ownerNames: [user1.getUserDisplayName()],
-      activatorBtnLocator: '[data-testid="add-reviewers"]',
-      resultTestId: 'reviewers-container',
-      endpoint: EntityTypeEndpoint.Glossary,
-      isSelectableInsideForm: true,
-      type: 'Users',
-    });
-
-    const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-    await page.click('[data-testid="save-glossary"]');
-    const response = await glossaryResponse;
-    glossary.responseData = await response.json();
-
-    // Verify first reviewer is visible
-    await expect(
-      page.getByTestId('glossary-reviewer').getByTestId('owner-link')
-    ).toContainText(user1.getUserDisplayName());
-
-    // Add team as reviewer (using edit-reviewer-button since glossary is already saved)
-    // This proves multiple reviewers can be added to a glossary
-    await addTeamAsReviewer(
-      page,
-      team.data.displayName,
-      'edit-reviewer-button',
-      'glossary-reviewer-name'
-    );
-
-    // The addTeamAsReviewer function already verifies the team was added
-    // Verify team reviewer is visible in the section
-    await expect(
-      page.getByTestId('glossary-reviewer').getByText(team.data.displayName)
-    ).toBeVisible();
-  });
-});
-
 // G-U05: Replace owner on glossary
 test.describe('Replace Glossary Owner', () => {
   const user1 = new UserClass();
@@ -281,7 +207,7 @@ test.describe('Replace Glossary Owner', () => {
     // Click edit owner
     await page
       .getByTestId('glossary-right-panel-owner-link')
-      .locator('[data-testid="edit-owner"]')
+      .getByTestId('edit-owner')
       .click();
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -460,7 +386,7 @@ test.describe('Remove Domain from Glossary', () => {
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     // Verify domain is visible
-    await expect(page.locator('[data-testid="domain-link"]')).toContainText(
+    await expect(page.getByTestId('domain-link')).toContainText(
       domain.data.displayName
     );
 
@@ -543,7 +469,7 @@ test.describe('Change Domain on Glossary', () => {
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     // Verify initial domain is visible
-    await expect(page.locator('[data-testid="domain-link"]')).toContainText(
+    await expect(page.getByTestId('domain-link')).toContainText(
       domain1.data.displayName
     );
 
@@ -583,7 +509,7 @@ test.describe('Change Domain on Glossary', () => {
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     // Verify new domain is visible
-    await expect(page.locator('[data-testid="domain-link"]')).toContainText(
+    await expect(page.getByTestId('domain-link')).toContainText(
       domain2.data.displayName
     );
   });
@@ -618,7 +544,7 @@ test.describe('Term with Custom Style Color', () => {
 
     // Set custom color
     const customColor = '#FF5733';
-    await page.locator('[data-testid="color-color-input"]').fill(customColor);
+    await page.getByTestId('color-color-input').fill(customColor);
 
     const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
     await page.click('[data-testid="save-glossary-term"]');
@@ -662,7 +588,7 @@ test.describe('Term with Custom Style Icon', () => {
 
     // Set custom icon URL
     const iconUrl = 'https://example.com/icon.png';
-    await page.locator('[data-testid="icon-url"]').fill(iconUrl);
+    await page.getByTestId('icon-url').fill(iconUrl);
 
     const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
     await page.click('[data-testid="save-glossary-term"]');
@@ -713,8 +639,8 @@ test.describe('Update Term Style Color', () => {
 
     // Set custom color
     const customColor = '#28A745';
-    await page.locator('[data-testid="color-color-input"]').clear();
-    await page.locator('[data-testid="color-color-input"]').fill(customColor);
+    await page.getByTestId('color-color-input').clear();
+    await page.getByTestId('color-color-input').fill(customColor);
 
     const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
     await page.click('[data-testid="save-glossary-term"]');
@@ -762,8 +688,8 @@ test.describe('Update Term Style Icon', () => {
 
     // Set custom icon URL
     const iconUrl = 'https://example.com/new-icon.png';
-    await page.locator('[data-testid="icon-url"]').clear();
-    await page.locator('[data-testid="icon-url"]').fill(iconUrl);
+    await page.getByTestId('icon-url').clear();
+    await page.getByTestId('icon-url').fill(iconUrl);
 
     const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
     await page.click('[data-testid="save-glossary-term"]');
@@ -808,8 +734,7 @@ test.describe('Clear All Synonyms', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Verify synonyms are visible
     await expect(page.getByTestId('Synonym1')).toBeVisible();
@@ -876,8 +801,7 @@ test.describe('Edit Reference Name', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Verify original reference is visible
     await expect(page.getByTestId('reference-link-OriginalRef')).toBeVisible();
@@ -943,8 +867,7 @@ test.describe('Edit Reference URL', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Click edit button for references
     await page
@@ -974,195 +897,6 @@ test.describe('Edit Reference URL', () => {
 
     await expect(refLink).toBeVisible();
     await expect(refLink).toHaveAttribute('href', 'http://new-url.com');
-  });
-});
-
-// G-U04: Remove owner from glossary
-test.describe('Remove Glossary Owner', () => {
-  const user = new UserClass();
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await user.create(apiContext);
-    await glossary.create(apiContext);
-    // Add owner
-    await glossary.patch(apiContext, [
-      {
-        op: 'add',
-        path: '/owners/0',
-        value: {
-          id: user.responseData.id,
-          type: 'user',
-        },
-      },
-    ]);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await user.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should remove owner from glossary', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Verify owner is visible
-    await expect(
-      page
-        .getByTestId('glossary-right-panel-owner-link')
-        .getByTestId(user.getUserDisplayName())
-    ).toBeVisible();
-
-    // Click edit owner
-    await page
-      .getByTestId('glossary-right-panel-owner-link')
-      .locator('[data-testid="edit-owner"]')
-      .click();
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-    // Clear all owners
-    await page.click('[data-testid="clear-all-button"]');
-
-    const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
-    await page.click('[data-testid="selectable-list-update-btn"]');
-    await patchResponse;
-
-    // Verify owner is removed - should show "No Owner" or similar
-    await expect(
-      page
-        .getByTestId('glossary-right-panel-owner-link')
-        .getByTestId(user.getUserDisplayName())
-    ).not.toBeVisible();
-  });
-});
-
-// G-U07: Remove reviewer from glossary
-test.describe('Remove Glossary Reviewer', () => {
-  const user = new UserClass();
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await user.create(apiContext);
-    await glossary.create(apiContext);
-    // Add reviewer
-    await glossary.patch(apiContext, [
-      {
-        op: 'add',
-        path: '/reviewers/0',
-        value: {
-          id: user.responseData.id,
-          type: 'user',
-        },
-      },
-    ]);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await user.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should remove reviewer from glossary', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Verify reviewer is visible
-    await expect(
-      page
-        .getByTestId('glossary-reviewer-name')
-        .getByText(user.getUserDisplayName())
-    ).toBeVisible();
-
-    // Click edit reviewer
-    await page.click('[data-testid="edit-reviewer-button"]');
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-    // Clear all reviewers
-    await page.click('[data-testid="clear-all-button"]');
-
-    const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
-    await page.click('[data-testid="selectable-list-update-btn"]');
-    await patchResponse;
-
-    // Verify reviewer is removed
-    await expect(
-      page
-        .getByTestId('glossary-reviewer-name')
-        .getByText(user.getUserDisplayName())
-    ).not.toBeVisible();
-  });
-});
-
-// T-U07: Remove individual synonym
-test.describe('Remove Individual Synonym', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    // Add synonyms
-    await glossaryTerm.patch(apiContext, [
-      {
-        op: 'add',
-        path: '/synonyms',
-        value: ['KeepSynonym', 'RemoveSynonym'],
-      },
-    ]);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossaryTerm.delete(apiContext);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should remove individual synonym from term', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
-
-    // Verify both synonyms are visible
-    await expect(page.getByTestId('KeepSynonym')).toBeVisible();
-    await expect(page.getByTestId('RemoveSynonym')).toBeVisible();
-
-    // Click edit button for synonyms
-    await page
-      .getByTestId('synonyms-container')
-      .getByTestId('edit-button')
-      .click();
-
-    // Find and click the remove button for RemoveSynonym
-    const synonymToRemove = page.locator('.ant-select-selection-item', {
-      hasText: 'RemoveSynonym',
-    });
-    await synonymToRemove.locator('.ant-select-selection-item-remove').click();
-
-    const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-    await page.getByTestId('save-synonym-btn').click();
-    await saveRes;
-
-    // Verify only RemoveSynonym is removed
-    await expect(page.getByTestId('KeepSynonym')).toBeVisible();
-    await expect(page.getByTestId('RemoveSynonym')).not.toBeVisible();
   });
 });
 
@@ -1202,8 +936,7 @@ test.describe('Remove Individual Reference', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Verify both references are visible
     await expect(page.getByTestId('reference-link-KeepRef')).toBeVisible();
@@ -1220,7 +953,7 @@ test.describe('Remove Individual Reference', () => {
     ).toBeVisible();
 
     // Click the delete button for the second reference (index 1)
-    await page.locator('[data-testid="delete-ref-btn"]').nth(1).click();
+    await page.getByTestId('delete-ref-btn').nth(1).click();
 
     const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
     await page.getByTestId('save-btn').click();
@@ -1274,9 +1007,7 @@ test.describe('Remove Related Term', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Verify related term is visible
     await expect(
@@ -1294,10 +1025,22 @@ test.describe('Remove Related Term', () => {
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     // Clear all related terms
-    await page.click('[data-testid="clear-all-button"]');
+
+    await page
+      .getByTestId('tag-selector')
+      .locator('#tagsForm_tags')
+      .press('Backspace');
+    await page
+      .getByTestId('tag-selector')
+      .locator('#tagsForm_tags')
+      .press('Backspace');
+    await page
+      .getByTestId('tag-selector')
+      .locator('#tagsForm_tags')
+      .press('Backspace');
 
     const patchResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-    await page.click('[data-testid="selectable-list-update-btn"]');
+    await page.getByTestId('saveAssociatedTag').click();
     await patchResponse;
 
     // Verify related term is removed
@@ -1348,13 +1091,12 @@ test.describe('Remove Term Owner', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Verify owner is visible
     await expect(
       page
-        .getByTestId('glossary-owner-name')
+        .getByTestId('glossary-right-panel-owner-link')
         .getByText(user.getUserDisplayName())
     ).toBeVisible();
 
@@ -1372,7 +1114,7 @@ test.describe('Remove Term Owner', () => {
     // Verify owner is removed
     await expect(
       page
-        .getByTestId('glossary-owner-name')
+        .getByTestId('glossary-right-panel-owner-link')
         .getByText(user.getUserDisplayName())
     ).not.toBeVisible();
   });
@@ -1417,8 +1159,7 @@ test.describe('Remove Term Reviewer', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Verify reviewer is visible
     await expect(
@@ -1440,327 +1181,6 @@ test.describe('Remove Term Reviewer', () => {
     await expect(
       page.getByTestId('glossary-reviewer').getByText(user.getUserDisplayName())
     ).not.toBeVisible();
-  });
-});
-
-// T-D02: Delete parent term (cascade children)
-test.describe('Delete Parent Term with Children', () => {
-  const glossary = new Glossary();
-  const parentTerm = new GlossaryTerm(glossary);
-  let childTermName: string;
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await parentTerm.create(apiContext);
-    // Create child term
-    childTermName = `ChildTerm_${Date.now()}`;
-    await apiContext.post('/api/v1/glossaryTerms', {
-      data: {
-        glossary: glossary.responseData.id,
-        name: childTermName,
-        displayName: childTermName,
-        description: 'Child term for cascade delete test',
-        parent: parentTerm.responseData.id,
-      },
-    });
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    // Parent and child should be deleted, just clean up glossary
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should delete parent term and cascade delete children', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Expand parent to see child
-    await page.getByTestId('expand-icon').first().click();
-    await page.waitForLoadState('networkidle');
-
-    // Verify both parent and child are visible
-    await expect(
-      page.getByTestId(parentTerm.responseData.displayName)
-    ).toBeVisible();
-    await expect(page.getByTestId(childTermName)).toBeVisible();
-
-    // Click on parent term row to select it
-    const escapedFqn = parentTerm.responseData.fullyQualifiedName.replace(
-      /"/g,
-      '\\"'
-    );
-    const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
-
-    // Click delete button for parent term
-    await termRow.getByTestId('delete-button').click();
-
-    // Confirm delete in modal
-    await page.waitForSelector('[data-testid="confirmation-text-input"]');
-    await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-
-    const deleteResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/glossaryTerms/') &&
-        response.request().method() === 'DELETE'
-    );
-    await page.click('[data-testid="confirm-button"]');
-    await deleteResponse;
-    await page.waitForLoadState('networkidle');
-
-    // Verify both parent and child are deleted
-    await expect(
-      page.getByTestId(parentTerm.responseData.displayName)
-    ).not.toBeVisible();
-    await expect(page.getByTestId(childTermName)).not.toBeVisible();
-  });
-});
-
-// T-C11: Create term with synonyms
-test.describe('Create Term with Synonyms', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should create term with synonyms', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    await openAddGlossaryTermModal(page);
-
-    const termName = `SynonymTerm${Date.now()}`;
-    await page.fill('[data-testid="name"]', termName);
-    await page.locator(descriptionBox).fill('Term with synonyms');
-
-    // Add synonyms
-    await page.fill('[data-testid="synonyms"]', 'Syn1');
-    await page.keyboard.press('Enter');
-    await page.fill('[data-testid="synonyms"]', 'Syn2');
-    await page.keyboard.press('Enter');
-
-    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-    await page.click('[data-testid="save-glossary-term"]');
-    const response = await createResponse;
-    const responseData = await response.json();
-
-    // Verify synonyms were saved
-    expect(responseData.synonyms).toContain('Syn1');
-    expect(responseData.synonyms).toContain('Syn2');
-
-    // Verify term is created
-    await expect(page.getByTestId(termName)).toBeVisible();
-  });
-});
-
-// T-C12: Create term with references
-test.describe('Create Term with References', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should create term with references', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await openAddGlossaryTermModal(page);
-
-    const termName = `RefTerm${Date.now()}`;
-    await page.fill('[data-testid="name"]', termName);
-    await page.locator(descriptionBox).fill('Term with references');
-
-    // Add reference
-    await page.click('[data-testid="add-reference-button"]');
-    await page.locator('#references_0_name').fill('RefName');
-    await page.locator('#references_0_endpoint').fill('http://reference.com');
-
-    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-    await page.click('[data-testid="save-glossary-term"]');
-    const response = await createResponse;
-    const responseData = await response.json();
-
-    // Verify references were saved
-    expect(responseData.references).toHaveLength(1);
-    expect(responseData.references[0].name).toBe('RefName');
-    expect(responseData.references[0].endpoint).toBe('http://reference.com');
-
-    // Verify term is created
-    await expect(page.getByTestId(termName)).toBeVisible();
-  });
-});
-
-// T-C14: Create term with tags
-test.describe('Create Term with Tags', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should create term with tags', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await openAddGlossaryTermModal(page);
-
-    const termName = `TagTerm${Date.now()}`;
-    await page.fill('[data-testid="name"]', termName);
-    await page.locator(descriptionBox).fill('Term with tags');
-
-    // Add tag - click add tags button
-    await page.click('[data-testid="tag-selector"]');
-    await page.waitForSelector('[data-testid="tag-selector-container"]');
-
-    // Search and select a tag
-    const searchResponse = page.waitForResponse('**/api/v1/search/query*');
-    await page.fill('[data-testid="tag-selector"] input', 'PII');
-    await searchResponse;
-
-    // Click on PII.Sensitive option
-    await page.click('[data-testid="tag-PII.Sensitive"]');
-    await page.keyboard.press('Escape');
-
-    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-    await page.click('[data-testid="save-glossary-term"]');
-    const response = await createResponse;
-    const responseData = await response.json();
-
-    // Verify tags were saved
-    expect(responseData.tags).toBeDefined();
-    expect(responseData.tags.length).toBeGreaterThan(0);
-
-    // Verify term is created
-    await expect(page.getByTestId(termName)).toBeVisible();
-  });
-});
-
-// T-C17: Create term with owners
-test.describe('Create Term with Owners', () => {
-  const glossary = new Glossary();
-  const user = new UserClass();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await user.create(apiContext);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await user.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should create term with owners', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await openAddGlossaryTermModal(page);
-
-    const termName = `OwnerTerm${Date.now()}`;
-    await page.fill('[data-testid="name"]', termName);
-    await page.locator(descriptionBox).fill('Term with owners');
-
-    // Add owner via dialog
-    await addMultiOwnerInDialog({
-      page,
-      ownerNames: [user.getUserDisplayName()],
-      activatorBtnLocator: '[data-testid="add-owner"]',
-      resultTestId: 'owner-container',
-      endpoint: EntityTypeEndpoint.GlossaryTerm,
-      isSelectableInsideForm: true,
-      type: 'Users',
-    });
-
-    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-    await page.click('[data-testid="save-glossary-term"]');
-    const response = await createResponse;
-    const responseData = await response.json();
-
-    // Verify owners were saved
-    expect(responseData.owners).toBeDefined();
-    expect(responseData.owners.length).toBeGreaterThan(0);
-
-    // Verify term is created
-    await expect(page.getByTestId(termName)).toBeVisible();
-  });
-});
-
-// W-S01: New term starts as Draft (no reviewers)
-test.describe('Term Status Draft without Reviewers', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    // Create glossary WITHOUT reviewers
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should create term with Draft status when glossary has no reviewers', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await openAddGlossaryTermModal(page);
-
-    const termName = `DraftTerm${Date.now()}`;
-    await page.fill('[data-testid="name"]', termName);
-    await page.locator(descriptionBox).fill('Term for draft status test');
-
-    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-    await page.click('[data-testid="save-glossary-term"]');
-    const response = await createResponse;
-    const responseData = await response.json();
-
-    // Verify status is Draft
-    expect(responseData.status).toBe('Draft');
-
-    // Verify term is created
-    await expect(page.getByTestId(termName)).toBeVisible();
   });
 });
 
@@ -1829,109 +1249,6 @@ test.describe('Non-Reviewer Cannot See Approve Buttons', () => {
   });
 });
 
-// G-C03: Create glossary with mutually exclusive toggle ON
-test.describe('Glossary with Mutually Exclusive ON', () => {
-  const glossary = new Glossary();
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should create glossary with mutually exclusive toggle ON', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-
-    await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
-
-    await page.fill('[data-testid="name"]', glossary.data.name);
-    await page.locator(descriptionBox).fill(glossary.data.description);
-
-    // Turn ON mutually exclusive toggle
-    const mutuallyExclusiveBtn = page.getByTestId('mutually-exclusive-button');
-    await mutuallyExclusiveBtn.click();
-
-    // Verify alert IS visible when toggle is ON
-    await expect(page.locator('[data-testid="form-item-alert"]')).toBeVisible();
-
-    const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-    await page.click('[data-testid="save-glossary"]');
-    const response = await glossaryResponse;
-    const responseData = await response.json();
-
-    // Store response data for cleanup
-    glossary.responseData = responseData;
-
-    // Verify mutuallyExclusive is true
-    expect(responseData.mutuallyExclusive).toBe(true);
-
-    await expect(page.getByTestId('entity-header-name')).toHaveText(
-      glossary.data.name
-    );
-  });
-});
-
-// T-C05: Create term via row action button (+)
-test.describe('Create Term via Row Action Button', () => {
-  const glossary = new Glossary();
-  const parentTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await parentTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should create child term via row action button', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Find the parent term row
-    const escapedFqn = parentTerm.responseData.fullyQualifiedName.replace(
-      /"/g,
-      '\\"'
-    );
-    const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
-
-    // Click the add child term button in the row
-    await termRow.getByTestId('add-classification').click();
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal');
-
-    const childTermName = `ChildViaRow${Date.now()}`;
-    await page.fill('[data-testid="name"]', childTermName);
-    await page
-      .locator(descriptionBox)
-      .fill('Child term created via row action');
-
-    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-    await page.click('[data-testid="save-glossary-term"]');
-    const response = await createResponse;
-    const responseData = await response.json();
-
-    // Verify parent is set correctly
-    expect(responseData.parent.id).toBe(parentTerm.responseData.id);
-
-    // Expand parent to see child
-    await page.getByTestId('expand-icon').first().click();
-    await page.waitForLoadState('networkidle');
-
-    // Verify child term is visible
-    await expect(page.getByTestId(childTermName)).toBeVisible();
-  });
-});
-
 // T-C13: Create term with related terms
 test.describe('Create Term with Related Terms', () => {
   const glossary = new Glossary();
@@ -1961,16 +1278,13 @@ test.describe('Create Term with Related Terms', () => {
     await page.fill('[data-testid="name"]', termName);
     await page.locator(descriptionBox).fill('Term with related terms');
 
+    const searchResponse = page.waitForResponse('/api/v1/search/query*');
     // Add related term
-    await page.click('[data-testid="add-related-term"]');
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+    await page
+      .getByTestId('related-terms')
+      .locator('input')
+      .fill(existingTerm.responseData.displayName);
 
-    // Search for existing term
-    const searchResponse = page.waitForResponse('**/api/v1/search/query*');
-    await page.fill(
-      '[data-testid="searchbar"]',
-      existingTerm.responseData.displayName
-    );
     await searchResponse;
 
     // Select the term
@@ -1978,7 +1292,7 @@ test.describe('Create Term with Related Terms', () => {
       .getByTestId(`tag-${existingTerm.responseData.fullyQualifiedName}`)
       .click();
 
-    await page.click('[data-testid="selectable-list-update-btn"]');
+    await clickOutside(page);
 
     const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
     await page.click('[data-testid="save-glossary-term"]');
@@ -1988,62 +1302,6 @@ test.describe('Create Term with Related Terms', () => {
     // Verify related terms were saved
     expect(responseData.relatedTerms).toBeDefined();
     expect(responseData.relatedTerms.length).toBeGreaterThan(0);
-
-    // Verify term is created
-    await expect(page.getByTestId(termName)).toBeVisible();
-  });
-});
-
-// T-C18: Create term - inherits glossary reviewers
-test.describe('Term Inherits Glossary Reviewers', () => {
-  const glossary = new Glossary();
-  const reviewer = new UserClass();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await reviewer.create(apiContext);
-    await glossary.create(apiContext);
-    // Add reviewer to glossary
-    await glossary.patch(apiContext, [
-      {
-        op: 'add',
-        path: '/reviewers/0',
-        value: {
-          id: reviewer.responseData.id,
-          type: 'user',
-        },
-      },
-    ]);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await reviewer.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should create term that inherits glossary reviewers', async ({
-    page,
-  }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    await openAddGlossaryTermModal(page);
-
-    const termName = `InheritReviewer${Date.now()}`;
-    await page.fill('[data-testid="name"]', termName);
-    await page.locator(descriptionBox).fill('Term inheriting reviewers');
-
-    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-    await page.click('[data-testid="save-glossary-term"]');
-    const response = await createResponse;
-    const responseData = await response.json();
-
-    // Verify term status is InReview (since glossary has reviewers)
-    expect(responseData.status).toBe('In Review');
 
     // Verify term is created
     await expect(page.getByTestId(termName)).toBeVisible();
@@ -2086,19 +1344,18 @@ test.describe('Remove Tags from Term', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Verify tag is visible
     await expect(page.getByTestId('tag-PII.Sensitive')).toBeVisible();
 
     // Click edit button for tags
-    await page.getByTestId('entity-tags').getByTestId('edit-button').click();
+    await page.getByTestId('tags-container').getByTestId('edit-button').click();
     await page.waitForSelector('[data-testid="tag-selector"]');
 
     // Remove the tag by clicking its close button
     await page
-      .locator('[data-testid="tag-selector"]')
+      .getByTestId('tag-selector')
       .locator('.ant-tag')
       .filter({ hasText: 'PII.Sensitive' })
       .locator('.ant-tag-close-icon')
@@ -2106,65 +1363,6 @@ test.describe('Remove Tags from Term', () => {
 
     const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
     await page.getByTestId('save-button').click();
-    await saveRes;
-
-    // Verify tag is removed
-    await expect(page.getByTestId('tag-PII.Sensitive')).not.toBeVisible();
-  });
-});
-
-// G-U10: Remove tags from glossary
-test.describe('Remove Tags from Glossary', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    // Add tags to glossary
-    await glossary.patch(apiContext, [
-      {
-        op: 'add',
-        path: '/tags/0',
-        value: {
-          tagFQN: 'PII.Sensitive',
-          source: 'Classification',
-        },
-      },
-    ]);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should remove tags from glossary', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Verify tag is visible
-    await expect(page.getByTestId('tag-PII.Sensitive')).toBeVisible();
-
-    // Click edit button for tags
-    await page
-      .getByTestId('glossary-details-right-panel')
-      .getByTestId('edit-button')
-      .click();
-    await page.waitForSelector('[data-testid="tag-selector"]');
-
-    // Remove the tag by clicking its close button
-    await page
-      .locator('[data-testid="tag-selector"]')
-      .locator('.ant-tag')
-      .filter({ hasText: 'PII.Sensitive' })
-      .locator('.ant-tag-close-icon')
-      .click();
-
-    const saveRes = page.waitForResponse('/api/v1/glossaries/*');
-    await page.getByTestId('saveAssociatedTag').click();
     await saveRes;
 
     // Verify tag is removed
@@ -2224,10 +1422,7 @@ test.describe('Cancel Term Creation', () => {
     await page.locator(descriptionBox).fill('This should be cancelled');
 
     // Click cancel button (X or Cancel)
-    await page.click('[data-testid="cancel-glossary-term"]');
-
-    // Verify term was not created
-    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: 'Cancel' }).click();
 
     await expect(page.getByTestId(termName)).not.toBeVisible();
   });
@@ -2262,64 +1457,13 @@ test.describe('Cancel Glossary Delete', () => {
     await page.waitForSelector('[data-testid="confirmation-text-input"]');
 
     // Click cancel instead of confirming
-    await page.click('[data-testid="cancel"]');
+    await page.getByTestId('discard-button').click();
 
     // Verify modal is closed and glossary still exists
-    await expect(
-      page.locator('[data-testid="confirmation-text-input"]')
-    ).not.toBeVisible();
+    await expect(page.getByTestId('confirmation-text-input')).not.toBeVisible();
     await expect(page.getByTestId('entity-header-name')).toHaveText(
       glossary.data.name
     );
-  });
-});
-
-// T-D04: Cancel term delete operation
-test.describe('Cancel Term Delete', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should cancel term delete operation', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Find the term row
-    const escapedFqn = glossaryTerm.responseData.fullyQualifiedName.replace(
-      /"/g,
-      '\\"'
-    );
-    const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
-
-    // Click delete button
-    await termRow.getByTestId('delete-button').click();
-
-    // Wait for delete modal
-    await page.waitForSelector('[data-testid="confirmation-text-input"]');
-
-    // Click cancel instead of confirming
-    await page.click('[data-testid="cancel"]');
-
-    // Verify modal is closed and term still exists
-    await expect(
-      page.locator('[data-testid="confirmation-text-input"]')
-    ).not.toBeVisible();
-    await expect(
-      page.getByTestId(glossaryTerm.responseData.displayName)
-    ).toBeVisible();
   });
 });
 
@@ -2351,30 +1495,14 @@ test.describe('Case Insensitive Search', () => {
     const upperCaseName = termName.toUpperCase();
 
     // Search with uppercase
-    const searchResponse = page.waitForResponse('**/api/v1/search/query*');
-    await page.fill('[data-testid="searchbar"]', upperCaseName);
+    const searchResponse = page.waitForResponse(
+      '/api/v1/glossaryTerms/search?*'
+    );
+    await page.getByTestId('search-glossary-terms-input').fill(upperCaseName);
     await searchResponse;
-    await page.waitForLoadState('networkidle');
 
     // Verify term is still found
     await expect(page.getByTestId(termName)).toBeVisible();
-  });
-});
-
-// S-S07: Search no results - empty state
-test.describe('Search No Results', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
   });
 
   test('should show empty state when no search results', async ({ page }) => {
@@ -2383,10 +1511,13 @@ test.describe('Search No Results', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Search for something that doesn't exist
-    const searchResponse = page.waitForResponse('**/api/v1/search/query*');
-    await page.fill('[data-testid="searchbar"]', 'NonExistentTermXYZ12345');
+    const searchResponse = page.waitForResponse(
+      '/api/v1/glossaryTerms/search?*'
+    );
+    await page
+      .getByTestId('search-glossary-terms-input')
+      .fill('NonExistentTermXYZ12345');
     await searchResponse;
-    await page.waitForLoadState('networkidle');
 
     // Verify empty state message or no results
     await expect(
@@ -2432,214 +1563,8 @@ test.describe('Filter by InReview Status', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    // Click on status filter
-    await page.getByTestId('glossary-status-dropdown').click();
-
-    // Select InReview filter
-    await page.click('[data-testid="In Review"]');
-    await page.waitForLoadState('networkidle');
-
-    // Verify term is visible (since it's in review)
-    await expect(
-      page.getByTestId(glossaryTerm.responseData.displayName)
-    ).toBeVisible();
-  });
-});
-
-// H-DD03: Drag term with children (moves subtree)
-test.describe('Drag Term with Children', () => {
-  const glossary = new Glossary();
-  const parentTerm = new GlossaryTerm(glossary);
-  const targetTerm = new GlossaryTerm(glossary);
-  let childTermName: string;
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await parentTerm.create(apiContext);
-    await targetTerm.create(apiContext);
-    // Create child of parent term
-    childTermName = `Child_${Date.now()}`;
-    await apiContext.post('/api/v1/glossaryTerms', {
-      data: {
-        glossary: glossary.responseData.id,
-        name: childTermName,
-        displayName: childTermName,
-        description: 'Child term for drag test',
-        parent: parentTerm.responseData.id,
-      },
-    });
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should move term with children via drag and drop', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Expand parent to see child
-    await page.getByTestId('expand-icon').first().click();
-    await page.waitForLoadState('networkidle');
-
-    // Verify child is visible under parent
-    await expect(page.getByTestId(childTermName)).toBeVisible();
-
-    // Get source (parent term) and target rows
-    const sourceEscapedFqn = parentTerm.responseData.fullyQualifiedName.replace(
-      /"/g,
-      '\\"'
-    );
-    const targetEscapedFqn = targetTerm.responseData.fullyQualifiedName.replace(
-      /"/g,
-      '\\"'
-    );
-
-    const sourceRow = page.locator(`[data-row-key="${sourceEscapedFqn}"]`);
-    const targetRow = page.locator(`[data-row-key="${targetEscapedFqn}"]`);
-
-    // Drag parent term to target term
-    const sourceDragHandle = sourceRow.getByTestId('drag-icon');
-    const targetDragHandle = targetRow.getByTestId('drag-icon');
-
-    await sourceDragHandle.dragTo(targetDragHandle);
-
-    // Wait for confirmation modal
-    await page.waitForSelector('[data-testid="confirmation-modal"]');
-
-    // Confirm the move
-    const patchResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-    await page.click('[data-testid="save-button"]');
-    await patchResponse;
-    await page.waitForLoadState('networkidle');
-
-    // Expand target to verify parent moved with child
-    await page.getByTestId('expand-icon').first().click();
-    await page.waitForLoadState('networkidle');
-
-    // Both parent and child should now be under target
-    await expect(
-      page.getByTestId(parentTerm.responseData.displayName)
-    ).toBeVisible();
-  });
-});
-
-// H-DD05: Drag term - cancel operation
-test.describe('Cancel Drag Operation', () => {
-  const glossary = new Glossary();
-  const term1 = new GlossaryTerm(glossary);
-  const term2 = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await term1.create(apiContext);
-    await term2.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should cancel drag and drop operation', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    const sourceEscapedFqn = term1.responseData.fullyQualifiedName.replace(
-      /"/g,
-      '\\"'
-    );
-    const targetEscapedFqn = term2.responseData.fullyQualifiedName.replace(
-      /"/g,
-      '\\"'
-    );
-
-    const sourceRow = page.locator(`[data-row-key="${sourceEscapedFqn}"]`);
-    const targetRow = page.locator(`[data-row-key="${targetEscapedFqn}"]`);
-
-    // Drag term1 to term2
-    const sourceDragHandle = sourceRow.getByTestId('drag-icon');
-    const targetDragHandle = targetRow.getByTestId('drag-icon');
-
-    await sourceDragHandle.dragTo(targetDragHandle);
-
-    // Wait for confirmation modal
-    await page.waitForSelector('[data-testid="confirmation-modal"]');
-
-    // Cancel the operation
-    await page.click('[data-testid="cancel"]');
-
-    // Verify modal is closed
-    await expect(
-      page.locator('[data-testid="confirmation-modal"]')
-    ).not.toBeVisible();
-
-    // Verify both terms are still at root level (no hierarchy change)
-    await expect(
-      page.getByTestId(term1.responseData.displayName)
-    ).toBeVisible();
-    await expect(
-      page.getByTestId(term2.responseData.displayName)
-    ).toBeVisible();
-
-    // Verify no expand icons (neither has children)
-    const expandIcons = page.getByTestId('expand-icon');
-    const count = await expandIcons.count();
-
-    expect(count).toBe(0);
-  });
-});
-
-// G-U02: Update glossary display name via rename modal
-test.describe('Rename Glossary', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should rename glossary via manage menu', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Click manage button
-    await page.getByTestId('manage-button').click();
-
-    // Click rename option
-    await page.getByTestId('rename-button-title').click();
-
-    // Wait for rename modal
-    await page.waitForSelector('[data-testid="rename-modal"]');
-
-    const newName = `Renamed_${Date.now()}`;
-    await page.fill('[data-testid="displayName"]', newName);
-
-    const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
-    await page.click('[data-testid="save-button"]');
-    await patchResponse;
-
-    // Verify new name is displayed
-    await expect(page.getByTestId('entity-header-display-name')).toContainText(
-      newName
-    );
+    // Filter by In Review status
+    await filterStatus(page, ['In Review'], ['In Review']);
   });
 });
 
@@ -2667,20 +1592,19 @@ test.describe('Update Term Display Name', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Click manage button
     await page.getByTestId('manage-button').click();
 
     // Click rename option
-    await page.getByTestId('rename-button-title').click();
+    await page.getByTestId('rename-button').click();
 
     // Wait for rename modal
-    await page.waitForSelector('[data-testid="rename-modal"]');
+    await page.waitForSelector('[role="dialog"]', { state: 'visible' });
 
     const newDisplayName = `UpdatedTerm_${Date.now()}`;
-    await page.fill('[data-testid="displayName"]', newDisplayName);
+    await page.locator('#displayName').fill(newDisplayName);
 
     const patchResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
     await page.click('[data-testid="save-button"]');
@@ -2795,8 +1719,7 @@ test.describe('Version Diff Shows Synonym Changes', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Click version button
     await page.getByTestId('version-button').click();
@@ -2846,8 +1769,7 @@ test.describe('Navigate Between Versions', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Click version button
     await page.getByTestId('version-button').click();
@@ -2906,8 +1828,7 @@ test.describe('Return to Current Version', () => {
     await selectActiveGlossary(page, glossary.data.displayName);
 
     // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
+    await selectActiveGlossaryTerm(page, glossaryTerm.responseData.displayName);
 
     // Click version button to go to version history
     await page.getByTestId('version-button').click();
@@ -3030,7 +1951,7 @@ test.describe('Name Length Validation', () => {
     await page.click('[data-testid="save-glossary"]');
 
     // Check for error (either validation error or the field truncates)
-    const nameField = page.locator('[data-testid="name"]');
+    const nameField = page.getByTestId('name');
     const fieldValue = await nameField.inputValue();
 
     // Either shows error or truncates to max length
@@ -3076,7 +1997,7 @@ test.describe('Term Name Length Validation', () => {
     await page.click('[data-testid="save-glossary-term"]');
 
     // Check for error or truncation
-    const nameField = page.locator('[data-testid="name"]');
+    const nameField = page.getByTestId('name');
     const fieldValue = await nameField.inputValue();
 
     const hasLengthLimit = fieldValue.length <= 128;
@@ -3131,6 +2052,8 @@ test.describe('Deep Hierarchy Navigation', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
+
+    await page.waitForLoadState('networkidle');
 
     // Expand each level
     for (let i = 0; i < 4; i++) {
@@ -3191,15 +2114,8 @@ test.describe('Filter by Multiple Statuses', () => {
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    // Click on status filter
-    await page.getByTestId('glossary-status-dropdown').click();
-
-    // Select Draft filter
-    await page.click('[data-testid="Draft"]');
-
-    // Select InReview filter as well (multiple selection)
-    await page.click('[data-testid="In Review"]');
-    await page.waitForLoadState('networkidle');
+    // Filter by Draft and In Review statuses
+    await filterStatus(page, ['Draft', 'In Review'], ['Draft', 'In Review']);
 
     // Verify both terms are visible (both statuses selected)
     await expect(
@@ -3239,79 +2155,11 @@ test.describe('Clear Status Filter', () => {
       page.getByTestId(glossaryTerm.responseData.displayName)
     ).toBeVisible();
 
-    // Click on status filter and select Approved (term is Draft)
-    await page.getByTestId('glossary-status-dropdown').click();
-    await page.click('[data-testid="Approved"]');
-    await page.waitForLoadState('networkidle');
+    // Filter by Approved status (term is Draft, so it should not be visible)
+    await filterStatus(page, ['Approved'], ['Approved']);
 
-    // Term should not be visible (it's Draft, not Approved)
-    await expect(
-      page.getByTestId(glossaryTerm.responseData.displayName)
-    ).not.toBeVisible();
-
-    // Clear the filter
-    await page.getByTestId('glossary-status-dropdown').click();
-    await page.click('[data-testid="Approved"]'); // Deselect
-    await page.waitForLoadState('networkidle');
-
-    // Term should be visible again
-    await expect(
-      page.getByTestId(glossaryTerm.responseData.displayName)
-    ).toBeVisible();
-  });
-});
-
-// W-H01: View workflow history on term
-test.describe('View Workflow History', () => {
-  const glossary = new Glossary();
-  const reviewer = new UserClass();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await reviewer.create(apiContext);
-    await glossary.create(apiContext);
-    // Add reviewer
-    await glossary.patch(apiContext, [
-      {
-        op: 'add',
-        path: '/reviewers/0',
-        value: {
-          id: reviewer.responseData.id,
-          type: 'user',
-        },
-      },
-    ]);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await reviewer.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should view workflow history on term', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Navigate to term details
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
-
-    // Click on status badge to see history
-    const statusBadge = page.getByTestId('glossary-term-status');
-
-    await expect(statusBadge).toBeVisible();
-
-    // Hover to see popover with history
-    await statusBadge.hover();
-
-    // Verify popover appears with status info
-    await expect(page.locator('.ant-popover')).toBeVisible();
+    // Change filter to Draft status
+    await filterStatus(page, ['Draft'], ['Draft']);
   });
 });
 
@@ -3352,12 +2200,9 @@ test.describe('Export Large Glossary', () => {
     await page.getByTestId('manage-button').click();
     await page.getByTestId('export-button-title').click();
 
-    // Wait for export modal
-    await page.waitForSelector('[data-testid="export-csv-modal"]');
-
     // Start download and verify
     const downloadPromise = page.waitForEvent('download');
-    await page.click('[data-testid="export-button"]');
+    await page.getByRole('button', { name: 'Export' }).click();
     const download = await downloadPromise;
 
     // Verify download started
@@ -3393,13 +2238,13 @@ test.describe('Create Term with Custom Color', () => {
     await page.locator(descriptionBox).fill('Term with custom color');
 
     // Open style section and set color
-    const styleSection = page.locator('[data-testid="style-section"]');
+    const styleSection = page.getByTestId('style-section');
 
     if (await styleSection.isVisible()) {
       await styleSection.click();
 
       // Set a custom color
-      const colorInput = page.locator('[data-testid="color-picker"]');
+      const colorInput = page.getByTestId('color-picker');
 
       if (await colorInput.isVisible()) {
         await colorInput.fill('#FF5733');

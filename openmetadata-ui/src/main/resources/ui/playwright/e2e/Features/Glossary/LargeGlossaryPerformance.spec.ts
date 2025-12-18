@@ -199,7 +199,7 @@ test.describe('Large Glossary Performance Tests', () => {
   test('should expand individual terms', async ({ page }) => {
     // Find a term with children (Term_5)
     const term5Row = page.locator('tr', { hasText: 'Term_1' }).first();
-    const expandIcon = term5Row.locator('[data-testid="expand-icon"]');
+    const expandIcon = term5Row.getByTestId('expand-icon');
 
     // Click to expand
     await expandIcon.click();
@@ -403,7 +403,7 @@ test.describe('Large Glossary Child Term Performace', () => {
   }) => {
     // Find a term with children (Term_5)
     const term5Row = page.locator('tr', { hasText: 'Term_1' }).first();
-    const expandIcon = term5Row.locator('[data-testid="expand-icon"]');
+    const expandIcon = term5Row.getByTestId('expand-icon');
 
     // Click to expand
     const childTermReq = page.waitForResponse(
