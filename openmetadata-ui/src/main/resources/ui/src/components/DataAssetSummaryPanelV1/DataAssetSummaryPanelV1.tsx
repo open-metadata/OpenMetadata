@@ -19,16 +19,16 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../utils/date-time/DateTimeUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../utils/EntityLineageUtils';
 import { getEntityChildDetails } from '../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../utils/EntityUtils';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../utils/date-time/DateTimeUtils';
 
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
@@ -46,11 +46,6 @@ import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import {
-  DataAssetSummaryPanelProps,
-  TestCaseStatusCounts,
-} from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
-import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../common/DescriptionSection/DescriptionSection';
@@ -63,6 +58,11 @@ import OwnersSection from '../common/OwnersSection/OwnersSection';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsSection from '../common/TagsSection/TagsSection';
 import TierSection from '../common/TierSection/TierSection';
+import {
+  DataAssetSummaryPanelProps,
+  TestCaseStatusCounts,
+} from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
+import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
@@ -210,7 +210,12 @@ export const DataAssetSummaryPanelV1 = ({
         downstreamCount: downstreamNodes.length,
         shouldShowLineageSection: true,
       };
-    }, [lineageData, entityType, dataAsset.fullyQualifiedName, isLineageLoading]);
+    }, [
+      lineageData,
+      entityType,
+      dataAsset.fullyQualifiedName,
+      isLineageLoading,
+    ]);
 
   const fetchIncidentCount = useCallback(async () => {
     if (

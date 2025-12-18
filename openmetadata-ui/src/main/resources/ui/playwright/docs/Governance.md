@@ -2,7 +2,7 @@
 
 # Governance
 
-> **6 Components** | **26 Files** | **503 Tests** | **933 Scenarios** 🚀
+> **6 Components** | **27 Files** | **509 Tests** | **939 Scenarios** 🚀
 
 ## Table of Contents
 - [Custom Properties](#custom-properties)
@@ -798,7 +798,7 @@
 ## Tags
 
 <details open>
-<summary>📄 <b>Tag.spec.ts</b> (18 tests, 22 scenarios)</summary>
+<summary>📄 <b>Tag.spec.ts</b> (21 tests, 25 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Tag.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Tag.spec.ts)
 
@@ -817,6 +817,8 @@
 | | ↳ *Delete Asset* | |
 | 8 | **Tag Page with Admin Roles** - Create tag with domain | Create tag with domain |
 | 9 | **Tag Page with Admin Roles** - Verify Owner Add Delete | Owner Add Delete |
+| 10 | **Tag Page with Admin Roles** - Verify tag enable/disable toggle | Tag enable/disable toggle |
+| 11 | **Tag Page with Admin Roles** - Tag toggle should be disabled when classification is disabled | Tag toggle should be disabled when classification is disabled |
 
 ### Tag Page with Data Consumer Roles
 
@@ -828,6 +830,7 @@
 | 4 | **Tag Page with Data Consumer Roles** - Add and Remove Assets for Data Consumer | Add and Remove Assets for Data Consumer |
 | | ↳ *Add Asset * | |
 | | ↳ *Delete Asset* | |
+| 5 | **Tag Page with Data Consumer Roles** - Tag toggle should be disabled for user without EditAll permission | Tag toggle should be disabled for user without EditAll permission |
 
 ### Tag Page with Data Steward Roles
 
@@ -851,7 +854,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>Tags.spec.ts</b> (4 tests, 12 scenarios)</summary>
+<summary>📄 <b>Tags.spec.ts</b> (5 tests, 13 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Tags.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Tags.spec.ts)
 
@@ -872,6 +875,7 @@
 | 2 | Search tag using classification display name should work | Search tag using classification display name should work |
 | 3 | Verify system classification term counts | System classification term counts |
 | 4 | Verify Owner Add Delete | Owner Add Delete |
+| 5 | Disabled tag should not allow adding assets from Assets tab | Disabled tag should not allow adding assets from Assets tab |
 
 </details>
 
@@ -891,6 +895,20 @@
 | | ↳ *Accept all Suggestion* | |
 | 2 | **Tags Suggestions Table Entity** - Accept the Suggestions for Tier Card | Accept the Suggestions for Tier Card |
 | 3 | **Tags Suggestions Table Entity** - Reject All Suggestions | Reject All Suggestions |
+
+</details>
+
+<details open>
+<summary>📄 <b>SystemCertificationTags.spec.ts</b> (2 tests, 2 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/SystemCertificationTags.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SystemCertificationTags.spec.ts)
+
+### System Level Certification Tags
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **System Level Certification Tags** - should NOT show disabled system certification tag in dropdown | NOT show disabled system certification tag in dropdown |
+| 2 | **System Level Certification Tags** - should NOT show any system certification tags when classification is disabled | NOT show any system certification tags when classification is disabled |
 
 </details>
 

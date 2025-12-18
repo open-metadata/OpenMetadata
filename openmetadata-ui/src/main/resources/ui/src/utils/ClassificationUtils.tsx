@@ -17,7 +17,6 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
@@ -30,6 +29,7 @@ import { getEntityVersionByField } from './EntityVersionUtils';
 import { t } from './i18next/LocalUtil';
 import { renderIcon } from './IconUtils';
 import { getClassificationTagPath } from './RouterUtils';
+import { descriptionTableObject } from './TableColumn.util';
 import { getDeleteIcon } from './TagsUtils';
 
 export const getDeleteButtonData = (
@@ -126,27 +126,7 @@ export const getCommonColumns = (options?: {
         <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
       ),
     },
-    {
-      title: t('label.description'),
-      dataIndex: 'description',
-      key: 'description',
-      width: 300,
-      render: (text: string) => (
-        <div className="cursor-pointer d-flex">
-          <div>
-            {text ? (
-              <RichTextEditorPreviewerNew markdown={text} />
-            ) : (
-              <span className="text-grey-muted">
-                {t('label.no-entity', {
-                  entity: t('label.description'),
-                })}
-              </span>
-            )}
-          </div>
-        </div>
-      ),
-    }
+    ...descriptionTableObject<Tag>({ width: 300 })
   );
 
   return columns;
