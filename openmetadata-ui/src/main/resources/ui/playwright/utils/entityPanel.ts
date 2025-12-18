@@ -12,7 +12,6 @@
  */
 import { expect, Page } from '@playwright/test';
 import { redirectToExplorePage } from './common';
-import { waitForAllLoadersToDisappear } from './entity';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -359,7 +358,9 @@ export async function navigateToExploreAndSelectTable(
 ) {
   await redirectToExplorePage(page);
 
-  await waitForAllLoadersToDisappear(page);
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 
   const permissionsResponse = page.waitForResponse((response) =>
     response.url().includes('/permissions')
