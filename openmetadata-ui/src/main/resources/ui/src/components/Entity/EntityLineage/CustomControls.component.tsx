@@ -331,7 +331,7 @@ const CustomControls: FC<{
           type: t('label.asset-or-column'),
         })}
         searchValue={searchValue}
-        typingInterval={0}
+        typingInterval={300}
         onSearch={onSearchValueChange}
       />
     ) : (

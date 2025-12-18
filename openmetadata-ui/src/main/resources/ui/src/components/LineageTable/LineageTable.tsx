@@ -749,17 +749,12 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     } else {
       const nodes =
         lineageDirection === LineageDirection.Downstream
-          ? downstreamColumnLineageNodes.slice(
-              currentPage - 1,
-              currentPage - 1 + pageSize
-            )
+          ? downstreamColumnLineageNodes
           : upstreamColumnLineageNodes;
-
-      const source = nodes.slice(currentPage - 1, currentPage - 1 + pageSize);
 
       return {
         columns: columnImpactColumns,
-        dataSource: source,
+        dataSource: nodes,
       };
     }
   }, [
@@ -770,8 +765,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     lineageDirection,
     downstreamColumnLineageNodes,
     upstreamColumnLineageNodes,
-    pageSize,
-    currentPage,
   ]);
 
   // Memoized paging props to avoid unnecessary re-renders
