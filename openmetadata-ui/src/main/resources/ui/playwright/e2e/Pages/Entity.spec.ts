@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
@@ -55,22 +55,22 @@ import {
 import { visitServiceDetailsPage } from '../../utils/service';
 
 const entities = {
-  "Api Endpoint": ApiEndpointClass,
-  "Table": TableClass,
-  "Stored Procedure": StoredProcedureClass,
-  "Dashboard": DashboardClass,
-  "Pipeline": PipelineClass,
-  "Topic": TopicClass,
-  "Ml Model": MlModelClass,
-  "Container": ContainerClass,
-  "Search Index": SearchIndexClass,
-  "Dashboard Data Model": DashboardDataModelClass,
-  "Metric": MetricClass,
-  "Chart": ChartClass,
-  "Directory": DirectoryClass,
-  "File": FileClass,
-  "Spreadsheet": SpreadsheetClass,
-  "Worksheet": WorksheetClass,
+  'Api Endpoint': ApiEndpointClass,
+  Table: TableClass,
+  'Stored Procedure': StoredProcedureClass,
+  Dashboard: DashboardClass,
+  Pipeline: PipelineClass,
+  Topic: TopicClass,
+  'Ml Model': MlModelClass,
+  Container: ContainerClass,
+  'Search Index': SearchIndexClass,
+  'Dashboard Data Model': DashboardDataModelClass,
+  Metric: MetricClass,
+  Chart: ChartClass,
+  Directory: DirectoryClass,
+  File: FileClass,
+  Spreadsheet: SpreadsheetClass,
+  Worksheet: WorksheetClass,
 } as const;
 
 const adminUser = new UserClass();

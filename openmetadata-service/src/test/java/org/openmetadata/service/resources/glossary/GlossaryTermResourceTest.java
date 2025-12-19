@@ -4689,5 +4689,76 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     deleteEntity(root.getId(), true, true, ADMIN_AUTH_HEADERS);
     glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  void test_moveGlossaryTermWithApprovalWorkflow(TestInfo test) throws Exception {
+    // Ensure the workflow is active
+    WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
+
+    // Create a glossary with a reviewer
+    Glossary glossary = createGlossary(test, List.of(USER1_REF), null);
+
+    // Create a term that will be a parent and approve it
+    GlossaryTerm parentTerm = createTerm(glossary, null, "parentTermForMove");
+    assertEquals(EntityStatus.DRAFT, parentTerm.getEntityStatus());
+    waitForTaskToBeCreated(parentTerm.getFullyQualifiedName());
+    Thread parentTask = assertApprovalTask(parentTerm, TaskStatus.Open);
+    taskTest.resolveTask(
+        parentTask.getTask().getId(),
+        new ResolveTask().withNewValue("Approved"),
+        authHeaders(USER1.getName()));
+    parentTerm = getEntity(parentTerm.getId(), "", authHeaders(USER1.getName()));
+    assertEquals(EntityStatus.APPROVED, parentTerm.getEntityStatus());
+
+    // Create a term that will be moved
+    GlossaryTerm termToMove = createTerm(glossary, null, "termToMoveWithWorkflow");
+    assertEquals(EntityStatus.DRAFT, termToMove.getEntityStatus());
+    waitForTaskToBeCreated(termToMove.getFullyQualifiedName());
+    Thread task = assertApprovalTask(termToMove, TaskStatus.Open);
+
+    // Move the term to be a child of the parentTerm
+    MoveGlossaryTermMessage moveMessage =
+        receiveMoveEntityMessage(termToMove.getId(), parentTerm.getEntityReference());
+    assertEquals("COMPLETED", moveMessage.getStatus());
+
+    // After moving, the task should still be resolvable
+    taskTest.resolveTask(
+        task.getTask().getId(),
+        new ResolveTask().withNewValue("Approved"),
+        authHeaders(USER1.getName()));
+
+    // Check that the term is now approved
+    GlossaryTerm movedTerm = getEntity(termToMove.getId(), "parent", authHeaders(USER1.getName()));
+    assertEquals(EntityStatus.APPROVED, movedTerm.getEntityStatus());
+    assertEquals(parentTerm.getId(), movedTerm.getParent().getId());
+  }
+
+  @Test
+  void test_renameGlossaryTermWithApprovalWorkflow(TestInfo test) throws IOException {
+    // Ensure the workflow is active
+    WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
+
+    // Create a glossary with a reviewer
+    Glossary glossary = createGlossary(test, List.of(USER1_REF), null);
+
+    // Create a term
+    GlossaryTerm term = createTerm(glossary, null, "termToRename");
+    assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+    waitForTaskToBeCreated(term.getFullyQualifiedName());
+    Thread task = assertApprovalTask(term, TaskStatus.Open);
+
+    term = getEntityByName(term.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Rename the term
+    renameGlossaryTermAndCheck(term, "renamedTerm");
+
+    // After renaming, the task should still be resolvable
+    taskTest.resolveTask(
+        task.getTask().getId(),
+        new ResolveTask().withNewValue("Approved"),
+        authHeaders(USER1.getName()));
+
+    // Check that the term is now approved
+    GlossaryTerm renamedTerm = getEntity(term.getId(), authHeaders(USER1.getName()));
+    assertEquals(EntityStatus.APPROVED, renamedTerm.getEntityStatus());
+    assertEquals("renamedTerm", renamedTerm.getName());
   }
 }
