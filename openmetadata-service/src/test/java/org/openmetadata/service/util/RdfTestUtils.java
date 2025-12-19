@@ -26,8 +26,7 @@ public class RdfTestUtils {
    * Check if RDF is enabled for the current test run
    */
   public static boolean isRdfEnabled() {
-    RdfRepository repository = RdfRepository.getInstance();
-    return repository != null && repository.isEnabled();
+    return "true".equals(System.getProperty("enableRdf"));
   }
 
   /**
