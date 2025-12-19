@@ -96,7 +96,7 @@
     "notistack": "^3.0.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "storybook": "^8.6.14",
+    "storybook": "^8.6.15",
     "terser": "^5.0.0",
     "typescript": "^4.2.4",
     "vite": "^7.1.11",
