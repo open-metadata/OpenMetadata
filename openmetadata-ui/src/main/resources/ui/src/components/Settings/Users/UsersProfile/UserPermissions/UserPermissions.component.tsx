@@ -243,7 +243,6 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             <div className="team-permission m-b-lg" key={index}>
               <Space className="w-full" direction="vertical">
                 <Space>
-                  {}
                   <Text strong>{t('label.team')}: </Text>
                   <Link
                     to={getEntityLink(
