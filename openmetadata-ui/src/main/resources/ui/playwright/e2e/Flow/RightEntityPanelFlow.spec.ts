@@ -526,9 +526,11 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
 
       // First verify the Overview tab shows lineage counts in LineageSection
-      await summaryPanel.getByRole('menuitem', {
-        name: /overview/i,
-      }).click();
+      await summaryPanel
+        .getByRole('menuitem', {
+          name: /overview/i,
+        })
+        .click();
 
       await adminPage.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -562,6 +564,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
         // Verify navigation to lineage route
         await adminPage.waitForURL(/.*\/lineage$/);
+
         expect(adminPage.url()).toContain('/lineage');
 
         // Navigate back to explore and reopen the entity panel

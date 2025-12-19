@@ -2,7 +2,7 @@
 
 # Integration
 
-> **1 Components** | **5 Files** | **56 Tests** | **59 Scenarios** 🚀
+> **1 Components** | **5 Files** | **52 Tests** | **55 Scenarios** 🚀
 
 ## Table of Contents
 - [Connectors](#connectors)
@@ -14,7 +14,7 @@
 ## Connectors
 
 <details open>
-<summary>📄 <b>ServiceIngestion.spec.ts</b> (49 tests, 49 scenarios)</summary>
+<summary>📄 <b>ServiceIngestion.spec.ts</b> (45 tests, 45 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/nightly/ServiceIngestion.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/nightly/ServiceIngestion.spec.ts)
 
@@ -110,15 +110,6 @@
 | 3 | **Redshift Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
 | 4 | **Redshift Service** - Service specific tests | Tests database-specific ingestion behaviors  Runs additional checks for Postgres, Redshift, and MySQL services |
 | 5 | **Redshift Service** - Delete Redshift Service service | Tests service deletion flow  Deletes the service and validates removal |
-
-### Airflow Service
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Airflow Service** - Create & Ingest Airflow Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
-| 2 | **Airflow Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
-| 3 | **Airflow Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
-| 4 | **Airflow Service** - Delete Airflow Service service | Tests service deletion flow  Deletes the service and validates removal |
 
 ### Service form
 

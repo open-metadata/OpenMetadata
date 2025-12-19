@@ -25,7 +25,3 @@
 
 # Run Prettier
 'src/**': prettier --write
-
-# Auto-generate Playwright documentation
-'playwright/e2e/**/*.spec.ts':
-  - node playwright/doc-generator/generate.js
