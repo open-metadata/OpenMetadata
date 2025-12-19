@@ -19,7 +19,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonpatch.JsonPatchException;
 import jakarta.json.*;
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -186,57 +185,5 @@ public class JsonPatchUtils {
     LOG.warn("Failed to find specific operation for patch path {}", path);
     return MetadataOperation
         .EDIT_ALL; // If path is not mapped to any edit field, then return edit all
-  }
-
-  private static boolean isTagPath(String path) {
-    return path.matches("^/tags/\\d+$") || path.matches("^/columns/\\d+/tags/\\d+$");
-  }
-
-  public static JsonPatch patchNewTagsWithAppliedBy(JsonPatch patch, String appliedBy) {
-    // Convert JsonPatch to JsonArray to inspect/modify operations
-    JsonArray operations = patch.toJsonArray();
-
-    // Create a new array with modified operations
-    JsonArrayBuilder modifiedOpsBuilder = Json.createArrayBuilder();
-
-    for (JsonValue operation : operations) {
-      JsonObject op = (JsonObject) operation;
-      String opType = op.getString("op");
-      String path = op.getString("path");
-
-      // Patch Tag operations
-      if ("add".equals(opType) && isTagPath(path)) {
-        JsonValue value = op.get("value");
-
-        JsonObject tagJson;
-
-        try {
-          TagLabel tag = OBJECT_MAPPER.readValue(value.toString(), TagLabel.class);
-          tagJson = toJakartaJsonObject(tag.withAppliedBy(appliedBy));
-        } catch (JsonProcessingException e) {
-          LOG.warn("Failed to parse TagLabel from node: {}", value, e);
-          modifiedOpsBuilder.add(op);
-          continue;
-        }
-
-        JsonObjectBuilder newOpBuilder =
-            Json.createObjectBuilder().add("op", opType).add("path", path).add("value", tagJson);
-        modifiedOpsBuilder.add(newOpBuilder.build());
-      } else {
-        // Keep other operations unchanged
-        modifiedOpsBuilder.add(op);
-      }
-    }
-
-    // Create new JsonPatch from modified operations
-    JsonArray modifiedOps = modifiedOpsBuilder.build();
-    return Json.createPatch(modifiedOps);
-  }
-
-  private static JsonObject toJakartaJsonObject(Object obj) throws JsonProcessingException {
-    String json = OBJECT_MAPPER.writeValueAsString(obj);
-    try (JsonReader reader = Json.createReader(new StringReader(json))) {
-      return reader.readObject();
-    }
   }
 }
