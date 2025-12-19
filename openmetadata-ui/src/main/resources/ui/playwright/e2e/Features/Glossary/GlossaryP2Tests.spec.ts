@@ -16,8 +16,8 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-  createNewPage,
   descriptionBox,
+  getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
 import { selectActiveGlossary } from '../../../utils/glossary';
@@ -27,322 +27,290 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-// ============================================================================
-// P2 TESTS - Important (Should Have)
-// ============================================================================
-
-// G-C10: Create glossary with special characters in name
-test.describe('Create Glossary with Special Characters', () => {
-  const glossary = new Glossary();
-  const specialName = `Test_Glossary-${Date.now()}`;
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
+test.describe('Glossary P2 Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
+  // G-C10: Create glossary with special characters in name
   test('should create glossary with special characters in name', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const specialName = `Test_Glossary-${Date.now()}`;
 
-    await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
+    try {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
 
-    // Use name with underscores and hyphens
-    await page.fill('[data-testid="name"]', specialName);
-    await page.locator(descriptionBox).fill('Glossary with special characters');
+      await page.click('[data-testid="add-glossary"]');
+      await page.waitForSelector('[data-testid="form-heading"]');
 
-    const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-    await page.click('[data-testid="save-glossary"]');
-    const response = await glossaryResponse;
-    glossary.responseData = await response.json();
+      // Use name with underscores and hyphens
+      await page.fill('[data-testid="name"]', specialName);
+      await page.locator(descriptionBox).fill('Glossary with special characters');
 
-    // Verify glossary was created
-    await expect(page.getByTestId('entity-header-name')).toHaveText(
-      specialName
-    );
-  });
-});
+      const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
+      await page.click('[data-testid="save-glossary"]');
+      const response = await glossaryResponse;
+      glossary.responseData = await response.json();
 
-// ============================================================================
-// P2 WORKFLOW TESTS
-// ============================================================================
-
-// W-H01: View workflow history on term
-test.describe('View Workflow History', () => {
-  const glossary = new Glossary();
-  const reviewer = new UserClass();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await reviewer.create(apiContext);
-    await glossary.create(apiContext);
-
-    await glossary.patch(apiContext, [
-      {
-        op: 'add',
-        path: '/reviewers/0',
-        value: {
-          id: reviewer.responseData.id,
-          type: 'user',
-        },
-      },
-    ]);
-
-    await glossaryTerm.create(apiContext);
-
-    // Approve the term to create history
-    await apiContext.put(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}/status`,
-      {
-        data: {
-          status: 'Approved',
-        },
-      }
-    );
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await reviewer.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should view workflow history on term', async ({ page }) => {
-    await glossaryTerm.visitEntityPage(page);
-
-    // Look for status/workflow section
-    const statusSection = page.getByTestId('status-badge');
-
-    if (await statusSection.isVisible({ timeout: 3000 }).catch(() => false)) {
-      // Hover to see history popover
-      await statusSection.hover();
-
-      // Check for history content
-      const historyPopover = page.locator('.ant-popover-content');
-
-      if (
-        await historyPopover.isVisible({ timeout: 2000 }).catch(() => false)
-      ) {
-        await expect(historyPopover).toBeVisible();
-      }
+      // Verify glossary was created
+      await expect(page.getByTestId('entity-header-name')).toHaveText(
+        specialName
+      );
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
   });
-});
 
-// W-H02: Hover status badge shows history popover
-test.describe('Status Badge History Popover', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
+  // W-H01: View workflow history on term
+  test('should view workflow history on term', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const reviewer = new UserClass();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
+    try {
+      await reviewer.create(apiContext);
+      await glossary.create(apiContext);
+
+      await glossary.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/reviewers/0',
+          value: {
+            id: reviewer.responseData.id,
+            type: 'user',
+          },
+        },
+      ]);
+
+      await glossaryTerm.create(apiContext);
+
+      // Approve the term to create history
+      await apiContext.put(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}/status`,
+        {
+          data: {
+            status: 'Approved',
+          },
+        }
+      );
+
+      await glossaryTerm.visitEntityPage(page);
+
+      // Look for status/workflow section
+      const statusSection = page.getByTestId('status-badge');
+
+      if (await statusSection.isVisible({ timeout: 3000 }).catch(() => false)) {
+        // Hover to see history popover
+        await statusSection.hover();
+
+        // Check for history content
+        const historyPopover = page.locator('.ant-popover-content');
+
+        if (
+          await historyPopover.isVisible({ timeout: 2000 }).catch(() => false)
+        ) {
+          await expect(historyPopover).toBeVisible();
+        }
+      }
+    } finally {
+      await glossary.delete(apiContext);
+      await reviewer.delete(apiContext);
+      await afterAction();
+    }
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // W-H02: Hover status badge shows history popover
   test('should show history popover on status badge hover', async ({
     page,
   }) => {
-    await glossaryTerm.visitEntityPage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Find status badge
-    const statusBadge = page.locator(
-      '[data-testid="status-badge"], [data-testid="glossary-term-status"]'
-    );
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    if (await statusBadge.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await statusBadge.hover();
-      await page.waitForTimeout(500);
+      await glossaryTerm.visitEntityPage(page);
 
-      // Check if popover appears
-      const popover = page.locator('.ant-popover');
+      // Find status badge
+      const statusBadge = page.locator(
+        '[data-testid="status-badge"], [data-testid="glossary-term-status"]'
+      );
 
-      if (await popover.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await expect(popover).toBeVisible();
+      if (await statusBadge.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await statusBadge.hover();
+        await page.waitForTimeout(500);
+
+        // Check if popover appears
+        const popover = page.locator('.ant-popover');
+
+        if (await popover.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await expect(popover).toBeVisible();
+        }
       }
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
   });
-});
 
-// W-S01: New term starts as Draft (no reviewers)
-test.describe('New Term Starts as Draft', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // W-S01: New term starts as Draft (no reviewers)
   test('should create term with Draft status when no reviewers', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Create a new term
-    const addTermButton = page.getByTestId('add-new-tag-button-header');
-    await addTermButton.waitFor({ state: 'visible', timeout: 10000 });
-    await addTermButton.click();
-
-    // Wait for form dialog
-    await page.waitForSelector('[role="dialog"].edit-glossary-modal', {
-      timeout: 10000,
-    });
-
-    const termName = `DraftTerm_${Date.now()}`;
-    await page.fill('[data-testid="name"]', termName);
-    await page.locator(descriptionBox).fill('Test term for draft status');
-
-    // Set up response listener before clicking save
-    const termResponse = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/glossaryTerms') &&
-        res.request().method() === 'POST'
-    );
-
-    await page.click('[data-testid="save-glossary-term"]');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
     try {
-      const response = await termResponse;
-      const termData = await response.json();
+      await glossary.create(apiContext);
 
-      // Verify status is Draft or Approved (no reviewers = auto-approved in some configs)
-      expect(['Draft', 'Approved']).toContain(termData.status);
-    } catch {
-      // If response doesn't contain status, just verify term was created
-      await page.waitForLoadState('networkidle');
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-      await expect(page.getByTestId('entity-header-name')).toBeVisible({
-        timeout: 5000,
+      // Create a new term
+      const addTermButton = page.getByTestId('add-new-tag-button-header');
+      await addTermButton.waitFor({ state: 'visible', timeout: 10000 });
+      await addTermButton.click();
+
+      // Wait for form dialog
+      await page.waitForSelector('[role="dialog"].edit-glossary-modal', {
+        timeout: 10000,
       });
+
+      const termName = `DraftTerm_${Date.now()}`;
+      await page.fill('[data-testid="name"]', termName);
+      await page.locator(descriptionBox).fill('Test term for draft status');
+
+      // Set up response listener before clicking save
+      const termResponse = page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/glossaryTerms') &&
+          res.request().method() === 'POST'
+      );
+
+      await page.click('[data-testid="save-glossary-term"]');
+
+      try {
+        const response = await termResponse;
+        const termData = await response.json();
+
+        // Verify status is Draft or Approved (no reviewers = auto-approved in some configs)
+        expect(['Draft', 'Approved']).toContain(termData.status);
+      } catch {
+        // If response doesn't contain status, just verify term was created
+        const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+        await loadResponse;
+
+        await expect(page.getByTestId('entity-header-name')).toBeVisible({
+          timeout: 5000,
+        });
+      }
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
   });
-});
 
-// TBL-C06: Custom property columns visible
-test.describe('Custom Property Columns', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // TBL-C06: Custom property columns visible
   test('should show column settings with custom properties option', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Look for column settings button
-    const columnSettingsBtn = page.getByTestId('column-settings-btn');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    if (
-      await columnSettingsBtn.isVisible({ timeout: 3000 }).catch(() => false)
-    ) {
-      await columnSettingsBtn.click();
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Verify column settings modal/dropdown appears
-      const columnSettings = page.locator(
-        '[data-testid="column-settings"], .ant-dropdown'
-      );
+      // Look for column settings button
+      const columnSettingsBtn = page.getByTestId('column-settings-btn');
 
       if (
-        await columnSettings.isVisible({ timeout: 2000 }).catch(() => false)
+        await columnSettingsBtn.isVisible({ timeout: 3000 }).catch(() => false)
       ) {
-        await expect(columnSettings).toBeVisible();
+        await columnSettingsBtn.click();
+
+        // Verify column settings modal/dropdown appears
+        const columnSettings = page.locator(
+          '[data-testid="column-settings"], .ant-dropdown'
+        );
+
+        if (
+          await columnSettings.isVisible({ timeout: 2000 }).catch(() => false)
+        ) {
+          await expect(columnSettings).toBeVisible();
+        }
       }
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
   });
-});
 
-// S-F06: Status filter persists during navigation
-test.describe('Status Filter Persists', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // S-F06: Status filter persists during navigation
   test('should persist status filter during navigation', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Apply a filter if available
-    const statusFilter = page.getByTestId('status-filter');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    if (await statusFilter.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await statusFilter.click();
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-      const draftOption = page.getByText('Draft');
+      // Apply a filter if available
+      const statusFilter = page.getByTestId('status-filter');
 
-      if (await draftOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await draftOption.click();
-        await page.waitForTimeout(500); // Wait for filter to apply
-      } else {
-        // Close dropdown if draft option not found
-        await page.keyboard.press('Escape');
+      if (await statusFilter.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await statusFilter.click();
+
+        const draftOption = page.getByText('Draft');
+
+        if (await draftOption.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await draftOption.click();
+          await page.waitForTimeout(500); // Wait for filter to apply
+        } else {
+          // Close dropdown if draft option not found
+          await page.keyboard.press('Escape');
+        }
       }
+
+      // Try to navigate to term
+      const termLink = page.getByTestId(glossaryTerm.data.displayName);
+      if (await termLink.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await termLink.click();
+        const termLoadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+        await termLoadResponse;
+
+        // Go back to glossary list
+        await page.goBack();
+        const backLoadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+        await backLoadResponse;
+      }
+
+      // Test passes if page is still functional
+      await expect(page.getByTestId('entity-header-name')).toBeVisible({
+        timeout: 10000,
+      });
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
-
-    // Try to navigate to term
-    const termLink = page.getByTestId(glossaryTerm.data.displayName);
-    if (await termLink.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await termLink.click();
-      await page.waitForLoadState('networkidle');
-
-      // Go back to glossary list
-      await page.goBack();
-      await page.waitForLoadState('networkidle');
-    }
-
-    // Test passes if page is still functional
-    await expect(page.getByTestId('entity-header-name')).toBeVisible({
-      timeout: 10000,
-    });
   });
 });

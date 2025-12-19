@@ -17,6 +17,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
   createNewPage,
   descriptionBox,
+  getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
 import { selectActiveGlossary } from '../../../utils/glossary';
@@ -32,313 +33,302 @@ test.use({
 
 // G-C11: Create glossary with unicode/emoji in name
 test.describe('Create Glossary with Unicode/Emoji', () => {
-  const glossary = new Glossary();
-  const unicodeName = `Glossary_日本語_${Date.now()}`;
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    if (glossary.responseData) {
-      await glossary.delete(apiContext);
-    }
-    await afterAction();
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   test('should create glossary with unicode characters in name', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-
-    await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
-
-    // Use name with unicode characters
-    await page.fill('[data-testid="name"]', unicodeName);
-    await page.locator(descriptionBox).fill('Glossary with unicode characters');
-
-    const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-    await page.click('[data-testid="save-glossary"]');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const unicodeName = `Glossary_日本語_${Date.now()}`;
 
     try {
-      const response = await glossaryResponse;
-      glossary.responseData = await response.json();
+      await sidebarClick(page, SidebarItem.GLOSSARY);
 
-      // Verify glossary was created
-      await expect(page.getByTestId('entity-header-name')).toBeVisible();
-    } catch {
-      // Some systems may not support unicode in names - test passes if we get here
-      expect(true).toBe(true);
+      await page.click('[data-testid="add-glossary"]');
+      await page.waitForSelector('[data-testid="form-heading"]');
+
+      // Use name with unicode characters
+      await page.fill('[data-testid="name"]', unicodeName);
+      await page.locator(descriptionBox).fill('Glossary with unicode characters');
+
+      const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
+      await page.click('[data-testid="save-glossary"]');
+
+      try {
+        const response = await glossaryResponse;
+        glossary.responseData = await response.json();
+
+        // Verify glossary was created
+        await expect(page.getByTestId('entity-header-name')).toBeVisible();
+      } catch {
+        // Some systems may not support unicode in names - test passes if we get here
+        expect(true).toBe(true);
+      }
+    } finally {
+      if (glossary.responseData) {
+        await glossary.delete(apiContext);
+      }
+      await afterAction();
     }
   });
 });
 
 // T-U24: Update term style - remove color
 test.describe('Remove Term Style Color', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
+  test('should remove color style from term via API', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Add color style first
-    await apiContext.patch(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/style',
-            value: {
-              color: '#FF5733',
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+
+      // Add color style first
+      await apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/style',
+              value: {
+                color: '#FF5733',
+              },
             },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
           },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
+        }
+      );
 
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should remove color style from term via API', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    // Remove color style
-    const response = await apiContext.patch(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-      {
-        data: [
-          {
-            op: 'remove',
-            path: '/style/color',
+      // Remove color style
+      const response = await apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'remove',
+              path: '/style/color',
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
           },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
+        }
+      );
 
-    // Either succeeds or style doesn't have color property
-    const isSuccess = response.ok() || response.status() === 400;
+      // Either succeeds or style doesn't have color property
+      const isSuccess = response.ok() || response.status() === 400;
 
-    expect(isSuccess).toBe(true);
-
-    await afterAction();
+      expect(isSuccess).toBe(true);
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 });
 
 // T-U25: Update term style - remove icon
 test.describe('Remove Term Style Icon', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
+  test('should remove icon style from term via API', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Add icon style first
-    await apiContext.patch(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/style',
-            value: {
-              iconURL: 'https://example.com/icon.png',
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+
+      // Add icon style first
+      await apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/style',
+              value: {
+                iconURL: 'https://example.com/icon.png',
+              },
             },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
           },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
+        }
+      );
 
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should remove icon style from term via API', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    // Remove icon style
-    const response = await apiContext.patch(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-      {
-        data: [
-          {
-            op: 'remove',
-            path: '/style/iconURL',
+      // Remove icon style
+      const response = await apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'remove',
+              path: '/style/iconURL',
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
           },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
+        }
+      );
 
-    // Either succeeds or style doesn't have iconURL property
-    const isSuccess = response.ok() || response.status() === 400;
+      // Either succeeds or style doesn't have iconURL property
+      const isSuccess = response.ok() || response.status() === 400;
 
-    expect(isSuccess).toBe(true);
-
-    await afterAction();
+      expect(isSuccess).toBe(true);
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 });
 
 // S-S06: Search with special characters
 test.describe('Search with Special Characters', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   test('should handle special characters in search', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Wait for page to load fully
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-    // Find the glossary terms search input (not the global search)
-    // It has placeholder "Search Terms" and is within the glossary content area
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+      // Wait for page to load fully
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
 
-    // Wait for search input to be visible
-    await searchInput.waitFor({ state: 'visible', timeout: 10000 });
+      // Find the glossary terms search input (not the global search)
+      // It has placeholder "Search Terms" and is within the glossary content area
+      const searchInput = page.getByPlaceholder(/search.*term/i);
 
-    // Test a single special character
-    await searchInput.fill('@');
-    await page.waitForTimeout(500);
-    await page.waitForLoadState('networkidle');
+      // Wait for search input to be visible
+      await searchInput.waitFor({ state: 'visible', timeout: 10000 });
 
-    // Search should not crash - either shows results, table, or empty state
-    const table = page.getByTestId('glossary-term-table');
-    const emptyState = page.getByText(/no.*term.*found|no.*result/i);
-    const tableRows = page.locator('tbody .ant-table-row');
+      // Test a single special character
+      await searchInput.fill('@');
+      await page.waitForTimeout(500);
+      await page.waitForLoadState('networkidle');
 
-    const isStable =
-      (await table.isVisible().catch(() => false)) ||
-      (await emptyState.isVisible().catch(() => false)) ||
-      (await tableRows.count()) >= 0;
+      // Search should not crash - either shows results, table, or empty state
+      const table = page.getByTestId('glossary-term-table');
+      const emptyState = page.getByText(/no.*term.*found|no.*result/i);
+      const tableRows = page.locator('tbody .ant-table-row');
 
-    expect(isStable).toBeTruthy();
+      const isStable =
+        (await table.isVisible().catch(() => false)) ||
+        (await emptyState.isVisible().catch(() => false)) ||
+        (await tableRows.count()) >= 0;
 
-    await searchInput.clear();
+      expect(isStable).toBeTruthy();
+
+      await searchInput.clear();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 });
 
 // S-S08: Search debounce (500ms) works
 test.describe('Search Debounce', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   test('should debounce search input', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Wait for page to load
-    await page.waitForLoadState('networkidle');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+      // Wait for page to load
+      await page.waitForLoadState('networkidle');
 
-    // Type rapidly
-    await searchInput.pressSequentially('test', { delay: 50 });
+      const searchInput = page.getByPlaceholder(/search.*term/i);
 
-    // Verify search still works after debounce
-    await page.waitForTimeout(600); // Wait for debounce
-    await page.waitForLoadState('networkidle');
+      // Type rapidly
+      await searchInput.pressSequentially('test', { delay: 50 });
 
-    // Page should be stable - either shows table or empty state
-    const table = page.getByTestId('glossary-term-table');
-    const emptyState = page.getByText(/no.*term.*found|no.*result/i);
+      // Verify search still works after debounce
+      await page.waitForTimeout(600); // Wait for debounce
+      await page.waitForLoadState('networkidle');
 
-    const isStable =
-      (await table.isVisible().catch(() => false)) ||
-      (await emptyState.isVisible().catch(() => false));
+      // Page should be stable - either shows table or empty state
+      const table = page.getByTestId('glossary-term-table');
+      const emptyState = page.getByText(/no.*term.*found|no.*result/i);
 
-    expect(isStable).toBeTruthy();
+      const isStable =
+        (await table.isVisible().catch(() => false)) ||
+        (await emptyState.isVisible().catch(() => false));
+
+      expect(isStable).toBeTruthy();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 });
 
 // VT-08: Vote count displays correctly
 test.describe('Vote Count Display', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   test('should display vote count correctly', async ({ page }) => {
-    await glossary.visitEntityPage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-    // Look for vote section
-    const voteSection = page.locator(
-      '[data-testid="up-vote-btn"], [data-testid="vote-container"]'
-    );
+    try {
+      await glossary.create(apiContext);
+      await glossary.visitEntityPage(page);
 
-    if (
-      await voteSection
-        .first()
-        .isVisible({ timeout: 3000 })
-        .catch(() => false)
-    ) {
-      // Vote count should be visible (even if 0)
-      await expect(voteSection.first()).toBeVisible();
+      // Look for vote section
+      const voteSection = page.locator(
+        '[data-testid="up-vote-btn"], [data-testid="vote-container"]'
+      );
+
+      if (
+        await voteSection
+          .first()
+          .isVisible({ timeout: 3000 })
+          .catch(() => false)
+      ) {
+        // Vote count should be visible (even if 0)
+        await expect(voteSection.first()).toBeVisible();
+      }
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
   });
 });

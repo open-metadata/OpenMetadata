@@ -16,7 +16,7 @@ import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage, redirectToHomePage } from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   addAssetToGlossaryTerm,
   goToAssetsTab,
@@ -38,655 +38,606 @@ test.use({
  * Mutually exclusive validation is covered in Glossary.spec.ts (A-A08)
  */
 
-test.describe('Add Topic Asset to Glossary Term', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const topicEntity = new TopicClass();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await topicEntity.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await topicEntity.delete(apiContext);
-    await afterAction();
+test.describe('Glossary Asset Operations', () => {
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   test('should add topic asset to glossary term', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await goToAssetsTab(page, glossaryTerm.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const topicEntity = new TopicClass();
 
-    // Click add asset button - pass entity object in array
-    await addAssetToGlossaryTerm(page, [topicEntity], false);
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await topicEntity.create(apiContext);
 
-    // Verify assets tab shows count
-    await expect(
-      page.getByTestId('assets').getByTestId('filter-count')
-    ).toBeVisible();
-  });
-});
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-test.describe('Add Pipeline Asset to Glossary Term', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const pipelineEntity = new PipelineClass();
+      // Click add asset button - pass entity object in array
+      await addAssetToGlossaryTerm(page, [topicEntity], false);
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await pipelineEntity.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await pipelineEntity.delete(apiContext);
-    await afterAction();
+      // Verify assets tab shows count
+      await expect(
+        page.getByTestId('assets').getByTestId('filter-count')
+      ).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await topicEntity.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('should add pipeline asset to glossary term', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await goToAssetsTab(page, glossaryTerm.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const pipelineEntity = new PipelineClass();
 
-    // Click add asset button - pass entity object in array
-    await addAssetToGlossaryTerm(page, [pipelineEntity], false);
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await pipelineEntity.create(apiContext);
 
-    // Verify assets tab shows count
-    await expect(
-      page.getByTestId('assets').getByTestId('filter-count')
-    ).toBeVisible();
-  });
-});
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-test.describe('Asset Card Summary Panel', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const topicEntity = new TopicClass();
+      // Click add asset button - pass entity object in array
+      await addAssetToGlossaryTerm(page, [pipelineEntity], false);
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await topicEntity.create(apiContext);
-
-    // Add asset to term via API
-    await apiContext.patch(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/assets/0',
-            value: {
-              id: topicEntity.entityResponseData?.id,
-              type: 'topic',
-            },
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await topicEntity.delete(apiContext);
-    await afterAction();
+      // Verify assets tab shows count
+      await expect(
+        page.getByTestId('assets').getByTestId('filter-count')
+      ).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await pipelineEntity.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('should open summary panel when clicking asset card', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await goToAssetsTab(page, glossaryTerm.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const topicEntity = new TopicClass();
 
-    // Wait for assets to load
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await topicEntity.create(apiContext);
 
-    // Check if assets tab is visible with count
-    const assetsTabCount = page
-      .getByTestId('assets')
-      .getByTestId('filter-count');
+      // Add asset to term via API
+      await apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/assets/0',
+              value: {
+                id: topicEntity.entityResponseData?.id,
+                type: 'topic',
+              },
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-    if (await assetsTabCount.isVisible({ timeout: 5000 }).catch(() => false)) {
-      // Click on the asset card link if available
-      const assetLink = page
-        .getByTestId('table-data-card')
-        .getByTestId('entity-link')
-        .first();
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-      if (await assetLink.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await assetLink.click();
+      // Check if assets tab is visible with count
+      const assetsTabCount = page
+        .getByTestId('assets')
+        .getByTestId('filter-count');
 
-        // Verify summary panel or entity page is shown
-        const summaryPanel = page.getByTestId('entity-right-panel');
-        const entityPage = page.getByTestId('entity-header-display-name');
+      if (
+        await assetsTabCount.isVisible({ timeout: 5000 }).catch(() => false)
+      ) {
+        // Click on the asset card link if available
+        const assetLink = page
+          .getByTestId('table-data-card')
+          .getByTestId('entity-link')
+          .first();
 
-        const hasNavigation =
-          (await summaryPanel
-            .isVisible({ timeout: 3000 })
-            .catch(() => false)) ||
-          (await entityPage.isVisible({ timeout: 3000 }).catch(() => false));
+        if (await assetLink.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await assetLink.click();
 
-        expect(hasNavigation).toBeTruthy();
+          // Verify summary panel or entity page is shown
+          const summaryPanel = page.getByTestId('entity-right-panel');
+          const entityPage = page.getByTestId('entity-header-display-name');
+
+          const hasNavigation =
+            (await summaryPanel
+              .isVisible({ timeout: 3000 })
+              .catch(() => false)) ||
+            (await entityPage.isVisible({ timeout: 3000 }).catch(() => false));
+
+          expect(hasNavigation).toBeTruthy();
+        }
       }
+    } finally {
+      await glossary.delete(apiContext);
+      await topicEntity.delete(apiContext);
+      await afterAction();
     }
-  });
-});
-
-test.describe('Search Within Assets Tab', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const topic1 = new TopicClass();
-  const topic2 = new TopicClass();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await topic1.create(apiContext);
-    await topic2.create(apiContext);
-
-    // Add assets to term
-    await apiContext.patch(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/assets/0',
-            value: {
-              id: topic1.entityResponseData?.id,
-              type: 'topic',
-            },
-          },
-          {
-            op: 'add',
-            path: '/assets/1',
-            value: {
-              id: topic2.entityResponseData?.id,
-              type: 'topic',
-            },
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await topic1.delete(apiContext);
-    await topic2.delete(apiContext);
-    await afterAction();
   });
 
   test('should search within assets tab', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await goToAssetsTab(page, glossaryTerm.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const topic1 = new TopicClass();
+    const topic2 = new TopicClass();
 
-    // Check if search box exists in assets tab
-    const searchBox = page.getByPlaceholder(/search/i);
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await topic1.create(apiContext);
+      await topic2.create(apiContext);
 
-    if (await searchBox.isVisible()) {
-      // Search for first topic
-      await searchBox.fill(topic1.entity.name);
+      // Add assets to term
+      await apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/assets/0',
+              value: {
+                id: topic1.entityResponseData?.id,
+                type: 'topic',
+              },
+            },
+            {
+              op: 'add',
+              path: '/assets/1',
+              value: {
+                id: topic2.entityResponseData?.id,
+                type: 'topic',
+              },
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-      // Verify filtered results
-      await expect(page.getByText(topic1.entity.name)).toBeVisible();
-    } else {
-      // If no search box, verify both assets are visible
-      await expect(page.getByText(topic1.entity.name)).toBeVisible();
-      await expect(page.getByText(topic2.entity.name)).toBeVisible();
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await goToAssetsTab(page, glossaryTerm.data.displayName);
+
+      // Check if search box exists in assets tab
+      const searchBox = page.getByPlaceholder(/search/i);
+
+      if (await searchBox.isVisible()) {
+        // Search for first topic
+        await searchBox.fill(topic1.entity.name);
+
+        // Verify filtered results
+        await expect(page.getByText(topic1.entity.name)).toBeVisible();
+      } else {
+        // If no search box, verify both assets are visible
+        await expect(page.getByText(topic1.entity.name)).toBeVisible();
+        await expect(page.getByText(topic2.entity.name)).toBeVisible();
+      }
+    } finally {
+      await glossary.delete(apiContext);
+      await topic1.delete(apiContext);
+      await topic2.delete(apiContext);
+      await afterAction();
     }
-  });
-});
-
-test.describe('Remove Asset from Glossary Term', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const topicEntity = new TopicClass();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await topicEntity.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await topicEntity.delete(apiContext);
-    await afterAction();
   });
 
   test('should remove asset from glossary term', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await goToAssetsTab(page, glossaryTerm.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const topicEntity = new TopicClass();
 
-    // Add asset first - pass entity object in array
-    await addAssetToGlossaryTerm(page, [topicEntity], false);
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await topicEntity.create(apiContext);
 
-    // Verify assets tab shows count
-    await expect(
-      page.getByTestId('assets').getByTestId('filter-count')
-    ).toBeVisible();
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    // Now try to remove the asset - look for remove/delete option
-    const assetCard = page
-      .locator(`[data-testid*="${topicEntity.entityResponseData?.name}"]`)
-      .first();
+      // Add asset first - pass entity object in array
+      await addAssetToGlossaryTerm(page, [topicEntity], false);
 
-    if (await assetCard.isVisible({ timeout: 3000 }).catch(() => false)) {
-      // Try checkbox selection
-      const checkbox = assetCard.locator('input[type="checkbox"]');
+      // Verify assets tab shows count
+      await expect(
+        page.getByTestId('assets').getByTestId('filter-count')
+      ).toBeVisible();
 
-      if (await checkbox.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await checkbox.check();
+      // Now try to remove the asset - look for remove/delete option
+      const assetCard = page
+        .locator(`[data-testid*="${topicEntity.entityResponseData?.name}"]`)
+        .first();
 
-        const removeButton = page.getByTestId('delete-all-button');
+      if (await assetCard.isVisible({ timeout: 3000 }).catch(() => false)) {
+        // Try checkbox selection
+        const checkbox = assetCard.locator('input[type="checkbox"]');
 
-        if (
-          await removeButton.isVisible({ timeout: 2000 }).catch(() => false)
-        ) {
-          await removeButton.click();
+        if (await checkbox.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await checkbox.check();
 
-          const confirmButton = page.getByRole('button', { name: /confirm/i });
+          const removeButton = page.getByTestId('delete-all-button');
 
           if (
-            await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)
+            await removeButton.isVisible({ timeout: 2000 }).catch(() => false)
           ) {
-            await confirmButton.click();
+            await removeButton.click();
+
+            const confirmButton = page.getByRole('button', {
+              name: /confirm/i,
+            });
+
+            if (
+              await confirmButton
+                .isVisible({ timeout: 2000 })
+                .catch(() => false)
+            ) {
+              await confirmButton.click();
+            }
           }
         }
       }
+    } finally {
+      await glossary.delete(apiContext);
+      await topicEntity.delete(apiContext);
+      await afterAction();
     }
-  });
-});
-
-test.describe('Remove Asset via Entity Page', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const topicEntity = new TopicClass();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await topicEntity.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await topicEntity.delete(apiContext);
-    await afterAction();
   });
 
   test('should remove glossary term tag from entity page', async ({ page }) => {
-    // Navigate to the topic entity page using URL
-    const topicFqn = topicEntity.entityResponseData?.fullyQualifiedName;
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const topicEntity = new TopicClass();
 
-    await page.goto(`/topic/${topicFqn}`);
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await topicEntity.create(apiContext);
 
-    // Verify entity page is loaded
-    const entityHeader = page.getByTestId('entity-header-display-name');
+      // Navigate to the topic entity page using URL
+      const topicFqn = topicEntity.entityResponseData?.fullyQualifiedName;
 
-    await expect(entityHeader).toBeVisible({ timeout: 10000 });
+      await page.goto(`/topic/${topicFqn}`);
 
-    // Look for glossary term section
-    const glossarySection = page.getByTestId('glossary-container');
+      // Verify entity page is loaded
+      const entityHeader = page.getByTestId('entity-header-display-name');
 
-    if (await glossarySection.isVisible({ timeout: 3000 }).catch(() => false)) {
-      // Glossary term section exists - test passes
-      await expect(glossarySection).toBeVisible();
-    } else {
-      // Verify page is accessible without glossary section
-      await expect(entityHeader).toBeVisible();
-    }
-  });
-});
+      await expect(entityHeader).toBeVisible({ timeout: 10000 });
 
-test.describe('Bulk Remove Assets', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const topic1 = new TopicClass();
-  const topic2 = new TopicClass();
+      // Look for glossary term section
+      const glossarySection = page.getByTestId('glossary-container');
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await topic1.create(apiContext);
-    await topic2.create(apiContext);
-
-    // Add both assets to the term
-    await apiContext.patch(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/assets/0',
-            value: {
-              id: topic1.entityResponseData?.id,
-              type: 'topic',
-            },
-          },
-          {
-            op: 'add',
-            path: '/assets/1',
-            value: {
-              id: topic2.entityResponseData?.id,
-              type: 'topic',
-            },
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
+      if (
+        await glossarySection.isVisible({ timeout: 3000 }).catch(() => false)
+      ) {
+        // Glossary term section exists - test passes
+        await expect(glossarySection).toBeVisible();
+      } else {
+        // Verify page is accessible without glossary section
+        await expect(entityHeader).toBeVisible();
       }
-    );
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await topic1.delete(apiContext);
-    await topic2.delete(apiContext);
-    await afterAction();
+    } finally {
+      await glossary.delete(apiContext);
+      await topicEntity.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('should bulk select and remove multiple assets', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await goToAssetsTab(page, glossaryTerm.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const topic1 = new TopicClass();
+    const topic2 = new TopicClass();
 
-    // Select multiple assets using checkboxes
-    const checkboxes = page.locator(
-      '[data-testid="asset-card-container"] input[type="checkbox"]'
-    );
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await topic1.create(apiContext);
+      await topic2.create(apiContext);
 
-    const count = await checkboxes.count();
+      // Add both assets to the term
+      await apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/assets/0',
+              value: {
+                id: topic1.entityResponseData?.id,
+                type: 'topic',
+              },
+            },
+            {
+              op: 'add',
+              path: '/assets/1',
+              value: {
+                id: topic2.entityResponseData?.id,
+                type: 'topic',
+              },
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-    if (count >= 2) {
-      // Select first two checkboxes
-      await checkboxes.nth(0).check();
-      await checkboxes.nth(1).check();
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-      // Click bulk delete button
-      const bulkDeleteBtn = page.getByTestId('delete-all-button');
+      // Select multiple assets using checkboxes
+      const checkboxes = page.locator(
+        '[data-testid="asset-card-container"] input[type="checkbox"]'
+      );
 
-      if (await bulkDeleteBtn.isVisible()) {
-        await bulkDeleteBtn.click();
+      const count = await checkboxes.count();
 
-        // Confirm bulk removal
-        const confirmBtn = page.getByRole('button', { name: /confirm/i });
+      if (count >= 2) {
+        // Select first two checkboxes
+        await checkboxes.nth(0).check();
+        await checkboxes.nth(1).check();
 
-        if (await confirmBtn.isVisible()) {
-          await confirmBtn.click();
+        // Click bulk delete button
+        const bulkDeleteBtn = page.getByTestId('delete-all-button');
+
+        if (await bulkDeleteBtn.isVisible()) {
+          await bulkDeleteBtn.click();
+
+          // Confirm bulk removal
+          const confirmBtn = page.getByRole('button', { name: /confirm/i });
+
+          if (await confirmBtn.isVisible()) {
+            await confirmBtn.click();
+          }
         }
       }
+    } finally {
+      await glossary.delete(apiContext);
+      await topic1.delete(apiContext);
+      await topic2.delete(apiContext);
+      await afterAction();
     }
-  });
-});
-
-test.describe('Filter Assets by Entity Type', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const topicEntity = new TopicClass();
-  const pipelineEntity = new PipelineClass();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await topicEntity.create(apiContext);
-    await pipelineEntity.create(apiContext);
-
-    // Add both asset types to term
-    await apiContext.patch(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/assets/0',
-            value: {
-              id: topicEntity.entityResponseData?.id,
-              type: 'topic',
-            },
-          },
-          {
-            op: 'add',
-            path: '/assets/1',
-            value: {
-              id: pipelineEntity.entityResponseData?.id,
-              type: 'pipeline',
-            },
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await topicEntity.delete(apiContext);
-    await pipelineEntity.delete(apiContext);
-    await afterAction();
   });
 
   test('should filter assets by entity type', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await goToAssetsTab(page, glossaryTerm.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const topicEntity = new TopicClass();
+    const pipelineEntity = new PipelineClass();
 
-    // Verify assets tab is accessible and clickable
-    const assetsTab = page.getByTestId('assets');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await topicEntity.create(apiContext);
+      await pipelineEntity.create(apiContext);
 
-    await expect(assetsTab).toBeVisible({ timeout: 10000 });
+      // Add both asset types to term
+      await apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/assets/0',
+              value: {
+                id: topicEntity.entityResponseData?.id,
+                type: 'topic',
+              },
+            },
+            {
+              op: 'add',
+              path: '/assets/1',
+              value: {
+                id: pipelineEntity.entityResponseData?.id,
+                type: 'pipeline',
+              },
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-    // Verify the glossary term page is loaded
-    const termHeader = page.getByTestId('entity-header-display-name');
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    await expect(termHeader).toBeVisible();
-  });
-});
+      // Verify assets tab is accessible and clickable
+      const assetsTab = page.getByTestId('assets');
 
-test.describe('Add Asset via Dropdown', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const topicEntity = new TopicClass();
+      await expect(assetsTab).toBeVisible({ timeout: 10000 });
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await topicEntity.create(apiContext);
-    await afterAction();
-  });
+      // Verify the glossary term page is loaded
+      const termHeader = page.getByTestId('entity-header-display-name');
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await topicEntity.delete(apiContext);
-    await afterAction();
+      await expect(termHeader).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await topicEntity.delete(apiContext);
+      await pipelineEntity.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('should add asset via Add Assets dropdown button', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await goToAssetsTab(page, glossaryTerm.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const topicEntity = new TopicClass();
 
-    // Look for the "Add Assets" dropdown button
-    const addAssetsButton = page.getByTestId('add-assets-button');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await topicEntity.create(apiContext);
 
-    if (await addAssetsButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await addAssetsButton.click();
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-      // Wait for dropdown to appear
-      await page.waitForSelector('.ant-dropdown', { timeout: 3000 });
+      // Look for the "Add Assets" dropdown button
+      const addAssetsButton = page.getByTestId('add-assets-button');
 
-      // Click on the option to add assets
-      const addOption = page.locator('.ant-dropdown-menu-item').first();
+      if (
+        await addAssetsButton.isVisible({ timeout: 5000 }).catch(() => false)
+      ) {
+        await addAssetsButton.click();
 
-      if (await addOption.isVisible()) {
-        await addOption.click();
+        // Wait for dropdown to appear
+        await page.waitForSelector('.ant-dropdown', { timeout: 3000 });
 
-        // Wait for asset selection modal
-        await page.waitForSelector('[data-testid="asset-selection-modal"]', {
-          timeout: 5000,
-        });
+        // Click on the option to add assets
+        const addOption = page.locator('.ant-dropdown-menu-item').first();
 
-        // Search for asset
-        const searchResponse = page.waitForResponse('**/api/v1/search/query*');
-        await page.fill(
-          '[data-testid="asset-selection-modal"] [data-testid="searchbar"]',
-          topicEntity.entity.name
-        );
-        await searchResponse;
+        if (await addOption.isVisible()) {
+          await addOption.click();
 
-        // Select the asset
-        const assetCheckbox = page
-          .getByTestId('asset-selection-modal')
-          .locator(`text=${topicEntity.entity.name}`)
-          .first();
+          // Wait for asset selection modal
+          await page.waitForSelector('[data-testid="asset-selection-modal"]', {
+            timeout: 5000,
+          });
 
-        if (await assetCheckbox.isVisible({ timeout: 3000 })) {
-          await assetCheckbox.click();
+          // Search for asset
+          const searchResponse = page.waitForResponse(
+            '**/api/v1/search/query*'
+          );
+          await page.fill(
+            '[data-testid="asset-selection-modal"] [data-testid="searchbar"]',
+            topicEntity.entity.name
+          );
+          await searchResponse;
 
-          // Save selection
-          await page.click('[data-testid="save-btn"]');
+          // Select the asset
+          const assetCheckbox = page
+            .getByTestId('asset-selection-modal')
+            .locator(`text=${topicEntity.entity.name}`)
+            .first();
+
+          if (await assetCheckbox.isVisible({ timeout: 3000 })) {
+            await assetCheckbox.click();
+
+            // Save selection
+            await page.click('[data-testid="save-btn"]');
+          }
         }
+      } else {
+        // Use the standard add asset flow
+        await addAssetToGlossaryTerm(page, [topicEntity], false);
       }
-    } else {
-      // Use the standard add asset flow
-      await addAssetToGlossaryTerm(page, [topicEntity], false);
+
+      // Verify asset was added
+      await expect(
+        page.getByTestId('assets').getByTestId('filter-count')
+      ).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await topicEntity.delete(apiContext);
+      await afterAction();
     }
-
-    // Verify asset was added
-    await expect(
-      page.getByTestId('assets').getByTestId('filter-count')
-    ).toBeVisible();
-  });
-});
-
-test.describe('Paginate Through Assets', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const topics: TopicClass[] = [];
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-
-    // Create multiple topics to trigger pagination
-    for (let i = 0; i < 15; i++) {
-      const topic = new TopicClass();
-      await topic.create(apiContext);
-      topics.push(topic);
-    }
-
-    // Add all assets to term
-    const assetPatches = topics.map((topic, index) => ({
-      op: 'add' as const,
-      path: `/assets/${index}`,
-      value: {
-        id: topic.entityResponseData?.id,
-        type: 'topic',
-      },
-    }));
-
-    await apiContext.patch(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-      {
-        data: assetPatches,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-
-    for (const topic of topics) {
-      await topic.delete(apiContext);
-    }
-    await afterAction();
   });
 
   test('should paginate through assets', async ({ page }) => {
     test.slow(true);
 
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await goToAssetsTab(page, glossaryTerm.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const topics: TopicClass[] = [];
 
-    // Verify assets tab is accessible
-    const assetsTab = page.getByTestId('assets');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    await expect(assetsTab).toBeVisible({ timeout: 10000 });
+      // Create multiple topics to trigger pagination
+      for (let i = 0; i < 15; i++) {
+        const topic = new TopicClass();
+        await topic.create(apiContext);
+        topics.push(topic);
+      }
 
-    // Verify the glossary term page is loaded correctly
-    const termHeader = page.getByTestId('entity-header-display-name');
+      // Add all assets to term
+      const assetPatches = topics.map((topic, index) => ({
+        op: 'add' as const,
+        path: `/assets/${index}`,
+        value: {
+          id: topic.entityResponseData?.id,
+          type: 'topic',
+        },
+      }));
 
-    await expect(termHeader).toBeVisible();
+      await apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: assetPatches,
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-    // Look for pagination controls if they exist
-    const pagination = page.locator('.ant-pagination');
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await goToAssetsTab(page, glossaryTerm.data.displayName);
 
-    if (await pagination.isVisible({ timeout: 3000 }).catch(() => false)) {
-      // Pagination exists - verify it's functional
-      await expect(pagination).toBeVisible();
+      // Verify assets tab is accessible
+      const assetsTab = page.getByTestId('assets');
+
+      await expect(assetsTab).toBeVisible({ timeout: 10000 });
+
+      // Verify the glossary term page is loaded correctly
+      const termHeader = page.getByTestId('entity-header-display-name');
+
+      await expect(termHeader).toBeVisible();
+
+      // Look for pagination controls if they exist
+      const pagination = page.locator('.ant-pagination');
+
+      if (await pagination.isVisible({ timeout: 3000 }).catch(() => false)) {
+        // Pagination exists - verify it's functional
+        await expect(pagination).toBeVisible();
+      }
+    } finally {
+      await glossary.delete(apiContext);
+
+      for (const topic of topics) {
+        await topic.delete(apiContext);
+      }
+      await afterAction();
     }
   });
 });

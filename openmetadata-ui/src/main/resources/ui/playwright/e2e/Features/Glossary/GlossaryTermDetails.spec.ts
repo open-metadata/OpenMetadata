@@ -17,6 +17,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
   createNewPage,
   descriptionBox,
+  getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
 import {
@@ -61,7 +62,9 @@ test.describe('Glossary Term Details Operations', () => {
     page,
   }) => {
     await glossaryTerm1.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+
+    const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+    await loadResponse;
 
     const synonym1 = 'TestSynonym1';
     const synonym2 = 'TestSynonym2';
@@ -98,7 +101,9 @@ test.describe('Glossary Term Details Operations', () => {
     page,
   }) => {
     await glossaryTerm1.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+
+    const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+    await loadResponse;
 
     const reference1 = { name: 'RefName1', url: 'http://example1.com' };
     const reference2 = { name: 'RefName2', url: 'http://example2.com' };
@@ -149,7 +154,9 @@ test.describe('Glossary Term Details Operations', () => {
     page,
   }) => {
     await glossaryTerm1.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+
+    const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+    await loadResponse;
 
     // Add related term
     await addRelatedTerms(page, [glossaryTerm2]);
@@ -179,7 +186,9 @@ test.describe('Glossary Term Details Operations', () => {
 
   test('should verify bidirectional related term link', async ({ page }) => {
     await glossaryTerm1.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+
+    const loadResponse1 = page.waitForResponse('/api/v1/glossaryTerms/*');
+    await loadResponse1;
 
     // Add related term
     await addRelatedTerms(page, [glossaryTerm2]);
@@ -191,7 +200,9 @@ test.describe('Glossary Term Details Operations', () => {
 
     // Navigate to term2 and verify term1 is shown as related
     await glossaryTerm2.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+
+    const loadResponse2 = page.waitForResponse('/api/v1/glossaryTerms/*');
+    await loadResponse2;
 
     const term1Name = glossaryTerm1.responseData?.displayName;
 
@@ -215,29 +226,24 @@ test.describe('Glossary Term Details Operations', () => {
 test.describe('Edit Term via Table Modal', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossaryTerm.delete(apiContext);
-    await glossary.delete(apiContext);
-    await afterAction();
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   test('should edit term via pencil icon in table row', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
 
-    await page.waitForLoadState('networkidle');
+    const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+    await loadResponse;
 
     // Find the term row and hover to reveal edit button
     const termRow = page.locator(
@@ -286,7 +292,8 @@ test.describe('Edit Term via Table Modal', () => {
       page.locator('[role="dialog"].edit-glossary-modal')
     ).not.toBeVisible();
 
-    await page.waitForLoadState('networkidle');
+    const reloadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+    await reloadResponse;
 
     // Verify the description was updated in the table row
     const updatedTermRow = page.locator(
@@ -300,7 +307,9 @@ test.describe('Edit Term via Table Modal', () => {
 
     // Navigate to term details page using direct navigation
     await glossaryTerm.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+
+    const detailsLoadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+    await detailsLoadResponse;
 
     // Verify the description was updated on the term details page
     await expect(page.getByTestId('asset-description-container')).toContainText(
@@ -309,29 +318,29 @@ test.describe('Edit Term via Table Modal', () => {
 
     // Verify the synonym was added
     await expect(page.getByTestId(newSynonym)).toBeVisible();
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 });
 
 test.describe('Term Creation with All Fields', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   test('should create term with all optional fields populated', async ({
     page,
   }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+
+    try {
+      await glossary.create(apiContext);
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
@@ -373,11 +382,12 @@ test.describe('Term Creation with All Fields', () => {
 
     // Wait for modal to close
     await expect(
-      page.locator('[role="dialog"].edit-glossary-modal')
+      page.locator('[role="dialog").edit-glossary-modal')
     ).not.toBeVisible();
 
     // Wait for the table to update
-    await page.waitForLoadState('networkidle');
+    const reloadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+    await reloadResponse;
 
     // Verify term is created and visible in the table
     const termRow = page.locator(`[data-row-key*="${termName}"]`);
@@ -386,7 +396,9 @@ test.describe('Term Creation with All Fields', () => {
 
     // Click on the term to view its details
     await page.click(`[data-testid="${termName}"]`);
-    await page.waitForLoadState('networkidle');
+
+    const detailsLoadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+    await detailsLoadResponse;
 
     // Verify synonyms are present on the term page
     for (const synonym of synonyms) {
@@ -402,5 +414,9 @@ test.describe('Term Creation with All Fields', () => {
     await expect(page.getByTestId('asset-description-container')).toContainText(
       'A comprehensive test term'
     );
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 });
