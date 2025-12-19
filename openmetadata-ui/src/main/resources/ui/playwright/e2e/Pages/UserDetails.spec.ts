@@ -61,7 +61,7 @@ test.describe('User with different Roles', () => {
     await user1.create(apiContext);
     await user2.create(apiContext);
     await user3.create(apiContext);
-
+    
     await team.create(apiContext);
     await domain.create(apiContext);
 

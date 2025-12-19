@@ -39,7 +39,10 @@ import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
 import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
-import { getDatabaseDetailsByFQN, getDatabaseSchemaDetailsByFQN } from '../../../rest/databaseAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../../../rest/databaseAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
 import { getDomainByName } from '../../../rest/domainAPI';

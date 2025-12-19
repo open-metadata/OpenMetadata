@@ -23,7 +23,7 @@ describe('DragAndDrop', () => {
   });
 
   it('should have the correct name', () => {
-    expect(DragAndDrop.name).toBe('dragAndDrop');
+    expect(DragAndDrop.name).toStrictEqual('dragAndDrop');
   });
 
   it('should have the correct options', () => {

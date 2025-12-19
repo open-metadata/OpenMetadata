@@ -88,29 +88,29 @@ describe('Test TestSummaryCustomTooltip component', () => {
     expect(
       await screen.findByTestId('test-summary-tooltip-container')
     ).toBeInTheDocument();
-    expect((await screen.findByTestId('status')).textContent).toBe('Failed');
-    expect((await screen.findByTestId('minValueLength')).textContent).toBe(
+    expect((await screen.findByTestId('status')).textContent).toEqual('Failed');
+    expect((await screen.findByTestId('minValueLength')).textContent).toEqual(
       '12'
     );
-    expect((await screen.findByTestId('maxValueLength')).textContent).toBe(
+    expect((await screen.findByTestId('maxValueLength')).textContent).toEqual(
       '24'
     );
-    expect((await screen.findByTestId('passedRows')).textContent).toBe('4');
-    expect((await screen.findByTestId('failedRows')).textContent).toBe('2');
+    expect((await screen.findByTestId('passedRows')).textContent).toEqual('4');
+    expect((await screen.findByTestId('failedRows')).textContent).toEqual('2');
     expect(
       (await screen.findByTestId('passedRowsPercentage')).textContent
-    ).toBe('60%');
+    ).toEqual('60%');
     expect(
       (await screen.findByTestId('failedRowsPercentage')).textContent
-    ).toBe('40%');
+    ).toEqual('40%');
     expect(screen.queryByText('name')).not.toBeInTheDocument();
   });
 
   it('should display freshness in values in milliseconds', async () => {
     render(<TestSummaryCustomTooltip {...mockPropsWithFreshness} />);
 
-    expect((await screen.findByTestId('status')).textContent).toBe('Failed');
-    expect((await screen.findByTestId('freshness')).textContent).toBe(
+    expect((await screen.findByTestId('status')).textContent).toEqual('Failed');
+    expect((await screen.findByTestId('freshness')).textContent).toEqual(
       '7Y 2M 22d 9m 24s'
     );
   });
