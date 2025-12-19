@@ -13,7 +13,7 @@
 
 import { Box } from '@mui/material';
 import { Col, Form, Row } from 'antd';
-import { isArray } from 'lodash';
+import { castArray } from 'lodash';
 import { Suspense, useEffect, useMemo } from 'react';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
@@ -171,28 +171,19 @@ const TagsForm = ({
   );
 
   const handleSave = async (data: SubmitProps) => {
-    let domains: EntityReference[] = [];
-    if (isArray(selectedDomain)) {
-      domains = selectedDomain;
-    } else if (selectedDomain) {
-      domains = [selectedDomain];
-    }
-
-    let owners: EntityReference[] = [];
-    if (isArray(selectedOwners)) {
-      owners = selectedOwners;
-    } else if (selectedOwners) {
-      owners = [selectedOwners];
-    }
+    const domains = castArray(selectedDomain).filter(Boolean);
+    const owners = castArray(selectedOwners).filter(Boolean);
 
     try {
       let domainsData;
-      if (domains?.length && !isEditing) {
-        domainsData = domains.map(
-          (domain) => domain.fullyQualifiedName ?? domain.name
-        );
-      } else if (domains?.length) {
-        domainsData = domains;
+      if (domains?.length) {
+        if (isEditing) {
+          domainsData = domains;
+        } else {
+          domainsData = domains.map(
+            (domain) => domain.fullyQualifiedName ?? domain.name
+          );
+        }
       }
 
       const submitData = {

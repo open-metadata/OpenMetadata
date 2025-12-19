@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,26 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { SwitchProps } from '@mui/material';
 
-import { EntityTags } from 'Models';
-import { TagSource } from '../../../generated/type/tagLabel';
-
-export interface TagsViewerProps {
-  tags: EntityTags[];
-  sizeCap?: number;
-  displayType?: DisplayType;
-  showNoDataPlaceholder?: boolean;
-  tagType?: TagSource;
-  newLook?: boolean;
-  entityFqn?: string;
-}
-
-export enum DisplayType {
-  READ_MORE = 'read-more',
-  POPOVER = 'popover',
-}
-
-export enum LayoutType {
-  HORIZONTAL = 'horizontal',
-  VERTICAL = 'vertical',
+export interface MUISwitchProps extends Omit<SwitchProps, 'onChange'> {
+  checked?: boolean;
+  onChange?: (checked: boolean) => void;
+  label?: string;
 }

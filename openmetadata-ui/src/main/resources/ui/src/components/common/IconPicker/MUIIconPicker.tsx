@@ -45,7 +45,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
   defaultIcon,
   onChange,
   customStyles,
-  dataTestId,
+  'data-testid': dataTestId,
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();

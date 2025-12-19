@@ -19,9 +19,9 @@ import { Style } from '../../../generated/type/schema';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
 import { MUIColorPicker } from '../../common/ColorPicker';
 import { DEFAULT_TAG_ICON, MUIIconPicker } from '../../common/IconPicker';
-import { StyleModalProps } from './StyleModal.interface';
+import { StyleModalProps } from '../StyleModal/StyleModal.interface';
 
-const StyleModalNew: FC<StyleModalProps> = ({
+const IconColorModal: FC<StyleModalProps> = ({
   open,
   onCancel,
   onSubmit,
@@ -68,7 +68,7 @@ const StyleModalNew: FC<StyleModalProps> = ({
             <MUIIconPicker
               allowUrl
               backgroundColor={selectedColor}
-              dataTestId="icon-picker-btn"
+              data-testid="icon-picker-btn"
               defaultIcon={DEFAULT_TAG_ICON}
               label={t('label.icon')}
               placeholder={t('label.icon-url')}
@@ -87,4 +87,4 @@ const StyleModalNew: FC<StyleModalProps> = ({
   );
 };
 
-export default StyleModalNew;
+export default IconColorModal;

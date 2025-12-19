@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Chip, FormHelperText, Typography } from '@mui/material';
+import { Box, Chip, FormHelperText, FormLabel } from '@mui/material';
 import { Check } from '@untitledui/icons';
 import { FC } from 'react';
 import { ChipSelectProps } from './ChipSelect.interface';
@@ -36,21 +36,21 @@ const ChipSelect: FC<ChipSelectProps> = ({
   return (
     <Box data-testid={dataTestId}>
       {label && (
-        <Typography
-          color={error ? 'error' : 'text.secondary'}
-          fontWeight={500}
+        <FormLabel
+          error={error}
+          required={required}
           sx={{
+            display: 'block',
             mb: 2,
-            '&::after': required
-              ? {
-                  content: '" *"',
-                  color: 'error.main',
-                }
-              : undefined,
-          }}
-          variant="body2">
+            fontWeight: 500,
+            color: error ? 'error.main' : 'text.secondary',
+            fontSize: 'body2.fontSize',
+            '& .MuiFormLabel-asterisk': {
+              color: 'error.main',
+            },
+          }}>
           {label}
-        </Typography>
+        </FormLabel>
       )}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
         {options.map((option) => {
@@ -85,7 +85,7 @@ const ChipSelect: FC<ChipSelectProps> = ({
                     ? theme.palette.primary.contrastText
                     : theme.palette.grey[900],
                 },
-                borderRadius: (theme.shape.borderRadius as number) / 2,
+                borderRadius: '4px',
               })}
               variant={isSelected ? 'filled' : 'outlined'}
               onClick={() => handleChipClick(option.value)}

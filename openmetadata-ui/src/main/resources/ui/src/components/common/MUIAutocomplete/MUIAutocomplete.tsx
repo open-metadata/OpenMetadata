@@ -10,23 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Autocomplete, AutocompleteProps } from '@mui/material';
+import { Autocomplete } from '@mui/material';
 import { FC, memo, useCallback, useMemo } from 'react';
 import MUITextField from '../MUITextField/MUITextField';
-
-interface MUIAutocompleteProps
-  extends Omit<
-    AutocompleteProps<string, true, false, true>,
-    'renderInput' | 'onChange' | 'value' | 'options'
-  > {
-  value?: string[];
-  onChange?: (value: string[]) => void;
-  label?: string;
-  placeholder?: string;
-  required?: boolean;
-  options?: string[];
-  dataTestId?: string;
-}
+import { MUIAutocompleteProps } from './MUIAutocomplete.interface';
 
 const MUIAutocomplete: FC<MUIAutocompleteProps> = ({
   value = [],

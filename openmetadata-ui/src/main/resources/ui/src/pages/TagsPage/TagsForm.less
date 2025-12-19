@@ -10,22 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../styles/variables.less';
 
-.tags-form .form-switch-container .ant-form-item-control-input {
-  min-height: 0;
-  & .ant-form-item-control-input-content {
-    line-height: 1rem;
+.tags-form {
+  .form-switch-container .ant-form-item-control-input {
+    min-height: 0;
+    & .ant-form-item-control-input-content {
+      line-height: 1rem;
+    }
   }
-}
+  .MuiTextField-root .MuiFormHelperText-root {
+    margin: 0;
+  }
 
-.tags-form .MuiTextField-root .MuiFormHelperText-root {
-  margin: 0;
-}
-
-.tags-form .MuiTypography-body2,
-.ant-typography,
-.MuiFormLabel-root.MuiFormLabel-root,
-.ant-form-item-label > label {
-  font-weight: 500;
-  color: #414651;
+  .MuiFormLabel-root {
+    font-weight: @font-medium;
+    color: @grey-700;
+  }
 }

@@ -51,7 +51,6 @@ const TagsV1 = ({
   size,
   isEditTags,
   newLook,
-  entityType,
   entityFqn,
 }: TagsV1Props) => {
   const theme = useTheme();
@@ -197,8 +196,8 @@ const TagsV1 = ({
         data-testid="tag-redirect-link"
         to={redirectLink}>
         <TagChip
-          icon={renderGeneratedTagIcon}
-          label={tag.displayName || tag.name || tagName || ''}
+          icon={renderGeneratedTagIcon ?? undefined}
+          label={tagName || ''}
           labelDataTestId={`tag-${tag.tagFQN}`}
           sx={{
             pl: 1.5,
@@ -215,7 +214,7 @@ const TagsV1 = ({
         />
       </Link>
     ),
-    [tagName, tag, redirectLink, theme]
+    [tagName, tag, redirectLink, theme, renderGeneratedTagIcon]
   );
 
   const tagChip = useMemo(
@@ -272,7 +271,7 @@ const TagsV1 = ({
   if (startWith === TAG_START_WITH.PLUS) {
     return addTagChip;
   }
-  if (tag.labelType === LabelType.Generated && entityType && entityFqn) {
+  if (tag.labelType === LabelType.Generated && entityFqn) {
     if (isEditTags) {
       return automatedTagChip;
     }

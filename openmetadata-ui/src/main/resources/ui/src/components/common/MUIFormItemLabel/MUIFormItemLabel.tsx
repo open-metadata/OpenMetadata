@@ -12,7 +12,7 @@
  */
 
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { Box, Chip, Tooltip, Typography } from '@mui/material';
+import { Box, Chip, FormLabel, Tooltip } from '@mui/material';
 import { TooltipProps } from '@mui/material/Tooltip';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,22 +43,18 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
 
   return (
     <Box alignItems="center" display="inline-flex" gap={0.5}>
-      <Typography
+      <FormLabel
         component="span"
         data-testid="mui-form-item-label"
-        variant="body2">
+        required={required}
+        sx={{
+          fontSize: (theme) => theme.typography.body2.fontSize,
+          '& .MuiFormLabel-asterisk': {
+            color: 'error.main',
+          },
+        }}>
         {label}
-        {required && (
-          <Typography
-            color="error"
-            component="span"
-            sx={{ ml: 0.5 }}
-            // eslint-disable-next-line i18next/no-literal-string
-            variant="body2">
-            *
-          </Typography>
-        )}
-      </Typography>
+      </FormLabel>
       {helperTextType === HelperTextType.Tooltip &&
         helperText &&
         showHelperText && (

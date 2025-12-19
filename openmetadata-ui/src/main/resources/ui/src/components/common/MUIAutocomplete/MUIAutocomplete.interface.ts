@@ -1,5 +1,7 @@
-/*
- *  Copyright 2022 Collate.
+import { AutocompleteProps } from '@mui/material';
+
+export /*
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,26 +12,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { EntityTags } from 'Models';
-import { TagSource } from '../../../generated/type/tagLabel';
-
-export interface TagsViewerProps {
-  tags: EntityTags[];
-  sizeCap?: number;
-  displayType?: DisplayType;
-  showNoDataPlaceholder?: boolean;
-  tagType?: TagSource;
-  newLook?: boolean;
-  entityFqn?: string;
-}
-
-export enum DisplayType {
-  READ_MORE = 'read-more',
-  POPOVER = 'popover',
-}
-
-export enum LayoutType {
-  HORIZONTAL = 'horizontal',
-  VERTICAL = 'vertical',
+interface MUIAutocompleteProps
+  extends Omit<
+    AutocompleteProps<string, true, false, true>,
+    'renderInput' | 'onChange' | 'value' | 'options'
+  > {
+  value?: string[];
+  onChange?: (value: string[]) => void;
+  label?: string;
+  placeholder?: string;
+  required?: boolean;
+  options?: string[];
+  dataTestId?: string;
 }

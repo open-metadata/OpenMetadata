@@ -87,9 +87,9 @@ describe('TagForm component', () => {
   });
 
   it('Form component should render properly', async () => {
-    const { container } = render(<TestWrapper />);
+    render(<TestWrapper />);
 
-    const form = container.querySelector('.tags-form');
+    const form = await screen.findByTestId('tags-form');
     const name = await screen.findByTestId('name');
 
     expect(form).toBeInTheDocument();

@@ -262,7 +262,7 @@ class TagClassBase {
     return null;
   };
 
-  public getRecognizerFeedbackComponent(
+  public getRecognizerFeedbackPopup(
     _tagLabel: TagLabel,
     _entityFqn: string,
     _children: React.ReactElement

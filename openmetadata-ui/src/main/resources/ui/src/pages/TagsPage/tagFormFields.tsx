@@ -30,7 +30,7 @@ export const getIconField = (selectedColor?: string): FieldProp => ({
   type: FieldTypes.ICON_PICKER_MUI,
   helperText: iconTooltipDataRender(),
   props: {
-    dataTestId: 'icon-picker-btn',
+    'data-testid': 'icon-picker-btn',
     allowUrl: true,
     placeholder: i18n.t('label.icon-url'),
     backgroundColor: selectedColor,

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Space, Typography } from 'antd';
+import { Typography } from '@mui/material';
+import { Badge, Button, Space } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -23,7 +24,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
-import { useFormDrawerWithRef } from '../../components/common/atoms/drawer';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
@@ -31,7 +31,6 @@ import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLef
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
-import { DRAWER_HEADER_STYLING } from '../../constants/DomainsListPage.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -39,10 +38,7 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
-import {
-  CreateTag,
-  ProviderType,
-} from '../../generated/api/classification/createTag';
+import { CreateTag } from '../../generated/api/classification/createTag';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
@@ -66,7 +62,8 @@ import {
 import { getTagPath } from '../../utils/RouterUtils';
 import { getErrorText } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import TagsForm from './TagsForm';
+import ClassificationFormDrawer from './ClassificationFormDrawer';
+import TagFormDrawer from './TagFormDrawer';
 import { DeleteTagsType } from './TagsPage.interface';
 
 const TagsPage = () => {
@@ -86,6 +83,9 @@ const TagsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isTagFormLoading, setIsTagFormLoading] = useState<boolean>(false);
   const [isClassificationFormLoading, setIsClassificationFormLoading] =
+    useState<boolean>(false);
+  const [isTagDrawerOpen, setIsTagDrawerOpen] = useState<boolean>(false);
+  const [isClassificationDrawerOpen, setIsClassificationDrawerOpen] =
     useState<boolean>(false);
   const classificationDetailsRef = useRef<ClassificationDetailsRef>(null);
 
@@ -599,103 +599,65 @@ const TagsPage = () => {
     [editTag, currentClassification]
   );
 
-  const {
-    formDrawer: tagFormDrawer,
-    openDrawer: openTagDrawer,
-    closeDrawer: closeTagDrawer,
-  } = useFormDrawerWithRef({
-    title: tagsFormHeader,
-    anchor: 'right',
-    width: 670,
-    closeOnEscape: false,
-    header: {
-      sx: { ...DRAWER_HEADER_STYLING, py: 5 },
-    },
-    onCancel: () => {
-      tagForm.resetFields();
-      setEditTag(undefined);
-    },
-    form: (
-      <TagsForm
-        formRef={tagForm}
-        initialValues={editTag}
-        isEditing={!isUndefined(editTag)}
-        isSystemTag={editTag?.provider === ProviderType.System}
-        isTier={isTier}
-        key={editTag?.id ?? 'new-tag'}
-        permissions={tagsFormPermissions}
-        onSubmit={async (formData: CreateTag) => {
-          setIsTagFormLoading(true);
-          try {
-            await handleAddTagSubmit(formData);
-            closeTagDrawer();
-          } finally {
-            setIsTagFormLoading(false);
-          }
-        }}
-      />
-    ),
-    formRef: tagForm,
-    onSubmit: () => {
-      // This is called by the drawer button, actual submission happens via formRef.submit()
-    },
-    loading: isTagFormLoading,
-  });
+  const handleTagDrawerClose = useCallback(() => {
+    setIsTagDrawerOpen(false);
+    tagForm.resetFields();
+    setEditTag(undefined);
+  }, [tagForm]);
 
-  const {
-    formDrawer: classificationFormDrawer,
-    openDrawer: openClassificationDrawer,
-    closeDrawer: closeClassificationDrawer,
-  } = useFormDrawerWithRef({
-    title: t('label.adding-new-classification'),
-    anchor: 'right',
-    width: 670,
-    closeOnEscape: false,
-    header: {
-      sx: DRAWER_HEADER_STYLING,
+  const handleTagDrawerOpen = useCallback(() => {
+    setIsTagDrawerOpen(true);
+  }, []);
+
+  const handleClassificationDrawerClose = useCallback(() => {
+    setIsClassificationDrawerOpen(false);
+    classificationForm.resetFields();
+  }, [classificationForm]);
+
+  const handleClassificationDrawerOpen = useCallback(() => {
+    setIsClassificationDrawerOpen(true);
+    classificationForm.resetFields();
+  }, [classificationForm]);
+
+  const handleTagFormSubmit = useCallback(
+    async (formData: CreateTag) => {
+      setIsTagFormLoading(true);
+      try {
+        await handleAddTagSubmit(formData);
+        handleTagDrawerClose();
+      } finally {
+        setIsTagFormLoading(false);
+      }
     },
-    onCancel: () => {
-      classificationForm.resetFields();
+    [handleAddTagSubmit, handleTagDrawerClose]
+  );
+
+  const handleClassificationFormSubmit = useCallback(
+    async (formData: CreateClassification) => {
+      setIsClassificationFormLoading(true);
+      try {
+        await handleCreateClassification(formData);
+        handleClassificationDrawerClose();
+      } finally {
+        setIsClassificationFormLoading(false);
+      }
     },
-    form: (
-      <TagsForm
-        isClassification
-        showMutuallyExclusive
-        data={classifications}
-        formRef={classificationForm}
-        isEditing={false}
-        isTier={isTier}
-        onSubmit={async (formData: CreateClassification) => {
-          setIsClassificationFormLoading(true);
-          try {
-            await handleCreateClassification(formData);
-            closeClassificationDrawer();
-          } finally {
-            setIsClassificationFormLoading(false);
-          }
-        }}
-      />
-    ),
-    formRef: classificationForm,
-    onSubmit: () => {
-      // This is called by the drawer button, actual submission happens via formRef.submit()
-    },
-    loading: isClassificationFormLoading,
-  });
+    [handleCreateClassification, handleClassificationDrawerClose]
+  );
 
   const handleEditTagClick = useCallback(
     (selectedTag: Tag) => {
       setEditTag(selectedTag);
-      openTagDrawer();
+      handleTagDrawerOpen();
     },
-    [openTagDrawer]
+    [handleTagDrawerOpen]
   );
 
   const handleAddNewTagClick = useCallback(() => {
     setEditTag(undefined);
     tagForm.resetFields();
-    openTagDrawer();
-  }, [openTagDrawer, tagForm]);
+    handleTagDrawerOpen();
+  }, [handleTagDrawerOpen, tagForm]);
 
   const leftPanelLayout = useMemo(
     () => (
@@ -714,15 +676,13 @@ const TagsPage = () => {
                   icon={<PlusIcon className="align-middle" />}
                   onClick={() => {
                     classificationForm.resetFields();
-                    openClassificationDrawer();
+                    handleClassificationDrawerOpen();
                   }}>
-                  <Typography.Text
-                    className="p-l-xss"
-                    ellipsis={{ tooltip: true }}>
+                  <span className="p-l-xss">
                     {t('label.add-entity', {
                       entity: t('label.classification'),
                     })}
-                  </Typography.Text>
+                  </span>
                 </Button>
               )}
             </Space>
@@ -739,10 +699,12 @@ const TagsPage = () => {
                 data-testid="side-panel-classification"
                 key={category.name}
                 onClick={() => onClickClassifications(category)}>
-                <Typography.Paragraph
+                <Typography
+                  noWrap
                   className="ant-typography-ellipsis-custom self-center m-b-0 tag-category"
+                  component="p"
                   data-testid="tag-name"
-                  ellipsis={{ rows: 1, tooltip: true }}>
+                  title={getEntityName(category)}>
                   {getEntityName(category)}
                   {category.disabled && (
                     <Badge
@@ -752,7 +714,7 @@ const TagsPage = () => {
                       size="small"
                     />
                   )}
-                </Typography.Paragraph>
+                </Typography>
 
                 {getCountBadge(
                   category.termCount,
@@ -771,7 +733,7 @@ const TagsPage = () => {
       classifications,
       currentClassification,
       createClassificationPermission,
-      openClassificationDrawer,
+      handleClassificationDrawerOpen,
       classificationForm,
       t,
     ]
@@ -783,9 +745,9 @@ const TagsPage = () => {
   if (error) {
     return (
       <ErrorPlaceHolder>
-        <Typography.Paragraph className="text-center m-auto">
+        <Typography className="text-center m-auto" component="p">
           {error}
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
     );
   }
@@ -838,8 +800,28 @@ const TagsPage = () => {
           flex: 0.87,
         }}
       />
-      {tagFormDrawer}
-      {classificationFormDrawer}
+
+      <TagFormDrawer
+        editTag={editTag}
+        formRef={tagForm}
+        isLoading={isTagFormLoading}
+        isTier={isTier}
+        open={isTagDrawerOpen}
+        permissions={tagsFormPermissions}
+        tagsFormHeader={tagsFormHeader}
+        onClose={handleTagDrawerClose}
+        onSubmit={handleTagFormSubmit}
+      />
+
+      <ClassificationFormDrawer
+        classifications={classifications}
+        formRef={classificationForm}
+        isLoading={isClassificationFormLoading}
+        isTier={isTier}
+        open={isClassificationDrawerOpen}
+        onClose={handleClassificationDrawerClose}
+        onSubmit={handleClassificationFormSubmit}
+      />
     </div>
   );
 };

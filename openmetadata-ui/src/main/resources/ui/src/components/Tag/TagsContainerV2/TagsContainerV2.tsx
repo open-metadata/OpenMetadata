@@ -234,8 +234,7 @@ const TagsContainerV2 = ({
         <Col span={24}>
           <TagsViewer
             displayType={displayType}
-            entityFqn={columnData?.fqn ?? entityFqn}
-            entityType={entityType}
+            entityFqn={columnData?.fqn ?? ''}
             newLook={tagNewLook}
             showNoDataPlaceholder={showNoDataPlaceholder}
             sizeCap={sizeCap}
@@ -249,8 +248,7 @@ const TagsContainerV2 = ({
       showNoDataPlaceholder,
       tags?.[tagType],
       layoutType,
-      entityFqn,
-      entityType,
+      columnData?.fqn,
     ]
   );
 
@@ -403,8 +401,7 @@ const TagsContainerV2 = ({
         ) : null}
         <TagsViewer
           displayType={displayType}
-          entityFqn={columnData?.fqn ?? entityFqn}
-          entityType={entityType}
+          entityFqn={columnData?.fqn ?? ''}
           newLook={newLook}
           showNoDataPlaceholder={showNoDataPlaceholder}
           sizeCap={sizeCap}
@@ -421,6 +418,7 @@ const TagsContainerV2 = ({
     tags?.[tagType],
     showInlineEditButton,
     handleAddClick,
+    columnData?.fqn,
   ]);
 
   const tagBody = useMemo(() => {

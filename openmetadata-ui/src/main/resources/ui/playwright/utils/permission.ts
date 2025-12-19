@@ -263,23 +263,8 @@ export const initializeUserWithViewOnlyPermissions = async (
   role = new RolesClass();
   await role.create(apiContext, [policy.responseData.name]);
 
-  // Assign role to user
-  await testUser.patch({
-    apiContext,
-    patchData: [
-      {
-        op: 'replace',
-        path: '/roles',
-        value: [
-          {
-            id: role.responseData.id,
-            type: 'role',
-            name: role.responseData.name,
-          },
-        ],
-      },
-    ],
-  });
+  // Assign role to user using the reusable function
+  await assignRoleToUser(page, testUser);
 
   return { apiContext, policy, role };
 };

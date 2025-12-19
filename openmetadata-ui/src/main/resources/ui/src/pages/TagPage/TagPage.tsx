@@ -60,7 +60,7 @@ import AssetsTabs, {
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
-import StyleModalNew from '../../components/Modals/StyleModal/StyleModalNew';
+import IconColorModal from '../../components/Modals/IconColorModal/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   BLACK_COLOR,
@@ -817,7 +817,7 @@ const TagPage = () => {
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <StyleModalNew
+      <IconColorModal
         open={isStyleEditing}
         style={tagItem.style}
         onCancel={() => setIsStyleEditing(false)}

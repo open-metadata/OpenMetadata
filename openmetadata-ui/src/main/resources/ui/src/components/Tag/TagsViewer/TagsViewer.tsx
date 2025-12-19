@@ -40,7 +40,6 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   showNoDataPlaceholder = true,
   newLook = false,
   entityFqn,
-  entityType,
 }: TagsViewerProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -101,7 +100,6 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             { 'diff-removed': tag?.removed }
           )}
           entityFqn={entityFqn}
-          entityType={entityType}
           isVersionPage={tag?.added || tag?.removed}
           key={tag.tagFQN}
           newLook={newLook}
@@ -111,7 +109,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         />
       );
     },
-    [muiTags, newLook, entityFqn, entityType]
+    [muiTags, newLook, entityFqn]
   );
 
   // sort tags by source so that "Glossary" tags always comes first
