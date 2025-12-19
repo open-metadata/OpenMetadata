@@ -37,23 +37,24 @@ import {
   mergeTagsWithGlossary,
 } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
+import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
+import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
+import Loader from '../../common/Loader/Loader';
+import TagsSection from '../../common/TagsSection/TagsSection';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
 import DataQualityTab from '../../Explore/EntitySummaryPanel/DataQualityTab/DataQualityTab';
 import { LineageTabContent } from '../../Explore/EntitySummaryPanel/LineageTab';
 import { LineageData } from '../../Lineage/Lineage.interface';
-import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
-import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
-import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
-import Loader from '../../common/Loader/Loader';
-import TagsSection from '../../common/TagsSection/TagsSection';
 import {
   ColumnDetailPanelProps,
   ColumnOrTask,
   TestCaseStatusCounts,
 } from './ColumnDetailPanel.interface';
 import './ColumnDetailPanel.less';
+import { KeyProfileMetrics } from './KeyProfileMetrics';
 
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
@@ -61,6 +62,7 @@ const isColumn = (item: ColumnOrTask | null): item is Column => {
 
 export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   column,
+  tableFqn,
   isOpen,
   onClose,
   onColumnUpdate,
@@ -89,6 +91,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const [lineageFilter, setLineageFilter] = useState<'upstream' | 'downstream'>(
     'downstream'
   );
+
   const fetchTestCases = useCallback(async () => {
     if (!column?.fullyQualifiedName) {
       setIsTestCaseLoading(false);
@@ -362,6 +365,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           />
         )}
 
+        {isColumn(column) && entityType === EntityType.TABLE && (
+          <KeyProfileMetrics
+            columnFqn={column.fullyQualifiedName}
+            tableFqn={tableFqn}
+          />
+        )}
+
         {isTestCaseLoading ? (
           <Loader size="small" />
         ) : (
@@ -572,7 +582,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       open={isOpen}
       placement="right"
       title={columnTitle}
-      width={480}
+      width={576}
       onClose={onClose}>
       <div className="column-detail-panel-container">
         <div className="d-flex gap-2">

@@ -19,7 +19,7 @@ export type ColumnOrTask = Column | Task;
 
 export interface ColumnDetailPanelProps<T extends ColumnOrTask = Column> {
   column: T | null;
-  tableFqn: string;
+  tableFqn?: string;
   isOpen: boolean;
   onClose: () => void;
   onColumnUpdate?: (updatedColumn: T) => void;
