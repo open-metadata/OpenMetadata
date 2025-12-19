@@ -343,9 +343,9 @@ def test_standard_uuid_not_driver_license(analyzer):
         "283feddb-38ec-c38a-2a92-df9223523339",
         "394ff0ec-49fd-d49b-3ba3-e0a33464444a",
         "4a500ffd-5af0-e5a4-4cb4-f1b445575556",
-        "5b611ffe-6bf1-f6b5-5dc5-02c556686667"
+        "5b611ffe-6bf1-f6b5-5dc5-02c556686667",
     ]
-    
+
     # Test without driver license context
     extracted = extract_pii_tags(analyzer, standard_uuids)
     assert PIITag.US_DRIVER_LICENSE not in extracted, (
@@ -353,10 +353,12 @@ def test_standard_uuid_not_driver_license(analyzer):
         standard_uuids,
         extracted,
     )
-    
+
     # Test with GUID context
     guid_context = ["guid", "id", "uuid"]
-    extracted_with_context = extract_pii_tags(analyzer, standard_uuids, context=guid_context)
+    extracted_with_context = extract_pii_tags(
+        analyzer, standard_uuids, context=guid_context
+    )
     assert PIITag.US_DRIVER_LICENSE not in extracted_with_context, (
         "Standard UUIDs with GUID context should not be tagged as Driver License",
         standard_uuids,
@@ -371,7 +373,7 @@ def test_salesforce_15_char_id_not_driver_license(analyzer):
     """
     salesforce_15_char = [
         "0015g00000A1BcD",
-        "0033j00000ZXYuQ", 
+        "0033j00000ZXYuQ",
         "5007A00001LmNOP",
         "00Q9E000001abcD",
         "0061U00000PqRsT",
@@ -381,9 +383,9 @@ def test_salesforce_15_char_id_not_driver_license(analyzer):
         "0081Y00000IjKlM",
         "0091Z00000NoPqR",
         "00A1a00000StUvW",
-        "00B1b00000XyZaB"
+        "00B1b00000XyZaB",
     ]
-    
+
     # Test without driver license context
     extracted = extract_pii_tags(analyzer, salesforce_15_char)
     assert PIITag.US_DRIVER_LICENSE not in extracted, (
@@ -391,10 +393,12 @@ def test_salesforce_15_char_id_not_driver_license(analyzer):
         salesforce_15_char,
         extracted,
     )
-    
+
     # Test with Salesforce context
     salesforce_context = ["salesforce", "id", "account"]
-    extracted_with_context = extract_pii_tags(analyzer, salesforce_15_char, context=salesforce_context)
+    extracted_with_context = extract_pii_tags(
+        analyzer, salesforce_15_char, context=salesforce_context
+    )
     assert PIITag.US_DRIVER_LICENSE not in extracted_with_context, (
         "Salesforce 15-char IDs with context should not be tagged as Driver License",
         salesforce_15_char,
@@ -410,7 +414,7 @@ def test_salesforce_18_char_id_not_driver_license(analyzer):
     salesforce_18_char = [
         "0015g00000A1BcDAAZ",
         "0033j00000ZXYuQAAQ",
-        "5007A00001LmNOPQAZ", 
+        "5007A00001LmNOPQAZ",
         "00Q9E000001abcDAAQ",
         "0061U00000PqRsTAAV",
         "0031V00000UvWxYAAJ",
@@ -421,9 +425,9 @@ def test_salesforce_18_char_id_not_driver_license(analyzer):
         "00A1a00000StUvWAAO",
         "00B1b00000XyZaBAAP",
         "00C1c00000CdEfGAAR",
-        "00D1d00000HiJkLAAS"
+        "00D1d00000HiJkLAAS",
     ]
-    
+
     # Test without driver license context
     extracted = extract_pii_tags(analyzer, salesforce_18_char)
     assert PIITag.US_DRIVER_LICENSE not in extracted, (
@@ -431,10 +435,12 @@ def test_salesforce_18_char_id_not_driver_license(analyzer):
         salesforce_18_char,
         extracted,
     )
-    
+
     # Test with operational context
     operational_context = ["operational", "account", "guid"]
-    extracted_with_context = extract_pii_tags(analyzer, salesforce_18_char, context=operational_context)
+    extracted_with_context = extract_pii_tags(
+        analyzer, salesforce_18_char, context=operational_context
+    )
     assert PIITag.US_DRIVER_LICENSE not in extracted_with_context, (
         "Salesforce 18-char IDs with operational context should not be tagged as Driver License",
         salesforce_18_char,
