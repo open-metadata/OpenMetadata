@@ -30,12 +30,12 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-// G-C02: Create glossary with all optional fields
-test.describe('Create Glossary With All Optional Fields', () => {
+test.describe('Glossary CRUD Operations', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
 
+  // G-C02: Create glossary with all optional fields
   test('should create glossary with tags, owners, and description', async ({
     page,
   }) => {
@@ -83,14 +83,8 @@ test.describe('Create Glossary With All Optional Fields', () => {
       await afterAction();
     }
   });
-});
 
-// G-C03: Create glossary with mutually exclusive toggle ON
-test.describe('Create Glossary With Mutually Exclusive', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // G-C03: Create glossary with mutually exclusive toggle ON
   test('should create glossary with mutually exclusive enabled', async ({
     page,
   }) => {
@@ -142,14 +136,8 @@ test.describe('Create Glossary With Mutually Exclusive', () => {
       await afterAction();
     }
   });
-});
 
-// T-C11: Create term with synonyms
-test.describe('Create Term With Synonyms', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // T-C11: Create term with synonyms
   test('should create term with synonyms', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -169,7 +157,9 @@ test.describe('Create Term With Synonyms', () => {
 
       const synonymsSelect = termModal.getByTestId('synonyms');
 
-      if (await synonymsSelect.isVisible({ timeout: 2000 }).catch(() => false)) {
+      if (
+        await synonymsSelect.isVisible({ timeout: 2000 }).catch(() => false)
+      ) {
         await synonymsSelect.click();
         const synonymsInput = synonymsSelect.locator('input').first();
         await synonymsInput.fill('synonym1');
@@ -196,14 +186,8 @@ test.describe('Create Term With Synonyms', () => {
       await afterAction();
     }
   });
-});
 
-// T-C12: Create term with references
-test.describe('Create Term With References', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // T-C12: Create term with references
   test('should create term with references', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -252,14 +236,8 @@ test.describe('Create Term With References', () => {
       await afterAction();
     }
   });
-});
 
-// G-U04: Remove owner from glossary
-test.describe('Remove Owner From Glossary', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // G-U04: Remove owner from glossary
   test('should remove owner from glossary', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -316,21 +294,17 @@ test.describe('Remove Owner From Glossary', () => {
         }
       }
 
-      await expect(page.getByTestId('entity-header-display-name')).toBeVisible();
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
       await owner.delete(apiContext);
       await afterAction();
     }
   });
-});
 
-// G-U07: Remove reviewer from glossary
-test.describe('Remove Reviewer From Glossary', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // G-U07: Remove reviewer from glossary
   test('should remove reviewer from glossary', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -363,7 +337,9 @@ test.describe('Remove Reviewer From Glossary', () => {
 
       const reviewerSection = page.getByTestId('glossary-reviewer');
 
-      if (await reviewerSection.isVisible({ timeout: 3000 }).catch(() => false)) {
+      if (
+        await reviewerSection.isVisible({ timeout: 3000 }).catch(() => false)
+      ) {
         const editBtn = reviewerSection.locator(
           '[data-testid="edit-reviewer-button"]'
         );
@@ -387,21 +363,17 @@ test.describe('Remove Reviewer From Glossary', () => {
         }
       }
 
-      await expect(page.getByTestId('entity-header-display-name')).toBeVisible();
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
       await reviewer.delete(apiContext);
       await afterAction();
     }
   });
-});
 
-// T-D02: Delete parent term (cascade children)
-test.describe('Delete Parent Term Cascades Children', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // T-D02: Delete parent term (cascade children)
   test('should delete parent term and cascade delete children', async ({
     page,
   }) => {
@@ -468,20 +440,16 @@ test.describe('Delete Parent Term Cascades Children', () => {
         }
       }
 
-      await expect(page.getByTestId('entity-header-display-name')).toBeVisible();
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
     }
   });
-});
 
-// H-DD03: Drag term with children (moves subtree)
-test.describe('Drag Term With Children', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // H-DD03: Drag term with children (moves subtree)
   test('should display parent term with children for drag operation', async ({
     page,
   }) => {
@@ -528,14 +496,8 @@ test.describe('Drag Term With Children', () => {
       await afterAction();
     }
   });
-});
 
-// NAV-05: Tab navigation (Terms, Assets, Activity)
-test.describe('Tab Navigation', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // NAV-05: Tab navigation (Terms, Assets, Activity)
   test('should navigate between tabs on term page', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -573,20 +535,16 @@ test.describe('Tab Navigation', () => {
         await page.waitForLoadState('networkidle');
       }
 
-      await expect(page.getByTestId('entity-header-display-name')).toBeVisible();
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
     }
   });
-});
 
-// T-C05: Create term via row action button (+)
-test.describe('Create Term Via Row Action Button', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // T-C05: Create term via row action button (+)
   test('should create child term via row action button', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -618,7 +576,9 @@ test.describe('Create Term Via Row Action Button', () => {
 
         const termModal = page.locator('.edit-glossary-modal');
         await termModal.getByTestId('name').fill(childTermName);
-        await termModal.locator(descriptionBox).fill('Child term via row action');
+        await termModal
+          .locator(descriptionBox)
+          .fill('Child term via row action');
 
         const createResponse = page.waitForResponse(
           (response) =>
@@ -639,14 +599,8 @@ test.describe('Create Term Via Row Action Button', () => {
       await afterAction();
     }
   });
-});
 
-// T-C14: Create term with tags
-test.describe('Create Term With Tags', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // T-C14: Create term with tags
   test('should create term with tags', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -699,14 +653,8 @@ test.describe('Create Term With Tags', () => {
       await afterAction();
     }
   });
-});
 
-// T-U07: Remove individual synonym from term
-test.describe('Remove Synonym From Term', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // T-U07: Remove individual synonym from term
   test('should remove synonym from term', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -767,20 +715,16 @@ test.describe('Remove Synonym From Term', () => {
         }
       }
 
-      await expect(page.getByTestId('entity-header-display-name')).toBeVisible();
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
     }
   });
-});
 
-// G-U10: Remove tags from glossary
-test.describe('Remove Tags From Glossary', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // G-U10: Remove tags from glossary
   test('should remove tag from glossary', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -823,7 +767,9 @@ test.describe('Remove Tags From Glossary', () => {
             .locator('.ant-select-selection-item-remove')
             .first();
 
-          if (await removeIcon.isVisible({ timeout: 2000 }).catch(() => false)) {
+          if (
+            await removeIcon.isVisible({ timeout: 2000 }).catch(() => false)
+          ) {
             await removeIcon.click();
 
             const saveBtn = page.getByTestId('saveAssociatedTag');

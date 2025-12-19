@@ -31,12 +31,12 @@ test.use({
 // P3 TESTS - Nice to Have (Edge Cases, Stress Tests, UI States)
 // ============================================================================
 
-// G-C11: Create glossary with unicode/emoji in name
-test.describe('Create Glossary with Unicode/Emoji', () => {
+test.describe('Glossary P3 Tests', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
 
+  // G-C11: Create glossary with unicode/emoji in name
   test('should create glossary with unicode characters in name', async ({
     page,
   }) => {
@@ -52,7 +52,9 @@ test.describe('Create Glossary with Unicode/Emoji', () => {
 
       // Use name with unicode characters
       await page.fill('[data-testid="name"]', unicodeName);
-      await page.locator(descriptionBox).fill('Glossary with unicode characters');
+      await page
+        .locator(descriptionBox)
+        .fill('Glossary with unicode characters');
 
       const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
       await page.click('[data-testid="save-glossary"]');
@@ -74,14 +76,8 @@ test.describe('Create Glossary with Unicode/Emoji', () => {
       await afterAction();
     }
   });
-});
 
-// T-U24: Update term style - remove color
-test.describe('Remove Term Style Color', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // T-U24: Update term style - remove color
   test('should remove color style from term via API', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -135,14 +131,8 @@ test.describe('Remove Term Style Color', () => {
       await afterAction();
     }
   });
-});
 
-// T-U25: Update term style - remove icon
-test.describe('Remove Term Style Icon', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // T-U25: Update term style - remove icon
   test('should remove icon style from term via API', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -196,14 +186,8 @@ test.describe('Remove Term Style Icon', () => {
       await afterAction();
     }
   });
-});
 
-// S-S06: Search with special characters
-test.describe('Search with Special Characters', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // S-S06: Search with special characters
   test('should handle special characters in search', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -212,7 +196,7 @@ test.describe('Search with Special Characters', () => {
     try {
       await glossary.create(apiContext);
       await glossaryTerm.create(apiContext);
-      
+
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
@@ -250,60 +234,8 @@ test.describe('Search with Special Characters', () => {
       await afterAction();
     }
   });
-});
 
-// S-S08: Search debounce (500ms) works
-test.describe('Search Debounce', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  test('should debounce search input', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const glossaryTerm = new GlossaryTerm(glossary);
-
-    try {
-      await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-      
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      // Wait for page to load
-      await page.waitForLoadState('networkidle');
-
-      const searchInput = page.getByPlaceholder(/search.*term/i);
-
-      // Type rapidly
-      await searchInput.pressSequentially('test', { delay: 50 });
-
-      // Verify search still works after debounce
-      await page.waitForTimeout(600); // Wait for debounce
-      await page.waitForLoadState('networkidle');
-
-      // Page should be stable - either shows table or empty state
-      const table = page.getByTestId('glossary-term-table');
-      const emptyState = page.getByText(/no.*term.*found|no.*result/i);
-
-      const isStable =
-        (await table.isVisible().catch(() => false)) ||
-        (await emptyState.isVisible().catch(() => false));
-
-      expect(isStable).toBeTruthy();
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-});
-
-// VT-08: Vote count displays correctly
-test.describe('Vote Count Display', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // VT-08: Vote count displays correctly
   test('should display vote count correctly', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -331,646 +263,539 @@ test.describe('Vote Count Display', () => {
       await afterAction();
     }
   });
-});
 
-// AF-05: Reply to existing comment
-test.describe('Reply to Comment', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // AF-05: Reply to existing comment
   test('should navigate to activity feed for potential reply', async ({
     page,
   }) => {
-    await glossary.visitEntityPage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-    // Navigate to activity feed tab
-    const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
+    try {
+      await glossary.create(apiContext);
+      await glossary.visitEntityPage(page);
 
-    if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await activityTab.click();
+      // Navigate to activity feed tab
+      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
 
-      // Verify activity tab is active
-      await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await activityTab.click();
+
+        // Verify activity tab is active
+        await expect(activityTab).toHaveAttribute('aria-selected', 'true');
+      }
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
   });
-});
 
-// AF-06: Edit own comment
-test.describe('Edit Comment', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // AF-06: Edit own comment
   test('should access activity feed for comment editing', async ({ page }) => {
-    await glossary.visitEntityPage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-    // Navigate to activity feed tab
-    const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
+    try {
+      await glossary.create(apiContext);
+      await glossary.visitEntityPage(page);
 
-    if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await activityTab.click();
+      // Navigate to activity feed tab
+      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
 
-      // Check if there are any existing comments with edit option
-      const editButtons = page.getByTestId('edit-message');
-      const hasEditOption = await editButtons.count();
+      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await activityTab.click();
 
-      // Test passes whether there are comments or not
-      expect(hasEditOption >= 0).toBe(true);
+        // Check if there are any existing comments with edit option
+        const editButtons = page.getByTestId('edit-message');
+        const hasEditOption = await editButtons.count();
+
+        // Test passes whether there are comments or not
+        expect(hasEditOption >= 0).toBe(true);
+      }
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
   });
-});
 
-// AF-07: Delete own comment
-test.describe('Delete Comment', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // AF-07: Delete own comment
   test('should access activity feed for comment deletion', async ({ page }) => {
-    await glossary.visitEntityPage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-    // Navigate to activity feed tab
-    const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
+    try {
+      await glossary.create(apiContext);
+      await glossary.visitEntityPage(page);
 
-    if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await activityTab.click();
+      // Navigate to activity feed tab
+      const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
 
-      // Check if there are any existing comments with delete option
-      const deleteButtons = page.getByTestId('delete-message');
-      const hasDeleteOption = await deleteButtons.count();
+      if (await activityTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await activityTab.click();
 
-      // Test passes whether there are comments or not
-      expect(hasDeleteOption >= 0).toBe(true);
+        // Check if there are any existing comments with delete option
+        const deleteButtons = page.getByTestId('delete-message');
+        const hasDeleteOption = await deleteButtons.count();
+
+        // Test passes whether there are comments or not
+        expect(hasDeleteOption >= 0).toBe(true);
+      }
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
   });
-});
 
-// NAV-06: Back/forward browser navigation
-test.describe('Browser Navigation', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // NAV-06: Back/forward browser navigation
   test('should handle back/forward browser navigation', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Navigate to term
-    await page.click(`[data-testid="${glossaryTerm.data.displayName}"]`);
-    await page.waitForLoadState('networkidle');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    // Verify we're on term page
-    await expect(page.getByTestId('entity-header-display-name')).toContainText(
-      glossaryTerm.data.displayName
-    );
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-    // Go back
-    await page.goBack();
-    await page.waitForTimeout(500);
+      // Navigate to term
+      await page.click(`[data-testid="${glossaryTerm.data.displayName}"]`);
+      await page.waitForLoadState('networkidle');
 
-    // Should be back on glossary page
-    await expect(page.getByTestId('entity-header-name')).toBeVisible();
+      // Verify we're on term page
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(glossaryTerm.data.displayName);
 
-    // Go forward
-    await page.goForward();
-    await page.waitForTimeout(500);
+      // Go back
+      await page.goBack();
+      await page.waitForTimeout(500);
 
-    // Should be on term page again
-    await expect(page.getByTestId('entity-header-display-name')).toBeVisible();
-  });
-});
+      // Should be back on glossary page
+      await expect(page.getByTestId('entity-header-name')).toBeVisible();
 
-// UI-02: Loading skeleton displays
-test.describe('Loading Skeleton', () => {
-  const glossary = new Glossary();
+      // Go forward
+      await page.goForward();
+      await page.waitForTimeout(500);
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should show loading state during navigation', async ({ page }) => {
-    // Navigate to glossary page
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-
-    // The page should eventually load without errors
-    await page.waitForLoadState('networkidle');
-
-    // Verify page is loaded (loader should be gone)
-    const loader = page.getByTestId('loader');
-    const skeleton = page.locator('.ant-skeleton');
-
-    // Either loader/skeleton is not visible, or content is loaded
-    const isLoaded =
-      (await loader.isVisible().catch(() => false)) === false ||
-      (await skeleton.isVisible().catch(() => false)) === false;
-
-    expect(isLoaded).toBeTruthy();
-  });
-});
-
-// UI-04: Expand/collapse right panel
-test.describe('Right Panel Toggle', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should toggle right panel if available', async ({ page }) => {
-    await glossaryTerm.visitEntityPage(page);
-
-    // Look for panel toggle button
-    const panelToggle = page.locator(
-      '[data-testid="panel-toggle"], [data-testid="collapse-btn"]'
-    );
-
-    if (await panelToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
-      // Click to toggle
-      await panelToggle.click();
-      await page.waitForTimeout(300);
-
-      // Click again to restore
-      await panelToggle.click();
-      await page.waitForTimeout(300);
-
-      // Page should still be functional
+      // Should be on term page again
       await expect(
         page.getByTestId('entity-header-display-name')
       ).toBeVisible();
-    } else {
-      // No toggle button - test passes
-      expect(true).toBe(true);
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
   });
-});
 
-// EC-05: Special characters in all fields
-test.describe('Special Characters in Fields', () => {
-  const glossary = new Glossary();
+  // UI-02: Loading skeleton displays
+  test('should show loading state during navigation', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
+    try {
+      await glossary.create(apiContext);
+
+      // Navigate to glossary page
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+
+      // The page should eventually load without errors
+      await page.waitForLoadState('networkidle');
+
+      // Verify page is loaded (loader should be gone)
+      const loader = page.getByTestId('loader');
+      const skeleton = page.locator('.ant-skeleton');
+
+      // Either loader/skeleton is not visible, or content is loaded
+      const isLoaded =
+        (await loader.isVisible().catch(() => false)) === false ||
+        (await skeleton.isVisible().catch(() => false)) === false;
+
+      expect(isLoaded).toBeTruthy();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
+  // UI-04: Expand/collapse right panel
+  test('should toggle right panel if available', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await glossaryTerm.visitEntityPage(page);
+
+      // Look for panel toggle button
+      const panelToggle = page.locator(
+        '[data-testid="panel-toggle"], [data-testid="collapse-btn"]'
+      );
+
+      if (await panelToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
+        // Click to toggle
+        await panelToggle.click();
+        await page.waitForTimeout(300);
+
+        // Click again to restore
+        await panelToggle.click();
+        await page.waitForTimeout(300);
+
+        // Page should still be functional
+        await expect(
+          page.getByTestId('entity-header-display-name')
+        ).toBeVisible();
+      } else {
+        // No toggle button - test passes
+        expect(true).toBe(true);
+      }
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
+  // EC-05: Special characters in all fields
   test('should handle special characters in term fields', async ({
     browser,
   }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    const glossary = new Glossary();
 
-    // Create term with special characters in description and synonyms
-    const response = await apiContext.post('/api/v1/glossaryTerms', {
-      data: {
-        glossary: glossary.responseData.id,
-        name: `SpecialTerm_${Date.now()}`,
-        displayName: `Special-Term_${Date.now()}`,
-        description:
-          'Description with special chars: &amp; "quotes" & apostrophe',
-        synonyms: ['synonym-1', 'synonym_2', 'synonym-3'],
-      },
-    });
+    try {
+      await glossary.create(apiContext);
 
-    // Should either succeed or return validation/not found error (all are valid behaviors)
-    expect([200, 201, 400, 404, 422]).toContain(response.status());
+      // Create term with special characters in description and synonyms
+      const response = await apiContext.post('/api/v1/glossaryTerms', {
+        data: {
+          glossary: glossary.responseData.id,
+          name: `SpecialTerm_${Date.now()}`,
+          displayName: `Special-Term_${Date.now()}`,
+          description:
+            'Description with special chars: &amp; "quotes" & apostrophe',
+          synonyms: ['synonym-1', 'synonym_2', 'synonym-3'],
+        },
+      });
 
-    await afterAction();
-  });
-});
-
-// EC-06: Unicode/emoji handling
-test.describe('Unicode and Emoji Handling', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
+      // Should either succeed or return validation/not found error (all are valid behaviors)
+      expect([200, 201, 400, 404, 422]).toContain(response.status());
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // EC-06: Unicode/emoji handling
   test('should handle unicode and emoji in description', async ({
     browser,
   }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    const glossary = new Glossary();
 
-    // Create term with unicode in description
-    const response = await apiContext.post('/api/v1/glossaryTerms', {
-      data: {
-        glossary: glossary.responseData.id,
-        name: `UnicodeTerm_${Date.now()}`,
-        displayName: `UnicodeTerm_${Date.now()}`,
-        description: 'Description with unicode characters: cafe, naive',
-      },
-    });
+    try {
+      await glossary.create(apiContext);
 
-    // Should either succeed or return validation/not found error (all are valid behaviors)
-    expect([200, 201, 400, 404, 422]).toContain(response.status());
-
-    if (response.ok()) {
-      const data = await response.json();
-
-      // Verify content was saved
-      expect(data.description).toContain('unicode');
-    }
-
-    await afterAction();
-  });
-});
-
-// EC-07: Concurrent edit conflict
-test.describe('Concurrent Edit Handling', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should handle concurrent edits gracefully', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    // Make two rapid updates to simulate concurrent edits
-    const update1 = apiContext.patch(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-      {
-        data: [
-          {
-            op: 'replace',
-            path: '/description',
-            value: 'Concurrent update 1',
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
-
-    const update2 = apiContext.patch(
-      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-      {
-        data: [
-          {
-            op: 'replace',
-            path: '/description',
-            value: 'Concurrent update 2',
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
-
-    // Wait for both to complete
-    const [response1, response2] = await Promise.all([update1, update2]);
-
-    // At least one should succeed, other may fail with conflict
-    const bothHandled =
-      (response1.ok() || response1.status() === 409) &&
-      (response2.ok() || response2.status() === 409);
-
-    expect(bothHandled).toBe(true);
-
-    await afterAction();
-  });
-});
-
-// EC-08: Network timeout handling
-test.describe('Network Timeout Handling', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should handle slow network gracefully', async ({ page }) => {
-    // Simulate slow network
-    await page.route('**/*', async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await route.continue();
-    });
-
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-
-    // Page should eventually load despite delays
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
-
-    // Clear route handler
-    await page.unroute('**/*');
-
-    // Verify page is functional
-    await expect(
-      page
-        .locator(
-          '[data-testid="add-glossary"], [data-testid="glossary-left-panel"]'
-        )
-        .first()
-    ).toBeVisible({ timeout: 10000 });
-  });
-});
-
-// EC-09: Session expiry during operation
-test.describe('Session Handling', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
-  test('should maintain session during normal operations', async ({ page }) => {
-    await glossary.visitEntityPage(page);
-
-    // Perform multiple operations
-    await page.waitForLoadState('networkidle');
-
-    // Navigate around
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-
-    // Go back to glossary
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Session should still be valid
-    await expect(page.getByTestId('entity-header-name')).toBeVisible();
-  });
-});
-
-// EC-10: Maximum nesting depth (10+ levels)
-test.describe('Deep Nesting Handling', () => {
-  const glossary = new Glossary();
-  const termIds: string[] = [];
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-
-    // Create 10 levels of nested terms
-    let parentId: string | undefined;
-
-    for (let i = 1; i <= 10; i++) {
-      const termData: Record<string, unknown> = {
-        glossary: glossary.responseData.id,
-        name: `Level${i}_${Date.now()}`,
-        displayName: `Level ${i}`,
-        description: `Level ${i} term`,
-      };
-
-      if (parentId) {
-        termData.parent = parentId;
-      }
-
+      // Create term with unicode in description
       const response = await apiContext.post('/api/v1/glossaryTerms', {
-        data: termData,
+        data: {
+          glossary: glossary.responseData.id,
+          name: `UnicodeTerm_${Date.now()}`,
+          displayName: `UnicodeTerm_${Date.now()}`,
+          description: 'Description with unicode characters: cafe, naive',
+        },
       });
+
+      // Should either succeed or return validation/not found error (all are valid behaviors)
+      expect([200, 201, 400, 404, 422]).toContain(response.status());
 
       if (response.ok()) {
         const data = await response.json();
-        parentId = data.id;
-        termIds.push(data.id);
-      } else {
-        // Max nesting depth may be enforced - stop creating
-        break;
+
+        // Verify content was saved
+        expect(data.description).toContain('unicode');
       }
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
-
-    await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
+  // EC-07: Concurrent edit conflict
+  test('should handle concurrent edits gracefully', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+
+      // Make two rapid updates to simulate concurrent edits
+      const update1 = apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'replace',
+              path: '/description',
+              value: 'Concurrent update 1',
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
+
+      const update2 = apiContext.patch(
+        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+        {
+          data: [
+            {
+              op: 'replace',
+              path: '/description',
+              value: 'Concurrent update 2',
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
+
+      // Wait for both to complete
+      const [response1, response2] = await Promise.all([update1, update2]);
+
+      // At least one should succeed, other may fail with conflict
+      const bothHandled =
+        (response1.ok() || response1.status() === 409) &&
+        (response2.ok() || response2.status() === 409);
+
+      expect(bothHandled).toBe(true);
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
-  test('should handle deep nesting', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+  // EC-08: Network timeout handling
+  test('should handle slow network gracefully', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-    // Wait for page to load
-    await page.waitForLoadState('networkidle');
+    try {
+      await glossary.create(apiContext);
 
-    // Page should be functional - either shows table or empty state
-    const table = page.getByTestId('glossary-term-table');
-    const pageContent = page.locator('.glossary-details');
+      // Simulate slow network
+      await page.route('**/*', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await route.continue();
+      });
 
-    const isLoaded =
-      (await table.isVisible({ timeout: 10000 }).catch(() => false)) ||
-      (await pageContent.isVisible({ timeout: 5000 }).catch(() => false));
+      await sidebarClick(page, SidebarItem.GLOSSARY);
 
-    // If there are terms, try to expand some levels
-    if (await table.isVisible({ timeout: 2000 }).catch(() => false)) {
-      for (let i = 0; i < Math.min(termIds.length, 2); i++) {
-        const expandIcon = page.locator('.ant-table-row-expand-icon').first();
+      // Page should eventually load despite delays
+      await page.waitForLoadState('networkidle', { timeout: 30000 });
 
-        if (await expandIcon.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await expandIcon.click();
-          await page.waitForTimeout(500);
-          await page.waitForLoadState('networkidle');
+      // Clear route handler
+      await page.unroute('**/*');
+
+      // Verify page is functional
+      await expect(
+        page
+          .locator(
+            '[data-testid="add-glossary"], [data-testid="glossary-left-panel"]'
+          )
+          .first()
+      ).toBeVisible({ timeout: 10000 });
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // EC-09: Session expiry during operation
+  test('should maintain session during normal operations', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+
+    try {
+      await glossary.create(apiContext);
+      await glossary.visitEntityPage(page);
+
+      // Perform multiple operations
+      await page.waitForLoadState('networkidle');
+
+      // Navigate around
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+
+      // Go back to glossary
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      // Session should still be valid
+      await expect(page.getByTestId('entity-header-name')).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // EC-10: Maximum nesting depth (10+ levels)
+  test('should handle deep nesting', async ({ page, browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const glossary = new Glossary();
+    const termIds: string[] = [];
+
+    try {
+      await glossary.create(apiContext);
+
+      // Create 10 levels of nested terms
+      let parentId: string | undefined;
+
+      for (let i = 1; i <= 10; i++) {
+        const termData: Record<string, unknown> = {
+          glossary: glossary.responseData.id,
+          name: `Level${i}_${Date.now()}`,
+          displayName: `Level ${i}`,
+          description: `Level ${i} term`,
+        };
+
+        if (parentId) {
+          termData.parent = parentId;
+        }
+
+        const response = await apiContext.post('/api/v1/glossaryTerms', {
+          data: termData,
+        });
+
+        if (response.ok()) {
+          const data = await response.json();
+          parentId = data.id;
+          termIds.push(data.id);
         } else {
+          // Max nesting depth may be enforced - stop creating
           break;
         }
       }
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      // Wait for page to load
+      await page.waitForLoadState('networkidle');
+
+      // Page should be functional - either shows table or empty state
+      const table = page.getByTestId('glossary-term-table');
+      const pageContent = page.locator('.glossary-details');
+
+      const isLoaded =
+        (await table.isVisible({ timeout: 10000 }).catch(() => false)) ||
+        (await pageContent.isVisible({ timeout: 5000 }).catch(() => false));
+
+      // If there are terms, try to expand some levels
+      if (await table.isVisible({ timeout: 2000 }).catch(() => false)) {
+        for (let i = 0; i < Math.min(termIds.length, 2); i++) {
+          const expandIcon = page.locator('.ant-table-row-expand-icon').first();
+
+          if (
+            await expandIcon.isVisible({ timeout: 2000 }).catch(() => false)
+          ) {
+            await expandIcon.click();
+            await page.waitForTimeout(500);
+            await page.waitForLoadState('networkidle');
+          } else {
+            break;
+          }
+        }
+      }
+
+      // Page should remain functional
+      expect(isLoaded).toBeTruthy();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
-
-    // Page should remain functional
-    expect(isLoaded).toBeTruthy();
-  });
-});
-
-// PF-07: Rapid operations (stress test)
-test.describe('Rapid Operations Stress Test', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // PF-07: Rapid operations (stress test)
   test('should handle rapid UI interactions', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-    // Wait for page to load
-    await page.waitForLoadState('networkidle');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-    // Rapid clicks on various elements
-    const searchInput = page.getByPlaceholder(/search.*term/i);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-    // Rapid search operations
-    for (let i = 0; i < 5; i++) {
-      await searchInput.fill(`test${i}`);
-      await page.waitForTimeout(100);
+      // Wait for page to load
+      await page.waitForLoadState('networkidle');
+
+      // Rapid clicks on various elements
+      const searchInput = page.getByPlaceholder(/search.*term/i);
+
+      // Rapid search operations
+      for (let i = 0; i < 5; i++) {
+        await searchInput.fill(`test${i}`);
+        await page.waitForTimeout(100);
+      }
+
+      // Clear search
+      await searchInput.clear();
+      await page.waitForLoadState('networkidle');
+
+      // Page should still be functional
+      await expect(
+        page.getByTestId(glossaryTerm.data.displayName)
+      ).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
-
-    // Clear search
-    await searchInput.clear();
-    await page.waitForLoadState('networkidle');
-
-    // Page should still be functional
-    await expect(page.getByTestId(glossaryTerm.data.displayName)).toBeVisible();
-  });
-});
-
-// Additional test: API rate limiting handling
-test.describe('API Rate Limiting', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // Additional test: API rate limiting handling
   test('should handle multiple rapid API calls', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    const glossary = new Glossary();
 
-    // Make multiple rapid API calls
-    const calls = [];
+    try {
+      await glossary.create(apiContext);
 
-    for (let i = 0; i < 5; i++) {
-      calls.push(
-        apiContext.get(
-          `/api/v1/glossaries/${glossary.responseData.fullyQualifiedName}`
-        )
-      );
+      // Make multiple rapid API calls
+      const calls = [];
+
+      for (let i = 0; i < 5; i++) {
+        calls.push(
+          apiContext.get(
+            `/api/v1/glossaries/${glossary.responseData.fullyQualifiedName}`
+          )
+        );
+      }
+
+      const responses = await Promise.all(calls);
+
+      // Verify we got responses (any status code is acceptable - the test verifies the API doesn't crash)
+      expect(responses.length).toBe(5);
+
+      // At least some calls should have been processed (either success or known error)
+      const processedCount = responses.filter(
+        (r) => r.status() >= 200 && r.status() < 600
+      ).length;
+
+      expect(processedCount).toBeGreaterThan(0);
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
-
-    const responses = await Promise.all(calls);
-
-    // Verify we got responses (any status code is acceptable - the test verifies the API doesn't crash)
-    expect(responses.length).toBe(5);
-
-    // At least some calls should have been processed (either success or known error)
-    const processedCount = responses.filter(
-      (r) => r.status() >= 200 && r.status() < 600
-    ).length;
-
-    expect(processedCount).toBeGreaterThan(0);
-
-    await afterAction();
   });
-});
 
-// UI-03: Error state on API failure
-test.describe('Error State on API Failure', () => {
+  // UI-03: Error state on API failure - non-existent glossary
   test('should show error state when navigating to non-existent glossary', async ({
     browser,
   }) => {
@@ -1022,16 +847,17 @@ test.describe('Error State on API Failure', () => {
     }
   });
 
+  // UI-03: Error state on API failure - non-existent term
   test('should show error state when navigating to non-existent term', async ({
     browser,
   }) => {
     const { apiContext, page, afterAction } = await createNewPage(browser);
-
-    // First create a glossary so we can test with a valid glossary but invalid term
     const glossary = new Glossary();
-    await glossary.create(apiContext);
 
     try {
+      // First create a glossary so we can test with a valid glossary but invalid term
+      await glossary.create(apiContext);
+
       // Navigate to non-existent term within real glossary
       await page.goto(
         `/glossary/${
@@ -1067,23 +893,23 @@ test.describe('Error State on API Failure', () => {
       // Either error state OR redirect to glossary is acceptable behavior
       expect(hasValidResponse).toBeTruthy();
     } finally {
-      // Cleanup
       await glossary.delete(apiContext);
       await afterAction();
     }
   });
 
+  // UI-03: Error state on API failure - API error on term details
   test('should handle API error gracefully on term details', async ({
     browser,
   }) => {
     const { apiContext, page, afterAction } = await createNewPage(browser);
-
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
 
     try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+
       // Navigate to term details
       await glossaryTerm.visitEntityPage(page);
 
@@ -1132,10 +958,10 @@ test.describe('Error State on API Failure', () => {
         true;
 
       expect(hasErrorHandling).toBeTruthy();
-    } finally {
+
       // Remove route interception
       await page.unroute('**/api/v1/glossaryTerms/**');
-      // Cleanup
+    } finally {
       await glossary.delete(apiContext);
       await afterAction();
     }

@@ -14,7 +14,7 @@ import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage, getApiContext, redirectToHomePage } from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   changeTermHierarchyFromModal,
   performExpandAll,
@@ -27,12 +27,12 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-// H-M03: Move term to root of current glossary
-test.describe('Move Term to Root of Current Glossary', () => {
+test.describe('Glossary Hierarchy', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
 
+  // H-M03: Move term to root of current glossary
   test('should move nested term to root level of same glossary', async ({
     page,
   }) => {
@@ -48,7 +48,6 @@ test.describe('Move Term to Root of Current Glossary', () => {
       childTerm.data.parent = parentTerm.responseData.fullyQualifiedName;
       await childTerm.create(apiContext);
 
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
       await performExpandAll(page);
@@ -76,15 +75,9 @@ test.describe('Move Term to Root of Current Glossary', () => {
       await afterAction();
     }
   });
-});
 
-// H-M04: Move term to root of different glossary
-// Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
-test.describe('Move Term to Root of Different Glossary', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // H-M04: Move term to root of different glossary
+  // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
   test('should move term to root of different glossary', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary1 = new Glossary();
@@ -96,7 +89,6 @@ test.describe('Move Term to Root of Different Glossary', () => {
       await glossary2.create(apiContext);
       await term.create(apiContext);
 
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await selectActiveGlossaryTerm(page, term.data.displayName);
@@ -112,7 +104,9 @@ test.describe('Move Term to Root of Different Glossary', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary2.data.displayName);
 
-      await expect(page.getByTestId(term.responseData.displayName)).toBeVisible();
+      await expect(
+        page.getByTestId(term.responseData.displayName)
+      ).toBeVisible();
     } finally {
       // Term might be in glossary2 now
       try {
@@ -125,15 +119,9 @@ test.describe('Move Term to Root of Different Glossary', () => {
       await afterAction();
     }
   });
-});
 
-// H-M05: Move term with children to different glossary
-// Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
-test.describe('Move Term with Children to Different Glossary', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // H-M05: Move term with children to different glossary
+  // Skipped due to known issue: https://github.com/open-metadata/OpenMetadata/pull/24794
   test('should move term with children to different glossary', async ({
     page,
   }) => {
@@ -151,7 +139,6 @@ test.describe('Move Term with Children to Different Glossary', () => {
       childTerm.data.parent = parentTerm.responseData.fullyQualifiedName;
       await childTerm.create(apiContext);
 
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await performExpandAll(page);
@@ -195,14 +182,8 @@ test.describe('Move Term with Children to Different Glossary', () => {
       await afterAction();
     }
   });
-});
 
-// H-M06: Cancel move operation
-test.describe('Cancel Move Operation', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // H-M06: Cancel move operation
   test('should cancel move operation', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -212,7 +193,6 @@ test.describe('Cancel Move Operation', () => {
       await glossary.create(apiContext);
       await term.create(apiContext);
 
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
       await selectActiveGlossaryTerm(page, term.data.displayName);
@@ -239,21 +219,17 @@ test.describe('Cancel Move Operation', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await expect(page.getByTestId(term.responseData.displayName)).toBeVisible();
+      await expect(
+        page.getByTestId(term.responseData.displayName)
+      ).toBeVisible();
     } finally {
       await term.delete(apiContext);
       await glossary.delete(apiContext);
       await afterAction();
     }
   });
-});
 
-// H-N07: Navigate 5+ levels deep in hierarchy
-test.describe('Deep Hierarchy Navigation', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // H-N07: Navigate 5+ levels deep in hierarchy
   test('should navigate 5+ levels deep in hierarchy', async ({ page }) => {
     test.slow(true);
 
@@ -279,7 +255,6 @@ test.describe('Deep Hierarchy Navigation', () => {
         terms.push(term);
       }
 
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
@@ -298,9 +273,9 @@ test.describe('Deep Hierarchy Navigation', () => {
       await page.waitForLoadState('networkidle');
 
       // Verify deepest term details are visible
-      await expect(page.getByTestId('entity-header-display-name')).toContainText(
-        terms[DEPTH - 1].responseData.displayName
-      );
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(terms[DEPTH - 1].responseData.displayName);
 
       // Verify breadcrumb shows full path
       const breadcrumb = page.getByTestId('breadcrumb');
@@ -318,14 +293,8 @@ test.describe('Deep Hierarchy Navigation', () => {
       await afterAction();
     }
   });
-});
 
-// H-DD05: Drag term - cancel operation
-test.describe('Cancel Drag and Drop Operation', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
+  // H-DD05: Drag term - cancel operation
   test('should cancel drag and drop operation', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
@@ -337,17 +306,22 @@ test.describe('Cancel Drag and Drop Operation', () => {
       await term1.create(apiContext);
       await term2.create(apiContext);
 
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
       // Drag term1 to term2
       await page
-        .getByRole('cell', { name: term1.responseData.displayName, exact: true })
+        .getByRole('cell', {
+          name: term1.responseData.displayName,
+          exact: true,
+        })
         .hover();
       await page.mouse.down();
       await page
-        .getByRole('cell', { name: term2.responseData.displayName, exact: true })
+        .getByRole('cell', {
+          name: term2.responseData.displayName,
+          exact: true,
+        })
         .hover();
       await page.mouse.up();
 
