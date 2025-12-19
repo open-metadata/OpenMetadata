@@ -212,7 +212,7 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    navigate(getEntityImportPath(EntityType.GLOSSARY_TERM, fqn));
+    navigate(getEntityImportPath(EntityType.GLOSSARY, fqn));
 
   const handleVersionClick = async () => {
     let path: string;
