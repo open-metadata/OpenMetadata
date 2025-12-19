@@ -2462,6 +2462,7 @@
     "onboarding-stay-up-to-date-description": "Suivez les actifs de données que vous utilisez fréquemment pour rester informé à leur sujet.",
     "only-image-files-supported": "Seuls les fichiers image sont pris en charge",
     "only-reviewers-can-approve-or-reject": "Seuls les réviseurs peuvent Valider ou Rejeter",
+    "only-show-columns-with-lineage": "Afficher uniquement les colonnes avec Lineage",
     "optional-configuration-update-description-dbt": "Configuration optionnelle pour mettre à jour la description à partir de dbt ou non",
     "owners-coverage-widget-description": "Couverture des propriétaires pour tous les actifs de données dans le service. <0>en savoir plus.</0>",
     "page-is-not-available": "La page que vous recherchez n'est pas disponible",
