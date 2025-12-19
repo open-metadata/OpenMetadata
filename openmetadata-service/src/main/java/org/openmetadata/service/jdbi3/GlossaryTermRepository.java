@@ -1614,9 +1614,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<GlossaryTerm> terms = new ArrayList<>();
     for (String json : jsons) {
       GlossaryTerm term = JsonUtils.readValue(json, GlossaryTerm.class);
-      setFields(term, getFields(fieldsParam));
       terms.add(term);
     }
+
+    // Use bulk method for efficient field fetching
+    setFieldsInBulk(getFields(fieldsParam), terms);
 
     // Set up pagination info
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
