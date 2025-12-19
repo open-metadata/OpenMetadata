@@ -45,7 +45,6 @@ import {
   rearrangeNodes,
   removeColumnLineage,
   setupEntitiesForLineage,
-  toggleLineageFilters,
   verifyColumnLayerInactive,
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
@@ -780,8 +779,6 @@ test('Verify there is no traced nodes and columns on exiting edit mode', async (
 
         await editLineageClick(page);
 
-        await toggleLineageFilters(page, tableFqn);
-
         await expect(firstColumn).not.toHaveClass(
           /custom-node-header-column-tracing/
         );
@@ -947,8 +944,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
-    await toggleLineageFilters(page, table1Fqn);
-    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1085,8 +1080,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
-    await toggleLineageFilters(page, table1Fqn);
-    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1271,9 +1264,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await visitLineageTab(page);
     await activateColumnLayer(page);
 
-    await toggleLineageFilters(page, table1Fqn);
-    await toggleLineageFilters(page, table2Fqn);
-
     await page.getByTestId('full-screen').click();
 
     await test.step(
@@ -1331,9 +1321,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
-
-    await toggleLineageFilters(page, table1Fqn);
-    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 

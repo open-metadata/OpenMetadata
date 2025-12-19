@@ -817,13 +817,6 @@ export const connectEdgeBetweenNodesViaAPI = (
   });
 };
 
-export const toggleLineageFilters = async (page: Page, tableFqn: string) => {
-  await page
-    .getByTestId(`lineage-node-${tableFqn}`)
-    .getByTestId('lineage-filter-button')
-    .click();
-};
-
 export const clickLineageNode = async (page: Page, nodeFqn: string) => {
   await page
     .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
