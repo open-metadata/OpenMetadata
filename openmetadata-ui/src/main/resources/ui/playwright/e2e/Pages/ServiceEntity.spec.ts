@@ -40,19 +40,19 @@ import {
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 
 const entities = {
-  "Api Service":ApiServiceClass,
-  "Api Collection": ApiCollectionClass,
-  "Database Service": DatabaseServiceClass,
-  "Dashboard Service": DashboardServiceClass,
-  "Messaging Service": MessagingServiceClass,
-  "Mlmodel Service": MlmodelServiceClass,
-  "Pipeline Service": PipelineServiceClass,
-  "Search Index Service": SearchIndexServiceClass,
-  "Storage Service": StorageServiceClass,
-  "Database": DatabaseClass,
-  "Database Schema": DatabaseSchemaClass,
-  "Drive Service": DriveServiceClass,
- } as const;
+  'Api Service': ApiServiceClass,
+  'Api Collection': ApiCollectionClass,
+  'Database Service': DatabaseServiceClass,
+  'Dashboard Service': DashboardServiceClass,
+  'Messaging Service': MessagingServiceClass,
+  'Mlmodel Service': MlmodelServiceClass,
+  'Pipeline Service': PipelineServiceClass,
+  'Search Index Service': SearchIndexServiceClass,
+  'Storage Service': StorageServiceClass,
+  Database: DatabaseClass,
+  'Database Schema': DatabaseSchemaClass,
+  'Drive Service': DriveServiceClass,
+} as const;
 
 const adminUser = new UserClass();
 
@@ -72,7 +72,7 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-Object.entries(entities).forEach(([key,EntityClass]) => {
+Object.entries(entities).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   const deleteEntity = new EntityClass();
 

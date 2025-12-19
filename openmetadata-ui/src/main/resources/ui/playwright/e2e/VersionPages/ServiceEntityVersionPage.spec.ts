@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
@@ -35,18 +35,18 @@ import {
 import { addMultiOwner, assignTier } from '../../utils/entity';
 
 const entities = {
-  "Api Service": new ApiServiceClass(),
-  "Api Collection": new ApiCollectionClass(),
-  "Dashboard Service": new DashboardServiceClass(),
-  "Database Service": new DatabaseServiceClass(),
-  "Messaging Service": new MessagingServiceClass(),
-  "Mlmodel Service": new MlmodelServiceClass(),
-  "Pipeline Service": new PipelineServiceClass(),
-  "SearchIndex Service": new SearchIndexServiceClass(),
-  "Storage Service": new StorageServiceClass(),
-  "Database": new DatabaseClass(),
-  "Database Schema": new DatabaseSchemaClass(),
-  "Drive Service": new DriveServiceClass(),
+  'Api Service': new ApiServiceClass(),
+  'Api Collection': new ApiCollectionClass(),
+  'Dashboard Service': new DashboardServiceClass(),
+  'Database Service': new DatabaseServiceClass(),
+  'Messaging Service': new MessagingServiceClass(),
+  'Mlmodel Service': new MlmodelServiceClass(),
+  'Pipeline Service': new PipelineServiceClass(),
+  'SearchIndex Service': new SearchIndexServiceClass(),
+  'Storage Service': new StorageServiceClass(),
+  Database: new DatabaseClass(),
+  'Database Schema': new DatabaseSchemaClass(),
+  'Drive Service': new DriveServiceClass(),
 };
 
 // use the admin user to login
@@ -139,7 +139,7 @@ test.describe('Service Version pages', () => {
      * - Version 0.3: Owner assignments showing user ownership changes
      * - Version 0.3: Tier assignments displaying tier classification updates
      * - Version 0.4: Soft deletion state with appropriate deleted badge visibility
-     * 
+     *
      * The test ensures that each version increment is properly tracked and the diff indicators (diff-added) are correctly rendered
      * in the UI to highlight what changed between versions
      */
@@ -245,7 +245,7 @@ test.describe('Service Version pages', () => {
        * 5. Verifies deletion toast notification
        * 6. Reloads the page and confirms the deleted badge is visible
        * 7. Opens version 0.4 view and verifies the deleted badge persists in version history
-       * 
+       *
        * This ensures that soft-deleted entities remain viewable in version history with proper deleted indicators
        */
       await test.step(
