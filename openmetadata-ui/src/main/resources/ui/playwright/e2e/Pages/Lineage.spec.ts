@@ -45,7 +45,6 @@ import {
   rearrangeNodes,
   removeColumnLineage,
   setupEntitiesForLineage,
-  toggleLineageFilters,
   verifyColumnLayerInactive,
   verifyColumnLineageInCSV,
   verifyExportLineageCSV,
@@ -780,8 +779,6 @@ test('Verify there is no traced nodes and columns on exiting edit mode', async (
 
         await editLineageClick(page);
 
-        await toggleLineageFilters(page, tableFqn);
-
         await expect(firstColumn).not.toHaveClass(
           /custom-node-header-column-tracing/
         );
@@ -947,8 +944,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
-    await toggleLineageFilters(page, table1Fqn);
-    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1085,8 +1080,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
-    await toggleLineageFilters(page, table1Fqn);
-    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1271,9 +1264,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await visitLineageTab(page);
     await activateColumnLayer(page);
 
-    await toggleLineageFilters(page, table1Fqn);
-    await toggleLineageFilters(page, table2Fqn);
-
     await page.getByTestId('full-screen').click();
 
     await test.step(
@@ -1331,9 +1321,6 @@ test.describe.serial('Test pagination in column level lineage', () => {
     await table1.visitEntityPage(page);
     await visitLineageTab(page);
     await activateColumnLayer(page);
-
-    await toggleLineageFilters(page, table1Fqn);
-    await toggleLineageFilters(page, table2Fqn);
 
     await page.getByTestId('full-screen').click();
 
@@ -1401,182 +1388,5 @@ test.describe.serial('Test pagination in column level lineage', () => {
         ).toBeVisible();
       }
     );
-  });
-
-  test('Verify edges for column level lineage between 2 nodes when filter is toggled', async ({
-    page,
-  }) => {
-    test.slow();
-
-    const { afterAction } = await getApiContext(page);
-
-    try {
-      await test.step('1. Load both the table', async () => {
-        await table1.visitEntityPage(page);
-        await visitLineageTab(page);
-        await activateColumnLayer(page);
-        await page.getByTestId('full-screen').click();
-      });
-
-      const table1Node = page.locator(
-        `[data-testid="lineage-node-${table1Fqn}"]`
-      );
-      const table2Node = page.locator(
-        `[data-testid="lineage-node-${table2Fqn}"]`
-      );
-
-      await toggleLineageFilters(page, table1Fqn);
-      await toggleLineageFilters(page, table2Fqn);
-
-      await test.step(
-        '2. Verify edges visible and hidden for page1 of both the tables',
-        async () => {
-          const visibleEdges = [
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[0].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[0].name}`)}`,
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[1].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[1].name}`)}`,
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[2].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[2].name}`)}`,
-          ];
-
-          const hiddenEdges = [
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[0].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[5].name}`)}`,
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[1].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[6].name}`)}`,
-            `column-edge-${btoa(
-              `${table1Fqn}.${table1Columns[3].name}`
-            )}-${btoa(`${table2Fqn}.${table2Columns[7].name}`)}`,
-          ];
-
-          for (const edgeId of visibleEdges) {
-            await expect(
-              page.locator(`[data-testid="${edgeId}"]`)
-            ).toBeVisible();
-          }
-
-          for (const edgeId of hiddenEdges) {
-            await expect(
-              page.locator(`[data-testid="${edgeId}"]`)
-            ).not.toBeVisible();
-          }
-        }
-      );
-
-      await test.step(
-        '3. Enable the filter for table1 by clicking filter button',
-        async () => {
-          const table1FilterButton = table1Node.locator(
-            '[data-testid="lineage-filter-button"]'
-          );
-          await table1FilterButton.click();
-        }
-      );
-
-      await test.step(
-        '4. Verify that only columns with lineage are visible in table1',
-        async () => {
-          const columnsWithLineage = [0, 1, 2, 3, 4, 5, 6, 8];
-          const columnsWithoutLineage = [7, 9, 10];
-
-          for (const index of columnsWithLineage) {
-            await expect(
-              page.locator(
-                `[data-testid="column-${table1Fqn}.${table1Columns[index].name}"]`
-              )
-            ).toBeVisible();
-          }
-
-          for (const index of columnsWithoutLineage) {
-            await expect(
-              page.locator(
-                `[data-testid="column-${table1Fqn}.${table1Columns[index].name}"]`
-              )
-            ).not.toBeVisible();
-          }
-        }
-      );
-
-      await test.step(
-        '5. Enable the filter for table2 by clicking filter button',
-        async () => {
-          const table2FilterButton = table2Node.locator(
-            '[data-testid="lineage-filter-button"]'
-          );
-          await table2FilterButton.click();
-        }
-      );
-
-      await test.step(
-        '6. Verify that only columns with lineage are visible in table2',
-        async () => {
-          const columnsWithLineage = [0, 1, 2, 5, 6, 7];
-          const columnsWithoutLineage = [3, 4, 8, 9, 10, 11];
-
-          for (const index of columnsWithLineage) {
-            await expect(
-              page.locator(
-                `[data-testid="column-${table2Fqn}.${table2Columns[index].name}"]`
-              )
-            ).toBeVisible();
-          }
-
-          for (const index of columnsWithoutLineage) {
-            await expect(
-              page.locator(
-                `[data-testid="column-${table2Fqn}.${table2Columns[index].name}"]`
-              )
-            ).not.toBeVisible();
-          }
-        }
-      );
-
-      await test.step('7. Verify new edges are now visible.', async () => {
-        const allVisibleEdges = [
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[0].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[1].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[2].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[2].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[0].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[5].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[1].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[6].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[3].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[4].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[5].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[5].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[6].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[6].name}`
-          )}`,
-          `column-edge-${btoa(`${table1Fqn}.${table1Columns[8].name}`)}-${btoa(
-            `${table2Fqn}.${table2Columns[7].name}`
-          )}`,
-        ];
-
-        for (const edgeId of allVisibleEdges) {
-          await expect(page.locator(`[data-testid="${edgeId}"]`)).toBeVisible();
-        }
-      });
-    } finally {
-      await afterAction();
-    }
   });
 });
