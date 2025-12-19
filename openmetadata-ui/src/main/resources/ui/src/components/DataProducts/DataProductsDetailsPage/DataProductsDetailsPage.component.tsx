@@ -418,7 +418,6 @@ const DataProductsDetailsPage = ({
 
       updatedDetails = {
         ...dataProduct,
-        name: name?.trim(),
         displayName: displayName?.trim(),
         name: name?.trim(),
       };
