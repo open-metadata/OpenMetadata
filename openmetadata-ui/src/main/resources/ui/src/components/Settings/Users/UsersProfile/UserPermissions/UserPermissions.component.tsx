@@ -127,7 +127,6 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
         )}
         {rule.condition && (
           <div>
-            {}
             <Text type="secondary">{t('label.condition')}: </Text>
             <Text code>{rule.condition}</Text>
           </div>
@@ -158,8 +157,6 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
               }>
               {policy.effect}
             </Tag>
-            {}
-            {}
             <Text type="secondary">
               <span>{policy.rules.length}</span>
               {t('label.rule-lowercase-plural')}
@@ -185,7 +182,6 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
           (rolePermission: DirectRolePermission, index: number) => (
             <div className="m-b-md" key={index}>
               <Space className="m-b-sm">
-                {}
                 <Text strong>{t('label.role')}: </Text>
                 <Link
                   to={getEntityLink(
