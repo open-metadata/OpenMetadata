@@ -38,7 +38,7 @@ import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparat
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
 import com.google.common.collect.Streams;
-import jakarta.json.*;
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.time.LocalDate;

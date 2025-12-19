@@ -4442,7 +4442,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         applyTagsDelete(deletedTags, fqn);
       }
       if (!addedTags.isEmpty()) {
-        applyTagsAdd(addedTags, fqn);
+        applyTagsAdd(
+            addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
       }
 
       // Record changes for audit trail
