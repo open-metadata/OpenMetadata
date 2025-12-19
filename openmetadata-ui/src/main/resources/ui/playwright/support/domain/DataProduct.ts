@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
@@ -74,6 +74,14 @@ export class DataProduct extends EntityClass {
     this.responseData = data;
 
     return data;
+  }
+
+  async visitEntityPage(page: Page) {
+    await page.goto(
+      `/data-product/${encodeURIComponent(
+        this.responseData?.fullyQualifiedName ?? this.data.fullyQualifiedName ?? this.data.name
+      )}`
+    );
   }
 
   get() {
