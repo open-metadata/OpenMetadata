@@ -8,4 +8,4 @@ ALTER COLUMN appliedAt SET DEFAULT NOW();
 
 -- Include `tag_usage.appliedBy` field
 ALTER TABLE tag_usage
-ADD COLUMN appliedBy VARCHAR(64) DEFAULT 'Unknown';
+ADD COLUMN appliedBy VARCHAR(64) DEFAULT 'admin';
