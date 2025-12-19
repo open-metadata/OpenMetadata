@@ -59,21 +59,13 @@ const testDataProduct = new DataProduct(
   'PW_TestDataProduct'
 );
 
-const dataStewardTestClassification = new ClassificationClass();
-const dataStewardTestTag = new TagClass({
-  classification: dataStewardTestClassification.data.name,
+const sharedTestClassification = new ClassificationClass();
+const sharedTestTag = new TagClass({
+  classification: sharedTestClassification.data.name,
 });
 
-const dataConsumerTestClassification = new ClassificationClass();
-const dataConsumerTestTag = new TagClass({
-  classification: dataConsumerTestClassification.data.name,
-});
-
-const dataStewardTestGlossary = new Glossary();
-const dataStewardTestGlossaryTerm = new GlossaryTerm(dataStewardTestGlossary);
-
-const dataConsumerTestGlossary = new Glossary();
-const dataConsumerTestGlossaryTerm = new GlossaryTerm(dataConsumerTestGlossary);
+const sharedTestGlossary = new Glossary();
+const sharedTestGlossaryTerm = new GlossaryTerm(sharedTestGlossary);
 
 test.beforeAll('Setup shared test data', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -83,17 +75,12 @@ test.beforeAll('Setup shared test data', async ({ browser }) => {
   await dataConsumerTestEntity.create(apiContext);
   await testDataProduct.create(apiContext);
 
-  await dataStewardTestClassification.create(apiContext);
-  await dataStewardTestTag.create(apiContext);
+  // Create shared tags and glossary terms (used by all roles)
+  await sharedTestClassification.create(apiContext);
+  await sharedTestTag.create(apiContext);
 
-  await dataConsumerTestClassification.create(apiContext);
-  await dataConsumerTestTag.create(apiContext);
-
-  await dataStewardTestGlossary.create(apiContext);
-  await dataStewardTestGlossaryTerm.create(apiContext);
-
-  await dataConsumerTestGlossary.create(apiContext);
-  await dataConsumerTestGlossaryTerm.create(apiContext);
+  await sharedTestGlossary.create(apiContext);
+  await sharedTestGlossaryTerm.create(apiContext);
 
   const adminTestEntityData = { ...adminTestEntity.entityResponseData };
   try {
@@ -128,11 +115,9 @@ test.afterAll('Cleanup shared test data', async ({ browser }) => {
   await dataStewardTestEntity.delete(apiContext);
   await dataConsumerTestEntity.delete(apiContext);
 
-  await dataStewardTestClassification.delete(apiContext);
-  await dataConsumerTestClassification.delete(apiContext);
-
-  await dataStewardTestGlossary.delete(apiContext);
-  await dataConsumerTestGlossary.delete(apiContext);
+  // Cleanup shared tags and glossary terms
+  await sharedTestClassification.delete(apiContext);
+  await sharedTestGlossary.delete(apiContext);
 
   await afterAction();
 });
@@ -1563,7 +1548,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
   test('Data Steward - Overview Tab - Tags Section - Add and Update', async ({
     dataStewardPage,
   }) => {
-    const testTagDisplayName = dataStewardTestTag.getTagDisplayName();
+    const testTagDisplayName = sharedTestTag.getTagDisplayName();
 
     const summaryPanel = dataStewardPage.locator(
       '.entity-summary-panel-container'
@@ -1589,7 +1574,7 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(glossarySection).toBeVisible();
 
-    const termDisplayName = dataStewardTestGlossaryTerm.getTermDisplayName();
+    const termDisplayName = sharedTestGlossaryTerm.getTermDisplayName();
     await editGlossaryTerms(dataStewardPage, termDisplayName);
 
     await expect(
@@ -1822,7 +1807,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
   test('Data Consumer - Overview Tab - Tags Section - Add and Update', async ({
     dataConsumerPage,
   }) => {
-    const testTagDisplayName = dataConsumerTestTag.getTagDisplayName();
+    const testTagDisplayName = sharedTestTag.getTagDisplayName();
 
     const summaryPanel = dataConsumerPage.locator(
       '.entity-summary-panel-container'
@@ -1848,7 +1833,7 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(glossarySection).toBeVisible();
 
-    const termDisplayName = dataConsumerTestGlossaryTerm.getTermDisplayName();
+    const termDisplayName = sharedTestGlossaryTerm.getTermDisplayName();
     await editGlossaryTerms(dataConsumerPage, termDisplayName);
 
     await expect(
