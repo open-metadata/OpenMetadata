@@ -676,6 +676,39 @@ public class OSLineageGraphBuilder
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
+    // Check for column filtering requirements
+    boolean hasColumnFilter = !nullOrEmpty(request.getColumnFilter());
+
+    // Check cache if no column filtering needed
+    if (!hasColumnFilter) {
+      java.util.Optional<SearchLineageResult> cached = checkEntityCountCache(request);
+      if (cached.isPresent()) {
+        LOG.debug(
+            "Cache hit for entity count lineage query: {}, depth={}",
+            request.getFqn(),
+            request.getNodeDepth());
+        return cached.get();
+      }
+    }
+
+    // Execute standard entity count query
+    SearchLineageResult result = searchLineageByEntityCountInternal(request);
+
+    // Apply column filters if needed
+    if (hasColumnFilter) {
+      result = applyColumnFiltering(result, convertToSearchLineageRequest(request));
+    }
+
+    // Cache result if eligible (no column filtering)
+    if (!hasColumnFilter) {
+      cacheEntityCountResult(request, result);
+    }
+
+    return result;
+  }
+
+  private SearchLineageResult searchLineageByEntityCountInternal(EntityCountLineageRequest request)
+      throws IOException {
     SearchLineageResult result =
         new SearchLineageResult()
             .withNodes(new HashMap<>())
@@ -683,7 +716,6 @@ public class OSLineageGraphBuilder
             .withDownstreamEdges(new HashMap<>());
 
     // Handle root entity (nodeDepth = 0)
-    // if (request.getNodeDepth() == null || request.getNodeDepth() == 0) {
     addRootEntityWithPagingCounts(
         new SearchLineageRequest()
             .withFqn(request.getFqn())
@@ -697,7 +729,6 @@ public class OSLineageGraphBuilder
     if (request.getNodeDepth() != null && request.getNodeDepth() == 0) {
       return result;
     }
-    //  }
 
     // Filter by specific node depth if provided
     if (request.getNodeDepth() != null) {
@@ -725,6 +756,74 @@ public class OSLineageGraphBuilder
     }
 
     return result;
+  }
+
+  private SearchLineageRequest convertToSearchLineageRequest(EntityCountLineageRequest request) {
+    // Convert EntityCountLineageRequest to SearchLineageRequest for filter application
+    return new SearchLineageRequest()
+        .withFqn(request.getFqn())
+        .withUpstreamDepth(
+            request.getDirection() == LineageDirection.UPSTREAM ? request.getMaxDepth() : 0)
+        .withDownstreamDepth(
+            request.getDirection() == LineageDirection.DOWNSTREAM ? request.getMaxDepth() : 0)
+        .withQueryFilter(request.getQueryFilter())
+        .withColumnFilter(request.getColumnFilter())
+        .withPreservePaths(request.getPreservePaths())
+        .withIncludeDeleted(request.getIncludeDeleted())
+        .withIsConnectedVia(request.getIsConnectedVia())
+        .withIncludeSourceFields(request.getIncludeSourceFields());
+  }
+
+  private java.util.Optional<SearchLineageResult> checkEntityCountCache(
+      EntityCountLineageRequest request) {
+    if (!config.isEnableCaching()) {
+      return java.util.Optional.empty();
+    }
+
+    // Create cache key from EntityCountLineageRequest
+    org.openmetadata.service.search.lineage.LineageCacheKey cacheKey =
+        new org.openmetadata.service.search.lineage.LineageCacheKey(
+            request.getFqn() != null ? request.getFqn() : "",
+            request.getDirection() == LineageDirection.UPSTREAM ? request.getMaxDepth() : 0,
+            request.getDirection() == LineageDirection.DOWNSTREAM ? request.getMaxDepth() : 0,
+            request.getQueryFilter() != null ? request.getQueryFilter() : "",
+            request.getColumnFilter() != null ? request.getColumnFilter() : "",
+            request.getPreservePaths() != null ? request.getPreservePaths() : Boolean.FALSE,
+            request.getDirection() != null ? request.getDirection().value() : "",
+            request.getIsConnectedVia() != null ? request.getIsConnectedVia() : Boolean.FALSE);
+
+    return cache.get(cacheKey);
+  }
+
+  private void cacheEntityCountResult(
+      EntityCountLineageRequest request, SearchLineageResult result) {
+    if (!config.isEnableCaching()) {
+      return;
+    }
+
+    int nodeCount = result.getNodes() != null ? result.getNodes().size() : 0;
+    if (!config.shouldCacheGraph(nodeCount)) {
+      LOG.debug(
+          "Skipping cache for entity count query (too large): {} nodes for '{}'",
+          nodeCount,
+          request.getFqn());
+      return;
+    }
+
+    // Create cache key
+    org.openmetadata.service.search.lineage.LineageCacheKey cacheKey =
+        new org.openmetadata.service.search.lineage.LineageCacheKey(
+            request.getFqn() != null ? request.getFqn() : "",
+            request.getDirection() == LineageDirection.UPSTREAM ? request.getMaxDepth() : 0,
+            request.getDirection() == LineageDirection.DOWNSTREAM ? request.getMaxDepth() : 0,
+            request.getQueryFilter() != null ? request.getQueryFilter() : "",
+            request.getColumnFilter() != null ? request.getColumnFilter() : "",
+            request.getPreservePaths() != null ? request.getPreservePaths() : Boolean.FALSE,
+            request.getDirection() != null ? request.getDirection().value() : "",
+            request.getIsConnectedVia() != null ? request.getIsConnectedVia() : Boolean.FALSE);
+
+    cache.put(cacheKey, result);
+    LOG.debug("Cached entity count result: {} nodes for '{}'", nodeCount, request.getFqn());
   }
 
   private Map<Integer, Integer> getDepthWiseEntityCounts(
