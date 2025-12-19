@@ -193,11 +193,7 @@ export const getAggregateFieldOptions = (
 
 /**
  * Posts aggregate field options request with parameters in the body.
- *
- * @param {SearchIndex | SearchIndex[]} index - The search index or array of search indexes.
- * @param {string} field - The field to aggregate on. Example owner.displayName.keyword
- * @param {string} value - The value to filter the aggregation on.
- * @param {string} q - The search query.
+ * @param {SearchRequest} body - The search request body containing the parameters.
  * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
  * containing the aggregate field options.
  */

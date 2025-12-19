@@ -375,13 +375,14 @@ export const getAggregationOptions = async (
         query: filter,
         size,
       })
-    : getAggregateFieldOptions({
-        index,
-        fieldName: key,
-        fieldValue: value,
-        query: filter,
-        deleted,
-      });
+    : getAggregateFieldOptions(
+        index as SearchIndex,
+        key,
+        value,
+        filter,
+        undefined,
+        deleted
+      );
 };
 
 export const updateTreeDataWithCounts = (
