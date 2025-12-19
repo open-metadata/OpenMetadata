@@ -146,7 +146,8 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
         path = f"/dataProducts/{name}/{port_type}/{operation}"
         payload = {
             "assets": [
-                port.model_dump(mode="json", exclude_none=True) for port in ports
+                port.model_dump(mode="json", exclude_none=True)  # type: ignore[misc]
+                for port in ports
             ]
         }
         response = rest_client.put(path, json=payload)
@@ -175,7 +176,8 @@ class DataProducts(BaseEntity[DataProduct, CreateDataProductRequest]):
         path = f"/dataProducts/{name}/assets/{operation}"
         payload = {
             "assets": [
-                asset.model_dump(mode="json", exclude_none=True) for asset in assets
+                asset.model_dump(mode="json", exclude_none=True)  # type: ignore[misc]
+                for asset in assets
             ]
         }
         response = rest_client.put(path, json=payload)
