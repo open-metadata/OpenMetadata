@@ -607,6 +607,8 @@ test.describe('Bulk Edit Entity', () => {
   test('Glossary', async ({ page }) => {
     test.slow();
 
+    let customPropertyRecord: Record<string, string> = {};
+
     const additionalGlossaryTerm = createGlossaryTermRowDetails();
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);
@@ -614,6 +616,13 @@ test.describe('Bulk Edit Entity', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await glossary.create(apiContext);
     await glossaryTerm.create(apiContext);
+
+    await test.step('create custom properties for extension edit', async () => {
+      customPropertyRecord = await createCustomPropertiesForEntity(
+        page,
+        GlobalSettingOptions.GLOSSARY_TERM
+      );
+    });
 
     await test.step('Perform bulk edit action', async () => {
       await glossary.visitEntityPage(page);
@@ -647,7 +656,7 @@ test.describe('Bulk Edit Entity', () => {
           },
         },
         page,
-        undefined,
+        customPropertyRecord,
         true
       );
 
@@ -711,6 +720,16 @@ test.describe('Bulk Edit Entity', () => {
       await expect(
         page.getByTestId(user2.responseData?.['displayName'])
       ).toBeVisible();
+
+      // Verify Custom Properties
+      await page.click('[data-testid="custom_properties"]');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      for (const propertyName of Object.values(customPropertyRecord)) {
+        await expect(page.getByText(propertyName)).toBeVisible();
+      }
     });
 
     await glossary.delete(apiContext);
@@ -719,6 +738,8 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Glossary Term (Nested)', async ({ page }) => {
     test.slow();
+
+    let customPropertyRecord: Record<string, string> = {};
 
     const additionalNestedGlossaryTerm = createGlossaryTermRowDetails();
     const glossary = new Glossary();
@@ -734,6 +755,13 @@ test.describe('Bulk Edit Entity', () => {
     nestedGlossaryTerm.data.parent = parentGlossaryTerm.responseData.fullyQualifiedName;
     nestedGlossaryTerm.data.fullyQualifiedName = `${parentGlossaryTerm.responseData.fullyQualifiedName}."${nestedGlossaryTerm.data.name}"`;
     await nestedGlossaryTerm.create(apiContext);
+
+    await test.step('create custom properties for extension edit', async () => {
+      customPropertyRecord = await createCustomPropertiesForEntity(
+        page,
+        GlobalSettingOptions.GLOSSARY_TERM
+      );
+    });
 
     await test.step('Perform bulk edit action on nested glossary term', async () => {
       // Navigate to the parent glossary term page
@@ -772,7 +800,7 @@ test.describe('Bulk Edit Entity', () => {
           },
         },
         page,
-        undefined,
+        customPropertyRecord,
         true
       );
 
@@ -817,6 +845,24 @@ test.describe('Bulk Edit Entity', () => {
         /details updated successfully/
       );
 
+      // Navigate to the nested glossary term to verify custom properties
+      await page.click(
+        `[data-testid="glossary-term-${additionalNestedGlossaryTerm.displayName}"]`
+      );
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      // Verify Custom Properties
+      await page.click('[data-testid="custom_properties"]');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      for (const propertyName of Object.values(customPropertyRecord)) {
+        await expect(page.getByText(propertyName)).toBeVisible();
+      }
     });
 
     await glossary.delete(apiContext);
