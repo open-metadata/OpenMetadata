@@ -17,6 +17,7 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { test } from '../../support/fixtures/userPages';
+import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -46,11 +47,13 @@ import {
   navigateToIncidentsTab,
   verifyDeletedEntityNotVisible,
 } from '../../utils/entityPanel';
-import { addPipelineBetweenNodes } from '../../utils/lineage';
+import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
 
 const adminTestEntity = new TableClass();
 const dataStewardTestEntity = new TableClass();
 const dataConsumerTestEntity = new TableClass();
+const upstreamTable = new TableClass();
+const downstreamTable = new TableClass();
 const testDataProduct = new DataProduct(
   [EntityDataClass.domain1],
   'PW_TestDataProduct'
@@ -66,6 +69,12 @@ const dataConsumerTestTag = new TagClass({
   classification: dataConsumerTestClassification.data.name,
 });
 
+const dataStewardTestGlossary = new Glossary();
+const dataStewardTestGlossaryTerm = new GlossaryTerm(dataStewardTestGlossary);
+
+const dataConsumerTestGlossary = new Glossary();
+const dataConsumerTestGlossaryTerm = new GlossaryTerm(dataConsumerTestGlossary);
+
 test.beforeAll('Setup shared test data', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -80,20 +89,33 @@ test.beforeAll('Setup shared test data', async ({ browser }) => {
   await dataConsumerTestClassification.create(apiContext);
   await dataConsumerTestTag.create(apiContext);
 
-  // Assign the admin test entity to domain1 so data products can be linked
-  await adminTestEntity.patch({
-    apiContext,
-    patchData: [
-      {
-        op: 'add',
-        path: '/domains/0',
-        value: {
-          id: EntityDataClass.domain1.responseData.id,
-          type: 'domain',
+  await dataStewardTestGlossary.create(apiContext);
+  await dataStewardTestGlossaryTerm.create(apiContext);
+
+  await dataConsumerTestGlossary.create(apiContext);
+  await dataConsumerTestGlossaryTerm.create(apiContext);
+
+  const adminTestEntityData = { ...adminTestEntity.entityResponseData };
+  try {
+    const patchResponse = await adminTestEntity.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: EntityDataClass.domain1.responseData.id,
+            type: 'domain',
+          },
         },
-      },
-    ],
-  });
+      ],
+    });
+    if (patchResponse?.entity && 'code' in patchResponse.entity) {
+      adminTestEntity.entityResponseData = adminTestEntityData;
+    }
+  } catch {
+    adminTestEntity.entityResponseData = adminTestEntityData;
+  }
 
   await afterAction();
 });
@@ -109,10 +131,22 @@ test.afterAll('Cleanup shared test data', async ({ browser }) => {
   await dataStewardTestClassification.delete(apiContext);
   await dataConsumerTestClassification.delete(apiContext);
 
+  await dataStewardTestGlossary.delete(apiContext);
+  await dataConsumerTestGlossary.delete(apiContext);
+
   await afterAction();
 });
 
 test.describe('Right Entity Panel - Admin User Flow', () => {
+  test.beforeAll('Setup lineage test entities', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await Promise.all([
+      upstreamTable.create(apiContext),
+      downstreamTable.create(apiContext),
+    ]);
+    await afterAction();
+  });
+
   test.beforeEach('Navigate to explore page', async ({ adminPage }) => {
     await navigateToExploreAndSelectTable(
       adminPage,
@@ -491,7 +525,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       ).toBeVisible();
     }
 
-    // Now test the Lineage tab
     const lineageTab = summaryPanel.getByRole('menuitem', {
       name: /lineage/i,
     });
@@ -506,30 +539,48 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     );
 
     await expect(tabContent).toBeVisible();
-
-    // When there's no lineage, verify empty state
     await expect(adminPage.getByText(/Lineage not found/i)).toBeVisible();
   });
 
   test('Lineage Tab - With Upstream and Downstream', async ({ adminPage }) => {
-    // Create additional entities for lineage
     const { apiContext } = await getApiContext(adminPage);
-    const upstreamTable = new TableClass();
-    const downstreamTable = new TableClass();
 
-    try {
-      await upstreamTable.create(apiContext);
-      await downstreamTable.create(apiContext);
+    await test.step('Create lineage connections', async () => {
+      const adminTestEntityId = adminTestEntity.entityResponseData?.id;
+      const upstreamTableId = upstreamTable.entityResponseData?.id;
+      const downstreamTableId = downstreamTable.entityResponseData?.id;
 
-      // Add lineage connections: upstream -> adminTestEntity -> downstream
-      await addPipelineBetweenNodes(adminPage, upstreamTable, adminTestEntity);
-      await addPipelineBetweenNodes(
-        adminPage,
-        adminTestEntity,
-        downstreamTable
+      if (!adminTestEntityId || !upstreamTableId || !downstreamTableId) {
+        throw new Error('Entity IDs are missing');
+      }
+
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        {
+          id: upstreamTableId,
+          type: 'table',
+        },
+        {
+          id: adminTestEntityId,
+          type: 'table',
+        },
+        []
       );
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        {
+          id: adminTestEntityId,
+          type: 'table',
+        },
+        {
+          id: downstreamTableId,
+          type: 'table',
+        },
+        []
+      );
+    });
 
-      // Navigate back to explore and open the entity panel
+    await test.step('Verify overview tab lineage', async () => {
       await navigateToExploreAndSelectTable(
         adminPage,
         adminTestEntity.entity.name
@@ -537,7 +588,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       const summaryPanel = adminPage.locator('.entity-summary-panel-container');
 
-      // First verify the Overview tab shows lineage counts in LineageSection
       await summaryPanel
         .getByRole('menuitem', {
           name: /overview/i,
@@ -553,14 +603,12 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       );
 
       if (await lineageSection.isVisible()) {
-        // Verify upstream and downstream counts are visible
         const upstreamText = summaryPanel.getByText(/upstream:/i);
         const downstreamText = summaryPanel.getByText(/downstream:/i);
 
         await expect(upstreamText).toBeVisible();
         await expect(downstreamText).toBeVisible();
 
-        // Verify the actual counts (should be 1 upstream and 1 downstream)
         const upstreamCountElement = summaryPanel.locator(
           '[data-testid="upstream-count"]'
         );
@@ -571,19 +619,21 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         await expect(upstreamCountElement).toHaveText('1');
         await expect(downstreamCountElement).toHaveText('1');
 
-        // Click on lineage section to navigate to lineage page
         await lineageSection.click();
-
-        // Verify navigation to lineage route
         await adminPage.waitForURL(/.*\/lineage$/);
 
         expect(adminPage.url()).toContain('/lineage');
 
-        // Navigate back to explore and reopen the entity panel
-        await navigateToExploreAndSelectTable(adminPage);
+        await navigateToExploreAndSelectTable(
+          adminPage,
+          adminTestEntity.entity.name
+        );
       }
+    });
 
-      // Now test the Lineage tab
+    await test.step('Verify lineage tab content', async () => {
+      const summaryPanel = adminPage.locator('.entity-summary-panel-container');
+
       const lineageTab = summaryPanel.getByRole('menuitem', {
         name: /lineage/i,
       });
@@ -600,17 +650,14 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(tabContent).toBeVisible();
 
-      // Verify lineage content is loaded
       const lineageContainer = summaryPanel.locator('.lineage-tab-content');
 
       await expect(lineageContainer).toBeVisible();
 
-      // Verify upstream/downstream filter buttons exist
       const filterButtons = lineageContainer.locator('.lineage-filter-buttons');
 
       await expect(filterButtons).toBeVisible();
 
-      // Get the filter buttons by their text content
       const upstreamButton = lineageContainer.getByTestId(
         'upstream-button-text'
       );
@@ -621,7 +668,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(upstreamButton).toHaveText('Upstream');
       await expect(downstreamButton).toHaveText('Downstream');
 
-      // Verify downstream entity card is visible (shown by default)
       const downstreamCard = lineageContainer
         .locator('.lineage-item-card')
         .first();
@@ -631,17 +677,14 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         downstreamTable.entity.displayName
       );
 
-      // Verify downstream icon is present
       const downstreamIcon = downstreamCard.locator(
         '.lineage-item-direction svg'
       );
 
       await expect(downstreamIcon).toBeVisible();
 
-      // Click upstream button to view upstream entities
       await upstreamButton.click();
 
-      // Get upstream card after switching to upstream view
       const upstreamCard = lineageContainer
         .locator('.lineage-item-card')
         .first();
@@ -651,43 +694,23 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         upstreamTable.entity.displayName
       );
 
-      // Verify upstream icon is present
       const upstreamIcon = upstreamCard.locator('.lineage-item-direction svg');
 
       await expect(upstreamIcon).toBeVisible();
 
-      // Verify card structure and content
       const card = lineageContainer.locator('.lineage-item-card').first();
-
-      // Verify service icon
       const serviceIcon = card.locator('.service-icon');
-
-      await expect(serviceIcon).toBeVisible();
-
-      // Verify entity name
       const entityName = card.locator('.item-name-text');
-
-      await expect(entityName).toBeVisible();
-
-      // Verify entity type
       const entityType = card.locator('.item-entity-type-text');
-
-      await expect(entityType).toContainText(/table/i);
-
-      // Verify owner info is present (either owner label or no owner)
       const ownerSection = card.locator('.lineage-info-container');
-
-      await expect(ownerSection).toBeVisible();
-
-      // Verify card is clickable link
       const cardLink = card.locator('.breadcrumb-menu-button');
 
+      await expect(serviceIcon).toBeVisible();
+      await expect(entityName).toBeVisible();
+      await expect(entityType).toContainText(/table/i);
+      await expect(ownerSection).toBeVisible();
       await expect(cardLink).toBeVisible();
-    } finally {
-      // Cleanup
-      await upstreamTable.delete(apiContext);
-      await downstreamTable.delete(apiContext);
-    }
+    });
   });
 
   test('Data Quality Tab - No Test Cases', async ({ adminPage }) => {
@@ -705,7 +728,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
     await expect(tabContent).toBeVisible();
 
-    // Verify empty state message
     await expect(
       adminPage.getByText(
         /No data quality results found.*Schedule or run tests to see results/i
@@ -727,8 +749,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     const tabContent = summaryPanel.locator('.data-quality-tab-container');
 
     await expect(tabContent).toBeVisible();
-
-    // Verify empty state message
     await expect(
       adminPage.getByText(
         /No data quality results found.*Schedule or run tests to see results/i
@@ -742,7 +762,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     const { apiContext, afterAction } = await getApiContext(adminPage);
 
     try {
-      // Create test cases for the entity
       await adminTestEntity.createTestSuiteAndPipelines(apiContext);
 
       const testCase1 = await adminTestEntity.createTestCase(apiContext, {
@@ -800,7 +819,7 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         testCase3.fullyQualifiedName,
         { testCaseStatus: 'Aborted', timestamp: getCurrentMillis() }
       );
-      // Navigate back to explore and open the entity panel
+
       await navigateToExploreAndSelectTable(
         adminPage,
         adminTestEntity.entity.name
@@ -821,26 +840,22 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(tabContent).toBeVisible();
 
-      // Verify Data Quality tabs are present
       const dqTabsContainer = tabContent.locator('.data-quality-tabs');
 
       await expect(dqTabsContainer).toBeVisible();
 
-      // Verify Data Quality tab is active by default
       const dataQualityTabLabel = tabContent
         .locator('.tab-header-container')
         .filter({ hasText: 'Data Quality' });
 
       await expect(dataQualityTabLabel).toBeVisible();
 
-      // Verify total count badge
       const totalCountBadge = dataQualityTabLabel.locator(
         '.data-quality-tab-count'
       );
 
       await expect(totalCountBadge).toHaveText('3');
 
-      // Verify test case stats are displayed
       const successStat = adminPage.locator(
         '[data-testid="data-quality-stat-card-success"]'
       );
@@ -861,17 +876,14 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(failedStat).toHaveText('1Failed');
       await expect(abortedStat).toHaveText('1Aborted');
 
-      // Click on failed filter to see failed test cases
       await clickDataQualityStatCard(adminPage, 'failed');
 
-      // Verify test case cards section
       const testCaseCardsSection = tabContent.locator(
         '.test-case-cards-section'
       );
 
       await expect(testCaseCardsSection).toBeVisible();
 
-      // Verify failed test case card is visible
       const testCaseCards = testCaseCardsSection.locator('.test-case-card');
 
       await expect(testCaseCards).toHaveCount(1);
@@ -880,32 +892,27 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(failedCard).toBeVisible();
 
-      // Verify card structure
       const cardHeader = failedCard.locator('.test-case-header');
 
       await expect(cardHeader).toBeVisible();
 
-      // Verify test case name is a link
       const testCaseNameLink = cardHeader.locator('.test-case-name');
 
       await expect(testCaseNameLink).toBeVisible();
       await expect(testCaseNameLink).toContainText(testCase2.name);
       await expect(testCaseNameLink).toHaveAttribute('href', /.+/);
 
-      // Verify status badge shows "Failed"
       const statusBadge = cardHeader.locator('.status-badge-label');
 
       await expect(statusBadge).toBeVisible();
       await expect(statusBadge).toContainText(/failed/i);
 
-      // Verify test case details section
       const testCaseDetails = failedCard.locator('.test-case-details');
 
       await expect(testCaseDetails).toBeVisible();
 
-      // Verify column name is shown for column-level test
-      // Look for the detail item with "Column Name" label that contains the actual column name
       const columnName = (adminTestEntity.entity?.columns as Column[])[0].name;
+
       const columnDetail = testCaseDetails
         .locator('.test-case-detail-item')
         .filter({ hasText: /column name/i })
@@ -914,11 +921,8 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       await expect(columnDetail).toBeVisible();
       await expect(columnDetail).toContainText(columnName);
 
-      // Switch to success filter
-
       await clickDataQualityStatCard(adminPage, 'success');
 
-      // Verify success test case card
       const successCards = testCaseCardsSection.locator('.test-case-card');
 
       await expect(successCards).toHaveCount(1);
@@ -927,13 +931,12 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(successCard).toContainText(testCase1.name);
 
-      // Verify status badge shows "Success"
       const successBadge = successCard.locator('.status-badge-label');
 
       await expect(successBadge).toContainText(/success/i);
 
       await clickDataQualityStatCard(adminPage, 'aborted');
-      // Verify aborted test case card
+
       const abortedCards = testCaseCardsSection.locator('.test-case-card');
 
       await expect(abortedCards).toHaveCount(1);
@@ -942,7 +945,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(abortedCard).toContainText(testCase3.name);
 
-      // Verify status badge shows "Aborted"
       const abortedBadge = abortedCard.locator('.status-badge-label');
 
       await expect(abortedBadge).toContainText(/aborted/i);
@@ -957,7 +959,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
     const { apiContext, afterAction } = await getApiContext(adminPage);
 
     try {
-      // Create test case with incident
       await adminTestEntity.createTestSuiteAndPipelines(apiContext);
 
       const testCase = await adminTestEntity.createTestCase(apiContext, {
@@ -1017,7 +1018,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
 
       await expect(incidentStatsContainer).toBeVisible();
 
-      // Verify incident stat cards
       const newCard = incidentStatsContainer.locator(
         '.incident-stat-card.new-card'
       );
@@ -1033,7 +1033,6 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         incidentStatsContainer.locator('.resolved-section')
       ).toBeVisible();
 
-      // Click on a filter to see incidents
       const activeFilter = await newCard.evaluate((el) =>
         el.classList.contains('active')
       );
@@ -1045,21 +1044,17 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
         });
       }
 
-      // Verify incident cards section (may be empty if no incidents)
       const incidentCardsSection = incidentsTabContent.locator(
         '.incident-cards-section'
       );
 
       await expect(incidentCardsSection).toBeVisible();
 
-      // If incidents exist, verify card structure
       const incidentCards = incidentCardsSection.locator('.test-case-card');
       const cardCount = await incidentCards.count();
 
       if (cardCount > 0) {
         const firstIncidentCard = incidentCards.first();
-
-        // Verify assignee info
         const assigneeSection = firstIncidentCard
           .locator('.test-case-detail-item')
           .filter({ hasText: /assignee/i });
@@ -1477,6 +1472,15 @@ test.describe('Right Entity Panel - Admin User Flow', () => {
       );
     }
   });
+
+  test.afterAll('Cleanup lineage test entities', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await Promise.all([
+      upstreamTable.delete(apiContext),
+      downstreamTable.delete(apiContext),
+    ]);
+    await afterAction();
+  });
 });
 
 test.describe('Right Entity Panel - Data Steward User Flow', () => {
@@ -1585,7 +1589,8 @@ test.describe('Right Entity Panel - Data Steward User Flow', () => {
 
     await expect(glossarySection).toBeVisible();
 
-    await editGlossaryTerms(dataStewardPage);
+    const termDisplayName = dataStewardTestGlossaryTerm.getTermDisplayName();
+    await editGlossaryTerms(dataStewardPage, termDisplayName);
 
     await expect(
       dataStewardPage.getByText(/Glossary terms updated successfully/i)
@@ -1843,7 +1848,8 @@ test.describe('Right Entity Panel - Data Consumer User Flow', () => {
 
     await expect(glossarySection).toBeVisible();
 
-    await editGlossaryTerms(dataConsumerPage);
+    const termDisplayName = dataConsumerTestGlossaryTerm.getTermDisplayName();
+    await editGlossaryTerms(dataConsumerPage, termDisplayName);
 
     await expect(
       dataConsumerPage.getByText(/Glossary terms updated successfully/i)
