@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,7 @@
 import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
 import { ThemeColors } from '@openmetadata/ui-core-components';
 import { act, render, screen } from '@testing-library/react';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
@@ -629,14 +631,9 @@ describe('EntitySummaryPanel component tests', () => {
             )
         );
 
-      jest
-        .spyOn(
-          require('../../../context/PermissionProvider/PermissionProvider'),
-          'usePermissionProvider'
-        )
-        .mockReturnValue({
-          getEntityPermission: mockGetEntityPermission,
-        });
+      (
+        usePermissionProvider().getEntityPermission as jest.Mock
+      ).mockImplementationOnce(mockGetEntityPermission);
 
       const { container } = await act(async () => {
         return render(
