@@ -12,6 +12,7 @@
 import json
 import sys
 
+import docker
 from testcontainers.oracle import OracleDbContainer
 
 from .database_test_container import DataBaseTestContainer
@@ -21,12 +22,15 @@ class OracleTestContainer(DataBaseTestContainer):
     def __init__(self):
         self.username = "test"
         self.password = "test"
+        self.host = "localhost"
         self.port = 1521
         self.exposed_port = 11521
         self.dbname = "test"
 
+        self.image = "gvenzl/oracle-free:23-slim-faststart"
+
         self.oracle_container = OracleDbContainer(
-            "gvenzl/oracle-free:23-slim-faststart",
+            image=self.image,
             oracle_password=self.password,
             username=self.username,
             password=self.password,
@@ -95,7 +99,7 @@ class OracleTestContainer(DataBaseTestContainer):
         return oracledb.connect(
             user=self.username,
             password=self.password,
-            host="localhost",
+            host=self.host,
             port=self.exposed_port,
             service_name=self.dbname,
         )
@@ -107,3 +111,15 @@ class OracleTestContainer(DataBaseTestContainer):
     @property
     def connector_type(self) -> str:
         return "oracle"
+
+    def delete_image(self):
+        """
+        Delete the Docker image used by the Oracle test container.
+
+        We need to cleanup the images created by testcontainers to avoid
+        no space left on device issues during tests in CI. Only stopping
+        containers is not sufficient as the images remain on disk.
+        """
+        client = docker.from_env()
+        client.images.remove(self.image, force=True, noprune=False)
+        client.close()

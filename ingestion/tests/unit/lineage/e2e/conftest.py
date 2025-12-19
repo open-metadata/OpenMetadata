@@ -104,6 +104,9 @@ def oracle_lineage_container():
 
     print("\nStopping container of lineage tests...")
     container.stop()
+    print("Container stopped. Removing image...")
+    container.delete_image()
+    print("Image removed.")
 
 
 @pytest.fixture(scope="package")
