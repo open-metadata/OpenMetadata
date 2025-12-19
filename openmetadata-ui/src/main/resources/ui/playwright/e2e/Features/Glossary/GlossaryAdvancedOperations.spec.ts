@@ -1003,14 +1003,8 @@ test.describe('Glossary Advanced Operations', () => {
           .locator('#tagsForm_tags')
           .press('Backspace');
 
-        await page.getByTestId('saveAssociatedTag').click();
-
-        await expect(page.getByRole('heading')).toContainText(
-          'Would you like to proceed with updating the tags?'
-        );
-
         const validateRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-        await page.getByRole('button', { name: 'Yes, confirm' }).click();
+        await page.getByTestId('saveAssociatedTag').click();
         await validateRes;
 
         // Verify related term is removed
