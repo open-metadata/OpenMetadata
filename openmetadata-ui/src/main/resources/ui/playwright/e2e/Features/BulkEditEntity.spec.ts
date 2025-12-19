@@ -620,18 +620,16 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click('[data-testid="bulk-edit-table"]');
 
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
-
-      // Wait for the export API call to complete
-      const response = page.waitForResponse(
-        `/api/v1/glossaries/name`
-      );
-      await response;
 
       // Click on first cell and edit
       await page.click('.rdg-cell[role="gridcell"]');
@@ -747,18 +745,16 @@ test.describe('Bulk Edit Entity', () => {
       // Click on bulk edit button for the glossary term
       await page.click('[data-testid="bulk-edit-table"]');
 
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
-
-      // Wait for the export API call to complete
-      const response = page.waitForResponse(
-        `/api/v1/glossaryTerms/name`
-      );
-      await response;
 
       // Click on first cell and edit
       await page.click('.rdg-cell[role="gridcell"]');
