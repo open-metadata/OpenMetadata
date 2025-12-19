@@ -159,8 +159,6 @@ test.describe('Large Glossary Performance Tests', () => {
       await expect(expandAllButton).toContainText('Expand All', {
         timeout: 30000,
       });
-
-      await page.waitForLoadState('networkidle');
     }
 
     // Click to expand all
@@ -183,7 +181,6 @@ test.describe('Large Glossary Performance Tests', () => {
     // Click to collapse all
     await expandAllButton.click();
 
-    await page.waitForLoadState('networkidle');
     await page.waitForFunction(() => {
       return (
         document.querySelectorAll(
