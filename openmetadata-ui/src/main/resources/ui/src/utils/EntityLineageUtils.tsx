@@ -66,6 +66,7 @@ import {
   LineageSourceType,
   NodeData,
 } from '../components/Lineage/Lineage.interface';
+import { LineagePagingInfo } from '../components/LineageTable/LineageTable.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import {
@@ -2072,3 +2073,8 @@ export const getLineageTableConfig = (
 
   return { columns, dataSource };
 };
+
+export const getEntityCountAtDepth = (
+  depthInfo: LineagePagingInfo['upstreamDepthInfo'] | undefined,
+  depth: number
+) => depthInfo?.find((info) => info.depth === depth)?.entityCount ?? 0;
