@@ -17,6 +17,7 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import {
   createNewPage,
   descriptionBox,
+  getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
 import { selectActiveGlossary } from '../../../utils/glossary';
@@ -32,43 +33,45 @@ test.use({
 
 // G-C11: Create glossary with unicode/emoji in name
 test.describe('Create Glossary with Unicode/Emoji', () => {
-  const glossary = new Glossary();
-  const unicodeName = `Glossary_日本語_${Date.now()}`;
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    if (glossary.responseData) {
-      await glossary.delete(apiContext);
-    }
-    await afterAction();
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   test('should create glossary with unicode characters in name', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-
-    await page.click('[data-testid="add-glossary"]');
-    await page.waitForSelector('[data-testid="form-heading"]');
-
-    // Use name with unicode characters
-    await page.fill('[data-testid="name"]', unicodeName);
-    await page.locator(descriptionBox).fill('Glossary with unicode characters');
-
-    const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-    await page.click('[data-testid="save-glossary"]');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const unicodeName = `Glossary_日本語_${Date.now()}`;
 
     try {
-      const response = await glossaryResponse;
-      glossary.responseData = await response.json();
+      await sidebarClick(page, SidebarItem.GLOSSARY);
 
-      // Verify glossary was created
-      await expect(page.getByTestId('entity-header-name')).toBeVisible();
-    } catch {
-      // Some systems may not support unicode in names - test passes if we get here
-      expect(true).toBe(true);
+      await page.click('[data-testid="add-glossary"]');
+      await page.waitForSelector('[data-testid="form-heading"]');
+
+      // Use name with unicode characters
+      await page.fill('[data-testid="name"]', unicodeName);
+      await page.locator(descriptionBox).fill('Glossary with unicode characters');
+
+      const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
+      await page.click('[data-testid="save-glossary"]');
+
+      try {
+        const response = await glossaryResponse;
+        glossary.responseData = await response.json();
+
+        // Verify glossary was created
+        await expect(page.getByTestId('entity-header-name')).toBeVisible();
+      } catch {
+        // Some systems may not support unicode in names - test passes if we get here
+        expect(true).toBe(true);
+      }
+    } finally {
+      if (glossary.responseData) {
+        await glossary.delete(apiContext);
+      }
+      await afterAction();
     }
   });
 });
