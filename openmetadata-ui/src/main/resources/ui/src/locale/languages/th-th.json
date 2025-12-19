@@ -2462,6 +2462,7 @@
     "onboarding-stay-up-to-date-description": "ติดตามชุดข้อมูลที่คุณใช้งานบ่อยเพื่อให้ข้อมูลที่เกี่ยวข้อง",
     "only-image-files-supported": "รองรับไฟล์รูปภาพเท่านั้น",
     "only-reviewers-can-approve-or-reject": "เฉพาะผู้ตรวจสอบเท่านั้นที่สามารถอนุมัติหรือปฏิเสธ",
+    "only-show-columns-with-lineage": "แสดงเฉพาะคอลัมน์ที่มี Lineage",
     "optional-configuration-update-description-dbt": "การตั้งค่าเสริมเพื่ออัปเดตคำอธิบายจาก dbt หรือไม่",
     "owners-coverage-widget-description": "ความครอบคลุมของเจ้าของสำหรับสินทรัพย์ข้อมูลทั้งหมดในบริการ <0>เรียนรู้เพิ่มเติม</0>",
     "page-is-not-available": "หน้าเว็บที่คุณกำลังมองหาไม่สามารถใช้งานได้",
