@@ -43,11 +43,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.models import (
-    Dialect,
-    QueryParsingError,
-    QueryParsingFailures,
-)
+from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
@@ -860,7 +856,7 @@ def get_lineage_by_query(
     Now supports cross-database lineage by accepting a list of service names.
     """
     column_lineage = {}
-    query_parsing_failures = QueryParsingFailures()
+
     if service_name and isinstance(service_name, str):
         service_names = [service_name]
         logger.warning(
@@ -949,17 +945,6 @@ def get_lineage_by_query(
                             graph=graph,
                             schema_fallback=schema_fallback,
                         )
-        if not lineage_parser.query_parsing_success:
-            logger.debug(
-                f"[{query_hash}] Query parsing failed while getting lineage by query:"
-                f" {lineage_parser.query_parsing_failure_reason}"
-            )
-            query_parsing_failures.add(
-                QueryParsingError(
-                    query=masked_query or query,
-                    error=lineage_parser.query_parsing_failure_reason,
-                )
-            )
     except Exception as exc:
         yield Either(
             left=StackTraceError(
@@ -987,7 +972,6 @@ def get_lineage_via_table_entity(
 ) -> Iterable[Either[AddLineageRequest]]:
     """Get lineage from table entity"""
     column_lineage = {}
-    query_parsing_failures = QueryParsingFailures()
 
     if isinstance(service_names, str):
         service_names = [service_names]
@@ -1028,17 +1012,6 @@ def get_lineage_via_table_entity(
                     graph=graph,
                     schema_fallback=schema_fallback,
                 ) or []
-        if not lineage_parser.query_parsing_success:
-            logger.debug(
-                f"[{query_hash}] Query parsing failed while getting lineage via table entity by query:"
-                f" {lineage_parser.query_parsing_failure_reason}"
-            )
-            query_parsing_failures.add(
-                QueryParsingError(
-                    query=masked_query,
-                    error=lineage_parser.query_parsing_failure_reason,
-                )
-            )
     except Exception as exc:  # pylint: disable=broad-except
         Either(
             left=StackTraceError(
