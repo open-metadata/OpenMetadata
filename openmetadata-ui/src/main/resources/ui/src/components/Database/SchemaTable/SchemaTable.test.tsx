@@ -97,17 +97,18 @@ jest.mock('../../../utils/CommonUtils', () => ({
 
 jest.mock('../../../utils/TableUtils', () => {
   const actual = jest.requireActual('../../../utils/TableUtils');
-  const flattenColumnsMock = (items: any[]): any[] => {
+  const flattenColumnsMock = (items: Column[]): Column[] => {
     if (!items || items.length === 0) {
       return [];
     }
-    const result: any[] = [];
+    const result: Column[] = [];
     items.forEach((item) => {
       result.push(item);
       if (item.children && item.children.length > 0) {
         result.push(...flattenColumnsMock(item.children));
       }
     });
+
     return result;
   };
 
@@ -269,6 +270,7 @@ jest.mock('../../../utils/FeedUtils', () => ({
 
 jest.mock('../../../utils/TableColumn.util', () => ({
   columnFilterIcon: jest.fn().mockReturnValue(<p>ColumnFilterIcon</p>),
+  descriptionTableObject: jest.fn().mockReturnValue([]),
   ownerTableObject: jest.fn().mockReturnValue([]),
   domainTableObject: jest.fn().mockReturnValue([]),
   dataProductTableObject: jest.fn().mockReturnValue([]),
