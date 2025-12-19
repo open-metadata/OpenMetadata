@@ -105,15 +105,15 @@ jobs:
         run: |
           mvn clean install -DskipTests
 
-      - name: Run RDF Integration Tests
+      - name: Run Postgres RDF Test Suite
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OM_RDF_ENABLED: true
           OM_RDF_STORAGE_TYPE: IN_MEMORY
           OM_RDF_BASE_URI: https://open-metadata.org/
         run: |
-          mvn -Ppostgres-rdf-tests clean test -pl openmetadata-service \
-            -Dtest=org.openmetadata.service.resources.rdf.RdfResourceTest \
+          # Run the full openmetadata-service test suite with the RDF profile enabled
+          mvn -Ppostgres-rdf-tests test -pl openmetadata-service \
             -DfailIfNoTests=false
 
       - name: Upload RDF Test Logs
@@ -138,17 +138,17 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
-          report_paths: 'openmetadata-service/target/surefire-reports/TEST-org.openmetadata.service.resources.rdf.*.xml'
+          report_paths: 'openmetadata-service/target/surefire-reports/TEST-*.xml'
 
       - name: Generate Job Summary
         if: always()
         run: |
           echo "## RDF Integration Tests Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f "openmetadata-service/target/surefire-reports/TEST-org.openmetadata.service.resources.rdf.RdfResourceTest.xml" ]; then
-            echo "✅ RDF tests completed" >> $GITHUB_STEP_SUMMARY
+          if ls openmetadata-service/target/surefire-reports/TEST-*.xml >/dev/null 2>&1; then
+            echo "✅ Test suite completed (RDF profile)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ RDF tests failed or did not run" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Tests failed or did not run" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Test Configuration" >> $GITHUB_STEP_SUMMARY
