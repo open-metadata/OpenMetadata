@@ -20,12 +20,11 @@ from typing import Dict, Iterable, List, Optional, Tuple, cast
 from urllib.parse import urlparse
 
 import data_diff
-from pydantic import BaseModel
 import sqlalchemy.types
 from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
-from data_diff.abcs.database_types import ColType
+from pydantic import BaseModel
 from sqlalchemy import Column as SAColumn
 from sqlalchemy import literal, select
 from sqlalchemy.engine import make_url
@@ -77,6 +76,7 @@ SUPPORTED_DIALECTS = [
     Dialects.UnityCatalog,
 ]
 
+
 class SchemaDiffResult(BaseModel):
     class Config:
         arbitrary_types_allowed = True
@@ -84,6 +84,7 @@ class SchemaDiffResult(BaseModel):
     serviceType: str
     fullyQualifiedTableName: str
     schema: Dict[str, Dict[str, str]]
+
 
 class ColumnDiffResult(BaseModel):
     class Config:
@@ -94,6 +95,7 @@ class ColumnDiffResult(BaseModel):
     changed: List[str]
     schemaTable1: SchemaDiffResult
     schemaTable2: SchemaDiffResult
+
 
 def build_sample_where_clause(
     table: TableParameter, key_columns: List[str], salt: str, hex_nounce: str
@@ -254,7 +256,10 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
         if column_diff:
             # If there are column differences, we set extra_columns to the common columns for the diff
-            common_columns = list(set(column_diff.schemaTable1.schema.keys()) & set(column_diff.schemaTable2.schema.keys()))
+            common_columns = list(
+                set(column_diff.schemaTable1.schema.keys())
+                & set(column_diff.schemaTable2.schema.keys())
+            )
             self.runtime_params.extraColumns = common_columns
             self.runtime_params.table1.extra_columns = common_columns
             self.runtime_params.table2.extra_columns = common_columns
@@ -349,7 +354,11 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 continue
             if col1_type != col2_type:
                 result.append(column)
-        return result, table1._schema, table2._schema  # pylint: disable=protected-access
+        return (
+            result,
+            table1._schema,
+            table2._schema,
+        )  # pylint: disable=protected-access
 
     @staticmethod
     def _get_column_python_type(column: SAColumn):
@@ -550,20 +559,30 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             TestCaseResult: The result of the row diff test
         """
         test_case_results = [
-                TestResultValue(name="removedRows", value=str(removed)),
-                TestResultValue(name="addedRows", value=str(added)),
-                TestResultValue(name="changedRows", value=str(changed)),
-                TestResultValue(name="diffCount", value=str(total_diffs)),
-            ]
+            TestResultValue(name="removedRows", value=str(removed)),
+            TestResultValue(name="addedRows", value=str(added)),
+            TestResultValue(name="changedRows", value=str(changed)),
+            TestResultValue(name="diffCount", value=str(total_diffs)),
+        ]
 
         if column_diff:
             test_case_results.extend(
                 [
-                    TestResultValue(name="removedColumns", value=str(len(column_diff.removed))),
-                    TestResultValue(name="addedColumns", value=str(len(column_diff.added))),
-                    TestResultValue(name="changedColumns", value=str(len(column_diff.changed))),
-                    TestResultValue(name="schemaTable1", value=str(column_diff.schemaTable1)),
-                    TestResultValue(name="schemaTable2", value=str(column_diff.schemaTable2)),
+                    TestResultValue(
+                        name="removedColumns", value=str(len(column_diff.removed))
+                    ),
+                    TestResultValue(
+                        name="addedColumns", value=str(len(column_diff.added))
+                    ),
+                    TestResultValue(
+                        name="changedColumns", value=str(len(column_diff.changed))
+                    ),
+                    TestResultValue(
+                        name="schemaTable1", value=str(column_diff.schemaTable1)
+                    ),
+                    TestResultValue(
+                        name="schemaTable2", value=str(column_diff.schemaTable2)
+                    ),
                 ]
             )
 
@@ -614,12 +633,24 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 schemaTable1=SchemaDiffResult(
                     serviceType=self.runtime_params.table1.database_service_type.name,
                     fullyQualifiedTableName=self.runtime_params.table1.path,
-                    schema={c.name.root: {"type": c.dataTypeDisplay, "constraints": c.constraint.value} for c in self.runtime_params.table1.columns},
+                    schema={
+                        c.name.root: {
+                            "type": c.dataTypeDisplay,
+                            "constraints": c.constraint.value,
+                        }
+                        for c in self.runtime_params.table1.columns
+                    },
                 ),
                 schemaTable2=SchemaDiffResult(
                     serviceType=self.runtime_params.table2.database_service_type.name,
                     fullyQualifiedTableName=self.runtime_params.table2.path,
-                    schema={c.name.root: {"type": c.dataTypeDisplay, "constraints": c.constraint.value} for c in self.runtime_params.table2.columns},
+                    schema={
+                        c.name.root: {
+                            "type": c.dataTypeDisplay,
+                            "constraints": c.constraint.value,
+                        }
+                        for c in self.runtime_params.table2.columns
+                    },
                 ),
             )
         return None

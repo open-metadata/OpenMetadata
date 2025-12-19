@@ -12,11 +12,15 @@ from metadata.data_quality.validations.models import (
 from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
     TableDiffValidator,
 )
-from metadata.generated.schema.entity.data.table import Column, ColumnName, Constraint, DataType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    Constraint,
+    DataType,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.type.basic import Timestamp
 
