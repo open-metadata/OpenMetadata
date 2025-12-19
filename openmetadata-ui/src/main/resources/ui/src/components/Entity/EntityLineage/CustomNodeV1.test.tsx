@@ -212,6 +212,9 @@ jest.mock('react-i18next', () => ({
       if (key === 'label.slash-symbol') {
         return '/';
       }
+      if (key === 'message.only-show-columns-with-lineage') {
+        return 'Only show columns with Lineage';
+      }
 
       return key;
     },
@@ -563,6 +566,27 @@ describe('CustomNodeV1', () => {
       const filterButton = screen.getByTestId('lineage-filter-button');
       fireEvent.click(filterButton);
     };
+
+    it('should render tooltip on hovering filter button in lineage node', async () => {
+      isColumnLayerActive = true;
+      columnsHavingLineage = ['col0', 'col2', 'col5'];
+
+      render(
+        <ReactFlowProvider>
+          <CustomNodeV1Component {...mockNodeDataProps} />
+        </ReactFlowProvider>
+      );
+
+      const filterButton = screen.getByTestId('lineage-filter-button');
+
+      expect(filterButton).toBeInTheDocument();
+
+      fireEvent.mouseOver(filterButton);
+
+      expect(
+        await screen.findByText('Only show columns with Lineage')
+      ).toBeInTheDocument();
+    });
 
     describe('Column Filter', () => {
       it('should only render columns with lineage when filter is on', () => {
