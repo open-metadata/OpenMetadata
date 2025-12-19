@@ -2462,6 +2462,7 @@
     "onboarding-stay-up-to-date-description": "자주 사용하는 데이터셋을 팔로우하여 최신 정보를 유지하세요.",
     "only-image-files-supported": "이미지 파일만 지원됩니다",
     "only-reviewers-can-approve-or-reject": "검토자만 승인 또는 거부할 수 있습니다",
+    "only-show-columns-with-lineage": "리니지가 있는 컬럼만 표시",
     "optional-configuration-update-description-dbt": "dbt에서 설명을 업데이트할지 여부에 대한 선택적 구성",
     "owners-coverage-widget-description": "서비스 내 모든 데이터 자산의 소유자 커버리지입니다. <0>더 알아보기.</0>",
     "page-is-not-available": "찾고 있는 페이지를 사용할 수 없습니다",
