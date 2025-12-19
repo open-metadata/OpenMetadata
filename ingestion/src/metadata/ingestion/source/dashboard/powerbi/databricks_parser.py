@@ -26,21 +26,20 @@ def resolve_database(database: str, dataset: Dataset) -> str:
     :param dataset: The dataset object containing expressions.
     :return: The resolved database name.
     """
-    regexp = r"^['|\"].*['|\"]$"
+    regexp = r"^['\"].*['\"]$"
 
     if re.match(regexp, database):
-        db_name = database.strip('"').strip()
+        db_name = database.strip('"').strip('"').strip()
     else:
         db_name = None
         # get the database from the expression seciton of the workspace
         if dataset.expressions:
             for expr in dataset.expressions:
-                if expr.name == database:
-                    if expr.expression:
-                        pattern = r'^"([^"]+)"\s+meta'
-                        kw_match = re.search(pattern, expr.expression)
-                        if kw_match:
-                            db_name = kw_match.group(1)
+                if expr.name == database and expr.expression:
+                    pattern = r'^"([^"]+)"\s+meta'
+                    kw_match = re.search(pattern, expr.expression)
+                    if kw_match:
+                        db_name = kw_match.group(1)
     return db_name
 
 
@@ -57,9 +56,12 @@ def parse_databricks_native_query_source(
         details = groups.groupdict()
         catalog_info = details.get("catalog_info", "")
         catalog_parameters = details.get("catalog_parameters", "")
-        catalog_info_match = re.search(
-            r"\[\s*,?\s*Catalog\s*=\s*(?P<catalog>[^,]+)\s*,", catalog_info, re.DOTALL
-        )
+        if catalog_info:
+            catalog_info = catalog_info.replace("\n", " ")
+            catalog_info = re.sub(r"\s+", " ", catalog_info).strip()
+            catalog_info_match = re.search(
+                r"\[\s?,?\s?Catalog\s?=\s?(?P<catalog>[^,\]\s]+)\s?,", catalog_info
+            )
         if not catalog_info_match:
             logger.error(f"Could not find catalog in info: {catalog_info}")
             catalog = None
@@ -67,7 +69,7 @@ def parse_databricks_native_query_source(
             catalog_groups = catalog_info_match.groupdict()
             catalog = catalog_groups.get("catalog", None)
         database_match = re.search(
-            r'Name\s*=\s*(?P<database>[^,]+)\s*,\s*Kind\s*=\s*"Database"',
+            r'Name\s?=\s?(?P<database>[^,]+)\s?,\s?Kind\s?=\s?"Database"',
             catalog_parameters,
         )
 
