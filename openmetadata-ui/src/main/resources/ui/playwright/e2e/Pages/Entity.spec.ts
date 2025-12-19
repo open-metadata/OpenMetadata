@@ -12,7 +12,7 @@
  */
 import { expect, Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
-import { COMMON_TIER_TAG } from '../../constant/common';
+import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { DATA_CONSUMER_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
@@ -962,6 +962,77 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           }
         );
       });
+
+      if (entity.type === 'Table') {
+        test('Column detail panel key profile metrics validation', async ({
+          page,
+        }) => {
+          test.slow(true);
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+
+          await test.step(
+            'Verify key profile metrics are displayed in column detail panel',
+            async () => {
+              // Open column detail panel and wait for profile API call
+              const columnNameTestId = 'column-name';
+              const columnName = page
+                .locator(
+                  `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+                )
+                .getByTestId(columnNameTestId)
+                .first();
+              await columnName.scrollIntoViewIfNeeded();
+
+              // Wait for profile API response when panel opens
+              const profileResponse = page.waitForResponse(
+                (response) =>
+                  response.url().includes('/api/v1/tables/') &&
+                  response.url().includes('fields=profile')
+              );
+              await columnName.click();
+              await profileResponse;
+
+              await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+              const panelContainer = page.locator('.column-detail-panel');
+
+              // Verify Key Profile Metrics section is visible
+              await expect(
+                panelContainer.getByText('Key Profile Metrics')
+              ).toBeVisible();
+
+              // Verify all four metric chips are present and visible using data-testid
+              const expectedMetrics = KEY_PROFILE_METRICS;
+
+              for (const metric of expectedMetrics) {
+                const metricChip = panelContainer.getByTestId(
+                  `key-profile-metric-${metric}`
+                );
+
+                await expect(metricChip).toBeVisible();
+
+                // Verify the metric label is visible
+                await expect(panelContainer.getByText(metric)).toBeVisible();
+
+                // Verify that the chip has content (metric value)
+                const chipContent = await metricChip.textContent();
+
+                expect(chipContent).toBeTruthy();
+                // Value should match one of these patterns: percentage (e.g., "75%"), number (e.g., "1,000"), or placeholder ("--")
+                expect(chipContent).toMatch(/(\d+%|\d{1,3}(,\d{3})*|--)/);
+              }
+
+              // Close panel
+              await panelContainer.getByTestId('close-button').click();
+
+              await expect(
+                page.locator('.column-detail-panel')
+              ).not.toBeVisible();
+            }
+          );
+        });
+      }
     }
 
     /**

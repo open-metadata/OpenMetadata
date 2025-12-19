@@ -168,6 +168,7 @@ export const KeyProfileMetrics = ({
       <Stack direction="row" flexWrap="nowrap" gap={2}>
         {metrics.map((metric) => (
           <Chip
+            data-testid={`key-profile-metric-${metric.label}`}
             key={metric.label}
             label={
               <Stack
