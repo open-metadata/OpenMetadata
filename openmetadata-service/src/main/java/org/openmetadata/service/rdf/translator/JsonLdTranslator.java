@@ -51,7 +51,8 @@ public class JsonLdTranslator {
       "entityRelationship",
       "governance",
       "quality",
-      "operations"
+      "operations",
+      "lineage"
     };
     for (String contextName : contexts) {
       try {

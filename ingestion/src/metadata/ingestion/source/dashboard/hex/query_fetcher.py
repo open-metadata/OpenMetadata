@@ -413,6 +413,7 @@ class HexQueryFetcher:
                     dialect=dialect,
                     timeout_seconds=10,  # Use a reasonable timeout
                 )
+                query_hash = lineage_parser.query_hash
 
                 # Get source tables from the parser
                 source_tables = lineage_parser.source_tables or []
@@ -440,8 +441,9 @@ class HexQueryFetcher:
                                 tables.append(table_entity)
 
             except Exception as parser_error:
+                hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
                 logger.debug(
-                    f"LineageParser failed, falling back to alternative method: {parser_error}"
+                    f"{hash_prefix}LineageParser failed, falling back to alternative method: {parser_error}"
                 )
 
         except Exception as e:

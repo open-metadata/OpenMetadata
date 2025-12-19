@@ -2462,6 +2462,7 @@
     "onboarding-stay-up-to-date-description": "तुम्ही वारंवार वापरत असलेल्या डेटासेटचे अनुसरण करा जेणेकरून त्याबद्दल माहिती मिळेल.",
     "only-image-files-supported": "केवळ चित्र फाइले समर्थित आहेत",
     "only-reviewers-can-approve-or-reject": "फक्त पुनरावलोकक मंजूर किंवा नाकारू शकतात",
+    "only-show-columns-with-lineage": "केवळ Lineage असलेले स्तंभ दाखवा",
     "optional-configuration-update-description-dbt": "dbt मधून वर्णन अद्यतनित करण्यासाठी पर्यायी संरचना",
     "owners-coverage-widget-description": "सेवेतील सर्व डेटा मालमत्तांसाठी मालक व्याप्ती. <0>अधिक जाणून घ्या.</0>",
     "page-is-not-available": "तुम्ही शोधत असलेले पृष्ठ उपलब्ध नाही",

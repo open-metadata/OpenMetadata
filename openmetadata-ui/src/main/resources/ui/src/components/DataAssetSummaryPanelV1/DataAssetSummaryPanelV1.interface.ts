@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { EntityTags } from 'Models';
-import { LineageData } from '../../components/Lineage/Lineage.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -31,8 +30,6 @@ export type DataAssetSummaryPanelProps = {
   entityType: EntityType;
   isDomainVisible?: boolean;
   isLineageView?: boolean;
-  lineageData?: LineageData | null;
-  isLineageLoading?: boolean;
   onOwnerUpdate?: (updatedOwners: EntityReference[]) => void;
   onDomainUpdate?: (updatedDomains: EntityReference[]) => void;
   onTierUpdate?: (updatedTier?: TagLabel) => void;
