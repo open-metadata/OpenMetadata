@@ -68,9 +68,6 @@ const StyleModalNew: FC<StyleModalProps> = ({
             <MUIIconPicker
               allowUrl
               backgroundColor={selectedColor}
-              customStyles={{
-                searchBoxWidth: 366,
-              }}
               dataTestId="icon-picker-btn"
               defaultIcon={DEFAULT_TAG_ICON}
               label={t('label.icon')}

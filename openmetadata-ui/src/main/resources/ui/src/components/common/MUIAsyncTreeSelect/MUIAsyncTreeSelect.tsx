@@ -47,6 +47,7 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
   fullWidth = true,
   size = 'small',
   autoFocus = false,
+  'data-testid': dataTestId,
 
   // Tree select props
   multiple = false,
@@ -528,6 +529,7 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
     <Box ref={anchorRef} sx={{ width: fullWidth ? '100%' : 'auto' }}>
       <TreeSearchInput
         autoFocus={autoFocus}
+        data-testid={dataTestId}
         disabled={disabled}
         error={error}
         fullWidth={fullWidth}

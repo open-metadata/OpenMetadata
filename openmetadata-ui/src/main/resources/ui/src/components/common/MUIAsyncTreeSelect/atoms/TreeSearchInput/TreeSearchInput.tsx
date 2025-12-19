@@ -56,6 +56,7 @@ export interface TreeSearchInputProps {
   onBlur: (e: React.FocusEvent) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
   onClear?: () => void;
+  'data-testid'?: string;
 }
 
 const TreeSearchInput: FC<TreeSearchInputProps> = ({
@@ -84,6 +85,7 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
   onBlur,
   onKeyDown,
   onClear,
+  'data-testid': dataTestId,
 }) => {
   const { t } = useTranslation();
   const inputProps = getInputProps();
@@ -129,7 +131,10 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
         required={required}
         size={size}
         slotProps={{
-          htmlInput: inputProps,
+          htmlInput: {
+            ...inputProps,
+            'data-testid': dataTestId,
+          },
           input: {
             endAdornment: (
               <InputAdornment position="end">
