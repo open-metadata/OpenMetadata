@@ -73,7 +73,6 @@ public abstract class AbstractEventConsumer
   private void init(JobExecutionContext context) {
     this.jobDetail = context.getJobDetail();
     try {
-      // EventSubscription is stored as JSON string in JobDataMap for JDBC JobStore compatibility
       Object alertInfoValue = context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
       if (alertInfoValue == null) {
         LOG.error("ALERT_INFO_KEY not found in JobDataMap");
@@ -87,11 +86,7 @@ public abstract class AbstractEventConsumer
           return;
         }
       } else if (alertInfoValue instanceof EventSubscription subscription) {
-        // Handle case where object wasn't serialized as JSON (e.g., RAMJobStore in tests)
         this.eventSubscription = subscription;
-        LOG.debug(
-            "EventSubscription loaded directly from JobDataMap for subscription: {}",
-            this.eventSubscription.getName());
       } else {
         LOG.error(
             "Unexpected type for ALERT_INFO_KEY: {}. Expected String or EventSubscription.",
@@ -113,12 +108,6 @@ public abstract class AbstractEventConsumer
       this.alertMetrics = loadInitialMetrics();
       this.destinationMap = loadDestinationsMap(context);
       this.doInit(context);
-
-      LOG.debug(
-          "Initialized EventConsumer for subscription: {}, offset: {}, destinations: {}",
-          this.eventSubscription.getName(),
-          this.offset,
-          this.destinationMap.size());
     } catch (Exception e) {
       LOG.error("Failed to initialize EventConsumer from JobDataMap", e);
       this.eventSubscription = null;
@@ -178,14 +167,12 @@ public abstract class AbstractEventConsumer
   }
 
   private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
-    // First try JobDataMap - may be stored as JSON string or EventSubscriptionOffset object
     Object offsetValue = jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
     if (offsetValue != null) {
       EventSubscriptionOffset offset = null;
       if (offsetValue instanceof String offsetJson) {
         offset = JsonUtils.readValue(offsetJson, EventSubscriptionOffset.class);
       } else if (offsetValue instanceof EventSubscriptionOffset existingOffset) {
-        // Handle case where object wasn't serialized as JSON (e.g., RAMJobStore in tests)
         offset = existingOffset;
       }
       if (offset != null) {
@@ -193,22 +180,17 @@ public abstract class AbstractEventConsumer
       }
     }
 
-    // Fall back to database - getStartingOffset returns current DB offset if no stored offset
     EventSubscriptionOffset dbOffset = getStartingOffset(eventSubscription.getId());
     if (dbOffset != null) {
-      // Update JobDataMap with the offset for next execution
       context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(dbOffset));
       return dbOffset;
     }
 
-    // Should not reach here - getStartingOffset always returns a valid offset
     LOG.warn("No offset found for subscription {}, using default", eventSubscription.getId());
     return getStartingOffset(eventSubscription.getId());
   }
 
   private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap(JobExecutionContext context) {
-    // Always rebuild the destination map - Destination objects are not serializable
-    // and should not be stored in JobDataMap with JDBC JobStore
     Map<UUID, Destination<ChangeEvent>> dMap = new HashMap<>();
     for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
       dMap.put(
@@ -218,7 +200,6 @@ public abstract class AbstractEventConsumer
   }
 
   private AlertMetrics loadInitialMetrics() {
-    // Always load metrics from database - AlertMetrics may not be serializable for JDBC JobStore
     String json =
         Entity.getCollectionDAO()
             .eventSubscriptionDAO()
@@ -231,12 +212,10 @@ public abstract class AbstractEventConsumer
 
   @Override
   public void publishEvents(Map<ChangeEvent, Set<UUID>> events) {
-    // If no events return
     if (events.isEmpty()) {
       return;
     }
 
-    // Filter the Change Events based on Alert Trigger Config
     Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
 
     for (var eventWithReceivers : filteredEvents.entrySet()) {
@@ -255,7 +234,6 @@ public abstract class AbstractEventConsumer
   @Override
   public void commit(JobExecutionContext jobExecutionContext) {
     long currentTime = System.currentTimeMillis();
-    // Upsert Offset to database (source of truth)
     EventSubscriptionOffset eventSubscriptionOffset =
         new EventSubscriptionOffset()
             .withCurrentOffset(offset)
@@ -270,20 +248,13 @@ public abstract class AbstractEventConsumer
             "eventSubscriptionOffset",
             JsonUtils.pojoToJson(eventSubscriptionOffset));
 
-    // Store offset as JSON string for JDBC JobStore serialization compatibility
     jobExecutionContext
         .getJobDetail()
         .getJobDataMap()
-        .put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(eventSubscriptionOffset));
+        .put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
 
-    // Store updated EventSubscription (with status changes) as JSON string
-    // This ensures status updates from job execution are persisted
-    jobExecutionContext
-        .getJobDetail()
-        .getJobDataMap()
-        .put(ALERT_INFO_KEY, JsonUtils.pojoToJson(eventSubscription));
+    jobExecutionContext.getJobDetail().getJobDataMap().put(ALERT_INFO_KEY, eventSubscription);
 
-    // Upsert Metrics to database
     AlertMetrics metrics =
         new AlertMetrics()
             .withTotalEvents(alertMetrics.getTotalEvents())
@@ -298,10 +269,6 @@ public abstract class AbstractEventConsumer
             METRICS_EXTENSION,
             "alertMetrics",
             JsonUtils.pojoToJson(metrics));
-
-    // Note: We don't store AlertMetrics or destinationMap in JobDataMap
-    // as they are not serializable and would fail with JDBC JobStore.
-    // These are loaded fresh from DB/rebuilt on each job execution.
   }
 
   @Override
@@ -323,9 +290,7 @@ public abstract class AbstractEventConsumer
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    // Must Have , Before Execute the Init, Quartz Requires a Non-Arg Constructor
     this.init(jobExecutionContext);
-    // Check if initialization was successful
     if (this.eventSubscription == null) {
       LOG.error("Skipping job execution - EventSubscription could not be loaded");
       return;
@@ -333,11 +298,9 @@ public abstract class AbstractEventConsumer
     long batchSize = 0;
     Map<ChangeEvent, Set<UUID>> eventsWithReceivers = new HashMap<>();
     try {
-      // Poll Events from Change Event Table
       ResultList<ChangeEvent> batch = pollEvents(offset, eventSubscription.getBatchSize());
       batchSize = batch.getPaging().getTotal();
       eventsWithReceivers.putAll(createEventsWithReceivers(batch.getData()));
-      // Publish Events
       if (!eventsWithReceivers.isEmpty()) {
         alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + eventsWithReceivers.size());
         publishEvents(eventsWithReceivers);
@@ -352,7 +315,6 @@ public abstract class AbstractEventConsumer
 
     } finally {
       if (!eventsWithReceivers.isEmpty()) {
-        // Commit the Offset
         offset += batchSize;
         commit(jobExecutionContext);
       }
@@ -360,8 +322,6 @@ public abstract class AbstractEventConsumer
   }
 
   public EventSubscription getEventSubscription() {
-    // Return the already loaded eventSubscription field
-    // (loaded from DB during init, not stored in JobDataMap for serialization compatibility)
     return eventSubscription;
   }
 

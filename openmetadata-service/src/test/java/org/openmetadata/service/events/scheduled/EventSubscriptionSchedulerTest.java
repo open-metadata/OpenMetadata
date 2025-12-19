@@ -15,98 +15,35 @@ package org.openmetadata.service.events.scheduled;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.lang.reflect.Field;
-import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/**
- * Unit tests for EventSubscriptionScheduler clustering configuration.
- *
- * <p>These tests verify that the scheduler is properly configured for clustered execution in
- * multi-server deployments, which prevents duplicate notifications from being sent.
- */
 class EventSubscriptionSchedulerTest {
 
   @Test
-  @DisplayName("Scheduler configuration should enable clustering")
-  void testClusteringEnabled() throws Exception {
-    Map<String, String> config = getClusteredSchedulerConfig();
-
+  @DisplayName("Scheduler should use ALERT_JOB_GROUP for job grouping")
+  void testAlertJobGroupConstant() {
     assertEquals(
-        "true",
-        config.get("org.quartz.jobStore.isClustered"),
-        "Clustering must be enabled for multi-server deployments");
+        "OMAlertJobGroup",
+        EventSubscriptionScheduler.ALERT_JOB_GROUP,
+        "Job group should be OMAlertJobGroup");
   }
 
   @Test
-  @DisplayName("Scheduler should use JDBC JobStore for distributed locking")
-  void testJdbcJobStoreConfigured() throws Exception {
-    Map<String, String> config = getClusteredSchedulerConfig();
-
+  @DisplayName("Scheduler should use ALERT_TRIGGER_GROUP for trigger grouping")
+  void testAlertTriggerGroupConstant() {
     assertEquals(
-        "org.quartz.impl.jdbcjobstore.JobStoreTX",
-        config.get("org.quartz.jobStore.class"),
-        "JDBC JobStore is required for clustering support");
+        "OMAlertJobGroup",
+        EventSubscriptionScheduler.ALERT_TRIGGER_GROUP,
+        "Trigger group should be OMAlertJobGroup");
   }
 
   @Test
-  @DisplayName("Scheduler should use AUTO instance ID for unique server identification")
-  void testAutoInstanceId() throws Exception {
-    Map<String, String> config = getClusteredSchedulerConfig();
-
-    assertEquals(
-        "AUTO",
-        config.get("org.quartz.scheduler.instanceId"),
-        "AUTO instance ID ensures unique identification per server");
-  }
-
-  @Test
-  @DisplayName("Scheduler should have cluster check-in interval configured")
-  void testClusterCheckInInterval() throws Exception {
-    Map<String, String> config = getClusteredSchedulerConfig();
-
+  @DisplayName("Scheduler constants should be defined")
+  void testSchedulerConstantsExist() {
+    assertNotNull(EventSubscriptionScheduler.ALERT_JOB_GROUP, "ALERT_JOB_GROUP should be defined");
     assertNotNull(
-        config.get("org.quartz.jobStore.clusterCheckinInterval"),
-        "Cluster check-in interval must be configured for failover");
-
-    int checkInInterval =
-        Integer.parseInt(config.get("org.quartz.jobStore.clusterCheckinInterval"));
-    assertTrue(
-        checkInInterval > 0 && checkInInterval <= 60000,
-        "Check-in interval should be reasonable (1-60 seconds)");
-  }
-
-  @Test
-  @DisplayName("Scheduler should use QRTZ_ table prefix")
-  void testQuartzTablePrefix() throws Exception {
-    Map<String, String> config = getClusteredSchedulerConfig();
-
-    assertEquals(
-        "QRTZ_",
-        config.get("org.quartz.jobStore.tablePrefix"),
-        "Table prefix must match existing Quartz tables");
-  }
-
-  @Test
-  @DisplayName("Scheduler should have data source configured")
-  void testDataSourceConfigured() throws Exception {
-    Map<String, String> config = getClusteredSchedulerConfig();
-
-    assertNotNull(
-        config.get("org.quartz.jobStore.dataSource"), "Data source must be configured for JDBC");
-    assertNotNull(
-        config.get("org.quartz.dataSource.omDS.maxConnections"),
-        "Max connections must be configured");
-  }
-
-  @SuppressWarnings("unchecked")
-  private Map<String, String> getClusteredSchedulerConfig() throws Exception {
-    Field configField =
-        EventSubscriptionScheduler.class.getDeclaredField("CLUSTERED_SCHEDULER_CONFIG");
-    configField.setAccessible(true);
-    return (Map<String, String>) configField.get(null);
+        EventSubscriptionScheduler.ALERT_TRIGGER_GROUP, "ALERT_TRIGGER_GROUP should be defined");
   }
 }

@@ -19,9 +19,7 @@ import static org.openmetadata.service.events.subscription.AlertUtil.getStarting
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
@@ -51,7 +49,6 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
-import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.DIContainer;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -70,21 +67,6 @@ import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.spi.JobFactory;
 import org.quartz.spi.TriggerFiredBundle;
 
-/**
- * Scheduler for event subscription jobs with clustered execution support.
- *
- * <p>This scheduler uses Quartz with JDBC JobStore and clustering enabled to ensure that in a
- * multi-server deployment, each event subscription job runs on only ONE server at a time. This
- * prevents duplicate notifications from being sent when multiple OpenMetadata servers are running.
- *
- * <p>The clustering works by:
- *
- * <ul>
- *   <li>Storing job state in the database (QRTZ_* tables)
- *   <li>Using database-level row locking to coordinate job execution
- *   <li>Automatic failover if a server crashes mid-execution
- * </ul>
- */
 @Slf4j
 public class EventSubscriptionScheduler {
   public static final String ALERT_JOB_GROUP = "OMAlertJobGroup";
@@ -93,45 +75,7 @@ public class EventSubscriptionScheduler {
   private static volatile boolean initialized = false;
   @Getter private final Scheduler alertsScheduler;
   private static final String SCHEDULER_NAME = "OMEventSubScheduler";
-  // Thread count per server - increase for high subscription volumes
-  // With N servers, total cluster capacity = N × SCHEDULER_THREAD_COUNT concurrent jobs
-  // Set to 50 to handle hundreds of concurrent subscriptions per server
-  private static final int SCHEDULER_THREAD_COUNT = 50;
-
-  private static final Map<String, String> CLUSTERED_SCHEDULER_CONFIG = new HashMap<>();
-
-  static {
-    // Scheduler identification - AUTO generates unique instance ID per server
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.scheduler.instanceName", SCHEDULER_NAME);
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.scheduler.instanceId", "AUTO");
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.scheduler.skipUpdateCheck", "true");
-
-    // Thread pool configuration
-    CLUSTERED_SCHEDULER_CONFIG.put(
-        "org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
-    CLUSTERED_SCHEDULER_CONFIG.put(
-        "org.quartz.threadPool.threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.threadPool.threadPriority", "5");
-
-    // Job store configuration - JDBC for clustering support
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.misfireThreshold", "60000");
-    CLUSTERED_SCHEDULER_CONFIG.put(
-        "org.quartz.jobStore.class", "org.quartz.impl.jdbcjobstore.JobStoreTX");
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.useProperties", "false");
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.tablePrefix", "QRTZ_");
-
-    // Enable clustering - this is the key setting for multi-server deployments
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.isClustered", "true");
-
-    // Cluster check-in interval (how often nodes check if others are alive)
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.clusterCheckinInterval", "20000");
-
-    // Data source configuration (will be overridden with actual DB config)
-    // Connection pool sized to support concurrent job execution without contention
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.jobStore.dataSource", "omDS");
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.dataSource.omDS.maxConnections", "20");
-    CLUSTERED_SCHEDULER_CONFIG.put("org.quartz.dataSource.omDS.validationQuery", "select 1");
-  }
+  private static final int SCHEDULER_THREAD_COUNT = 10;
 
   private record CustomJobFactory(DIContainer di) implements JobFactory {
 
@@ -154,48 +98,25 @@ public class EventSubscriptionScheduler {
       OpenMetadataConnectionBuilder openMetadataConnectionBuilder)
       throws SchedulerException {
 
-    // Configure database connection for clustered scheduler
     Properties properties = new Properties();
-    properties.putAll(CLUSTERED_SCHEDULER_CONFIG);
-    configureDataSource(properties, config);
+    properties.put("org.quartz.scheduler.instanceName", SCHEDULER_NAME);
+    properties.put("org.quartz.scheduler.instanceId", "AUTO");
+    properties.put("org.quartz.threadPool.threadCount", String.valueOf(SCHEDULER_THREAD_COUNT));
+    properties.put("org.quartz.jobStore.class", "org.quartz.simpl.RAMJobStore");
 
-    // Initialize the clustered scheduler
     StdSchedulerFactory factory = new StdSchedulerFactory();
     factory.initialize(properties);
     this.alertsScheduler = factory.getScheduler();
 
-    // Set up dependency injection for job creation
     DIContainer di = new DIContainer();
     di.registerResource(PipelineServiceClientInterface.class, pipelineServiceClient);
     di.registerResource(OpenMetadataConnectionBuilder.class, openMetadataConnectionBuilder);
     this.alertsScheduler.setJobFactory(new CustomJobFactory(di));
 
-    // Start the scheduler
     this.alertsScheduler.start();
     LOG.info(
-        "Event Subscription Scheduler started with clustering enabled. Instance ID: {}",
+        "Event Subscription Scheduler started. Instance ID: {}",
         this.alertsScheduler.getSchedulerInstanceId());
-  }
-
-  private void configureDataSource(Properties properties, OpenMetadataApplicationConfig config) {
-    // Set database driver and connection details
-    properties.put(
-        "org.quartz.dataSource.omDS.driver", config.getDataSourceFactory().getDriverClass());
-    properties.put("org.quartz.dataSource.omDS.URL", config.getDataSourceFactory().getUrl());
-    properties.put("org.quartz.dataSource.omDS.user", config.getDataSourceFactory().getUser());
-    properties.put(
-        "org.quartz.dataSource.omDS.password", config.getDataSourceFactory().getPassword());
-
-    // Set the appropriate JDBC delegate based on database type
-    if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
-      properties.put(
-          "org.quartz.jobStore.driverDelegateClass",
-          "org.quartz.impl.jdbcjobstore.StdJDBCDelegate");
-    } else {
-      properties.put(
-          "org.quartz.jobStore.driverDelegateClass",
-          "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate");
-    }
   }
 
   @SneakyThrows
@@ -216,11 +137,9 @@ public class EventSubscriptionScheduler {
                     openMetadataApplicationConfig.getPipelineServiceClientConfiguration()),
                 new OpenMetadataConnectionBuilder(openMetadataApplicationConfig));
         initialized = true;
-        LOG.info(
-            "Event Subscription Scheduler initialized with clustered Quartz. "
-                + "Duplicate notifications will be prevented in multi-server deployments.");
+        LOG.info("Event Subscription Scheduler initialized");
       } catch (SchedulerException e) {
-        LOG.error("Failed to initialize Event Subscription Scheduler with clustering", e);
+        LOG.error("Failed to initialize Event Subscription Scheduler", e);
         throw new RuntimeException("Failed to initialize Event Subscription Scheduler", e);
       }
     } else {
@@ -242,15 +161,12 @@ public class EventSubscriptionScheduler {
                 Optional.ofNullable(eventSubscription.getClassName())
                     .orElse(defaultClass.getCanonicalName()))
             .asSubclass(AbstractEventConsumer.class);
-    // we can use an empty dependency container here because when initializing
-    // the consumer because it does need to access any state
     AbstractEventConsumer publisher =
         clazz.getDeclaredConstructor(DIContainer.class).newInstance(new DIContainer());
     if (reinstall && isSubscriptionRegistered(eventSubscription)) {
       deleteEventSubscriptionPublisher(eventSubscription);
     }
-    if (Boolean.FALSE.equals(
-        eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
+    if (Boolean.FALSE.equals(eventSubscription.getEnabled())) {
       eventSubscription
           .getDestinations()
           .forEach(
@@ -274,8 +190,6 @@ public class EventSubscriptionScheduler {
               eventSubscription,
               String.format("%s", eventSubscription.getId().toString()));
       Trigger trigger = trigger(eventSubscription);
-
-      // Schedule the Job
       alertsScheduler.scheduleJob(jobDetail, trigger);
 
       LOG.info(
@@ -297,12 +211,9 @@ public class EventSubscriptionScheduler {
   private JobDetail jobBuilder(
       AbstractEventConsumer publisher, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
-    // Store EventSubscription as JSON string for JDBC JobStore serialization compatibility
-    // JSON strings are serializable, unlike the EventSubscription object itself
-    dataMap.put(ALERT_INFO_KEY, JsonUtils.pojoToJson(eventSubscription));
+    dataMap.put(ALERT_INFO_KEY, eventSubscription);
     EventSubscriptionOffset startingOffset = getStartingOffset(eventSubscription.getId());
-    // Store offset as JSON string for serialization compatibility
-    dataMap.put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(startingOffset));
+    dataMap.put(ALERT_OFFSET_KEY, startingOffset);
     JobBuilder jobBuilder =
         JobBuilder.newJob(publisher.getClass())
             .withIdentity(jobIdentity, ALERT_JOB_GROUP)
@@ -326,7 +237,6 @@ public class EventSubscriptionScheduler {
   @Transaction
   @SneakyThrows
   public void updateEventSubscription(EventSubscription eventSubscription) {
-    // Remove Existing Subscription Publisher
     deleteEventSubscriptionPublisher(eventSubscription);
     if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
       addSubscriptionPublisher(eventSubscription, true);
@@ -367,7 +277,6 @@ public class EventSubscriptionScheduler {
               .findFirst();
       if (destinationOpt.isPresent()) {
         Object status = destinationOpt.get().getStatusDetails();
-        // After JSON deserialization, statusDetails may be a Map instead of SubscriptionStatus
         return convertToSubscriptionStatus(status);
       }
       return null;
@@ -376,7 +285,6 @@ public class EventSubscriptionScheduler {
     EntityRepository<? extends EntityInterface> subscriptionRepository =
         Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
 
-    // If the event subscription was not found in the scheduled job, check the repository
     Optional<EventSubscription> subscriptionOpt =
         Optional.ofNullable(
             (EventSubscription)
@@ -394,7 +302,6 @@ public class EventSubscriptionScheduler {
     Optional<EventSubscription> eventSubscriptionOpt =
         getEventSubscriptionFromScheduledJob(subscriptionId);
 
-    // If the EventSubscription is not found in the scheduled job, retrieve it from the repository
     EventSubscription eventSubscription =
         eventSubscriptionOpt.orElseGet(
             () -> {
@@ -637,7 +544,6 @@ public class EventSubscriptionScheduler {
           alertsScheduler.getJobDetail(new JobKey(id.toString(), ALERT_JOB_GROUP));
 
       if (jobDetail != null) {
-        // JobDataMap may store EventSubscription as JSON string (JDBC) or object (RAM)
         Object alertInfoValue = jobDetail.getJobDataMap().get(ALERT_INFO_KEY);
         if (alertInfoValue instanceof String subscriptionJson) {
           EventSubscription eventSubscription =
@@ -657,13 +563,11 @@ public class EventSubscriptionScheduler {
   }
 
   public Optional<EventSubscriptionOffset> getEventSubscriptionOffset(UUID subscriptionID) {
-    // Offset is stored in the database as the source of truth
     EventSubscriptionOffset offset = getStartingOffset(subscriptionID);
     if (offset != null && offset.getCurrentOffset() != null) {
       return Optional.of(offset);
     }
 
-    // Fall back to JobDataMap (may be stored as JSON string or object)
     try {
       JobDetail jobDetail =
           alertsScheduler.getJobDetail(new JobKey(subscriptionID.toString(), ALERT_JOB_GROUP));
@@ -730,7 +634,6 @@ public class EventSubscriptionScheduler {
     if (status instanceof SubscriptionStatus subscriptionStatus) {
       return subscriptionStatus;
     }
-    // After JSON deserialization, statusDetails becomes a Map - convert it to SubscriptionStatus
     try {
       String json = JsonUtils.pojoToJson(status);
       return JsonUtils.readValue(json, SubscriptionStatus.class);
