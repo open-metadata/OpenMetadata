@@ -82,6 +82,11 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
     );
     await getTestCase;
 
+    await page.waitForSelector(
+      "[data-testid='test-case-selection-card'] [data-testid='loader']",
+      { state: 'detached' }
+    );
+
     await page.click(
       `[data-testid="test-case-selection-card"] [data-testid="${testCaseName1}"]`
     );
