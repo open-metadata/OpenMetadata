@@ -2925,12 +2925,24 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         searchResults.getData().size() >= 4,
         "Should find multiple terms with 'SearchTerm' in the name (ParentSearchTerm + 3 children)");
 
-    // Test 3: Search with no results
+    // Test 3: Search with pagination
+    queryParams.put("limit", "4");
+    searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(4, searchResults.getData().size());
+
+    // Test 4: Search with offset
+    queryParams.put("offset", "1");
+    queryParams.put("limit", "3");
+    searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(3, searchResults.getData().size());
+    queryParams.put("offset", "0"); // reset offset for next tests
+
+    // Test 5: Search with no results
     queryParams.put("q", "NonExistentTerm");
     searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(0, searchResults.getData().size(), "Should find no results for non-existent term");
 
-    // Test 4: Search by displayName (search for "Associated Business" from displayName)
+    // Test 6: Search by displayName (search for "Associated Business" from displayName)
     queryParams.put("q", "Associated Business");
     searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
     assertFalse(
