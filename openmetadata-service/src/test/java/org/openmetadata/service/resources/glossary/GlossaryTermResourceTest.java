@@ -2854,59 +2854,204 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Test
   void test_searchGlossaryTerms() throws IOException {
     // Create a glossary for testing
-    Glossary glossary =
-        glossaryTest.createEntity(
-            glossaryTest.createRequest("searchTestGlossary"), ADMIN_AUTH_HEADERS);
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest("searchTestGlossary")
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()))
+            .withOwners(List.of(USER1.getEntityReference()))
+            .withReviewers(List.of(USER2.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
-    // Create multiple glossary terms with different names
-    List<GlossaryTerm> terms = new ArrayList<>();
-    for (int i = 1; i <= 10; i++) {
-      CreateGlossaryTerm createTerm =
-          createRequest("SearchTerm" + i)
+    // Create a related term first with displayName different from name
+    CreateGlossaryTerm relatedTermRequest =
+        createRequest("RelatedTerm")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDisplayName("Associated Business Term")
+            .withDescription("Related term for search testing");
+    GlossaryTerm relatedTerm = createEntity(relatedTermRequest, ADMIN_AUTH_HEADERS);
+
+    // Create parent term with all fields populated (domains are inherited from glossary)
+    CreateGlossaryTerm parentTermRequest =
+        createRequest("ParentSearchTerm")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDisplayName("Main Parent Business Concept")
+            .withDescription("Parent term with all fields for search testing")
+            .withRelatedTerms(List.of(relatedTerm.getFullyQualifiedName()))
+            .withReviewers(List.of(USER1.getEntityReference()))
+            .withOwners(List.of(USER2.getEntityReference()))
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+    GlossaryTerm parentTerm = createEntity(parentTermRequest, ADMIN_AUTH_HEADERS);
+
+    // Create child terms to populate children field with displayNames different from names
+    List<GlossaryTerm> childTerms = new ArrayList<>();
+    for (int i = 1; i <= 3; i++) {
+      CreateGlossaryTerm childRequest =
+          createRequest("ChildSearchTerm" + i)
               .withGlossary(glossary.getFullyQualifiedName())
-              .withDescription("This is SearchTerm " + i + " for testing search functionality");
-      GlossaryTerm term = createEntity(createTerm, ADMIN_AUTH_HEADERS);
-      terms.add(term);
+              .withDisplayName("Child Business Concept " + i)
+              .withParent(parentTerm.getFullyQualifiedName())
+              .withDescription("Child term " + i);
+      GlossaryTerm childTerm = createEntity(childRequest, ADMIN_AUTH_HEADERS);
+      childTerms.add(childTerm);
+    }
+
+    // Create tables with the parent term tag to generate usageCount
+    TableResourceTest tableTest = new TableResourceTest();
+    TagLabel termLabel = EntityUtil.toTagLabel(parentTerm);
+    List<Table> tables = new ArrayList<>();
+    for (int i = 1; i <= 2; i++) {
+      CreateTable createTable =
+          tableTest.createRequest("searchTestTable" + i).withTags(List.of(termLabel));
+      Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+      tables.add(table);
     }
 
     // Test 1: Search by exact term name
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("q", "SearchTerm5");
+    queryParams.put("q", "ChildSearchTerm3");
     queryParams.put("glossaryFqn", glossary.getFullyQualifiedName());
     queryParams.put("limit", "10");
     queryParams.put("offset", "0");
 
     ResultList<GlossaryTerm> searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(1, searchResults.getData().size());
-    assertEquals("SearchTerm5", searchResults.getData().get(0).getName());
+    assertEquals(1, searchResults.getData().size(), "Should find exactly one child term");
+    assertEquals("ChildSearchTerm3", searchResults.getData().get(0).getName());
 
-    // Test 2: Partial search
-    queryParams.put("q", "Term");
+    // Test 2: Partial search - search for common term prefix
+    queryParams.put("q", "SearchTerm");
+    queryParams.remove("offset");
     searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(10, searchResults.getData().size());
+    assertTrue(
+        searchResults.getData().size() >= 4,
+        "Should find multiple terms with 'SearchTerm' in the name (ParentSearchTerm + 3 children)");
 
     // Test 3: Search with pagination
-    queryParams.put("limit", "5");
+    queryParams.put("limit", "4");
     searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(5, searchResults.getData().size());
+    assertEquals(4, searchResults.getData().size());
 
     // Test 4: Search with offset
-    queryParams.put("offset", "5");
+    queryParams.put("offset", "1");
+    queryParams.put("limit", "3");
     searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(5, searchResults.getData().size());
+    assertEquals(3, searchResults.getData().size());
+    queryParams.put("offset", "0"); // reset offset for next tests
 
-    // Test 5: Search with display name (if terms had display names)
-    // Skip this test since our test terms don't have display names set
-
-    // Test 6: Search with no results
+    // Test 5: Search with no results
     queryParams.put("q", "NonExistentTerm");
     searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(0, searchResults.getData().size());
+    assertEquals(0, searchResults.getData().size(), "Should find no results for non-existent term");
 
-    // Clean up - hard delete terms first, then glossary
-    for (GlossaryTerm term : terms) {
-      deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+    // Test 6: Search by displayName (search for "Associated Business" from displayName)
+    queryParams.put("q", "Associated Business");
+    searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+    assertFalse(
+        searchResults.getData().isEmpty(), "Should find at least one term by displayName search");
+    GlossaryTerm relatedTermResult =
+        searchResults.getData().stream()
+            .filter(t -> t.getName().equals("RelatedTerm"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(relatedTermResult, "Should find RelatedTerm by its displayName");
+    assertEquals(
+        "Associated Business Term",
+        relatedTermResult.getDisplayName(),
+        "DisplayName should match 'Associated Business Term'");
+
+    // Test7 : Search with all fields specified
+    queryParams.put("q", "ParentSearchTerm");
+    queryParams.put("glossaryFqn", glossary.getFullyQualifiedName());
+    queryParams.put("limit", "50");
+    queryParams.put("offset", "0");
+    queryParams.put(
+        "fields",
+        "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount");
+
+    searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Validate results
+    assertEquals(1, searchResults.getData().size(), "Should find exactly one parent term");
+    GlossaryTerm result = searchResults.getData().get(0);
+    assertEquals("ParentSearchTerm", result.getName());
+    assertEquals(
+        "Main Parent Business Concept",
+        result.getDisplayName(),
+        "Parent term displayName should match");
+
+    // Validate children field
+    assertNotNull(result.getChildren(), "Children field should not be null");
+    assertEquals(
+        3, result.getChildren().size(), "Should have 3 children as per childrenCount field");
+    assertTrue(
+        result.getChildren().stream().anyMatch(c -> c.getName().equals("ChildSearchTerm1")),
+        "Should contain ChildSearchTerm1");
+    // Validate child displayNames are different from names
+    EntityReference child1 =
+        result.getChildren().stream()
+            .filter(c -> c.getName().equals("ChildSearchTerm1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(child1, "ChildSearchTerm1 should exist");
+    assertEquals(
+        "Child Business Concept 1", child1.getDisplayName(), "Child displayName should match");
+
+    // Validate relatedTerms field
+    assertNotNull(result.getRelatedTerms(), "RelatedTerms field should not be null");
+    assertEquals(1, result.getRelatedTerms().size(), "Should have 1 related term");
+    assertEquals(
+        "RelatedTerm", result.getRelatedTerms().get(0).getName(), "Related term name should match");
+    assertEquals(
+        "Associated Business Term",
+        result.getRelatedTerms().get(0).getDisplayName(),
+        "Related term displayName should match");
+
+    // Validate reviewers field (term may inherit from glossary, so check USER1 is present)
+    assertNotNull(result.getReviewers(), "Reviewers field should not be null");
+    assertFalse(result.getReviewers().isEmpty(), "Should have at least one reviewer");
+    assertTrue(
+        result.getReviewers().stream().anyMatch(r -> r.getName().equals(USER1.getName())),
+        "Should contain USER1 as a reviewer");
+
+    // Validate owners field
+    assertNotNull(result.getOwners(), "Owners field should not be null");
+    assertEquals(1, result.getOwners().size(), "Should have 1 owner");
+    assertEquals(USER2.getName(), result.getOwners().get(0).getName(), "Owner should be USER2");
+
+    // Validate tags field
+    assertNotNull(result.getTags(), "Tags field should not be null");
+    assertEquals(2, result.getTags().size(), "Should have 2 tags");
+    Set<String> tagFqns = new HashSet<>();
+    result.getTags().forEach(tag -> tagFqns.add(tag.getTagFQN()));
+    assertTrue(tagFqns.contains("PII.Sensitive"), "Should contain PII.Sensitive tag");
+    assertTrue(
+        tagFqns.contains("PersonalData.Personal"), "Should contain PersonalData.Personal tag");
+
+    // Validate usageCount field
+    assertNotNull(result.getUsageCount(), "UsageCount field should not be null");
+    assertTrue(
+        result.getUsageCount() >= 2, "Usage count should be at least 2 (from the 2 tables tagged)");
+
+    // Validate domains field
+    assertNotNull(result.getDomains(), "Domains field should not be null");
+    assertEquals(1, result.getDomains().size(), "Should have 1 domain");
+    assertEquals(
+        DOMAIN.getFullyQualifiedName(),
+        result.getDomains().get(0).getFullyQualifiedName(),
+        "Domain should match");
+
+    // Validate childrenCount field
+    assertNotNull(result.getChildrenCount(), "ChildrenCount field should not be null");
+    assertEquals(3, result.getChildrenCount().intValue(), "Children count should be 3");
+
+    // Clean up - delete in proper order
+    for (Table table : tables) {
+      tableTest.deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
     }
+    for (GlossaryTerm child : childTerms) {
+      deleteEntity(child.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
+    deleteEntity(parentTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(relatedTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
     glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
   }
 
