@@ -140,12 +140,12 @@ export const deleteEdge = async (
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
   await page
-    .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
+    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
     .dispatchEvent('click');
 
-  await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
+  await page.getByTestId('add-pipeline').dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(page.getByRole('dialog').first()).toBeVisible();
 
   await page
     .locator(
@@ -430,10 +430,9 @@ export const applyPipelineFromModal = async (
   );
 
   await page
-    .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
-    .click({ force: true });
-
-  await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
+    .getByTestId(`edge-${fromNodeFqn}-${toNodeFqn}`)
+    .dispatchEvent('click');
+  await page.getByTestId('add-pipeline').dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
     `/api/v1/search/query?q=*`
