@@ -553,6 +553,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
   return (
     <Drawer
+      bordered={false}
       className="column-detail-panel"
       closable={false}
       footer={

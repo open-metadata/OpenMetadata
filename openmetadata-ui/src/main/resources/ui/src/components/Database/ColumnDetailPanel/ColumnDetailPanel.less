@@ -27,6 +27,12 @@
 }
 
 .column-detail-panel {
+  .ant-drawer-footer {
+    border-top: none;
+    padding-top: 0;
+    bottom: 10px;
+    position: relative;
+  }
   .ant-drawer-header {
     padding: 8px;
     padding-bottom: 0;
@@ -70,7 +76,7 @@
         color: @primary-6;
         display: inline-flex;
         align-items: center;
-
+        stroke-width: 1.5px;
         svg {
           width: 12px;
           height: 12px;
@@ -82,10 +88,6 @@
         font-weight: 600;
         color: @primary-6;
         text-decoration: none;
-
-        &:hover {
-          text-decoration: underline;
-        }
       }
     }
   }

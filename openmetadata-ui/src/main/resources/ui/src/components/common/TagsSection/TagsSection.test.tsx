@@ -464,6 +464,31 @@ describe('TagsSection', () => {
       ).toBeInTheDocument();
     });
 
+    it('should keep showing no tags placeholder while the tag popup is open', async () => {
+      render(<TagsSection {...defaultProps} tags={[]} />);
+
+      // initial empty state
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.tag-plural"}'
+        )
+      ).toBeInTheDocument();
+
+      // open edit popover
+      clickEditControl();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('async-select-list')).toBeInTheDocument();
+      });
+
+      // placeholder should remain visible even when popover is open
+      expect(
+        screen.getByText(
+          'label.no-entity-assigned - {"entity":"label.tag-plural"}'
+        )
+      ).toBeInTheDocument();
+    });
+
     it('should render with correct CSS classes when no tags', () => {
       const { container } = render(<TagsSection {...defaultProps} tags={[]} />);
 

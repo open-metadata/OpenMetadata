@@ -29,15 +29,14 @@ import {
 import { Include } from '../../../../generated/type/include';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { listTestCases } from '../../../../rest/testAPI';
-import { getColumnNameFromEntityLink } from '../../../../utils/EntityUtils';
-import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
-import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
+import { getColumnNameFromEntityLink } from '../../../../utils/EntityUtils';
+import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
+import { generateEntityLink } from '../../../../utils/TableUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
@@ -46,6 +45,7 @@ import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
+import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import {
   DataQualityTabProps,
   DetailItemProps,
@@ -719,7 +719,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   type="button"
                   onClick={() => handleIncidentFilterChange('new')}>
                   <Typography.Text className="stat-count new">
-                    {incidentCounts.new.toString().padStart(2, '0')}
+                    {incidentCounts.new}
                   </Typography.Text>
                   <Typography.Text className="stat-label new">
                     {t('label.new')}
@@ -738,7 +738,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   type="button"
                   onClick={() => handleIncidentFilterChange('ack')}>
                   <Typography.Text className="stat-count ack">
-                    {incidentCounts.ack.toString().padStart(2, '0')}
+                    {incidentCounts.ack}
                   </Typography.Text>
                   <Typography.Text className="stat-label ack">
                     {t('label.acknowledged')}
@@ -757,7 +757,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   type="button"
                   onClick={() => handleIncidentFilterChange('assigned')}>
                   <Typography.Text className="stat-count assigned">
-                    {incidentCounts.assigned.toString().padStart(2, '0')}
+                    {incidentCounts.assigned}
                   </Typography.Text>
                   <Typography.Text className="stat-label assigned">
                     {t('label.assigned')}
@@ -775,7 +775,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                     {t('label.-with-colon', { text: t('label.resolved') })}
                   </Typography.Text>
                   <Typography.Text className="resolved-value">
-                    {incidentCounts.resolved.toString().padStart(2, '0')}
+                    {incidentCounts.resolved}
                   </Typography.Text>
                 </button>
               </div>
