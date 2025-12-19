@@ -498,7 +498,7 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
     .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
     .click();
 
-  const domainInput = adminPage.locator('#async-tree-select');
+  const domainInput = adminPage.getByTestId('domain-select');
   await domainInput.scrollIntoViewIfNeeded();
   await domainInput.waitFor({ state: 'visible' });
   await domainInput.click();

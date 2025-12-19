@@ -39,15 +39,17 @@ const ChipSelect: FC<ChipSelectProps> = ({
         <Typography
           color={error ? 'error' : 'text.secondary'}
           fontWeight={500}
-          sx={{ mb: 2 }}
+          sx={{
+            mb: 2,
+            '&::after': required
+              ? {
+                  content: '" *"',
+                  color: 'error.main',
+                }
+              : undefined,
+          }}
           variant="body2">
           {label}
-          {required && (
-            // eslint-disable-next-line i18next/no-literal-string
-            <Typography color="error" component="span" sx={{ ml: 0.5 }}>
-              *
-            </Typography>
-          )}
         </Typography>
       )}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
@@ -63,7 +65,7 @@ const ChipSelect: FC<ChipSelectProps> = ({
               key={option.value}
               label={option.label}
               sx={(theme) => ({
-                fontSize: '12px',
+                fontSize: theme.typography.caption.fontSize,
                 borderColor: isSelected
                   ? theme.palette.allShades.brand[600]
                   : theme.palette.grey[200],
@@ -83,7 +85,7 @@ const ChipSelect: FC<ChipSelectProps> = ({
                     ? theme.palette.primary.contrastText
                     : theme.palette.grey[900],
                 },
-                borderRadius: '4px',
+                borderRadius: (theme.shape.borderRadius as number) / 2,
               })}
               variant={isSelected ? 'filled' : 'outlined'}
               onClick={() => handleChipClick(option.value)}
