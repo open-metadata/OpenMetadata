@@ -682,7 +682,7 @@ test.describe('Bulk Edit Entity', () => {
 
       await toastNotification(
         page,
-        `Glossaryterm ${glossary.responseData.fullyQualifiedName} details updated successfully`
+        `Glossary ${glossary.responseData.fullyQualifiedName} details updated successfully`
       );
 
       await selectActiveGlossaryTerm(page, additionalGlossaryTerm.displayName);
