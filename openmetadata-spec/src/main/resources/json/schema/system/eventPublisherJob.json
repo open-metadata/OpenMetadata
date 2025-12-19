@@ -205,6 +205,11 @@
     "slackChannel": {
       "description": "Slack channel ID or name (required when using bot token, e.g., 'C1234567890' or '#general')",
       "type": "string"
+    },
+    "useDistributedIndexing": {
+      "description": "Enable distributed indexing across multiple servers. When enabled, reindexing work is partitioned and can be processed by multiple servers concurrently with crash recovery support.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

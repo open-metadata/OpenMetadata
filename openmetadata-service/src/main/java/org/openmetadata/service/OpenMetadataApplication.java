@@ -78,6 +78,7 @@ import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.DistributedJobParticipant;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -317,6 +318,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
+
+    // Register Distributed Job Participant for distributed search indexing
+    registerDistributedJobParticipant(environment, jdbi);
 
     // Register Event publishers
     registerEventPublisher(catalogConfig);
@@ -898,6 +902,22 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
+    }
+  }
+
+  protected void registerDistributedJobParticipant(Environment environment, Jdbi jdbi) {
+    try {
+      CollectionDAO collectionDAO = jdbi.onDemand(CollectionDAO.class);
+      SearchRepository searchRepository = Entity.getSearchRepository();
+      String serverId =
+          java.net.InetAddress.getLocalHost().getHostName() + System.currentTimeMillis();
+
+      DistributedJobParticipant participant =
+          new DistributedJobParticipant(collectionDAO, searchRepository, serverId);
+      environment.lifecycle().manage(participant);
+      LOG.info("Registered DistributedJobParticipant for distributed search indexing");
+    } catch (Exception e) {
+      LOG.warn("Failed to register DistributedJobParticipant: {}", e.getMessage());
     }
   }
 
