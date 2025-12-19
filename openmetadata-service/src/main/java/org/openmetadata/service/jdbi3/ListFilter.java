@@ -461,6 +461,7 @@ public class ListFilter extends Filter<ListFilter> {
     String type = getQueryParam("testCaseType");
 
     if (entityFQN != null) {
+      queryParams.put("entityFQN", entityFQN);
       if (includeAllTests) {
         queryParams.put("entityFQNLikePattern", escape(entityFQN) + Entity.SEPARATOR + "%");
         conditions.add("(entityFQN LIKE :entityFQNLikePattern OR entityFQN = :entityFQN)");
