@@ -21,6 +21,7 @@ import org.openmetadata.service.notifications.template.handlebars.helpers.OrHelp
 import org.openmetadata.service.notifications.template.handlebars.helpers.ParseEntityLinkHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.PluckHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.ProcessMentionsHelper;
+import org.openmetadata.service.notifications.template.handlebars.helpers.RenderTableSampleHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.ResolveDomainHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.SplitHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.StartsWithHelper;
@@ -76,7 +77,8 @@ public class HandlebarsProvider {
         new LengthHelper(),
         new LimitHelper(),
         new MathHelper(),
-        new GtHelper());
+        new GtHelper(),
+        new RenderTableSampleHelper());
   }
 
   /**
