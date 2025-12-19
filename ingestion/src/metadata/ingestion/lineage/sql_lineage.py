@@ -43,11 +43,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.models import (
-    Dialect,
-    QueryParsingError,
-    QueryParsingFailures,
-)
+from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
@@ -87,6 +83,88 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
 
 
 search_cache = LRUCache(LRU_CACHE_SIZE)
+database_service_type_cache = LRUCache(LRU_CACHE_SIZE)
+
+
+@calculate_execution_time(context="GetDatabaseServiceType")
+def get_database_service_type(
+    metadata: OpenMetadata, service_name: str
+) -> Optional[str]:
+    """
+    Get the database service type (e.g., 'mysql', 'postgres', 'clickhouse').
+
+    Args:
+        metadata: OMeta client
+        service_name: service name
+
+    Returns:
+        The database service type or None if not found.
+    """
+    if service_name in database_service_type_cache:
+        return database_service_type_cache.get(service_name)
+
+    try:
+        # try ES search first
+        es_result_entities = metadata.es_search_from_fqn(
+            entity_type=DatabaseService,
+            fqn_search_string=service_name,
+        )
+
+        service: Optional[DatabaseService] = None
+        if es_result_entities:
+            service = es_result_entities[0] if es_result_entities else None
+
+        # try API search if ES is empty
+        if not service:
+            service = metadata.get_by_name(entity=DatabaseService, fqn=service_name)
+
+        if service:
+            service_type = service.connection.config.type.value.lower()
+            logger.debug(
+                f"Service (name={service.name.root}) is of type '{service_type}'"
+            )
+
+            # cache the result
+            database_service_type_cache.put(service_name, service_type)
+            return service_type
+
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"Could not determine service type for service '{service_name}': {exc}"
+        )
+
+    return None
+
+
+def normalize_table_params_by_service(
+    metadata: OpenMetadata,
+    service_name: str,
+    database: Optional[str],
+    database_schema: Optional[str],
+) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Normalize database and schema parameters based on service type.
+
+    Certain database types require parameter normalization:
+    - ClickHouse: Uses database_schema as schema, sets database to None
+
+    Args:
+        metadata: OMeta client
+        service_name: service name
+        database: database name
+        database_schema: schema name
+
+    Returns:
+        Tuple of (normalized_database, normalized_schema)
+    """
+    conn_type = get_database_service_type(metadata, service_name)
+
+    # ClickHouse normalization
+    if conn_type == "clickhouse" and database:
+        return None, database_schema
+
+    return database, database_schema
 
 
 @calculate_execution_time(context="SearchTableEntities")
@@ -113,41 +191,26 @@ def search_table_entities(
     """
     if isinstance(service_names, str):
         service_names = [service_names]
+
     for service_name in service_names:
-        # Detect the connection type
-        try:
-            service: DatabaseService = metadata.get_by_name(
-                entity=DatabaseService, fqn=service_name
-            )
 
-            conn_type = service.connection.config.type.value.lower()
-            logger.debug(
-                f"Searching for connection type '{conn_type}' in service '{service.name}'"
-            )
+        # normalize database and schema parameters based on service type
+        normalized_db, normalized_schema = normalize_table_params_by_service(
+            metadata, service_name, database, database_schema
+        )
 
-        except Exception:
-            conn_type = None
-            logger.warning(
-                f"Could not determine connection type for service '{service_name}'"
-            )
-
-        # ClickHouse normalization
-        if conn_type == "clickhouse" and database:
-            logger.debug(
-                f"ClickHouse detected. Using database_schema='{database_schema}' as schema, table='{table}'"
-            )
-            database = None
-
-        search_tuple = (service_name, database, database_schema, table)
+        search_tuple = (service_name, normalized_db, normalized_schema, table)
         if search_tuple in search_cache:
             result = search_cache.get(search_tuple)
             if result:
                 return result
+
         try:
             table_entities: Optional[List[Table]] = []
+
             # search on ES first
             fqn_search_string = build_es_fqn_search_string(
-                database, database_schema, service_name, table
+                normalized_db, normalized_schema, service_name, table
             )
             es_result_entities = metadata.es_search_from_fqn(
                 entity_type=Table,
@@ -161,8 +224,8 @@ def search_table_entities(
                     metadata,
                     entity_type=Table,
                     service_name=service_name,
-                    database_name=database,
-                    schema_name=database_schema,
+                    database_name=normalized_db,
+                    schema_name=normalized_schema,
                     table_name=table,
                     fetch_multiple_entities=True,
                     skip_es_search=True,
@@ -171,15 +234,18 @@ def search_table_entities(
                     table_entity: Table = metadata.get_by_name(Table, fqn=table_fqn)
                     if table_entity:
                         table_entities.append(table_entity)
+
             # added the search tuple to the cache
             search_cache.put(search_tuple, table_entities)
             if table_entities:
                 return table_entities
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(
                 f"Error searching for table entities for service [{service_name}]: {exc}"
             )
+
     return None
 
 
@@ -326,7 +392,7 @@ def _replace_target_table(
                 try:
                     # remove the old edge
                     stmt_holder.graph.remove_edge(col_lineage[-2], tgt_col)
-                except Exception as _:
+                except Exception:
                     # if the edge is not present, pass
                     pass
 
@@ -718,7 +784,7 @@ def _create_lineage_by_table_name(
         yield Either(
             left=StackTraceError(
                 name="Lineage",
-                error=f"Error creating lineage for service [{service_name}] from table [{from_table}]: {exc}",
+                error=f"Error creating lineage for service [{service_names}] from table [{from_table}]: {exc}",
                 stackTrace=traceback.format_exc(),
             )
         )
@@ -778,7 +844,7 @@ def get_lineage_by_query(
     Now supports cross-database lineage by accepting a list of service names.
     """
     column_lineage = {}
-    query_parsing_failures = QueryParsingFailures()
+
     if service_name and isinstance(service_name, str):
         service_names = [service_name]
         logger.warning(
@@ -792,7 +858,10 @@ def get_lineage_by_query(
                 query, dialect, timeout_seconds=timeout_seconds
             )
         masked_query = lineage_parser.masked_query
-        logger.debug(f"Running lineage with query: {masked_query or query}")
+        query_hash = lineage_parser.query_hash
+        logger.debug(
+            f"[{query_hash}] Running lineage with query: {masked_query or query}"
+        )
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
@@ -864,13 +933,6 @@ def get_lineage_by_query(
                             graph=graph,
                             schema_fallback=schema_fallback,
                         )
-        if not lineage_parser.query_parsing_success:
-            query_parsing_failures.add(
-                QueryParsingError(
-                    query=masked_query or query,
-                    error=lineage_parser.query_parsing_failure_reason,
-                )
-            )
     except Exception as exc:
         yield Either(
             left=StackTraceError(
@@ -898,7 +960,6 @@ def get_lineage_via_table_entity(
 ) -> Iterable[Either[AddLineageRequest]]:
     """Get lineage from table entity"""
     column_lineage = {}
-    query_parsing_failures = QueryParsingFailures()
 
     if isinstance(service_names, str):
         service_names = [service_names]
@@ -908,8 +969,9 @@ def get_lineage_via_table_entity(
                 query, dialect, timeout_seconds=timeout_seconds
             )
         masked_query = lineage_parser.masked_query
+        query_hash = lineage_parser.query_hash
         logger.debug(
-            f"Getting lineage via table entity using query: {masked_query or query}"
+            f"[{query_hash}] Getting lineage via table entity using query: {masked_query or query}"
         )
         to_table_name = table_entity.name.root
 
@@ -938,18 +1000,14 @@ def get_lineage_via_table_entity(
                     graph=graph,
                     schema_fallback=schema_fallback,
                 ) or []
-        if not lineage_parser.query_parsing_success:
-            query_parsing_failures.add(
-                QueryParsingError(
-                    query=masked_query,
-                    error=lineage_parser.query_parsing_failure_reason,
-                )
-            )
     except Exception as exc:  # pylint: disable=broad-except
         Either(
             left=StackTraceError(
                 name="Lineage",
-                error=f"Failed to create view lineage for database [{database_name}] and table [{table_entity}] with service(s) [{service_names}]: {exc}",
+                error=(
+                    f"Failed to create view lineage for database [{database_name}] and table [{table_entity}]"
+                    f" with service(s) [{service_names}]: {exc}"
+                ),
                 stackTrace=traceback.format_exc(),
             )
         )
