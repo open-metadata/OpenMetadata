@@ -4689,6 +4689,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     deleteEntity(root.getId(), true, true, ADMIN_AUTH_HEADERS);
     glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
   void test_moveGlossaryTermWithApprovalWorkflow(TestInfo test) throws Exception {
     // Ensure the workflow is active
     WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
