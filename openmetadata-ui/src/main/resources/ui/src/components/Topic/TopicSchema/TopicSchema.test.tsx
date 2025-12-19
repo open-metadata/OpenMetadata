@@ -26,6 +26,7 @@ import { Topic } from '../../../generated/entity/data/topic';
 import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
 import TopicSchema from './TopicSchema';
 import { TopicSchemaFieldsProps } from './TopicSchema.interface';
+import { Column } from '../../../generated/entity/data/container';
 
 const mockProps: TopicSchemaFieldsProps = {};
 
@@ -44,9 +45,24 @@ jest.mock('../../Database/TableDescription/TableDescription.component', () =>
 
 jest.mock('../../../utils/TableUtils', () => {
   const actual = jest.requireActual('../../../utils/TableUtils');
+  const flattenColumnsMock = (items: Column[]): Column[] => {
+    if (!items || items.length === 0) {
+      return [];
+    }
+    const result: Column[] = [];
+    items.forEach((item) => {
+      result.push(item);
+      if (item.children && item.children.length > 0) {
+        result.push(...flattenColumnsMock(item.children));
+      }
+    });
+
+    return result;
+  };
 
   return {
     ...actual,
+    flattenColumns: jest.fn().mockImplementation(flattenColumnsMock),
     getTableExpandableConfig: jest.fn().mockImplementation(() => ({
       expandIcon: jest.fn(({ onExpand, expandable, record }) =>
         expandable ? (
@@ -117,41 +133,6 @@ jest.mock('../../Database/SchemaEditor/SchemaEditor', () =>
       <div data-testid="schema-editor">SchemaEditor</div>
     ))
 );
-
-jest.mock('../../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue([{}]),
-}));
-
-jest.mock(
-  '../../Database/ColumnDetailPanel/ColumnDetailPanel.component',
-  () => ({
-    ColumnDetailPanel: jest
-      .fn()
-      .mockImplementation(() => <div data-testid="column-detail-panel" />),
-  })
-);
-
-jest.mock('../../Database/ColumnFilter/ColumnFilter.component', () => ({
-  ColumnFilter: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="column-filter" />),
-}));
-
-jest.mock(
-  '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
-  () => ({
-    EntityAttachmentProvider: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-  })
-);
-
-jest.mock('../../common/ToggleExpandButton/ToggleExpandButton', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="toggle-expand-button" />),
-}));
 
 const mockOnUpdate = jest.fn();
 const mockTopicDetails = {

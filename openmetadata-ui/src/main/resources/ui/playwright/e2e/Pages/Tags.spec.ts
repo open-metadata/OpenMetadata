@@ -130,7 +130,13 @@ test('Classification Page', async ({ page }) => {
       .locator('.ant-table-thead > tr > .ant-table-cell')
       .allTextContents();
 
-    expect(headers).toEqual(['Enabled', 'Tag', 'Display Name', 'Description', 'Actions']);
+    expect(headers).toEqual([
+      'Enabled',
+      'Tag',
+      'Display Name',
+      'Description',
+      'Actions',
+    ]);
   });
 
   await test.step('Disabled system tags should not render', async () => {

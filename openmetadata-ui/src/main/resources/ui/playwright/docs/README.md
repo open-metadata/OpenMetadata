@@ -8,8 +8,8 @@
 |--------|-------|
 | **Components** | 30 |
 | **Test Files** | 139 |
-| **Test Cases** | 2211 |
-| **Total Scenarios** | 3107 🚀 |
+| **Test Cases** | 2197 |
+| **Total Scenarios** | 3093 🚀 |
 
 ---
 
@@ -28,11 +28,11 @@
 
 ## Platform
 
-> **12 Components** | **1256 Tests** | **1632 Scenarios**
+> **12 Components** | **1242 Tests** | **1618 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Entities](./Platform.md#entities) | 15 | 940 | 1107 | 0 |
+| [Entities](./Platform.md#entities) | 15 | 926 | 1093 | 0 |
 | [Users & Teams](./Platform.md#users-teams) | 9 | 80 | 100 | 0 |
 | [Other](./Platform.md#other) | 18 | 64 | 75 | 0 |
 | [Personas & Customizations](./Platform.md#personas-customizations) | 5 | 44 | 142 | 0 |

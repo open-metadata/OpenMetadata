@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **69 Files** | **1256 Tests** | **1632 Scenarios** 🚀
+> **12 Components** | **69 Files** | **1242 Tests** | **1618 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
