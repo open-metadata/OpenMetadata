@@ -2462,6 +2462,7 @@
     "onboarding-stay-up-to-date-description": "داده‌مجموعه‌هایی که مرتباً استفاده می‌کنید را دنبال کنید تا از آخرین وضعیت آن مطلع شوید.",
     "only-image-files-supported": "فقط فایل‌های تصویر پشتیبانی می‌شوند",
     "only-reviewers-can-approve-or-reject": "فقط بازبینان می‌توانند تأیید یا رد کنند.",
+    "only-show-columns-with-lineage": "فقط ستون‌هایی با Lineage را نمایش بده",
     "optional-configuration-update-description-dbt": "پیکربندی اختیاری برای به‌روزرسانی توضیحات از dbt یا خیر.",
     "owners-coverage-widget-description": "پوشش مالکان برای تمام دارایی‌های داده در سرویس. <0>بیشتر بدانید.</0>",
     "page-is-not-available": "صفحه‌ای که به دنبال آن هستید در دسترس نیست.",
