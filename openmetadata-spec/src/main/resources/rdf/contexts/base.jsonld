@@ -11,7 +11,7 @@
     "xsd": "http://www.w3.org/2001/XMLSchema#",
     "owl": "http://www.w3.org/2002/07/owl#",
     "foaf": "http://xmlns.com/foaf/0.1/",
-    
+
     "id": "@id",
     "type": "@type",
     "name": {
@@ -64,7 +64,7 @@
     },
     "extension": {
       "@id": "om:hasExtension",
-      "@type": "@json"
+      "@type": "@id"
     },
     "sourceUrl": {
       "@id": "dct:source",
@@ -81,11 +81,11 @@
     },
     "votes": {
       "@id": "om:hasVotes",
-      "@type": "@json"
+      "@type": "@id"
     },
     "lifeCycle": {
       "@id": "om:hasLifeCycle",
-      "@type": "@json"
+      "@type": "@id"
     },
     "tags": {
       "@id": "om:hasTag",
@@ -94,11 +94,12 @@
     },
     "customProperties": {
       "@id": "om:hasCustomProperty",
-      "@type": "@json"
+      "@type": "@id",
+      "@container": "@set"
     },
     "changeDescription": {
       "@id": "om:hasChangeDescription",
-      "@type": "@json"
+      "@type": "@id"
     },
     "owners": {
       "@id": "om:hasOwner",
@@ -128,6 +129,113 @@
     "TagLabel": "om:TagLabel",
     "labelType": "om:labelType",
     "tagState": "om:tagState",
-    "tagSource": "om:tagSource"
+    "tagSource": "om:tagSource",
+
+    "ChangeDescription": "om:ChangeDescription",
+    "previousVersion": {
+      "@id": "om:previousVersion",
+      "@type": "xsd:decimal"
+    },
+    "fieldsAdded": {
+      "@id": "om:fieldsAdded",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "fieldsUpdated": {
+      "@id": "om:fieldsUpdated",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "fieldsDeleted": {
+      "@id": "om:fieldsDeleted",
+      "@type": "@id",
+      "@container": "@set"
+    },
+
+    "FieldChange": "om:FieldChange",
+    "fieldName": {
+      "@id": "om:fieldName",
+      "@type": "xsd:string"
+    },
+    "oldValue": {
+      "@id": "om:oldValue",
+      "@type": "xsd:string"
+    },
+    "newValue": {
+      "@id": "om:newValue",
+      "@type": "xsd:string"
+    },
+
+    "Votes": "om:Votes",
+    "upVotes": {
+      "@id": "om:upVotes",
+      "@type": "xsd:integer"
+    },
+    "downVotes": {
+      "@id": "om:downVotes",
+      "@type": "xsd:integer"
+    },
+    "upVoters": {
+      "@id": "om:upVoters",
+      "@type": "@id",
+      "@container": "@set"
+    },
+    "downVoters": {
+      "@id": "om:downVoters",
+      "@type": "@id",
+      "@container": "@set"
+    },
+
+    "LifeCycle": "om:LifeCycle",
+    "created": {
+      "@id": "om:lifecycleCreated",
+      "@type": "@id"
+    },
+    "updated": {
+      "@id": "om:lifecycleUpdated",
+      "@type": "@id"
+    },
+    "accessed": {
+      "@id": "om:lifecycleAccessed",
+      "@type": "@id"
+    },
+
+    "AccessDetails": "om:AccessDetails",
+    "timestamp": {
+      "@id": "om:accessTimestamp",
+      "@type": "xsd:dateTime"
+    },
+    "accessedBy": {
+      "@id": "om:accessedBy",
+      "@type": "@id"
+    },
+    "accessedByAProcess": {
+      "@id": "om:accessedByProcess",
+      "@type": "@id"
+    },
+
+    "CustomProperty": "om:CustomProperty",
+    "propertyName": {
+      "@id": "om:propertyName",
+      "@type": "xsd:string"
+    },
+    "propertyValue": {
+      "@id": "om:propertyValue",
+      "@type": "xsd:string"
+    },
+    "propertyType": {
+      "@id": "om:propertyType",
+      "@type": "xsd:string"
+    },
+
+    "Extension": "om:Extension",
+    "extensionKey": {
+      "@id": "om:extensionKey",
+      "@type": "xsd:string"
+    },
+    "extensionValue": {
+      "@id": "om:extensionValue",
+      "@type": "xsd:string"
+    }
   }
 }
