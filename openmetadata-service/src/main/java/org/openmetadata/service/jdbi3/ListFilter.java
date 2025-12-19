@@ -461,15 +461,12 @@ public class ListFilter extends Filter<ListFilter> {
     String type = getQueryParam("testCaseType");
 
     if (entityFQN != null) {
-      // EntityLink gets validated in the resource layer
-      // EntityLink entityLinkParsed = EntityLink.parse(entityLink);
-      // filter.addQueryParam("entityFQN", entityLinkParsed.getFullyQualifiedFieldValue());
-      conditions.add(
-          includeAllTests
-              ? String.format(
-                  "(entityFQN LIKE '%s%s%%' OR entityFQN = '%s')",
-                  escape(entityFQN), Entity.SEPARATOR, escapeApostrophe(entityFQN))
-              : String.format("entityFQN = '%s'", escapeApostrophe(entityFQN)));
+      if (includeAllTests) {
+        queryParams.put("entityFQNLikePattern", escape(entityFQN) + Entity.SEPARATOR + "%");
+        conditions.add("(entityFQN LIKE :entityFQNLikePattern OR entityFQN = :entityFQN)");
+      } else {
+        conditions.add("entityFQN = :entityFQN");
+      }
     }
 
     if (testSuiteId != null) {
