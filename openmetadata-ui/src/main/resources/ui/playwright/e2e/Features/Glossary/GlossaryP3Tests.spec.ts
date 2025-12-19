@@ -300,36 +300,35 @@ test.describe('Search Debounce', () => {
 
 // VT-08: Vote count displays correctly
 test.describe('Vote Count Display', () => {
-  const glossary = new Glossary();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
   test('should display vote count correctly', async ({ page }) => {
-    await glossary.visitEntityPage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-    // Look for vote section
-    const voteSection = page.locator(
-      '[data-testid="up-vote-btn"], [data-testid="vote-container"]'
-    );
+    try {
+      await glossary.create(apiContext);
+      await glossary.visitEntityPage(page);
 
-    if (
-      await voteSection
-        .first()
-        .isVisible({ timeout: 3000 })
-        .catch(() => false)
-    ) {
-      // Vote count should be visible (even if 0)
-      await expect(voteSection.first()).toBeVisible();
+      // Look for vote section
+      const voteSection = page.locator(
+        '[data-testid="up-vote-btn"], [data-testid="vote-container"]'
+      );
+
+      if (
+        await voteSection
+          .first()
+          .isVisible({ timeout: 3000 })
+          .catch(() => false)
+      ) {
+        // Vote count should be visible (even if 0)
+        await expect(voteSection.first()).toBeVisible();
+      }
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
     }
   });
 });
