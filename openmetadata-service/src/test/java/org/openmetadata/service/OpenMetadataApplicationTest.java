@@ -553,7 +553,7 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   private static void setupRdfIfEnabled() {
-    if (Boolean.TRUE.equals(runWithRdf)) {
+    if (Boolean.TRUE.equals(runWithRdf) || "true".equals(System.getProperty("enableRdf"))) {
       String rdfContainerImage = System.getProperty("rdfContainerImage", "stain/jena-fuseki:5.0.0");
       LOG.info(
           "RDF is enabled for tests. Starting Fuseki container with image: {}", rdfContainerImage);
