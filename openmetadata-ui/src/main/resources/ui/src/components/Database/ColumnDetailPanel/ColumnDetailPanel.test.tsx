@@ -17,27 +17,40 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { DataType } from '../../../generated/tests/testDefinition';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { listTestCases } from '../../../rest/testAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { ColumnDetailPanel } from './ColumnDetailPanel.component';
 
-// Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string, options?: Record<string, unknown>) => {
       if (options) {
         return `${key} - ${JSON.stringify(options)}`;
       }
+
       return key;
     },
   }),
 }));
 
-// Mock antd components
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useLocation: jest.fn().mockReturnValue({
+    pathname: '/test',
+    search: '',
+    hash: '',
+    state: null,
+  }),
+  useParams: jest.fn().mockReturnValue({}),
+  useNavigate: jest.fn().mockReturnValue(jest.fn()),
+}));
+
 jest.mock('antd', () => ({
   ...jest.requireActual('antd'),
   Drawer: jest
     .fn()
     .mockImplementation(({ children, open, title, footer, ...props }) => (
-      <div data-testid="drawer" data-open={open} {...props}>
+      <div data-open={open} data-testid="drawer" {...props}>
         {title && <div data-testid="drawer-title">{title}</div>}
         <div data-testid="drawer-content">{children}</div>
         {footer && <div data-testid="drawer-footer">{footer}</div>}
@@ -48,8 +61,8 @@ jest.mock('antd', () => ({
     .mockImplementation(({ children, onClick, disabled, ...props }) => (
       <button
         data-testid={props['data-testid'] || 'button'}
-        onClick={onClick}
         disabled={disabled}
+        onClick={onClick}
         {...props}>
         {children}
       </button>
@@ -78,16 +91,90 @@ jest.mock('antd', () => ({
   },
 }));
 
-// Mock @mui/material
 jest.mock('@mui/material', () => ({
+  ...jest.requireActual('@mui/material'),
   Chip: jest.fn().mockImplementation(({ label, ...props }) => (
     <div data-testid="chip" {...props}>
       {label}
     </div>
   )),
+  Box: jest.fn().mockImplementation(({ children, ...props }) => (
+    <div data-testid="box" {...props}>
+      {children}
+    </div>
+  )),
+  Stack: jest.fn().mockImplementation(({ children, ...props }) => (
+    <div data-testid="stack" {...props}>
+      {children}
+    </div>
+  )),
+  Tooltip: jest.fn().mockImplementation(({ children, title, ...props }) => (
+    <div data-testid="tooltip" title={title} {...props}>
+      {children}
+    </div>
+  )),
+  Typography: jest.fn().mockImplementation(({ children, ...props }) => (
+    <div data-testid="typography" {...props}>
+      {children}
+    </div>
+  )),
+  useTheme: jest.fn().mockReturnValue({
+    spacing: (value: number) => `${value * 8}px`,
+    typography: {
+      pxToRem: (value: number) => `${value / 16}rem`,
+    },
+    palette: {
+      allShades: {
+        gray: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          600: '#757575',
+          900: '#212121',
+        },
+      },
+    },
+  }),
 }));
 
-// Mock SVG components
+jest.mock('@mui/material/styles', () => ({
+  ...jest.requireActual('@mui/material/styles'),
+  styled: jest.fn().mockImplementation((component) => {
+    return jest.fn().mockImplementation((props) => {
+      const Component = component;
+
+      return <Component {...props} />;
+    });
+  }),
+  useTheme: jest.fn().mockReturnValue({
+    spacing: (value: number) => `${value * 8}px`,
+    typography: {
+      pxToRem: (value: number) => `${value / 16}rem`,
+    },
+    palette: {
+      allShades: {
+        gray: {
+          50: '#fafafa',
+          100: '#f5f5f5',
+          600: '#757575',
+          900: '#212121',
+        },
+      },
+    },
+  }),
+}));
+
+jest.mock('@mui/icons-material', () => ({
+  HelpOutlineIcon: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="help-outline-icon">HelpIcon</div>
+    )),
+}));
+
+jest.mock('@ant-design/icons', () => ({
+  CloseOutlined: () => <div data-testid="close-icon">CloseIcon</div>,
+}));
+
 jest.mock('../../../assets/svg/down-arrow-icon.svg', () => ({
   ReactComponent: () => <div data-testid="arrow-down-icon">ArrowDown</div>,
 }));
@@ -104,11 +191,6 @@ jest.mock('../../../assets/svg/icon-key.svg', () => ({
   ReactComponent: () => <div data-testid="key-icon">KeyIcon</div>,
 }));
 
-jest.mock('@ant-design/icons', () => ({
-  CloseOutlined: () => <div data-testid="close-icon">CloseIcon</div>,
-}));
-
-// Mock child components
 jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({
   __esModule: true,
   default: jest
@@ -187,7 +269,7 @@ jest.mock('../../common/DataQualitySection/DataQualitySection', () => ({
 jest.mock('../../common/Loader/Loader', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(({ size }) => (
-    <div data-testid="loader" data-size={size}>
+    <div data-size={size} data-testid="loader">
       Loading...
     </div>
   )),
@@ -232,7 +314,14 @@ jest.mock('../../Explore/EntitySummaryPanel/LineageTab', () => ({
     .mockImplementation(() => <div data-testid="lineage-tab">Lineage Tab</div>),
 }));
 
-// Mock utility functions
+jest.mock('./KeyProfileMetrics', () => ({
+  KeyProfileMetrics: jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="key-profile-metrics">Key Profile Metrics</div>
+    )),
+}));
+
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -268,16 +357,20 @@ jest.mock('../../../utils/DataQuality/DataQualityUtils', () => ({
               switch (status) {
                 case 'success':
                   acc.success++;
+
                   break;
                 case 'failed':
                   acc.failed++;
+
                   break;
                 case 'aborted':
                   acc.aborted++;
+
                   break;
               }
               acc.total++;
             }
+
             return acc;
           },
           { success: 0, failed: 0, aborted: 0, total: 0 }
@@ -311,6 +404,7 @@ jest.mock('../../../utils/TableUtils', () => ({
           columnTags?.filter((tag) => tag.source === TagSource.Glossary) || [];
         const updatedTagsWithoutGlossary =
           updatedTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
+
         return [...updatedTagsWithoutGlossary, ...existingGlossaryTags];
       }
     ),
@@ -323,6 +417,7 @@ jest.mock('../../../utils/TableUtils', () => ({
       ) => {
         const nonGlossaryTags =
           columnTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
+
         return [...nonGlossaryTags, ...(updatedGlossaryTerms || [])];
       }
     ),
@@ -333,19 +428,6 @@ jest.mock('../../../utils/TableUtils', () => ({
         (col: Column) => col.fullyQualifiedName === column.fullyQualifiedName
       );
     }),
-}));
-
-// Mock react-router-dom
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useLocation: jest.fn().mockReturnValue({
-    pathname: '/test',
-    search: '',
-    hash: '',
-    state: null,
-  }),
-  useParams: jest.fn().mockReturnValue({}),
-  useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 describe('ColumnDetailPanel', () => {
@@ -377,10 +459,41 @@ describe('ColumnDetailPanel', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Ensure listTestCases resolves immediately to avoid initial loading state
-    const { listTestCases } = require('../../../rest/testAPI');
-    listTestCases.mockResolvedValue({
+    (listTestCases as jest.Mock).mockResolvedValue({
       data: [],
+    });
+  });
+
+  describe('Component Rendering', () => {
+    it('should render drawer when isOpen is true', async () => {
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+
+      expect(getByTestId('drawer')).toBeInTheDocument();
+      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'true');
+
+      await waitFor(() => {
+        expect(getByTestId('description-section')).toBeInTheDocument();
+      });
+    });
+
+    it('should not render drawer when isOpen is false', () => {
+      const { getByTestId } = render(
+        <ColumnDetailPanel {...mockProps} isOpen={false} />
+      );
+
+      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'false');
+    });
+
+    it('should render all sections in overview tab', async () => {
+      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
+
+      await waitFor(() => {
+        expect(getByTestId('description-section')).toBeInTheDocument();
+      });
+
+      expect(getByTestId('description-section')).toBeInTheDocument();
+      expect(getByTestId('tags-section')).toBeInTheDocument();
+      expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
     });
   });
 
@@ -400,36 +513,30 @@ describe('ColumnDetailPanel', () => {
         />
       );
 
-      // Wait for initial async operations to complete
       await waitFor(() => {
         expect(getByTestId('description-section')).toBeInTheDocument();
       });
 
-      // Find and click the update description button
       const updateButton = getByTestId('update-description');
 
       await act(async () => {
         fireEvent.click(updateButton);
       });
 
-      // Wait for loader to appear
       await waitFor(
         () => {
           const loader = getByTestId('loader');
+
           expect(loader).toBeInTheDocument();
           expect(loader).toHaveAttribute('data-size', 'small');
         },
         { timeout: 100 }
       );
 
-      // Verify description section is replaced by loader
       expect(queryByTestId('description-section')).not.toBeInTheDocument();
-
-      // Verify other sections are still visible
       expect(getByTestId('tags-section')).toBeInTheDocument();
       expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
 
-      // Wait for update to complete
       await waitFor(
         () => {
           expect(queryByTestId('loader')).not.toBeInTheDocument();
@@ -446,17 +553,13 @@ describe('ColumnDetailPanel', () => {
         <ColumnDetailPanel {...mockProps} updateColumnTags={updateColumnTags} />
       );
 
-      // Find and click the update tags button
       const updateButton = getByTestId('update-tags');
       fireEvent.click(updateButton);
 
-      // Tags section manages its own loading state internally
-      // So we should not see a loader at the panel level
       await waitFor(() => {
         expect(updateColumnTags).toHaveBeenCalled();
       });
 
-      // Description section should remain visible
       expect(getByTestId('description-section')).toBeInTheDocument();
     });
 
@@ -467,26 +570,20 @@ describe('ColumnDetailPanel', () => {
         <ColumnDetailPanel {...mockProps} updateColumnTags={updateColumnTags} />
       );
 
-      // Find and click the update glossary terms button
       const updateButton = getByTestId('update-glossary-terms');
       fireEvent.click(updateButton);
 
-      // Glossary terms section manages its own loading state internally
-      // So we should not see a loader at the panel level
       await waitFor(() => {
         expect(updateColumnTags).toHaveBeenCalled();
       });
 
-      // Description section should remain visible
       expect(getByTestId('description-section')).toBeInTheDocument();
     });
 
     it('should show loader for description section and hide it on error', async () => {
-      const { showErrorToast } = require('../../../utils/ToastUtils');
       const updateColumnDescription = jest.fn().mockImplementation(
         () =>
           new Promise((_, reject) => {
-            // Delay rejection to allow loader to show
             setTimeout(() => {
               reject(new Error('Update failed') as AxiosError);
             }, 100);
@@ -500,19 +597,16 @@ describe('ColumnDetailPanel', () => {
         />
       );
 
-      // Wait for initial async operations to complete
       await waitFor(() => {
         expect(getByTestId('description-section')).toBeInTheDocument();
       });
 
-      // Find and click the update description button
       const updateButton = getByTestId('update-description');
 
       await act(async () => {
         fireEvent.click(updateButton);
       });
 
-      // Wait for error to be handled and description section to be restored
       await waitFor(
         () => {
           expect(updateColumnDescription).toHaveBeenCalled();
@@ -540,19 +634,16 @@ describe('ColumnDetailPanel', () => {
         />
       );
 
-      // Wait for initial async operations to complete
       await waitFor(() => {
         expect(getByTestId('description-section')).toBeInTheDocument();
       });
 
-      // Start updating description
       const updateDescriptionButton = getByTestId('update-description');
 
       await act(async () => {
         fireEvent.click(updateDescriptionButton);
       });
 
-      // Wait for description loader
       await waitFor(
         () => {
           expect(getByTestId('loader')).toBeInTheDocument();
@@ -560,21 +651,17 @@ describe('ColumnDetailPanel', () => {
         { timeout: 100 }
       );
 
-      // Tags and glossary sections should still be visible
       expect(getByTestId('tags-section')).toBeInTheDocument();
       expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
 
-      // Update tags while description is loading
       const updateTagsButton = getByTestId('update-tags');
 
       await act(async () => {
         fireEvent.click(updateTagsButton);
       });
 
-      // Tags section should still be visible (manages own loading)
       expect(getByTestId('tags-section')).toBeInTheDocument();
 
-      // Wait for description update to complete
       await waitFor(
         () => {
           expect(queryByTestId('loader')).not.toBeInTheDocument();
@@ -582,7 +669,6 @@ describe('ColumnDetailPanel', () => {
         { timeout: 200 }
       );
 
-      // All sections should be visible
       expect(getByTestId('description-section')).toBeInTheDocument();
       expect(getByTestId('tags-section')).toBeInTheDocument();
       expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
@@ -591,51 +677,12 @@ describe('ColumnDetailPanel', () => {
     it('should not show loader when description section is not being updated', async () => {
       const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
 
-      // Wait for initial async operations (test cases fetching) to complete
       await waitFor(
         () => {
           expect(getByTestId('description-section')).toBeInTheDocument();
         },
         { timeout: 1000 }
       );
-
-      // Description section should be visible (not replaced by description loader)
-      // Note: There might be a loader for test cases, but the description section should be visible
-      expect(getByTestId('description-section')).toBeInTheDocument();
-      expect(getByTestId('tags-section')).toBeInTheDocument();
-      expect(getByTestId('glossary-terms-section')).toBeInTheDocument();
-    });
-  });
-
-  describe('Component Rendering', () => {
-    it('should render drawer when isOpen is true', async () => {
-      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
-
-      expect(getByTestId('drawer')).toBeInTheDocument();
-      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'true');
-
-      // Wait for initial async operations
-      await waitFor(() => {
-        expect(getByTestId('description-section')).toBeInTheDocument();
-      });
-    });
-
-    it('should not render drawer when isOpen is false', () => {
-      const { getByTestId } = render(
-        <ColumnDetailPanel {...mockProps} isOpen={false} />
-      );
-
-      // When isOpen is false, drawer should still exist but be closed
-      expect(getByTestId('drawer')).toHaveAttribute('data-open', 'false');
-    });
-
-    it('should render all sections in overview tab', async () => {
-      const { getByTestId } = render(<ColumnDetailPanel {...mockProps} />);
-
-      // Wait for initial async operations
-      await waitFor(() => {
-        expect(getByTestId('description-section')).toBeInTheDocument();
-      });
 
       expect(getByTestId('description-section')).toBeInTheDocument();
       expect(getByTestId('tags-section')).toBeInTheDocument();
@@ -645,11 +692,9 @@ describe('ColumnDetailPanel', () => {
 
   describe('Error Handling', () => {
     it('should handle description update error gracefully', async () => {
-      const { showErrorToast } = require('../../../utils/ToastUtils');
       const updateColumnDescription = jest.fn().mockImplementation(
         () =>
           new Promise((_, reject) => {
-            // Delay rejection to allow loader to show
             setTimeout(() => {
               reject(new Error('Network error') as AxiosError);
             }, 100);
@@ -663,7 +708,6 @@ describe('ColumnDetailPanel', () => {
         />
       );
 
-      // Wait for initial async operations to complete
       await waitFor(() => {
         expect(getByTestId('description-section')).toBeInTheDocument();
       });
@@ -674,7 +718,6 @@ describe('ColumnDetailPanel', () => {
         fireEvent.click(updateButton);
       });
 
-      // Wait for error to be handled and description section to be restored
       await waitFor(
         () => {
           expect(updateColumnDescription).toHaveBeenCalled();
