@@ -637,13 +637,14 @@ public class EventSubscriptionScheduler {
           alertsScheduler.getJobDetail(new JobKey(id.toString(), ALERT_JOB_GROUP));
 
       if (jobDetail != null) {
-        // JobDataMap stores EventSubscription as JSON string for JDBC JobStore compatibility
-        String subscriptionJson = (String) jobDetail.getJobDataMap().get(ALERT_INFO_KEY);
-        if (subscriptionJson != null) {
+        // JobDataMap may store EventSubscription as JSON string (JDBC) or object (RAM)
+        Object alertInfoValue = jobDetail.getJobDataMap().get(ALERT_INFO_KEY);
+        if (alertInfoValue instanceof String subscriptionJson) {
           EventSubscription eventSubscription =
               JsonUtils.readValue(subscriptionJson, EventSubscription.class);
-          // Return the subscription as-is - status is already set from job execution
           return Optional.ofNullable(eventSubscription);
+        } else if (alertInfoValue instanceof EventSubscription eventSubscription) {
+          return Optional.of(eventSubscription);
         }
       }
     } catch (SchedulerException ex) {
@@ -662,18 +663,20 @@ public class EventSubscriptionScheduler {
       return Optional.of(offset);
     }
 
-    // Fall back to JobDataMap (stored as JSON string for serialization)
+    // Fall back to JobDataMap (may be stored as JSON string or object)
     try {
       JobDetail jobDetail =
           alertsScheduler.getJobDetail(new JobKey(subscriptionID.toString(), ALERT_JOB_GROUP));
       if (jobDetail != null) {
-        String offsetJson = (String) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
-        if (offsetJson != null) {
+        Object offsetValue = jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
+        if (offsetValue instanceof String offsetJson) {
           EventSubscriptionOffset jobOffset =
               JsonUtils.readValue(offsetJson, EventSubscriptionOffset.class);
           if (jobOffset != null) {
             return Optional.of(jobOffset);
           }
+        } else if (offsetValue instanceof EventSubscriptionOffset jobOffset) {
+          return Optional.of(jobOffset);
         }
       }
     } catch (Exception ex) {

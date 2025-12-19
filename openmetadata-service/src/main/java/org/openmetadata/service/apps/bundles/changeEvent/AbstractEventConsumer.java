@@ -72,19 +72,57 @@ public abstract class AbstractEventConsumer
 
   private void init(JobExecutionContext context) {
     this.jobDetail = context.getJobDetail();
-    // EventSubscription is stored as JSON string in JobDataMap for JDBC JobStore compatibility
-    String subscriptionJson = (String) context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
-    this.eventSubscription = JsonUtils.readValue(subscriptionJson, EventSubscription.class);
-    if (this.eventSubscription == null) {
-      LOG.error("Failed to deserialize EventSubscription from JobDataMap");
-      return;
+    try {
+      // EventSubscription is stored as JSON string in JobDataMap for JDBC JobStore compatibility
+      Object alertInfoValue = context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
+      if (alertInfoValue == null) {
+        LOG.error("ALERT_INFO_KEY not found in JobDataMap");
+        return;
+      }
+
+      if (alertInfoValue instanceof String subscriptionJson) {
+        this.eventSubscription = JsonUtils.readValue(subscriptionJson, EventSubscription.class);
+        if (this.eventSubscription == null) {
+          LOG.error("Failed to deserialize EventSubscription from JSON: {}", subscriptionJson);
+          return;
+        }
+      } else if (alertInfoValue instanceof EventSubscription subscription) {
+        // Handle case where object wasn't serialized as JSON (e.g., RAMJobStore in tests)
+        this.eventSubscription = subscription;
+        LOG.debug(
+            "EventSubscription loaded directly from JobDataMap for subscription: {}",
+            this.eventSubscription.getName());
+      } else {
+        LOG.error(
+            "Unexpected type for ALERT_INFO_KEY: {}. Expected String or EventSubscription.",
+            alertInfoValue.getClass().getName());
+        return;
+      }
+
+      if (this.eventSubscription.getDestinations() == null
+          || this.eventSubscription.getDestinations().isEmpty()) {
+        LOG.error(
+            "EventSubscription {} has no destinations configured",
+            this.eventSubscription.getName());
+        return;
+      }
+
+      EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
+      this.offset = eventSubscriptionOffset.getCurrentOffset();
+      this.startingOffset = eventSubscriptionOffset.getStartingOffset();
+      this.alertMetrics = loadInitialMetrics();
+      this.destinationMap = loadDestinationsMap(context);
+      this.doInit(context);
+
+      LOG.debug(
+          "Initialized EventConsumer for subscription: {}, offset: {}, destinations: {}",
+          this.eventSubscription.getName(),
+          this.offset,
+          this.destinationMap.size());
+    } catch (Exception e) {
+      LOG.error("Failed to initialize EventConsumer from JobDataMap", e);
+      this.eventSubscription = null;
     }
-    EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
-    this.offset = eventSubscriptionOffset.getCurrentOffset();
-    this.startingOffset = eventSubscriptionOffset.getStartingOffset();
-    this.alertMetrics = loadInitialMetrics();
-    this.destinationMap = loadDestinationsMap(context);
-    this.doInit(context);
   }
 
   protected void doInit(JobExecutionContext context) {
@@ -140,11 +178,16 @@ public abstract class AbstractEventConsumer
   }
 
   private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
-    // First try JobDataMap (stored as JSON string for serialization)
-    String offsetJson = (String) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
-    if (offsetJson != null) {
-      EventSubscriptionOffset offset =
-          JsonUtils.readValue(offsetJson, EventSubscriptionOffset.class);
+    // First try JobDataMap - may be stored as JSON string or EventSubscriptionOffset object
+    Object offsetValue = jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
+    if (offsetValue != null) {
+      EventSubscriptionOffset offset = null;
+      if (offsetValue instanceof String offsetJson) {
+        offset = JsonUtils.readValue(offsetJson, EventSubscriptionOffset.class);
+      } else if (offsetValue instanceof EventSubscriptionOffset existingOffset) {
+        // Handle case where object wasn't serialized as JSON (e.g., RAMJobStore in tests)
+        offset = existingOffset;
+      }
       if (offset != null) {
         return offset;
       }
