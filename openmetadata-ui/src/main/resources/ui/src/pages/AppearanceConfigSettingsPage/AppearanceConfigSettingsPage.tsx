@@ -69,6 +69,7 @@ const AppearanceConfigSettingsPage = () => {
 
   // Track if hover color was manually edited by user
   const isHoverColorManuallyEdited = useRef<boolean>(false);
+  const isSelectedColorManuallyEdited = useRef<boolean>(false);
   // Track the last primary color to detect changes
   const lastPrimaryColor = useRef<string>(
     applicationConfig?.customTheme?.primaryColor ?? ''
@@ -98,6 +99,7 @@ const AppearanceConfigSettingsPage = () => {
         customTheme: {
           primaryColor: values?.primaryColor ?? '',
           hoverColor: values?.hoverColor ?? '',
+          selectedColor: values?.selectedColor ?? '',
           errorColor: values?.errorColor ?? '',
           successColor: values?.successColor ?? '',
           warningColor: values?.warningColor ?? '',
@@ -130,6 +132,7 @@ const AppearanceConfigSettingsPage = () => {
         customTheme: {
           primaryColor: '',
           hoverColor: '',
+          selectedColor: '',
           errorColor: '',
           successColor: '',
           warningColor: '',
@@ -148,6 +151,8 @@ const AppearanceConfigSettingsPage = () => {
 
       // Reset the manual edit flag
       isHoverColorManuallyEdited.current = false;
+      isSelectedColorManuallyEdited.current = false;
+
       lastPrimaryColor.current = '';
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -171,6 +176,22 @@ const AppearanceConfigSettingsPage = () => {
       ],
       props: {
         'data-testid': 'primaryColor',
+      },
+    },
+    {
+      name: 'selectedColor',
+      id: 'selectedColor',
+      label: 'Selected Color',
+      required: false,
+      type: FieldTypes.COLOR_PICKER,
+      rules: [
+        {
+          pattern: HEX_COLOR_CODE_REGEX,
+          message: t('message.hex-color-validation'),
+        },
+      ],
+      props: {
+        'data-testid': 'selectedColor',
       },
     },
     {
@@ -334,21 +355,35 @@ const AppearanceConfigSettingsPage = () => {
       if (changedValues.primaryColor) {
         const palette = generatePalette(changedValues.primaryColor);
         const generatedHoverColor = palette[2]; // 2nd element (index 3)
+        const generatedSelectedColor = palette[8];
 
         // Update form field
         form.setFieldValue('hoverColor', generatedHoverColor);
+        form.setFieldValue('selectedColor', generatedSelectedColor);
 
         // Update allValues with the generated hover color
-        allValues = { ...allValues, hoverColor: generatedHoverColor };
+        allValues = {
+          ...allValues,
+          hoverColor: generatedHoverColor,
+          selectedColor: generatedSelectedColor,
+        };
 
         // Reset manual edit flag since primary color changed
         isHoverColorManuallyEdited.current = false;
+        isSelectedColorManuallyEdited.current = false;
       }
     }
 
     // Check if hover color was manually changed (without primary color change)
     if ('hoverColor' in changedValues && !('primaryColor' in changedValues)) {
       isHoverColorManuallyEdited.current = true;
+    }
+    // Check if Selected color was manually changed (without primary color change)
+    if (
+      'selectedColor' in changedValues &&
+      !('primaryColor' in changedValues)
+    ) {
+      isSelectedColorManuallyEdited.current = true;
     }
 
     // Update form state
@@ -367,6 +402,7 @@ const AppearanceConfigSettingsPage = () => {
     lastPrimaryColor.current =
       applicationConfig?.customTheme?.primaryColor ?? '';
     isHoverColorManuallyEdited.current = false;
+    isSelectedColorManuallyEdited.current = false;
   }, [applicationConfig]);
 
   return (
