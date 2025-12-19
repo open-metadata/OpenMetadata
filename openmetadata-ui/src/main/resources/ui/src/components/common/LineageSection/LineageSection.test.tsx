@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { EntityType } from '../../../enums/entity.enum';
+import { getLineagePagingData } from '../../../rest/lineageAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import LineageSection from './LineageSection';
 
 jest.mock('../../../assets/svg/lineage-upstream-icon.svg', () => ({
@@ -19,6 +22,14 @@ jest.mock('../../../assets/svg/lineage-upstream-icon.svg', () => ({
 
 jest.mock('../../../assets/svg/lineage-downstream-icon.svg', () => ({
   ReactComponent: () => <div data-testid="downstream-icon">Downstream</div>,
+}));
+
+jest.mock('../../../rest/lineageAPI', () => ({
+  getLineagePagingData: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 jest.mock('../Loader/Loader', () => {
@@ -32,232 +43,205 @@ describe('LineageSection', () => {
     jest.clearAllMocks();
   });
 
-  describe('Rendering - Loading State', () => {
-    it('renders title and loader when isLoading is true', () => {
-      render(
-        <LineageSection downstreamCount={0} isLoading upstreamCount={0} />
-      );
+  it('renders title and "no lineage available" when entity is not provided', () => {
+    render(<LineageSection />);
 
-      expect(screen.getByText('label.lineage')).toBeInTheDocument();
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
-    });
-
-    it('does not render upstream/downstream counts when loading', () => {
-      render(
-        <LineageSection downstreamCount={5} isLoading upstreamCount={10} />
-      );
-
-      expect(screen.queryByTestId('upstream-lineage')).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId('downstream-lineage')
-      ).not.toBeInTheDocument();
-    });
+    expect(screen.getByText('label.lineage')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-lineage-available')
+    ).toBeInTheDocument();
+    expect(getLineagePagingData).not.toHaveBeenCalled();
   });
 
-  describe('Rendering - No Lineage', () => {
-    it('renders "no lineage available" message when both counts are zero', () => {
-      render(<LineageSection downstreamCount={0} upstreamCount={0} />);
+  it('shows loader while lineage paging info is being fetched', async () => {
+    let resolvePromise: (value: unknown) => void = () => {
+      throw new Error('resolvePromise was not initialized');
+    };
+    const pending = new Promise((resolve) => {
+      resolvePromise = resolve;
+    });
 
-      expect(screen.getByText('label.lineage')).toBeInTheDocument();
+    (getLineagePagingData as jest.Mock).mockReturnValue(pending);
+
+    render(
+      <LineageSection
+        entityFqn="service.db.schema.table"
+        entityType={EntityType.TABLE}
+      />
+    );
+
+    expect(await screen.findByTestId('loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('upstream-lineage')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('downstream-lineage')).not.toBeInTheDocument();
+
+    resolvePromise({
+      upstreamDepthInfo: [{ depth: 1, entityCount: 0 }],
+      downstreamDepthInfo: [{ depth: 1, entityCount: 0 }],
+      maxDownstreamDepth: 1,
+      maxUpstreamDepth: 1,
+      totalDownstreamEntities: 0,
+      totalUpstreamEntities: 0,
+    });
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument()
+    );
+  });
+
+  it('renders "no lineage available" when both counts are zero', async () => {
+    (getLineagePagingData as jest.Mock).mockResolvedValue({
+      upstreamDepthInfo: [{ depth: 1, entityCount: 0 }],
+      downstreamDepthInfo: [{ depth: 1, entityCount: 0 }],
+      maxDownstreamDepth: 1,
+      maxUpstreamDepth: 1,
+      totalDownstreamEntities: 0,
+      totalUpstreamEntities: 0,
+    });
+
+    render(
+      <LineageSection
+        entityFqn="service.db.schema.table"
+        entityType={EntityType.TABLE}
+      />
+    );
+
+    expect(screen.getByText('label.lineage')).toBeInTheDocument();
+
+    await waitFor(() =>
       expect(
         screen.getByText('message.no-lineage-available')
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId('upstream-lineage')).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId('downstream-lineage')
-      ).not.toBeInTheDocument();
-    });
+      ).toBeInTheDocument()
+    );
   });
 
-  describe('Rendering - With Lineage Data', () => {
-    it('renders upstream and downstream counts when both are non-zero', () => {
-      render(<LineageSection downstreamCount={12} upstreamCount={22} />);
-
-      expect(screen.getByText('label.lineage')).toBeInTheDocument();
-
-      const upstreamSection = screen.getByTestId('upstream-lineage');
-      const downstreamSection = screen.getByTestId('downstream-lineage');
-
-      expect(upstreamSection).toBeInTheDocument();
-      expect(downstreamSection).toBeInTheDocument();
-
-      // Check counts using test IDs (more reliable than text matching)
-      expect(screen.getByTestId('upstream-count')).toHaveTextContent('22');
-      expect(screen.getByTestId('downstream-count')).toHaveTextContent('12');
+  it('renders upstream/downstream sections and counts when lineage exists', async () => {
+    (getLineagePagingData as jest.Mock).mockResolvedValue({
+      upstreamDepthInfo: [{ depth: 1, entityCount: 22 }],
+      downstreamDepthInfo: [{ depth: 1, entityCount: 12 }],
+      maxDownstreamDepth: 2,
+      maxUpstreamDepth: 2,
+      totalDownstreamEntities: 12,
+      totalUpstreamEntities: 22,
     });
 
-    it('renders divider between upstream and downstream sections', () => {
-      const { container } = render(
-        <LineageSection downstreamCount={5} upstreamCount={10} />
-      );
+    const { container } = render(
+      <LineageSection
+        entityFqn="service.db.schema.table"
+        entityType={EntityType.TABLE}
+      />
+    );
 
-      const divider = container.querySelector('.MuiDivider-root');
+    await waitFor(() =>
+      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument()
+    );
 
-      expect(divider).toBeInTheDocument();
-    });
+    expect(screen.getByTestId('downstream-lineage')).toBeInTheDocument();
+    expect(screen.getByTestId('upstream-count')).toHaveTextContent('22');
+    expect(screen.getByTestId('downstream-count')).toHaveTextContent('12');
 
-    it('renders when only upstream count is non-zero', () => {
-      render(<LineageSection downstreamCount={0} upstreamCount={15} />);
-
-      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument();
-      expect(screen.getByTestId('downstream-lineage')).toBeInTheDocument();
-      expect(screen.getByText('15')).toBeInTheDocument();
-      expect(screen.getByText('0')).toBeInTheDocument();
-    });
-
-    it('renders when only downstream count is non-zero', () => {
-      render(<LineageSection downstreamCount={8} upstreamCount={0} />);
-
-      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument();
-      expect(screen.getByTestId('downstream-lineage')).toBeInTheDocument();
-      expect(screen.getByText('0')).toBeInTheDocument();
-      expect(screen.getByText('8')).toBeInTheDocument();
-    });
+    // Divider exists between sections
+    expect(container.querySelector('.MuiDivider-root')).toBeInTheDocument();
   });
 
-  describe('Click Interactions', () => {
-    it('calls onLineageClick when upstream section is clicked', () => {
-      const onLineageClick = jest.fn();
-
-      render(
-        <LineageSection
-          downstreamCount={5}
-          upstreamCount={10}
-          onLineageClick={onLineageClick}
-        />
-      );
-
-      const upstreamSection = screen.getByTestId('upstream-lineage');
-      fireEvent.click(upstreamSection);
-
-      expect(onLineageClick).toHaveBeenCalledTimes(1);
+  it('renders both sections even when one side is zero', async () => {
+    (getLineagePagingData as jest.Mock).mockResolvedValue({
+      upstreamDepthInfo: [{ depth: 1, entityCount: 15 }],
+      downstreamDepthInfo: [{ depth: 1, entityCount: 0 }],
+      maxDownstreamDepth: 1,
+      maxUpstreamDepth: 2,
+      totalDownstreamEntities: 0,
+      totalUpstreamEntities: 15,
     });
 
-    it('calls onLineageClick when downstream section is clicked', () => {
-      const onLineageClick = jest.fn();
+    render(
+      <LineageSection
+        entityFqn="service.db.schema.table"
+        entityType={EntityType.TABLE}
+      />
+    );
 
-      render(
-        <LineageSection
-          downstreamCount={5}
-          upstreamCount={10}
-          onLineageClick={onLineageClick}
-        />
-      );
+    await waitFor(() =>
+      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument()
+    );
 
-      const downstreamSection = screen.getByTestId('downstream-lineage');
-      fireEvent.click(downstreamSection);
-
-      expect(onLineageClick).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not throw error when clicked without onLineageClick handler', () => {
-      render(<LineageSection downstreamCount={5} upstreamCount={10} />);
-
-      const upstreamSection = screen.getByTestId('upstream-lineage');
-
-      expect(() => fireEvent.click(upstreamSection)).not.toThrow();
-    });
+    expect(screen.getByTestId('downstream-lineage')).toBeInTheDocument();
+    expect(screen.getByTestId('upstream-count')).toHaveTextContent('15');
+    expect(screen.getByTestId('downstream-count')).toHaveTextContent('0');
   });
 
-  describe('CSS Structure', () => {
-    it('verifies clickable sections have proper data-testid attributes', () => {
-      render(<LineageSection downstreamCount={5} upstreamCount={10} />);
-
-      const upstreamSection = screen.getByTestId('upstream-lineage');
-      const downstreamSection = screen.getByTestId('downstream-lineage');
-
-      expect(upstreamSection).toBeInTheDocument();
-      expect(downstreamSection).toBeInTheDocument();
+  it('calls onLineageClick when either lineage section is clicked', async () => {
+    (getLineagePagingData as jest.Mock).mockResolvedValue({
+      upstreamDepthInfo: [{ depth: 1, entityCount: 10 }],
+      downstreamDepthInfo: [{ depth: 1, entityCount: 5 }],
+      maxDownstreamDepth: 1,
+      maxUpstreamDepth: 1,
+      totalDownstreamEntities: 5,
+      totalUpstreamEntities: 10,
     });
 
-    it('verifies count elements have proper data-testid attributes', () => {
-      render(<LineageSection downstreamCount={5} upstreamCount={10} />);
+    const onLineageClick = jest.fn();
 
-      const upstreamCount = screen.getByTestId('upstream-count');
-      const downstreamCount = screen.getByTestId('downstream-count');
+    render(
+      <LineageSection
+        entityFqn="service.db.schema.table"
+        entityType={EntityType.TABLE}
+        onLineageClick={onLineageClick}
+      />
+    );
 
-      expect(upstreamCount).toBeInTheDocument();
-      expect(downstreamCount).toBeInTheDocument();
-      expect(upstreamCount).toHaveTextContent('10');
-      expect(downstreamCount).toHaveTextContent('5');
-    });
+    await waitFor(() =>
+      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('upstream-lineage'));
+    fireEvent.click(screen.getByTestId('downstream-lineage'));
+
+    expect(onLineageClick).toHaveBeenCalled();
   });
 
-  describe('Edge Cases - State Transitions', () => {
-    it('transitions from loading to no lineage correctly', () => {
-      const { rerender } = render(
-        <LineageSection downstreamCount={0} isLoading upstreamCount={0} />
-      );
+  it('shows error toast and falls back to "no lineage available" when API fails', async () => {
+    (getLineagePagingData as jest.Mock).mockRejectedValueOnce(
+      new Error('boom')
+    );
 
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
-      expect(
-        screen.queryByText('message.no-lineage-available')
-      ).not.toBeInTheDocument();
+    render(
+      <LineageSection
+        entityFqn="service.db.schema.table"
+        entityType={EntityType.TABLE}
+      />
+    );
 
-      rerender(
-        <LineageSection
-          downstreamCount={0}
-          isLoading={false}
-          upstreamCount={0}
-        />
-      );
+    await waitFor(() =>
+      expect(showErrorToast as unknown as jest.Mock).toHaveBeenCalled()
+    );
 
-      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-      expect(
-        screen.getByText('message.no-lineage-available')
-      ).toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-lineage-available')
+    ).toBeInTheDocument();
+  });
+
+  it('calls getLineagePagingData with fqn and type', async () => {
+    (getLineagePagingData as jest.Mock).mockResolvedValue({
+      upstreamDepthInfo: [{ depth: 1, entityCount: 0 }],
+      downstreamDepthInfo: [{ depth: 1, entityCount: 0 }],
+      maxDownstreamDepth: 1,
+      maxUpstreamDepth: 1,
+      totalDownstreamEntities: 0,
+      totalUpstreamEntities: 0,
     });
 
-    it('transitions from loading to with data correctly', () => {
-      const { rerender } = render(
-        <LineageSection downstreamCount={0} isLoading upstreamCount={0} />
-      );
+    render(
+      <LineageSection
+        entityFqn="service.db.schema.table"
+        entityType={EntityType.TABLE}
+      />
+    );
 
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
-
-      rerender(
-        <LineageSection
-          downstreamCount={5}
-          isLoading={false}
-          upstreamCount={10}
-        />
-      );
-
-      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument();
-      expect(screen.getByTestId('downstream-lineage')).toBeInTheDocument();
-    });
-
-    it('transitions from data to loading correctly', () => {
-      const { rerender } = render(
-        <LineageSection downstreamCount={5} isLoading={false} upstreamCount={10} />
-      );
-
-      expect(screen.getByTestId('upstream-lineage')).toBeInTheDocument();
-      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-
-      rerender(
-        <LineageSection downstreamCount={5} isLoading upstreamCount={10} />
-      );
-
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
-      expect(
-        screen.queryByTestId('upstream-lineage')
-      ).not.toBeInTheDocument();
-    });
-
-    it('handles loading state with non-zero counts', () => {
-      render(
-        <LineageSection downstreamCount={10} isLoading upstreamCount={20} />
-      );
-
-      expect(screen.getByTestId('loader')).toBeInTheDocument();
-      expect(
-        screen.queryByTestId('upstream-lineage')
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId('downstream-lineage')
-      ).not.toBeInTheDocument();
-    });
+    await waitFor(() =>
+      expect(getLineagePagingData).toHaveBeenCalledWith({
+        fqn: 'service.db.schema.table',
+        type: EntityType.TABLE,
+      })
+    );
   });
 });

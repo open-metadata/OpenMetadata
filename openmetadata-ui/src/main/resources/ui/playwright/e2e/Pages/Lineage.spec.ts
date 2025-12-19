@@ -114,10 +114,9 @@ for (const EntityClass of entities) {
           await rearrangeNodes(page);
         }
 
-        await page.reload();
         const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+        await page.reload();
         await lineageRes;
-        await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="edit-lineage"]', {
           state: 'visible',
         });
@@ -285,6 +284,9 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   const topicServiceNode = page.locator(
     `[data-testid="lineage-node-${topicServiceFqn}"]`
   );
+
+  // ensure node will be visible in the viewport
+  await performZoomOut(page);
 
   await expect(tableServiceNode).toBeVisible();
   await expect(topicServiceNode).toBeVisible();

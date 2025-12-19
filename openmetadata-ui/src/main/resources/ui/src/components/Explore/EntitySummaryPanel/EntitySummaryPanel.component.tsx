@@ -72,7 +72,6 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
-import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
@@ -291,7 +290,6 @@ export default function EntitySummaryPanel({
 
       setLineageData(response);
     } catch (error) {
-      // Only surface errors for the active entity.
       if (entityDetails?.details?.fullyQualifiedName === currentFqn) {
         showErrorToast(error as AxiosError);
         setLineageData(null);
@@ -435,9 +433,6 @@ export default function EntitySummaryPanel({
       fetchLineageData();
     } else if (activeTab === EntityRightPanelTab.OVERVIEW) {
       fetchEntityData();
-      if (entityType && ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
-        fetchLineageData();
-      }
     }
   }, [
     activeTab,
@@ -517,8 +512,6 @@ export default function EntitySummaryPanel({
         }
         entityType={type}
         highlights={highlights}
-        isLineageLoading={isLineageLoading}
-        lineageData={lineageData}
         panelPath={panelPath}
         onDataProductsUpdate={handleDataProductsUpdate}
         onDescriptionUpdate={handleDescriptionUpdate}
@@ -545,8 +538,6 @@ export default function EntitySummaryPanel({
     handleDescriptionUpdate,
     handleGlossaryTermsUpdate,
     handleLineageClick,
-    lineageData,
-    isLineageLoading,
   ]);
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),
