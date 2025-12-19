@@ -40,4 +40,5 @@ src/jsons/connectionSchemas/
 # generated type
 src/generated
 
-playwright/
+# docs
+playwright/doc-generator/

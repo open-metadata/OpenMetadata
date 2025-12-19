@@ -41,7 +41,6 @@ const PERSONA_DETAILS = {
 };
 
 const user = new UserClass();
-const persona = new PersonaClass();
 const persona1 = new PersonaClass();
 const persona2 = new PersonaClass();
 
@@ -315,34 +314,6 @@ test.describe.serial('Default persona setting and removal flow', () => {
     await persona2.create(apiContext, [user.responseData.id]);
     await afterAction();
   });
-
-  test.afterAll(
-    'Cleanup user and persona after default persona flow',
-    async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-
-      // Delete the persona that was created in the test
-      try {
-        // Set the persona data to match what was created in the test
-        persona.data = {
-          name: PERSONA_DETAILS.name,
-          displayName: PERSONA_DETAILS.displayName,
-          description: PERSONA_DETAILS.description,
-        };
-        await persona.delete(apiContext);
-      } catch (error) {
-        // Persona might already be deleted or not exist, continue with cleanup
-        // Silently continue with other cleanup operations
-      }
-
-      // Delete the user that was created in beforeAll
-      await user.delete(apiContext);
-      await persona1.delete(apiContext);
-      await persona2.delete(apiContext);
-
-      await afterAction();
-    }
-  );
 
   test('Set and remove default persona should work properly', async ({
     adminPage,

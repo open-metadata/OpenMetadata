@@ -50,6 +50,7 @@ import DataQualitySection from '../common/DataQualitySection/DataQualitySection'
 import DescriptionSection from '../common/DescriptionSection/DescriptionSection';
 import DomainsSection from '../common/DomainsSection/DomainsSection';
 import GlossaryTermsSection from '../common/GlossaryTermsSection/GlossaryTermsSection';
+import LineageSection from '../common/LineageSection/LineageSection';
 import Loader from '../common/Loader/Loader';
 import OverviewSection from '../common/OverviewSection/OverviewSection';
 import OwnersSection from '../common/OwnersSection/OwnersSection';
@@ -60,6 +61,7 @@ import {
   DataAssetSummaryPanelProps,
   TestCaseStatusCounts,
 } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
+import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
@@ -77,6 +79,7 @@ export const DataAssetSummaryPanelV1 = ({
   onGlossaryTermsUpdate,
   onDescriptionUpdate,
   onLinkClick,
+  onLineageClick,
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
@@ -163,6 +166,11 @@ export const DataAssetSummaryPanelV1 = ({
       entityType === EntityType.DASHBOARD ? chartsDetailsLoading : false
     );
   }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
+
+  const shouldShowLineageSection = useMemo(
+    () => ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType),
+    [entityType]
+  );
 
   const fetchIncidentCount = useCallback(async () => {
     if (
@@ -444,6 +452,14 @@ export const DataAssetSummaryPanelV1 = ({
                   }}
                 />
               )
+            )}
+            {shouldShowLineageSection && (
+              <LineageSection
+                entityFqn={dataAsset.fullyQualifiedName}
+                entityType={entityType}
+                key={`lineage-${dataAsset.id}`}
+                onLineageClick={onLineageClick}
+              />
             )}
             <div>
               <OwnersSection

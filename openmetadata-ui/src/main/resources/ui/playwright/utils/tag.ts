@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
@@ -515,4 +515,51 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   );
   await tagSelector.waitFor({ state: 'visible' });
   await tagSelector.click();
+};
+
+export const setTagDisabled = async (
+  apiContext: APIRequestContext,
+  tagId: string,
+  disabled: boolean
+) => {
+  await apiContext.patch(`/api/v1/tags/${tagId}`, {
+    data: [{ op: disabled ? 'add' : 'remove', path: '/disabled', value: true }],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+};
+
+export const setClassificationDisabled = async (
+  apiContext: APIRequestContext,
+  classificationName: string,
+  disabled: boolean
+) => {
+  const response = await apiContext.get(
+    `/api/v1/classifications/name/${encodeURIComponent(classificationName)}`
+  );
+  const classification = await response.json();
+
+  await apiContext.patch(`/api/v1/classifications/${classification.id}`, {
+    data: [{ op: disabled ? 'add' : 'remove', path: '/disabled', value: true }],
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+};
+
+export const getTagByFqn = async (
+  apiContext: APIRequestContext,
+  tagFqn: string
+) => {
+  const response = await apiContext.get(
+    `/api/v1/tags/name/${encodeURIComponent(tagFqn)}`
+  );
+
+  return await response.json();
+};
+
+export const setTagDisabledByFqn = async (
+  apiContext: APIRequestContext,
+  tagFqn: string,
+  disabled: boolean
+) => {
+  const tag = await getTagByFqn(apiContext, tagFqn);
+  await setTagDisabled(apiContext, tag.id, disabled);
 };
