@@ -452,11 +452,27 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       try {
         closeApprovalTask(updated, "Closed due to data product going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
+      }
     }
 
-    // Assets are not tracked via inline updates - they are managed through bulk APIs
-    // Search index updates for assets are triggered by the bulk APIs directly
+    // Update search indexes for assets when data product is renamed
+    if (!original.getName().equals(updated.getName())) {
+      updateAssetSearchIndexes(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+    }
+  }
+
+  private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
+    if (searchRepository != null) {
+      try {
+        searchRepository.getSearchClient().updateDataProductReferences(oldFqn, newFqn);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to update search indexes for data product rename from {} to {}: {}",
+            oldFqn,
+            newFqn,
+            e.getMessage());
+      }
+    }
   }
 
   public class DataProductUpdater extends EntityUpdater {
@@ -479,24 +495,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateName(original, updated);
-      // Assets cannot be updated via PUT/PATCH - use bulk APIs:
-      // PUT /v1/dataProducts/{name}/assets/add
-      // PUT /v1/dataProducts/{name}/assets/remove
     }
 
-    /**
-     * Handle data product rename. When a data product is renamed:
-     * 1. Check if another data product with the same name already exists
-     * 2. Update the FQN of the data product
-     * 3. Update entity links in feed/comments
-     * 4. Update search indexes for assets referencing this data product
-     */
     private void updateName(DataProduct original, DataProduct updated) {
       if (original.getName().equals(updated.getName())) {
         return;
       }
 
-      // Check if a data product with the new name already exists
       DataProduct existing = findByNameOrNull(FullyQualifiedName.quoteName(updated.getName()), ALL);
       if (existing != null && !existing.getId().equals(original.getId())) {
         throw new IllegalArgumentException(
@@ -504,53 +509,22 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       }
 
       String oldFqn = original.getFullyQualifiedName();
-
-      // Update FQN based on new name
       setFullyQualifiedName(updated);
       String newFqn = updated.getFullyQualifiedName();
 
       LOG.info("Data product name changed from {} to {}", original.getName(), updated.getName());
       LOG.info("Data product FQN changed from {} to {}", oldFqn, newFqn);
 
-      // Record the name change
       recordChange("name", original.getName(), updated.getName());
-
-      // Update entity links in feed/comments
       updateEntityLinks(oldFqn, newFqn);
-
-      // Update search indexes for assets that reference this data product
-      updateAssetSearchIndexes(oldFqn, newFqn);
     }
 
-    /**
-     * Update entity links in feed/comments when data product FQN changes.
-     */
     private void updateEntityLinks(String oldFqn, String newFqn) {
-      // Update field relationships that reference this data product
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
-
-      // Update feed entries with old entity link
       EntityLink newAbout = new EntityLink(DATA_PRODUCT, newFqn);
       daoCollection
           .feedDAO()
           .updateByEntityId(newAbout.getLinkString(), original.getId().toString());
-    }
-
-    /**
-     * Update search indexes for assets that have this data product in their dataProducts field.
-     */
-    private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
-      if (searchRepository != null) {
-        try {
-          searchRepository.getSearchClient().updateDataProductReferences(oldFqn, newFqn);
-        } catch (Exception e) {
-          LOG.warn(
-              "Failed to update search indexes for data product rename from {} to {}: {}",
-              oldFqn,
-              newFqn,
-              e.getMessage());
-        }
-      }
     }
   }
 
