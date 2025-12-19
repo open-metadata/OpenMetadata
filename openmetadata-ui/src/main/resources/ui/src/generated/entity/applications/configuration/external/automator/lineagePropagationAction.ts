@@ -71,6 +71,12 @@ export interface LineagePropagationAction {
      * Application Type
      */
     type: LineagePropagationActionType;
+    /**
+     * Use the optimized propagation algorithm that reduces memory usage and API calls.
+     * Recommended for large lineage graphs. If set to false, uses the original propagation
+     * algorithm. Default is true.
+     */
+    useOptimizedPropagation?: boolean;
 }
 
 /**
