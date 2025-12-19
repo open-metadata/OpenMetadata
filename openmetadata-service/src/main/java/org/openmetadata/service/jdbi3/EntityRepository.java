@@ -4419,7 +4419,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateEntityStatus(boolean consolidatingChanges) {
       if (supportsEntityStatus) {
-        if (original.getEntityStatus().equals(updated.getEntityStatus())) {
+        if (original.getEntityStatus() == updated.getEntityStatus()) {
           return;
         }
         // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
