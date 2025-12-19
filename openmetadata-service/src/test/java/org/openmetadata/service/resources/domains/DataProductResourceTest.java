@@ -1198,6 +1198,9 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     assertTrue(fetchedProduct.getInputPorts() == null || fetchedProduct.getInputPorts().isEmpty());
     assertTrue(
         fetchedProduct.getOutputPorts() == null || fetchedProduct.getOutputPorts().isEmpty());
+  }
+
+  @Test
   void test_getAllDataProductsWithAssetsCount(TestInfo test) throws IOException {
     String domainValidationRule = "Data Product Domain Validation";
     EntityResourceTest.toggleRule(domainValidationRule, false);
