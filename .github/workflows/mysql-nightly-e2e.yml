@@ -89,13 +89,14 @@ jobs:
               --project=DataAssetRulesDisabled
 
           else
-            # Shards 2-6 handle chromium tests (5 workers total)
-            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
-            echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
+            # Shards 2-6 handle firefox tests (5 workers total)
+            FIREFOX_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
+            echo "🔹 Running all tests (excluding DataAssetRules) on firefox shard ${FIREFOX_SHARD}/5"
             npx playwright test \
-              --project=chromium \
+              --project=firefox \
               --grep-invert @dataAssetRules \
-              --shard=${CHROMIUM_SHARD}/5
+              --shard=${FIREFOX_SHARD}/5
+              --workers=50%
           fi
 
         env:
