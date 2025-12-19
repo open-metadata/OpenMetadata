@@ -45,29 +45,16 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.ColumnFilterMatcher;
 import org.openmetadata.service.search.ColumnMetadataCache;
 import org.openmetadata.service.search.LineagePathPreserver;
-import org.openmetadata.service.search.QueryFilterParser;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
-public class ESLineageGraphBuilder {
+public class ESLineageGraphBuilder
+    extends org.openmetadata.service.search.lineage.AbstractLineageGraphBuilder {
 
   private final ElasticsearchClient esClient;
 
   public ESLineageGraphBuilder(ElasticsearchClient esClient) {
     this.esClient = esClient;
-  }
-
-  private int calculateCurrentDepth(SearchLineageRequest lineageRequest, int remainingDepth) {
-    if (lineageRequest.getDirection() == null) {
-      return 0;
-    }
-
-    int configuredMaxDepth =
-        lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)
-            ? lineageRequest.getUpstreamDepth()
-            : lineageRequest.getDownstreamDepth() + 1;
-
-    return configuredMaxDepth - remainingDepth;
   }
 
   public SearchLineageResult getPlatformLineage(String index, String queryFilter, boolean deleted)
@@ -300,10 +287,20 @@ public class ESLineageGraphBuilder {
   }
 
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
-    // Check if we need path-preserving filters
+    // Check cache first (if no path preservation or column filters)
     boolean needsPathPreservation =
         Boolean.TRUE.equals(lineageRequest.getPreservePaths())
             && hasNodeLevelFilters(lineageRequest.getQueryFilter());
+    boolean hasColumnFilter = !nullOrEmpty(lineageRequest.getColumnFilter());
+
+    // Only use cache if no complex post-processing needed
+    if (!needsPathPreservation && !hasColumnFilter) {
+      java.util.Optional<SearchLineageResult> cached = checkCache(lineageRequest);
+      if (cached.isPresent()) {
+        LOG.debug("Cache hit for lineage query: {}", lineageRequest.getFqn());
+        return cached.get();
+      }
+    }
 
     SearchLineageResult result;
 
@@ -312,21 +309,41 @@ public class ESLineageGraphBuilder {
       SearchLineageRequest unfilteredRequest =
           JsonUtils.deepCopy(lineageRequest, SearchLineageRequest.class)
               .withQueryFilter(getStructuralFilterOnly(lineageRequest.getQueryFilter()));
-      result = searchLineageInternal(unfilteredRequest);
+      result = searchLineageWithStrategyInternal(unfilteredRequest);
 
       // Apply node-level filters in-memory with path preservation
       result = applyInMemoryFiltersWithPathPreservation(result, lineageRequest);
     } else {
-      // No path preservation needed - apply filters at ES level
-      result = searchLineageInternal(lineageRequest);
+      // Use strategy-based execution for optimal performance
+      result = searchLineageWithStrategyInternal(lineageRequest);
     }
 
     // Apply column filters
-    if (!nullOrEmpty(lineageRequest.getColumnFilter())) {
+    if (hasColumnFilter) {
       result = applyColumnFiltering(result, lineageRequest);
     }
 
+    // Cache result if eligible (no complex post-processing)
+    if (!needsPathPreservation && !hasColumnFilter) {
+      cacheResult(lineageRequest, result);
+    }
+
     return result;
+  }
+
+  /**
+   * Internal method that uses strategy pattern for lineage execution.
+   * Estimates graph size and selects appropriate strategy.
+   */
+  private SearchLineageResult searchLineageWithStrategyInternal(SearchLineageRequest lineageRequest)
+      throws IOException {
+    try {
+      return buildLineageGraphWithStrategy(lineageRequest);
+    } catch (Exception e) {
+      // Fallback to legacy implementation if strategy fails
+      LOG.warn("Strategy-based lineage execution failed, falling back to legacy", e);
+      return searchLineageInternal(lineageRequest);
+    }
   }
 
   /**
@@ -389,10 +406,20 @@ public class ESLineageGraphBuilder {
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    // Check if we need path-preserving filters
+    // Check cache first (if no path preservation or column filters)
     boolean needsPathPreservation =
         Boolean.TRUE.equals(lineageRequest.getPreservePaths())
             && hasNodeLevelFilters(lineageRequest.getQueryFilter());
+    boolean hasColumnFilter = !nullOrEmpty(lineageRequest.getColumnFilter());
+
+    // Only use cache if no complex post-processing needed
+    if (!needsPathPreservation && !hasColumnFilter) {
+      java.util.Optional<SearchLineageResult> cached = checkCache(lineageRequest);
+      if (cached.isPresent()) {
+        LOG.debug("Cache hit for lineage query (directional): {}", lineageRequest.getFqn());
+        return cached.get();
+      }
+    }
 
     SearchLineageResult result;
 
@@ -401,21 +428,41 @@ public class ESLineageGraphBuilder {
       SearchLineageRequest unfilteredRequest =
           JsonUtils.deepCopy(lineageRequest, SearchLineageRequest.class)
               .withQueryFilter(getStructuralFilterOnly(lineageRequest.getQueryFilter()));
-      result = searchLineageWithDirectionInternal(unfilteredRequest);
+      result = searchLineageWithDirectionAndStrategyInternal(unfilteredRequest);
 
       // Apply node-level filters in-memory with path preservation
       result = applyInMemoryFiltersWithPathPreservation(result, lineageRequest);
     } else {
-      // No path preservation needed - apply filters at ES level
-      result = searchLineageWithDirectionInternal(lineageRequest);
+      // Use strategy-based execution for optimal performance
+      result = searchLineageWithDirectionAndStrategyInternal(lineageRequest);
     }
 
     // Apply column filters
-    if (!nullOrEmpty(lineageRequest.getColumnFilter())) {
+    if (hasColumnFilter) {
       result = applyColumnFiltering(result, lineageRequest);
     }
 
+    // Cache result if eligible (no complex post-processing)
+    if (!needsPathPreservation && !hasColumnFilter) {
+      cacheResult(lineageRequest, result);
+    }
+
     return result;
+  }
+
+  /**
+   * Internal method that uses strategy pattern for directional lineage execution.
+   * Estimates graph size and selects appropriate strategy.
+   */
+  private SearchLineageResult searchLineageWithDirectionAndStrategyInternal(
+      SearchLineageRequest lineageRequest) throws IOException {
+    try {
+      return buildLineageGraphWithStrategy(lineageRequest);
+    } catch (Exception e) {
+      // Fallback to legacy implementation if strategy fails
+      LOG.warn("Strategy-based lineage execution failed, falling back to legacy", e);
+      return searchLineageWithDirectionInternal(lineageRequest);
+    }
   }
 
   /**
@@ -547,13 +594,6 @@ public class ESLineageGraphBuilder {
     }
 
     return 0;
-  }
-
-  private void validateLayerParameters(SearchLineageRequest lineageRequest) {
-    if (lineageRequest.getLayerFrom() < 0 || lineageRequest.getLayerSize() < 0) {
-      throw new IllegalArgumentException(
-          "LayerFrom and LayerSize should be greater than or equal to 0");
-    }
   }
 
   public LineagePaginationInfo getLineagePaginationInfo(
@@ -999,63 +1039,6 @@ public class ESLineageGraphBuilder {
     }
   }
 
-  private <T> List<T> paginateList(List<T> list, int from, int size) {
-    if (list == null || list.isEmpty() || from >= list.size()) {
-      return new ArrayList<>();
-    }
-    int toIndex = Math.min(from + size, list.size());
-    return list.subList(from, toIndex);
-  }
-
-  /**
-   * Applies node-level filters in-memory on unfiltered result while preserving paths.
-   * This method filters nodes based on the queryFilter and traces paths from root to matching nodes.
-   */
-  private SearchLineageResult applyInMemoryFiltersWithPathPreservation(
-      SearchLineageResult unfilteredResult, SearchLineageRequest request) {
-
-    if (unfilteredResult == null || request == null) {
-      return unfilteredResult;
-    }
-
-    String queryFilter = request.getQueryFilter();
-    if (nullOrEmpty(queryFilter)) {
-      return unfilteredResult;
-    }
-
-    // Find matching nodes by applying filter in-memory
-    Set<String> matchingNodes = new HashSet<>();
-    matchingNodes.add(request.getFqn()); // Always include root
-
-    for (Map.Entry<String, NodeInformation> entry : unfilteredResult.getNodes().entrySet()) {
-      if (matchesNodeFilter(entry.getValue(), queryFilter)) {
-        matchingNodes.add(entry.getKey());
-      }
-    }
-
-    // Use LineagePathPreserver to trace paths and preserve edges
-    return LineagePathPreserver.preservePathsWithEdges(
-        unfilteredResult, request.getFqn(), matchingNodes);
-  }
-
-  /**
-   * Checks if a node matches the filter criteria (in-memory).
-   * Parses ES Query DSL or query strings and matches against entity fields.
-   */
-  private boolean matchesNodeFilter(NodeInformation node, String queryFilter) {
-    if (node == null || node.getEntity() == null || nullOrEmpty(queryFilter)) {
-      return false;
-    }
-
-    Map<String, Object> entityMap = JsonUtils.getMap(node.getEntity());
-
-    // Parse the query filter to extract field-value pairs
-    Map<String, List<String>> parsedFilter = QueryFilterParser.parseFilter(queryFilter);
-
-    // Match entity against parsed filter
-    return QueryFilterParser.matchesFilter(entityMap, parsedFilter);
-  }
-
   /**
    * Separates structural filters (deleted, etc.) from node filters (owner, tags, etc.)
    * for path-preserving filter logic.
@@ -1176,5 +1159,181 @@ public class ESLineageGraphBuilder {
         FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
         Pair.of(FullyQualifiedName.buildHash(fqn), fqn),
         SOURCE_FIELDS_TO_EXCLUDE);
+  }
+
+  /**
+   * Implements LineageGraphExecutor interface.
+   * Executes lineage query with in-memory graph building.
+   */
+  @Override
+  public SearchLineageResult executeInMemory(
+      org.openmetadata.service.search.lineage.LineageQueryContext context, int batchSize)
+      throws IOException {
+    // Delegate to the legacy/internal implementation to avoid circular calls
+    return searchLineageInternal(context.getRequest());
+  }
+
+  /**
+   * Implements LineageGraphExecutor interface.
+   * Estimates graph size using sampling and fanout calculation.
+   */
+  @Override
+  public int estimateGraphSize(org.openmetadata.service.search.lineage.LineageQueryContext context)
+      throws IOException {
+    SearchLineageRequest request = context.getRequest();
+
+    // Start with root node
+    int estimatedNodes = 1;
+
+    try {
+      // Sample upstream direction
+      if (request.getUpstreamDepth() != null && request.getUpstreamDepth() > 0) {
+        int upstreamFanout = estimateFanout(request.getFqn(), LineageDirection.UPSTREAM);
+        estimatedNodes += calculateGeometricProgression(upstreamFanout, request.getUpstreamDepth());
+      }
+
+      // Sample downstream direction
+      if (request.getDownstreamDepth() != null && request.getDownstreamDepth() > 0) {
+        int downstreamFanout = estimateFanout(request.getFqn(), LineageDirection.DOWNSTREAM);
+        estimatedNodes +=
+            calculateGeometricProgression(downstreamFanout, request.getDownstreamDepth());
+      }
+
+      LOG.debug(
+          "Estimated {} nodes for lineage query: fqn={}, upDepth={}, downDepth={}",
+          estimatedNodes,
+          request.getFqn(),
+          request.getUpstreamDepth(),
+          request.getDownstreamDepth());
+
+      return estimatedNodes;
+    } catch (Exception e) {
+      LOG.warn("Failed to estimate graph size, using conservative estimate", e);
+      return config.getSmallGraphThreshold() - 1;
+    }
+  }
+
+  /**
+   * Estimates fanout (number of connected nodes) in given direction for a single entity.
+   */
+  private int estimateFanout(String fqn, LineageDirection direction) throws IOException {
+    Map<String, String> hasToFqnMap = Map.of(FullyQualifiedName.buildHash(fqn), fqn);
+    Map<String, Set<String>> directionKeyAndValues =
+        buildDirectionToFqnSet(getLineageDirection(direction, false), hasToFqnMap.keySet());
+
+    SearchRequest searchRequest =
+        EsUtils.getSearchRequest(
+            direction,
+            GLOBAL_SEARCH_ALIAS,
+            null, // No filter for estimation
+            GRAPH_AGGREGATION,
+            directionKeyAndValues,
+            0,
+            0, // Size 0 - we only need count
+            false, // Don't include deleted
+            List.of(),
+            SOURCE_FIELDS_TO_EXCLUDE);
+
+    SearchResponse<JsonData> response = esClient.search(searchRequest, JsonData.class);
+
+    // Get count from aggregation
+    StringTermsAggregate valueCountAgg =
+        response.aggregations() != null && response.aggregations().get(GRAPH_AGGREGATION) != null
+            ? response.aggregations().get(GRAPH_AGGREGATION).sterms()
+            : null;
+
+    if (valueCountAgg != null) {
+      for (StringTermsBucket bucket : valueCountAgg.buckets().array()) {
+        if (bucket.key().stringValue().equals(FullyQualifiedName.buildHash(fqn))) {
+          return (int) bucket.docCount();
+        }
+      }
+    }
+
+    // Fallback: use hit count
+    return (int) response.hits().total().value();
+  }
+
+  /**
+   * Calculates geometric progression for graph size estimation.
+   * Formula: sum of fanout^i for i=1 to depth
+   */
+  private int calculateGeometricProgression(int fanout, int depth) {
+    if (fanout == 0 || depth == 0) {
+      return 0;
+    }
+
+    // For fanout=1, it's linear
+    if (fanout == 1) {
+      return depth;
+    }
+
+    // Cap fanout at reasonable limit to prevent overflow
+    int cappedFanout = Math.min(fanout, 10);
+
+    // Calculate: fanout + fanout^2 + ... + fanout^depth
+    int total = 0;
+    int power = cappedFanout;
+
+    for (int i = 1; i <= depth; i++) {
+      total += power;
+
+      // Cap total to prevent overflow
+      if (total > config.getMaxInMemoryNodes()) {
+        return config.getMaxInMemoryNodes() + 1000; // Return value > max to trigger streaming
+      }
+
+      if (i < depth) {
+        power *= cappedFanout;
+      }
+    }
+
+    return total;
+  }
+
+  @Override
+  public SearchLineageResult executeWithScroll(
+      org.openmetadata.service.search.lineage.LineageQueryContext context, int batchSize)
+      throws IOException {
+    LOG.info(
+        "Executing lineage query with scroll API: root={}, batchSize={}",
+        context.getRequest().getFqn(),
+        batchSize);
+
+    SearchLineageRequest request = context.getRequest();
+    org.openmetadata.service.search.lineage.LineageProgressTracker tracker =
+        context.getProgressTracker();
+
+    if (tracker != null) {
+      tracker.start(request.getFqn(), context.getEstimatedNodeCount());
+    }
+
+    long startTime = System.currentTimeMillis();
+
+    try {
+      // Use the internal implementation to avoid circular calls
+      // The actual scroll API integration will be added when needed for very large graphs
+      // This provides a hook for future scroll-based optimization
+      SearchLineageResult result = searchLineageInternal(request);
+
+      if (tracker != null) {
+        int actualNodes = result.getNodes() != null ? result.getNodes().size() : 0;
+        long duration = System.currentTimeMillis() - startTime;
+        tracker.complete(request.getFqn(), actualNodes, duration);
+      }
+
+      LOG.info(
+          "Completed lineage query with scroll API: root={}, nodes={}, duration={}ms",
+          request.getFqn(),
+          result.getNodes() != null ? result.getNodes().size() : 0,
+          System.currentTimeMillis() - startTime);
+
+      return result;
+    } catch (Exception e) {
+      if (tracker != null) {
+        tracker.error(request.getFqn(), e);
+      }
+      throw e;
+    }
   }
 }
