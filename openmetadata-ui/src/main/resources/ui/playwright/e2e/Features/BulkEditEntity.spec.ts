@@ -627,8 +627,11 @@ test.describe('Bulk Edit Entity', () => {
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
+      // Wait for the export API call to complete
+      const response = page.waitForResponse(
+        `/api/v1/glossaries/name`
+      );
+      await response;
 
       // Click on first cell and edit
       await page.click('.rdg-cell[role="gridcell"]');
@@ -751,8 +754,11 @@ test.describe('Bulk Edit Entity', () => {
         page.getByRole('button', { name: 'Previous' })
       ).not.toBeVisible();
 
-      // Adding manual wait for the file to load
-      await page.waitForTimeout(500);
+      // Wait for the export API call to complete
+      const response = page.waitForResponse(
+        `/api/v1/glossaryTerms/name`
+      );
+      await response;
 
       // Click on first cell and edit
       await page.click('.rdg-cell[role="gridcell"]');
