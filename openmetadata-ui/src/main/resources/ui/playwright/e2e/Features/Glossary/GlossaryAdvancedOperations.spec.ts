@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page } from '@playwright/test';
+import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../../support/entity/Entity.interface';
@@ -36,18 +36,6 @@ import { sidebarClick } from '../../../utils/sidebar';
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
-
-async function setupGlossaryAndTerm(page: Page) {
-  const { apiContext, afterAction } = await getApiContext(page);
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-
-  await glossary.create(apiContext);
-  await glossaryTerm.create(apiContext);
-  await afterAction();
-
-  return { glossary, glossaryTerm };
-}
 
 test.describe('Glossary Advanced Operations', () => {
   test.beforeEach(async ({ page }) => {
@@ -809,520 +797,538 @@ test.describe('Glossary Advanced Operations', () => {
   });
 
   // T-U11: Edit reference URL
-  test.describe('Edit Reference URL', () => {
-    test('should edit reference URL', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const { glossary, glossaryTerm } = await setupGlossaryAndTerm(page);
+  test('should edit reference URL', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-      try {
-        // Add reference
-        await glossaryTerm.patch(apiContext, [
-          {
-            op: 'add',
-            path: '/references',
-            value: [{ name: 'TestRef', endpoint: 'http://old-url.com' }],
-          },
-        ]);
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      // Add reference
+      await glossaryTerm.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/references',
+          value: [{ name: 'TestRef', endpoint: 'http://old-url.com' }],
+        },
+      ]);
 
-        // Navigate to term details
-        await selectActiveGlossaryTerm(
-          page,
-          glossaryTerm.responseData.displayName
-        );
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        // Click edit button for references
-        await page
-          .getByTestId('references-container')
-          .getByTestId('edit-button')
-          .click();
+      // Navigate to term details
+      await selectActiveGlossaryTerm(
+        page,
+        glossaryTerm.responseData.displayName
+      );
 
-        await expect(
-          page
-            .getByTestId('glossary-term-references-modal')
-            .getByText('References')
-        ).toBeVisible();
+      // Click edit button for references
+      await page
+        .getByTestId('references-container')
+        .getByTestId('edit-button')
+        .click();
 
-        // Verify old URL
-        await expect(page.locator('#references_0_endpoint')).toHaveValue(
-          'http://old-url.com'
-        );
+      await expect(
+        page
+          .getByTestId('glossary-term-references-modal')
+          .getByText('References')
+      ).toBeVisible();
 
-        // Update the reference URL
-        await page.locator('#references_0_endpoint').clear();
-        await page.locator('#references_0_endpoint').fill('http://new-url.com');
+      // Verify old URL
+      await expect(page.locator('#references_0_endpoint')).toHaveValue(
+        'http://old-url.com'
+      );
 
-        const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-        await page.getByTestId('save-btn').click();
-        await saveRes;
+      // Update the reference URL
+      await page.locator('#references_0_endpoint').clear();
+      await page.locator('#references_0_endpoint').fill('http://new-url.com');
 
-        // Verify the reference link has updated URL
-        const refLink = page.getByTestId('reference-link-TestRef');
+      const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await page.getByTestId('save-btn').click();
+      await saveRes;
 
-        await expect(refLink).toBeVisible();
-        await expect(refLink).toHaveAttribute('href', 'http://new-url.com');
-      } finally {
-        await afterAction();
-      }
-    });
+      // Verify the reference link has updated URL
+      const refLink = page.getByTestId('reference-link-TestRef');
+
+      await expect(refLink).toBeVisible();
+      await expect(refLink).toHaveAttribute('href', 'http://new-url.com');
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // T-U12: Remove individual reference
-  test.describe('Remove Individual Reference', () => {
-    test('should remove individual reference from term', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const { glossary, glossaryTerm } = await setupGlossaryAndTerm(page);
+  test('should remove individual reference from term', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-      try {
-        // Add references
-        await glossaryTerm.patch(apiContext, [
-          {
-            op: 'add',
-            path: '/references',
-            value: [
-              { name: 'KeepRef', endpoint: 'http://keep.com' },
-              { name: 'RemoveRef', endpoint: 'http://remove.com' },
-            ],
-          },
-        ]);
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      // Add references
+      await glossaryTerm.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/references',
+          value: [
+            { name: 'KeepRef', endpoint: 'http://keep.com' },
+            { name: 'RemoveRef', endpoint: 'http://remove.com' },
+          ],
+        },
+      ]);
 
-        // Navigate to term details
-        await selectActiveGlossaryTerm(
-          page,
-          glossaryTerm.responseData.displayName
-        );
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        // Verify both references are visible
-        await expect(page.getByTestId('reference-link-KeepRef')).toBeVisible();
-        await expect(
-          page.getByTestId('reference-link-RemoveRef')
-        ).toBeVisible();
+      // Navigate to term details
+      await selectActiveGlossaryTerm(
+        page,
+        glossaryTerm.responseData.displayName
+      );
 
-        // Click edit button for references
-        await page
-          .getByTestId('references-container')
-          .getByTestId('edit-button')
-          .click();
+      // Verify both references are visible
+      await expect(page.getByTestId('reference-link-KeepRef')).toBeVisible();
+      await expect(page.getByTestId('reference-link-RemoveRef')).toBeVisible();
 
-        await expect(
-          page
-            .getByTestId('glossary-term-references-modal')
-            .getByText('References')
-        ).toBeVisible();
+      // Click edit button for references
+      await page
+        .getByTestId('references-container')
+        .getByTestId('edit-button')
+        .click();
 
-        // Click the delete button for the second reference (index 1)
-        await page.getByTestId('delete-ref-btn').nth(1).click();
+      await expect(
+        page
+          .getByTestId('glossary-term-references-modal')
+          .getByText('References')
+      ).toBeVisible();
 
-        const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-        await page.getByTestId('save-btn').click();
-        await saveRes;
+      // Click the delete button for the second reference (index 1)
+      await page.getByTestId('delete-ref-btn').nth(1).click();
 
-        // Verify only RemoveRef is removed
-        await expect(page.getByTestId('reference-link-KeepRef')).toBeVisible();
-        await expect(
-          page.getByTestId('reference-link-RemoveRef')
-        ).not.toBeVisible();
-      } finally {
-        await afterAction();
-      }
-    });
+      const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await page.getByTestId('save-btn').click();
+      await saveRes;
+
+      // Verify only RemoveRef is removed
+      await expect(page.getByTestId('reference-link-KeepRef')).toBeVisible();
+      await expect(
+        page.getByTestId('reference-link-RemoveRef')
+      ).not.toBeVisible();
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // T-U14: Remove related term
-  test.describe('Remove Related Term', () => {
-    test('should remove related term', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const glossary = new Glossary();
-      const glossaryTerm = new GlossaryTerm(glossary);
-      const relatedTerm = new GlossaryTerm(glossary);
+  test('should remove related term', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const relatedTerm = new GlossaryTerm(glossary);
 
-      try {
-        await glossary.create(apiContext);
-        await glossaryTerm.create(apiContext);
-        await relatedTerm.create(apiContext);
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await relatedTerm.create(apiContext);
 
-        // Add related term
-        await glossaryTerm.patch(apiContext, [
-          {
-            op: 'add',
-            path: '/relatedTerms',
-            value: [
-              {
-                id: relatedTerm.responseData.id,
-                type: 'glossaryTerm',
-              },
-            ],
-          },
-        ]);
+      // Add related term
+      await glossaryTerm.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/relatedTerms',
+          value: [
+            {
+              id: relatedTerm.responseData.id,
+              type: 'glossaryTerm',
+            },
+          ],
+        },
+      ]);
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        await selectActiveGlossaryTerm(
-          page,
-          glossaryTerm.responseData.displayName
-        );
+      await selectActiveGlossaryTerm(
+        page,
+        glossaryTerm.responseData.displayName
+      );
 
-        // Verify related term is visible
-        await expect(
-          page
-            .getByTestId('related-term-container')
-            .getByTestId(relatedTerm.responseData.displayName)
-        ).toBeVisible();
-
-        // Click edit button for related terms
-        await page
+      // Verify related term is visible
+      await expect(
+        page
           .getByTestId('related-term-container')
-          .getByTestId('edit-button')
-          .click();
+          .getByTestId(relatedTerm.responseData.displayName)
+      ).toBeVisible();
 
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+      // Click edit button for related terms
+      await page
+        .getByTestId('related-term-container')
+        .getByTestId('edit-button')
+        .click();
 
-        // Clear all related terms
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        await page
-          .getByTestId('tag-selector')
-          .locator('#tagsForm_tags')
-          .press('Backspace');
-        await page
-          .getByTestId('tag-selector')
-          .locator('#tagsForm_tags')
-          .press('Backspace');
-        await page
-          .getByTestId('tag-selector')
-          .locator('#tagsForm_tags')
-          .press('Backspace');
+      // Clear all related terms
 
-        const validateRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-        await page.getByTestId('saveAssociatedTag').click();
-        await validateRes;
+      await page
+        .getByTestId('tag-selector')
+        .locator('#tagsForm_tags')
+        .press('Backspace');
+      await page
+        .getByTestId('tag-selector')
+        .locator('#tagsForm_tags')
+        .press('Backspace');
+      await page
+        .getByTestId('tag-selector')
+        .locator('#tagsForm_tags')
+        .press('Backspace');
 
-        // Verify related term is removed
-        await expect(
-          page
-            .getByTestId('related-term-container')
-            .getByTestId(relatedTerm.responseData.displayName)
-        ).not.toBeVisible();
-      } finally {
-        await afterAction();
-      }
-    });
+      const validateRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await page.getByTestId('saveAssociatedTag').click();
+      await validateRes;
+
+      // Verify related term is removed
+      await expect(
+        page
+          .getByTestId('related-term-container')
+          .getByTestId(relatedTerm.responseData.displayName)
+      ).not.toBeVisible();
+    } finally {
+      await relatedTerm.delete(apiContext);
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // T-U19: Remove owner from term
-  test.describe('Remove Term Owner', () => {
-    test('should remove owner from term', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const { glossary, glossaryTerm } = await setupGlossaryAndTerm(page);
-      const user = new UserClass();
+  test('should remove owner from term', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const user = new UserClass();
 
-      try {
-        await user.create(apiContext);
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await user.create(apiContext);
 
-        // Add owner to term
-        await glossaryTerm.patch(apiContext, [
-          {
-            op: 'add',
-            path: '/owners/0',
-            value: {
-              id: user.responseData.id,
-              type: 'user',
-            },
+      // Add owner to term
+      await glossaryTerm.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/owners/0',
+          value: {
+            id: user.responseData.id,
+            type: 'user',
           },
-        ]);
+        },
+      ]);
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        // Navigate to term details
-        await selectActiveGlossaryTerm(
-          page,
-          glossaryTerm.responseData.displayName
-        );
+      // Navigate to term details
+      await selectActiveGlossaryTerm(
+        page,
+        glossaryTerm.responseData.displayName
+      );
 
-        // Verify owner is visible
-        await expect(
-          page
-            .getByTestId('glossary-right-panel-owner-link')
-            .getByTestId(user.getUserDisplayName())
-        ).toBeVisible();
+      // Verify owner is visible
+      await expect(
+        page
+          .getByTestId('glossary-right-panel-owner-link')
+          .getByTestId(user.getUserDisplayName())
+      ).toBeVisible();
 
-        // Click edit owner button
-        await page.getByTestId('edit-owner').click();
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+      // Click edit owner button
+      await page.getByTestId('edit-owner').click();
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        // Clear all owners
-        await page.click('[data-testid="clear-all-button"]');
+      // Clear all owners
+      await page.click('[data-testid="clear-all-button"]');
 
-        const patchResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-        await page.getByTestId('selectable-list-update-btn').click();
-        await patchResponse;
+      const patchResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await page.getByTestId('selectable-list-update-btn').click();
+      await patchResponse;
 
-        // Verify owner is removed
-        await expect(
-          page
-            .getByTestId('glossary-right-panel-owner-link')
-            .getByTestId(user.getUserDisplayName())
-        ).not.toBeVisible();
-      } finally {
-        await afterAction();
-      }
-    });
+      // Verify owner is removed
+      await expect(
+        page
+          .getByTestId('glossary-right-panel-owner-link')
+          .getByTestId(user.getUserDisplayName())
+      ).not.toBeVisible();
+    } finally {
+      await user.delete(apiContext);
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // T-U21: Remove reviewer from term
-  test.describe('Remove Term Reviewer', () => {
-    test('should remove reviewer from term', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const { glossary, glossaryTerm } = await setupGlossaryAndTerm(page);
-      const user = new UserClass();
+  test('should remove reviewer from term', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const user = new UserClass();
 
-      try {
-        await user.create(apiContext);
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await user.create(apiContext);
 
-        // Add reviewer to term
-        await glossaryTerm.patch(apiContext, [
-          {
-            op: 'add',
-            path: '/reviewers/0',
-            value: {
-              id: user.responseData.id,
-              type: 'user',
-            },
+      // Add reviewer to term
+      await glossaryTerm.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/reviewers/0',
+          value: {
+            id: user.responseData.id,
+            type: 'user',
           },
-        ]);
+        },
+      ]);
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        // Navigate to term details
-        await selectActiveGlossaryTerm(
-          page,
-          glossaryTerm.responseData.displayName
-        );
+      // Navigate to term details
+      await selectActiveGlossaryTerm(
+        page,
+        glossaryTerm.responseData.displayName
+      );
 
-        // Verify reviewer is visible
-        await expect(
-          page
-            .getByTestId('glossary-reviewer')
-            .getByText(user.getUserDisplayName())
-        ).toBeVisible();
+      // Verify reviewer is visible
+      await expect(
+        page
+          .getByTestId('glossary-reviewer')
+          .getByText(user.getUserDisplayName())
+      ).toBeVisible();
 
-        // Click edit reviewer button
-        await page.getByTestId('edit-reviewer-button').click();
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+      // Click edit reviewer button
+      await page.getByTestId('edit-reviewer-button').click();
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        // Clear all reviewers
-        await page.click('[data-testid="clear-all-button"]');
+      // Clear all reviewers
+      await page.click('[data-testid="clear-all-button"]');
 
-        const patchResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-        await page.click('[data-testid="selectable-list-update-btn"]');
-        await patchResponse;
+      const patchResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await page.click('[data-testid="selectable-list-update-btn"]');
+      await patchResponse;
 
-        // Verify reviewer is removed
-        await expect(
-          page
-            .getByTestId('glossary-reviewer')
-            .getByText(user.getUserDisplayName())
-        ).not.toBeVisible();
-      } finally {
-        await afterAction();
-      }
-    });
+      // Verify reviewer is removed
+      await expect(
+        page
+          .getByTestId('glossary-reviewer')
+          .getByText(user.getUserDisplayName())
+      ).not.toBeVisible();
+    } finally {
+      await user.delete(apiContext);
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // T-C13: Create term with related terms
-  test.describe('Create Term with Related Terms', () => {
-    test('should create term with related terms', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const glossary = new Glossary();
-      const existingTerm = new GlossaryTerm(glossary);
+  test('should create term with related terms', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const existingTerm = new GlossaryTerm(glossary);
 
-      try {
-        await glossary.create(apiContext);
-        await existingTerm.create(apiContext);
+    try {
+      await glossary.create(apiContext);
+      await existingTerm.create(apiContext);
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        await openAddGlossaryTermModal(page);
+      await openAddGlossaryTermModal(page);
 
-        const termName = `RelatedTerm${Date.now()}`;
-        await page.fill('[data-testid="name"]', termName);
-        await page.locator(descriptionBox).fill('Term with related terms');
+      const termName = `RelatedTerm${Date.now()}`;
+      await page.fill('[data-testid="name"]', termName);
+      await page.locator(descriptionBox).fill('Term with related terms');
 
-        const searchResponse = page.waitForResponse('/api/v1/search/query*');
+      const searchResponse = page.waitForResponse('/api/v1/search/query*');
 
-        await page.getByTestId('related-terms').click();
+      await page.getByTestId('related-terms').click();
 
-        // Add related term
-        await page
-          .getByTestId('related-terms')
-          .locator('input')
-          .fill(existingTerm.responseData.displayName);
+      // Add related term
+      await page
+        .getByTestId('related-terms')
+        .locator('input')
+        .fill(existingTerm.responseData.displayName);
 
-        await searchResponse;
+      await searchResponse;
 
-        // Select the term
-        await page
-          .getByTestId(`tag-${existingTerm.responseData.fullyQualifiedName}`)
-          .click();
+      // Select the term
+      await page
+        .getByTestId(`tag-${existingTerm.responseData.fullyQualifiedName}`)
+        .click();
 
-        await clickOutside(page);
+      await clickOutside(page);
 
-        const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-        await page.click('[data-testid="save-glossary-term"]');
-        const response = await createResponse;
-        const responseData = await response.json();
+      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
+      await page.click('[data-testid="save-glossary-term"]');
+      const response = await createResponse;
+      const responseData = await response.json();
 
-        // Verify related terms were saved
-        expect(responseData.relatedTerms).toBeDefined();
-        expect(responseData.relatedTerms.length).toBeGreaterThan(0);
+      // Verify related terms were saved
+      expect(responseData.relatedTerms).toBeDefined();
+      expect(responseData.relatedTerms.length).toBeGreaterThan(0);
 
-        // Verify term is created
-        await expect(page.getByTestId(termName)).toBeVisible();
-      } finally {
-        await afterAction();
-      }
-    });
+      // Verify term is created
+      await expect(page.getByTestId(termName)).toBeVisible();
+    } finally {
+      await existingTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // T-U17: Remove tags from term
-  test.describe('Remove Tags from Term', () => {
-    test('should remove tags from term', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const { glossary, glossaryTerm } = await setupGlossaryAndTerm(page);
+  test('should remove tags from term', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
-      try {
-        // Add tags to term
-        await glossaryTerm.patch(apiContext, [
-          {
-            op: 'add',
-            path: '/tags/0',
-            value: {
-              tagFQN: 'PII.Sensitive',
-              source: 'Classification',
-            },
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      // Add tags to term
+      await glossaryTerm.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            tagFQN: 'PII.Sensitive',
+            source: 'Classification',
           },
-        ]);
+        },
+      ]);
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        // Navigate to term details
-        await selectActiveGlossaryTerm(
-          page,
-          glossaryTerm.responseData.displayName
-        );
+      // Navigate to term details
+      await selectActiveGlossaryTerm(
+        page,
+        glossaryTerm.responseData.displayName
+      );
 
-        // Verify tag is visible
-        await expect(page.getByTestId('tag-PII.Sensitive')).toBeVisible();
+      // Verify tag is visible
+      await expect(page.getByTestId('tag-PII.Sensitive')).toBeVisible();
 
-        // Click edit button for tags
-        await page
-          .getByTestId('tags-container')
-          .getByTestId('edit-button')
-          .click();
-        await page.waitForSelector('[data-testid="tag-selector"]');
+      // Click edit button for tags
+      await page
+        .getByTestId('tags-container')
+        .getByTestId('edit-button')
+        .click();
+      await page.waitForSelector('[data-testid="tag-selector"]');
 
-        // Remove the tag by clicking its close button
-        await page.getByTestId('remove-tags').locator('svg').click();
+      // Remove the tag by clicking its close button
+      await page.getByTestId('remove-tags').locator('svg').click();
 
-        await page.getByTestId('saveAssociatedTag').click();
+      await page.getByTestId('saveAssociatedTag').click();
 
-        await expect(page.getByRole('heading')).toContainText(
-          'Would you like to proceed with updating the tags?'
-        );
+      await expect(page.getByRole('heading')).toContainText(
+        'Would you like to proceed with updating the tags?'
+      );
 
-        const validateRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-        await page.getByRole('button', { name: 'Yes, confirm' }).click();
-        await validateRes;
+      const validateRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await page.getByRole('button', { name: 'Yes, confirm' }).click();
+      await validateRes;
 
-        // Verify tag is removed
-        await expect(page.getByTestId('tag-PII.Sensitive')).not.toBeVisible();
-      } finally {
-        await afterAction();
-      }
-    });
+      // Verify tag is removed
+      await expect(page.getByTestId('tag-PII.Sensitive')).not.toBeVisible();
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // G-C09: Cancel glossary creation
-  test.describe('Cancel Glossary Creation', () => {
-    test('should cancel glossary creation without saving', async ({ page }) => {
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
+  test('should cancel glossary creation without saving', async ({ page }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
 
-      await page.click('[data-testid="add-glossary"]');
-      await page.waitForSelector('[data-testid="form-heading"]');
+    await page.click('[data-testid="add-glossary"]');
+    await page.waitForSelector('[data-testid="form-heading"]');
 
-      const glossaryName = `CancelTest${Date.now()}`;
-      await page.fill('[data-testid="name"]', glossaryName);
-      await page.locator(descriptionBox).fill('This should be cancelled');
+    const glossaryName = `CancelTest${Date.now()}`;
+    await page.fill('[data-testid="name"]', glossaryName);
+    await page.locator(descriptionBox).fill('This should be cancelled');
 
-      // Click cancel button
-      await page.click('[data-testid="cancel-glossary"]');
+    // Click cancel button
+    await page.click('[data-testid="cancel-glossary"]');
 
-      // Verify we're back on glossary page and the glossary was not created
-      await page.waitForLoadState('networkidle');
+    // Verify we're back on glossary page and the glossary was not created
+    await page.waitForLoadState('networkidle');
 
-      // The glossary should not exist - check it's not in the list
-      await expect(page.getByTestId(glossaryName)).not.toBeVisible();
-    });
+    // The glossary should not exist - check it's not in the list
+    await expect(page.getByTestId(glossaryName)).not.toBeVisible();
   });
 
   // T-C10: Cancel term creation
-  test.describe('Cancel Term Creation', () => {
-    test('should cancel term creation without saving', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const glossary = new Glossary();
+  test('should cancel term creation without saving', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-      try {
-        await glossary.create(apiContext);
+    try {
+      await glossary.create(apiContext);
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        await openAddGlossaryTermModal(page);
+      await openAddGlossaryTermModal(page);
 
-        const termName = `CancelTermTest${Date.now()}`;
-        await page.fill('[data-testid="name"]', termName);
-        await page.locator(descriptionBox).fill('This should be cancelled');
+      const termName = `CancelTermTest${Date.now()}`;
+      await page.fill('[data-testid="name"]', termName);
+      await page.locator(descriptionBox).fill('This should be cancelled');
 
-        // Click cancel button (X or Cancel)
-        await page.getByRole('button', { name: 'Cancel' }).click();
+      // Click cancel button (X or Cancel)
+      await page.getByRole('button', { name: 'Cancel' }).click();
 
-        await expect(page.getByTestId(termName)).not.toBeVisible();
-      } finally {
-        await afterAction();
-      }
-    });
+      await expect(page.getByTestId(termName)).not.toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // T-U02: Update term display name
-  test.describe('Update Term Display Name', () => {
-    test('should update term display name via manage menu', async ({
-      page,
-    }) => {
-      const { glossary, glossaryTerm } = await setupGlossaryAndTerm(page);
+  test('should update term display name via manage menu', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
@@ -1354,167 +1360,204 @@ test.describe('Glossary Advanced Operations', () => {
       await expect(
         page.getByTestId('entity-header-display-name')
       ).toContainText(newDisplayName);
-    });
+    } finally {
+      await glossaryTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // T-U15: Verify bidirectional related term link
-  test.describe('Bidirectional Related Term Link', () => {
-    test('should show bidirectional related term link', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const glossary = new Glossary();
-      const term1 = new GlossaryTerm(glossary);
-      const term2 = new GlossaryTerm(glossary);
+  test('should show bidirectional related term link', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const term1 = new GlossaryTerm(glossary);
+    const term2 = new GlossaryTerm(glossary);
 
-      try {
-        await glossary.create(apiContext);
-        await term1.create(apiContext);
-        await term2.create(apiContext);
+    try {
+      await glossary.create(apiContext);
+      await term1.create(apiContext);
+      await term2.create(apiContext);
 
-        // Add term2 as related to term1
-        await term1.patch(apiContext, [
-          {
-            op: 'add',
-            path: '/relatedTerms',
-            value: [
-              {
-                id: term2.responseData.id,
-                type: 'glossaryTerm',
-              },
-            ],
-          },
-        ]);
+      // Add term2 as related to term1
+      await term1.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/relatedTerms',
+          value: [
+            {
+              id: term2.responseData.id,
+              type: 'glossaryTerm',
+            },
+          ],
+        },
+      ]);
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        // Navigate to term1 details
-        await page.getByTestId(term1.responseData.displayName).click();
-        await page.waitForLoadState('networkidle');
+      // Navigate to term1 details
+      await page.getByTestId(term1.responseData.displayName).click();
+      await page.waitForLoadState('networkidle');
 
-        // Verify term2 is shown as related term
-        await expect(
-          page
-            .getByTestId('related-term-container')
-            .getByTestId(term2.responseData.displayName)
-        ).toBeVisible();
-
-        // Click on term2 to navigate
-        await page
+      // Verify term2 is shown as related term
+      await expect(
+        page
           .getByTestId('related-term-container')
           .getByTestId(term2.responseData.displayName)
-          .click();
-        await page.waitForLoadState('networkidle');
+      ).toBeVisible();
 
-        // Verify we're on term2 page
-        await expect(
-          page.getByTestId('entity-header-display-name')
-        ).toContainText(term2.responseData.displayName);
+      // Click on term2 to navigate
+      await page
+        .getByTestId('related-term-container')
+        .getByTestId(term2.responseData.displayName)
+        .click();
+      await page.waitForLoadState('networkidle');
 
-        // Verify term1 is shown as related term on term2 (bidirectional)
-        await expect(
-          page
-            .getByTestId('related-term-container')
-            .getByTestId(term1.responseData.displayName)
-        ).toBeVisible();
-      } finally {
-        await afterAction();
-      }
-    });
+      // Verify we're on term2 page
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(term2.responseData.displayName);
+
+      // Verify term1 is shown as related term on term2 (bidirectional)
+      await expect(
+        page
+          .getByTestId('related-term-container')
+          .getByTestId(term1.responseData.displayName)
+      ).toBeVisible();
+    } finally {
+      await term2.delete(apiContext);
+      await term1.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // EC-03: Very long term name (128 chars)
-  test.describe('Long Term Name', () => {
-    test('should handle term with very long name', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const glossary = new Glossary();
+  test('should handle term with very long name', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-      try {
-        await glossary.create(apiContext);
+    try {
+      await glossary.create(apiContext);
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        await openAddGlossaryTermModal(page);
+      await openAddGlossaryTermModal(page);
 
-        // Create a long name (128 chars is typically the limit)
-        const longName = 'A'.repeat(100) + Date.now().toString().slice(-10);
-        await page.fill('[data-testid="name"]', longName);
-        await page.locator(descriptionBox).fill('Term with long name');
+      // Create a long name (128 chars is typically the limit)
+      const longName = 'A'.repeat(100) + Date.now().toString().slice(-10);
+      await page.fill('[data-testid="name"]', longName);
+      await page.locator(descriptionBox).fill('Term with long name');
 
-        const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-        await page.click('[data-testid="save-glossary-term"]');
-        const response = await createResponse;
-        const responseData = await response.json();
+      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
+      await page.click('[data-testid="save-glossary-term"]');
+      const response = await createResponse;
+      const responseData = await response.json();
 
-        // Verify term was created
-        expect(responseData.name).toBe(longName);
-      } finally {
-        await afterAction();
-      }
-    });
+      // Verify term was created
+      expect(responseData.name).toBe(longName);
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // EC-04: Very long description (5000+ chars)
-  test.describe('Long Description', () => {
-    test('should handle term with very long description', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const glossary = new Glossary();
+  test('should handle term with very long description', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
 
-      try {
-        await glossary.create(apiContext);
+    try {
+      await glossary.create(apiContext);
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-        await openAddGlossaryTermModal(page);
+      await openAddGlossaryTermModal(page);
 
-        const termName = `LongDesc${Date.now()}`;
-        await page.fill('[data-testid="name"]', termName);
+      const termName = `LongDesc${Date.now()}`;
+      await page.fill('[data-testid="name"]', termName);
 
-        // Create a long description (5000+ chars)
-        const longDescription = 'This is a test. '.repeat(350);
-        await page.locator(descriptionBox).fill(longDescription);
+      // Create a long description (5000+ chars)
+      const longDescription = 'This is a test. '.repeat(350);
+      await page.locator(descriptionBox).fill(longDescription);
 
-        const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-        await page.click('[data-testid="save-glossary-term"]');
-        const response = await createResponse;
-        const responseData = await response.json();
+      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
+      await page.click('[data-testid="save-glossary-term"]');
+      const response = await createResponse;
+      const responseData = await response.json();
 
-        // Verify term was created with long description
-        expect(responseData.description.length).toBeGreaterThan(5000);
-      } finally {
-        await afterAction();
-      }
-    });
+      // Verify term was created with long description
+      expect(responseData.description.length).toBeGreaterThan(5000);
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
   // G-C07: Form validation - name exceeds 128 characters
-  test.describe('Name Length Validation', () => {
-    test('should show error when glossary name exceeds limit', async ({
-      page,
-    }) => {
+  test('should show error when glossary name exceeds limit', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+
+    await page.click('[data-testid="add-glossary"]');
+    await page.waitForSelector('[data-testid="form-heading"]');
+
+    // Try to enter name exceeding 128 chars
+    const tooLongName = 'A'.repeat(150);
+    await page.fill('[data-testid="name"]', tooLongName);
+    await page.locator(descriptionBox).fill('Test description');
+
+    // Try to save
+    await page.click('[data-testid="save-glossary"]');
+
+    // Check for error (either validation error or the field truncates)
+    const nameField = page.getByTestId('name');
+    const fieldValue = await nameField.inputValue();
+
+    // Either shows error or truncates to max length
+    const hasLengthLimit = fieldValue.length <= 128;
+    const hasError = await page
+      .locator('.ant-form-item-explain-error')
+      .isVisible()
+      .catch(() => false);
+
+    expect(hasLengthLimit || hasError).toBeTruthy();
+  });
+
+  // T-C09: Form validation - term name exceeds 128 characters
+  test('should show error when term name exceeds limit', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+
+    try {
+      await glossary.create(apiContext);
+
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-      await page.click('[data-testid="add-glossary"]');
-      await page.waitForSelector('[data-testid="form-heading"]');
+      await openAddGlossaryTermModal(page);
 
       // Try to enter name exceeding 128 chars
-      const tooLongName = 'A'.repeat(150);
+      const tooLongName = 'B'.repeat(150);
       await page.fill('[data-testid="name"]', tooLongName);
       await page.locator(descriptionBox).fill('Test description');
 
       // Try to save
-      await page.click('[data-testid="save-glossary"]');
+      await page.click('[data-testid="save-glossary-term"]');
 
-      // Check for error (either validation error or the field truncates)
+      // Check for error or truncation
       const nameField = page.getByTestId('name');
       const fieldValue = await nameField.inputValue();
 
-      // Either shows error or truncates to max length
       const hasLengthLimit = fieldValue.length <= 128;
       const hasError = await page
         .locator('.ant-form-item-explain-error')
@@ -1522,47 +1565,9 @@ test.describe('Glossary Advanced Operations', () => {
         .catch(() => false);
 
       expect(hasLengthLimit || hasError).toBeTruthy();
-    });
-  });
-
-  // T-C09: Form validation - term name exceeds 128 characters
-  test.describe('Term Name Length Validation', () => {
-    test('should show error when term name exceeds limit', async ({ page }) => {
-      const { apiContext, afterAction } = await getApiContext(page);
-      const glossary = new Glossary();
-
-      try {
-        await glossary.create(apiContext);
-
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
-        await selectActiveGlossary(page, glossary.data.displayName);
-
-        await openAddGlossaryTermModal(page);
-
-        // Try to enter name exceeding 128 chars
-        const tooLongName = 'B'.repeat(150);
-        await page.fill('[data-testid="name"]', tooLongName);
-        await page.locator(descriptionBox).fill('Test description');
-
-        // Try to save
-        await page.click('[data-testid="save-glossary-term"]');
-
-        // Check for error or truncation
-        const nameField = page.getByTestId('name');
-        const fieldValue = await nameField.inputValue();
-
-        const hasLengthLimit = fieldValue.length <= 128;
-        const hasError = await page
-          .locator('.ant-form-item-explain-error')
-          .isVisible()
-          .catch(() => false);
-
-        expect(hasLengthLimit || hasError).toBeTruthy();
-      } finally {
-        await glossary.delete(apiContext);
-        await afterAction();
-      }
-    });
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 });

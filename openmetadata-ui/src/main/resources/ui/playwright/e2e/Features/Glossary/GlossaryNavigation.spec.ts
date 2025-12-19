@@ -15,7 +15,10 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
-import { selectActiveGlossary } from '../../../utils/glossary';
+import {
+  selectActiveGlossary,
+  selectActiveGlossaryTerm,
+} from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
@@ -39,9 +42,6 @@ test.describe('Glossary Navigation', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-      await loadResponse;
 
       // Verify Terms tab is visible and shows count
       const termsTab = page.getByTestId('terms');
@@ -56,7 +56,7 @@ test.describe('Glossary Navigation', () => {
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByTestId('activity_feed');
       await activityTab.click();
-      
+
       const activityLoadResponse = page.waitForResponse('/api/v1/feed*');
       await activityLoadResponse;
 
@@ -75,10 +75,9 @@ test.describe('Glossary Navigation', () => {
         page.locator('.ant-tabs-tab-active').getByTestId('activity_feed')
       ).toBeVisible();
 
+      const termsLoadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
       // Click back on Terms tab
       await termsTab.click();
-      
-      const termsLoadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
       await termsLoadResponse;
 
       // Verify term is still visible
@@ -103,10 +102,10 @@ test.describe('Glossary Navigation', () => {
       await glossary.create(apiContext);
       await glossaryTerm.create(apiContext);
 
-      await glossaryTerm.visitEntityPage(page);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await loadResponse;
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm.data.displayName);
 
       // Verify Overview tab is active by default on term page
       const overviewTab = page.getByTestId('overview');
@@ -114,7 +113,9 @@ test.describe('Glossary Navigation', () => {
       await expect(overviewTab).toBeVisible();
 
       // Verify description is visible on Overview tab
-      await expect(page.getByTestId('asset-description-container')).toBeVisible();
+      await expect(
+        page.getByTestId('asset-description-container')
+      ).toBeVisible();
 
       // Check if Assets tab exists
       const assetsTab = page.getByTestId('assets');
@@ -123,7 +124,7 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Assets tab
       await assetsTab.click();
-      
+
       const assetsLoadResponse = page.waitForResponse('/api/v1/search/query*');
       await assetsLoadResponse;
 
@@ -146,7 +147,9 @@ test.describe('Glossary Navigation', () => {
       await overviewTab.click();
 
       // Verify we're back on overview with description visible
-      await expect(page.getByTestId('asset-description-container')).toBeVisible();
+      await expect(
+        page.getByTestId('asset-description-container')
+      ).toBeVisible();
     } finally {
       await glossaryTerm.delete(apiContext);
       await glossary.delete(apiContext);
@@ -163,10 +166,10 @@ test.describe('Glossary Navigation', () => {
       await glossary.create(apiContext);
       await glossaryTerm.create(apiContext);
 
-      await glossaryTerm.visitEntityPage(page);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await loadResponse;
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm.data.displayName);
 
       // Verify breadcrumb is visible
       const breadcrumb = page.getByTestId('breadcrumb');
@@ -199,16 +202,16 @@ test.describe('Glossary Navigation', () => {
 
       // Navigate directly to term page using URL
       const termFqn = glossaryTerm.responseData.fullyQualifiedName;
-      const navResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+      const termRes = page.waitForResponse('/api/v1/glossaryTerms/name/*');
       await page.goto(
         `/glossary/${encodeURIComponent(termFqn).replace(/%22/g, '"')}`
       );
-      await navResponse;
+      await termRes;
 
       // Verify term page loads correctly
-      await expect(page.getByTestId('entity-header-display-name')).toContainText(
-        glossaryTerm.responseData.displayName
-      );
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(glossaryTerm.responseData.displayName);
 
       // Verify breadcrumb shows path (contains glossary name in FQN format)
       const breadcrumb = page.getByTestId('breadcrumb');
@@ -236,9 +239,7 @@ test.describe('Glossary Navigation', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, emptyGlossary.data.displayName);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-      await loadResponse;
+      await page.waitForLoadState('networkidle');
 
       // Verify empty state is shown - actual message in UI
       await expect(
@@ -264,9 +265,6 @@ test.describe('Glossary Navigation', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-      await loadResponse;
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
@@ -292,10 +290,10 @@ test.describe('Glossary Navigation', () => {
       await glossary.create(apiContext);
       await glossaryTerm.create(apiContext);
 
-      await glossaryTerm.visitEntityPage(page);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await loadResponse;
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm.data.displayName);
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
@@ -323,9 +321,6 @@ test.describe('Glossary Navigation', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-      await loadResponse;
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });
@@ -353,10 +348,10 @@ test.describe('Glossary Navigation', () => {
       await glossary.create(apiContext);
       await glossaryTerm.create(apiContext);
 
-      await glossaryTerm.visitEntityPage(page);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await loadResponse;
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm.data.displayName);
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByRole('tab', { name: /Activity Feeds/i });

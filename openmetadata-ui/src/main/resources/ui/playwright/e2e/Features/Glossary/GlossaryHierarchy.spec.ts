@@ -82,20 +82,21 @@ test.describe('Glossary Hierarchy', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary1 = new Glossary();
     const glossary2 = new Glossary();
-    const term = new GlossaryTerm(glossary1);
+    const term1 = new GlossaryTerm(glossary1);
+    const term2 = new GlossaryTerm(glossary2);
 
     try {
       await glossary1.create(apiContext);
       await glossary2.create(apiContext);
-      await term.create(apiContext);
+      await term1.create(apiContext);
+      await term2.create(apiContext);
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
-      await selectActiveGlossaryTerm(page, term.data.displayName);
-
+      await selectActiveGlossaryTerm(page, term1.data.displayName);
       await changeTermHierarchyFromModal(
         page,
-        glossary2.responseData.displayName,
+        term2.responseData.displayName,
         glossary2.responseData.fullyQualifiedName
       );
 
@@ -105,15 +106,9 @@ test.describe('Glossary Hierarchy', () => {
       await selectActiveGlossary(page, glossary2.data.displayName);
 
       await expect(
-        page.getByTestId(term.responseData.displayName)
+        page.getByTestId(term1.responseData.displayName)
       ).toBeVisible();
     } finally {
-      // Term might be in glossary2 now
-      try {
-        await term.delete(apiContext);
-      } catch {
-        // Term may have been moved, try deleting from new location
-      }
       await glossary1.delete(apiContext);
       await glossary2.delete(apiContext);
       await afterAction();
@@ -130,11 +125,13 @@ test.describe('Glossary Hierarchy', () => {
     const glossary2 = new Glossary();
     const parentTerm = new GlossaryTerm(glossary1);
     const childTerm = new GlossaryTerm(glossary1);
+    const glossary2ChildTerm = new GlossaryTerm(glossary2);
 
     try {
       await glossary1.create(apiContext);
       await glossary2.create(apiContext);
       await parentTerm.create(apiContext);
+      await glossary2ChildTerm.create(apiContext);
       // Create child under parent
       childTerm.data.parent = parentTerm.responseData.fullyQualifiedName;
       await childTerm.create(apiContext);
@@ -150,9 +147,8 @@ test.describe('Glossary Hierarchy', () => {
       // Move parent term (with child) to glossary2
       await changeTermHierarchyFromModal(
         page,
-        glossary2.responseData.displayName,
-        glossary2.responseData.fullyQualifiedName,
-        false
+        glossary2ChildTerm.responseData.displayName,
+        glossary2.responseData.fullyQualifiedName
       );
 
       // Verify parent and child are now in glossary2
@@ -171,12 +167,6 @@ test.describe('Glossary Hierarchy', () => {
         page.getByTestId(childTerm.responseData.displayName)
       ).toBeVisible();
     } finally {
-      try {
-        await childTerm.delete(apiContext);
-        await parentTerm.delete(apiContext);
-      } catch {
-        // Terms may have been moved
-      }
       await glossary1.delete(apiContext);
       await glossary2.delete(apiContext);
       await afterAction();

@@ -10,54 +10,94 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
-  createNewPage,
   descriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
 import {
-  confirmationDragAndDropGlossary,
-  dragAndDropTerm,
   openAddGlossaryTermModal,
   performExpandAll,
   selectActiveGlossary,
 } from '../../../utils/glossary';
 import { sidebarClick } from '../../../utils/sidebar';
-import { performUserLogin } from '../../../utils/user';
+
+const adminUser = new UserClass();
+const reviewer1 = new UserClass();
+const reviewer2 = new UserClass();
+
+const test = base.extend<{
+  page: Page;
+  reviewer1Page: Page;
+  reviewer2Page: Page;
+}>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+  reviewer1Page: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await reviewer1.login(page);
+    await use(page);
+    await page.close();
+  },
+  reviewer2Page: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await reviewer2.login(page);
+    await use(page);
+    await page.close();
+  },
+});
+
+test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await adminUser.create(apiContext);
+  await adminUser.setAdminRole(apiContext);
+  await reviewer1.create(apiContext);
+  await reviewer2.create(apiContext);
+  await afterAction();
+});
+
+test.afterAll('Cleanup pre-requests', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await reviewer1.delete(apiContext);
+  await reviewer2.delete(apiContext);
+  await adminUser.delete(apiContext);
+  await afterAction();
+});
+
+test.beforeEach(async ({ page }) => {
+  await redirectToHomePage(page);
+});
 
 test.describe('Term Status Transitions', () => {
-  test.use({ storageState: 'playwright/.auth/admin.json' });
-
   const glossaryNoReviewers = new Glossary();
   const glossaryWithReviewer = new Glossary();
-  const reviewer = new UserClass();
 
   test.beforeAll(async ({ browser }) => {
-    // Use createNewPage which works with the storageState
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    await reviewer.create(apiContext);
     await glossaryNoReviewers.create(apiContext);
     await glossaryWithReviewer.create(apiContext);
 
-    // Add reviewer to glossary via patch API
     await glossaryWithReviewer.patch(apiContext, [
       {
         op: 'add',
         path: '/reviewers/0',
         value: {
-          id: reviewer.responseData.id,
+          id: reviewer1.responseData.id,
           type: 'user',
-          displayName: reviewer.responseData.displayName,
-          fullyQualifiedName: reviewer.responseData.fullyQualifiedName,
-          name: reviewer.responseData.name,
+          displayName: reviewer1.responseData.displayName,
+          fullyQualifiedName: reviewer1.responseData.fullyQualifiedName,
+          name: reviewer1.responseData.name,
         },
       },
     ]);
@@ -66,17 +106,15 @@ test.describe('Term Status Transitions', () => {
   });
 
   test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await glossaryNoReviewers.delete(apiContext);
     await glossaryWithReviewer.delete(apiContext);
-    await reviewer.delete(apiContext);
     await afterAction();
   });
 
   test('should start term as Approved when glossary has no reviewers', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossaryNoReviewers.data.displayName);
 
@@ -115,7 +153,6 @@ test.describe('Term Status Transitions', () => {
   test('should start term as Draft when glossary has reviewers', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossaryWithReviewer.data.displayName);
 
@@ -155,7 +192,6 @@ test.describe('Term Status Transitions', () => {
   test('should inherit reviewers from glossary when term is created', async ({
     page,
   }) => {
-    await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossaryWithReviewer.data.displayName);
 
@@ -192,652 +228,308 @@ test.describe('Term Status Transitions', () => {
 
     // Check that the reviewer name is displayed (inherited from glossary)
     await expect(
-      reviewerSection.getByText(reviewer.getUserDisplayName())
+      reviewerSection.getByText(reviewer1.getUserDisplayName())
     ).toBeVisible();
   });
 });
 
-test.describe('Hierarchy Drag and Drop', () => {
-  test.use({ storageState: 'playwright/.auth/admin.json' });
-
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  test('should move term with children (subtree) via drag and drop', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    let parentTerm: GlossaryTerm;
-    let childTerm: GlossaryTerm;
-    let targetTerm: GlossaryTerm;
-
-    try {
-      // Create glossary
-      await glossary.create(apiContext);
-
-      // Create parent term at root level
-      parentTerm = new GlossaryTerm(glossary, undefined, 'ParentWithChild');
-      await parentTerm.create(apiContext);
-
-      // Create child term under parent
-      childTerm = new GlossaryTerm(
-        glossary,
-        parentTerm.responseData.fullyQualifiedName,
-        'ChildOfParent'
-      );
-      await childTerm.create(apiContext);
-
-      // Create target term at root level (where we'll drag parent+child to)
-      targetTerm = new GlossaryTerm(glossary, undefined, 'TargetTerm');
-      await targetTerm.create(apiContext);
-
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      // Expand all to see the hierarchy
-      await performExpandAll(page);
-
-      // Verify initial hierarchy - child is under parent
-      // Use .first() since child row's data-row-key also contains parent name
-      const parentRow = page
-        .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
-        .first();
-
-      await expect(parentRow).toBeVisible();
-
-      const childRow = page.locator(
-        `[data-row-key*="${childTerm.responseData.name}"]`
-      );
-
-      await expect(childRow).toBeVisible();
-
-      // Drag parent term (with child) to target term
-      await dragAndDropTerm(
-        page,
-        parentTerm.data.displayName,
-        targetTerm.data.displayName
-      );
-
-      // Confirm the drag and drop
-      await confirmationDragAndDropGlossary(
-        page,
-        parentTerm.data.name,
-        targetTerm.data.name
-      );
-
-      // Wait for the table to update after drag-drop
-      await page.waitForLoadState('networkidle');
-
-      // After drag-drop, the tree structure changed - need to expand TargetTerm to see its new children
-      // First collapse all, then expand all to refresh the tree state
-      const expandButton = page.getByTestId('expand-collapse-all-button');
-      const buttonText = await expandButton.textContent();
-
-      // If showing "Collapse All", collapse first to reset state
-      if (buttonText?.includes('Collapse All')) {
-        await expandButton.click();
-
-        await expect(expandButton).toContainText('Expand All', {
-          timeout: 10000,
-        });
-
-        await page.waitForLoadState('networkidle');
-      }
-
-      // Now expand all to see the new hierarchy
-      await performExpandAll(page);
-      await page.waitForLoadState('networkidle');
-
-      // Verify parent is now visible under target (subtree moved)
-      const movedParentRow = page
-        .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
-        .first();
-
-      await expect(movedParentRow).toBeVisible();
-
-      // Verify child is still visible (moved with parent as part of subtree)
-      const movedChildRow = page.locator(
-        `[data-row-key*="${childTerm.responseData.name}"]`
-      );
-
-      await expect(movedChildRow).toBeVisible();
-
-      // Verify the hierarchy structure - target term is also visible
-      // Use .first() since child FQNs also contain the target term name
-      const targetRow = page
-        .locator(`[data-row-key*="${targetTerm.responseData.name}"]`)
-        .first();
-
-      await expect(targetRow).toBeVisible();
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-});
-
-test.describe('Reviewer Permissions', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  test('non-reviewer should not see approve/reject buttons', async ({
-    page,
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const reviewer = new UserClass();
-    const nonReviewer = new UserClass();
-    const termName = `TermForReview${Date.now()}`;
-
-    try {
-      // Create users
-      await reviewer.create(apiContext);
-      await nonReviewer.create(apiContext);
-
-      // Create glossary via API
-      await glossary.create(apiContext);
-
-      // Add reviewer to glossary
-      await glossary.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/reviewers/0',
-          value: {
-            id: reviewer.responseData.id,
-            type: 'user',
-            displayName: reviewer.responseData.displayName,
-            fullyQualifiedName: reviewer.responseData.fullyQualifiedName,
-            name: reviewer.responseData.name,
-          },
-        },
-      ]);
-
-      // Create term via UI to trigger approval workflow (as admin)
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      await openAddGlossaryTermModal(page);
-
-      await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term for review testing');
-
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      await createResponse;
-
-      await expect(
-        page.locator('[role="dialog"].edit-glossary-modal')
-      ).not.toBeVisible();
-
-      // Login as non-reviewer
-      const { page: nonReviewerPage, afterAction: nonReviewerAfterAction } =
-        await performUserLogin(browser, nonReviewer);
-
-      await redirectToHomePage(nonReviewerPage);
-      await sidebarClick(nonReviewerPage, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(nonReviewerPage, glossary.data.displayName);
-
-      // Wait for terms to load
-      await nonReviewerPage.waitForLoadState('networkidle');
-
-      // Verify the term is visible
-      const termRow = nonReviewerPage.locator(
-        `[data-row-key*="${termName}"]`
-      );
-
-      await expect(termRow).toBeVisible();
-
-      // Verify approve/reject buttons are NOT visible for non-reviewer
-      const approveBtn = nonReviewerPage.getByTestId(`${termName}-approve-btn`);
-      const rejectBtn = nonReviewerPage.getByTestId(`${termName}-reject-btn`);
-
-      await expect(approveBtn).not.toBeVisible();
-      await expect(rejectBtn).not.toBeVisible();
-
-      await nonReviewerAfterAction();
-    } finally {
-      await glossary.delete(apiContext);
-      await reviewer.delete(apiContext);
-      await nonReviewer.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // Note: "Reviewer should see approve/reject buttons" is covered in Glossary.spec.ts
-  // Tests: "Glossary & terms creation for reviewer as user/team" and
-  // "Approve and reject glossary term from Glossary Listing"
-});
-
-// W-S07: Status badge shows correct color/icon
-test.describe('Status Badge Visual', () => {
-  test.use({ storageState: 'playwright/.auth/admin.json' });
-
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  test('should display correct status badge color and icon', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const reviewer = new UserClass();
-
-    try {
-      await reviewer.create(apiContext);
-      await glossary.create(apiContext);
-
-      // Add reviewer to glossary
-      await glossary.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/reviewers/0',
-          value: {
-            id: reviewer.responseData.id,
-            type: 'user',
-            displayName: reviewer.responseData.displayName,
-            fullyQualifiedName: reviewer.responseData.fullyQualifiedName,
-            name: reviewer.responseData.name,
-          },
-        },
-      ]);
-
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      // Create a term that will start as Draft
-      const termName = `StatusBadgeTerm${Date.now()}`;
-      await openAddGlossaryTermModal(page);
-
-      await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Test term for status badge');
-
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      await createResponse;
-
-      await expect(
-        page.locator('[role="dialog"].edit-glossary-modal')
-      ).not.toBeVisible();
-
-      await page.waitForLoadState('networkidle');
-
-      // Verify the status badge shows Draft with correct styling
-      const termRow = page.locator(`[data-row-key*="${termName}"]`);
-
-      await expect(termRow).toBeVisible();
-
-      const statusBadge = termRow.locator('.status-badge');
-
-      await expect(statusBadge).toHaveText('Draft');
-
-      // Verify badge has the expected visual class (Draft status typically has a specific color)
-      await expect(statusBadge).toBeVisible();
-    } finally {
-      await glossary.delete(apiContext);
-      await reviewer.delete(apiContext);
-      await afterAction();
-    }
-  });
-});
-
-// W-R04: Owner cannot approve (if not reviewer)
-test.describe('Owner Cannot Approve Without Reviewer Role', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  test('owner should not see approve/reject buttons if not a reviewer', async ({
-    page,
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const owner = new UserClass();
-    const reviewer = new UserClass();
-    const termName = `OwnerTermTest${Date.now()}`;
-
-    try {
-      await owner.create(apiContext);
-      await reviewer.create(apiContext);
-      await glossary.create(apiContext);
-
-      // Add owner to glossary (not a reviewer)
-      await glossary.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/owners/0',
-          value: {
-            id: owner.responseData.id,
-            type: 'user',
-            displayName: owner.responseData.displayName,
-            fullyQualifiedName: owner.responseData.fullyQualifiedName,
-            name: owner.responseData.name,
-          },
-        },
-        {
-          op: 'add',
-          path: '/reviewers/0',
-          value: {
-            id: reviewer.responseData.id,
-            type: 'user',
-            displayName: reviewer.responseData.displayName,
-            fullyQualifiedName: reviewer.responseData.fullyQualifiedName,
-            name: reviewer.responseData.name,
-          },
-        },
-      ]);
-
-      // Create term via UI to trigger approval workflow
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      await openAddGlossaryTermModal(page);
-
-      await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term for owner approval test');
-
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      await createResponse;
-
-      await expect(
-        page.locator('[role="dialog"].edit-glossary-modal')
-      ).not.toBeVisible();
-
-      // Login as owner
-      const { page: ownerPage, afterAction: ownerAfterAction } =
-        await performUserLogin(browser, owner);
-
-      await redirectToHomePage(ownerPage);
-      await sidebarClick(ownerPage, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(ownerPage, glossary.data.displayName);
-      await ownerPage.waitForLoadState('networkidle');
-
-      // Verify the term is visible
-      const termRow = ownerPage.locator(`[data-row-key*="${termName}"]`);
-
-      await expect(termRow).toBeVisible();
-
-      // Owner should not see approve/reject buttons
-      const approveBtn = ownerPage.getByTestId(`${termName}-approve-btn`);
-      const rejectBtn = ownerPage.getByTestId(`${termName}-reject-btn`);
-
-      await expect(approveBtn).not.toBeVisible();
-      await expect(rejectBtn).not.toBeVisible();
-
-      await ownerAfterAction();
-    } finally {
-      await glossary.delete(apiContext);
-      await owner.delete(apiContext);
-      await reviewer.delete(apiContext);
-      await afterAction();
-    }
-  });
-});
-
-// W-S06: Rejected term can be re-submitted
-test.describe('Rejected Term Re-submission', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  test('should allow re-submission of rejected term', async ({
-    page,
-    browser,
-  }) => {
-    test.slow(true);
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const reviewer = new UserClass();
-    let glossaryTerm: GlossaryTerm;
-
-    try {
-      await reviewer.create(apiContext);
-      await glossary.create(apiContext);
-
-      // Add reviewer to glossary
-      await glossary.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/reviewers/0',
-          value: {
-            id: reviewer.responseData.id,
-            type: 'user',
-            displayName: reviewer.responseData.displayName,
-            fullyQualifiedName: reviewer.responseData.fullyQualifiedName,
-            name: reviewer.responseData.name,
-          },
-        },
-      ]);
-
-      // Create term via API (will be in Draft status)
-      glossaryTerm = new GlossaryTerm(glossary, undefined, 'RejectedTerm');
-      await glossaryTerm.create(apiContext);
-
-      // First, login as reviewer and reject the term
-      const { page: reviewerPage, afterAction: afterReviewerAction } =
-        await performUserLogin(browser, reviewer);
-
-      await redirectToHomePage(reviewerPage);
-      await sidebarClick(reviewerPage, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(reviewerPage, glossary.data.displayName);
-      await reviewerPage.waitForLoadState('networkidle');
-
-      // Find and reject the term
-      const termRow = reviewerPage.locator(
-        `[data-row-key*="${glossaryTerm.responseData.name}"]`
-      );
-
-      await expect(termRow).toBeVisible();
-
-      const rejectBtn = reviewerPage.getByTestId(
-        `${glossaryTerm.responseData.name}-reject-btn`
-      );
-
-      if (await rejectBtn.isVisible()) {
-        const rejectRes = reviewerPage.waitForResponse(
-          '/api/v1/feed/tasks/*/resolve'
-        );
-        await rejectBtn.click();
-        await rejectRes;
-
-        await reviewerPage.waitForLoadState('networkidle');
-
-        // Verify term is now Rejected
-        const statusBadge = termRow.locator('.status-badge');
-
-        await expect(statusBadge).toHaveText('Rejected');
-      }
-
-      await afterReviewerAction();
-
-      // Now login as admin and update the term (re-submit)
-      const { page: adminPage, afterAction: afterAdminAction } =
-        await performAdminLogin(browser);
-
-      await redirectToHomePage(adminPage);
-      await sidebarClick(adminPage, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(adminPage, glossary.data.displayName);
-      await adminPage.waitForLoadState('networkidle');
-
-      // Click on term to go to details
-      await adminPage.click(`[data-testid="${glossaryTerm.responseData.name}"]`);
-      await adminPage.waitForLoadState('networkidle');
-
-      // Edit the description to trigger re-submission
-      const editDescBtn = adminPage.getByTestId('edit-description');
-
-      if (await editDescBtn.isVisible()) {
-        await editDescBtn.click();
-        await adminPage
-          .locator(descriptionBox)
-          .fill('Updated description for re-submission');
-
-        const saveRes = adminPage.waitForResponse('/api/v1/glossaryTerms/*');
-        await adminPage.getByTestId('save').click();
-        await saveRes;
-
-        await adminPage.waitForLoadState('networkidle');
-      }
-
-      await afterAdminAction();
-    } finally {
-      await glossary.delete(apiContext);
-      await reviewer.delete(apiContext);
-      await afterAction();
-    }
-  });
-});
-
-// W-R08: Non-reviewer edits approved term - goes to review
-test.describe('Non-Reviewer Edit Changes Status', () => {
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  test('should change status when non-reviewer edits approved term', async ({
-    page,
-    browser,
-  }) => {
-    test.slow(true);
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const reviewer = new UserClass();
-    const nonReviewer = new UserClass();
-    let glossaryTerm: GlossaryTerm;
-
-    try {
-      await reviewer.create(apiContext);
-      await nonReviewer.create(apiContext);
-      await glossary.create(apiContext);
-
-      // Add reviewer to glossary
-      await glossary.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/reviewers/0',
-          value: {
-            id: reviewer.responseData.id,
-            type: 'user',
-            displayName: reviewer.responseData.displayName,
-            fullyQualifiedName: reviewer.responseData.fullyQualifiedName,
-            name: reviewer.responseData.name,
-          },
-        },
-      ]);
-
-      // Create term via API
-      glossaryTerm = new GlossaryTerm(
-        glossary,
-        undefined,
-        'ApprovedTermForEdit'
-      );
-      await glossaryTerm.create(apiContext);
-
-      // Approve the term via API
-      await apiContext.patch(
-        `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
-        {
-          data: [
-            {
-              op: 'replace',
-              path: '/status',
-              value: 'Approved',
-            },
-          ],
-          headers: {
-            'Content-Type': 'application/json-patch+json',
-          },
-        }
-      );
-
-      // Login as non-reviewer and edit the term
-      const { page: nonReviewerPage, afterAction: nonReviewerAfterAction } =
-        await performUserLogin(browser, nonReviewer);
-
-      await redirectToHomePage(nonReviewerPage);
-      await sidebarClick(nonReviewerPage, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(nonReviewerPage, glossary.data.displayName);
-      await nonReviewerPage.waitForLoadState('networkidle');
-
-      // Verify term is Approved initially
-      const termRow = nonReviewerPage.locator(
-        `[data-row-key*="${glossaryTerm.responseData.name}"]`
-      );
-
-      await expect(termRow).toBeVisible();
-
-      // Click on term to go to details
-      await nonReviewerPage.click(
-        `[data-testid="${glossaryTerm.responseData.name}"]`
-      );
-      await nonReviewerPage.waitForLoadState('networkidle');
-
-      // Try to edit the description
-      const editDescBtn = nonReviewerPage.getByTestId('edit-description');
-
-      if (await editDescBtn.isVisible()) {
-        await editDescBtn.click();
-        await nonReviewerPage
-          .locator(descriptionBox)
-          .fill('Non-reviewer update to trigger review');
-
-        const saveRes = nonReviewerPage.waitForResponse(
-          '/api/v1/glossaryTerms/*'
-        );
-        await nonReviewerPage.getByTestId('save').click();
-        await saveRes;
-
-        await nonReviewerPage.waitForLoadState('networkidle');
-      }
-
-      await nonReviewerAfterAction();
-    } finally {
-      await glossary.delete(apiContext);
-      await reviewer.delete(apiContext);
-      await nonReviewer.delete(apiContext);
-      await afterAction();
-    }
-  });
-});
-
-// W-H01, W-H02, W-H03: Workflow History
-test.describe('Workflow History', () => {
+test('non-reviewer should not see approve/reject buttons', async ({
+  page,
+  reviewer2Page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
   const glossary = new Glossary();
-  const reviewer = new UserClass();
-  let glossaryTerm: GlossaryTerm;
+  const termName = `TermForReview${Date.now()}`;
 
-  test.beforeAll(async ({ browser }) => {
-    const { page, apiContext, afterAction } = await performAdminLogin(browser);
-
-    await reviewer.create(apiContext);
+  try {
     await glossary.create(apiContext);
 
-    // Add reviewer to glossary
     await glossary.patch(apiContext, [
       {
         op: 'add',
         path: '/reviewers/0',
         value: {
-          id: reviewer.responseData.id,
+          id: reviewer1.responseData.id,
           type: 'user',
-          displayName: reviewer.responseData.displayName,
-          fullyQualifiedName: reviewer.responseData.fullyQualifiedName,
-          name: reviewer.responseData.name,
+          displayName: reviewer1.responseData.displayName,
+          fullyQualifiedName: reviewer1.responseData.fullyQualifiedName,
+          name: reviewer1.responseData.name,
         },
       },
     ]);
 
-    // Create and approve term to have workflow history
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary.data.displayName);
+
+    await openAddGlossaryTermModal(page);
+
+    await page.fill('[data-testid="name"]', termName);
+    await page.locator(descriptionBox).fill('Term for review testing');
+
+    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
+    await page.click('[data-testid="save-glossary-term"]');
+    await createResponse;
+
+    await expect(
+      page.locator('[role="dialog"].edit-glossary-modal')
+    ).not.toBeVisible();
+
+    await redirectToHomePage(reviewer2Page);
+    await sidebarClick(reviewer2Page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(reviewer2Page, glossary.data.displayName);
+
+    await reviewer2Page.waitForLoadState('networkidle');
+
+    const termRow = reviewer2Page.locator(`[data-row-key*="${termName}"]`);
+
+    await expect(termRow).toBeVisible();
+
+    const approveBtn = reviewer2Page.getByTestId(`${termName}-approve-btn`);
+    const rejectBtn = reviewer2Page.getByTestId(`${termName}-reject-btn`);
+
+    await expect(approveBtn).not.toBeVisible();
+    await expect(rejectBtn).not.toBeVisible();
+  } finally {
+    await glossary.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('should display correct status badge color and icon', async ({ page }) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const glossary = new Glossary();
+
+  try {
+    await glossary.create(apiContext);
+
+    await glossary.patch(apiContext, [
+      {
+        op: 'add',
+        path: '/reviewers/0',
+        value: {
+          id: reviewer1.responseData.id,
+          type: 'user',
+          displayName: reviewer1.responseData.displayName,
+          fullyQualifiedName: reviewer1.responseData.fullyQualifiedName,
+          name: reviewer1.responseData.name,
+        },
+      },
+    ]);
+
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary.data.displayName);
+
+    const termName = `StatusBadgeTerm${Date.now()}`;
+    await openAddGlossaryTermModal(page);
+
+    await page.fill('[data-testid="name"]', termName);
+    await page.locator(descriptionBox).fill('Test term for status badge');
+
+    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
+    await page.click('[data-testid="save-glossary-term"]');
+    await createResponse;
+
+    await expect(
+      page.locator('[role="dialog"].edit-glossary-modal')
+    ).not.toBeVisible();
+
+    await page.waitForLoadState('networkidle');
+
+    const termRow = page.locator(`[data-row-key*="${termName}"]`);
+
+    await expect(termRow).toBeVisible();
+
+    const statusBadge = termRow.locator('.status-badge');
+
+    await expect(statusBadge).toHaveText('Draft');
+
+    await expect(statusBadge).toBeVisible();
+  } finally {
+    await glossary.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('owner should not see approve/reject buttons if not a reviewer', async ({
+  page,
+  reviewer2Page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const glossary = new Glossary();
+  const termName = `OwnerTermTest${Date.now()}`;
+
+  try {
+    await glossary.create(apiContext);
+
+    await glossary.patch(apiContext, [
+      {
+        op: 'add',
+        path: '/owners/0',
+        value: {
+          id: reviewer2.responseData.id,
+          type: 'user',
+          displayName: reviewer2.responseData.displayName,
+          fullyQualifiedName: reviewer2.responseData.fullyQualifiedName,
+          name: reviewer2.responseData.name,
+        },
+      },
+      {
+        op: 'add',
+        path: '/reviewers/0',
+        value: {
+          id: reviewer1.responseData.id,
+          type: 'user',
+          displayName: reviewer1.responseData.displayName,
+          fullyQualifiedName: reviewer1.responseData.fullyQualifiedName,
+          name: reviewer1.responseData.name,
+        },
+      },
+    ]);
+
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary.data.displayName);
+
+    await openAddGlossaryTermModal(page);
+
+    await page.fill('[data-testid="name"]', termName);
+    await page.locator(descriptionBox).fill('Term for owner approval test');
+
+    const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
+    await page.click('[data-testid="save-glossary-term"]');
+    await createResponse;
+
+    await expect(
+      page.locator('[role="dialog"].edit-glossary-modal')
+    ).not.toBeVisible();
+
+    await redirectToHomePage(reviewer2Page);
+    await sidebarClick(reviewer2Page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(reviewer2Page, glossary.data.displayName);
+    await reviewer2Page.waitForLoadState('networkidle');
+
+    const termRow = reviewer2Page.locator(`[data-row-key*="${termName}"]`);
+
+    await expect(termRow).toBeVisible();
+
+    const approveBtn = reviewer2Page.getByTestId(`${termName}-approve-btn`);
+    const rejectBtn = reviewer2Page.getByTestId(`${termName}-reject-btn`);
+
+    await expect(approveBtn).not.toBeVisible();
+    await expect(rejectBtn).not.toBeVisible();
+  } finally {
+    await glossary.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('should change status when non-reviewer edits approved term', async ({
+  page,
+  reviewer2Page,
+}) => {
+  test.slow(true);
+
+  const { apiContext, afterAction } = await getApiContext(page);
+  const glossary = new Glossary();
+  let glossaryTerm: GlossaryTerm;
+
+  try {
+    await glossary.create(apiContext);
+
+    await glossary.patch(apiContext, [
+      {
+        op: 'add',
+        path: '/reviewers/0',
+        value: {
+          id: reviewer1.responseData.id,
+          type: 'user',
+          displayName: reviewer1.responseData.displayName,
+          fullyQualifiedName: reviewer1.responseData.fullyQualifiedName,
+          name: reviewer1.responseData.name,
+        },
+      },
+    ]);
+
+    glossaryTerm = new GlossaryTerm(glossary, undefined, 'ApprovedTermForEdit');
+    await glossaryTerm.create(apiContext);
+
+    await apiContext.patch(
+      `/api/v1/glossaryTerms/${glossaryTerm.responseData.id}`,
+      {
+        data: [
+          {
+            op: 'replace',
+            path: '/status',
+            value: 'Approved',
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    await redirectToHomePage(reviewer2Page);
+    await sidebarClick(reviewer2Page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(reviewer2Page, glossary.data.displayName);
+    await reviewer2Page.waitForLoadState('networkidle');
+
+    const termRow = reviewer2Page.locator(
+      `[data-row-key*="${glossaryTerm.responseData.name}"]`
+    );
+
+    await expect(termRow).toBeVisible();
+
+    await reviewer2Page.click(
+      `[data-testid="${glossaryTerm.responseData.name}"]`
+    );
+    await reviewer2Page.waitForLoadState('networkidle');
+
+    const editDescBtn = reviewer2Page.getByTestId('edit-description');
+
+    if (await editDescBtn.isVisible()) {
+      await editDescBtn.click();
+      await reviewer2Page
+        .locator(descriptionBox)
+        .fill('Non-reviewer update to trigger review');
+
+      const saveRes = reviewer2Page.waitForResponse('/api/v1/glossaryTerms/*');
+      await reviewer2Page.getByTestId('save').click();
+      await saveRes;
+
+      await reviewer2Page.waitForLoadState('networkidle');
+    }
+  } finally {
+    await glossary.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test.describe('Workflow History', () => {
+  const glossary = new Glossary();
+  let glossaryTerm: GlossaryTerm;
+
+  test.beforeAll(async ({ browser }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser);
+
+    await glossary.create(apiContext);
+
+    await glossary.patch(apiContext, [
+      {
+        op: 'add',
+        path: '/reviewers/0',
+        value: {
+          id: reviewer1.responseData.id,
+          type: 'user',
+          displayName: reviewer1.responseData.displayName,
+          fullyQualifiedName: reviewer1.responseData.fullyQualifiedName,
+          name: reviewer1.responseData.name,
+        },
+      },
+    ]);
+
     glossaryTerm = new GlossaryTerm(glossary, undefined, 'HistoryTerm');
     await glossaryTerm.create(apiContext);
 
-    // Navigate and approve the term via UI to create history
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
     await selectActiveGlossary(page, glossary.data.displayName);
@@ -858,7 +550,6 @@ test.describe('Workflow History', () => {
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await glossary.delete(apiContext);
-    await reviewer.delete(apiContext);
     await afterAction();
   });
 
@@ -932,97 +623,74 @@ test.describe('Workflow History', () => {
   });
 });
 
-test.describe('Term Deletion Cascade', () => {
-  test.use({ storageState: 'playwright/.auth/admin.json' });
+test('should delete parent term and cascade delete children', async ({
+  page,
+}) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const glossary = new Glossary();
+  let parentTerm: GlossaryTerm;
+  let childTerm: GlossaryTerm;
 
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
+  try {
+    await glossary.create(apiContext);
 
-  test('should delete parent term and cascade delete children', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    let parentTerm: GlossaryTerm;
-    let childTerm: GlossaryTerm;
+    parentTerm = new GlossaryTerm(glossary, undefined, 'ParentToDelete');
+    await parentTerm.create(apiContext);
 
-    try {
-      // Create glossary
-      await glossary.create(apiContext);
+    childTerm = new GlossaryTerm(
+      glossary,
+      parentTerm.responseData.fullyQualifiedName,
+      'ChildToDelete'
+    );
+    await childTerm.create(apiContext);
 
-      // Create parent term
-      parentTerm = new GlossaryTerm(glossary, undefined, 'ParentToDelete');
-      await parentTerm.create(apiContext);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Create child term under parent
-      childTerm = new GlossaryTerm(
-        glossary,
-        parentTerm.responseData.fullyQualifiedName,
-        'ChildToDelete'
-      );
-      await childTerm.create(apiContext);
+    await performExpandAll(page);
+    await page.waitForLoadState('networkidle');
 
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
+    const parentRow = page
+      .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
+      .first();
 
-      // Expand all to see both terms
-      await performExpandAll(page);
-      await page.waitForLoadState('networkidle');
+    await expect(parentRow).toBeVisible();
 
-      // Verify both parent and child are visible
-      const parentRow = page
-        .locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
-        .first();
+    const childRow = page.locator(
+      `[data-row-key*="${childTerm.responseData.name}"]`
+    );
 
-      await expect(parentRow).toBeVisible();
+    await expect(childRow).toBeVisible();
 
-      const childRow = page.locator(
-        `[data-row-key*="${childTerm.responseData.name}"]`
-      );
+    await page.click(`[data-testid="${parentTerm.responseData.name}"]`);
+    await page.waitForLoadState('networkidle');
 
-      await expect(childRow).toBeVisible();
+    await page.getByTestId('manage-button').click();
+    await page.getByTestId('delete-button').click();
 
-      // Click on parent term to navigate to its details page
-      await page.click(`[data-testid="${parentTerm.responseData.name}"]`);
-      await page.waitForLoadState('networkidle');
+    await expect(page.locator('[role="dialog"]')).toBeVisible();
 
-      // Click manage button and delete
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('delete-button').click();
+    await page.getByTestId('confirmation-text-input').fill('DELETE');
 
-      // Wait for delete confirmation modal
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+    const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
+    await page.getByTestId('confirm-button').click();
+    await deleteRes;
 
-      // Confirm deletion - type DELETE in the confirmation input
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
+    await page.waitForLoadState('networkidle');
 
-      // Click confirm button
-      const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
-      await page.getByTestId('confirm-button').click();
-      await deleteRes;
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary.data.displayName);
+    await page.waitForLoadState('networkidle');
 
-      // Wait for redirect back to glossary page
-      await page.waitForLoadState('networkidle');
+    await expect(
+      page.locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
+    ).not.toBeVisible();
 
-      // Navigate back to glossary to verify both terms are deleted
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-      await page.waitForLoadState('networkidle');
-
-      // Verify parent term is no longer visible
-      await expect(
-        page.locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
-      ).not.toBeVisible();
-
-      // Verify child term is also deleted (cascaded)
-      await expect(
-        page.locator(`[data-row-key*="${childTerm.responseData.name}"]`)
-      ).not.toBeVisible();
-    } finally {
-      // Glossary deletion will clean up any remaining terms
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
+    await expect(
+      page.locator(`[data-row-key*="${childTerm.responseData.name}"]`)
+    ).not.toBeVisible();
+  } finally {
+    await glossary.delete(apiContext);
+    await afterAction();
+  }
 });

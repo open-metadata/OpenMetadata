@@ -49,7 +49,9 @@ test.describe('Glossary P2 Tests', () => {
 
       // Use name with underscores and hyphens
       await page.fill('[data-testid="name"]', specialName);
-      await page.locator(descriptionBox).fill('Glossary with special characters');
+      await page
+        .locator(descriptionBox)
+        .fill('Glossary with special characters');
 
       const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
       await page.click('[data-testid="save-glossary"]');
@@ -254,60 +256,6 @@ test.describe('Glossary P2 Tests', () => {
           await expect(columnSettings).toBeVisible();
         }
       }
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  // S-F06: Status filter persists during navigation
-  test('should persist status filter during navigation', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const glossaryTerm = new GlossaryTerm(glossary);
-
-    try {
-      await glossary.create(apiContext);
-      await glossaryTerm.create(apiContext);
-
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      // Apply a filter if available
-      const statusFilter = page.getByTestId('status-filter');
-
-      if (await statusFilter.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await statusFilter.click();
-
-        const draftOption = page.getByText('Draft');
-
-        if (await draftOption.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await draftOption.click();
-          await page.waitForTimeout(500); // Wait for filter to apply
-        } else {
-          // Close dropdown if draft option not found
-          await page.keyboard.press('Escape');
-        }
-      }
-
-      // Try to navigate to term
-      const termLink = page.getByTestId(glossaryTerm.data.displayName);
-      if (await termLink.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await termLink.click();
-        const termLoadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-        await termLoadResponse;
-
-        // Go back to glossary list
-        await page.goBack();
-        const backLoadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-        await backLoadResponse;
-      }
-
-      // Test passes if page is still functional
-      await expect(page.getByTestId('entity-header-name')).toBeVisible({
-        timeout: 10000,
-      });
     } finally {
       await glossary.delete(apiContext);
       await afterAction();

@@ -71,9 +71,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // First verify the table has the glossary term tag
       await redirectToHomePage(page);
       await tableEntity.visitEntityPage(page);
-
-      const loadResponse = page.waitForResponse('/api/v1/tables/*');
-      await loadResponse;
+      await page.waitForLoadState('networkidle');
 
       // Verify glossary term tag is present on the table (in glossary-container)
       const glossaryContainer = page
@@ -115,9 +113,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Navigate back to the table and verify the glossary term tag has been removed
       await redirectToHomePage(page);
       await tableEntity.visitEntityPage(page);
-
-      const loadResponse2 = page.waitForResponse('/api/v1/tables/*');
-      await loadResponse2;
+      await page.waitForLoadState('networkidle');
 
       // Verify glossary term tag is no longer present on the table
       // The glossary-container should either not exist or not contain the term name
@@ -155,14 +151,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Expand to see both terms
       await performExpandAll(page);
 
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-      await loadResponse;
-
-      // Navigate to parent term
-      await page.click(`[data-testid="${parentTerm.responseData.name}"]`);
-
-      const termLoadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await termLoadResponse;
+      await selectActiveGlossaryTerm(page, parentTerm.data.displayName);
 
       // Rename the parent term
       await page.getByTestId('manage-button').click();
@@ -183,9 +172,6 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
       await performExpandAll(page);
-
-      const reloadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-      await reloadResponse;
 
       // Child term should still be visible with updated hierarchy
       await expect(
@@ -232,9 +218,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // First verify the table has the glossary term tag
       await redirectToHomePage(page);
       await tableEntity.visitEntityPage(page);
-
-      const loadResponse = page.waitForResponse('/api/v1/tables/*');
-      await loadResponse;
+      await page.waitForLoadState('networkidle');
 
       // Verify glossary term tag is present on the table (in KnowledgePanel)
       const glossaryTermsPanel = page.getByTestId(
@@ -250,11 +234,10 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Navigate to term by clicking on the term name link
-      await page.getByTestId(glossaryTerm.responseData.displayName).click();
-
-      const termLoadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await termLoadResponse;
+      await selectActiveGlossaryTerm(
+        page,
+        glossaryTerm.responseData.displayName
+      );
 
       // Click manage button and delete
       await page.getByTestId('manage-button').click();
@@ -286,9 +269,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Navigate back to the table and verify the glossary term tag has been removed
       await redirectToHomePage(page);
       await tableEntity.visitEntityPage(page);
-
-      const loadResponse2 = page.waitForResponse('/api/v1/tables/*');
-      await loadResponse2;
+      await page.waitForLoadState('networkidle');
 
       // Verify glossary term tag is no longer present on the table
       // Either the panel doesn't show the term, or the panel shows empty state
@@ -371,9 +352,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
 
       // Check table1 has parent term tag
       await tableEntity1.visitEntityPage(page);
-
-      const loadResponse1 = page.waitForResponse('/api/v1/tables/*');
-      await loadResponse1;
+      await page.waitForLoadState('networkidle');
 
       const glossaryTermsPanel1 = page.getByTestId(
         'KnowledgePanel.GlossaryTerms'
@@ -386,9 +365,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
 
       // Check table2 has child term tag
       await tableEntity2.visitEntityPage(page);
-
-      const loadResponse2 = page.waitForResponse('/api/v1/tables/*');
-      await loadResponse2;
+      await page.waitForLoadState('networkidle');
 
       const glossaryTermsPanel2 = page.getByTestId(
         'KnowledgePanel.GlossaryTerms'
@@ -435,9 +412,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Navigate to table1 and verify parent term tag is removed
       await redirectToHomePage(page);
       await tableEntity1.visitEntityPage(page);
-
-      const loadResponse3 = page.waitForResponse('/api/v1/tables/*');
-      await loadResponse3;
+      await page.waitForLoadState('networkidle');
 
       await expect(
         page
@@ -448,9 +423,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Navigate to table2 and verify child term tag is removed
       await redirectToHomePage(page);
       await tableEntity2.visitEntityPage(page);
-
-      const loadResponse4 = page.waitForResponse('/api/v1/tables/*');
-      await loadResponse4;
+      await page.waitForLoadState('networkidle');
 
       await expect(
         page
@@ -478,9 +451,6 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-      await loadResponse;
 
       // Try to drag term to itself
       const termRow = page.locator(

@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { SidebarItem } from '../../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../../support/entity/Entity.interface';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { addMultiOwner, assignTag, removeTag } from '../../../utils/entity';
-import { removeReviewer } from '../../../utils/glossary';
+import {
+  removeReviewer,
+  selectActiveGlossary,
+  selectActiveGlossaryTerm,
+} from '../../../utils/glossary';
+import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -36,12 +42,10 @@ test.describe('Glossary Remove Operations', () => {
     try {
       await user.create(apiContext);
       await glossary.create(apiContext);
-      
+
       await redirectToHomePage(page);
-      await glossary.visitEntityPage(page);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaries/*');
-      await loadResponse;
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.responseData.displayName);
 
       // Add owner
       await addMultiOwner({
@@ -66,7 +70,9 @@ test.describe('Glossary Remove Operations', () => {
         .getByTestId('glossary-right-panel-owner-link')
         .getByTestId('edit-owner')
         .click();
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
       await page.click('[data-testid="clear-all-button"]');
@@ -90,12 +96,10 @@ test.describe('Glossary Remove Operations', () => {
     try {
       await user.create(apiContext);
       await glossary.create(apiContext);
-      
+
       await redirectToHomePage(page);
-      await glossary.visitEntityPage(page);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaries/*');
-      await loadResponse;
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.responseData.displayName);
 
       // Add reviewer using the Add button
       await addMultiOwner({
@@ -138,12 +142,14 @@ test.describe('Glossary Remove Operations', () => {
       await user.create(apiContext);
       await glossary.create(apiContext);
       await glossaryTerm.create(apiContext);
-      
+
       await redirectToHomePage(page);
-      await glossaryTerm.visitEntityPage(page);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await loadResponse;
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.responseData.displayName);
+      await selectActiveGlossaryTerm(
+        page,
+        glossaryTerm.responseData.displayName
+      );
 
       // Add owner
       await addMultiOwner({
@@ -168,7 +174,9 @@ test.describe('Glossary Remove Operations', () => {
         .getByTestId('glossary-right-panel-owner-link')
         .getByTestId('edit-owner')
         .click();
-      await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       const patchResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.click('[data-testid="clear-all-button"]');
@@ -197,12 +205,14 @@ test.describe('Glossary Remove Operations', () => {
       await user.create(apiContext);
       await glossary.create(apiContext);
       await glossaryTerm.create(apiContext);
-      
+
       await redirectToHomePage(page);
-      await glossaryTerm.visitEntityPage(page);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await loadResponse;
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.responseData.displayName);
+      await selectActiveGlossaryTerm(
+        page,
+        glossaryTerm.responseData.displayName
+      );
 
       // Add reviewer using Add button
       await addMultiOwner({
@@ -242,12 +252,10 @@ test.describe('Glossary Remove Operations', () => {
 
     try {
       await glossary.create(apiContext);
-      
+
       await redirectToHomePage(page);
-      await glossary.visitEntityPage(page);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaries/*');
-      await loadResponse;
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.responseData.displayName);
 
       const tagFqn = 'PersonalData.Personal';
 
@@ -293,12 +301,15 @@ test.describe('Glossary Remove Operations', () => {
     try {
       await glossary.create(apiContext);
       await glossaryTerm.create(apiContext);
-      
+
       await redirectToHomePage(page);
-      await glossaryTerm.visitEntityPage(page);
-      
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await loadResponse;
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.responseData.displayName);
+      await selectActiveGlossaryTerm(
+        page,
+        glossaryTerm.responseData.displayName
+      );
 
       const tagFqn = 'PII.Sensitive';
       const tagName = 'Sensitive';
@@ -343,7 +354,10 @@ test.describe('Glossary Remove Operations', () => {
       ).toBeVisible();
 
       // Remove the tag - click edit button
-      await page.getByTestId('tags-container').getByTestId('edit-button').click();
+      await page
+        .getByTestId('tags-container')
+        .getByTestId('edit-button')
+        .click();
 
       // Remove tag by clicking the X icon
       await page

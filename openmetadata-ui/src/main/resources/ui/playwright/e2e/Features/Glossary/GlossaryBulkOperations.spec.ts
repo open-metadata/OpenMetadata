@@ -45,9 +45,6 @@ test.describe('Glossary Bulk Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-      await loadResponse;
-
       // Look for bulk edit button in the toolbar
       const bulkEditBtn = page.getByTestId('bulk-edit-button');
 
@@ -58,7 +55,7 @@ test.describe('Glossary Bulk Operations', () => {
         await editPageResponse;
 
         // Verify navigation to bulk edit page
-        await expect(page.url()).toContain('bulk-edit');
+        expect(page.url()).toContain('bulk-edit');
       } else {
         // Alternative: look for export/import which includes bulk operations
         const manageBtn = page.getByTestId('manage-button');
@@ -97,9 +94,6 @@ test.describe('Glossary Bulk Operations', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-      await loadResponse;
 
       // Look for checkboxes to select multiple terms
       const termCheckboxes = page.locator(
@@ -140,16 +134,12 @@ test.describe('Glossary Bulk Operations', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     const parentTerm = new GlossaryTerm(glossary, undefined, 'CircularParent');
-    const childTerm = new GlossaryTerm(
-      glossary,
-      undefined,
-      'CircularChild'
-    );
+    const childTerm = new GlossaryTerm(glossary, undefined, 'CircularChild');
 
     try {
       await glossary.create(apiContext);
       await parentTerm.create(apiContext);
-      
+
       // Create child with parent relationship
       childTerm.data.parent = parentTerm.responseData.fullyQualifiedName;
       await childTerm.create(apiContext);
@@ -157,9 +147,6 @@ test.describe('Glossary Bulk Operations', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-
-      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
-      await loadResponse;
 
       // Verify parent term is visible
       const parentRow = page
@@ -173,8 +160,10 @@ test.describe('Glossary Bulk Operations', () => {
 
       if (await expandIcon.isVisible()) {
         await expandIcon.click();
-        
-        const childLoadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+
+        const childLoadResponse = page.waitForResponse(
+          '/api/v1/glossaryTerms?*'
+        );
         await childLoadResponse;
       }
 
@@ -207,13 +196,10 @@ test.describe('Glossary Bulk Operations', () => {
     try {
       // Create glossary with mutually exclusive OFF
       await glossary.create(apiContext);
-      
+
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
-
-      const loadResponse = page.waitForResponse('/api/v1/glossaries/*');
-      await loadResponse;
 
       // Click manage button to access glossary settings
       const manageBtn = page.getByTestId('manage-button');

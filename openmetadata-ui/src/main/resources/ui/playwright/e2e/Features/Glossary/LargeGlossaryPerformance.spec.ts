@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage, getApiContext } from '../../../utils/common';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+} from '../../../utils/common';
 import {
   confirmationDragAndDropGlossary,
   dragAndDropTerm,
+  selectActiveGlossary,
 } from '../../../utils/glossary';
+import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -374,9 +381,9 @@ test.describe('Large Glossary Child Term Performace', () => {
         }
       }
 
-      await glossary.visitEntityPage(page);
-      // Wait for terms to load
-      await page.waitForSelector('[data-testid="glossary-terms-table"]');
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.responseData.displayName);
 
       // Find a term with children (Term_5)
       const term5Row = page.locator('tr', { hasText: 'Term_1' }).first();

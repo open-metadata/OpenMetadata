@@ -25,6 +25,7 @@ import { UserClass } from '../../support/user/UserClass';
 import {
   closeFirstPopupAlert,
   createNewPage,
+  getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -251,20 +252,15 @@ test.describe('Glossary Bulk Import Export', () => {
     });
   });
 
-  test('Check for Circular Reference in Glossary Import', async ({
-    page,
-    browser,
-  }) => {
+  test('Check for Circular Reference in Glossary Import', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
     const circularRefGlossary = new Glossary('Test CSV');
 
     try {
       await test.step(
         'Create glossary for circular reference test',
         async () => {
-          const { apiContext, afterAction } = await createNewPage(browser);
-
           await circularRefGlossary.create(apiContext);
-          await afterAction();
         }
       );
 
@@ -393,25 +389,19 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         }
       );
     } finally {
-      const { apiContext, afterAction } = await createNewPage(browser);
-
       await circularRefGlossary.delete(apiContext);
       await afterAction();
     }
   });
 
   // IE-I05: Import validation - missing required fields
-  test('Import validation - missing required fields', async ({
-    page,
-    browser,
-  }) => {
+  test('Import validation - missing required fields', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
     const validationGlossary = new Glossary('ValidationTest');
 
     try {
       await test.step('Create glossary for validation test', async () => {
-        const { apiContext, afterAction } = await createNewPage(browser);
         await validationGlossary.create(apiContext);
-        await afterAction();
       });
 
       await test.step(
@@ -461,24 +451,19 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         }
       );
     } finally {
-      const { apiContext, afterAction } = await createNewPage(browser);
       await validationGlossary.delete(apiContext);
       await afterAction();
     }
   });
 
   // IE-I06: Import validation - invalid parent reference
-  test('Import validation - invalid parent reference', async ({
-    page,
-    browser,
-  }) => {
+  test('Import validation - invalid parent reference', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
     const parentRefGlossary = new Glossary('ParentRefTest');
 
     try {
       await test.step('Create glossary for parent ref test', async () => {
-        const { apiContext, afterAction } = await createNewPage(browser);
         await parentRefGlossary.create(apiContext);
-        await afterAction();
       });
 
       await test.step('Import CSV with invalid parent reference', async () => {
@@ -527,7 +512,6 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
         }
       });
     } finally {
-      const { apiContext, afterAction } = await createNewPage(browser);
       await parentRefGlossary.delete(apiContext);
       await afterAction();
     }
@@ -536,15 +520,13 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
   // IE-I08: Import partial success (some pass, some fail)
   test('Import partial success - some terms pass, some fail', async ({
     page,
-    browser,
   }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
     const partialGlossary = new Glossary('PartialSuccess');
 
     try {
       await test.step('Create glossary for partial success test', async () => {
-        const { apiContext, afterAction } = await createNewPage(browser);
         await partialGlossary.create(apiContext);
-        await afterAction();
       });
 
       await test.step(
@@ -602,22 +584,21 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
         }
       );
     } finally {
-      const { apiContext, afterAction } = await createNewPage(browser);
       await partialGlossary.delete(apiContext);
       await afterAction();
     }
   });
 
   // IE-E04: Export large glossary (100+ terms)
-  test('Export large glossary with many terms', async ({ page, browser }) => {
+  test('Export large glossary with many terms', async ({ page }) => {
     test.slow(true);
 
+    const { apiContext, afterAction } = await getApiContext(page);
     const largeGlossary = new Glossary('LargeExport');
     const terms: GlossaryTerm[] = [];
 
     try {
       await test.step('Create glossary with many terms', async () => {
-        const { apiContext, afterAction } = await createNewPage(browser);
         await largeGlossary.create(apiContext);
 
         // Create 20 terms (reduced from 100 for test efficiency)
@@ -630,8 +611,6 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           await term.create(apiContext);
           terms.push(term);
         }
-
-        await afterAction();
       });
 
       await test.step('Export glossary and verify all terms', async () => {
@@ -653,17 +632,14 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
         expect(download.suggestedFilename()).toContain('.csv');
       });
     } finally {
-      const { apiContext, afterAction } = await createNewPage(browser);
       await largeGlossary.delete(apiContext);
       await afterAction();
     }
   });
 
   // IE-E05: Export maintains hierarchy in CSV
-  test('Export maintains hierarchy structure in CSV', async ({
-    page,
-    browser,
-  }) => {
+  test('Export maintains hierarchy structure in CSV', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
     const hierarchyGlossary = new Glossary('HierarchyExport');
     let parentTerm: GlossaryTerm;
     let childTerm: GlossaryTerm;
@@ -671,7 +647,6 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
 
     try {
       await test.step('Create glossary with hierarchical terms', async () => {
-        const { apiContext, afterAction } = await createNewPage(browser);
         await hierarchyGlossary.create(apiContext);
 
         // Create parent term
@@ -697,8 +672,6 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           'HierarchyGrandchild'
         );
         await grandchildTerm.create(apiContext);
-
-        await afterAction();
       });
 
       await test.step('Export and verify hierarchy in CSV', async () => {
@@ -737,7 +710,6 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
         }
       });
     } finally {
-      const { apiContext, afterAction } = await createNewPage(browser);
       await hierarchyGlossary.delete(apiContext);
       await afterAction();
     }
