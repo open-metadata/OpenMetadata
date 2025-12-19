@@ -25,6 +25,7 @@ interface MUIAutocompleteProps
   placeholder?: string;
   required?: boolean;
   options?: string[];
+  dataTestId?: string;
 }
 
 const MUIAutocomplete: FC<MUIAutocompleteProps> = ({
@@ -34,6 +35,7 @@ const MUIAutocomplete: FC<MUIAutocompleteProps> = ({
   placeholder,
   required = false,
   options = [],
+  dataTestId,
   ...props
 }) => {
   const handleChange = useCallback(
@@ -59,6 +61,10 @@ const MUIAutocomplete: FC<MUIAutocompleteProps> = ({
           slotProps={{
             inputLabel: {
               shrink: true,
+            },
+            htmlInput: {
+              ...params.inputProps,
+              'data-testid': dataTestId,
             },
           }}
         />
