@@ -845,9 +845,16 @@ test.describe('Bulk Edit Entity', () => {
         /details updated successfully/
       );
 
+      // Visit the glossary terms tab
+      await page.click('[data-testid="terms"]');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       // Navigate to the nested glossary term to verify custom properties
       await page.click(
-        `[data-testid="glossary-term-${additionalNestedGlossaryTerm.displayName}"]`
+        `[data-testid="${additionalNestedGlossaryTerm.displayName}"]`
       );
 
       await page.waitForSelector('[data-testid="loader"]', {
