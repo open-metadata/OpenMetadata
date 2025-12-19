@@ -24,6 +24,7 @@ import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import { CustomPropertyEnumConfig } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   LIST_VALUE_OPERATORS,
+  MULTISELECT_FIELD_OPERATORS,
   NULL_CHECK_OPERATORS,
   RANGE_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
@@ -1248,9 +1249,9 @@ class AdvancedSearchClassBase {
         return {
           subfieldsKey: field.name,
           dataObject: {
-            type: 'select',
+            type: 'multiselect',
             label,
-            operators: LIST_VALUE_OPERATORS,
+            operators: MULTISELECT_FIELD_OPERATORS,
             fieldSettings: {
               listValues: getCustomPropertyAdvanceSearchEnumOptions(
                 (field.customPropertyConfig?.config as CustomPropertyEnumConfig)
