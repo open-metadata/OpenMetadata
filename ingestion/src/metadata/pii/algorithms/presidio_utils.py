@@ -367,7 +367,7 @@ def explain_recognition_results(results: List[RecognizerResult]) -> str:
                     presidio_constants.TEXTUAL_EXPLANATION_PATTERN_ITEM_TEMPLATE.format(
                         pattern=pattern, score=score
                     )
-                    + f"\n"
+                    + "\n"
                 )
 
         textual_explanation += "\n"
