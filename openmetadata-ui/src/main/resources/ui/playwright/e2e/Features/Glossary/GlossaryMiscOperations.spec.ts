@@ -15,7 +15,7 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { TableClass } from '../../../support/entity/TableClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { createNewPage, redirectToHomePage } from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   dragAndDropTerm,
   performExpandAll,
@@ -28,478 +28,476 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-// G-D05: Delete glossary with assets tagged to terms
-// Verifies that when a glossary is deleted, the glossary term tags are removed from tagged assets
-test.describe('Delete Glossary with Tagged Assets', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const tableEntity = new TableClass();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await tableEntity.create(apiContext);
-
-    // Tag the table with the glossary term
-    await apiContext.patch(
-      `/api/v1/tables/${tableEntity.entityResponseData?.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/tags/0',
-            value: {
-              tagFQN: glossaryTerm.responseData.fullyQualifiedName,
-              source: 'Glossary',
-            },
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
-
-    await afterAction();
+test.describe('Glossary Miscellaneous Operations', () => {
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    // Clean up table entity (glossary should be deleted in test)
-    await tableEntity.delete(apiContext);
-    await afterAction();
-  });
-
+  // G-D05: Delete glossary with assets tagged to terms
+  // Verifies that when a glossary is deleted, the glossary term tags are removed from tagged assets
   test('should delete glossary and remove tags from assets', async ({
     page,
   }) => {
-    // First verify the table has the glossary term tag
-    await redirectToHomePage(page);
-    await tableEntity.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const tableEntity = new TableClass();
 
-    // Verify glossary term tag is present on the table (in glossary-container)
-    const glossaryContainer = page
-      .getByTestId('KnowledgePanel.GlossaryTerms')
-      .getByTestId('glossary-container');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await tableEntity.create(apiContext);
 
-    await expect(glossaryContainer).toBeVisible();
-    await expect(
-      glossaryContainer.getByText(glossaryTerm.responseData.displayName)
-    ).toBeVisible();
+      // Tag the table with the glossary term
+      await apiContext.patch(
+        `/api/v1/tables/${tableEntity.entityResponseData?.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/tags/0',
+              value: {
+                tagFQN: glossaryTerm.responseData.fullyQualifiedName,
+                source: 'Glossary',
+              },
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-    // Now delete the glossary
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+      // First verify the table has the glossary term tag
+      await redirectToHomePage(page);
+      await tableEntity.visitEntityPage(page);
 
-    // Click manage button and delete
-    await page.getByTestId('manage-button').click();
-    await page.getByTestId('delete-button').click();
+      const loadResponse = page.waitForResponse('/api/v1/tables/*');
+      await loadResponse;
 
-    // Wait for delete confirmation modal
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
-
-    // Confirm deletion
-    await page.getByTestId('confirmation-text-input').fill('DELETE');
-
-    const deleteRes = page.waitForResponse('/api/v1/glossaries/async/*');
-    await page.getByTestId('confirm-button').click();
-    await deleteRes;
-
-    await redirectToHomePage(page);
-
-    // Verify glossary is deleted by checking it's no longer in the list
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-
-    await expect(
-      page.getByText(glossary.data.displayName, { exact: true })
-    ).not.toBeVisible();
-
-    // Navigate back to the table and verify the glossary term tag has been removed
-    await redirectToHomePage(page);
-    await tableEntity.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
-
-    // Verify glossary term tag is no longer present on the table
-    // The glossary-container should either not exist or not contain the term name
-    await expect(
-      page
+      // Verify glossary term tag is present on the table (in glossary-container)
+      const glossaryContainer = page
         .getByTestId('KnowledgePanel.GlossaryTerms')
-        .getByTestId('glossary-container')
-        .getByText(glossaryTerm.responseData.displayName)
-    ).not.toBeVisible();
+        .getByTestId('glossary-container');
+
+      await expect(glossaryContainer).toBeVisible();
+      await expect(
+        glossaryContainer.getByText(glossaryTerm.responseData.displayName)
+      ).toBeVisible();
+
+      // Now delete the glossary
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      // Click manage button and delete
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('delete-button').click();
+
+      // Wait for delete confirmation modal
+      await expect(page.locator('[role="dialog"]')).toBeVisible();
+
+      // Confirm deletion
+      await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+      const deleteRes = page.waitForResponse('/api/v1/glossaries/async/*');
+      await page.getByTestId('confirm-button').click();
+      await deleteRes;
+
+      await redirectToHomePage(page);
+
+      // Verify glossary is deleted by checking it's no longer in the list
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+
+      await expect(
+        page.getByText(glossary.data.displayName, { exact: true })
+      ).not.toBeVisible();
+
+      // Navigate back to the table and verify the glossary term tag has been removed
+      await redirectToHomePage(page);
+      await tableEntity.visitEntityPage(page);
+
+      const loadResponse2 = page.waitForResponse('/api/v1/tables/*');
+      await loadResponse2;
+
+      // Verify glossary term tag is no longer present on the table
+      // The glossary-container should either not exist or not contain the term name
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.GlossaryTerms')
+          .getByTestId('glossary-container')
+          .getByText(glossaryTerm.responseData.displayName)
+      ).not.toBeVisible();
+    } finally {
+      // Clean up table entity (glossary was deleted in test)
+      await tableEntity.delete(apiContext);
+      await afterAction();
+    }
   });
-});
 
-// T-U05: Rename term - verify child FQNs update
-test.describe('Rename Term Updates Child FQNs', () => {
-  const glossary = new Glossary();
-  let parentTerm: GlossaryTerm;
-  let childTerm: GlossaryTerm;
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-
-    parentTerm = new GlossaryTerm(glossary, undefined, 'OriginalParent');
-    await parentTerm.create(apiContext);
-
-    childTerm = new GlossaryTerm(
-      glossary,
-      parentTerm.responseData.fullyQualifiedName,
-      'ChildOfOriginal'
-    );
-    await childTerm.create(apiContext);
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // T-U05: Rename term - verify child FQNs update
   test('should update child FQN when parent is renamed', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const parentTerm = new GlossaryTerm(glossary, undefined, 'OriginalParent');
+    const childTerm = new GlossaryTerm(glossary, undefined, 'ChildOfOriginal');
 
-    // Expand to see both terms
-    await performExpandAll(page);
-    await page.waitForLoadState('networkidle');
+    try {
+      await glossary.create(apiContext);
+      await parentTerm.create(apiContext);
 
-    // Navigate to parent term
-    await page.click(`[data-testid="${parentTerm.responseData.name}"]`);
-    await page.waitForLoadState('networkidle');
+      childTerm.data.parent = parentTerm.responseData.fullyQualifiedName;
+      await childTerm.create(apiContext);
 
-    // Rename the parent term
-    await page.getByTestId('manage-button').click();
-    await page.getByTestId('rename-button').first().click();
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-    // Wait for rename modal to appear
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
+      // Expand to see both terms
+      await performExpandAll(page);
 
-    const newName = 'RenamedParent';
-    // Use getByLabel to target the Name input in the modal
-    await page.getByLabel('Name', { exact: true }).fill(newName);
+      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+      await loadResponse;
 
-    const renameRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-    await page.getByRole('button', { name: 'Save' }).click();
-    await renameRes;
+      // Navigate to parent term
+      await page.click(`[data-testid="${parentTerm.responseData.name}"]`);
 
-    await page.waitForLoadState('networkidle');
+      const termLoadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await termLoadResponse;
 
-    // Navigate to child term and verify its FQN includes new parent name
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-    await performExpandAll(page);
+      // Rename the parent term
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('rename-button').first().click();
 
-    // Child term should still be visible with updated hierarchy
-    await expect(
-      page.locator(`[data-row-key*="${childTerm.responseData.name}"]`)
-    ).toBeVisible();
-  });
-});
+      // Wait for rename modal to appear
+      await expect(page.locator('[role="dialog"]')).toBeVisible();
 
-// T-D03: Delete term with assets tagged - verifies tag is removed from assets
-test.describe('Delete Term with Tagged Assets', () => {
-  const glossary = new Glossary();
-  const glossaryTerm = new GlossaryTerm(glossary);
-  const tableEntity = new TableClass();
+      const newName = 'RenamedParent';
+      // Use getByLabel to target the Name input in the modal
+      await page.getByLabel('Name', { exact: true }).fill(newName);
 
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await glossaryTerm.create(apiContext);
-    await tableEntity.create(apiContext);
+      const renameRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await page.getByRole('button', { name: 'Save' }).click();
+      await renameRes;
 
-    // Tag the table with the glossary term
-    await apiContext.patch(
-      `/api/v1/tables/${tableEntity.entityResponseData?.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/tags/0',
-            value: {
-              tagFQN: glossaryTerm.responseData.fullyQualifiedName,
-              source: 'Glossary',
-            },
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
+      // Navigate to child term and verify its FQN includes new parent name
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await performExpandAll(page);
 
-    await afterAction();
+      const reloadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+      await reloadResponse;
+
+      // Child term should still be visible with updated hierarchy
+      await expect(
+        page.locator(`[data-row-key*="${childTerm.responseData.name}"]`)
+      ).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await tableEntity.delete(apiContext);
-    await afterAction();
-  });
-
+  // T-D03: Delete term with assets tagged - verifies tag is removed from assets
   test('should delete term and remove tag from assets', async ({ page }) => {
-    // First verify the table has the glossary term tag
-    await redirectToHomePage(page);
-    await tableEntity.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const tableEntity = new TableClass();
 
-    // Verify glossary term tag is present on the table (in KnowledgePanel)
-    const glossaryTermsPanel = page.getByTestId('KnowledgePanel.GlossaryTerms');
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await tableEntity.create(apiContext);
 
-    await expect(glossaryTermsPanel).toBeVisible();
-    await expect(
-      glossaryTermsPanel.getByText(glossaryTerm.responseData.displayName)
-    ).toBeVisible();
-
-    // Now navigate to glossary and delete the term
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    // Navigate to term by clicking on the term name link
-    await page.getByTestId(glossaryTerm.responseData.displayName).click();
-    await page.waitForLoadState('networkidle');
-
-    // Click manage button and delete
-    await page.getByTestId('manage-button').click();
-    await page.getByTestId('delete-button').click();
-
-    // Wait for delete confirmation modal
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
-
-    // Confirm deletion
-    await page.getByTestId('confirmation-text-input').fill('DELETE');
-
-    const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
-    await page.getByTestId('confirm-button').click();
-    await deleteRes;
-
-    await page.waitForLoadState('networkidle');
-
-    // Verify term is deleted from glossary
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
-
-    await expect(
-      page.locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
-    ).not.toBeVisible();
-
-    // Navigate back to the table and verify the glossary term tag has been removed
-    await redirectToHomePage(page);
-    await tableEntity.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
-
-    // Verify glossary term tag is no longer present on the table
-    // Either the panel doesn't show the term, or the panel shows empty state
-    const termText = page
-      .getByTestId('KnowledgePanel.GlossaryTerms')
-      .getByText(glossaryTerm.responseData.displayName);
-
-    await expect(termText).not.toBeVisible();
-  });
-});
-
-// T-D04: Delete term with children - verifies both parent and child tags are removed from assets
-test.describe('Delete Term with Children and Tagged Assets', () => {
-  const glossary = new Glossary();
-  const parentTerm = new GlossaryTerm(glossary);
-  let childTerm: GlossaryTerm;
-  const tableEntity1 = new TableClass();
-  const tableEntity2 = new TableClass();
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await parentTerm.create(apiContext);
-
-    // Create child term under parent
-    childTerm = new GlossaryTerm(glossary);
-    childTerm.data.parent = parentTerm.responseData.fullyQualifiedName;
-    await childTerm.create(apiContext);
-
-    await tableEntity1.create(apiContext);
-    await tableEntity2.create(apiContext);
-
-    // Tag table1 with the parent term
-    await apiContext.patch(
-      `/api/v1/tables/${tableEntity1.entityResponseData?.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/tags/0',
-            value: {
-              tagFQN: parentTerm.responseData.fullyQualifiedName,
-              source: 'Glossary',
+      // Tag the table with the glossary term
+      await apiContext.patch(
+        `/api/v1/tables/${tableEntity.entityResponseData?.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/tags/0',
+              value: {
+                tagFQN: glossaryTerm.responseData.fullyQualifiedName,
+                source: 'Glossary',
+              },
             },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
           },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
+        }
+      );
 
-    // Tag table2 with the child term
-    await apiContext.patch(
-      `/api/v1/tables/${tableEntity2.entityResponseData?.id}`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/tags/0',
-            value: {
-              tagFQN: childTerm.responseData.fullyQualifiedName,
-              source: 'Glossary',
-            },
-          },
-        ],
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
+      // First verify the table has the glossary term tag
+      await redirectToHomePage(page);
+      await tableEntity.visitEntityPage(page);
 
-    await afterAction();
+      const loadResponse = page.waitForResponse('/api/v1/tables/*');
+      await loadResponse;
+
+      // Verify glossary term tag is present on the table (in KnowledgePanel)
+      const glossaryTermsPanel = page.getByTestId(
+        'KnowledgePanel.GlossaryTerms'
+      );
+
+      await expect(glossaryTermsPanel).toBeVisible();
+      await expect(
+        glossaryTermsPanel.getByText(glossaryTerm.responseData.displayName)
+      ).toBeVisible();
+
+      // Now navigate to glossary and delete the term
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      // Navigate to term by clicking on the term name link
+      await page.getByTestId(glossaryTerm.responseData.displayName).click();
+
+      const termLoadResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+      await termLoadResponse;
+
+      // Click manage button and delete
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('delete-button').click();
+
+      // Wait for delete confirmation modal
+      await expect(page.locator('[role="dialog"]')).toBeVisible();
+
+      // Confirm deletion
+      await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+      const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
+      await page.getByTestId('confirm-button').click();
+      await deleteRes;
+
+      const afterDeleteResponse = page.waitForResponse(
+        '/api/v1/glossaryTerms?*'
+      );
+      await afterDeleteResponse;
+
+      // Verify term is deleted from glossary
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      await expect(
+        page.locator(`[data-row-key*="${glossaryTerm.responseData.name}"]`)
+      ).not.toBeVisible();
+
+      // Navigate back to the table and verify the glossary term tag has been removed
+      await redirectToHomePage(page);
+      await tableEntity.visitEntityPage(page);
+
+      const loadResponse2 = page.waitForResponse('/api/v1/tables/*');
+      await loadResponse2;
+
+      // Verify glossary term tag is no longer present on the table
+      // Either the panel doesn't show the term, or the panel shows empty state
+      const termText = page
+        .getByTestId('KnowledgePanel.GlossaryTerms')
+        .getByText(glossaryTerm.responseData.displayName);
+
+      await expect(termText).not.toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await tableEntity.delete(apiContext);
+      await afterAction();
+    }
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await tableEntity1.delete(apiContext);
-    await tableEntity2.delete(apiContext);
-    await afterAction();
-  });
-
+  // T-D04: Delete term with children - verifies both parent and child tags are removed from assets
   test('should delete parent term and remove both parent and child tags from assets', async ({
     page,
   }) => {
-    // First verify the tables have the glossary term tags
-    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const parentTerm = new GlossaryTerm(glossary);
+    const childTerm = new GlossaryTerm(glossary);
+    const tableEntity1 = new TableClass();
+    const tableEntity2 = new TableClass();
 
-    // Check table1 has parent term tag
-    await tableEntity1.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
-    const glossaryTermsPanel1 = page.getByTestId(
-      'KnowledgePanel.GlossaryTerms'
-    );
+    try {
+      await glossary.create(apiContext);
+      await parentTerm.create(apiContext);
 
-    await expect(glossaryTermsPanel1).toBeVisible();
-    await expect(
-      glossaryTermsPanel1.getByText(parentTerm.responseData.displayName)
-    ).toBeVisible();
+      // Create child term under parent
+      childTerm.data.parent = parentTerm.responseData.fullyQualifiedName;
+      await childTerm.create(apiContext);
 
-    // Check table2 has child term tag
-    await tableEntity2.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
-    const glossaryTermsPanel2 = page.getByTestId(
-      'KnowledgePanel.GlossaryTerms'
-    );
+      await tableEntity1.create(apiContext);
+      await tableEntity2.create(apiContext);
 
-    await expect(glossaryTermsPanel2).toBeVisible();
-    await expect(
-      glossaryTermsPanel2.getByText(childTerm.responseData.displayName)
-    ).toBeVisible();
+      // Tag table1 with the parent term
+      await apiContext.patch(
+        `/api/v1/tables/${tableEntity1.entityResponseData?.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/tags/0',
+              value: {
+                tagFQN: parentTerm.responseData.fullyQualifiedName,
+                source: 'Glossary',
+              },
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-    // Now navigate to glossary and delete the parent term (which should cascade to child)
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+      // Tag table2 with the child term
+      await apiContext.patch(
+        `/api/v1/tables/${tableEntity2.entityResponseData?.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/tags/0',
+              value: {
+                tagFQN: childTerm.responseData.fullyQualifiedName,
+                source: 'Glossary',
+              },
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-    await selectActiveGlossaryTerm(page, parentTerm.data.displayName);
+      // First verify the tables have the glossary term tags
+      await redirectToHomePage(page);
 
-    // Click manage button and delete
-    await page.getByTestId('manage-button').click();
-    await page.getByTestId('delete-button').click();
+      // Check table1 has parent term tag
+      await tableEntity1.visitEntityPage(page);
 
-    // Wait for delete confirmation modal
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
+      const loadResponse1 = page.waitForResponse('/api/v1/tables/*');
+      await loadResponse1;
 
-    // Confirm deletion
-    await page.getByTestId('confirmation-text-input').fill('DELETE');
+      const glossaryTermsPanel1 = page.getByTestId(
+        'KnowledgePanel.GlossaryTerms'
+      );
 
-    const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
-    await page.getByTestId('confirm-button').click();
-    await deleteRes;
+      await expect(glossaryTermsPanel1).toBeVisible();
+      await expect(
+        glossaryTermsPanel1.getByText(parentTerm.responseData.displayName)
+      ).toBeVisible();
 
-    await redirectToHomePage(page);
+      // Check table2 has child term tag
+      await tableEntity2.visitEntityPage(page);
 
-    // Verify both terms are deleted from glossary
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+      const loadResponse2 = page.waitForResponse('/api/v1/tables/*');
+      await loadResponse2;
 
-    await expect(
-      page.locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
-    ).not.toBeVisible();
-    await expect(
-      page.locator(`[data-row-key*="${childTerm.responseData.name}"]`)
-    ).not.toBeVisible();
+      const glossaryTermsPanel2 = page.getByTestId(
+        'KnowledgePanel.GlossaryTerms'
+      );
 
-    // Navigate to table1 and verify parent term tag is removed
-    await redirectToHomePage(page);
-    await tableEntity1.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+      await expect(glossaryTermsPanel2).toBeVisible();
+      await expect(
+        glossaryTermsPanel2.getByText(childTerm.responseData.displayName)
+      ).toBeVisible();
 
-    await expect(
-      page
-        .getByTestId('KnowledgePanel.GlossaryTerms')
-        .getByText(parentTerm.responseData.displayName)
-    ).not.toBeVisible();
+      // Now navigate to glossary and delete the parent term (which should cascade to child)
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-    // Navigate to table2 and verify child term tag is removed
-    await redirectToHomePage(page);
-    await tableEntity2.visitEntityPage(page);
-    await page.waitForLoadState('networkidle');
+      await selectActiveGlossaryTerm(page, parentTerm.data.displayName);
 
-    await expect(
-      page
-        .getByTestId('KnowledgePanel.GlossaryTerms')
-        .getByText(childTerm.responseData.displayName)
-    ).not.toBeVisible();
+      // Click manage button and delete
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('delete-button').click();
+
+      // Wait for delete confirmation modal
+      await expect(page.locator('[role="dialog"]')).toBeVisible();
+
+      // Confirm deletion
+      await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+      const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
+      await page.getByTestId('confirm-button').click();
+      await deleteRes;
+
+      await redirectToHomePage(page);
+
+      // Verify both terms are deleted from glossary
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      await expect(
+        page.locator(`[data-row-key*="${parentTerm.responseData.name}"]`)
+      ).not.toBeVisible();
+      await expect(
+        page.locator(`[data-row-key*="${childTerm.responseData.name}"]`)
+      ).not.toBeVisible();
+
+      // Navigate to table1 and verify parent term tag is removed
+      await redirectToHomePage(page);
+      await tableEntity1.visitEntityPage(page);
+
+      const loadResponse3 = page.waitForResponse('/api/v1/tables/*');
+      await loadResponse3;
+
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.GlossaryTerms')
+          .getByText(parentTerm.responseData.displayName)
+      ).not.toBeVisible();
+
+      // Navigate to table2 and verify child term tag is removed
+      await redirectToHomePage(page);
+      await tableEntity2.visitEntityPage(page);
+
+      const loadResponse4 = page.waitForResponse('/api/v1/tables/*');
+      await loadResponse4;
+
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.GlossaryTerms')
+          .getByText(childTerm.responseData.displayName)
+      ).not.toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await tableEntity1.delete(apiContext);
+      await tableEntity2.delete(apiContext);
+      await afterAction();
+    }
   });
-});
 
-// H-DD07: Drag term to itself (should be prevented)
-test.describe('Prevent Self-Drag', () => {
-  const glossary = new Glossary();
-  const term = new GlossaryTerm(glossary);
-
-  test.beforeAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.create(apiContext);
-    await term.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await glossary.delete(apiContext);
-    await afterAction();
-  });
-
+  // H-DD07: Drag term to itself (should be prevented)
   test('should not allow dragging term to itself', async ({ page }) => {
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary.data.displayName);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const term = new GlossaryTerm(glossary);
 
-    await page.waitForLoadState('networkidle');
+    try {
+      await glossary.create(apiContext);
+      await term.create(apiContext);
 
-    // Try to drag term to itself
-    const termRow = page.locator(`[data-row-key*="${term.responseData.name}"]`);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-    await expect(termRow).toBeVisible();
+      const loadResponse = page.waitForResponse('/api/v1/glossaryTerms?*');
+      await loadResponse;
 
-    // Attempt drag - the term should remain in its original position
-    await dragAndDropTerm(page, term.data.displayName, term.data.displayName);
+      // Try to drag term to itself
+      const termRow = page.locator(
+        `[data-row-key*="${term.responseData.name}"]`
+      );
 
-    // Verify term is still in original position (no confirmation dialog should appear)
-    // and no error occurred
-    await expect(termRow).toBeVisible();
+      await expect(termRow).toBeVisible();
+
+      // Attempt drag - the term should remain in its original position
+      await dragAndDropTerm(page, term.data.displayName, term.data.displayName);
+
+      // Verify term is still in original position (no confirmation dialog should appear)
+      // and no error occurred
+      await expect(termRow).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
   });
 });
