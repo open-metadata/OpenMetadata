@@ -223,7 +223,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
         await toastNotification(
           page,
-          `Glossaryterm ${glossary1.responseData.fullyQualifiedName} details updated successfully`
+          `Glossary ${glossary1.responseData.fullyQualifiedName} details updated successfully`
         );
       }
     );
@@ -322,7 +322,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
         await toastNotification(
           page,
-          `Glossaryterm ${circularRefGlossary.responseData.fullyQualifiedName} details updated successfully`
+          `Glossary ${circularRefGlossary.responseData.fullyQualifiedName} details updated successfully`
         );
       });
 
