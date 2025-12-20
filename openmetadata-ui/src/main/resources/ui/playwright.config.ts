@@ -76,8 +76,8 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup', 'entity-data-setup'],
       grepInvert: /data-insight/,
@@ -100,7 +100,7 @@ export default defineConfig({
     },
     {
       name: 'Data Insight',
-      use: { ...devices['Desktop Firefox'] },
+      use: { ...devices['Desktop Chrome'] },
       dependencies: ['data-insight-application'],
       grep: /data-insight/,
       teardown: 'entity-data-teardown',
@@ -108,24 +108,24 @@ export default defineConfig({
     {
       name: 'DataAssetRulesEnabled',
       testMatch: '**/DataAssetRulesEnabled.spec.ts',
-      use: { ...devices['Desktop Firefox'] },
+      use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
       fullyParallel: true,
     },
     {
       name: 'DataAssetRulesDisabled',
       testMatch: '**/DataAssetRulesDisabled.spec.ts',
-      use: { ...devices['Desktop Firefox'] },
+      use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
       fullyParallel: true,
     },
     // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
-    // They must run in isolation after the main firefox project to avoid flakiness
+    // They must run in isolation after the main chromium project to avoid flakiness
     {
       name: 'SystemCertificationTags',
       testMatch: '**/SystemCertificationTags.spec.ts',
-      use: { ...devices['Desktop Firefox'] },
-      dependencies: ['setup', 'firefox'],
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
       fullyParallel: false,
     },
   ],
