@@ -98,6 +98,12 @@ export interface EventPublisherJob {
      */
     status?:    Status;
     timestamp?: number;
+    /**
+     * Enable distributed indexing across multiple servers. When enabled, reindexing work is
+     * partitioned and can be processed by multiple servers concurrently with crash recovery
+     * support.
+     */
+    useDistributedIndexing?: boolean;
 }
 
 /**
