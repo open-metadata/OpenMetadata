@@ -507,15 +507,6 @@ test.describe('User Profile Feed Interactions', () => {
     await feedResponse;
 
     await page.waitForSelector('[data-testid="message-container"]');
-    const userDetailsResponse = page.waitForResponse('/api/v1/users/name/*');
-
-    const userFeedResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/feed') &&
-        response.url().includes('type=Conversation') &&
-        response.url().includes('filterType=OWNER_OR_FOLLOWS') &&
-        response.url().includes('userId=')
-    );
 
     const avatar = page
       .locator('#feedData [data-testid="message-container"]')
@@ -532,17 +523,32 @@ test.describe('User Profile Feed Interactions', () => {
     // Get the user name element and ensure it's ready for interaction
     const userNameElement = page.getByTestId('user-name').nth(1);
 
+    // Set up user details response wait before navigation
+    // This is triggered when navigating to the user profile page
+    const userDetailsResponse = page.waitForResponse('/api/v1/users/name/*');
+
+    const userFeedResponse = page.waitForResponse((response) => {
+      const url = response.url();
+
+      return (
+        url.includes('/api/v1/feed') &&
+        url.includes('type=Conversation') &&
+        url.includes('userId=')
+      );
+    });
+
     // Click with force to handle pointer event interception
     await userNameElement.click({ force: true });
 
-    await userDetailsResponse;
+    // Wait for user details to load first - this ensures userData is available
+    // before ActivityFeedTab tries to call the feed API with userId
+    // Store the response so we can extract user data later
+    const userDetailsData = await userDetailsResponse;
+
     await userFeedResponse;
 
-    const [response] = await Promise.all([
-      userDetailsResponse,
-      userFeedResponse,
-    ]);
-    const { name, displayName } = await response.json();
+    // Get user details from the response for validation
+    const { name, displayName } = await userDetailsData.json();
 
     // The UI shows displayName if available, otherwise falls back to name
     const expectedText = displayName ?? name;
