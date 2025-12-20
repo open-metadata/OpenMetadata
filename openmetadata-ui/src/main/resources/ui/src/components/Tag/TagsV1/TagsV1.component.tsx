@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useTheme } from '@mui/material';
-import { Tag, Tooltip, Typography } from 'antd';
+import { Tooltip, useTheme } from '@mui/material';
+import { Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -196,7 +196,7 @@ const TagsV1 = ({
         data-testid="tag-redirect-link"
         to={redirectLink}>
         <TagChip
-          icon={renderGeneratedTagIcon ?? undefined}
+          icon={renderGeneratedTagIcon}
           label={tagName || ''}
           labelDataTestId={`tag-${tag.tagFQN}`}
           sx={{
@@ -296,10 +296,23 @@ const TagsV1 = ({
 
     return (
       <Tooltip
-        mouseEnterDelay={0.5}
-        placement="bottomLeft"
-        title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
-        trigger="hover">
+        arrow
+        enterDelay={500}
+        placement="bottom-start"
+        slotProps={{
+          tooltip: {
+            sx: {
+              backgroundColor: (theme) => theme.palette.grey[900],
+              color: (theme) => theme.palette.common.white,
+            },
+          },
+          arrow: {
+            sx: {
+              color: (theme) => theme.palette.grey[900],
+            },
+          },
+        }}
+        title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
         {automatedTagChip}
       </Tooltip>
     );
@@ -311,10 +324,23 @@ const TagsV1 = ({
         tagChip
       ) : (
         <Tooltip
-          mouseEnterDelay={0.5}
-          placement="bottomLeft"
-          title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
-          trigger="hover">
+          arrow
+          enterDelay={500}
+          placement="bottom-start"
+          slotProps={{
+            tooltip: {
+              sx: {
+                backgroundColor: (theme) => theme.palette.grey[700],
+                color: (theme) => theme.palette.common.white,
+              },
+            },
+            arrow: {
+              sx: {
+                color: (theme) => theme.palette.grey[700],
+              },
+            },
+          }}
+          title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
           {tagChip}
         </Tooltip>
       )}

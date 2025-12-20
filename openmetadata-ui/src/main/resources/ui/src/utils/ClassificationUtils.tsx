@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip as MUITooltip } from '@mui/material';
 import { Button, Space, Switch, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { Link } from 'react-router-dom';
@@ -84,7 +85,23 @@ export const getCommonColumns = (options?: {
         }
 
         return (
-          <Tooltip title={tooltipTitle}>
+          <MUITooltip
+            arrow
+            enterDelay={500}
+            slotProps={{
+              tooltip: {
+                sx: {
+                  backgroundColor: (theme) => theme.palette.grey[700],
+                  color: (theme) => theme.palette.common.white,
+                },
+              },
+              arrow: {
+                sx: {
+                  color: (theme) => theme.palette.grey[700],
+                },
+              },
+            }}
+            title={tooltipTitle}>
             <Switch
               checked={!record.disabled}
               data-testid={`tag-disable-toggle-${record.name}`}
@@ -92,7 +109,7 @@ export const getCommonColumns = (options?: {
               size="small"
               onChange={() => options.handleToggleDisable?.(record)}
             />
-          </Tooltip>
+          </MUITooltip>
         );
       },
     });
