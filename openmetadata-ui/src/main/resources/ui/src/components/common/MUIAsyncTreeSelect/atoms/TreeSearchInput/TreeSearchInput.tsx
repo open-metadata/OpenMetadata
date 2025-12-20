@@ -101,6 +101,15 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
     onBlur(e);
   };
 
+  const inputBasePadding = React.useMemo(() => {
+    const hasEndAdornment = hasClearableValue || loading;
+    if (size === 'small') {
+      return hasEndAdornment ? '6px 39px 6px 6px' : '6px';
+    }
+
+    return hasEndAdornment ? '9px 39px 9px 9px' : '9px';
+  }, [size, hasClearableValue, loading]);
+
   return (
     <Box
       {...getRootProps()}
@@ -193,14 +202,7 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
           '& .MuiInputBase-root': {
             position: 'relative',
             flexWrap: 'wrap',
-            padding:
-              size === 'small'
-                ? hasClearableValue || loading
-                  ? '6px 39px 6px 6px'
-                  : '6px'
-                : hasClearableValue || loading
-                ? '9px 39px 9px 9px'
-                : '9px',
+            padding: inputBasePadding,
             '& .MuiInputBase-input': {
               width: 0,
               minWidth: 30,

@@ -134,13 +134,11 @@ export const useTreeSelection = <T = unknown,>({
 
           // Update parent selection state - simplified for now
           // TODO: Implement cascade parent logic with Map
-        } else {
+        } else if (isSelected) {
           // Independent selection mode: only toggle the clicked node
-          if (isSelected) {
-            newSelectedNodes.delete(nodeId);
-          } else {
-            newSelectedNodes.set(nodeId, node);
-          }
+          newSelectedNodes.delete(nodeId);
+        } else {
+          newSelectedNodes.set(nodeId, node);
         }
       } else {
         // Single selection mode
