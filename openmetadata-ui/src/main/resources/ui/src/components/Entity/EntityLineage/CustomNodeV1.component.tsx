@@ -11,6 +11,12 @@
  *  limitations under the License.
  */
 
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import DownloadIcon from '@mui/icons-material/SaveAlt';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import { Divider, IconButton, Menu, MenuItem } from '@mui/material';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
@@ -141,6 +147,78 @@ const ExpandCollapseHandles = memo(
     );
   }
 );
+
+const MeatballMenu = () => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  return (
+    <div className="manage-node">
+      <IconButton
+        aria-controls={open ? 'menu' : undefined}
+        aria-haspopup="true"
+        aria-label="more options"
+        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+          e.stopPropagation();
+          setAnchorEl(e.currentTarget);
+        }}>
+        <MoreVertIcon sx={{ pointerEvents: 'none' }} />
+      </IconButton>
+
+      <Menu
+        anchorEl={anchorEl}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        className="manage-node-menu"
+        id="menu"
+        open={open}
+        sx={{
+          '.MuiPaper-root': {
+            width: 'max-content',
+            marginLeft: '6px',
+            marginTop: 0,
+            '.MuiMenuItem-root': {
+              fontWeight: 400,
+              svg: {
+                fontSize: 20,
+              },
+            },
+          },
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+        onClose={() => setAnchorEl(null)}>
+        <MenuItem onClick={handleClose}>
+          <ArrowBackIcon />
+          Edit Upstream
+        </MenuItem>
+        <MenuItem onClick={handleClose}>
+          <ArrowForwardIcon />
+          Edit DownStream
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={handleClose}>
+          <TrendingDownIcon />
+          View Impact
+        </MenuItem>
+        <MenuItem onClick={handleClose}>
+          <DownloadIcon /> Download Impact
+        </MenuItem>
+      </Menu>
+    </div>
+  );
+};
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
@@ -340,6 +418,7 @@ const CustomNodeV1 = (props: NodeProps) => {
           node={node}
         />
       </div>
+      <MeatballMenu />
     </div>
   );
 };
