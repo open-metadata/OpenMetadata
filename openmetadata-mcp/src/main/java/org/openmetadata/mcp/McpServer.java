@@ -2,18 +2,25 @@ package org.openmetadata.mcp;
 
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
-import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
-import io.modelcontextprotocol.server.transport.HttpServletStatelessServerTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.DispatcherType;
+import java.net.URI;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
+import org.openmetadata.mcp.server.auth.Constants;
+import org.openmetadata.mcp.server.auth.provider.OpenMetadataAuthProvider;
+import org.openmetadata.mcp.server.auth.settings.ClientRegistrationOptions;
+import org.openmetadata.mcp.server.auth.settings.RevocationOptions;
+import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -79,35 +86,91 @@ public class McpServer implements McpServerProvider {
       McpAuthFilter authFilter,
       List<McpSchema.Tool> tools,
       List<McpSchema.Prompt> prompts) {
-    McpSchema.ServerCapabilities serverCapabilities =
-        McpSchema.ServerCapabilities.builder()
-            .tools(true)
-            .prompts(true)
-            .resources(true, true)
-            .logging()
-            .build();
+    try {
+      McpSchema.ServerCapabilities serverCapabilities =
+          McpSchema.ServerCapabilities.builder()
+              .tools(true)
+              .prompts(true)
+              .resources(true, true)
+              .logging()
+              .build();
+      //          HttpServletStatelessServerTransport statelessTransport =
+      //                  HttpServletStatelessServerTransport.builder()
+      //                          .jsonMapper(new JacksonMcpJsonMapper(JsonUtils.getObjectMapper()))
+      //                          .messageEndpoint("/mcp")
+      //                          .contextExtractor(new AuthEnrichedMcpContextExtractor())
+      //                          .build();
+      OAuthClientInformation clientInfo = new OAuthClientInformation();
+      clientInfo.setClientId("0b8552fb-4ecc-47d7-8f5d-eaa47a42685f");
+      clientInfo.setClientSecret(
+          SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration().getSecret());
+      clientInfo.setRedirectUris(Collections.singletonList(new URI(Constants.REDIRECT_URI)));
+      clientInfo.setTokenEndpointAuthMethod("client_secret_post");
+      clientInfo.setGrantTypes(Arrays.asList("authorization_code", "refresh_token"));
+      clientInfo.setResponseTypes(Collections.singletonList("code"));
+      clientInfo.setScope(Constants.SCOPE);
 
-    HttpServletStatelessServerTransport statelessTransport =
-        HttpServletStatelessServerTransport.builder()
-            .jsonMapper(new JacksonMcpJsonMapper(JsonUtils.getObjectMapper()))
-            .messageEndpoint("/mcp")
-            .contextExtractor(new AuthEnrichedMcpContextExtractor())
-            .build();
+      // Create auth provider that integrates with OpenMetadata's existing SSO system
+      String baseUrl = "http://localhost:8585";
+      OpenMetadataAuthProvider authProvider = new OpenMetadataAuthProvider(baseUrl);
+      authProvider.registerClient(clientInfo).get();
 
-    McpStatelessSyncServer server =
-        io.modelcontextprotocol.server.McpServer.sync(statelessTransport)
-            .serverInfo("openmetadata-mcp-stateless", "0.14.0")
-            .capabilities(serverCapabilities)
-            .build();
-    addToolsToServer(server, tools);
-    addPromptsToServer(server, prompts);
+      // Create registration options
+      ClientRegistrationOptions registrationOptions = new ClientRegistrationOptions();
+      registrationOptions.setAllowLocalhostRedirect(true);
+      registrationOptions.setValidScopes(
+          Arrays.asList(
+              "openid",
+              "profile",
+              "email",
+              "offline_access",
+              "api://0a957c01-29f8-4fce-a1dc-3b9f12447b60/.default"));
 
-    // SSE transport for MCP
-    ServletHolder servletHolderSSE = new ServletHolder(statelessTransport);
-    contextHandler.addServlet(servletHolderSSE, "/mcp/*");
+      // Create revocation options
+      RevocationOptions revocationOptions = new RevocationOptions();
+      revocationOptions.setEnabled(true);
 
-    contextHandler.addFilter(
-        new FilterHolder(authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
+      OAuthHttpStatelessServerTransportProvider statelessOauthTransport =
+          new OAuthHttpStatelessServerTransportProvider(
+              JsonUtils.getObjectMapper(),
+              baseUrl,
+              "/mcp",
+              new AuthEnrichedMcpContextExtractor(),
+              authProvider,
+              registrationOptions,
+              revocationOptions);
+      McpStatelessSyncServer server =
+          io.modelcontextprotocol.server.McpServer.sync(statelessOauthTransport)
+              .serverInfo("openmetadata-mcp-stateless", "0.11.2")
+              .capabilities(serverCapabilities)
+              .build();
+      addToolsToServer(server, tools);
+      addPromptsToServer(server, prompts);
+
+      // SSE transport for MCP
+      ServletHolder servletHolderSSE = new ServletHolder(statelessOauthTransport);
+      contextHandler.addServlet(servletHolderSSE, "/mcp/*");
+
+      contextHandler.addFilter(
+          new FilterHolder(authFilter), "/mcp/*", EnumSet.of(DispatcherType.REQUEST));
+
+      // Register MCP OAuth callback servlet
+      //      McpOAuthCallbackServlet callbackServlet = new McpOAuthCallbackServlet(authProvider);
+      //      ServletHolder callbackHolder = new ServletHolder(callbackServlet);
+      //      contextHandler.addServlet(callbackHolder, "/mcp/auth/callback");
+      //      LOG.info("Registered MCP OAuth callback servlet at mcp/auth/callback");
+
+      // Add well-known filter at root level for OAuth discovery (RFC 8414)
+      OAuthWellKnownFilter wellKnownFilter = new OAuthWellKnownFilter();
+      contextHandler.addFilter(
+          new FilterHolder(wellKnownFilter),
+          "/*",
+          EnumSet.of(DispatcherType.REQUEST, DispatcherType.FORWARD));
+
+      LOG.info("OAuth well-known endpoints configured at root level for RFC 8414 discovery");
+    } catch (Exception ex) {
+      LOG.error("Error adding stateless transport", ex);
+    }
   }
 
   public void addToolsToServer(McpStatelessSyncServer server, List<McpSchema.Tool> tools) {
