@@ -62,7 +62,7 @@ export class TableClass extends EntityClass {
     name: string;
     displayName: string;
     description: string;
-    columns: unknown[];
+    columns: TableColumn[];
     tableType: string;
     databaseSchema: string;
   };
