@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.lineage;
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.GraphPerformanceConfig;
@@ -14,7 +13,6 @@ import org.openmetadata.service.resources.settings.SettingsCache;
  */
 @Slf4j
 @Getter
-@Builder
 public class LineageGraphConfiguration {
 
   private final int smallGraphThreshold;
@@ -32,7 +30,7 @@ public class LineageGraphConfiguration {
   private final boolean useScrollForLargeGraphs;
   private final int scrollTimeoutMinutes;
 
-  private LineageGraphConfiguration(GraphPerformanceConfig config) {
+  public LineageGraphConfiguration(GraphPerformanceConfig config) {
     this.smallGraphThreshold = config.getSmallGraphThreshold();
     this.mediumGraphThreshold = config.getMediumGraphThreshold();
     this.maxInMemoryNodes = config.getMaxInMemoryNodes();

@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.lineage.GraphPerformanceConfig;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 
@@ -140,14 +141,14 @@ public class SmallGraphStrategyTest {
   public void testBuildGraph_WithProgressTracking() throws IOException {
     // Enable progress tracking in config
     LineageGraphConfiguration configWithTracking =
-        LineageGraphConfiguration.builder()
-            .smallGraphThreshold(5000)
-            .mediumGraphThreshold(50000)
-            .maxInMemoryNodes(100000)
-            .smallGraphBatchSize(10000)
-            .enableProgressTracking(true)
-            .progressReportInterval(1000)
-            .build();
+        new LineageGraphConfiguration(
+            new GraphPerformanceConfig()
+                .withSmallGraphThreshold(5000)
+                .withMediumGraphThreshold(50000)
+                .withMaxInMemoryNodes(100000)
+                .withSmallGraphBatchSize(10000)
+                .withEnableProgressTracking(true)
+                .withProgressReportInterval(1000));
 
     SearchLineageResult mockResult = new SearchLineageResult();
     mockResult.setNodes(new HashMap<>());
