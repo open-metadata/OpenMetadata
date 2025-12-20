@@ -41,7 +41,7 @@ export default [
       'src/jsons/connectionSchemas/**',
       'src/generated/**',
       'coverage/**',
-      'playwright/doc-generator/**,',
+      'playwright/doc-generator/**',
     ],
   },
 
