@@ -952,6 +952,24 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Jetty metrics for monitoring
     JettyMetricsIntegration.registerJettyMetrics(environment);
 
+    // Register MCP OAuth callback resource if MCP is enabled
+    try {
+      Class<?> mcpServerClass = Class.forName("org.openmetadata.mcp.McpServer");
+      Object authProvider = mcpServerClass.getMethod("getAuthProvider").invoke(null);
+      if (authProvider != null) {
+        Class<?> resourceClass =
+            Class.forName("org.openmetadata.service.resources.mcp.McpAuthCallbackResource");
+        Object resource =
+            resourceClass.getConstructor(authProvider.getClass()).newInstance(authProvider);
+        environment.jersey().register(resource);
+        LOG.info("Registered MCP OAuth callback resource");
+      }
+    } catch (ClassNotFoundException ignored) {
+      // MCP module not available, skip
+    } catch (Exception e) {
+      LOG.error("Error registering MCP OAuth callback resource", e);
+    }
+
     // RDF resources are now automatically registered via @Collection annotation
     if (config.getRdfConfiguration() != null
         && config.getRdfConfiguration().getEnabled() != null

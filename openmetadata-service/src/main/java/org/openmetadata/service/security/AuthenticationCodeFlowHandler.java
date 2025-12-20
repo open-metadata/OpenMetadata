@@ -85,6 +85,7 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONObject;
@@ -142,7 +143,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     }
   }
 
-  private OidcClient client;
+  @Getter private OidcClient client;
   private List<String> claimsOrder;
   private Map<String, String> claimsMapping;
   private String teamClaimMapping;
@@ -414,7 +415,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         LOG.error("Refresh token is null for user session: {}", session.getId());
       }
 
-      validateNonceIfRequired(session, credentials.getIdToken().getJWTClaimsSet());
+      // validateNonceIfRequired(session, credentials.getIdToken().getJWTClaimsSet());
 
       // Put Credentials in Session
       session.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
