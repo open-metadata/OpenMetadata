@@ -15,6 +15,7 @@ import { Box } from '@mui/material';
 import { Col, Form, Row } from 'antd';
 import { castArray } from 'lodash';
 import { Suspense, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
@@ -25,7 +26,7 @@ import { FieldProp } from '../../interface/FormUtils.interface';
 import { generateFormFields, getField } from '../../utils/formUtils';
 import tagClassBase from '../../utils/TagClassBase';
 import {
-  colorField,
+  getColorField,
   getDescriptionField,
   getDisabledField,
   getDisplayNameField,
@@ -49,6 +50,7 @@ const TagsForm = ({
   isEditing = false,
   isTier = false,
 }: RenameFormProps) => {
+  const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
   const selectedColor = Form.useWatch(['style', 'color'], formRef);
   const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
@@ -101,44 +103,53 @@ const TagsForm = ({
     [isEditing, isClassification, permissions]
   );
 
-  const iconField = useMemo(() => getIconField(selectedColor), [selectedColor]);
+  const iconField = useMemo(
+    () => getIconField(t, selectedColor),
+    [t, selectedColor]
+  );
+
+  const colorField = useMemo(() => getColorField(t), [t]);
 
   const nameField = useMemo(
-    () => getNameField(disableNameField || false),
-    [disableNameField]
+    () => getNameField(t, disableNameField || false),
+    [t, disableNameField]
   );
 
   const displayNameField = useMemo(
-    () => getDisplayNameField(disableDisplayNameField),
-    [disableDisplayNameField]
+    () => getDisplayNameField(t, disableDisplayNameField),
+    [t, disableDisplayNameField]
   );
 
   const ownerField = useMemo(
     () =>
-      getOwnerField({
+      getOwnerField(t, {
         canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
         canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
       }),
-    [entityRules.canAddMultipleUserOwners, entityRules.canAddMultipleTeamOwner]
+    [
+      t,
+      entityRules.canAddMultipleUserOwners,
+      entityRules.canAddMultipleTeamOwner,
+    ]
   );
 
   const domainField = useMemo(
     () =>
-      getDomainField({
+      getDomainField(t, {
         canAddMultipleDomains: entityRules.canAddMultipleDomains,
       }),
-    [entityRules.canAddMultipleDomains]
+    [t, entityRules.canAddMultipleDomains]
   );
 
   const formFields: FieldProp[] = useMemo(
     () => [
-      getDescriptionField({
+      getDescriptionField(t, {
         initialValue: initialValues?.description ?? '',
         readonly: disableDescriptionField,
       }),
       ...(isSystemTag && !isTier
         ? ([
-            getDisabledField({
+            getDisabledField(t, {
               initialValue: initialValues?.disabled ?? false,
               disabled: disableDisabledField,
             }),
@@ -146,6 +157,7 @@ const TagsForm = ({
         : []),
     ],
     [
+      t,
       initialValues?.description,
       initialValues?.disabled,
       disableDescriptionField,
@@ -157,11 +169,11 @@ const TagsForm = ({
 
   const mutuallyExclusiveField = useMemo(
     () =>
-      getMutuallyExclusiveField({
+      getMutuallyExclusiveField(t, {
         disabled: disableMutuallyExclusiveField,
         showHelperText: Boolean(isMutuallyExclusive),
       }),
-    [disableMutuallyExclusiveField, isMutuallyExclusive]
+    [t, disableMutuallyExclusiveField, isMutuallyExclusive]
   );
 
   const autoClassificationComponent = useMemo(

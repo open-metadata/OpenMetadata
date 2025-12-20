@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TFunction } from 'i18next';
 import { DEFAULT_TAG_ICON } from '../../components/common/IconPicker';
-import { MUI_NAME_FIELD_RULES } from '../../constants/Tags.constant';
+import {
+  NAME_LENGTH_REGEX,
+  TAG_NAME_REGEX,
+} from '../../constants/regex.constants';
 import {
   FieldProp,
   FieldTypes,
@@ -19,20 +23,22 @@ import {
   HelperTextType,
 } from '../../interface/FormUtils.interface';
 import { iconTooltipDataRender } from '../../utils/DomainUtils';
-import i18n from '../../utils/i18next/LocalUtil';
 
-export const getIconField = (selectedColor?: string): FieldProp => ({
+export const getIconField = (
+  t: TFunction,
+  selectedColor?: string
+): FieldProp => ({
   name: ['style', 'iconURL'],
   id: 'root/style/iconURL',
-  label: <>{i18n.t('label.icon')}</>,
-  muiLabel: <>{i18n.t('label.icon')}</>,
+  label: <>{t('label.icon')}</>,
+  muiLabel: <>{t('label.icon')}</>,
   required: false,
   type: FieldTypes.ICON_PICKER_MUI,
   helperText: iconTooltipDataRender(),
   props: {
     'data-testid': 'icon-picker-btn',
     allowUrl: true,
-    placeholder: i18n.t('label.icon-url'),
+    placeholder: t('label.icon-url'),
     backgroundColor: selectedColor,
     defaultIcon: DEFAULT_TAG_ICON,
     customStyles: {
@@ -46,11 +52,11 @@ export const getIconField = (selectedColor?: string): FieldProp => ({
   },
 });
 
-export const colorField: FieldProp = {
+export const getColorField = (t: TFunction): FieldProp => ({
   name: ['style', 'color'],
   id: 'root/style/color',
-  label: <>{i18n.t('label.color')}</>,
-  muiLabel: <>{i18n.t('label.color')}</>,
+  label: <>{t('label.color')}</>,
+  muiLabel: <>{t('label.color')}</>,
   required: false,
   type: FieldTypes.COLOR_PICKER_MUI,
   formItemLayout: FormItemLayout.HORIZONTAL,
@@ -58,14 +64,14 @@ export const colorField: FieldProp = {
     valuePropName: 'value',
     trigger: 'onChange',
   },
-};
+});
 
-export const getNameField = (disabled: boolean): FieldProp => ({
+export const getNameField = (t: TFunction, disabled: boolean): FieldProp => ({
   name: 'name',
   id: 'root/name',
-  label: <>{i18n.t('label.name')}</>,
+  label: <>{t('label.name')}</>,
   required: true,
-  placeholder: i18n.t('label.name'),
+  placeholder: t('label.name'),
   type: FieldTypes.TEXT_MUI,
   props: {
     inputProps: {
@@ -73,18 +79,40 @@ export const getNameField = (disabled: boolean): FieldProp => ({
     },
     disabled,
   },
-  rules: MUI_NAME_FIELD_RULES,
+  rules: [
+    {
+      required: true,
+      message: t('label.field-required', {
+        field: t('label.name'),
+      }),
+    },
+    {
+      pattern: NAME_LENGTH_REGEX,
+      message: t('message.entity-size-in-between', {
+        entity: t('label.name'),
+        min: 2,
+        max: 64,
+      }),
+    },
+    {
+      pattern: TAG_NAME_REGEX,
+      message: t('message.entity-name-validation'),
+    },
+  ],
   formItemProps: {
     validateTrigger: ['onChange', 'onBlur'],
   },
 });
 
-export const getDisplayNameField = (disabled: boolean): FieldProp => ({
+export const getDisplayNameField = (
+  t: TFunction,
+  disabled: boolean
+): FieldProp => ({
   name: 'displayName',
   id: 'root/displayName',
-  label: <>{i18n.t('label.display-name')}</>,
+  label: <>{t('label.display-name')}</>,
   required: false,
-  placeholder: i18n.t('label.display-name'),
+  placeholder: t('label.display-name'),
   type: FieldTypes.TEXT_MUI,
   props: {
     inputProps: {
@@ -94,22 +122,25 @@ export const getDisplayNameField = (disabled: boolean): FieldProp => ({
   },
 });
 
-export const getOwnerField = ({
-  canAddMultipleUserOwners,
-  canAddMultipleTeamOwner,
-}: {
-  canAddMultipleUserOwners: boolean;
-  canAddMultipleTeamOwner: boolean;
-}): FieldProp => ({
+export const getOwnerField = (
+  t: TFunction,
+  {
+    canAddMultipleUserOwners,
+    canAddMultipleTeamOwner,
+  }: {
+    canAddMultipleUserOwners: boolean;
+    canAddMultipleTeamOwner: boolean;
+  }
+): FieldProp => ({
   name: 'owners',
   id: 'root/owner',
   required: false,
-  label: <>{i18n.t('label.owner-plural')}</>,
+  label: <>{t('label.owner-plural')}</>,
   type: FieldTypes.USER_TEAM_SELECT_MUI,
   props: {
     multipleUser: canAddMultipleUserOwners,
     multipleTeam: canAddMultipleTeamOwner,
-    label: i18n.t('label.owner-plural'),
+    label: t('label.owner-plural'),
   },
   formItemProps: {
     valuePropName: 'value',
@@ -117,15 +148,18 @@ export const getOwnerField = ({
   },
 });
 
-export const getDomainField = ({
-  canAddMultipleDomains,
-}: {
-  canAddMultipleDomains: boolean;
-}): FieldProp => ({
+export const getDomainField = (
+  t: TFunction,
+  {
+    canAddMultipleDomains,
+  }: {
+    canAddMultipleDomains: boolean;
+  }
+): FieldProp => ({
   name: 'domains',
   id: 'root/domains',
   required: false,
-  label: <>{i18n.t('label.domain-plural')}</>,
+  label: <>{t('label.domain-plural')}</>,
   type: FieldTypes.DOMAIN_SELECT_MUI,
   props: {
     'data-testid': 'domain-select',
@@ -138,16 +172,19 @@ export const getDomainField = ({
   },
 });
 
-export const getDescriptionField = ({
-  initialValue,
-  readonly,
-}: {
-  initialValue: string;
-  readonly: boolean;
-}): FieldProp => ({
+export const getDescriptionField = (
+  t: TFunction,
+  {
+    initialValue,
+    readonly,
+  }: {
+    initialValue: string;
+    readonly: boolean;
+  }
+): FieldProp => ({
   name: 'description',
   required: true,
-  label: <>{i18n.t('label.description')}</>,
+  label: <>{t('label.description')}</>,
   id: 'root/description',
   type: FieldTypes.DESCRIPTION,
   props: {
@@ -157,16 +194,19 @@ export const getDescriptionField = ({
   },
 });
 
-export const getDisabledField = ({
-  initialValue,
-  disabled,
-}: {
-  initialValue: boolean;
-  disabled: boolean;
-}): FieldProp => ({
+export const getDisabledField = (
+  t: TFunction,
+  {
+    initialValue,
+    disabled,
+  }: {
+    initialValue: boolean;
+    disabled: boolean;
+  }
+): FieldProp => ({
   name: 'disabled',
   required: false,
-  label: <>{i18n.t('label.disable-tag')}</>,
+  label: <>{t('label.disable-tag')}</>,
   id: 'root/disabled',
   type: FieldTypes.SWITCH_MUI,
   formItemLayout: FormItemLayout.HORIZONTAL,
@@ -179,15 +219,18 @@ export const getDisabledField = ({
   },
 });
 
-export const getMutuallyExclusiveField = ({
-  disabled,
-  showHelperText,
-}: {
-  disabled: boolean;
-  showHelperText: boolean;
-}): FieldProp => ({
+export const getMutuallyExclusiveField = (
+  t: TFunction,
+  {
+    disabled,
+    showHelperText,
+  }: {
+    disabled: boolean;
+    showHelperText: boolean;
+  }
+): FieldProp => ({
   name: 'mutuallyExclusive',
-  label: <>{i18n.t('label.mutually-exclusive')}</>,
+  label: <>{t('label.mutually-exclusive')}</>,
   type: FieldTypes.SWITCH_MUI,
   required: false,
   props: {
@@ -197,9 +240,9 @@ export const getMutuallyExclusiveField = ({
   },
   helperText: (
     <>
-      {i18n.t('message.mutually-exclusive-alert', {
-        entity: i18n.t('label.classification'),
-        'child-entity': i18n.t('label.tag'),
+      {t('message.mutually-exclusive-alert', {
+        entity: t('label.classification'),
+        'child-entity': t('label.tag'),
       })}
     </>
   ),
