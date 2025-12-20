@@ -254,13 +254,16 @@ public class PartitionCalculator {
    */
   public long getEntityCount(String entityType) {
     try {
+      long count;
       if (TIME_SERIES_ENTITIES.contains(entityType)) {
-        return getTimeSeriesEntityCount(entityType);
+        count = getTimeSeriesEntityCount(entityType);
       } else {
-        return getRegularEntityCount(entityType);
+        count = getRegularEntityCount(entityType);
       }
+      LOG.debug("Entity count for {}: {}", entityType, count);
+      return count;
     } catch (Exception e) {
-      LOG.error("Failed to get entity count for type: {}", entityType, e);
+      LOG.error("Failed to get entity count for type: {} - returning 0", entityType, e);
       return 0;
     }
   }

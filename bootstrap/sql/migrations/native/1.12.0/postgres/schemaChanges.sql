@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS search_index_job (
     completedAt BIGINT,
     updatedAt BIGINT NOT NULL,
     errorMessage TEXT,
+    -- Legacy fields (no longer used but kept for compatibility)
+    registrationDeadline BIGINT,
+    registeredServerCount INT,
     PRIMARY KEY (id)
 );
 
@@ -54,6 +57,7 @@ CREATE TABLE IF NOT EXISTS search_index_partition (
 CREATE INDEX IF NOT EXISTS idx_partition_job ON search_index_partition(jobId);
 CREATE INDEX IF NOT EXISTS idx_partition_status_priority ON search_index_partition(status, priority DESC);
 CREATE INDEX IF NOT EXISTS idx_partition_claimed ON search_index_partition(claimedAt);
+CREATE INDEX IF NOT EXISTS idx_partition_assigned_server ON search_index_partition(jobId, assignedServer);
 
 -- Table for distributed lock to ensure only one reindex job runs at a time
 CREATE TABLE IF NOT EXISTS search_reindex_lock (

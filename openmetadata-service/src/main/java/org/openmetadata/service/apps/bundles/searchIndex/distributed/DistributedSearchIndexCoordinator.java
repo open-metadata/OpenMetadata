@@ -31,6 +31,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.AggregatedStatsRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.EntityStatsRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.SearchIndexPartitionRecord;
+import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexPartitionDAO.ServerStatsRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO;
 
 /**
@@ -40,7 +41,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO;
  * creation and assignment - Progress tracking and aggregation - Job lifecycle management
  *
  * <p>Uses database-backed coordination with optimistic locking for partition claiming to ensure
- * exactly-once processing semantics.
+ * exactly-once processing semantics. Partition claiming is atomic using FOR UPDATE SKIP LOCKED,
+ * which naturally load-balances work across servers (faster servers claim more partitions).
  */
 @Slf4j
 public class DistributedSearchIndexCoordinator {
@@ -56,6 +58,12 @@ public class DistributedSearchIndexCoordinator {
 
   /** Maximum number of retries for a failed partition */
   private static final int MAX_PARTITION_RETRIES = 3;
+
+  /**
+   * Maximum in-flight partitions per server. Prevents one server from hoarding too many partitions
+   * while processing. Once a server finishes processing, it can claim more partitions.
+   */
+  private static final int MAX_IN_FLIGHT_PARTITIONS_PER_SERVER = 5;
 
   private final CollectionDAO collectionDAO;
   private final PartitionCalculator partitionCalculator;
@@ -163,6 +171,19 @@ public class DistributedSearchIndexCoordinator {
     List<SearchIndexPartition> partitions =
         partitionCalculator.calculatePartitions(jobId, entityTypes);
 
+    if (partitions.isEmpty()) {
+      LOG.warn(
+          "No partitions created for job {} - this may indicate no entities to index for types: {}",
+          jobId,
+          entityTypes);
+    } else {
+      LOG.info(
+          "Calculated {} partitions for job {} across {} entity types",
+          partitions.size(),
+          jobId,
+          entityTypes.size());
+    }
+
     // Persist partitions
     for (SearchIndexPartition partition : partitions) {
       insertPartition(partitionDAO, partition);
@@ -209,20 +230,39 @@ public class DistributedSearchIndexCoordinator {
   /**
    * Claim the next available partition for processing.
    *
-   * <p>Uses an atomic UPDATE to avoid race conditions where two servers could claim the same
-   * partition. The UPDATE with subquery ensures exactly-once claiming semantics.
+   * <p>Uses an atomic UPDATE with FOR UPDATE SKIP LOCKED to avoid race conditions where two
+   * servers could claim the same partition. This ensures exactly-once claiming semantics and
+   * naturally load-balances work across servers (faster servers claim more partitions).
+   *
+   * <p>The only limit enforced is the in-flight limit: each server can have at most
+   * MAX_IN_FLIGHT_PARTITIONS_PER_SERVER partitions in PROCESSING state at once. This prevents one
+   * server from hoarding partitions while processing.
    *
    * @param jobId The job ID
-   * @return The claimed partition, or empty if no partitions available
+   * @return The claimed partition, or empty if no partitions available or in-flight limit reached
    */
   public Optional<SearchIndexPartition> claimNextPartition(UUID jobId) {
     SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
 
-    long now = System.currentTimeMillis();
+    // Get in-flight count for this server
+    int inFlightCount = partitionDAO.countInFlightPartitions(jobId.toString(), serverId);
 
-    // Atomically claim a partition - this UPDATE with subquery ensures no race condition
-    int claimed = partitionDAO.claimNextPartitionAtomic(jobId.toString(), serverId, now);
+    // Check if this server already has too many in-flight partitions
+    if (inFlightCount >= MAX_IN_FLIGHT_PARTITIONS_PER_SERVER) {
+      LOG.debug(
+          "Server {} has {} in-flight partitions (max {}), waiting for some to complete",
+          serverId,
+          inFlightCount,
+          MAX_IN_FLIGHT_PARTITIONS_PER_SERVER);
+      return Optional.empty();
+    }
+
+    long claimTime = System.currentTimeMillis();
+
+    // Atomically claim a partition - FOR UPDATE SKIP LOCKED ensures no race condition
+    int claimed = partitionDAO.claimNextPartitionAtomic(jobId.toString(), serverId, claimTime);
     if (claimed == 0) {
+      LOG.debug("No partitions available to claim for server {} on job {}", serverId, jobId);
       return Optional.empty();
     }
 
@@ -237,10 +277,12 @@ public class DistributedSearchIndexCoordinator {
     SearchIndexPartition partition = recordToPartition(record);
 
     LOG.debug(
-        "Server {} claimed partition {} for entity type {}",
+        "Server {} claimed partition {} for entity type {} (in-flight: {}/{})",
         serverId,
         partition.getId(),
-        partition.getEntityType());
+        partition.getEntityType(),
+        inFlightCount + 1,
+        MAX_IN_FLIGHT_PARTITIONS_PER_SERVER);
 
     return Optional.of(partition);
   }
@@ -409,6 +451,17 @@ public class DistributedSearchIndexCoordinator {
   }
 
   /**
+   * Get all participating servers for a job (derived from partition assignments).
+   *
+   * @param jobId The job ID
+   * @return List of server IDs that have claimed partitions
+   */
+  public List<String> getParticipatingServers(UUID jobId) {
+    SearchIndexPartitionDAO partitionDAO = collectionDAO.searchIndexPartitionDAO();
+    return partitionDAO.getAssignedServers(jobId.toString());
+  }
+
+  /**
    * Request to stop a running job.
    *
    * @param jobId The job ID
@@ -494,12 +547,37 @@ public class DistributedSearchIndexCoordinator {
       totalFailed += es.failedRecords();
     }
 
+    // Get per-server stats for distributed visibility
+    List<ServerStatsRecord> serverStatsList = partitionDAO.getServerStats(jobId.toString());
+    LOG.info("Fetched server stats for job {}: {} records from DB", jobId, serverStatsList.size());
+    Map<String, SearchIndexJob.ServerStats> serverStatsMap = new HashMap<>();
+    for (ServerStatsRecord ss : serverStatsList) {
+      LOG.debug(
+          "Server stats record: server={}, processed={}, success={}, failed={}",
+          ss.serverId(),
+          ss.processedRecords(),
+          ss.successRecords(),
+          ss.failedRecords());
+      serverStatsMap.put(
+          ss.serverId(),
+          SearchIndexJob.ServerStats.builder()
+              .serverId(ss.serverId())
+              .processedRecords(ss.processedRecords())
+              .successRecords(ss.successRecords())
+              .failedRecords(ss.failedRecords())
+              .totalPartitions(ss.totalPartitions())
+              .completedPartitions(ss.completedPartitions())
+              .processingPartitions(ss.processingPartitions())
+              .build());
+    }
+
     // Use entity stats sum for job-level stats (more reliable than single aggregation query)
     return job.toBuilder()
         .processedRecords(totalProcessed)
         .successRecords(totalSuccess)
         .failedRecords(totalFailed)
         .entityStats(entityStatsMap)
+        .serverStats(serverStatsMap)
         .build();
   }
 
@@ -781,7 +859,8 @@ public class DistributedSearchIndexCoordinator {
         statsJson,
         job.getCreatedBy(),
         job.getCreatedAt(),
-        job.getUpdatedAt());
+        job.getUpdatedAt(),
+        null);
   }
 
   private void updateJob(SearchIndexJobDAO jobDAO, SearchIndexJob job) {
@@ -844,6 +923,8 @@ public class DistributedSearchIndexCoordinator {
         .completedAt(record.completedAt())
         .updatedAt(record.updatedAt())
         .errorMessage(record.errorMessage())
+        .registrationDeadline(record.registrationDeadline())
+        .registeredServerCount(record.registeredServerCount())
         .build();
   }
 

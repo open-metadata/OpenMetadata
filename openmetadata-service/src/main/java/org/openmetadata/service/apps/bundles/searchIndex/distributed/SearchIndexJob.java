@@ -58,6 +58,9 @@ public class SearchIndexJob {
   /** Per-entity type statistics */
   private Map<String, EntityTypeStats> entityStats;
 
+  /** Per-server statistics (for distributed jobs) */
+  private Map<String, ServerStats> serverStats;
+
   /** User who created the job */
   private String createdBy;
 
@@ -75,6 +78,15 @@ public class SearchIndexJob {
 
   /** Error message if job failed */
   private String errorMessage;
+
+  /**
+   * Registration deadline timestamp. Servers must register before this deadline to participate in
+   * fair work distribution. After the deadline, claiming can begin with accurate server count.
+   */
+  private Long registrationDeadline;
+
+  /** Number of servers registered for this job before the registration deadline */
+  private Integer registeredServerCount;
 
   /** Calculate overall progress percentage */
   public double getProgressPercent() {
@@ -112,5 +124,18 @@ public class SearchIndexJob {
       if (totalRecords <= 0) return 0.0;
       return processedRecords * 100.0 / totalRecords;
     }
+  }
+
+  /** Statistics for a specific server participating in the job */
+  @Data
+  @Builder
+  public static class ServerStats {
+    private String serverId;
+    private long processedRecords;
+    private long successRecords;
+    private long failedRecords;
+    private int totalPartitions;
+    private int completedPartitions;
+    private int processingPartitions;
   }
 }

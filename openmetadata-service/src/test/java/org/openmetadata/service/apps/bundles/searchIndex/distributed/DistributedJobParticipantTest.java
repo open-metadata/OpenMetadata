@@ -16,7 +16,6 @@ package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -32,6 +31,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +44,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -52,14 +53,64 @@ import org.openmetadata.service.search.SearchRepository;
 class DistributedJobParticipantTest {
 
   @Mock private CollectionDAO collectionDAO;
+  @Mock private CollectionDAO.SearchIndexJobDAO jobDAO;
   @Mock private SearchRepository searchRepository;
   @Mock private BulkSink bulkSink;
 
   private DistributedJobParticipant participant;
+  private TestJobNotifier testNotifier;
 
   @BeforeEach
   void setUp() {
-    // Default setup - individual tests may override
+    // Set up default mock for job DAO (used by PollingJobNotifier)
+    when(collectionDAO.searchIndexJobDAO()).thenReturn(jobDAO);
+    when(jobDAO.getRunningJobIds()).thenReturn(List.of());
+    // Create a test notifier that allows manual triggering
+    testNotifier = new TestJobNotifier();
+  }
+
+  /** A test notifier that allows manual triggering of job notifications */
+  static class TestJobNotifier implements DistributedJobNotifier {
+    private Consumer<UUID> callback;
+    private boolean running = false;
+
+    @Override
+    public void notifyJobStarted(UUID jobId, String jobType) {}
+
+    @Override
+    public void notifyJobCompleted(UUID jobId) {}
+
+    @Override
+    public void onJobStarted(Consumer<UUID> callback) {
+      this.callback = callback;
+    }
+
+    @Override
+    public void start() {
+      this.running = true;
+    }
+
+    @Override
+    public void stop() {
+      this.running = false;
+    }
+
+    @Override
+    public boolean isRunning() {
+      return running;
+    }
+
+    @Override
+    public String getType() {
+      return "test";
+    }
+
+    /** Manually trigger job discovery for testing */
+    public void triggerJobDiscovered(UUID jobId) {
+      if (callback != null) {
+        callback.accept(jobId);
+      }
+    }
   }
 
   @AfterEach
@@ -71,7 +122,9 @@ class DistributedJobParticipantTest {
 
   @Test
   void testStartAndStop() {
-    participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
+    participant =
+        new DistributedJobParticipant(
+            collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
 
     // Initially not participating
     assertFalse(participant.isParticipating());
@@ -89,7 +142,9 @@ class DistributedJobParticipantTest {
 
   @Test
   void testMultipleStartCallsAreIdempotent() {
-    participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
+    participant =
+        new DistributedJobParticipant(
+            collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
 
     participant.start();
     participant.start(); // Second call should be no-op
@@ -103,7 +158,9 @@ class DistributedJobParticipantTest {
 
   @Test
   void testMultipleStopCallsAreIdempotent() {
-    participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
+    participant =
+        new DistributedJobParticipant(
+            collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
 
     participant.start();
     participant.stop();
@@ -128,7 +185,9 @@ class DistributedJobParticipantTest {
               when(mock.getRecentJobs(any(), anyInt())).thenReturn(List.of());
             })) {
 
-      participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
+      participant =
+          new DistributedJobParticipant(
+              collectionDAO, searchRepository, "test-server-1", (CacheConfig) null);
       participant.start();
 
       // Wait a bit for the scheduler to run at least once
@@ -182,35 +241,53 @@ class DistributedJobParticipantTest {
 
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
 
+    // Create a processing partition to simulate work in progress
+    SearchIndexPartition processingPartition =
+        SearchIndexPartition.builder()
+            .id(UUID.randomUUID())
+            .jobId(jobId)
+            .entityType("table")
+            .partitionIndex(1)
+            .status(PartitionStatus.PROCESSING)
+            .build();
+
     try (MockedConstruction<DistributedSearchIndexCoordinator> mocked =
         mockConstruction(
             DistributedSearchIndexCoordinator.class,
             (mock, context) -> {
-              // First call finds running job, then no running jobs
-              when(mock.getRecentJobs(eq(List.of(IndexJobStatus.RUNNING)), eq(1)))
-                  .thenReturn(List.of(runningJob))
-                  .thenReturn(List.of());
-
-              // Has pending partitions initially
+              // Has pending partitions in onJobDiscovered, then empty in loop
               when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PENDING)))
-                  .thenReturn(List.of(pendingPartition))
-                  .thenReturn(List.of());
+                  .thenReturn(List.of(pendingPartition)) // onJobDiscovered check
+                  .thenReturn(List.of()); // processing loop checks
 
-              // Job check returns running then completed
+              // Processing partitions - first call shows work in progress (causes 1s delay)
+              // This gives the test time to observe currentJobId before it's cleared
+              when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PROCESSING)))
+                  .thenReturn(List.of(processingPartition)) // loop iteration 1: wait
+                  .thenReturn(List.of()); // loop iteration 2: done
+
+              // Job stays running for multiple checks
               when(mock.getJob(eq(jobId)))
-                  .thenReturn(Optional.of(runningJob))
-                  .thenReturn(Optional.of(completedJob));
+                  .thenReturn(Optional.of(runningJob)) // onJobDiscovered check
+                  .thenReturn(Optional.of(runningJob)) // processing loop check 1
+                  .thenReturn(Optional.of(completedJob)); // processing loop check 2
 
               // No partition to claim (simulating all taken by other servers)
               when(mock.claimNextPartition(eq(jobId))).thenReturn(Optional.empty());
             })) {
 
-      participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
+      participant =
+          new DistributedJobParticipant(
+              collectionDAO, searchRepository, "test-server-1", testNotifier);
       participant.start();
 
-      // Wait for the participant to detect and attempt to join the job
+      // Manually trigger job discovery (simulating notification from Redis or polling)
+      testNotifier.triggerJobDiscovered(jobId);
+
+      // Wait for the participant to join the job - currentJobId is set synchronously
+      // before the virtual thread starts processing
       Awaitility.await()
-          .atMost(15, TimeUnit.SECONDS)
+          .atMost(5, TimeUnit.SECONDS)
           .until(() -> participant.getCurrentJobId() != null);
 
       assertEquals(jobId, participant.getCurrentJobId());
@@ -263,28 +340,27 @@ class DistributedJobParticipantTest {
               when(mock.claimNextPartition(eq(jobId))).thenReturn(Optional.empty());
             })) {
 
-      participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
+      participant =
+          new DistributedJobParticipant(
+              collectionDAO, searchRepository, "test-server-1", testNotifier);
       participant.start();
+
+      // Trigger job discovery manually
+      testNotifier.triggerJobDiscovered(jobId);
 
       // Wait for first join attempt
       Awaitility.await()
-          .atMost(15, TimeUnit.SECONDS)
+          .atMost(5, TimeUnit.SECONDS)
           .until(() -> participant.getCurrentJobId() != null);
 
       UUID firstJobId = participant.getCurrentJobId();
       assertEquals(jobId, firstJobId);
 
-      // Wait for more scheduler cycles
-      Thread.sleep(10000);
+      // Try triggering again - should be ignored since already participating
+      testNotifier.triggerJobDiscovered(jobId);
 
-      // Same job ID should still be remembered, participant not re-joining repeatedly
+      // Same job ID should still be remembered
       assertEquals(jobId, participant.getCurrentJobId());
-
-      // Verify that getRecentJobs was called multiple times but participant logic
-      // prevented re-joining (check via participating flag or job ID stability)
-      DistributedSearchIndexCoordinator constructedMock = mocked.constructed().get(0);
-      verify(constructedMock, atLeastOnce())
-          .getRecentJobs(eq(List.of(IndexJobStatus.RUNNING)), eq(1));
     }
   }
 
@@ -295,6 +371,8 @@ class DistributedJobParticipantTest {
     EventPublisherJob config = new EventPublisherJob();
     config.setEntities(Set.of("table"));
     config.setBatchSize(100);
+    config.setMaxConcurrentRequests(10);
+    config.setPayLoadSize(1000000L);
 
     SearchIndexJob runningJob =
         SearchIndexJob.builder()
@@ -325,42 +403,60 @@ class DistributedJobParticipantTest {
 
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
 
+    // Create a processing partition to simulate work in progress
+    SearchIndexPartition processingPartition =
+        SearchIndexPartition.builder()
+            .id(UUID.randomUUID())
+            .jobId(jobId)
+            .entityType("table")
+            .partitionIndex(1)
+            .status(PartitionStatus.PROCESSING)
+            .build();
+
     try (MockedConstruction<DistributedSearchIndexCoordinator> mocked =
         mockConstruction(
             DistributedSearchIndexCoordinator.class,
             (mock, context) -> {
-              // First returns running, then returns running again (same job)
-              when(mock.getRecentJobs(eq(List.of(IndexJobStatus.RUNNING)), eq(1)))
-                  .thenReturn(List.of(runningJob))
-                  .thenReturn(List.of(runningJob))
-                  .thenReturn(List.of()); // No more running jobs
-
-              // Has pending partitions initially
+              // Has pending partitions initially in onJobDiscovered, then empty in loop
               when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PENDING)))
-                  .thenReturn(List.of(pendingPartition))
-                  .thenReturn(List.of());
+                  .thenReturn(List.of(pendingPartition)) // onJobDiscovered check
+                  .thenReturn(List.of()); // processing loop checks
 
-              // Job transitions to completed
+              // Processing partitions - first shows work in progress (causes 1s delay)
+              when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PROCESSING)))
+                  .thenReturn(List.of(processingPartition)) // loop iteration 1: wait
+                  .thenReturn(List.of()); // loop iteration 2: done
+
+              // Job stays running for first two checks, then transitions to completed
               when(mock.getJob(eq(jobId)))
-                  .thenReturn(Optional.of(runningJob))
-                  .thenReturn(Optional.of(completedJob));
+                  .thenReturn(Optional.of(runningJob)) // onJobDiscovered check
+                  .thenReturn(Optional.of(runningJob)) // processing loop check 1
+                  .thenReturn(Optional.of(completedJob)); // processing loop check 2
 
               // No partition to claim
               when(mock.claimNextPartition(eq(jobId))).thenReturn(Optional.empty());
             })) {
 
-      participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
+      participant =
+          new DistributedJobParticipant(
+              collectionDAO, searchRepository, "test-server-1", testNotifier);
       participant.start();
 
-      // Wait for join
+      // Trigger job discovery manually
+      testNotifier.triggerJobDiscovered(jobId);
+
+      // Wait for participant to join (currentJobId is set synchronously before virtual thread)
       Awaitility.await()
-          .atMost(15, TimeUnit.SECONDS)
+          .atMost(5, TimeUnit.SECONDS)
           .until(() -> participant.getCurrentJobId() != null);
 
-      assertTrue(participant.getCurrentJobId() != null);
+      assertEquals(jobId, participant.getCurrentJobId());
 
-      // Wait for job to be detected as completed
-      Awaitility.await().atMost(20, TimeUnit.SECONDS).until(() -> !participant.isParticipating());
+      // Wait for job processing to complete (job detected as terminal or no more partitions)
+      Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> !participant.isParticipating());
+
+      // After completion, currentJobId should be cleared
+      assertNull(participant.getCurrentJobId());
     }
   }
 
@@ -406,39 +502,57 @@ class DistributedJobParticipantTest {
 
     when(searchRepository.createBulkSink(anyInt(), anyInt(), anyLong())).thenReturn(bulkSink);
 
+    // Create a processing partition to simulate work in progress
+    SearchIndexPartition processingPartition =
+        SearchIndexPartition.builder()
+            .id(UUID.randomUUID())
+            .jobId(jobId)
+            .entityType("table")
+            .partitionIndex(1)
+            .status(PartitionStatus.PROCESSING)
+            .build();
+
     try (MockedConstruction<DistributedSearchIndexCoordinator> coordinatorMocked =
         mockConstruction(
             DistributedSearchIndexCoordinator.class,
             (mock, context) -> {
-              when(mock.getRecentJobs(eq(List.of(IndexJobStatus.RUNNING)), eq(1)))
-                  .thenReturn(List.of(runningJob))
-                  .thenReturn(List.of());
-
+              // Has pending partitions in onJobDiscovered, then empty in loop
               when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PENDING)))
-                  .thenReturn(List.of(partition))
-                  .thenReturn(List.of());
+                  .thenReturn(List.of(partition)) // onJobDiscovered check
+                  .thenReturn(List.of()); // processing loop checks
 
-              // Job transitions to completed
+              // Processing partitions - first shows work in progress (causes 1s delay)
+              when(mock.getPartitions(eq(jobId), eq(PartitionStatus.PROCESSING)))
+                  .thenReturn(List.of(processingPartition)) // loop iteration 1: wait
+                  .thenReturn(List.of()); // loop iteration 2: done
+
+              // Job stays running for multiple checks
               when(mock.getJob(eq(jobId)))
-                  .thenReturn(Optional.of(runningJob))
-                  .thenReturn(Optional.of(completedJob));
+                  .thenReturn(Optional.of(runningJob)) // onJobDiscovered check
+                  .thenReturn(Optional.of(runningJob)) // processing loop check 1
+                  .thenReturn(Optional.of(completedJob)); // processing loop check 2
 
               // No partition available to claim
               when(mock.claimNextPartition(eq(jobId))).thenReturn(Optional.empty());
             })) {
 
-      participant = new DistributedJobParticipant(collectionDAO, searchRepository, "test-server-1");
+      participant =
+          new DistributedJobParticipant(
+              collectionDAO, searchRepository, "test-server-1", testNotifier);
       participant.start();
 
-      // Wait for participant to detect and join job
+      // Trigger job discovery manually
+      testNotifier.triggerJobDiscovered(jobId);
+
+      // Wait for participant to join job
       Awaitility.await()
-          .atMost(15, TimeUnit.SECONDS)
+          .atMost(5, TimeUnit.SECONDS)
           .until(() -> participant.getCurrentJobId() != null);
 
       // Verify the coordinator was called to claim partition
       DistributedSearchIndexCoordinator constructedMock = coordinatorMocked.constructed().get(0);
       Awaitility.await()
-          .atMost(10, TimeUnit.SECONDS)
+          .atMost(5, TimeUnit.SECONDS)
           .untilAsserted(
               () -> verify(constructedMock, atLeastOnce()).claimNextPartition(eq(jobId)));
     }

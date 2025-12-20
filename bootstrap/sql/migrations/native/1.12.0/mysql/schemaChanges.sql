@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS search_index_job (
     completedAt BIGINT,
     updatedAt BIGINT NOT NULL,
     errorMessage TEXT,
+    -- Legacy fields (no longer used but kept for compatibility)
+    registrationDeadline BIGINT,
+    registeredServerCount INT,
     PRIMARY KEY (id),
     INDEX idx_search_index_job_status (status),
     INDEX idx_search_index_job_created (createdAt DESC)
@@ -50,6 +53,7 @@ CREATE TABLE IF NOT EXISTS search_index_partition (
     INDEX idx_partition_job (jobId),
     INDEX idx_partition_status_priority (status, priority DESC),
     INDEX idx_partition_claimed (claimedAt),
+    INDEX idx_partition_assigned_server (jobId, assignedServer),
     CONSTRAINT fk_partition_job FOREIGN KEY (jobId) REFERENCES search_index_job(id) ON DELETE CASCADE
 );
 

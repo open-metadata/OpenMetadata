@@ -132,7 +132,19 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     String configJson = "{\"entities\":[\"table\"],\"batchSize\":100}";
 
     jobDAO.insert(
-        jobId, "INITIALIZING", configJson, null, 0L, 0L, 0L, 0L, null, "test-user", now, now);
+        jobId,
+        "INITIALIZING",
+        configJson,
+        null,
+        0L,
+        0L,
+        0L,
+        0L,
+        null,
+        "test-user",
+        now,
+        now,
+        now + 5000);
 
     SearchIndexJobRecord record = jobDAO.findById(jobId);
 
@@ -154,7 +166,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     String jobId = UUID.randomUUID().toString();
     long now = System.currentTimeMillis();
 
-    jobDAO.insert(jobId, "INITIALIZING", "{}", null, 0L, 0L, 0L, 0L, null, "test-user", now, now);
+    jobDAO.insert(
+        jobId, "INITIALIZING", "{}", null, 0L, 0L, 0L, 0L, null, "test-user", now, now, now + 5000);
 
     // Use the update method to change status to RUNNING
     jobDAO.update(jobId, "RUNNING", 0L, 0L, 0L, null, now, null, now + 1000, null);
@@ -170,7 +183,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     String partitionId = UUID.randomUUID().toString();
     long now = System.currentTimeMillis();
 
-    jobDAO.insert(jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now);
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
 
     partitionDAO.insert(partitionId, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L);
 
@@ -192,7 +206,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     String partitionId = UUID.randomUUID().toString();
     long now = System.currentTimeMillis();
 
-    jobDAO.insert(jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now);
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
     partitionDAO.insert(partitionId, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PROCESSING", 0L);
 
     partitionDAO.updateProgress(partitionId, 50L, 50L, 48L, 2L, now);
@@ -209,7 +224,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     String jobId = UUID.randomUUID().toString();
     long now = System.currentTimeMillis();
 
-    jobDAO.insert(jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now);
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
 
     for (int i = 0; i < 5; i++) {
       partitionDAO.insert(
@@ -241,7 +257,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     String jobId = UUID.randomUUID().toString();
     long now = System.currentTimeMillis();
 
-    jobDAO.insert(jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now);
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
 
     int numPartitions = 20;
     for (int i = 0; i < numPartitions; i++) {
@@ -331,7 +348,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     long now = System.currentTimeMillis();
     long staleThreshold = now - 1000;
 
-    jobDAO.insert(jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now);
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
 
     String stalePartitionId = UUID.randomUUID().toString();
     partitionDAO.insert(
@@ -366,7 +384,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     long now = System.currentTimeMillis();
     long staleThreshold = now - 1000;
 
-    jobDAO.insert(jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now);
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
 
     String stalePartitionId = UUID.randomUUID().toString();
     partitionDAO.insert(
@@ -457,7 +476,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     String jobId = UUID.randomUUID().toString();
     long now = System.currentTimeMillis();
 
-    jobDAO.insert(jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now);
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
 
     partitionDAO.insert(
         UUID.randomUUID().toString(),
@@ -525,7 +545,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     String jobId = UUID.randomUUID().toString();
     long now = System.currentTimeMillis();
 
-    jobDAO.insert(jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now);
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
 
     String p1 = UUID.randomUUID().toString();
     String p2 = UUID.randomUUID().toString();
@@ -566,11 +587,157 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
   }
 
   @Test
+  void testQuotaStats() {
+    String jobId = UUID.randomUUID().toString();
+    long now = System.currentTimeMillis();
+
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
+
+    // Create 10 partitions with various states
+    String p1 = UUID.randomUUID().toString();
+    String p2 = UUID.randomUUID().toString();
+    String p3 = UUID.randomUUID().toString();
+    String p4 = UUID.randomUUID().toString();
+    String p5 = UUID.randomUUID().toString();
+
+    // 2 PENDING partitions (unclaimed)
+    partitionDAO.insert(p1, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L);
+    partitionDAO.insert(p2, jobId, "table", 1, 100L, 200L, 100L, 100L, 50, "PENDING", 0L);
+
+    // 2 PROCESSING partitions claimed by server-1
+    partitionDAO.insert(p3, jobId, "table", 2, 200L, 300L, 100L, 100L, 50, "PENDING", 0L);
+    partitionDAO.insert(p4, jobId, "table", 3, 300L, 400L, 100L, 100L, 50, "PENDING", 0L);
+    partitionDAO.update(
+        p3, "PROCESSING", 250L, 50L, 48L, 2L, "server-1", now, now, null, now, null, 0);
+    partitionDAO.update(
+        p4, "PROCESSING", 350L, 50L, 50L, 0L, "server-1", now, now, null, now, null, 0);
+
+    // 1 COMPLETED partition claimed by server-2
+    partitionDAO.insert(p5, jobId, "table", 4, 400L, 500L, 100L, 100L, 50, "PENDING", 0L);
+    partitionDAO.update(
+        p5, "COMPLETED", 500L, 100L, 98L, 2L, "server-2", now, now, now, now, null, 0);
+
+    // Test quota stats for server-1
+    CollectionDAO.SearchIndexPartitionDAO.PartitionQuotaStats server1Stats =
+        partitionDAO.getQuotaStats(jobId, "server-1");
+
+    assertEquals(2, server1Stats.inFlightCount(), "server-1 has 2 PROCESSING partitions");
+    assertEquals(5, server1Stats.totalPartitions(), "Total 5 partitions in job");
+    assertEquals(2, server1Stats.claimedByServer(), "server-1 claimed 2 partitions");
+    assertEquals(2, server1Stats.participatingServers(), "2 servers participating");
+    assertEquals(2, server1Stats.pendingPartitions(), "2 PENDING partitions remaining");
+    // Work-based stats: partitions have 100 workUnits each = 500 total
+    assertEquals(500L, server1Stats.totalWorkUnits(), "Total 500 work units");
+    assertEquals(200L, server1Stats.workClaimedByServer(), "server-1 claimed 200 work units");
+    assertEquals(200L, server1Stats.pendingWorkUnits(), "200 pending work units");
+
+    // Test quota stats for server-2
+    CollectionDAO.SearchIndexPartitionDAO.PartitionQuotaStats server2Stats =
+        partitionDAO.getQuotaStats(jobId, "server-2");
+
+    assertEquals(0, server2Stats.inFlightCount(), "server-2 has 0 PROCESSING partitions");
+    assertEquals(5, server2Stats.totalPartitions(), "Total 5 partitions in job");
+    assertEquals(1, server2Stats.claimedByServer(), "server-2 claimed 1 partition");
+    assertEquals(2, server2Stats.participatingServers(), "2 servers participating");
+    assertEquals(2, server2Stats.pendingPartitions(), "2 PENDING partitions remaining");
+    assertEquals(500L, server2Stats.totalWorkUnits(), "Total 500 work units");
+    assertEquals(100L, server2Stats.workClaimedByServer(), "server-2 claimed 100 work units");
+    assertEquals(200L, server2Stats.pendingWorkUnits(), "200 pending work units");
+
+    // Test quota stats for a server that hasn't participated yet
+    CollectionDAO.SearchIndexPartitionDAO.PartitionQuotaStats server3Stats =
+        partitionDAO.getQuotaStats(jobId, "server-3");
+
+    assertEquals(0, server3Stats.inFlightCount(), "server-3 has 0 PROCESSING partitions");
+    assertEquals(5, server3Stats.totalPartitions(), "Total 5 partitions in job");
+    assertEquals(0, server3Stats.claimedByServer(), "server-3 claimed 0 partitions");
+    assertEquals(2, server3Stats.participatingServers(), "Still 2 servers participating");
+    assertEquals(2, server3Stats.pendingPartitions(), "2 PENDING partitions remaining");
+    assertEquals(500L, server3Stats.totalWorkUnits(), "Total 500 work units");
+    assertEquals(0L, server3Stats.workClaimedByServer(), "server-3 claimed 0 work units");
+    assertEquals(200L, server3Stats.pendingWorkUnits(), "200 pending work units");
+  }
+
+  @Test
+  void testQuotaStatsEmptyJob() {
+    String jobId = UUID.randomUUID().toString();
+    long now = System.currentTimeMillis();
+
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 0L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
+
+    // No partitions - edge case
+    CollectionDAO.SearchIndexPartitionDAO.PartitionQuotaStats stats =
+        partitionDAO.getQuotaStats(jobId, "any-server");
+
+    assertEquals(0, stats.inFlightCount());
+    assertEquals(0, stats.totalPartitions());
+    assertEquals(0, stats.claimedByServer());
+    assertEquals(0, stats.participatingServers());
+    assertEquals(0, stats.pendingPartitions());
+    assertEquals(0L, stats.totalWorkUnits());
+    assertEquals(0L, stats.workClaimedByServer());
+    assertEquals(0L, stats.pendingWorkUnits());
+  }
+
+  @Test
+  void testQuotaStats_UnevenWorkDistribution() {
+    String jobId = UUID.randomUUID().toString();
+    long now = System.currentTimeMillis();
+
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
+
+    // Create partitions with uneven work units to simulate real-world scenario
+    String p1 = UUID.randomUUID().toString();
+    String p2 = UUID.randomUUID().toString();
+    String p3 = UUID.randomUUID().toString();
+    String p4 = UUID.randomUUID().toString();
+
+    // Two large partitions (1000 work units each) - claimed by server-1
+    partitionDAO.insert(p1, jobId, "table", 0, 0L, 500L, 500L, 1000L, 50, "PENDING", 0L);
+    partitionDAO.insert(p2, jobId, "table", 1, 500L, 1000L, 500L, 1000L, 50, "PENDING", 0L);
+
+    // Two small partitions (100 work units each) - still pending
+    partitionDAO.insert(p3, jobId, "table", 2, 1000L, 1100L, 100L, 100L, 50, "PENDING", 0L);
+    partitionDAO.insert(p4, jobId, "table", 3, 1100L, 1200L, 100L, 100L, 50, "PENDING", 0L);
+
+    // Server-1 claims the two large partitions
+    partitionDAO.update(
+        p1, "PROCESSING", 250L, 250L, 240L, 10L, "server-1", now, now, null, now, null, 0);
+    partitionDAO.update(
+        p2, "COMPLETED", 500L, 500L, 500L, 0L, "server-1", now, now, now, now, null, 0);
+
+    // Verify server-1 has 2000 work units (2 partitions x 1000 each)
+    CollectionDAO.SearchIndexPartitionDAO.PartitionQuotaStats server1Stats =
+        partitionDAO.getQuotaStats(jobId, "server-1");
+
+    assertEquals(2, server1Stats.claimedByServer(), "server-1 claimed 2 partitions");
+    assertEquals(2200L, server1Stats.totalWorkUnits(), "Total 2200 work units");
+    assertEquals(2000L, server1Stats.workClaimedByServer(), "server-1 claimed 2000 work units");
+    assertEquals(
+        200L, server1Stats.pendingWorkUnits(), "200 pending work units (2 small partitions)");
+
+    // Verify server-2 hasn't claimed any work yet
+    CollectionDAO.SearchIndexPartitionDAO.PartitionQuotaStats server2Stats =
+        partitionDAO.getQuotaStats(jobId, "server-2");
+
+    assertEquals(0, server2Stats.claimedByServer(), "server-2 claimed 0 partitions");
+    assertEquals(0L, server2Stats.workClaimedByServer(), "server-2 claimed 0 work units");
+
+    // Work quota calculation: 2200 / 1 server * 1.1 = 2420
+    // Since server-1 has 2000 < 2420, they would be allowed to claim more in single-server mode
+    // But with 2 servers: 2200 / 2 * 1.1 = 1210, and 2000 > 1210, so server-1 should wait
+  }
+
+  @Test
   void testPartitionWorkflowEndToEnd() {
     String jobId = UUID.randomUUID().toString();
     long now = System.currentTimeMillis();
 
-    jobDAO.insert(jobId, "RUNNING", "{}", null, 300L, 0L, 0L, 0L, null, "test-user", now, now);
+    jobDAO.insert(
+        jobId, "RUNNING", "{}", null, 300L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
 
     for (int i = 0; i < 3; i++) {
       partitionDAO.insert(

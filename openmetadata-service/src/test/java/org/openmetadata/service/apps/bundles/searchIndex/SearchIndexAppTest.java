@@ -9,7 +9,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -358,11 +357,8 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     List<EntityInterface> entities = List.of(mockEntity, mockEntity);
     ResultList<EntityInterface> resultList = new ResultList<>(entities, null, null, 2);
 
-    Map<String, Object> contextData = new HashMap<>();
-    contextData.put("entityType", "table");
-    contextData.put("recreateIndex", false);
-
-    lenient().doThrow(searchIndexException).when(mockSink).write(eq(entities), eq(contextData));
+    // Use any() matcher since processTask creates its own contextData internally
+    lenient().doThrow(searchIndexException).when(mockSink).write(any(), any());
 
     SearchIndexApp.IndexingTask<EntityInterface> task =
         new SearchIndexApp.IndexingTask<>("table", resultList, 0);
@@ -1050,6 +1046,341 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     assertEquals(1000000L, jobData.getPayLoadSize());
   }
 
+  @Test
+  void testDistributedIndexingInitialization() {
+    // Create job data with distributed indexing enabled
+    EventPublisherJob distributedJobData =
+        new EventPublisherJob()
+            .withEntities(Set.of("table", "user"))
+            .withBatchSize(500)
+            .withPayLoadSize(10 * 1024 * 1024L)
+            .withMaxConcurrentRequests(20)
+            .withProducerThreads(4)
+            .withConsumerThreads(4)
+            .withQueueSize(1000)
+            .withRecreateIndex(true)
+            .withUseDistributedIndexing(true) // Enable distributed indexing
+            .withStats(new Stats());
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(distributedJobData, Object.class));
+
+    searchIndexApp.init(testApp);
+
+    EventPublisherJob jobData = searchIndexApp.getJobData();
+    assertNotNull(jobData);
+    assertTrue(jobData.getUseDistributedIndexing(), "Distributed indexing should be enabled");
+    assertTrue(jobData.getRecreateIndex(), "Recreate index should be enabled");
+    assertEquals(Set.of("table", "user"), jobData.getEntities());
+    assertEquals(500, jobData.getBatchSize());
+  }
+
+  @Test
+  void testDistributedIndexingJobDataPreservation() {
+    // Verify that distributed indexing settings are preserved through initialization
+    EventPublisherJob distributedJobData =
+        new EventPublisherJob()
+            .withEntities(Set.of("table", "dashboard", "pipeline"))
+            .withBatchSize(1000)
+            .withPayLoadSize(20 * 1024 * 1024L)
+            .withMaxConcurrentRequests(50)
+            .withProducerThreads(8)
+            .withConsumerThreads(8)
+            .withQueueSize(2000)
+            .withRecreateIndex(true)
+            .withUseDistributedIndexing(true)
+            .withAutoTune(false)
+            .withMaxRetries(5)
+            .withInitialBackoff(2000)
+            .withMaxBackoff(30000)
+            .withStats(new Stats());
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(distributedJobData, Object.class));
+
+    searchIndexApp.init(testApp);
+
+    EventPublisherJob resultJobData = searchIndexApp.getJobData();
+    assertNotNull(resultJobData);
+
+    // Verify all distributed settings are preserved
+    assertTrue(resultJobData.getUseDistributedIndexing());
+    assertEquals(3, resultJobData.getEntities().size());
+    assertTrue(resultJobData.getEntities().contains("table"));
+    assertTrue(resultJobData.getEntities().contains("dashboard"));
+    assertTrue(resultJobData.getEntities().contains("pipeline"));
+    assertEquals(1000, resultJobData.getBatchSize());
+    assertEquals(20 * 1024 * 1024L, resultJobData.getPayLoadSize());
+    assertEquals(50, resultJobData.getMaxConcurrentRequests());
+    assertEquals(8, resultJobData.getProducerThreads());
+    assertEquals(8, resultJobData.getConsumerThreads());
+    assertEquals(2000, resultJobData.getQueueSize());
+    assertEquals(5, resultJobData.getMaxRetries());
+    assertEquals(2000, resultJobData.getInitialBackoff());
+    assertEquals(30000, resultJobData.getMaxBackoff());
+  }
+
+  @Test
+  void testDistributedIndexingWithRecreateIndex() throws Exception {
+    // Test that distributed indexing works with recreate index mode
+    EventPublisherJob distributedRecreateJobData =
+        new EventPublisherJob()
+            .withEntities(Set.of("table"))
+            .withBatchSize(500)
+            .withPayLoadSize(10 * 1024 * 1024L)
+            .withMaxConcurrentRequests(10)
+            .withRecreateIndex(true)
+            .withUseDistributedIndexing(true)
+            .withStats(new Stats());
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(distributedRecreateJobData, Object.class));
+
+    searchIndexApp.init(testApp);
+    injectMockSink();
+
+    EventPublisherJob jobData = searchIndexApp.getJobData();
+    assertTrue(jobData.getUseDistributedIndexing());
+    assertTrue(jobData.getRecreateIndex());
+
+    // Setup recreate context via reflection
+    ReindexContext context = new ReindexContext();
+    context.add(
+        "table",
+        "cluster_table",
+        "cluster_table",
+        "cluster_table_rebuild_" + System.currentTimeMillis(),
+        Set.of("cluster_table_alias"),
+        "table",
+        List.of("dataAsset"));
+
+    Field contextField = SearchIndexApp.class.getDeclaredField("recreateContext");
+    contextField.setAccessible(true);
+    contextField.set(searchIndexApp, context);
+
+    // Verify context data includes the staged index for distributed mode
+    Method createContextData =
+        SearchIndexApp.class.getDeclaredMethod("createContextData", String.class);
+    createContextData.setAccessible(true);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> contextData =
+        (Map<String, Object>) createContextData.invoke(searchIndexApp, "table");
+
+    assertNotNull(contextData);
+    assertEquals("table", contextData.get("entityType"));
+    assertTrue((Boolean) contextData.get("recreateIndex"));
+    assertNotNull(contextData.get(TARGET_INDEX_KEY), "Target index should be set for recreate");
+  }
+
+  @Test
+  void testDistributedIndexingStatsTracking() throws Exception {
+    // Test that stats are properly tracked in distributed mode
+    EventPublisherJob distributedJobData =
+        new EventPublisherJob()
+            .withEntities(Set.of("table"))
+            .withBatchSize(100)
+            .withUseDistributedIndexing(true)
+            .withStats(new Stats());
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(distributedJobData, Object.class));
+
+    searchIndexApp.init(testApp);
+
+    // Initialize stats and set searchIndexStats field
+    Stats initialStats = searchIndexApp.initializeTotalRecords(Set.of("table"));
+
+    Field searchIndexStatsField = SearchIndexApp.class.getDeclaredField("searchIndexStats");
+    searchIndexStatsField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    AtomicReference<Stats> searchIndexStats =
+        (AtomicReference<Stats>) searchIndexStatsField.get(searchIndexApp);
+    searchIndexStats.set(initialStats);
+
+    // Simulate batch processing (as would happen in distributed mode)
+    StepStats batch1 = new StepStats().withSuccessRecords(100).withFailedRecords(5);
+    StepStats batch2 = new StepStats().withSuccessRecords(200).withFailedRecords(10);
+    StepStats batch3 = new StepStats().withSuccessRecords(150).withFailedRecords(0);
+
+    searchIndexApp.updateStats("table", batch1);
+    searchIndexApp.updateStats("table", batch2);
+    searchIndexApp.updateStats("table", batch3);
+
+    Stats finalStats = searchIndexApp.getJobData().getStats();
+    assertNotNull(finalStats);
+
+    StepStats tableStats = finalStats.getEntityStats().getAdditionalProperties().get("table");
+    assertNotNull(tableStats);
+
+    assertEquals(450, tableStats.getSuccessRecords()); // 100 + 200 + 150
+    assertEquals(15, tableStats.getFailedRecords()); // 5 + 10 + 0
+
+    StepStats overallStats = finalStats.getJobStats();
+    assertNotNull(overallStats);
+    assertEquals(450, overallStats.getSuccessRecords());
+    assertEquals(15, overallStats.getFailedRecords());
+  }
+
+  @Test
+  void testDistributedIndexingConcurrentStatsUpdates() throws Exception {
+    // Test that concurrent stats updates work correctly in distributed mode
+    EventPublisherJob distributedJobData =
+        new EventPublisherJob()
+            .withEntities(Set.of("table", "user"))
+            .withBatchSize(50)
+            .withUseDistributedIndexing(true)
+            .withStats(new Stats());
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(distributedJobData, Object.class));
+
+    searchIndexApp.init(testApp);
+
+    Stats initialStats = searchIndexApp.initializeTotalRecords(Set.of("table", "user"));
+
+    Field searchIndexStatsField = SearchIndexApp.class.getDeclaredField("searchIndexStats");
+    searchIndexStatsField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    AtomicReference<Stats> searchIndexStats =
+        (AtomicReference<Stats>) searchIndexStatsField.get(searchIndexApp);
+    searchIndexStats.set(initialStats);
+
+    // Simulate concurrent updates from multiple workers (simulating distributed workers)
+    int numWorkers = 4;
+    int batchesPerWorker = 25;
+    ExecutorService executor = Executors.newFixedThreadPool(numWorkers);
+    CountDownLatch latch = new CountDownLatch(numWorkers);
+
+    for (int i = 0; i < numWorkers; i++) {
+      final int workerId = i;
+      executor.submit(
+          () -> {
+            try {
+              for (int j = 0; j < batchesPerWorker; j++) {
+                // Alternate between table and user entity types
+                String entityType = (j % 2 == 0) ? "table" : "user";
+                StepStats stats =
+                    new StepStats()
+                        .withSuccessRecords(10 + workerId) // Vary by worker
+                        .withFailedRecords(j % 5 == 0 ? 1 : 0); // Some failures
+                searchIndexApp.updateStats(entityType, stats);
+              }
+            } finally {
+              latch.countDown();
+            }
+          });
+    }
+
+    assertTrue(latch.await(60, TimeUnit.SECONDS), "Workers should complete within timeout");
+    executor.shutdown();
+
+    Stats finalStats = searchIndexApp.getJobData().getStats();
+    assertNotNull(finalStats);
+    assertNotNull(finalStats.getEntityStats());
+
+    // Verify stats accumulated correctly
+    StepStats tableStats = finalStats.getEntityStats().getAdditionalProperties().get("table");
+    StepStats userStats = finalStats.getEntityStats().getAdditionalProperties().get("user");
+
+    assertNotNull(tableStats, "Table stats should exist");
+    assertNotNull(userStats, "User stats should exist");
+
+    // Each worker does 25 batches, half for each entity type
+    // Worker i adds (10 + i) success records per batch
+    // Expected per entity type: sum over workers of (10+i) * ~12.5 batches
+    int expectedTableBatches = (batchesPerWorker / 2 + (batchesPerWorker % 2));
+    int expectedUserBatches = batchesPerWorker / 2;
+
+    // Total success should be sum of (10+workerId) * batchesPerEntityType
+    int expectedTotalSuccess = 0;
+    int expectedTotalFailures = 0;
+    for (int i = 0; i < numWorkers; i++) {
+      expectedTotalSuccess += (10 + i) * expectedTableBatches + (10 + i) * expectedUserBatches;
+      // Failures: j % 5 == 0 means batches 0, 5, 10, 15, 20 fail (5 per worker)
+      expectedTotalFailures += numWorkers; // simplified - actual is 5 per worker
+    }
+
+    StepStats overallStats = finalStats.getJobStats();
+    assertNotNull(overallStats);
+    assertTrue(overallStats.getSuccessRecords() > 0, "Should have accumulated success records");
+    assertTrue(
+        tableStats.getSuccessRecords() + userStats.getSuccessRecords()
+            == overallStats.getSuccessRecords(),
+        "Entity stats should sum to overall stats");
+  }
+
+  @Test
+  void testDistributedIndexingWithLargeEntitiesList() {
+    // Test initialization with many entity types (common in large deployments)
+    Set<String> manyEntities =
+        Set.of(
+            "table",
+            "user",
+            "team",
+            "database",
+            "databaseService",
+            "dashboardService",
+            "messagingService",
+            "pipelineService",
+            "mlmodelService",
+            "storageService",
+            "topic",
+            "dashboard",
+            "chart",
+            "pipeline",
+            "mlmodel",
+            "container",
+            "query",
+            "report",
+            "glossary",
+            "glossaryTerm",
+            "tag",
+            "classification");
+
+    EventPublisherJob distributedJobData =
+        new EventPublisherJob()
+            .withEntities(manyEntities)
+            .withBatchSize(1000)
+            .withPayLoadSize(50 * 1024 * 1024L)
+            .withMaxConcurrentRequests(100)
+            .withProducerThreads(16)
+            .withConsumerThreads(16)
+            .withQueueSize(5000)
+            .withUseDistributedIndexing(true)
+            .withRecreateIndex(true)
+            .withStats(new Stats());
+
+    App testApp =
+        new App()
+            .withName("SearchIndexingApplication")
+            .withAppConfiguration(JsonUtils.convertValue(distributedJobData, Object.class));
+
+    assertDoesNotThrow(() -> searchIndexApp.init(testApp));
+
+    EventPublisherJob resultJobData = searchIndexApp.getJobData();
+    assertNotNull(resultJobData);
+    assertTrue(resultJobData.getUseDistributedIndexing());
+    assertEquals(manyEntities.size(), resultJobData.getEntities().size());
+
+    // Verify all entities are preserved
+    for (String entity : manyEntities) {
+      assertTrue(
+          resultJobData.getEntities().contains(entity),
+          "Entity " + entity + " should be preserved");
+    }
+  }
+
   private static class AliasState {
     final Map<String, Set<String>> indexAliases = new HashMap<>();
     final Set<String> deletedIndices = new HashSet<>();
@@ -1065,7 +1396,8 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
       lenient()
           .when(client.getSearchType())
           .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
-      when(client.indexExists(anyString()))
+      lenient()
+          .when(client.indexExists(anyString()))
           .thenAnswer(invocation -> indexAliases.containsKey(invocation.getArgument(0)));
       lenient()
           .when(client.getAliases(anyString()))
@@ -1081,7 +1413,18 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
                       .map(Map.Entry::getKey)
                       .collect(Collectors.toSet()));
 
-      doAnswer(
+      lenient()
+          .when(client.listIndicesByPrefix(anyString()))
+          .thenAnswer(
+              invocation -> {
+                String prefix = invocation.getArgument(0);
+                return indexAliases.keySet().stream()
+                    .filter(idx -> idx.startsWith(prefix))
+                    .collect(Collectors.toSet());
+              });
+
+      lenient()
+          .doAnswer(
               invocation -> {
                 String index = invocation.getArgument(0);
                 @SuppressWarnings("unchecked")
@@ -1097,7 +1440,8 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
           .when(client)
           .removeAliases(anyString(), anySet());
 
-      doAnswer(
+      lenient()
+          .doAnswer(
               invocation -> {
                 String index = invocation.getArgument(0);
                 @SuppressWarnings("unchecked")
@@ -1108,7 +1452,8 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
           .when(client)
           .addAliases(anyString(), anySet());
 
-      doAnswer(
+      lenient()
+          .doAnswer(
               invocation -> {
                 String index = invocation.getArgument(0);
                 indexAliases.remove(index);

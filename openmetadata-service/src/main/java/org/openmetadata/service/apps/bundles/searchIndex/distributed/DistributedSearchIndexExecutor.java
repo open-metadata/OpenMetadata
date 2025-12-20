@@ -76,11 +76,40 @@ public class DistributedSearchIndexExecutor {
   private Thread lockRefreshThread;
   private Thread partitionHeartbeatThread;
 
+  // App context for WebSocket broadcasts
+  private UUID appId;
+  private Long appStartTime;
+
+  // Notifier for alerting other servers when job starts
+  private DistributedJobNotifier jobNotifier;
+
   public DistributedSearchIndexExecutor(CollectionDAO collectionDAO) {
     this.collectionDAO = collectionDAO;
     this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO);
     this.recoveryManager = new JobRecoveryManager(collectionDAO);
     this.serverId = ServerIdentityResolver.getInstance().getServerId();
+  }
+
+  /**
+   * Set the app context for WebSocket broadcasts. This allows the stats aggregator to include the
+   * correct app ID and start time so the frontend can match WebSocket updates to existing records.
+   *
+   * @param appId The application ID
+   * @param startTime The job start time (as recorded in the app run record)
+   */
+  public void setAppContext(UUID appId, Long startTime) {
+    this.appId = appId;
+    this.appStartTime = startTime;
+  }
+
+  /**
+   * Set the job notifier for alerting other servers when a job starts. When set, other servers in
+   * the cluster will be notified via Redis Pub/Sub (if available) or discovered via polling.
+   *
+   * @param notifier The job notifier
+   */
+  public void setJobNotifier(DistributedJobNotifier notifier) {
+    this.jobNotifier = notifier;
   }
 
   /**
@@ -204,6 +233,12 @@ public class DistributedSearchIndexExecutor {
     if (currentJob.getStatus() == IndexJobStatus.READY) {
       coordinator.startJob(jobId);
       currentJob = coordinator.getJob(jobId).orElseThrow();
+
+      // Notify other servers that a job has started so they can participate
+      if (jobNotifier != null) {
+        jobNotifier.notifyJobStarted(jobId, "SEARCH_INDEX");
+        LOG.info("Notified other servers about job {} via {}", jobId, jobNotifier.getType());
+      }
     }
 
     if (currentJob.getStatus() != IndexJobStatus.RUNNING) {
@@ -211,7 +246,14 @@ public class DistributedSearchIndexExecutor {
           "Job must be in RUNNING state to execute. Current: " + currentJob.getStatus());
     }
 
-    statsAggregator = new DistributedJobStatsAggregator(coordinator, jobId);
+    // Create stats aggregator with app context for proper WebSocket matching
+    statsAggregator =
+        new DistributedJobStatsAggregator(
+            coordinator,
+            jobId,
+            appId,
+            appStartTime,
+            DistributedJobStatsAggregator.DEFAULT_POLL_INTERVAL_MS);
     statsAggregator.start();
 
     // Start lock refresh thread to prevent lock expiration during long-running jobs
@@ -306,6 +348,11 @@ public class DistributedSearchIndexExecutor {
       statsAggregator.forceUpdate();
       statsAggregator.stop();
 
+      // Notify other servers that job has completed
+      if (jobNotifier != null) {
+        jobNotifier.notifyJobCompleted(jobId);
+      }
+
       // Release lock
       coordinator.releaseReindexLock(jobId);
     }
@@ -334,7 +381,7 @@ public class DistributedSearchIndexExecutor {
       AtomicLong totalSuccess,
       AtomicLong totalFailed) {
 
-    LOG.debug("Worker {} starting", workerId);
+    LOG.info("Worker {} starting for job {}", workerId, currentJob.getId());
 
     PartitionWorker worker =
         new PartitionWorker(coordinator, bulkSink, batchSize, recreateContext, recreateIndex);
@@ -343,12 +390,14 @@ public class DistributedSearchIndexExecutor {
       activeWorkers.add(worker);
     }
 
+    int claimAttempts = 0;
+
     try {
       while (!stopped.get()) {
         // Check if job is being stopped
         SearchIndexJob job = coordinator.getJob(currentJob.getId()).orElse(null);
         if (job == null || job.getStatus() == IndexJobStatus.STOPPING || job.isTerminal()) {
-          LOG.debug(
+          LOG.info(
               "Worker {} stopping - job state: {}",
               workerId,
               job != null ? job.getStatus() : "null");
@@ -356,12 +405,18 @@ public class DistributedSearchIndexExecutor {
         }
 
         // Try to claim a partition
+        claimAttempts++;
         Optional<SearchIndexPartition> partitionOpt =
             coordinator.claimNextPartition(currentJob.getId());
 
         if (partitionOpt.isEmpty()) {
-          // No more partitions available
-          LOG.debug("Worker {} found no available partitions", workerId);
+          // No more partitions available - log at INFO level on first attempt
+          if (claimAttempts == 1) {
+            LOG.info("Worker {} could not claim partition on first attempt", workerId);
+          } else {
+            LOG.debug(
+                "Worker {} found no available partitions (attempt {})", workerId, claimAttempts);
+          }
 
           // Check if all partitions are done (not just unavailable)
           List<SearchIndexPartition> pending =
@@ -370,7 +425,17 @@ public class DistributedSearchIndexExecutor {
               coordinator.getPartitions(currentJob.getId(), PartitionStatus.PROCESSING);
 
           if (pending.isEmpty() && processing.isEmpty()) {
-            LOG.info("Worker {} exiting - all partitions complete", workerId);
+            // Log detailed info about partition state on exit
+            List<SearchIndexPartition> completed =
+                coordinator.getPartitions(currentJob.getId(), PartitionStatus.COMPLETED);
+            List<SearchIndexPartition> failed =
+                coordinator.getPartitions(currentJob.getId(), PartitionStatus.FAILED);
+            LOG.info(
+                "Worker {} exiting - all partitions complete (attempts: {}, completed: {}, failed: {})",
+                workerId,
+                claimAttempts,
+                completed.size(),
+                failed.size());
             break;
           }
 

@@ -100,7 +100,7 @@
       "title": "Use Distributed Indexing",
       "description": "Enable distributed indexing to scale reindexing across multiple servers with fault tolerance and parallel processing",
       "type": "boolean",
-      "default": false
+      "default": true
     }
   },
   "additionalProperties": false

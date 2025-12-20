@@ -40,25 +40,39 @@ import org.openmetadata.service.socket.WebSocketManager;
 public class DistributedJobStatsAggregator {
 
   /** Default polling interval in milliseconds */
-  private static final long DEFAULT_POLL_INTERVAL_MS = 1000;
+  public static final long DEFAULT_POLL_INTERVAL_MS = 1000;
 
   /** Minimum polling interval to avoid excessive DB load */
   private static final long MIN_POLL_INTERVAL_MS = 500;
 
   private final DistributedSearchIndexCoordinator coordinator;
   private final UUID jobId;
+  private final UUID appId;
+  private final Long appStartTime;
   private final long pollIntervalMs;
   private final AtomicBoolean running = new AtomicBoolean(false);
   private ScheduledExecutorService scheduler;
 
   public DistributedJobStatsAggregator(DistributedSearchIndexCoordinator coordinator, UUID jobId) {
-    this(coordinator, jobId, DEFAULT_POLL_INTERVAL_MS);
+    this(coordinator, jobId, null, null, DEFAULT_POLL_INTERVAL_MS);
+  }
+
+  /** Constructor with custom poll interval (for testing) */
+  public DistributedJobStatsAggregator(
+      DistributedSearchIndexCoordinator coordinator, UUID jobId, long pollIntervalMs) {
+    this(coordinator, jobId, null, null, pollIntervalMs);
   }
 
   public DistributedJobStatsAggregator(
-      DistributedSearchIndexCoordinator coordinator, UUID jobId, long pollIntervalMs) {
+      DistributedSearchIndexCoordinator coordinator,
+      UUID jobId,
+      UUID appId,
+      Long appStartTime,
+      long pollIntervalMs) {
     this.coordinator = coordinator;
     this.jobId = jobId;
+    this.appId = appId;
+    this.appStartTime = appStartTime;
     this.pollIntervalMs = Math.max(pollIntervalMs, MIN_POLL_INTERVAL_MS);
   }
 
@@ -206,10 +220,12 @@ public class DistributedJobStatsAggregator {
 
     // Create AppRunRecord
     AppRunRecord appRecord = new AppRunRecord();
-    appRecord.setAppId(UUID.randomUUID()); // Not tied to specific app record
+    // Use the actual app ID so frontend can match the record for live updates
+    appRecord.setAppId(appId != null ? appId : UUID.randomUUID());
     appRecord.setStatus(convertStatus(job.getStatus()));
     appRecord.setRunType("SearchIndexApp");
-    appRecord.setStartTime(job.getStartedAt());
+    // Use the app's start time so frontend can match the record
+    appRecord.setStartTime(appStartTime != null ? appStartTime : job.getStartedAt());
     appRecord.setEndTime(job.getCompletedAt());
     appRecord.setTimestamp(job.getUpdatedAt());
 
@@ -222,6 +238,12 @@ public class DistributedJobStatsAggregator {
     successContext.withAdditionalProperty("progressPercent", job.getProgressPercent());
     if (job.getEntityStats() != null) {
       successContext.withAdditionalProperty("entityTypeCount", job.getEntityStats().size());
+    }
+
+    // Add per-server stats to show distributed processing
+    if (job.getServerStats() != null && !job.getServerStats().isEmpty()) {
+      successContext.withAdditionalProperty("serverStats", job.getServerStats());
+      successContext.withAdditionalProperty("serverCount", job.getServerStats().size());
     }
 
     appRecord.setSuccessContext(successContext);

@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -129,7 +130,8 @@ class DistributedSearchIndexCoordinatorTest {
             anyString(), // stats JSON
             eq("admin"),
             anyLong(),
-            anyLong());
+            anyLong(),
+            isNull()); // registrationDeadline (no longer used)
   }
 
   @Test
@@ -156,7 +158,9 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             null,
             System.currentTimeMillis(),
-            null);
+            null,
+            System.currentTimeMillis() - 5000, // registrationDeadline (in past)
+            2); // registeredServerCount
 
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
 
@@ -248,7 +252,9 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             null,
             System.currentTimeMillis(),
-            null);
+            null,
+            System.currentTimeMillis() - 5000,
+            2);
 
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
 
@@ -260,31 +266,10 @@ class DistributedSearchIndexCoordinatorTest {
     UUID jobId = UUID.randomUUID();
     UUID partitionId = UUID.randomUUID();
 
-    SearchIndexPartitionRecord record =
-        new SearchIndexPartitionRecord(
-            partitionId.toString(),
-            jobId.toString(),
-            "table",
-            0,
-            0,
-            5000,
-            5000,
-            7500,
-            50,
-            PartitionStatus.PENDING.name(),
-            0,
-            0,
-            0,
-            0,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            0);
+    // Mock in-flight count below limit
+    when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(0);
 
-    // New atomic claim approach
+    // Atomic claim succeeds
     when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(1);
     when(partitionDAO.findLatestClaimedPartition(jobId.toString(), TEST_SERVER_ID))
@@ -326,6 +311,11 @@ class DistributedSearchIndexCoordinatorTest {
   @Test
   void testClaimNextPartition_NoPartitionsAvailable() {
     UUID jobId = UUID.randomUUID();
+
+    // Mock in-flight count below limit
+    when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(0);
+
+    // Atomic claim returns 0 (no partitions available)
     when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
         .thenReturn(0);
 
@@ -333,6 +323,141 @@ class DistributedSearchIndexCoordinatorTest {
 
     assertFalse(result.isPresent());
     verify(partitionDAO, never()).findLatestClaimedPartition(anyString(), anyString());
+  }
+
+  @Test
+  void testClaimNextPartition_InFlightLimitReached() {
+    UUID jobId = UUID.randomUUID();
+
+    // Mock in-flight count at limit (5)
+    when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(5);
+
+    Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
+
+    // Should not claim any partition when at the limit
+    assertFalse(result.isPresent());
+    // Should not even attempt to claim
+    verify(partitionDAO, never()).claimNextPartitionAtomic(anyString(), anyString(), anyLong());
+  }
+
+  @Test
+  void testClaimNextPartition_BelowInFlightLimit() {
+    UUID jobId = UUID.randomUUID();
+    UUID partitionId = UUID.randomUUID();
+
+    // Mock in-flight count below limit
+    when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(2);
+
+    when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
+        .thenReturn(1);
+    when(partitionDAO.findLatestClaimedPartition(jobId.toString(), TEST_SERVER_ID))
+        .thenReturn(
+            new SearchIndexPartitionRecord(
+                partitionId.toString(),
+                jobId.toString(),
+                "table",
+                0,
+                0,
+                5000,
+                5000,
+                7500,
+                50,
+                PartitionStatus.PROCESSING.name(),
+                0,
+                0,
+                0,
+                0,
+                TEST_SERVER_ID,
+                System.currentTimeMillis(),
+                System.currentTimeMillis(),
+                null,
+                System.currentTimeMillis(),
+                null,
+                0));
+
+    Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
+
+    // Should successfully claim partition
+    assertTrue(result.isPresent());
+    assertEquals(partitionId, result.get().getId());
+    verify(partitionDAO)
+        .claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong());
+  }
+
+  @Test
+  void testClaimNextPartition_AtomicClaimRaceCondition() {
+    UUID jobId = UUID.randomUUID();
+
+    // Mock in-flight count below limit
+    when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(0);
+
+    // Atomic claim returns 0 - another server won the race
+    when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
+        .thenReturn(0);
+
+    Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
+
+    // Should return empty - lost the race
+    assertFalse(result.isPresent());
+    // Should NOT call findLatestClaimedPartition since claim failed
+    verify(partitionDAO, never()).findLatestClaimedPartition(anyString(), anyString());
+  }
+
+  @Test
+  void testClaimNextPartition_JustBelowInFlightLimit() {
+    UUID jobId = UUID.randomUUID();
+    UUID partitionId = UUID.randomUUID();
+
+    // Mock in-flight count at 4 (one below limit of 5)
+    when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(4);
+
+    when(partitionDAO.claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong()))
+        .thenReturn(1);
+    when(partitionDAO.findLatestClaimedPartition(jobId.toString(), TEST_SERVER_ID))
+        .thenReturn(
+            new SearchIndexPartitionRecord(
+                partitionId.toString(),
+                jobId.toString(),
+                "table",
+                0,
+                0,
+                5000,
+                5000,
+                7500,
+                50,
+                PartitionStatus.PROCESSING.name(),
+                0,
+                0,
+                0,
+                0,
+                TEST_SERVER_ID,
+                System.currentTimeMillis(),
+                System.currentTimeMillis(),
+                null,
+                System.currentTimeMillis(),
+                null,
+                0));
+
+    Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
+
+    // Should claim - just below in-flight limit
+    assertTrue(result.isPresent());
+    verify(partitionDAO)
+        .claimNextPartitionAtomic(eq(jobId.toString()), eq(TEST_SERVER_ID), anyLong());
+  }
+
+  @Test
+  void testClaimNextPartition_AboveInFlightLimit() {
+    UUID jobId = UUID.randomUUID();
+
+    // Mock in-flight count above limit (6)
+    when(partitionDAO.countInFlightPartitions(jobId.toString(), TEST_SERVER_ID)).thenReturn(6);
+
+    Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
+
+    // Should not claim - above in-flight limit
+    assertFalse(result.isPresent());
+    verify(partitionDAO, never()).claimNextPartitionAtomic(anyString(), anyString(), anyLong());
   }
 
   @Test
@@ -496,7 +621,9 @@ class DistributedSearchIndexCoordinatorTest {
             System.currentTimeMillis() - 50000,
             null,
             System.currentTimeMillis(),
-            null);
+            null,
+            System.currentTimeMillis() - 55000,
+            2);
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
         .thenReturn(List.of());
@@ -550,7 +677,9 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             null,
             System.currentTimeMillis(),
-            null);
+            null,
+            System.currentTimeMillis() - 5000,
+            2);
 
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
 
@@ -591,7 +720,9 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             null,
             System.currentTimeMillis(),
-            null);
+            null,
+            System.currentTimeMillis() - 5000,
+            2);
 
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
 
@@ -619,7 +750,9 @@ class DistributedSearchIndexCoordinatorTest {
             System.currentTimeMillis() - 50000,
             null,
             System.currentTimeMillis(),
-            null);
+            null,
+            System.currentTimeMillis() - 55000,
+            2);
 
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
 
@@ -664,7 +797,9 @@ class DistributedSearchIndexCoordinatorTest {
             System.currentTimeMillis(),
             null,
             System.currentTimeMillis(),
-            null);
+            null,
+            System.currentTimeMillis() - 5000,
+            2);
 
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
 
@@ -706,7 +841,9 @@ class DistributedSearchIndexCoordinatorTest {
             System.currentTimeMillis(),
             null,
             System.currentTimeMillis(),
-            null);
+            null,
+            System.currentTimeMillis() - 5000,
+            2);
 
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
 
@@ -819,7 +956,9 @@ class DistributedSearchIndexCoordinatorTest {
                 System.currentTimeMillis(),
                 null,
                 System.currentTimeMillis(),
-                null));
+                null,
+                System.currentTimeMillis() - 5000,
+                2));
 
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
         .thenReturn(List.of());
@@ -925,7 +1064,9 @@ class DistributedSearchIndexCoordinatorTest {
             System.currentTimeMillis() - 50000,
             System.currentTimeMillis(),
             System.currentTimeMillis(),
-            null);
+            null,
+            System.currentTimeMillis() - 55000,
+            2);
 
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
 
@@ -955,7 +1096,9 @@ class DistributedSearchIndexCoordinatorTest {
             System.currentTimeMillis(),
             null,
             System.currentTimeMillis(),
-            null);
+            null,
+            System.currentTimeMillis() - 5000,
+            2);
 
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
 
@@ -1008,6 +1151,25 @@ class DistributedSearchIndexCoordinatorTest {
         System.currentTimeMillis() - 50000,
         status.ordinal() >= IndexJobStatus.COMPLETED.ordinal() ? System.currentTimeMillis() : null,
         System.currentTimeMillis(),
-        null);
+        null,
+        System.currentTimeMillis() - 55000, // registrationDeadline (in past)
+        2); // registeredServerCount
+  }
+
+  // ==================== Server Tracking Tests ====================
+
+  @Test
+  void testGetParticipatingServers() {
+    UUID jobId = UUID.randomUUID();
+
+    when(partitionDAO.getAssignedServers(jobId.toString()))
+        .thenReturn(List.of("server-1", "server-2", "server-3"));
+
+    List<String> servers = coordinator.getParticipatingServers(jobId);
+
+    assertEquals(3, servers.size());
+    assertTrue(servers.contains("server-1"));
+    assertTrue(servers.contains("server-2"));
+    assertTrue(servers.contains("server-3"));
   }
 }

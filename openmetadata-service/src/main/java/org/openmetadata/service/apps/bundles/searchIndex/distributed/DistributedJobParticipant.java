@@ -14,15 +14,12 @@
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import io.dropwizard.lifecycle.Managed;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -33,110 +30,131 @@ import org.openmetadata.service.search.SearchRepository;
  * <p>In a clustered environment, only one server will trigger the SearchIndexApp via Quartz. This
  * service runs on all servers and allows non-triggering servers to discover and participate in
  * active jobs.
+ *
+ * <p>Job discovery is handled by a {@link DistributedJobNotifier}:
+ *
+ * <ul>
+ *   <li>When Redis is configured: Uses Redis Pub/Sub for instant notification
+ *   <li>When Redis is not available: Falls back to database polling (30s interval)
+ * </ul>
  */
 @Slf4j
 public class DistributedJobParticipant implements Managed {
-
-  /** Check interval for active jobs */
-  private static final long CHECK_INTERVAL_MS = 5000;
-
-  /** Maximum workers per participating server */
-  private static final int MAX_WORKERS = 4;
 
   private final CollectionDAO collectionDAO;
   private final SearchRepository searchRepository;
   private final String serverId;
   private final DistributedSearchIndexCoordinator coordinator;
+  private final DistributedJobNotifier notifier;
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final AtomicBoolean participating = new AtomicBoolean(false);
-  private ScheduledExecutorService scheduler;
   private UUID currentJobId;
 
   public DistributedJobParticipant(
-      CollectionDAO collectionDAO, SearchRepository searchRepository, String serverId) {
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      String serverId,
+      CacheConfig cacheConfig) {
+    this(
+        collectionDAO,
+        searchRepository,
+        serverId,
+        DistributedJobNotifierFactory.create(cacheConfig, collectionDAO, serverId));
+  }
+
+  /**
+   * Constructor that allows injection of a custom notifier (for testing).
+   *
+   * @param collectionDAO The collection DAO
+   * @param searchRepository The search repository
+   * @param serverId The server ID
+   * @param notifier The job notifier to use
+   */
+  DistributedJobParticipant(
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      String serverId,
+      DistributedJobNotifier notifier) {
     this.collectionDAO = collectionDAO;
     this.searchRepository = searchRepository;
     this.serverId = serverId;
     this.coordinator = new DistributedSearchIndexCoordinator(collectionDAO);
+    this.notifier = notifier;
   }
 
   /** Start the background job monitor. */
+  @Override
   public void start() {
     if (running.compareAndSet(false, true)) {
-      scheduler =
-          Executors.newSingleThreadScheduledExecutor(
-              Thread.ofPlatform().name("distributed-job-participant").factory());
+      // Register callback to receive job start notifications
+      notifier.onJobStarted(this::onJobDiscovered);
 
-      scheduler.scheduleAtFixedRate(
-          this::checkAndJoinActiveJob, CHECK_INTERVAL_MS, CHECK_INTERVAL_MS, TimeUnit.MILLISECONDS);
+      // Start the notifier (Redis subscription or polling)
+      notifier.start();
 
-      LOG.info("Started distributed job participant on server {}", serverId);
+      LOG.info(
+          "Started distributed job participant on server {} using {} notifier",
+          serverId,
+          notifier.getType());
     }
   }
 
   /** Stop the background monitor. */
+  @Override
   public void stop() {
     if (running.compareAndSet(true, false)) {
-      if (scheduler != null) {
-        scheduler.shutdown();
-        try {
-          if (!scheduler.awaitTermination(10, TimeUnit.SECONDS)) {
-            scheduler.shutdownNow();
-          }
-        } catch (InterruptedException e) {
-          scheduler.shutdownNow();
-          Thread.currentThread().interrupt();
-        }
-      }
+      notifier.stop();
       LOG.info("Stopped distributed job participant on server {}", serverId);
     }
   }
 
-  /** Check for active distributed jobs and join if found. */
-  private void checkAndJoinActiveJob() {
+  /**
+   * Called when a job is discovered (either via Redis notification or polling).
+   *
+   * @param jobId The discovered job ID
+   */
+  private void onJobDiscovered(UUID jobId) {
     if (participating.get()) {
-      // Already participating in a job
+      LOG.debug("Already participating in a job, ignoring notification for {}", jobId);
       return;
     }
 
     try {
-      // Look for running jobs
-      List<SearchIndexJob> runningJobs =
-          coordinator.getRecentJobs(List.of(IndexJobStatus.RUNNING), 1);
-
-      if (runningJobs.isEmpty()) {
+      Optional<SearchIndexJob> jobOpt = coordinator.getJob(jobId);
+      if (jobOpt.isEmpty()) {
+        LOG.warn("Job {} not found", jobId);
         return;
       }
 
-      SearchIndexJob activeJob = runningJobs.getFirst();
+      SearchIndexJob job = jobOpt.get();
 
-      // Check if this is a different job than we last participated in
-      if (currentJobId != null && currentJobId.equals(activeJob.getId())) {
-        // Same job, check if it's still running
-        Optional<SearchIndexJob> jobOpt = coordinator.getJob(activeJob.getId());
-        if (jobOpt.isEmpty() || jobOpt.get().isTerminal()) {
-          currentJobId = null;
-        }
+      // Check if job is still running
+      if (job.isTerminal()) {
+        LOG.debug("Job {} is already terminal, ignoring", jobId);
+        return;
+      }
+
+      if (job.getStatus() != IndexJobStatus.RUNNING) {
+        LOG.debug("Job {} is not in RUNNING state ({}), ignoring", jobId, job.getStatus());
         return;
       }
 
       // Check if there are pending partitions we can help with
-      long pendingCount =
-          coordinator.getPartitions(activeJob.getId(), PartitionStatus.PENDING).size();
+      long pendingCount = coordinator.getPartitions(job.getId(), PartitionStatus.PENDING).size();
       if (pendingCount == 0) {
-        LOG.debug("No pending partitions to process for job {}", activeJob.getId());
+        LOG.debug("No pending partitions to process for job {}", job.getId());
         return;
       }
 
       LOG.info(
-          "Found active distributed job {} with {} pending partitions, joining...",
-          activeJob.getId(),
+          "Discovered active distributed job {} with {} pending partitions, joining...",
+          job.getId(),
           pendingCount);
 
-      joinAndProcessJob(activeJob);
+      joinAndProcessJob(job);
 
     } catch (Exception e) {
-      LOG.error("Error checking for active distributed jobs", e);
+      LOG.error("Error handling job discovery for {}", jobId, e);
     }
   }
 
@@ -148,6 +166,11 @@ public class DistributedJobParticipant implements Managed {
 
     currentJobId = job.getId();
 
+    // Update polling notifier to use faster interval while participating
+    if (notifier instanceof PollingJobNotifier pollingNotifier) {
+      pollingNotifier.setParticipating(true);
+    }
+
     Thread.ofVirtual()
         .name("job-participant-" + job.getId().toString().substring(0, 8))
         .start(
@@ -156,6 +179,12 @@ public class DistributedJobParticipant implements Managed {
                 processJobPartitions(job);
               } finally {
                 participating.set(false);
+                currentJobId = null;
+
+                // Reset polling notifier to idle interval
+                if (notifier instanceof PollingJobNotifier pollingNotifier) {
+                  pollingNotifier.setParticipating(false);
+                }
               }
             });
   }
@@ -201,12 +230,28 @@ public class DistributedJobParticipant implements Managed {
         Optional<SearchIndexPartition> partitionOpt = coordinator.claimNextPartition(job.getId());
 
         if (partitionOpt.isEmpty()) {
-          // No more partitions available
-          LOG.info(
-              "No more partitions to claim for job {}, processed {} partitions",
-              job.getId(),
-              partitionsProcessed);
-          break;
+          // No partition available - check if job is complete
+          long pendingCount =
+              coordinator.getPartitions(job.getId(), PartitionStatus.PENDING).size();
+          long processingCount =
+              coordinator.getPartitions(job.getId(), PartitionStatus.PROCESSING).size();
+
+          if (pendingCount == 0 && processingCount == 0) {
+            LOG.info(
+                "No more partitions to claim for job {}, processed {} partitions",
+                job.getId(),
+                partitionsProcessed);
+            break;
+          }
+
+          // Some partitions still processing (by other servers) - wait and retry
+          try {
+            Thread.sleep(1000);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            break;
+          }
+          continue;
         }
 
         SearchIndexPartition partition = partitionOpt.get();
@@ -250,5 +295,10 @@ public class DistributedJobParticipant implements Managed {
   /** Get the current job ID being processed, if any. */
   public UUID getCurrentJobId() {
     return currentJobId;
+  }
+
+  /** Get the notifier being used (for testing/debugging). */
+  public DistributedJobNotifier getNotifier() {
+    return notifier;
   }
 }

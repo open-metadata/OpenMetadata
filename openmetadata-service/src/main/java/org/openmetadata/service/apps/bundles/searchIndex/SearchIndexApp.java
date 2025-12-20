@@ -311,18 +311,66 @@ public class SearchIndexApp extends AbstractNativeApplication {
     updateJobStatus(EventPublisherJob.Status.RUNNING);
     sendUpdates(jobExecutionContext, true);
 
+    // Set app context for WebSocket broadcasts so frontend can match updates to this record
+    AppRunRecord appRecord = getJobRecord(jobExecutionContext);
+    distributedExecutor.setAppContext(appRecord.getAppId(), appRecord.getStartTime());
+
     distributedExecutor.execute(
         searchIndexSink, recreateContext, Boolean.TRUE.equals(jobData.getRecreateIndex()));
     monitorDistributedJob(jobExecutionContext, distributedJob.getId());
     closeSinkIfNeeded();
 
-    SearchIndexJob finalJob = distributedExecutor.getCurrentJob();
+    SearchIndexJob finalJob = distributedExecutor.getJobWithFreshStats();
     if (finalJob != null) {
       updateJobDataFromDistributedJob(finalJob);
+      // Save serverStats to job data map so it's persisted by jobWasExecuted
+      saveServerStatsToJobDataMap(jobExecutionContext, finalJob);
     }
 
     updateFinalJobStatus();
     handleJobCompletion();
+  }
+
+  private void saveServerStatsToJobDataMap(
+      JobExecutionContext jobExecutionContext, SearchIndexJob distributedJob) {
+    try {
+      AppRunRecord appRecord = getJobRecord(jobExecutionContext);
+      SuccessContext successContext = appRecord.getSuccessContext();
+      if (successContext == null) {
+        successContext = new SuccessContext();
+      }
+
+      // Add serverStats to successContext
+      if (distributedJob.getServerStats() != null && !distributedJob.getServerStats().isEmpty()) {
+        LOG.info(
+            "Saving serverStats to job data map: {} servers - {}",
+            distributedJob.getServerStats().size(),
+            distributedJob.getServerStats().keySet());
+        successContext.withAdditionalProperty("serverStats", distributedJob.getServerStats());
+        successContext.withAdditionalProperty(
+            "serverCount", distributedJob.getServerStats().size());
+        successContext.withAdditionalProperty(
+            "distributedJobId", distributedJob.getId().toString());
+      }
+
+      // Ensure stats are set
+      if (jobData.getStats() != null) {
+        successContext.withAdditionalProperty("stats", jobData.getStats());
+      }
+
+      appRecord.setSuccessContext(successContext);
+
+      // Update job data map so jobWasExecuted will have the serverStats
+      // Note: "AppScheduleRun" is the key used by OmAppJobListener
+      jobExecutionContext
+          .getJobDetail()
+          .getJobDataMap()
+          .put("AppScheduleRun", JsonUtils.pojoToJson(appRecord));
+
+      LOG.info("Updated job data map with serverStats for final persistence");
+    } catch (Exception e) {
+      LOG.error("Failed to save serverStats to job data map", e);
+    }
   }
 
   private void monitorDistributedJob(
@@ -386,6 +434,22 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (jobStats != null) {
       jobStats.setSuccessRecords((int) distributedJob.getSuccessRecords());
       jobStats.setFailedRecords((int) distributedJob.getFailedRecords());
+    }
+
+    // Update reader stats - tracks records read from database
+    StepStats readerStats = stats.getReaderStats();
+    if (readerStats != null) {
+      readerStats.setTotalRecords((int) distributedJob.getTotalRecords());
+      readerStats.setSuccessRecords((int) distributedJob.getProcessedRecords());
+      readerStats.setFailedRecords(0); // Reader doesn't track failures separately
+    }
+
+    // Update sink stats - tracks records written to search index
+    StepStats sinkStats = stats.getSinkStats();
+    if (sinkStats != null) {
+      sinkStats.setTotalRecords((int) distributedJob.getProcessedRecords());
+      sinkStats.setSuccessRecords((int) distributedJob.getSuccessRecords());
+      sinkStats.setFailedRecords((int) distributedJob.getFailedRecords());
     }
 
     if (distributedJob.getEntityStats() != null && stats.getEntityStats() != null) {
@@ -755,8 +819,32 @@ public class SearchIndexApp extends AbstractNativeApplication {
           new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
     }
     if (jobData.getStats() != null) {
-      appRecord.setSuccessContext(
-          new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
+      SuccessContext successContext =
+          new SuccessContext().withAdditionalProperty("stats", jobData.getStats());
+
+      // Include server stats for distributed jobs
+      if (distributedExecutor != null) {
+        SearchIndexJob distributedJob = distributedExecutor.getJobWithFreshStats();
+        LOG.info(
+            "Distributed job for final save: id={}, serverStats={}",
+            distributedJob != null ? distributedJob.getId() : "null",
+            distributedJob != null && distributedJob.getServerStats() != null
+                ? distributedJob.getServerStats().size() + " servers"
+                : "null");
+        if (distributedJob != null && distributedJob.getServerStats() != null) {
+          LOG.info(
+              "Including serverStats in AppRunRecord: {} servers - {}",
+              distributedJob.getServerStats().size(),
+              distributedJob.getServerStats().keySet());
+          successContext.withAdditionalProperty("serverStats", distributedJob.getServerStats());
+          successContext.withAdditionalProperty(
+              "serverCount", distributedJob.getServerStats().size());
+          successContext.withAdditionalProperty(
+              "distributedJobId", distributedJob.getId().toString());
+        }
+      }
+
+      appRecord.setSuccessContext(successContext);
     }
 
     if (WebSocketManager.getInstance() != null) {

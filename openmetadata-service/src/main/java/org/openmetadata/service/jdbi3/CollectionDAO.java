@@ -8794,16 +8794,20 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_job (id, status, jobConfiguration, targetIndexPrefix, totalRecords, "
-                + "processedRecords, successRecords, failedRecords, stats, createdBy, createdAt, updatedAt) "
+                + "processedRecords, successRecords, failedRecords, stats, createdBy, createdAt, updatedAt, "
+                + "registrationDeadline) "
                 + "VALUES (:id, :status, :jobConfiguration, :targetIndexPrefix, :totalRecords, "
-                + ":processedRecords, :successRecords, :failedRecords, :stats, :createdBy, :createdAt, :updatedAt)",
+                + ":processedRecords, :successRecords, :failedRecords, :stats, :createdBy, :createdAt, :updatedAt, "
+                + ":registrationDeadline)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_job (id, status, jobConfiguration, targetIndexPrefix, totalRecords, "
-                + "processedRecords, successRecords, failedRecords, stats, createdBy, createdAt, updatedAt) "
+                + "processedRecords, successRecords, failedRecords, stats, createdBy, createdAt, updatedAt, "
+                + "registrationDeadline) "
                 + "VALUES (:id, :status, :jobConfiguration::jsonb, :targetIndexPrefix, :totalRecords, "
-                + ":processedRecords, :successRecords, :failedRecords, :stats::jsonb, :createdBy, :createdAt, :updatedAt)",
+                + ":processedRecords, :successRecords, :failedRecords, :stats::jsonb, :createdBy, :createdAt, :updatedAt, "
+                + ":registrationDeadline)",
         connectionType = POSTGRES)
     void insert(
         @Bind("id") String id,
@@ -8817,7 +8821,8 @@ public interface CollectionDAO {
         @Bind("stats") String stats,
         @Bind("createdBy") String createdBy,
         @Bind("createdAt") long createdAt,
-        @Bind("updatedAt") long updatedAt);
+        @Bind("updatedAt") long updatedAt,
+        @Bind("registrationDeadline") Long registrationDeadline);
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -8870,6 +8875,23 @@ public interface CollectionDAO {
         "DELETE FROM search_index_job WHERE status IN ('COMPLETED', 'FAILED', 'STOPPED') AND completedAt < :before")
     int deleteOldJobs(@Bind("before") long before);
 
+    @SqlUpdate(
+        "UPDATE search_index_job SET registeredServerCount = :serverCount, updatedAt = :updatedAt WHERE id = :id")
+    void updateRegisteredServerCount(
+        @Bind("id") String id,
+        @Bind("serverCount") int serverCount,
+        @Bind("updatedAt") long updatedAt);
+
+    @SqlQuery("SELECT registrationDeadline FROM search_index_job WHERE id = :id")
+    Long getRegistrationDeadline(@Bind("id") String id);
+
+    @SqlQuery("SELECT registeredServerCount FROM search_index_job WHERE id = :id")
+    Integer getRegisteredServerCount(@Bind("id") String id);
+
+    /** Get IDs of currently running jobs - lightweight query for polling */
+    @SqlQuery("SELECT id FROM search_index_job WHERE status = 'RUNNING'")
+    List<String> getRunningJobIds();
+
     /** Row mapper for SearchIndexJobRecord */
     class SearchIndexJobMapper implements RowMapper<SearchIndexJobRecord> {
       @Override
@@ -8889,7 +8911,9 @@ public interface CollectionDAO {
             (Long) rs.getObject("startedAt"),
             (Long) rs.getObject("completedAt"),
             rs.getLong("updatedAt"),
-            rs.getString("errorMessage"));
+            rs.getString("errorMessage"),
+            (Long) rs.getObject("registrationDeadline"),
+            (Integer) rs.getObject("registeredServerCount"));
       }
     }
 
@@ -8909,7 +8933,9 @@ public interface CollectionDAO {
         Long startedAt,
         Long completedAt,
         long updatedAt,
-        String errorMessage) {}
+        String errorMessage,
+        Long registrationDeadline,
+        Integer registeredServerCount) {}
   }
 
   /** DAO for distributed search index partitions */
@@ -9039,6 +9065,34 @@ public interface CollectionDAO {
     List<SearchIndexPartitionRecord> findByJobIdAndStatus(
         @Bind("jobId") String jobId, @Bind("status") String status);
 
+    /** Count how many partitions a server currently has in PROCESSING status for a job */
+    @SqlQuery(
+        "SELECT COUNT(*) FROM search_index_partition "
+            + "WHERE jobId = :jobId AND status = 'PROCESSING' AND assignedServer = :serverId")
+    int countInFlightPartitions(@Bind("jobId") String jobId, @Bind("serverId") String serverId);
+
+    /** Count total PENDING partitions for a job */
+    @SqlQuery(
+        "SELECT COUNT(*) FROM search_index_partition WHERE jobId = :jobId AND status = 'PENDING'")
+    int countPendingPartitions(@Bind("jobId") String jobId);
+
+    /** Count total partitions for a job */
+    @SqlQuery("SELECT COUNT(*) FROM search_index_partition WHERE jobId = :jobId")
+    int countTotalPartitions(@Bind("jobId") String jobId);
+
+    /** Count partitions claimed by a specific server (PROCESSING or COMPLETED) */
+    @SqlQuery(
+        "SELECT COUNT(*) FROM search_index_partition "
+            + "WHERE jobId = :jobId AND assignedServer = :serverId")
+    int countPartitionsClaimedByServer(
+        @Bind("jobId") String jobId, @Bind("serverId") String serverId);
+
+    /** Count distinct servers that have claimed partitions for a job */
+    @SqlQuery(
+        "SELECT COUNT(DISTINCT assignedServer) FROM search_index_partition "
+            + "WHERE jobId = :jobId AND assignedServer IS NOT NULL")
+    int countParticipatingServers(@Bind("jobId") String jobId);
+
     /**
      * Reclaim stale partitions that can still be retried (under max retry limit).
      * Returns the count of partitions reset to PENDING.
@@ -9109,6 +9163,19 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM search_index_partition WHERE jobId = :jobId")
     void deleteByJobId(@Bind("jobId") String jobId);
+
+    @SqlQuery(
+        "SELECT assignedServer, "
+            + "SUM(processedCount) as processedRecords, "
+            + "SUM(successCount) as successRecords, "
+            + "SUM(failedCount) as failedRecords, "
+            + "COUNT(*) as totalPartitions, "
+            + "SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completedPartitions, "
+            + "SUM(CASE WHEN status = 'PROCESSING' THEN 1 ELSE 0 END) as processingPartitions "
+            + "FROM search_index_partition WHERE jobId = :jobId AND assignedServer IS NOT NULL "
+            + "GROUP BY assignedServer")
+    @RegisterRowMapper(ServerStatsMapper.class)
+    List<ServerStatsRecord> getServerStats(@Bind("jobId") String jobId);
 
     /** Row mapper for partition records */
     class SearchIndexPartitionMapper implements RowMapper<SearchIndexPartitionRecord> {
@@ -9219,6 +9286,89 @@ public interface CollectionDAO {
         int failedPartitions,
         int pendingPartitions,
         int processingPartitions) {}
+
+    /** Record for per-server stats aggregation */
+    record ServerStatsRecord(
+        String serverId,
+        long processedRecords,
+        long successRecords,
+        long failedRecords,
+        int totalPartitions,
+        int completedPartitions,
+        int processingPartitions) {}
+
+    /** Row mapper for server stats */
+    class ServerStatsMapper implements RowMapper<ServerStatsRecord> {
+      @Override
+      public ServerStatsRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new ServerStatsRecord(
+            rs.getString("assignedServer"),
+            rs.getLong("processedRecords"),
+            rs.getLong("successRecords"),
+            rs.getLong("failedRecords"),
+            rs.getInt("totalPartitions"),
+            rs.getInt("completedPartitions"),
+            rs.getInt("processingPartitions"));
+      }
+    }
+
+    /**
+     * Record for partition quota statistics used in fair distribution.
+     * Includes both partition-count and work-based metrics for fair load balancing.
+     *
+     * <p>Work-based distribution ensures servers with high-record partitions don't
+     * monopolize the workload, even if partition counts appear balanced.
+     */
+    record PartitionQuotaStats(
+        int inFlightCount,
+        int totalPartitions,
+        int claimedByServer,
+        int participatingServers,
+        int pendingPartitions,
+        long totalWorkUnits,
+        long workClaimedByServer,
+        long pendingWorkUnits) {}
+
+    /** Row mapper for partition quota stats */
+    class PartitionQuotaStatsMapper implements RowMapper<PartitionQuotaStats> {
+      @Override
+      public PartitionQuotaStats map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new PartitionQuotaStats(
+            rs.getInt("inFlightCount"),
+            rs.getInt("totalPartitions"),
+            rs.getInt("claimedByServer"),
+            rs.getInt("participatingServers"),
+            rs.getInt("pendingPartitions"),
+            rs.getLong("totalWorkUnits"),
+            rs.getLong("workClaimedByServer"),
+            rs.getLong("pendingWorkUnits"));
+      }
+    }
+
+    /**
+     * Get all quota-related statistics in a single query for fair partition distribution.
+     * Includes both partition-count and work-based metrics.
+     */
+    @SqlQuery(
+        "SELECT "
+            + "SUM(CASE WHEN status = 'PROCESSING' AND assignedServer = :serverId THEN 1 ELSE 0 END) as inFlightCount, "
+            + "COUNT(*) as totalPartitions, "
+            + "SUM(CASE WHEN assignedServer = :serverId THEN 1 ELSE 0 END) as claimedByServer, "
+            + "COUNT(DISTINCT CASE WHEN assignedServer IS NOT NULL THEN assignedServer END) as participatingServers, "
+            + "SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) as pendingPartitions, "
+            + "COALESCE(SUM(workUnits), 0) as totalWorkUnits, "
+            + "COALESCE(SUM(CASE WHEN assignedServer = :serverId THEN workUnits ELSE 0 END), 0) as workClaimedByServer, "
+            + "COALESCE(SUM(CASE WHEN status = 'PENDING' THEN workUnits ELSE 0 END), 0) as pendingWorkUnits "
+            + "FROM search_index_partition WHERE jobId = :jobId")
+    @RegisterRowMapper(PartitionQuotaStatsMapper.class)
+    PartitionQuotaStats getQuotaStats(
+        @Bind("jobId") String jobId, @Bind("serverId") String serverId);
+
+    /** Get distinct servers that have claimed partitions for a job */
+    @SqlQuery(
+        "SELECT DISTINCT assignedServer FROM search_index_partition "
+            + "WHERE jobId = :jobId AND assignedServer IS NOT NULL")
+    List<String> getAssignedServers(@Bind("jobId") String jobId);
   }
 
   /** DAO for distributed reindex lock */

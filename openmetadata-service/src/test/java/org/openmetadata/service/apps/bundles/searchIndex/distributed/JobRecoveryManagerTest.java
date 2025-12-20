@@ -447,7 +447,9 @@ class JobRecoveryManagerTest {
         status == IndexJobStatus.RUNNING ? now - TimeUnit.MINUTES.toMillis(29) : null,
         null,
         now - TimeUnit.MINUTES.toMillis(5),
-        null);
+        null,
+        now - TimeUnit.MINUTES.toMillis(28),
+        2);
   }
 
   private SearchIndexJobRecord createJobRecordWithStartTime(
@@ -468,7 +470,9 @@ class JobRecoveryManagerTest {
         startTime,
         null,
         System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(15),
-        null);
+        null,
+        startTime + 5000,
+        2);
   }
 
   private SearchIndexJobRecord createJobRecordWithUpdateTime(
@@ -490,7 +494,9 @@ class JobRecoveryManagerTest {
         now - TimeUnit.MINUTES.toMillis(29),
         null,
         updateTime,
-        null);
+        null,
+        now - TimeUnit.MINUTES.toMillis(28),
+        2);
   }
 
   private SearchIndexPartitionRecord createPartitionRecord(

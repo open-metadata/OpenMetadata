@@ -209,7 +209,7 @@
     "useDistributedIndexing": {
       "description": "Enable distributed indexing across multiple servers. When enabled, reindexing work is partitioned and can be processed by multiple servers concurrently with crash recovery support.",
       "type": "boolean",
-      "default": false
+      "default": true
     }
   },
   "additionalProperties": false
