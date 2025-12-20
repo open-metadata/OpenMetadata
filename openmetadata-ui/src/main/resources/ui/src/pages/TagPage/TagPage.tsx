@@ -60,7 +60,7 @@ import AssetsTabs, {
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
-import IconColorModal from '../../components/Modals/IconColorModal/IconColorModal';
+import IconColorModal from '../../components/Modals/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   BLACK_COLOR,
