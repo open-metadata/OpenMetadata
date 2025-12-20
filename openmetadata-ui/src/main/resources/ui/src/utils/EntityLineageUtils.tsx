@@ -255,8 +255,8 @@ export const getLayoutedElements = (
 const layoutOptions = {
   'elk.algorithm': 'layered',
   'elk.direction': 'RIGHT',
-  'elk.spacing.nodeNode': 100,
-  'elk.layered.spacing.nodeNodeBetweenLayers': 50,
+  'elk.spacing.nodeNode': '100',
+  'elk.layered.spacing.nodeNodeBetweenLayers': '50',
   'elk.layered.nodePlacement.strategy': 'SIMPLE',
   'elk.partitioning.activate': 'true',
   'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
@@ -280,6 +280,14 @@ export const getELKLayoutedElements = async (
     const nodeHeight = isExpanded ? childrenHeight + 220 : NODE_HEIGHT;
     const nodeDepth = node.data?.nodeDepth;
 
+    let partition = '0';
+
+    if (node.data.isDownstreamNode) {
+      partition = '2';
+    } else if (node.data.isUpstreamNode) {
+      partition = '1';
+    }
+
     return {
       ...node,
       targetPosition: 'left',
@@ -288,7 +296,7 @@ export const getELKLayoutedElements = async (
       height: nodeHeight,
       ...(nodeDepth !== undefined && {
         layoutOptions: {
-          'elk.partitioning.partition': String(nodeDepth),
+          'elk.partitioning.partition': partition,
         },
       }),
     };
