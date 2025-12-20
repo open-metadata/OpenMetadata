@@ -464,22 +464,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
    */
   private void configureUriCompliance(OpenMetadataApplicationConfig configuration) {
     if (configuration.getServerFactory() instanceof DefaultServerFactory serverFactory) {
-      // Configure application connectors
+      // Configure application connectors - always set to UNSAFE for backward compatibility
       for (ConnectorFactory connector : serverFactory.getApplicationConnectors()) {
         if (connector instanceof HttpConnectorFactory httpConnector) {
-          if (httpConnector.getUriCompliance() == UriCompliance.DEFAULT) {
-            httpConnector.setUriCompliance(UriCompliance.UNSAFE);
-            LOG.info("Set URI compliance to UNSAFE for application connector");
-          }
+          httpConnector.setUriCompliance(UriCompliance.UNSAFE);
+          LOG.info("Set URI compliance to UNSAFE for application connector");
         }
       }
-      // Configure admin connectors
+      // Configure admin connectors - always set to UNSAFE for backward compatibility
       for (ConnectorFactory connector : serverFactory.getAdminConnectors()) {
         if (connector instanceof HttpConnectorFactory httpConnector) {
-          if (httpConnector.getUriCompliance() == UriCompliance.DEFAULT) {
-            httpConnector.setUriCompliance(UriCompliance.UNSAFE);
-            LOG.info("Set URI compliance to UNSAFE for admin connector");
-          }
+          httpConnector.setUriCompliance(UriCompliance.UNSAFE);
+          LOG.info("Set URI compliance to UNSAFE for admin connector");
         }
       }
     }

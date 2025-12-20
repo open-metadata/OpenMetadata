@@ -30,8 +30,8 @@ server:
       port: ${SERVER_PORT:-8585}
 
       # Jetty 12 URI Compliance - UNSAFE allows all special characters in entity names
-      # Options: DEFAULT, RFC3986, LEGACY, UNSAFE
-      uriCompliance: ${SERVER_URI_COMPLIANCE:-UNSAFE}
+      # Required for backward compatibility with entity names containing /, ", etc.
+      uriCompliance: UNSAFE
 
       # Jetty Acceptor and Selector threads for high concurrency
       acceptorThreads: ${SERVER_ACCEPTOR_THREADS:-2}  # 1-2 per CPU core
