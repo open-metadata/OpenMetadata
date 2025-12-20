@@ -34,8 +34,7 @@ import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
-import ChipSelect from '../components/common/ChipSelect/ChipSelect';
-import { ChipSelectProps } from '../components/common/ChipSelect/ChipSelect.interface';
+import ChipSelect, { ChipSelectProps } from '../components/common/ChipSelect';
 import { MUIColorPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import { MUICoverImageUpload } from '../components/common/CoverImageUpload';
@@ -46,13 +45,15 @@ import { FilterPatternProps } from '../components/common/FilterPattern/filterPat
 import FormItemLabel from '../components/common/Form/FormItemLabel';
 import { MUIIconPicker } from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import MUIAutocomplete from '../components/common/MUIAutocomplete/MUIAutocomplete';
+import MUIAutocomplete, {
+  MUIAutocompleteProps,
+} from '../components/common/MUIAutocomplete';
 import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUISelect from '../components/common/MUISelect/MUISelect';
-import MUISwitch from '../components/common/MUISwitch/MUISwitch';
+import MUISwitch, { MUISwitchProps } from '../components/common/MUISwitch';
 import MUITagSuggestion from '../components/common/MUITagSuggestion/MUITagSuggestion';
 import MUITextField from '../components/common/MUITextField/MUITextField';
 import MUIUserTeamSelect, {
@@ -461,7 +462,7 @@ export const getField = (field: FieldProp) => {
             label={muiLabel as string}
             placeholder={placeholder}
             required={isRequired}
-            {...(props as Record<string, unknown>)}
+            {...(props as MUIAutocompleteProps)}
           />
         </Form.Item>
       );
@@ -477,7 +478,7 @@ export const getField = (field: FieldProp) => {
           <MUISwitch
             label={muiLabel as string}
             required={isRequired}
-            {...(props as Record<string, unknown>)}
+            {...(props as MUISwitchProps)}
           />
         </Form.Item>
       );
