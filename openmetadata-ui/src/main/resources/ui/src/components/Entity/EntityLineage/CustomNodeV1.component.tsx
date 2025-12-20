@@ -18,6 +18,7 @@ import DownloadIcon from '@mui/icons-material/SaveAlt';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import { Divider, IconButton, Menu, MenuItem } from '@mui/material';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Handle, NodeProps, Position } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
@@ -149,6 +150,7 @@ const ExpandCollapseHandles = memo(
 );
 
 const MeatballMenu = () => {
+  const { t } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -201,19 +203,19 @@ const MeatballMenu = () => {
         onClose={() => setAnchorEl(null)}>
         <MenuItem onClick={handleClose}>
           <ArrowBackIcon />
-          Edit Upstream
+          {t('label.edit-upstream')}
         </MenuItem>
         <MenuItem onClick={handleClose}>
           <ArrowForwardIcon />
-          Edit DownStream
+          {t('label.edit-downstream')}
         </MenuItem>
         <Divider />
         <MenuItem onClick={handleClose}>
           <TrendingDownIcon />
-          View Impact
+          {t('label.view-impact')}
         </MenuItem>
         <MenuItem onClick={handleClose}>
-          <DownloadIcon /> Download Impact
+          <DownloadIcon /> {t('label.download-impact')}
         </MenuItem>
       </Menu>
     </div>
