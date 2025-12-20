@@ -8,7 +8,7 @@ public class NoOpProgressTracker implements LineageProgressTracker {
 
   public static final NoOpProgressTracker INSTANCE = new NoOpProgressTracker();
 
-  private NoOpProgressTracker() {
+  public NoOpProgressTracker() {
     // Singleton
   }
 
