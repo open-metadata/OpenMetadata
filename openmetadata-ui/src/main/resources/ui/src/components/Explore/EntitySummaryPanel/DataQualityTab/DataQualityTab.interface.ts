@@ -49,3 +49,17 @@ export interface DetailItemProps {
   value: ReactNode;
   showDottedBorder?: boolean;
 }
+
+export interface TranslationOptions {
+  text?: string;
+  type?: string;
+  entity?: string;
+  version?: string;
+  [key: string]: string | number | boolean | undefined;
+}
+
+export interface MockTabItem {
+  key: string;
+  label: ReactNode;
+  children?: ReactNode;
+}
