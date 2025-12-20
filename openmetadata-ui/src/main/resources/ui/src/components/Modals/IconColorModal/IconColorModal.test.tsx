@@ -158,7 +158,7 @@ describe('IconColorModal component', () => {
     expect(colorInput).toHaveValue(newColor);
   });
 
-  it('should show loading state on save button when submitting', async () => {
+  it('should call onSubmit when save button is clicked during slow submission', async () => {
     const mockSlowSubmit = jest.fn(
       () => new Promise((resolve) => setTimeout(resolve, 100))
     );

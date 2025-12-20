@@ -90,7 +90,7 @@ describe('TagFormDrawer', () => {
     expect(screen.getByTestId('tags-form')).toBeInTheDocument();
   });
 
-  it('should disable save button when isLoading is true', () => {
+  it('should apply disabled attribute to save button when isLoading is true', () => {
     render(<TagFormDrawer {...defaultProps} isLoading />);
 
     const saveButton = screen.getByTestId('save-button');
@@ -98,7 +98,7 @@ describe('TagFormDrawer', () => {
     expect(saveButton).toBeDisabled();
   });
 
-  it('should show "Saving" text when isLoading is true', () => {
+  it('should display "Saving" text in save button when isLoading is true', () => {
     render(<TagFormDrawer {...defaultProps} isLoading />);
 
     const saveButton = screen.getByTestId('save-button');
@@ -106,7 +106,7 @@ describe('TagFormDrawer', () => {
     expect(saveButton).toHaveTextContent('label.saving');
   });
 
-  it('should show "Save" text when isLoading is false', () => {
+  it('should display "Save" text in save button when isLoading is false', () => {
     render(<TagFormDrawer {...defaultProps} />);
 
     const saveButton = screen.getByTestId('save-button');

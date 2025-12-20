@@ -40,21 +40,13 @@ describe('MUIAutocomplete', () => {
     expect(screen.getAllByText('Test Label')[0]).toBeInTheDocument();
   });
 
-  it('should display placeholder when no value is selected', () => {
+  it('should display placeholder', () => {
     render(<MUIAutocomplete {...defaultProps} />);
 
     expect(screen.getByPlaceholderText('Test Placeholder')).toBeInTheDocument();
   });
 
-  it('should hide placeholder when values are selected', () => {
-    render(<MUIAutocomplete {...defaultProps} value={['Option 1']} />);
-
-    expect(
-      screen.queryByPlaceholderText('Test Placeholder')
-    ).not.toBeInTheDocument();
-  });
-
-  it('should render with data-testid', () => {
+  it('should render with custom data-testid', () => {
     render(<MUIAutocomplete {...defaultProps} />);
 
     expect(screen.getByTestId('test-autocomplete')).toBeInTheDocument();
@@ -122,7 +114,7 @@ describe('MUIAutocomplete', () => {
     expect(mockOnChange).toHaveBeenCalledWith(['Option 2']);
   });
 
-  it('should render as required when required prop is true', () => {
+  it('should apply required attribute when required prop is true', () => {
     render(<MUIAutocomplete {...defaultProps} required />);
 
     const input = screen.getByTestId('test-autocomplete');
@@ -130,7 +122,7 @@ describe('MUIAutocomplete', () => {
     expect(input).toBeRequired();
   });
 
-  it('should not render as required when required prop is false', () => {
+  it('should not apply required attribute when required prop is false', () => {
     render(<MUIAutocomplete {...defaultProps} required={false} />);
 
     const input = screen.getByTestId('test-autocomplete');

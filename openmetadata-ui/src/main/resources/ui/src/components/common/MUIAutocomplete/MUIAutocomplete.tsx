@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Autocomplete } from '@mui/material';
-import { FC, memo, useCallback, useMemo } from 'react';
+import { FC, memo, useCallback } from 'react';
 import MUITextField from '../MUITextField/MUITextField';
 import { MUIAutocompleteProps } from './MUIAutocomplete.interface';
 
@@ -32,8 +32,6 @@ const MUIAutocomplete: FC<MUIAutocompleteProps> = ({
     [onChange]
   );
 
-  const hasValue = useMemo(() => value && value.length > 0, [value]);
-
   return (
     <Autocomplete
       freeSolo
@@ -43,7 +41,7 @@ const MUIAutocomplete: FC<MUIAutocompleteProps> = ({
         <MUITextField
           {...params}
           label={label}
-          placeholder={hasValue ? undefined : placeholder}
+          placeholder={placeholder}
           required={required}
           slotProps={{
             inputLabel: {

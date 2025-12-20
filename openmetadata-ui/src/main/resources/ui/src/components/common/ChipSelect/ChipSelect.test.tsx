@@ -63,7 +63,7 @@ describe('ChipSelect component', () => {
     expect(label).not.toBeInTheDocument();
   });
 
-  it('should display required asterisk when required is true', () => {
+  it('should apply required class to label when required is true', () => {
     render(<ChipSelect {...defaultProps} required label="Select an option" />);
 
     const label = screen.getByText('Select an option');
@@ -142,7 +142,7 @@ describe('ChipSelect component', () => {
     expect(helperText).toHaveClass('Mui-error');
   });
 
-  it('should disable all chips when disabled is true', () => {
+  it('should apply disabled class to all chips when disabled is true', () => {
     render(<ChipSelect {...defaultProps} disabled />);
 
     const chip1 = screen.getByTestId('chip-option1');
@@ -169,7 +169,7 @@ describe('ChipSelect component', () => {
     expect(mockOnChange).toHaveBeenCalledWith('option1');
   });
 
-  it('should render with filled variant for selected chip', () => {
+  it('should apply filled class to selected chip and outlined class to unselected chips', () => {
     render(<ChipSelect {...defaultProps} value="option2" />);
 
     const chip1 = screen.getByTestId('chip-option1');
@@ -187,10 +187,8 @@ describe('ChipSelect component', () => {
     expect(chip1).not.toBeInTheDocument();
   });
 
-  it('should apply correct styles to selected chip', () => {
-    const { container } = render(
-      <ChipSelect {...defaultProps} value="option2" />
-    );
+  it('should apply filled and clickable classes to selected chip', () => {
+    render(<ChipSelect {...defaultProps} value="option2" />);
 
     const chip2 = screen.getByTestId('chip-option2');
 
@@ -198,7 +196,7 @@ describe('ChipSelect component', () => {
     expect(chip2).toHaveClass('MuiChip-clickable');
   });
 
-  it('should apply correct styles to unselected chip', () => {
+  it('should apply outlined and clickable classes to unselected chip', () => {
     render(<ChipSelect {...defaultProps} value="option1" />);
 
     const chip2 = screen.getByTestId('chip-option2');

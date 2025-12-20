@@ -86,7 +86,7 @@ describe('MUISwitch Component', () => {
     expect(() => fireEvent.click(switchElement)).not.toThrow();
   });
 
-  it('should be disabled when disabled prop is true', () => {
+  it('should apply disabled attribute when disabled prop is true', () => {
     render(<MUISwitch disabled />);
 
     const switchElement = screen.getByRole('switch');
