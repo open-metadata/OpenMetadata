@@ -14,7 +14,12 @@
  * Search Lineage Request Schema to find linage from Elastic Search.
  */
 export interface SearchLineageRequest {
-    direction: LineageDirection;
+    /**
+     * Column-level lineage filter. Supports filtering by column names in fromColumns or
+     * toColumn fields.
+     */
+    columnFilter?: string;
+    direction:     LineageDirection;
     /**
      * Lineage Direction Value.
      */
@@ -47,6 +52,11 @@ export interface SearchLineageRequest {
      * Size of the search result.
      */
     layerSize?: number;
+    /**
+     * When true, preserves all nodes in the path to filtered results. When false, only returns
+     * nodes matching the filter.
+     */
+    preservePaths?: boolean;
     /**
      * Query Filter
      */
