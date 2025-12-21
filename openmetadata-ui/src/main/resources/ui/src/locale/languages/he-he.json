@@ -2462,6 +2462,7 @@
     "onboarding-stay-up-to-date-description": "עקוב אחרי הסטים שאתה משתמש בהם תדיר כדי להישאר מעודכן עליהם.",
     "only-image-files-supported": "רק קובצי תמונה נתמכים",
     "only-reviewers-can-approve-or-reject": "רק בודקים יכולים לאשר או לדחות",
+    "only-show-columns-with-lineage": "הצג רק עמודות עם Lineage",
     "optional-configuration-update-description-dbt": "הגדרת אופציונלית לעדכון התיאור מ-dbT או לא",
     "owners-coverage-widget-description": "כיסוי בעלים עבור כל נכסי הנתונים בשירות. <0>למד עוד</0>.",
     "page-is-not-available": "הדף שאתה מחפש לא זמין",
