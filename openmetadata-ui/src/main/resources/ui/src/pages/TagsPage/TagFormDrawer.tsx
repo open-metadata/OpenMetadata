@@ -64,6 +64,7 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
           sx: { width: 670 },
         },
       }}
+      sx={{ zIndex: 1000 }}
       onClose={onClose}>
       {/* Header */}
       <Box
