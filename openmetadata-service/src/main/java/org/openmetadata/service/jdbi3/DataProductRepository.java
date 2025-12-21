@@ -454,11 +454,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       } catch (EntityNotFoundException ignored) {
       }
     }
-
-    // Update search indexes for assets when data product is renamed
-    if (!original.getName().equals(updated.getName())) {
-      updateAssetSearchIndexes(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-    }
+    // Note: Search index updates for renamed data products are handled in updateName()
+    // within entitySpecificUpdate() to ensure we capture the correct old FQN before
+    // change consolidation's revert() modifies the 'original' reference.
   }
 
   private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
@@ -476,6 +474,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   public class DataProductUpdater extends EntityUpdater {
+    private boolean renameProcessed = false;
+
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -494,29 +494,39 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateName(original, updated);
+      updateName(updated);
     }
 
-    private void updateName(DataProduct original, DataProduct updated) {
-      if (original.getName().equals(updated.getName())) {
+    private void updateName(DataProduct updated) {
+      // Use getOriginalFqn() which was captured at EntityUpdater construction time.
+      // This is reliable even after revert() reassigns 'original' to 'previous'.
+      String oldFqn = getOriginalFqn();
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
+
+      if (oldFqn.equals(newFqn)) {
         return;
       }
 
+      // Only process the rename once per update operation.
+      // entitySpecificUpdate is called multiple times during the update flow
+      // (incrementalChange, revert, final updateInternal).
+      if (renameProcessed) {
+        return;
+      }
+      renameProcessed = true;
+
       DataProduct existing = findByNameOrNull(FullyQualifiedName.quoteName(updated.getName()), ALL);
-      if (existing != null && !existing.getId().equals(original.getId())) {
+      if (existing != null && !existing.getId().equals(updated.getId())) {
         throw new IllegalArgumentException(
             entityNameAlreadyExists(DATA_PRODUCT, updated.getName()));
       }
 
-      String oldFqn = original.getFullyQualifiedName();
-      setFullyQualifiedName(updated);
-      String newFqn = updated.getFullyQualifiedName();
-
-      LOG.info("Data product name changed from {} to {}", original.getName(), updated.getName());
       LOG.info("Data product FQN changed from {} to {}", oldFqn, newFqn);
 
-      recordChange("name", original.getName(), updated.getName());
+      recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
       updateEntityLinks(oldFqn, newFqn);
+      updateAssetSearchIndexes(oldFqn, newFqn);
     }
 
     private void updateEntityLinks(String oldFqn, String newFqn) {
@@ -524,7 +534,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       EntityLink newAbout = new EntityLink(DATA_PRODUCT, newFqn);
       daoCollection
           .feedDAO()
-          .updateByEntityId(newAbout.getLinkString(), original.getId().toString());
+          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
     }
   }
 

@@ -110,8 +110,7 @@ test.describe('Data Product Rename', () => {
       // Verify asset is added
       await checkAssetsCount(page, 1);
 
-      // Store original name and FQN
-      const originalName = dataProduct.responseData.name;
+      // Store new name for rename
       const newName = `renamed-${uuid()}`;
 
       // Click manage button to open rename modal
@@ -251,6 +250,149 @@ test.describe('Data Product Rename', () => {
     } finally {
       await page.close();
       await testDataProduct.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('should handle multiple consecutive renames and preserve assets', async ({
+    browser,
+  }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    // Create a new data product and table for this test
+    const testDataProduct = new DataProduct(
+      [domain],
+      `PW_DP_MultiRename_${uuid()}`
+    );
+    const testTable = new TableClass();
+
+    await testDataProduct.create(apiContext);
+    await testTable.create(apiContext);
+
+    // Assign table to domain
+    await testTable.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: domain.responseData.id,
+            type: 'domain',
+          },
+        },
+      ],
+    });
+
+    const page = await browser.newPage();
+    let currentName = testDataProduct.responseData.name;
+
+    try {
+      await adminUser.login(page);
+      await redirectToHomePage(page);
+
+      // Navigate to data product
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, testDataProduct.responseData);
+
+      // Add asset to data product
+      await addAssetsToDataProduct(
+        page,
+        testDataProduct.responseData.fullyQualifiedName ?? '',
+        [testTable]
+      );
+
+      // Verify asset is added
+      await checkAssetsCount(page, 1);
+
+      // Perform 3 consecutive renames
+      for (let i = 1; i <= 3; i++) {
+        const newName = `renamed-${i}-${uuid()}`;
+
+        // Click manage button to open rename modal
+        await page.getByTestId('manage-button').click();
+        await page
+          .getByRole('menuitem', { name: /Rename.*Name/ })
+          .getByTestId('rename-button')
+          .click();
+
+        // Wait for modal to appear
+        await expect(page.getByTestId('header')).toContainText('Edit Name');
+
+        // Clear and enter new name
+        const nameInput = page.locator('input[id="name"]');
+        await nameInput.clear();
+        await nameInput.fill(newName);
+
+        // Save the rename
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataProducts/') &&
+            response.request().method() === 'PATCH'
+        );
+        await page.getByTestId('save-button').click();
+        await patchResponse;
+
+        // Wait for navigation to new URL
+        await page.waitForURL(`**/dataProduct/${newName}/**`);
+
+        // Update current name for cleanup
+        currentName = newName;
+
+        // Verify assets are still associated after rename
+        await page.getByTestId('assets').click();
+        await checkAssetsCount(page, 1);
+
+        // Verify the asset card is visible
+        const tableFqn = get(
+          testTable,
+          'entityResponseData.fullyQualifiedName'
+        );
+
+        await expect(
+          page.locator(`[data-testid="table-data-card_${tableFqn}"]`)
+        ).toBeVisible();
+      }
+
+      // Final verification: navigate to asset and back
+      const tableFqn = get(testTable, 'entityResponseData.fullyQualifiedName');
+      await page
+        .locator(
+          `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
+        )
+        .click();
+
+      await page.waitForLoadState('networkidle');
+
+      // Verify the table still shows data product association
+      await expect(
+        page.getByTestId('KnowledgePanel.DataProducts')
+      ).toBeVisible();
+
+      // Navigate back and verify assets still there
+      await page.goBack();
+      await page.waitForLoadState('networkidle');
+      await page.getByTestId('assets').click();
+      await checkAssetsCount(page, 1);
+    } finally {
+      await page.close();
+
+      // Cleanup - try to delete with current name
+      try {
+        await apiContext.delete(
+          `/api/v1/dataProducts/name/${encodeURIComponent(`"${currentName}"`)}`
+        );
+      } catch {
+        // Try original name if renamed one fails
+        try {
+          await testDataProduct.delete(apiContext);
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      await testTable.delete(apiContext);
       await afterAction();
     }
   });
