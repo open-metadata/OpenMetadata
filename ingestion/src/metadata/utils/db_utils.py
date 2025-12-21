@@ -14,17 +14,20 @@ Helpers module for db sources
 """
 import time
 import traceback
-from typing import Iterable, List, Union
+from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
     get_lineage_via_table_entity,
@@ -55,7 +58,8 @@ def get_view_lineage(
     metadata: OpenMetadata,
     service_names: Union[str, List[str]],
     connection_type: str,
-    timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
+    timeout_seconds: int,
+    parser_type: Optional[QueryParserType],
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     Method to generate view lineage
@@ -91,7 +95,10 @@ def get_view_lineage(
         start_time = time.time()
         logger.debug(f"Processing view lineage for: {table_fqn}")
         lineage_parser = LineageParser(
-            view_definition, dialect, timeout_seconds=timeout_seconds
+            view_definition,
+            dialect,
+            timeout_seconds=timeout_seconds,
+            parser_type=parser_type,
         )
         query_hash = lineage_parser.query_hash
 

@@ -918,7 +918,10 @@ class PowerbiSource(DashboardServiceSource):
 
             try:
                 parser = LineageParser(
-                    parser_query, dialect=Dialect.SNOWFLAKE, timeout_seconds=30
+                    parser_query,
+                    dialect=Dialect.SNOWFLAKE,
+                    timeout_seconds=30,
+                    parser_type=self.get_query_parser_type(),
                 )
                 query_hash = parser.query_hash
             except Exception as parser_exc:
@@ -1050,7 +1053,10 @@ class PowerbiSource(DashboardServiceSource):
         if dataset and dataset.expressions:
             try:
                 if DATABRICKS_QUERY_EXPRESSION_KW in source_expression:
-                    return parse_databricks_native_query_source(source_expression)
+                    return parse_databricks_native_query_source(
+                        source_expression,
+                        parser_type=self.get_query_parser_type(),
+                    )
                 else:
                     return self._parse_catalog_table_definition(
                         source_expression, datamodel_entity

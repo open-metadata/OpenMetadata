@@ -40,6 +40,7 @@ class LineageWorkflow(BaseModel):
     serviceName: str
     workflowConfig: WorkflowConfig
     parseTimeout: Optional[int] = 5 * 60  # default parsing timeout to be 5 mins
+    parserType: Optional[str] = None
 
 
 def run_lineage(config_path: Path) -> None:

@@ -75,6 +75,16 @@ Specify the timeout limit in seconds for parsing SQL queries to perform the line
 $$
 
 $$section
+### Query Parser Type $(id="queryParserConfig.type")
+
+Choose the SQL parser for lineage extraction:
+- **Auto** (default): Automatically tries SqlGlot first, falls back to SqlFluff, then SqlParse. Recommended for best results.
+- **SqlGlot**: High-performance parser with good dialect support. Falls back to SqlParse on failure.
+- **SqlFluff**: Comprehensive but slower parser with strong dialect support. Falls back to SqlParse on failure.
+- **SqlParse**: Generic ANSI SQL parser with limited dialect support.
+$$
+
+$$section
 ### Filtering Condition $(id="filterCondition")
 
 We execute a query on query history table of the respective data source to perform the query analysis and extract the lineage and usage information. This field will be useful when you want to restrict some queries from being part of this analysis. In this field you can specify a sql condition that will be applied on the query history result set.

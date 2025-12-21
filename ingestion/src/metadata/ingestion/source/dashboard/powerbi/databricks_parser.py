@@ -1,6 +1,9 @@
 import re
 from typing import List, Optional
 
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserType,
+)
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.utils.logger import ingestion_logger
@@ -18,6 +21,7 @@ logger = ingestion_logger()
 
 def parse_databricks_native_query_source(
     source_expression: str,
+    parser_type: Optional[QueryParserType] = QueryParserType.Auto,
 ) -> Optional[List[dict]]:
 
     groups = NATIVE_QUERY_PARSER_EXPRESSION.search(source_expression)
@@ -81,7 +85,10 @@ def parse_databricks_native_query_source(
             return [{"database": database, "schema": schema, "table": table}]
         try:
             parser = LineageParser(
-                parser_query, dialect=Dialect.DATABRICKS, timeout_seconds=30
+                parser_query,
+                dialect=Dialect.DATABRICKS,
+                timeout_seconds=30,
+                parser_type=parser_type,
             )
             query_hash = parser.query_hash
             if parser.query_parsing_success is False:
