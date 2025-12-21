@@ -17,6 +17,7 @@ import { useLineageProvider } from '../../../context/LineageProvider/LineageProv
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
+import { focusToCoordinates } from '../../../utils/EntityLineageUtils';
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
 import {
@@ -154,6 +155,10 @@ const CustomNodeV1 = (props: NodeProps) => {
     loadChildNodesHandler,
     activeLayer,
     dataQualityLineage,
+    nodes,
+    newlyLoadedNodeIds,
+    reactFlowInstance,
+    zoomValue,
   } = useLineageProvider();
 
   const {
@@ -201,6 +206,8 @@ const CustomNodeV1 = (props: NodeProps) => {
     setIsOnlyShowColumnsWithLineageFilterActive,
   ] = useState(false);
 
+  const [isNodeExpanded, setIsNodeExpanded] = useState(false);
+
   const toggleOnlyShowColumnsWithLineageFilterActive = useCallback(() => {
     setIsOnlyShowColumnsWithLineageFilterActive((prev) => !prev);
   }, []);
@@ -215,6 +222,45 @@ const CustomNodeV1 = (props: NodeProps) => {
     );
   }, [isColumnLayerEnabled, isEditMode]);
 
+  useEffect(() => {
+    const newlyLoadedNodes = nodes.filter((node) =>
+      newlyLoadedNodeIds.includes(node.id)
+    );
+
+    if (!isNodeExpanded || newlyLoadedNodes.length === 0) {
+      return;
+    }
+
+    /**
+     * When a node expands one level, new nodes load at the same vertical
+     * position—they share the same x-coordinate but have different y-coordinates.
+     * We can focus on the midpoint of all coordinates, which is the centroid.
+     *
+     * Though for a single level, x-coordinates are identical for all points,
+     * but finding their center helps when users click expand-all.
+     * In that case, nodes open to multiple levels.
+     */
+
+    const newPositionToFocus =
+      newlyLoadedNodes.length > 0
+        ? {
+            x:
+              newlyLoadedNodes.reduce(
+                (sum, node) => sum + (node.position?.x ?? 0),
+                0
+              ) / newlyLoadedNodes.length,
+            y:
+              newlyLoadedNodes.reduce(
+                (sum, node) => sum + (node.position?.y ?? 0),
+                0
+              ) / newlyLoadedNodes.length,
+          }
+        : { x: 0, y: 0 };
+
+    focusToCoordinates(newPositionToFocus, reactFlowInstance, zoomValue);
+    setIsNodeExpanded(false);
+  }, [nodes, newlyLoadedNodeIds, isNodeExpanded, reactFlowInstance, zoomValue]);
+
   const containerClass = getNodeClassNames({
     isSelected,
     showDqTracing: showDqTracing ?? false,
@@ -225,7 +271,9 @@ const CustomNodeV1 = (props: NodeProps) => {
 
   const onExpand = useCallback(
     (direction: LineageDirection, depth = 1) => {
-      loadChildNodesHandler(node, direction, depth);
+      loadChildNodesHandler(node, direction, depth).then(() => {
+        setIsNodeExpanded(true);
+      });
     },
     [loadChildNodesHandler, node]
   );
@@ -233,8 +281,13 @@ const CustomNodeV1 = (props: NodeProps) => {
   const onCollapse = useCallback(
     (direction = LineageDirection.Downstream) => {
       onNodeCollapse(props, direction);
+      focusToCoordinates(
+        { x: props.xPos, y: props.yPos },
+        reactFlowInstance,
+        zoomValue
+      );
     },
-    [onNodeCollapse, props]
+    [onNodeCollapse, props, reactFlowInstance, zoomValue]
   );
 
   const nodeLabel = useMemo(() => {
@@ -261,19 +314,18 @@ const CustomNodeV1 = (props: NodeProps) => {
       </>
     );
   }, [
-    node.id,
     isNewNode,
     label,
+    isChildrenListExpanded,
+    isOnlyShowColumnsWithLineageFilterActive,
+    node,
+    toggleColumnsList,
+    toggleOnlyShowColumnsWithLineageFilterActive,
     isSelected,
     isEditMode,
     isRootNode,
-    isChildrenListExpanded,
-    toggleColumnsList,
-    toggleOnlyShowColumnsWithLineageFilterActive,
     removeNodeHandler,
     props,
-    isOnlyShowColumnsWithLineageFilterActive,
-    isEditMode,
   ]);
 
   const expandCollapseProps = useMemo<ExpandCollapseHandlesProps>(
