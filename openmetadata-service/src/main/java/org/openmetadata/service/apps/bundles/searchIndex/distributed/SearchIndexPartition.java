@@ -96,6 +96,9 @@ public class SearchIndexPartition {
   /** Number of retry attempts */
   private int retryCount;
 
+  /** Timestamp when this partition becomes claimable (for staggered release) */
+  private long claimableAt;
+
   /** Calculate progress percentage */
   public double getProgressPercent() {
     long total = rangeEnd - rangeStart;

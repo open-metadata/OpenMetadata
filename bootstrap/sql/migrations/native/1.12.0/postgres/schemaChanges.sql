@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS search_index_partition (
     lastUpdateAt BIGINT,
     lastError TEXT,
     retryCount INT NOT NULL DEFAULT 0,
+    claimableAt BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     UNIQUE (jobId, entityType, partitionIndex),
     CONSTRAINT fk_partition_job FOREIGN KEY (jobId) REFERENCES search_index_job(id) ON DELETE CASCADE
@@ -58,6 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_partition_job ON search_index_partition(jobId);
 CREATE INDEX IF NOT EXISTS idx_partition_status_priority ON search_index_partition(status, priority DESC);
 CREATE INDEX IF NOT EXISTS idx_partition_claimed ON search_index_partition(claimedAt);
 CREATE INDEX IF NOT EXISTS idx_partition_assigned_server ON search_index_partition(jobId, assignedServer);
+CREATE INDEX IF NOT EXISTS idx_partition_claimable ON search_index_partition(jobId, status, claimableAt);
 
 -- Table for distributed lock to ensure only one reindex job runs at a time
 CREATE TABLE IF NOT EXISTS search_reindex_lock (

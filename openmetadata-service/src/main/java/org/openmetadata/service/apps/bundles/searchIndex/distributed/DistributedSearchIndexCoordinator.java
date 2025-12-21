@@ -54,7 +54,19 @@ public class DistributedSearchIndexCoordinator {
   private static final long LOCK_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(5);
 
   /** Partition claim timeout - how long before an unresponsive partition can be reclaimed */
-  private static final long PARTITION_CLAIM_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(10);
+  private static final long PARTITION_CLAIM_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(3);
+
+  /**
+   * Percentage of partitions to make immediately claimable (20%).
+   * The remaining 80% are released in batches over PARTITION_RELEASE_WINDOW_MS.
+   */
+  private static final double IMMEDIATE_CLAIMABLE_PERCENT = 0.20;
+
+  /**
+   * Time window over which to stagger partition release (30 seconds).
+   * Partitions are released evenly across this window to give late joiners time to discover the job.
+   */
+  private static final long PARTITION_RELEASE_WINDOW_MS = TimeUnit.SECONDS.toMillis(30);
 
   /** Maximum number of retries for a failed partition */
   private static final int MAX_PARTITION_RETRIES = 3;
@@ -184,10 +196,39 @@ public class DistributedSearchIndexCoordinator {
           entityTypes.size());
     }
 
-    // Persist partitions
-    for (SearchIndexPartition partition : partitions) {
-      insertPartition(partitionDAO, partition);
+    // Calculate staggered claimableAt timestamps for partitions
+    long now = System.currentTimeMillis();
+    int totalPartitions = partitions.size();
+    int immediateCount = Math.max(1, (int) (totalPartitions * IMMEDIATE_CLAIMABLE_PERCENT));
+
+    // Persist partitions with staggered release times
+    for (int i = 0; i < partitions.size(); i++) {
+      SearchIndexPartition partition = partitions.get(i);
+
+      // Calculate claimableAt: first 20% immediately, rest staggered over 30 seconds
+      long claimableAt;
+      if (i < immediateCount) {
+        claimableAt = now; // Immediately claimable
+      } else {
+        // Distribute remaining partitions evenly over the release window
+        int remainingIndex = i - immediateCount;
+        int remainingCount = totalPartitions - immediateCount;
+        long delayMs = (remainingIndex * PARTITION_RELEASE_WINDOW_MS) / Math.max(1, remainingCount);
+        claimableAt = now + delayMs;
+      }
+
+      SearchIndexPartition partitionWithClaimable =
+          partition.toBuilder().claimableAt(claimableAt).build();
+      insertPartition(partitionDAO, partitionWithClaimable);
     }
+
+    LOG.info(
+        "Initialized {} partitions for job {} ({} immediately claimable, {} staggered over {}s)",
+        partitions.size(),
+        jobId,
+        immediateCount,
+        totalPartitions - immediateCount,
+        PARTITION_RELEASE_WINDOW_MS / 1000);
 
     // Update entity stats with partition counts
     Map<String, SearchIndexJob.EntityTypeStats> updatedStats = new HashMap<>(job.getEntityStats());
@@ -221,8 +262,6 @@ public class DistributedSearchIndexCoordinator {
             .build();
 
     updateJob(jobDAO, updatedJob);
-
-    LOG.info("Initialized {} partitions for job {}", partitions.size(), jobId);
 
     return updatedJob;
   }
@@ -941,7 +980,8 @@ public class DistributedSearchIndexCoordinator {
         partition.getWorkUnits(),
         partition.getPriority(),
         partition.getStatus().name(),
-        partition.getCursor());
+        partition.getCursor(),
+        partition.getClaimableAt());
   }
 
   private SearchIndexPartition recordToPartition(SearchIndexPartitionRecord record) {
@@ -967,6 +1007,7 @@ public class DistributedSearchIndexCoordinator {
         .lastUpdateAt(record.lastUpdateAt())
         .lastError(record.lastError())
         .retryCount(record.retryCount())
+        .claimableAt(record.claimableAt())
         .build();
   }
 }

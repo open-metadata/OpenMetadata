@@ -48,12 +48,14 @@ CREATE TABLE IF NOT EXISTS search_index_partition (
     lastUpdateAt BIGINT,
     lastError TEXT,
     retryCount INT NOT NULL DEFAULT 0,
+    claimableAt BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     UNIQUE KEY uk_partition_job_entity_idx (jobId, entityType, partitionIndex),
     INDEX idx_partition_job (jobId),
     INDEX idx_partition_status_priority (status, priority DESC),
     INDEX idx_partition_claimed (claimedAt),
     INDEX idx_partition_assigned_server (jobId, assignedServer),
+    INDEX idx_partition_claimable (jobId, status, claimableAt),
     CONSTRAINT fk_partition_job FOREIGN KEY (jobId) REFERENCES search_index_job(id) ON DELETE CASCADE
 );
 

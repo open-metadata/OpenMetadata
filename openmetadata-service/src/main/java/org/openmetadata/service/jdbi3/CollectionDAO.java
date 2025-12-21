@@ -8944,16 +8944,16 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_partition (id, jobId, entityType, partitionIndex, rangeStart, rangeEnd, "
-                + "estimatedCount, workUnits, priority, status, processingCursor) "
+                + "estimatedCount, workUnits, priority, status, processingCursor, claimableAt) "
                 + "VALUES (:id, :jobId, :entityType, :partitionIndex, :rangeStart, :rangeEnd, "
-                + ":estimatedCount, :workUnits, :priority, :status, :cursor)",
+                + ":estimatedCount, :workUnits, :priority, :status, :cursor, :claimableAt)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_partition (id, jobId, entityType, partitionIndex, rangeStart, rangeEnd, "
-                + "estimatedCount, workUnits, priority, status, processingCursor) "
+                + "estimatedCount, workUnits, priority, status, processingCursor, claimableAt) "
                 + "VALUES (:id, :jobId, :entityType, :partitionIndex, :rangeStart, :rangeEnd, "
-                + ":estimatedCount, :workUnits, :priority, :status, :cursor)",
+                + ":estimatedCount, :workUnits, :priority, :status, :cursor, :claimableAt)",
         connectionType = POSTGRES)
     void insert(
         @Bind("id") String id,
@@ -8966,7 +8966,8 @@ public interface CollectionDAO {
         @Bind("workUnits") long workUnits,
         @Bind("priority") int priority,
         @Bind("status") String status,
-        @Bind("cursor") long cursor);
+        @Bind("cursor") long cursor,
+        @Bind("claimableAt") long claimableAt);
 
     @SqlUpdate(
         "UPDATE search_index_partition SET status = :status, processingCursor = :cursor, "
@@ -9015,9 +9016,11 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT * FROM search_index_partition WHERE jobId = :jobId AND status = 'PENDING' "
+            + "AND claimableAt <= :now "
             + "ORDER BY priority DESC, entityType, partitionIndex LIMIT 1 FOR UPDATE SKIP LOCKED")
     @RegisterRowMapper(SearchIndexPartitionMapper.class)
-    SearchIndexPartitionRecord findNextPendingPartitionForUpdate(@Bind("jobId") String jobId);
+    SearchIndexPartitionRecord findNextPendingPartitionForUpdate(
+        @Bind("jobId") String jobId, @Bind("now") long now);
 
     @SqlUpdate(
         "UPDATE search_index_partition SET status = 'PROCESSING', "
@@ -9032,11 +9035,13 @@ public interface CollectionDAO {
      * Atomically claim the next available partition using UPDATE with subquery.
      * MySQL requires a JOIN-based approach since it doesn't allow subquery referencing same table.
      * PostgreSQL can use direct subquery approach.
+     * Only claims partitions where claimableAt <= now (for staggered release).
      */
     @ConnectionAwareSqlUpdate(
         value =
             "UPDATE search_index_partition p "
                 + "JOIN (SELECT id FROM search_index_partition WHERE jobId = :jobId AND status = 'PENDING' "
+                + "AND claimableAt <= :now "
                 + "ORDER BY priority DESC, entityType, partitionIndex LIMIT 1 FOR UPDATE SKIP LOCKED) t ON p.id = t.id "
                 + "SET p.status = 'PROCESSING', p.assignedServer = :serverId, p.claimedAt = :now, "
                 + "p.startedAt = :now, p.lastUpdateAt = :now",
@@ -9046,6 +9051,7 @@ public interface CollectionDAO {
             "UPDATE search_index_partition SET status = 'PROCESSING', "
                 + "assignedServer = :serverId, claimedAt = :now, startedAt = :now, lastUpdateAt = :now "
                 + "WHERE id = (SELECT id FROM search_index_partition WHERE jobId = :jobId AND status = 'PENDING' "
+                + "AND claimableAt <= :now "
                 + "ORDER BY priority DESC, entityType, partitionIndex LIMIT 1 FOR UPDATE SKIP LOCKED)",
         connectionType = POSTGRES)
     int claimNextPartitionAtomic(
@@ -9203,7 +9209,8 @@ public interface CollectionDAO {
             (Long) rs.getObject("completedAt"),
             (Long) rs.getObject("lastUpdateAt"),
             rs.getString("lastError"),
-            rs.getInt("retryCount"));
+            rs.getInt("retryCount"),
+            rs.getLong("claimableAt"));
       }
     }
 
@@ -9262,7 +9269,8 @@ public interface CollectionDAO {
         Long completedAt,
         Long lastUpdateAt,
         String lastError,
-        int retryCount) {}
+        int retryCount,
+        long claimableAt) {}
 
     /** Record for entity stats aggregation */
     record EntityStatsRecord(

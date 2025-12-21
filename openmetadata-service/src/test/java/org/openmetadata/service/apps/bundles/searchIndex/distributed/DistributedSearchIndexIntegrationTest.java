@@ -186,7 +186,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     jobDAO.insert(
         jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
 
-    partitionDAO.insert(partitionId, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L);
+    partitionDAO.insert(
+        partitionId, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L, 0L);
 
     SearchIndexPartitionRecord record = partitionDAO.findById(partitionId);
 
@@ -208,7 +209,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
 
     jobDAO.insert(
         jobId, "RUNNING", "{}", null, 1000L, 0L, 0L, 0L, null, "test-user", now, now, now - 5000);
-    partitionDAO.insert(partitionId, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PROCESSING", 0L);
+    partitionDAO.insert(
+        partitionId, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PROCESSING", 0L, 0L);
 
     partitionDAO.updateProgress(partitionId, 50L, 50L, 48L, 2L, now);
 
@@ -239,7 +241,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
           100L,
           50,
           "PENDING",
-          i * 100L);
+          i * 100L,
+          0L);
     }
 
     int claimed = partitionDAO.claimNextPartitionAtomic(jobId, "server-1", now);
@@ -273,7 +276,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
           100L,
           50,
           "PENDING",
-          i * 100L);
+          i * 100L,
+          0L);
     }
 
     int numServers = 5;
@@ -353,7 +357,7 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
 
     String stalePartitionId = UUID.randomUUID().toString();
     partitionDAO.insert(
-        stalePartitionId, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L);
+        stalePartitionId, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L, 0L);
     partitionDAO.update(
         stalePartitionId,
         "PROCESSING",
@@ -389,7 +393,7 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
 
     String stalePartitionId = UUID.randomUUID().toString();
     partitionDAO.insert(
-        stalePartitionId, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L);
+        stalePartitionId, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L, 0L);
     partitionDAO.update(
         stalePartitionId,
         "PROCESSING",
@@ -490,7 +494,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
         100L,
         50,
         "COMPLETED",
-        100L);
+        100L,
+        0L);
     partitionDAO.insert(
         UUID.randomUUID().toString(),
         jobId,
@@ -502,7 +507,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
         100L,
         50,
         "COMPLETED",
-        200L);
+        200L,
+        0L);
     partitionDAO.insert(
         UUID.randomUUID().toString(),
         jobId,
@@ -514,7 +520,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
         100L,
         50,
         "PROCESSING",
-        250L);
+        250L,
+        0L);
     partitionDAO.insert(
         UUID.randomUUID().toString(),
         jobId,
@@ -526,9 +533,21 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
         100L,
         50,
         "PENDING",
-        300L);
+        300L,
+        0L);
     partitionDAO.insert(
-        UUID.randomUUID().toString(), jobId, "database", 0, 0L, 50L, 50L, 50L, 50, "FAILED", 25L);
+        UUID.randomUUID().toString(),
+        jobId,
+        "database",
+        0,
+        0L,
+        50L,
+        50L,
+        50L,
+        50,
+        "FAILED",
+        25L,
+        0L);
 
     AggregatedStatsRecord stats = partitionDAO.getAggregatedStats(jobId);
 
@@ -552,9 +571,9 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     String p2 = UUID.randomUUID().toString();
     String p3 = UUID.randomUUID().toString();
 
-    partitionDAO.insert(p1, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L);
-    partitionDAO.insert(p2, jobId, "table", 1, 100L, 200L, 100L, 100L, 50, "PENDING", 100L);
-    partitionDAO.insert(p3, jobId, "database", 0, 0L, 50L, 50L, 50L, 50, "PENDING", 0L);
+    partitionDAO.insert(p1, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L, 0L);
+    partitionDAO.insert(p2, jobId, "table", 1, 100L, 200L, 100L, 100L, 50, "PENDING", 100L, 0L);
+    partitionDAO.insert(p3, jobId, "database", 0, 0L, 50L, 50L, 50L, 50, "PENDING", 0L, 0L);
 
     partitionDAO.update(
         p1, "COMPLETED", 100L, 100L, 95L, 5L, "server-1", now, now, now, now, null, 0);
@@ -602,19 +621,19 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     String p5 = UUID.randomUUID().toString();
 
     // 2 PENDING partitions (unclaimed)
-    partitionDAO.insert(p1, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L);
-    partitionDAO.insert(p2, jobId, "table", 1, 100L, 200L, 100L, 100L, 50, "PENDING", 0L);
+    partitionDAO.insert(p1, jobId, "table", 0, 0L, 100L, 100L, 100L, 50, "PENDING", 0L, 0L);
+    partitionDAO.insert(p2, jobId, "table", 1, 100L, 200L, 100L, 100L, 50, "PENDING", 0L, 0L);
 
     // 2 PROCESSING partitions claimed by server-1
-    partitionDAO.insert(p3, jobId, "table", 2, 200L, 300L, 100L, 100L, 50, "PENDING", 0L);
-    partitionDAO.insert(p4, jobId, "table", 3, 300L, 400L, 100L, 100L, 50, "PENDING", 0L);
+    partitionDAO.insert(p3, jobId, "table", 2, 200L, 300L, 100L, 100L, 50, "PENDING", 0L, 0L);
+    partitionDAO.insert(p4, jobId, "table", 3, 300L, 400L, 100L, 100L, 50, "PENDING", 0L, 0L);
     partitionDAO.update(
         p3, "PROCESSING", 250L, 50L, 48L, 2L, "server-1", now, now, null, now, null, 0);
     partitionDAO.update(
         p4, "PROCESSING", 350L, 50L, 50L, 0L, "server-1", now, now, null, now, null, 0);
 
     // 1 COMPLETED partition claimed by server-2
-    partitionDAO.insert(p5, jobId, "table", 4, 400L, 500L, 100L, 100L, 50, "PENDING", 0L);
+    partitionDAO.insert(p5, jobId, "table", 4, 400L, 500L, 100L, 100L, 50, "PENDING", 0L, 0L);
     partitionDAO.update(
         p5, "COMPLETED", 500L, 100L, 98L, 2L, "server-2", now, now, now, now, null, 0);
 
@@ -696,12 +715,12 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
     String p4 = UUID.randomUUID().toString();
 
     // Two large partitions (1000 work units each) - claimed by server-1
-    partitionDAO.insert(p1, jobId, "table", 0, 0L, 500L, 500L, 1000L, 50, "PENDING", 0L);
-    partitionDAO.insert(p2, jobId, "table", 1, 500L, 1000L, 500L, 1000L, 50, "PENDING", 0L);
+    partitionDAO.insert(p1, jobId, "table", 0, 0L, 500L, 500L, 1000L, 50, "PENDING", 0L, 0L);
+    partitionDAO.insert(p2, jobId, "table", 1, 500L, 1000L, 500L, 1000L, 50, "PENDING", 0L, 0L);
 
     // Two small partitions (100 work units each) - still pending
-    partitionDAO.insert(p3, jobId, "table", 2, 1000L, 1100L, 100L, 100L, 50, "PENDING", 0L);
-    partitionDAO.insert(p4, jobId, "table", 3, 1100L, 1200L, 100L, 100L, 50, "PENDING", 0L);
+    partitionDAO.insert(p3, jobId, "table", 2, 1000L, 1100L, 100L, 100L, 50, "PENDING", 0L, 0L);
+    partitionDAO.insert(p4, jobId, "table", 3, 1100L, 1200L, 100L, 100L, 50, "PENDING", 0L, 0L);
 
     // Server-1 claims the two large partitions
     partitionDAO.update(
@@ -751,7 +770,8 @@ class DistributedSearchIndexIntegrationTest extends OpenMetadataApplicationTest 
           100L,
           50,
           "PENDING",
-          i * 100L);
+          i * 100L,
+          0L);
     }
 
     String serverId = "test-server";

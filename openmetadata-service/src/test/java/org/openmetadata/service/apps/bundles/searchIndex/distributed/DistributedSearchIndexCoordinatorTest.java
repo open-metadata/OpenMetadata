@@ -200,7 +200,7 @@ class DistributedSearchIndexCoordinatorTest {
     assertNotNull(result);
     assertEquals(IndexJobStatus.READY, result.getStatus());
 
-    // Verify partitions were inserted
+    // Verify partitions were inserted with claimableAt
     verify(partitionDAO, times(2))
         .insert(
             anyString(),
@@ -213,7 +213,8 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             anyInt(),
             eq(PartitionStatus.PENDING.name()),
-            anyLong());
+            anyLong(),
+            anyLong()); // claimableAt
 
     // Verify job was updated
     verify(jobDAO)
@@ -295,7 +296,8 @@ class DistributedSearchIndexCoordinatorTest {
                 null,
                 System.currentTimeMillis(),
                 null,
-                0));
+                0,
+                0L)); // claimableAt
 
     Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
 
@@ -373,7 +375,8 @@ class DistributedSearchIndexCoordinatorTest {
                 null,
                 System.currentTimeMillis(),
                 null,
-                0));
+                0,
+                0L)); // claimableAt
 
     Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
 
@@ -436,7 +439,8 @@ class DistributedSearchIndexCoordinatorTest {
                 null,
                 System.currentTimeMillis(),
                 null,
-                0));
+                0,
+                0L)); // claimableAt
 
     Optional<SearchIndexPartition> result = coordinator.claimNextPartition(jobId);
 
@@ -487,7 +491,8 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 1000,
             null,
-            0);
+            0,
+            0L); // claimableAt
 
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
 
@@ -542,7 +547,8 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 1000,
             null,
-            0); // retryCount = 0
+            0, // retryCount = 0
+            0L); // claimableAt
 
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
 
@@ -599,7 +605,8 @@ class DistributedSearchIndexCoordinatorTest {
             null,
             System.currentTimeMillis() - 1000,
             null,
-            3); // retryCount = 3 (max)
+            3, // retryCount = 3 (max)
+            0L); // claimableAt
 
     when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
 
@@ -1131,7 +1138,8 @@ class DistributedSearchIndexCoordinatorTest {
         status == PartitionStatus.COMPLETED ? System.currentTimeMillis() : null,
         System.currentTimeMillis(),
         null,
-        0);
+        0,
+        0L); // claimableAt
   }
 
   private SearchIndexJobRecord createJobRecord(IndexJobStatus status) {

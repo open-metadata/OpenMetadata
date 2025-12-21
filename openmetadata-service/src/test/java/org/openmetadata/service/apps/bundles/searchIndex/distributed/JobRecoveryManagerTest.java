@@ -522,6 +522,7 @@ class JobRecoveryManagerTest {
         null,
         System.currentTimeMillis(),
         null,
-        0);
+        0,
+        0L); // claimableAt
   }
 }
