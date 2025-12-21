@@ -39,7 +39,10 @@ import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
 import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
-import { getDatabaseDetailsByFQN, getDatabaseSchemaDetailsByFQN } from '../../../rest/databaseAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../../../rest/databaseAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
 import { getDomainByName } from '../../../rest/domainAPI';
@@ -74,7 +77,6 @@ import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
 import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
-import { ENTITY_RIGHT_PANEL_LINEAGE_TABS } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.constants';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import CustomPropertiesSection from './CustomPropertiesSection';
@@ -266,14 +268,12 @@ export default function EntitySummaryPanel({
     }
 
     try {
-      // Mark lineage as loading for the *current* entity.
       setIsLineageLoading(true);
 
       const response = await getLineageDataByFQN({
         fqn: currentFqn,
         entityType,
         config: {
-          // When called from lineage view, the parent component passes the user's configured depths.
           upstreamDepth: upstreamDepth ?? 1,
           downstreamDepth: downstreamDepth ?? 1,
           nodesPerLayer: nodesPerLayer ?? 50,
@@ -281,21 +281,17 @@ export default function EntitySummaryPanel({
         },
       });
 
-      // If the user switched to another entity while this request was in-flight,
-      // ignore this stale response so we don't overwrite the newest lineage state.
       if (entityDetails?.details?.fullyQualifiedName !== currentFqn) {
         return;
       }
 
       setLineageData(response);
     } catch (error) {
-      // Only surface errors for the active entity.
       if (entityDetails?.details?.fullyQualifiedName === currentFqn) {
         showErrorToast(error as AxiosError);
         setLineageData(null);
       }
     } finally {
-      // Avoid toggling the loader for an entity that is no longer active.
       if (entityDetails?.details?.fullyQualifiedName === currentFqn) {
         setIsLineageLoading(false);
       }
@@ -433,9 +429,6 @@ export default function EntitySummaryPanel({
       fetchLineageData();
     } else if (activeTab === EntityRightPanelTab.OVERVIEW) {
       fetchEntityData();
-      if (entityType && ENTITY_RIGHT_PANEL_LINEAGE_TABS.includes(entityType)) {
-        fetchLineageData();
-      }
     }
   }, [
     activeTab,
@@ -515,8 +508,6 @@ export default function EntitySummaryPanel({
         }
         entityType={type}
         highlights={highlights}
-        isLineageLoading={isLineageLoading}
-        lineageData={lineageData}
         panelPath={panelPath}
         onDataProductsUpdate={handleDataProductsUpdate}
         onDescriptionUpdate={handleDescriptionUpdate}
@@ -543,8 +534,6 @@ export default function EntitySummaryPanel({
     handleDescriptionUpdate,
     handleGlossaryTermsUpdate,
     handleLineageClick,
-    lineageData,
-    isLineageLoading,
   ]);
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),

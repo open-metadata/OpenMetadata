@@ -12,21 +12,21 @@
  */
 import { Typography, useTheme } from '@mui/material';
 import {
+  Typography as AntTypography,
   Button,
   Col,
   Row,
   Segmented,
   Table,
-  Typography as AntTypography,
 } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
+import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
+import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { FieldCard } from '../components/common/FieldCard';
 import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
 import Loader from '../components/common/Loader/Loader';
-import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
-import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';

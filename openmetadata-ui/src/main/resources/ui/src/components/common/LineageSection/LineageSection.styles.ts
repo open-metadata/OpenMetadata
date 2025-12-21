@@ -18,11 +18,12 @@ export const getTextStyles = (theme: Theme): SxProps<Theme> => ({
   color: theme.palette.allShades?.info?.[700],
 });
 
-export const getSectionStyles = (): SxProps<Theme> => ({
+export const getSectionStyles = (gap?: number): SxProps<Theme> => ({
   flex: 1,
   display: 'flex',
   alignItems: 'center',
   cursor: 'pointer',
+  ...(gap !== undefined ? { gap } : {}),
 });
 
 export const getIconWrapperStyles = (theme: Theme): SxProps<Theme> => ({

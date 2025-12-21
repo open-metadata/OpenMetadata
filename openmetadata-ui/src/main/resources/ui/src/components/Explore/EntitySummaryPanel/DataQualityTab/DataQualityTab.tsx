@@ -29,14 +29,15 @@ import {
 import { Include } from '../../../../generated/type/include';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { listTestCases } from '../../../../rest/testAPI';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../../../utils/date-time/DateTimeUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityUtils';
 import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../../utils/date-time/DateTimeUtils';
+import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import DataQualitySection from '../../../common/DataQualitySection';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import Loader from '../../../common/Loader/Loader';
@@ -45,7 +46,6 @@ import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
-import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import {
   DataQualityTabProps,
   DetailItemProps,
