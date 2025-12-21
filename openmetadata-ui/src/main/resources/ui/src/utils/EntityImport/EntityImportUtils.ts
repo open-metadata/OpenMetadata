@@ -17,6 +17,7 @@ import { EntityType } from '../../enums/entity.enum';
 import {
   importEntityInCSVFormat,
   importGlossaryInCSVFormat,
+  importGlossaryTermInCSVFormat,
   importServiceInCSVFormat,
 } from '../../rest/importExportAPI';
 import { getEntityBreadcrumbs, getEntityName } from '../EntityUtils';
@@ -69,7 +70,7 @@ export const getBulkEntityBreadcrumbList = (
   isBulkEdit: boolean
 ): TitleBreadcrumbProps['titleLinks'] => {
   return [
-    ...(entityType === EntityType.GLOSSARY_TERM
+    ...(entityType === EntityType.GLOSSARY_TERM || entityType === EntityType.GLOSSARY
       ? [
           {
             name: i18n.t('label.glossary-plural'),
@@ -96,6 +97,9 @@ export const getImportValidateAPIEntityType = (entityType: EntityType) => {
       return importServiceInCSVFormat;
 
     case EntityType.GLOSSARY_TERM:
+      return importGlossaryTermInCSVFormat;
+    
+    case EntityType.GLOSSARY:
       return importGlossaryInCSVFormat;
 
     default:

@@ -2411,9 +2411,11 @@ entitiesWithDataContracts.forEach((EntityClass) => {
               });
 
               // Navigate to persona details and customize UI
-              await page
-                .getByTestId(`persona-details-card-${persona.data.name}`)
-                .click();
+              await navigateToPersonaWithPagination(
+                page,
+                persona.data.name,
+                true
+              );
               await page.getByRole('tab', { name: 'Customize UI' }).click();
               await page.waitForLoadState('networkidle');
 
