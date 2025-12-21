@@ -34,6 +34,12 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
     this.decoratedClient = decoratedClient;
   }
 
+  /** Get the underlying decorated client. Used for testing to check the actual client type. */
+  @com.google.common.annotations.VisibleForTesting
+  public PipelineServiceClientInterface getDecoratedClient() {
+    return decoratedClient;
+  }
+
   private <T> T executeWithMetering(String name, Supplier<T> operation) {
     try {
       T result = operation.get();

@@ -43,7 +43,7 @@ permissions:
   contents: read
   checks: write
 
-concurrency: 
+concurrency:
   group: maven-build-postgres-rdf-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
@@ -83,7 +83,7 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
- 
+
       - name: Set up JDK 21
         if: steps.cache-output.outputs.exit-code == 0
         uses: actions/setup-java@v4
@@ -99,32 +99,21 @@ jobs:
           librdkafka-dev unixodbc-dev libevent-dev jq
           sudo make install_antlr_cli
 
-      - name: Start PostgreSQL with RDF enabled
-        run: |
-          docker compose -f ./docker/development/docker-compose-postgres-fuseki.yml up -d postgresql fuseki
-          # Wait for PostgreSQL to be ready
-          sleep 30
-          # Verify PostgreSQL is running
-          docker compose ps
-
       - name: Build OpenMetadata dependencies
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Build spec module first
-          mvn clean install -DskipTests -pl openmetadata-spec
-          # Build common module
-          mvn clean install -DskipTests -pl common
+          mvn clean install -DskipTests
 
-      - name: Run RDF Integration Tests
+      - name: Run Postgres RDF Test Suite
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OM_RDF_ENABLED: true
           OM_RDF_STORAGE_TYPE: IN_MEMORY
           OM_RDF_BASE_URI: https://open-metadata.org/
         run: |
-          mvn -Ppostgres-rdf-tests clean test -pl openmetadata-service \
-            -Dtest=org.openmetadata.service.resources.rdf.RdfResourceTest \
+          # Run the full openmetadata-service test suite with the RDF profile enabled
+          mvn -Ppostgres-rdf-tests test -pl openmetadata-service \
             -DfailIfNoTests=false
 
       - name: Upload RDF Test Logs
@@ -149,17 +138,17 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_test_failures: true
-          report_paths: 'openmetadata-service/target/surefire-reports/TEST-org.openmetadata.service.resources.rdf.*.xml'
-          
+          report_paths: 'openmetadata-service/target/surefire-reports/TEST-*.xml'
+
       - name: Generate Job Summary
         if: always()
         run: |
           echo "## RDF Integration Tests Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f "openmetadata-service/target/surefire-reports/TEST-org.openmetadata.service.resources.rdf.RdfResourceTest.xml" ]; then
-            echo "✅ RDF tests completed" >> $GITHUB_STEP_SUMMARY
+          if ls openmetadata-service/target/surefire-reports/TEST-*.xml >/dev/null 2>&1; then
+            echo "✅ Test suite completed (RDF profile)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ RDF tests failed or did not run" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Tests failed or did not run" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Test Configuration" >> $GITHUB_STEP_SUMMARY
