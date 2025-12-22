@@ -620,7 +620,7 @@ public class RdfRepository {
           };
 
       if (level == org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel.NONE) {
-        return executeSparqlQuery(query, format);
+        return executeSparqlQueryDirect(query, format);
       }
 
       // For inference queries, we need to work with the full model
