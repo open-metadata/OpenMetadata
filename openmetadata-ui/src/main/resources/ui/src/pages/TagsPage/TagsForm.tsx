@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box } from '@mui/material';
-import { Col, Form, Row } from 'antd';
+import { Box, Grid } from '@mui/material';
+import { Form } from 'antd';
 import { castArray } from 'lodash';
 import { Suspense, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -226,18 +226,17 @@ const TagsForm = ({
         validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSave}>
         {/* Name and Display Name row */}
-        <Row gutter={16}>
-          <Col span={12}>{getField(nameField)}</Col>
-          <Col span={12}>{getField(displayNameField)}</Col>
-        </Row>
+        <Grid container spacing={4}>
+          <Grid size={6}>{getField(nameField)}</Grid>
+          <Grid size={6}>{getField(displayNameField)}</Grid>
+        </Grid>
 
         {/* Icon and Color row */}
         {!isClassification && (
-          <Box
-            sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
-            <Box>{getField(iconField)}</Box>
-            <Box sx={{ ml: 'auto' }}>{getField(colorField)}</Box>
-          </Box>
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid>{getField(iconField)}</Grid>
+            <Grid sx={{ ml: 'auto' }}>{getField(colorField)}</Grid>
+          </Grid>
         )}
 
         {/* Remaining fields */}

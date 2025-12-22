@@ -140,17 +140,6 @@ const TagsV1 = ({
     return '';
   }, [newLook, tag.style?.color]);
 
-  const renderGeneratedTagIcon = useMemo(() => {
-    if (tag.style?.iconURL) {
-      return renderIcon(tag.style.iconURL, {
-        size: 12,
-        style: { marginRight: 4, flexShrink: 0 },
-      });
-    }
-
-    return <AutomatedTag width={16} />;
-  }, [tag.style?.iconURL]);
-
   const renderTagIcon = useMemo(() => {
     if (hideIcon) {
       return null;
@@ -161,6 +150,10 @@ const TagsV1 = ({
         size: 12,
         style: { marginRight: 4, flexShrink: 0 },
       });
+    }
+
+    if (tag.labelType === LabelType.Generated) {
+      return <AutomatedTag width={16} />;
     }
 
     return startIcon;
@@ -196,7 +189,7 @@ const TagsV1 = ({
         data-testid="tag-redirect-link"
         to={redirectLink}>
         <TagChip
-          icon={renderGeneratedTagIcon}
+          icon={renderTagIcon}
           label={tagName || ''}
           labelDataTestId={`tag-${tag.tagFQN}`}
           sx={{
@@ -214,7 +207,7 @@ const TagsV1 = ({
         />
       </Link>
     ),
-    [tagName, tag, redirectLink, theme, renderGeneratedTagIcon]
+    [tagName, tag, redirectLink, theme, renderTagIcon]
   );
 
   const tagChip = useMemo(

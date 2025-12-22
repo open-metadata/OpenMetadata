@@ -19,7 +19,7 @@ const mockOnSubmit = jest.fn();
 const mockOnCancel = jest.fn();
 
 const mockStyle: Style = {
-  iconURL: 'https://example.com/icon.svg',
+  iconURL: 'Cube01',
   color: '#FF5733',
 };
 
@@ -136,7 +136,7 @@ describe('IconColorModal component', () => {
     render(<IconColorModal {...mockProps} />);
 
     const iconInput = await screen.findByTestId('icon-input');
-    const newIconUrl = 'https://example.com/new-icon.svg';
+    const newIconUrl = 'Tag01';
 
     await act(async () => {
       fireEvent.change(iconInput, { target: { value: newIconUrl } });
@@ -160,7 +160,7 @@ describe('IconColorModal component', () => {
 
   it('should call onSubmit when save button is clicked during slow submission', async () => {
     const mockSlowSubmit = jest.fn(
-      () => new Promise((resolve) => setTimeout(resolve, 100))
+      (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 100))
     );
     render(<IconColorModal {...mockProps} onSubmit={mockSlowSubmit} />);
 

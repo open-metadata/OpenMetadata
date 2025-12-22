@@ -14,6 +14,7 @@
 import { FormInstance } from 'antd';
 import { LoadingState } from 'Models';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
+import { CreateTag } from '../../generated/api/classification/createTag';
 import {
   AutoClassificationConfig,
   Classification,
@@ -64,4 +65,31 @@ export interface RenameFormProps {
     editDisplayName?: boolean;
     editAll?: boolean;
   };
+}
+
+export interface ClassificationFormDrawerProps {
+  open: boolean;
+  formRef: FormInstance;
+  classifications: Classification[];
+  isTier: boolean;
+  isLoading: boolean;
+  onClose: () => void;
+  onSubmit: (data: CreateClassification) => Promise<void>;
+}
+
+export interface TagFormDrawerProps {
+  open: boolean;
+  editTag?: Tag;
+  formRef: FormInstance;
+  isTier: boolean;
+  isLoading: boolean;
+  permissions: {
+    createTags: boolean;
+    editAll: boolean;
+    editDescription: boolean;
+    editDisplayName: boolean;
+  };
+  tagsFormHeader: string;
+  onClose: () => void;
+  onSubmit: (data: CreateTag) => Promise<void>;
 }

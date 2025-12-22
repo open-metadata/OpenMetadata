@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@mui/material';
-import { Badge, Button, Space } from 'antd';
+import { Badge, Button, Stack, Typography, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -70,6 +69,7 @@ const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const theme = useTheme();
   const { fqn: tagCategoryName } = useFqn();
   const [tagForm] = useForm();
   const [classificationForm] = useForm();
@@ -664,28 +664,30 @@ const TagsPage = () => {
       <div className="h-full" data-testid="tags-left-panel">
         <TagsLeftPanelSkeleton loading={isLoading}>
           <div className="p-y-xs" data-testid="data-summary-container">
-            <Space
+            <Stack
               className="w-full p-x-sm m-b-sm"
-              direction="vertical"
-              size="middle">
+              direction="column"
+              spacing={2}>
               {createClassificationPermission && (
                 <Button
-                  block
-                  className=" text-primary"
+                  fullWidth
+                  className="text-primary"
                   data-testid="add-classification"
-                  icon={<PlusIcon className="align-middle" />}
+                  startIcon={<PlusIcon style={{ height: 16, width: 16 }} />}
+                  sx={{
+                    fontWeight: theme.typography.body2.fontWeight,
+                  }}
+                  variant="outlined"
                   onClick={() => {
                     classificationForm.resetFields();
                     handleClassificationDrawerOpen();
                   }}>
-                  <span className="p-l-xss">
-                    {t('label.add-entity', {
-                      entity: t('label.classification'),
-                    })}
-                  </span>
+                  {t('label.add-entity', {
+                    entity: t('label.classification'),
+                  })}
                 </Button>
               )}
-            </Space>
+            </Stack>
 
             {classifications.map((category: Classification) => (
               <div
@@ -708,10 +710,21 @@ const TagsPage = () => {
                   {getEntityName(category)}
                   {category.disabled && (
                     <Badge
-                      className="m-l-xs badge-grey"
-                      count={t('label.disabled')}
+                      badgeContent={t('label.disabled')}
+                      className="m-l-xs"
+                      color="default"
                       data-testid="disabled"
-                      size="small"
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          position: 'relative',
+                          transform: 'none',
+                          height: 'auto',
+                          padding: '2px 8px',
+                          color: theme.palette.grey[700],
+                          backgroundColor: theme.palette.grey[300],
+                          fontSize: theme.typography.caption.fontSize,
+                        },
+                      }}
                     />
                   )}
                 </Typography>

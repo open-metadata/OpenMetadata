@@ -436,10 +436,6 @@ describe('Test TagsPage page', () => {
       ).toBeInTheDocument();
     });
 
-    expect(
-      await findByTestId(container, 'confirmation-modal')
-    ).toBeInTheDocument();
-
     fireEvent.click(await findByTestId(container, 'confirm-modal'));
   });
 

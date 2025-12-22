@@ -13,33 +13,12 @@
 
 import { Box, Button, Drawer, IconButton, Typography } from '@mui/material';
 import { XClose } from '@untitledui/icons';
-import { FormInstance } from 'antd';
 import { isUndefined } from 'lodash';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  CreateTag,
-  ProviderType,
-} from '../../generated/api/classification/createTag';
-import { Tag } from '../../generated/entity/classification/tag';
+import { ProviderType } from '../../generated/api/classification/createTag';
 import TagsForm from './TagsForm';
-
-interface TagFormDrawerProps {
-  open: boolean;
-  editTag?: Tag;
-  formRef: FormInstance;
-  isTier: boolean;
-  isLoading: boolean;
-  permissions: {
-    createTags: boolean;
-    editAll: boolean;
-    editDescription: boolean;
-    editDisplayName: boolean;
-  };
-  tagsFormHeader: string;
-  onClose: () => void;
-  onSubmit: (data: CreateTag) => Promise<void>;
-}
+import { TagFormDrawerProps } from './TagsPage.interface';
 
 const TagFormDrawer: FC<TagFormDrawerProps> = ({
   open,

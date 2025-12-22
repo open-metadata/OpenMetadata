@@ -13,22 +13,10 @@
 
 import { Box, Button, Drawer, IconButton, Typography } from '@mui/material';
 import { XClose } from '@untitledui/icons';
-import { FormInstance } from 'antd';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CreateClassification } from '../../generated/api/classification/createClassification';
-import { Classification } from '../../generated/entity/classification/classification';
 import TagsForm from './TagsForm';
-
-interface ClassificationFormDrawerProps {
-  open: boolean;
-  formRef: FormInstance;
-  classifications: Classification[];
-  isTier: boolean;
-  isLoading: boolean;
-  onClose: () => void;
-  onSubmit: (data: CreateClassification) => Promise<void>;
-}
+import { ClassificationFormDrawerProps } from './TagsPage.interface';
 
 const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
   open,
