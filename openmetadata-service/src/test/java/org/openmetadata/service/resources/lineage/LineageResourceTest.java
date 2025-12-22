@@ -1040,18 +1040,6 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     // Test platform lineage with all view types to ensure cluster alias is not duplicated
     // This test verifies the fix for double cluster alias appending issue
     //
-    // IMPORTANT: This test runs with cluster alias configured as "openmetadata"
-    // (see ELASTIC_SEARCH_CLUSTER_ALIAS in OpenMetadataApplicationTest)
-    //
-    // Before the fix, the bug was:
-    //   1. LineageResource: "dataProduct" -> "openmetadata_data_product_search_index"
-    //   2. EsUtils.searchEntities: "openmetadata_data_product_search_index" ->
-    //      "openmetadata_openmetadata_data_product_search_index" (WRONG!)
-    //
-    // After the fix:
-    //   1. LineageResource: "dataProduct" passed as-is
-    //   2. EsUtils.searchEntities: "dataProduct" ->
-    //      "openmetadata_data_product_search_index" (CORRECT!)
 
     // Verify cluster alias is configured in test environment
     String clusterAlias = Entity.getSearchRepository().getClusterAlias();
