@@ -53,13 +53,13 @@ import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirbyteConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
+import org.openmetadata.schema.services.connections.pipeline.MulesoftConnection;
 import org.openmetadata.schema.services.connections.pipeline.NifiConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
 import org.openmetadata.schema.services.connections.pipeline.WherescapeConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.security.RangerConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
-import org.openmetadata.schema.services.connections.pipeline.MulesoftConnection;
 
 /** Factory class to get a `ClassConverter` based on the service class. */
 public final class ClassConverterFactory {

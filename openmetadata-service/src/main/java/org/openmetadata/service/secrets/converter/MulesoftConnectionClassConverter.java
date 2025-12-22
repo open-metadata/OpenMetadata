@@ -31,7 +31,8 @@ public class MulesoftConnectionClassConverter extends ClassConverter {
     MulesoftConnection mulesoftConnection =
         (MulesoftConnection) JsonUtils.convertValue(object, this.clazz);
 
-    tryToConvertOrFail(mulesoftConnection.getAuthentication(), List.of(BasicAuth.class, OAuthClientAuth.class))
+    tryToConvertOrFail(
+            mulesoftConnection.getAuthentication(), List.of(BasicAuth.class, OAuthClientAuth.class))
         .ifPresent(mulesoftConnection::setAuthentication);
 
     return mulesoftConnection;
