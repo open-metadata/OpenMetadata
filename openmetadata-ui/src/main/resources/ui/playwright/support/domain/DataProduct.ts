@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { uuid } from '../../utils/common';
+import { selectDataProduct } from '../../utils/domain';
+import { sidebarClick } from '../../utils/sidebar';
 import { EntityTypeEndpoint } from '../entity/Entity.interface';
 import { EntityClass } from '../entity/EntityClass';
 import { Domain } from './Domain';
@@ -37,15 +40,17 @@ export class DataProduct extends EntityClass {
   id: string;
   data: ResponseDataType;
   private domains: Domain[];
+  createDomain = true;
   private subDomains?: SubDomain[];
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
-  constructor(domains: Domain[], name?: string, subDomains?: SubDomain[]) {
+  constructor(domains?: Domain[], name?: string, subDomains?: SubDomain[]) {
     super(EntityTypeEndpoint.DATA_PRODUCT);
 
     this.id = uuid();
-    this.domains = domains;
+    this.domains = domains ?? [new Domain()];
+    this.createDomain = !domains;
     this.subDomains = subDomains;
     const dataName = name ?? `PW%dataProduct.${this.id}`;
 
@@ -60,6 +65,12 @@ export class DataProduct extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
+    if (this.createDomain) {
+      await Promise.all(
+        this.domains.map((domain) => domain.create(apiContext))
+      );
+    }
+
     this.data.domains = this.subDomains?.length
       ? this.subDomains.map(
           (subDomain) => subDomain.data.fullyQualifiedName ?? ''
@@ -77,11 +88,8 @@ export class DataProduct extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    await page.goto(
-      `/data-product/${encodeURIComponent(
-        this.responseData?.fullyQualifiedName ?? this.data.fullyQualifiedName ?? this.data.name
-      )}`
-    );
+    await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+    await selectDataProduct(page, this.data);
   }
 
   get() {

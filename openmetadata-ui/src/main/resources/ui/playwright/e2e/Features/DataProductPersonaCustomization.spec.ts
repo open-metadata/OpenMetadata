@@ -56,57 +56,63 @@ const test = base.extend<{
   },
 });
 
-test.beforeAll('Setup Data Product Persona Customization tests', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+test.beforeAll(
+  'Setup Data Product Persona Customization tests',
+  async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await user.create(apiContext);
-  await user.setAdminRole(apiContext);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
+    await user.create(apiContext);
+    await user.setAdminRole(apiContext);
 
-  await persona.create(apiContext);
+    await persona.create(apiContext);
 
-  // Assign persona to user to validate page changes
-  await user.patch({
-    apiContext,
-    patchData: [
-      {
-        op: 'add',
-        path: '/personas/0',
-        value: {
-          id: persona.responseData.id,
-          name: persona.responseData.name,
-          displayName: persona.responseData.displayName,
-          fullyQualifiedName: persona.responseData.fullyQualifiedName,
-          type: 'persona',
+    // Assign persona to user to validate page changes
+    await user.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/personas/0',
+          value: {
+            id: persona.responseData.id,
+            name: persona.responseData.name,
+            displayName: persona.responseData.displayName,
+            fullyQualifiedName: persona.responseData.fullyQualifiedName,
+            type: 'persona',
+          },
         },
-      },
-      {
-        op: 'add',
-        path: '/defaultPersona',
-        value: {
-          id: persona.responseData.id,
-          name: persona.responseData.name,
-          displayName: persona.responseData.displayName,
-          fullyQualifiedName: persona.responseData.fullyQualifiedName,
-          type: 'persona',
+        {
+          op: 'add',
+          path: '/defaultPersona',
+          value: {
+            id: persona.responseData.id,
+            name: persona.responseData.name,
+            displayName: persona.responseData.displayName,
+            fullyQualifiedName: persona.responseData.fullyQualifiedName,
+            type: 'persona',
+          },
         },
-      },
-    ],
-  });
+      ],
+    });
 
-  await afterAction();
-});
+    await afterAction();
+  }
+);
 
-test.afterAll('Cleanup Data Product Persona Customization tests', async ({ browser }) => {
-  test.slow();
+test.afterAll(
+  'Cleanup Data Product Persona Customization tests',
+  async ({ browser }) => {
+    test.slow();
 
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await user.delete(apiContext);
-  await persona.delete(apiContext);
-  await afterAction();
-});
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.delete(apiContext);
+    await user.delete(apiContext);
+    await persona.delete(apiContext);
+    await afterAction();
+  }
+);
 
 test.describe('Data Product Persona customization', () => {
   test('Data Product - customization should work', async ({
@@ -175,9 +181,7 @@ test.describe('Data Product Persona customization', () => {
     );
 
     await test.step('apply customization', async () => {
-      expect(
-        adminPage.locator('#KnowledgePanel\\.Description')
-      ).toBeVisible();
+      expect(adminPage.locator('#KnowledgePanel\\.Description')).toBeVisible();
 
       await adminPage
         .locator('#KnowledgePanel\\.Description')
@@ -224,9 +228,7 @@ test.describe('Data Product Persona customization', () => {
         state: 'detached',
       });
 
-      expect(
-        userPage.getByRole('tab', { name: 'Custom Tab' })
-      ).toBeVisible();
+      expect(userPage.getByRole('tab', { name: 'Custom Tab' })).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Custom Tab' }).click();
 
@@ -343,7 +345,7 @@ test.describe('Data Product Persona customization', () => {
         ).toBeVisible();
 
         await expect(
-          userPage.getByRole('tab', { name: 'Activity Feed & Tasks' })
+          userPage.getByRole('tab', { name: 'Activity Feeds & Tasks' })
         ).toBeVisible();
       }
     );

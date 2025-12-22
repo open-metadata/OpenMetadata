@@ -31,8 +31,8 @@ import {
   TABLE_DEFAULT_TABS,
   TOPIC_DEFAULT_TABS,
 } from '../constant/customizeDetail';
-import { Domain } from '../support/domain/Domain';
 import { DataProduct } from '../support/domain/DataProduct';
+import { Domain } from '../support/domain/Domain';
 import { ApiCollectionClass } from '../support/entity/ApiCollectionClass';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
@@ -82,8 +82,7 @@ export const getCustomizeDetailsEntity = (
     case ECustomizedGovernance.DOMAIN:
       return new Domain();
     case ECustomizedGovernance.DATA_PRODUCT:
-      // DataProduct needs a domain, so we create one inline
-      return new DataProduct([new Domain()]);
+      return new DataProduct();
     case ECustomizedGovernance.GLOSSARY:
       return new Glossary();
     case ECustomizedGovernance.GLOSSARY_TERM:
