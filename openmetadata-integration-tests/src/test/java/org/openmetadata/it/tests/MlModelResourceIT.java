@@ -305,4 +305,271 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     assertNotNull(mlModel.getService());
     assertEquals(service.getFullyQualifiedName(), mlModel.getService().getFullyQualifiedName());
   }
+
+  // ===================================================================
+  // ADDITIONAL ML MODEL TESTS - Migrated from MlModelResourceTest
+  // ===================================================================
+
+  @Test
+  void test_mlModelVersionHistory(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_version"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Neural Network");
+    request.setDescription("Initial description");
+
+    MlModel mlModel = createEntity(request, client);
+    Double initialVersion = mlModel.getVersion();
+
+    // Update to create new version
+    mlModel.setDescription("Updated description");
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel, client);
+    assertTrue(updated.getVersion() >= initialVersion);
+
+    // Get version history
+    EntityHistory history = getVersionHistory(mlModel.getId(), client);
+    assertNotNull(history);
+    assertNotNull(history.getVersions());
+    assertTrue(history.getVersions().size() >= 1);
+  }
+
+  @Test
+  void test_mlModelSoftDeleteAndRestore(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_soft_delete"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("SVM");
+
+    MlModel mlModel = createEntity(request, client);
+    String mlModelId = mlModel.getId().toString();
+
+    // Soft delete
+    deleteEntity(mlModelId, client);
+
+    // Verify deleted
+    MlModel deleted = getEntityIncludeDeleted(mlModelId, client);
+    assertTrue(deleted.getDeleted());
+
+    // Restore
+    restoreEntity(mlModelId, client);
+
+    // Verify restored
+    MlModel restored = getEntity(mlModelId, client);
+    assertFalse(restored.getDeleted() != null && restored.getDeleted());
+  }
+
+  @Test
+  void test_mlModelHardDelete(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_hard_delete"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Decision Tree");
+
+    MlModel mlModel = createEntity(request, client);
+    String mlModelId = mlModel.getId().toString();
+
+    // Hard delete
+    hardDeleteEntity(mlModelId, client);
+
+    // Verify completely gone
+    assertThrows(
+        Exception.class,
+        () -> getEntityIncludeDeleted(mlModelId, client),
+        "Hard deleted model should not be retrievable");
+  }
+
+  @Test
+  void test_listMlModelsByService(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    // Create multiple models
+    for (int i = 0; i < 3; i++) {
+      CreateMlModel request = new CreateMlModel();
+      request.setName(ns.prefix("list_mlmodel_" + i));
+      request.setService(service.getFullyQualifiedName());
+      request.setAlgorithm("Algorithm " + i);
+      createEntity(request, client);
+    }
+
+    // List models
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    ListResponse<MlModel> models = listEntities(params, client);
+
+    assertNotNull(models);
+    assertTrue(models.getData().size() >= 3);
+  }
+
+  @Test
+  void test_mlModelWithOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_with_owner"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("KNN");
+    request.setOwners(List.of(testUser1().getEntityReference()));
+
+    MlModel mlModel = createEntity(request, client);
+    assertNotNull(mlModel.getOwners());
+    assertFalse(mlModel.getOwners().isEmpty());
+    assertEquals(testUser1().getId(), mlModel.getOwners().get(0).getId());
+  }
+
+  @Test
+  void patch_mlModelTarget_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_patch_target"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Linear Regression");
+
+    MlModel mlModel = createEntity(request, client);
+
+    // Update target
+    mlModel.setTarget("sales_forecast");
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel, client);
+    assertEquals("sales_forecast", updated.getTarget());
+  }
+
+  @Test
+  void patch_mlModelHyperParameters_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_patch_params"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Random Forest");
+
+    MlModel mlModel = createEntity(request, client);
+
+    // Add hyperparameters
+    List<MlHyperParameter> params =
+        Arrays.asList(
+            new MlHyperParameter().withName("n_estimators").withValue("100"),
+            new MlHyperParameter().withName("max_depth").withValue("5"));
+
+    mlModel.setMlHyperParameters(params);
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel, client);
+    assertNotNull(updated.getMlHyperParameters());
+    assertEquals(2, updated.getMlHyperParameters().size());
+  }
+
+  @Test
+  void test_mlModelDisplayName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_display"));
+    request.setDisplayName("My Custom ML Model");
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Random Forest");
+
+    MlModel mlModel = createEntity(request, client);
+    assertEquals("My Custom ML Model", mlModel.getDisplayName());
+
+    // Update display name
+    mlModel.setDisplayName("Updated ML Model Name");
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel, client);
+    assertEquals("Updated ML Model Name", updated.getDisplayName());
+  }
+
+  @Test
+  void test_mlModelByName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_by_name"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Logistic Regression");
+
+    MlModel mlModel = createEntity(request, client);
+    String fqn = mlModel.getFullyQualifiedName();
+
+    // Get by FQN
+    MlModel fetched = getEntityByName(fqn, client);
+    assertEquals(mlModel.getId(), fetched.getId());
+    assertEquals(mlModel.getName(), fetched.getName());
+  }
+
+  @Test
+  void test_mlModelWithMultipleFeatures(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    List<MlFeature> features =
+        Arrays.asList(
+            new MlFeature().withName("feature_a").withDataType(MlFeatureDataType.Numerical),
+            new MlFeature().withName("feature_b").withDataType(MlFeatureDataType.Categorical),
+            new MlFeature().withName("feature_c").withDataType(MlFeatureDataType.Numerical),
+            new MlFeature().withName("feature_d").withDataType(MlFeatureDataType.Categorical),
+            new MlFeature().withName("feature_e").withDataType(MlFeatureDataType.Numerical));
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_multi_features"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Deep Learning");
+    request.setMlFeatures(features);
+
+    MlModel mlModel = createEntity(request, client);
+    assertNotNull(mlModel.getMlFeatures());
+    assertEquals(5, mlModel.getMlFeatures().size());
+  }
+
+  @Test
+  void test_mlModelFQNFormat(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_fqn_test"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Naive Bayes");
+
+    MlModel mlModel = createEntity(request, client);
+    assertNotNull(mlModel.getFullyQualifiedName());
+    assertTrue(mlModel.getFullyQualifiedName().contains(service.getName()));
+    assertTrue(mlModel.getFullyQualifiedName().contains(mlModel.getName()));
+  }
+
+  @Test
+  void test_mlModelListWithPagination(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+
+    // Create multiple models
+    for (int i = 0; i < 5; i++) {
+      CreateMlModel request = new CreateMlModel();
+      request.setName(ns.prefix("paginated_model_" + i));
+      request.setService(service.getFullyQualifiedName());
+      request.setAlgorithm("Algorithm " + i);
+      createEntity(request, client);
+    }
+
+    // First page
+    ListParams params = new ListParams();
+    params.setLimit(2);
+    ListResponse<MlModel> page1 = listEntities(params, client);
+
+    assertNotNull(page1);
+    assertNotNull(page1.getData());
+    assertEquals(2, page1.getData().size());
+    assertNotNull(page1.getPaging());
+  }
 }

@@ -156,7 +156,8 @@ public class DashboardDataModelResourceIT
 
   @Override
   protected DashboardDataModel getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.dashboardDataModels().get(id, "owners,followers,tags,columns,domain", "deleted");
+    // Use 'domains' (plural) as per DashboardDataModelResource.FIELDS
+    return client.dashboardDataModels().get(id, "owners,followers,tags,columns,domains", "deleted");
   }
 
   @Override

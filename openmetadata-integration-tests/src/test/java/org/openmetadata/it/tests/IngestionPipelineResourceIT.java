@@ -6,9 +6,12 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 import org.joda.time.DateTime;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.env.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -24,20 +27,46 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Integration tests for IngestionPipeline entity operations.
  *
+ * <p>This test class requires K8s (K3s) pipeline scheduler for delete/deploy operations. Enable
+ * K8s tests by setting ENABLE_K8S_TESTS=true environment variable or system property.
+ *
  * <p>Extends BaseEntityIT to inherit common entity tests. Adds ingestion pipeline-specific tests
  * for source configs and pipeline types.
  *
- * <p>Migrated from: org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest
+ * <p>Migrated from:
+ * org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest
+ *
+ * <p>Run with: mvn test -Dtest=IngestionPipelineResourceIT -DENABLE_K8S_TESTS=true
  */
 @Execution(ExecutionMode.CONCURRENT)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class IngestionPipelineResourceIT
     extends BaseEntityIT<IngestionPipeline, CreateIngestionPipeline> {
 
+  private static final Logger LOG = LoggerFactory.getLogger(IngestionPipelineResourceIT.class);
   private static final Date START_DATE = new DateTime("2022-06-10T15:06:47+00:00").toDate();
+
+  // IngestionPipeline only supports owners,followers fields - no tags, no domain
+  {
+    supportsTags = false;
+    supportsDomains = false;
+    supportsDataProducts = false;
+  }
+
+  @BeforeAll
+  void checkK8sEnabled() {
+    if (!TestSuiteBootstrap.isK8sEnabled()) {
+      LOG.warn(
+          "K8s not enabled - IngestionPipeline delete tests will fail. "
+              + "Set ENABLE_K8S_TESTS=true to enable K8s support.");
+    }
+  }
 
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
@@ -160,7 +189,8 @@ public class IngestionPipelineResourceIT
 
   @Override
   protected IngestionPipeline getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.ingestionPipelines().get(id, "owners,tags,domain", "deleted");
+    // IngestionPipeline only supports owners,followers fields
+    return client.ingestionPipelines().get(id, "owners,followers", "deleted");
   }
 
   @Override

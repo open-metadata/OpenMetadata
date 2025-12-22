@@ -301,4 +301,305 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     assertNotNull(container.getService());
     assertEquals(service.getFullyQualifiedName(), container.getService().getFullyQualifiedName());
   }
+
+  @Test
+  void post_containerWithInvalidStorageReference_404(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String nonExistentServiceFqn = "non_existent_storage_service_" + UUID.randomUUID();
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_invalid_service"));
+    request.setService(nonExistentServiceFqn);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request, client),
+        "Creating container with non-existent service should fail");
+  }
+
+  @Test
+  void post_containerWithInvalidParentContainerReference_404(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+
+    UUID nonExistentContainerId = UUID.randomUUID();
+    EntityReference invalidParent =
+        new EntityReference().withId(nonExistentContainerId).withType("container");
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_invalid_parent"));
+    request.setService(service.getFullyQualifiedName());
+    request.setParent(invalidParent);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request, client),
+        "Creating container with non-existent parent should fail");
+  }
+
+  @Test
+  void put_containerNoChange_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_idempotent"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDescription("Initial description");
+
+    Container container = createEntity(request, client);
+    Double initialVersion = container.getVersion();
+
+    // Update with no actual changes
+    Container updated = patchEntity(container.getId().toString(), container, client);
+
+    // Version should not change if no changes were made
+    assertEquals(initialVersion, updated.getVersion());
+  }
+
+  @Test
+  void patch_containerFields_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+
+    // Create container without optional fields
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_patch_fields"));
+    request.setService(service.getFullyQualifiedName());
+
+    Container container = createEntity(request, client);
+    assertNull(container.getPrefix());
+    assertNull(container.getFileFormats());
+
+    // Add prefix and file formats
+    container.setPrefix("/data/patched/");
+    container.setFileFormats(List.of(ContainerFileFormat.Parquet));
+
+    Container updated = patchEntity(container.getId().toString(), container, client);
+    assertEquals("/data/patched/", updated.getPrefix());
+    assertNotNull(updated.getFileFormats());
+    assertTrue(updated.getFileFormats().contains(ContainerFileFormat.Parquet));
+
+    // Update prefix
+    updated.setPrefix("/data/patched/v2/");
+    Container updated2 = patchEntity(updated.getId().toString(), updated, client);
+    assertEquals("/data/patched/v2/", updated2.getPrefix());
+  }
+
+  @Test
+  void put_containerSizeAndObjects_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_size"));
+    request.setService(service.getFullyQualifiedName());
+
+    Container container = createEntity(request, client);
+
+    // Update size and numberOfObjects
+    container.setSize(1000.0);
+    container.setNumberOfObjects(50.0);
+
+    Container updated = patchEntity(container.getId().toString(), container, client);
+    assertEquals(1000.0, updated.getSize());
+    assertEquals(50.0, updated.getNumberOfObjects());
+
+    // Update again
+    updated.setSize(2000.0);
+    updated.setNumberOfObjects(100.0);
+
+    Container updated2 = patchEntity(updated.getId().toString(), updated, client);
+    assertEquals(2000.0, updated2.getSize());
+    assertEquals(100.0, updated2.getNumberOfObjects());
+  }
+
+  @Test
+  void test_containerWithFullDataModel(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+
+    // Create data model with complex column types
+    List<Column> columns =
+        Arrays.asList(
+            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+            new Column().withName("name").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+            new Column().withName("data").withDataType(ColumnDataType.JSON),
+            new Column().withName("created_at").withDataType(ColumnDataType.TIMESTAMP),
+            new Column().withName("is_active").withDataType(ColumnDataType.BOOLEAN));
+
+    ContainerDataModel dataModel =
+        new ContainerDataModel().withIsPartitioned(true).withColumns(columns);
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_full_model"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(dataModel);
+    request.setFileFormats(List.of(ContainerFileFormat.Parquet, ContainerFileFormat.Avro));
+    request.setPrefix("/data/complex/");
+    request.setSize(5000.0);
+    request.setNumberOfObjects(100.0);
+
+    Container container = createEntity(request, client);
+    assertNotNull(container);
+    assertNotNull(container.getDataModel());
+    assertEquals(5, container.getDataModel().getColumns().size());
+    assertTrue(container.getDataModel().getIsPartitioned());
+    assertEquals(2, container.getFileFormats().size());
+    assertEquals("/data/complex/", container.getPrefix());
+    assertEquals(5000.0, container.getSize());
+    assertEquals(100.0, container.getNumberOfObjects());
+  }
+
+  @Test
+  void list_containersByService(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+
+    // Create multiple containers under the same service
+    for (int i = 0; i < 5; i++) {
+      CreateContainer request = new CreateContainer();
+      request.setName(ns.prefix("container_list_" + i));
+      request.setService(service.getFullyQualifiedName());
+      createEntity(request, client);
+    }
+
+    // List containers by service
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.setService(service.getFullyQualifiedName());
+
+    ListResponse<Container> response = listEntities(params, client);
+    assertNotNull(response.getData());
+    assertTrue(response.getData().size() >= 5);
+
+    // Verify all returned containers belong to the service
+    for (Container container : response.getData()) {
+      assertEquals(service.getFullyQualifiedName(), container.getService().getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void test_containerUpdateDataModel(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+
+    // Create container with initial data model
+    List<Column> initialColumns =
+        Arrays.asList(new Column().withName("col1").withDataType(ColumnDataType.INT));
+
+    ContainerDataModel initialModel =
+        new ContainerDataModel().withIsPartitioned(false).withColumns(initialColumns);
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_update_model"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDataModel(initialModel);
+
+    Container container = createEntity(request, client);
+    assertEquals(1, container.getDataModel().getColumns().size());
+    assertFalse(container.getDataModel().getIsPartitioned());
+
+    // Update data model with more columns and set partitioned
+    List<Column> updatedColumns =
+        Arrays.asList(
+            new Column().withName("col1").withDataType(ColumnDataType.INT),
+            new Column().withName("col2").withDataType(ColumnDataType.STRING),
+            new Column().withName("col3").withDataType(ColumnDataType.DOUBLE));
+
+    ContainerDataModel updatedModel =
+        new ContainerDataModel().withIsPartitioned(true).withColumns(updatedColumns);
+
+    container.setDataModel(updatedModel);
+    Container updated = patchEntity(container.getId().toString(), container, client);
+
+    assertEquals(3, updated.getDataModel().getColumns().size());
+    assertTrue(updated.getDataModel().getIsPartitioned());
+  }
+
+  @Test
+  void test_containerWithNestedParent(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+
+    // Create root container
+    CreateContainer rootRequest = new CreateContainer();
+    rootRequest.setName(ns.prefix("root_container"));
+    rootRequest.setService(service.getFullyQualifiedName());
+    Container rootContainer = createEntity(rootRequest, client);
+
+    // Create level 1 child
+    CreateContainer level1Request = new CreateContainer();
+    level1Request.setName(ns.prefix("level1_container"));
+    level1Request.setService(service.getFullyQualifiedName());
+    level1Request.setParent(
+        new EntityReference()
+            .withId(rootContainer.getId())
+            .withType("container")
+            .withFullyQualifiedName(rootContainer.getFullyQualifiedName()));
+    Container level1Container = createEntity(level1Request, client);
+
+    // Create level 2 child
+    CreateContainer level2Request = new CreateContainer();
+    level2Request.setName(ns.prefix("level2_container"));
+    level2Request.setService(service.getFullyQualifiedName());
+    level2Request.setParent(
+        new EntityReference()
+            .withId(level1Container.getId())
+            .withType("container")
+            .withFullyQualifiedName(level1Container.getFullyQualifiedName()));
+    Container level2Container = createEntity(level2Request, client);
+
+    // Verify hierarchy
+    assertNotNull(level1Container.getParent());
+    assertEquals(rootContainer.getId(), level1Container.getParent().getId());
+
+    assertNotNull(level2Container.getParent());
+    assertEquals(level1Container.getId(), level2Container.getParent().getId());
+  }
+
+  @Test
+  void test_containerWithOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_with_owner"));
+    request.setService(service.getFullyQualifiedName());
+    request.setOwners(List.of(testUser1().getEntityReference()));
+
+    Container container = createEntity(request, client);
+    assertNotNull(container);
+
+    // Verify owner
+    Container fetched = client.containers().get(container.getId().toString(), "owners");
+    assertNotNull(fetched.getOwners());
+    assertFalse(fetched.getOwners().isEmpty());
+    assertTrue(fetched.getOwners().stream().anyMatch(o -> o.getId().equals(testUser1().getId())));
+  }
+
+  @Test
+  void test_containerVersionHistory(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+
+    CreateContainer request = new CreateContainer();
+    request.setName(ns.prefix("container_versions"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDescription("Version 1");
+
+    Container container = createEntity(request, client);
+    Double v1 = container.getVersion();
+
+    // Update description
+    container.setDescription("Version 2");
+    Container v2Container = patchEntity(container.getId().toString(), container, client);
+    assertTrue(v2Container.getVersion() > v1);
+
+    // Get version history
+    EntityHistory history = client.containers().getVersionList(container.getId());
+    assertNotNull(history);
+    assertNotNull(history.getVersions());
+    assertTrue(history.getVersions().size() >= 2);
+  }
 }

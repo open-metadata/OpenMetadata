@@ -196,4 +196,177 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
         () -> createEntity(request2, client),
         "Creating duplicate test suite should fail");
   }
+
+  @Test
+  void test_testSuiteVersionHistory(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_version"));
+    request.setDescription("Initial description");
+
+    TestSuite testSuite = createEntity(request, client);
+    Double initialVersion = testSuite.getVersion();
+
+    // Update to create new version
+    testSuite.setDescription("Updated description");
+    TestSuite updated = patchEntity(testSuite.getId().toString(), testSuite, client);
+    assertTrue(updated.getVersion() >= initialVersion);
+
+    // Get version history
+    EntityHistory history = getVersionHistory(testSuite.getId(), client);
+    assertNotNull(history);
+    assertTrue(history.getVersions().size() >= 1);
+  }
+
+  @Test
+  void test_testSuiteSoftDeleteAndRestore(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_delete"));
+    request.setDescription("Test suite for delete test");
+
+    TestSuite testSuite = createEntity(request, client);
+    assertNotNull(testSuite.getId());
+
+    // Soft delete
+    deleteEntity(testSuite.getId().toString(), client);
+
+    // Should be able to get with include deleted
+    TestSuite deleted = getEntityIncludeDeleted(testSuite.getId().toString(), client);
+    assertNotNull(deleted);
+    assertTrue(deleted.getDeleted());
+
+    // Restore
+    restoreEntity(testSuite.getId().toString(), client);
+    TestSuite restored = getEntity(testSuite.getId().toString(), client);
+    assertNotNull(restored);
+    assertFalse(restored.getDeleted());
+  }
+
+  @Test
+  void test_testSuiteHardDelete(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_hard_delete"));
+    request.setDescription("Test suite for hard delete test");
+
+    TestSuite testSuite = createEntity(request, client);
+    assertNotNull(testSuite.getId());
+
+    // Hard delete
+    hardDeleteEntity(testSuite.getId().toString(), client);
+
+    // Should not be retrievable
+    assertThrows(Exception.class, () -> getEntity(testSuite.getId().toString(), client));
+    assertThrows(
+        Exception.class, () -> getEntityIncludeDeleted(testSuite.getId().toString(), client));
+  }
+
+  @Test
+  void test_testSuiteGetByName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_by_name"));
+    request.setDescription("Test suite for getByName test");
+
+    TestSuite testSuite = createEntity(request, client);
+
+    // Get by FQN
+    TestSuite fetched = getEntityByName(testSuite.getFullyQualifiedName(), client);
+    assertNotNull(fetched);
+    assertEquals(testSuite.getId(), fetched.getId());
+    assertEquals(testSuite.getName(), fetched.getName());
+  }
+
+  @Test
+  void test_testSuiteDisplayName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_display"));
+    request.setDisplayName("My Display Test Suite");
+    request.setDescription("Test suite with display name");
+
+    TestSuite testSuite = createEntity(request, client);
+    assertEquals("My Display Test Suite", testSuite.getDisplayName());
+
+    // Update display name
+    testSuite.setDisplayName("Updated Display Name");
+    TestSuite updated = patchEntity(testSuite.getId().toString(), testSuite, client);
+    assertEquals("Updated Display Name", updated.getDisplayName());
+  }
+
+  @Test
+  void test_listTestSuitesPagination(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create multiple test suites
+    for (int i = 0; i < 5; i++) {
+      CreateTestSuite request = new CreateTestSuite();
+      request.setName(ns.prefix("pagination_suite_" + i));
+      request.setDescription("Pagination test suite " + i);
+      createEntity(request, client);
+    }
+
+    // List with limit
+    ListParams params = new ListParams();
+    params.setLimit(2);
+    ListResponse<TestSuite> response = listEntities(params, client);
+    assertNotNull(response);
+    assertTrue(response.getData().size() <= 2);
+  }
+
+  @Test
+  void test_testSuiteWithOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_with_owner"));
+    request.setDescription("Test suite with owner");
+    request.setOwners(java.util.List.of(testUser1().getEntityReference()));
+
+    TestSuite testSuite = createEntity(request, client);
+    assertNotNull(testSuite);
+
+    // Verify owner
+    TestSuite fetched = client.testSuites().get(testSuite.getId().toString(), "owners");
+    assertNotNull(fetched.getOwners());
+    assertFalse(fetched.getOwners().isEmpty());
+  }
+
+  @Test
+  void test_testSuiteFQNFormat(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTestSuite request = new CreateTestSuite();
+    String suiteName = ns.prefix("testsuite_fqn");
+    request.setName(suiteName);
+    request.setDescription("Test suite for FQN format test");
+
+    TestSuite testSuite = createEntity(request, client);
+
+    // Logical test suite FQN is just the name
+    assertEquals(suiteName, testSuite.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_updateTestSuiteDescription(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTestSuite request = new CreateTestSuite();
+    request.setName(ns.prefix("testsuite_patch_desc"));
+    request.setDescription("Original description");
+
+    TestSuite testSuite = createEntity(request, client);
+    assertEquals("Original description", testSuite.getDescription());
+
+    // Patch description
+    testSuite.setDescription("Patched description");
+    TestSuite patched = patchEntity(testSuite.getId().toString(), testSuite, client);
+    assertEquals("Patched description", patched.getDescription());
+  }
 }

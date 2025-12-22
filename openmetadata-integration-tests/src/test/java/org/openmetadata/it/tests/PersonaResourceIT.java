@@ -34,6 +34,9 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
     supportsOwners = false;
     supportsFollowers = false;
     supportsTags = false;
+    supportsSoftDelete = false; // Persona uses hard delete
+    supportsDomains = false;
+    supportsDataProducts = false;
   }
 
   // ===================================================================
@@ -159,17 +162,18 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
 
     // Create test users
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+    // Email must be well-formed - use simple alphanumeric format
     CreateUser userRequest1 =
         new CreateUser()
             .withName(ns.prefix("puser1_" + uniqueId))
-            .withEmail(ns.prefix("puser1_" + uniqueId) + "@test.com")
+            .withEmail("puser1" + uniqueId + "@test.com")
             .withDescription("Test user 1");
     User user1 = client.users().create(userRequest1);
 
     CreateUser userRequest2 =
         new CreateUser()
             .withName(ns.prefix("puser2_" + uniqueId))
-            .withEmail(ns.prefix("puser2_" + uniqueId) + "@test.com")
+            .withEmail("puser2" + uniqueId + "@test.com")
             .withDescription("Test user 2");
     User user2 = client.users().create(userRequest2);
 

@@ -55,6 +55,11 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
     return httpClient.execute(HttpMethod.POST, basePath, request, TestCase.class);
   }
 
+  // Create or update using CreateTestCase request
+  public TestCase upsert(CreateTestCase request) throws OpenMetadataException {
+    return httpClient.execute(HttpMethod.PUT, basePath, request, TestCase.class);
+  }
+
   /**
    * Override update to handle TestCase-specific fields properly. TestCase has complex nested
    * objects that need special handling during PATCH operations.

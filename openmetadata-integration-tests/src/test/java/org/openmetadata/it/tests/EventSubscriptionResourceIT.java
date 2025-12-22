@@ -37,6 +37,9 @@ public class EventSubscriptionResourceIT
     supportsTags = false;
     supportsFollowers = false;
     supportsOwners = false;
+    supportsSoftDelete = false; // EventSubscription uses hard delete
+    supportsDomains = false;
+    supportsDataProducts = false;
   }
 
   // ===================================================================
@@ -250,12 +253,13 @@ public class EventSubscriptionResourceIT
   void test_eventSubscriptionWithResources_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
+    // API only allows one resource to be specified
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("sub_filter"))
             .withDescription("Subscription with filtering")
             .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
-            .withResources(List.of("table", "topic"))
+            .withResources(List.of("table"))
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
 

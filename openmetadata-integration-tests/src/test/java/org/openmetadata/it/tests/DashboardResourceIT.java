@@ -274,4 +274,348 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
     assertNotNull(dashboard.getService());
     assertEquals(service.getFullyQualifiedName(), dashboard.getService().getFullyQualifiedName());
   }
+
+  @Test
+  void post_dashboardWithInvalidService_4xx(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String nonExistentServiceFqn = "non_existent_dashboard_service_" + UUID.randomUUID();
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("dashboard_invalid_service"));
+    request.setService(nonExistentServiceFqn);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request, client),
+        "Creating dashboard with non-existent service should fail");
+  }
+
+  @Test
+  void put_dashboardChartsUpdate_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create charts
+    CreateChart chartRequest = new CreateChart();
+    chartRequest.setName(ns.prefix("chart_for_update"));
+    chartRequest.setService(service.getFullyQualifiedName());
+    chartRequest.setChartType(ChartType.Bar);
+    Chart chart = client.charts().create(chartRequest);
+
+    // Create dashboard without charts
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("dashboard_add_charts"));
+    request.setService(service.getFullyQualifiedName());
+
+    Dashboard dashboard = createEntity(request, client);
+
+    // Fetch with charts field
+    Dashboard fetched = client.dashboards().get(dashboard.getId().toString(), "charts");
+
+    // Add chart to dashboard
+    fetched.setCharts(List.of(chart.getEntityReference()));
+    Dashboard updated = patchEntity(fetched.getId().toString(), fetched, client);
+
+    // Verify chart added
+    Dashboard verify = client.dashboards().get(updated.getId().toString(), "charts");
+    assertNotNull(verify.getCharts());
+    assertEquals(1, verify.getCharts().size());
+    assertEquals(chart.getId(), verify.getCharts().get(0).getId());
+  }
+
+  @Test
+  void put_addRemoveDashboardChartsUpdate_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create two charts
+    CreateChart chartRequest1 = new CreateChart();
+    chartRequest1.setName(ns.prefix("chart_add_remove_1"));
+    chartRequest1.setService(service.getFullyQualifiedName());
+    chartRequest1.setChartType(ChartType.Bar);
+    Chart chart1 = client.charts().create(chartRequest1);
+
+    CreateChart chartRequest2 = new CreateChart();
+    chartRequest2.setName(ns.prefix("chart_add_remove_2"));
+    chartRequest2.setService(service.getFullyQualifiedName());
+    chartRequest2.setChartType(ChartType.Line);
+    Chart chart2 = client.charts().create(chartRequest2);
+
+    // Create dashboard with chart1
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("dashboard_add_remove_charts"));
+    request.setService(service.getFullyQualifiedName());
+    request.setCharts(List.of(chart1.getFullyQualifiedName()));
+
+    Dashboard dashboard = createEntity(request, client);
+    Dashboard fetched = client.dashboards().get(dashboard.getId().toString(), "charts");
+    assertEquals(1, fetched.getCharts().size());
+
+    // Replace chart1 with chart2
+    fetched.setCharts(List.of(chart2.getEntityReference()));
+    Dashboard updated = patchEntity(fetched.getId().toString(), fetched, client);
+
+    Dashboard verify = client.dashboards().get(updated.getId().toString(), "charts");
+    assertEquals(1, verify.getCharts().size());
+    assertEquals(chart2.getId(), verify.getCharts().get(0).getId());
+  }
+
+  @Test
+  void list_dashboardsByService(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create multiple dashboards under the same service
+    for (int i = 0; i < 5; i++) {
+      CreateDashboard request = new CreateDashboard();
+      request.setName(ns.prefix("dashboard_list_" + i));
+      request.setService(service.getFullyQualifiedName());
+      createEntity(request, client);
+    }
+
+    // List dashboards by service
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.setService(service.getFullyQualifiedName());
+
+    ListResponse<Dashboard> response = listEntities(params, client);
+    assertNotNull(response.getData());
+    assertTrue(response.getData().size() >= 5);
+
+    // Verify all returned dashboards belong to the service
+    for (Dashboard dashboard : response.getData()) {
+      assertEquals(service.getFullyQualifiedName(), dashboard.getService().getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void test_dashboardVersionHistory(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("dashboard_versions"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDescription("Version 1");
+
+    Dashboard dashboard = createEntity(request, client);
+    Double v1 = dashboard.getVersion();
+
+    // Update description
+    dashboard.setDescription("Version 2");
+    Dashboard v2Dashboard = patchEntity(dashboard.getId().toString(), dashboard, client);
+    assertTrue(v2Dashboard.getVersion() > v1);
+
+    // Get version history
+    EntityHistory history = client.dashboards().getVersionList(dashboard.getId());
+    assertNotNull(history);
+    assertNotNull(history.getVersions());
+    assertTrue(history.getVersions().size() >= 2);
+  }
+
+  @Test
+  void test_dashboardWithOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("dashboard_with_owner"));
+    request.setService(service.getFullyQualifiedName());
+    request.setOwners(List.of(testUser1().getEntityReference()));
+
+    Dashboard dashboard = createEntity(request, client);
+    assertNotNull(dashboard);
+
+    // Verify owner
+    Dashboard fetched = client.dashboards().get(dashboard.getId().toString(), "owners");
+    assertNotNull(fetched.getOwners());
+    assertFalse(fetched.getOwners().isEmpty());
+    assertTrue(fetched.getOwners().stream().anyMatch(o -> o.getId().equals(testUser1().getId())));
+  }
+
+  @Test
+  void test_dashboardSoftDeleteAndRestore(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create dashboard
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("dashboard_delete_restore"));
+    request.setService(service.getFullyQualifiedName());
+
+    Dashboard dashboard = createEntity(request, client);
+    String dashboardId = dashboard.getId().toString();
+
+    // Soft delete
+    deleteEntity(dashboardId, client);
+
+    // Verify deleted
+    assertThrows(
+        Exception.class,
+        () -> getEntity(dashboardId, client),
+        "Deleted dashboard should not be retrievable");
+
+    // Get with include=deleted
+    Dashboard deleted = getEntityIncludeDeleted(dashboardId, client);
+    assertTrue(deleted.getDeleted());
+
+    // Restore
+    restoreEntity(dashboardId, client);
+
+    // Verify restored
+    Dashboard restored = getEntity(dashboardId, client);
+    assertFalse(restored.getDeleted());
+  }
+
+  @Test
+  void test_dashboardHardDelete(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create dashboard
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("dashboard_hard_delete"));
+    request.setService(service.getFullyQualifiedName());
+
+    Dashboard dashboard = createEntity(request, client);
+    String dashboardId = dashboard.getId().toString();
+
+    // Hard delete
+    hardDeleteEntity(dashboardId, client);
+
+    // Verify completely gone
+    assertThrows(
+        Exception.class,
+        () -> getEntityIncludeDeleted(dashboardId, client),
+        "Hard deleted dashboard should not be retrievable");
+  }
+
+  @Test
+  void test_chartWithMultipleDashboards(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create a shared chart
+    CreateChart chartRequest = new CreateChart();
+    chartRequest.setName(ns.prefix("shared_chart"));
+    chartRequest.setService(service.getFullyQualifiedName());
+    chartRequest.setChartType(ChartType.Pie);
+    Chart sharedChart = client.charts().create(chartRequest);
+
+    // Create two dashboards that share the chart
+    CreateDashboard request1 = new CreateDashboard();
+    request1.setName(ns.prefix("dashboard_shared_chart_1"));
+    request1.setService(service.getFullyQualifiedName());
+    request1.setCharts(List.of(sharedChart.getFullyQualifiedName()));
+    Dashboard dashboard1 = createEntity(request1, client);
+
+    CreateDashboard request2 = new CreateDashboard();
+    request2.setName(ns.prefix("dashboard_shared_chart_2"));
+    request2.setService(service.getFullyQualifiedName());
+    request2.setCharts(List.of(sharedChart.getFullyQualifiedName()));
+    Dashboard dashboard2 = createEntity(request2, client);
+
+    // Verify both dashboards have the chart
+    Dashboard fetched1 = client.dashboards().get(dashboard1.getId().toString(), "charts");
+    Dashboard fetched2 = client.dashboards().get(dashboard2.getId().toString(), "charts");
+
+    assertEquals(1, fetched1.getCharts().size());
+    assertEquals(1, fetched2.getCharts().size());
+    assertEquals(sharedChart.getId(), fetched1.getCharts().get(0).getId());
+    assertEquals(sharedChart.getId(), fetched2.getCharts().get(0).getId());
+
+    // Delete dashboard1 and verify chart still exists
+    deleteEntity(dashboard1.getId().toString(), client);
+
+    // Chart should still be accessible
+    Chart chartAfterDelete = client.charts().get(sharedChart.getId().toString());
+    assertNotNull(chartAfterDelete);
+
+    // Dashboard2 should still have the chart
+    Dashboard fetched2After = client.dashboards().get(dashboard2.getId().toString(), "charts");
+    assertEquals(1, fetched2After.getCharts().size());
+  }
+
+  @Test
+  void test_listDashboardsByService(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create multiple dashboards
+    for (int i = 0; i < 3; i++) {
+      CreateDashboard request = new CreateDashboard();
+      request.setName(ns.prefix("dashboard_list_" + i));
+      request.setService(service.getFullyQualifiedName());
+      createEntity(request, client);
+    }
+
+    // List dashboards
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    ListResponse<Dashboard> response = listEntities(params, client);
+    assertNotNull(response);
+
+    // Verify we have at least our 3 dashboards
+    long serviceCount =
+        response.getData().stream()
+            .filter(
+                d -> d.getService().getFullyQualifiedName().equals(service.getFullyQualifiedName()))
+            .count();
+    assertTrue(serviceCount >= 3);
+  }
+
+  @Test
+  void test_dashboardGetByName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("dashboard_by_name"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDescription("Dashboard for getByName test");
+
+    Dashboard dashboard = createEntity(request, client);
+
+    // Get by FQN
+    Dashboard fetched = getEntityByName(dashboard.getFullyQualifiedName(), client);
+    assertNotNull(fetched);
+    assertEquals(dashboard.getId(), fetched.getId());
+    assertEquals(dashboard.getName(), fetched.getName());
+  }
+
+  @Test
+  void test_dashboardFQNFormat(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    CreateDashboard request = new CreateDashboard();
+    String dashboardName = ns.prefix("dashboard_fqn");
+    request.setName(dashboardName);
+    request.setService(service.getFullyQualifiedName());
+
+    Dashboard dashboard = createEntity(request, client);
+
+    // Verify FQN format: service.dashboard
+    String expectedFQN = service.getFullyQualifiedName() + "." + dashboardName;
+    assertEquals(expectedFQN, dashboard.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_dashboardDisplayName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    CreateDashboard request = new CreateDashboard();
+    request.setName(ns.prefix("dashboard_display"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDisplayName("My Display Dashboard");
+
+    Dashboard dashboard = createEntity(request, client);
+    assertEquals("My Display Dashboard", dashboard.getDisplayName());
+
+    // Update display name
+    dashboard.setDisplayName("Updated Display Name");
+    Dashboard updated = patchEntity(dashboard.getId().toString(), dashboard, client);
+    assertEquals("Updated Display Name", updated.getDisplayName());
+  }
 }

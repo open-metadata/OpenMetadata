@@ -10,7 +10,10 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -32,6 +35,9 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
   {
     supportsFieldsQueryParam = false;
     supportsTags = false;
+    supportsOwners = false; // Bot has bot user, not owners
+    supportsDomains = false; // Bot doesn't support domains
+    supportsDataProducts = false;
   }
 
   // ===================================================================
@@ -61,13 +67,22 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
   private User createBotUser(TestNamespace ns, OpenMetadataClient client) {
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     String userName = ns.prefix("botuser_" + uniqueId);
+    // Email must be well-formed - use simple alphanumeric format
+    String email = "botuser" + uniqueId + "@test.com";
+
+    // Bot users require an authentication mechanism
+    AuthenticationMechanism authMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism().withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
 
     CreateUser userRequest =
         new CreateUser()
             .withName(userName)
-            .withEmail(userName + "@test.com")
+            .withEmail(email)
             .withDescription("Bot user for testing")
-            .withIsBot(true);
+            .withIsBot(true)
+            .withAuthenticationMechanism(authMechanism);
 
     return client.users().create(userRequest);
   }
@@ -202,11 +217,13 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
     // Create a non-bot user
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     String userName = ns.prefix("nonbotuser_" + uniqueId);
+    // Email must be well-formed - use simple alphanumeric format
+    String email = "nonbotuser" + uniqueId + "@test.com";
 
     CreateUser userRequest =
         new CreateUser()
             .withName(userName)
-            .withEmail(userName + "@test.com")
+            .withEmail(email)
             .withDescription("Non-bot user for testing")
             .withIsBot(false);
 

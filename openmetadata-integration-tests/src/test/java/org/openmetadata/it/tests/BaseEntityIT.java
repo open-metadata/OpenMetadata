@@ -1184,6 +1184,8 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   @Test
   void get_entityWithInvalidFields_4xx(TestNamespace ns) {
+    if (!supportsFieldsQueryParam) return;
+
     OpenMetadataClient client = SdkClients.adminClient();
     K createRequest = createMinimalRequest(ns, client);
     T entity = createEntity(createRequest, client);

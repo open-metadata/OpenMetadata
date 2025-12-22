@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -10,10 +11,13 @@ import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateChart;
+import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.ChartType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -268,5 +272,253 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     assertNotNull(chart);
     assertNotNull(chart.getService());
     assertEquals(service.getFullyQualifiedName(), chart.getService().getFullyQualifiedName());
+  }
+
+  @Test
+  void post_chartWithDifferentServices_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create charts with different dashboard services
+    DashboardService metabaseService = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService lookerService = DashboardServiceTestFactory.createLooker(client, ns);
+
+    // Create chart for Metabase
+    CreateChart metabaseChart = new CreateChart();
+    metabaseChart.setName(ns.prefix("chart_metabase"));
+    metabaseChart.setService(metabaseService.getFullyQualifiedName());
+    metabaseChart.setChartType(ChartType.Bar);
+    Chart chart1 = createEntity(metabaseChart, client);
+    assertNotNull(chart1);
+    assertEquals(
+        metabaseService.getFullyQualifiedName(), chart1.getService().getFullyQualifiedName());
+
+    // Create chart for Looker
+    CreateChart lookerChart = new CreateChart();
+    lookerChart.setName(ns.prefix("chart_looker"));
+    lookerChart.setService(lookerService.getFullyQualifiedName());
+    lookerChart.setChartType(ChartType.Line);
+    Chart chart2 = createEntity(lookerChart, client);
+    assertNotNull(chart2);
+    assertEquals(
+        lookerService.getFullyQualifiedName(), chart2.getService().getFullyQualifiedName());
+
+    // Verify listing by service
+    ListParams params1 = new ListParams();
+    params1.setLimit(100);
+    params1.addFilter("service", metabaseService.getFullyQualifiedName());
+    ListResponse<Chart> metabaseCharts = listEntities(params1, client);
+    assertTrue(
+        metabaseCharts.getData().stream()
+            .allMatch(
+                c ->
+                    c.getService()
+                        .getFullyQualifiedName()
+                        .equals(metabaseService.getFullyQualifiedName())));
+  }
+
+  @Test
+  void list_chartsByService(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create multiple charts under the same service
+    for (int i = 0; i < 3; i++) {
+      CreateChart request = new CreateChart();
+      request.setName(ns.prefix("list_chart_" + i));
+      request.setService(service.getFullyQualifiedName());
+      request.setChartType(ChartType.Bar);
+      createEntity(request, client);
+    }
+
+    // List charts by service
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.addFilter("service", service.getFullyQualifiedName());
+    ListResponse<Chart> charts = listEntities(params, client);
+
+    assertTrue(charts.getData().size() >= 3);
+    for (Chart chart : charts.getData()) {
+      assertEquals(service.getFullyQualifiedName(), chart.getService().getFullyQualifiedName());
+    }
+  }
+
+  @Test
+  void test_chartVersionHistory(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create chart
+    CreateChart request = new CreateChart();
+    request.setName(ns.prefix("chart_version_history"));
+    request.setService(service.getFullyQualifiedName());
+    request.setChartType(ChartType.Bar);
+    Chart chart = createEntity(request, client);
+
+    // Get version history - should have initial version
+    EntityHistory history = getVersionHistory(chart.getId(), client);
+    assertNotNull(history);
+    assertTrue(history.getVersions().size() >= 1);
+
+    // Update chart to create new version
+    chart.setDescription("Updated description for version history test");
+    chart.setChartType(ChartType.Line);
+    Chart updated = patchEntity(chart.getId().toString(), chart, client);
+    assertTrue(updated.getVersion() > chart.getVersion());
+
+    // Get version history again
+    EntityHistory updatedHistory = getVersionHistory(chart.getId(), client);
+    assertTrue(updatedHistory.getVersions().size() >= 2);
+
+    // Get specific version
+    Chart version1 = getVersion(chart.getId(), chart.getVersion(), client);
+    assertNotNull(version1);
+  }
+
+  @Test
+  void test_chartSoftDeleteAndRestore(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create chart
+    CreateChart request = new CreateChart();
+    request.setName(ns.prefix("chart_soft_delete"));
+    request.setService(service.getFullyQualifiedName());
+    request.setChartType(ChartType.Bar);
+    Chart chart = createEntity(request, client);
+    assertNotNull(chart.getId());
+
+    // Soft delete
+    deleteEntity(chart.getId().toString(), client);
+
+    // Verify deleted
+    Chart deleted = getEntityIncludeDeleted(chart.getId().toString(), client);
+    assertNotNull(deleted.getDeleted());
+    assertTrue(deleted.getDeleted());
+
+    // Restore
+    restoreEntity(chart.getId().toString(), client);
+
+    // Verify restored
+    Chart restored = getEntity(chart.getId().toString(), client);
+    assertFalse(restored.getDeleted() != null && restored.getDeleted());
+  }
+
+  @Test
+  void test_chartHardDelete(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create chart
+    CreateChart request = new CreateChart();
+    request.setName(ns.prefix("chart_hard_delete"));
+    request.setService(service.getFullyQualifiedName());
+    request.setChartType(ChartType.Bar);
+    Chart chart = createEntity(request, client);
+    String chartId = chart.getId().toString();
+
+    // Hard delete
+    hardDeleteEntity(chartId, client);
+
+    // Verify chart is completely gone
+    assertThrows(
+        Exception.class,
+        () -> getEntityIncludeDeleted(chartId, client),
+        "Hard deleted chart should not be retrievable");
+  }
+
+  @Test
+  void test_chartWithOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create chart with owner
+    CreateChart request = new CreateChart();
+    request.setName(ns.prefix("chart_with_owner"));
+    request.setService(service.getFullyQualifiedName());
+    request.setChartType(ChartType.Bar);
+    request.setOwners(List.of(testUser1().getEntityReference()));
+
+    Chart chart = createEntity(request, client);
+    assertNotNull(chart.getOwners());
+    assertFalse(chart.getOwners().isEmpty());
+    assertEquals(testUser1().getId(), chart.getOwners().get(0).getId());
+  }
+
+  @Test
+  void testChartWithDashboards(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create dashboards first
+    CreateDashboard dashboardRequest1 = new CreateDashboard();
+    dashboardRequest1.setName(ns.prefix("dashboard_for_chart_1"));
+    dashboardRequest1.setService(service.getFullyQualifiedName());
+    Dashboard dashboard1 = client.dashboards().create(dashboardRequest1);
+
+    CreateDashboard dashboardRequest2 = new CreateDashboard();
+    dashboardRequest2.setName(ns.prefix("dashboard_for_chart_2"));
+    dashboardRequest2.setService(service.getFullyQualifiedName());
+    Dashboard dashboard2 = client.dashboards().create(dashboardRequest2);
+
+    // Create chart with dashboard references
+    CreateChart chartRequest = new CreateChart();
+    chartRequest.setName(ns.prefix("chart_with_dashboards"));
+    chartRequest.setService(service.getFullyQualifiedName());
+    chartRequest.setChartType(ChartType.Bar);
+    chartRequest.setDashboards(
+        List.of(dashboard1.getFullyQualifiedName(), dashboard2.getFullyQualifiedName()));
+
+    Chart chart = createEntity(chartRequest, client);
+    assertNotNull(chart);
+
+    // Verify chart has dashboards
+    Chart chartWithDashboards = client.charts().get(chart.getId().toString(), "dashboards");
+    assertNotNull(chartWithDashboards.getDashboards());
+    assertEquals(2, chartWithDashboards.getDashboards().size());
+
+    // Verify dashboards contain the chart
+    Dashboard fetchedDashboard1 = client.dashboards().get(dashboard1.getId().toString(), "charts");
+    assertNotNull(fetchedDashboard1.getCharts());
+    assertTrue(
+        fetchedDashboard1.getCharts().stream()
+            .map(EntityReference::getId)
+            .anyMatch(chart.getId()::equals));
+  }
+
+  @Test
+  void patch_chartDashboards_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+
+    // Create initial dashboard
+    CreateDashboard dashboardRequest1 = new CreateDashboard();
+    dashboardRequest1.setName(ns.prefix("initial_dashboard"));
+    dashboardRequest1.setService(service.getFullyQualifiedName());
+    Dashboard dashboard1 = client.dashboards().create(dashboardRequest1);
+
+    // Create chart with initial dashboard
+    CreateChart chartRequest = new CreateChart();
+    chartRequest.setName(ns.prefix("chart_patch_dashboards"));
+    chartRequest.setService(service.getFullyQualifiedName());
+    chartRequest.setChartType(ChartType.Bar);
+    chartRequest.setDashboards(List.of(dashboard1.getFullyQualifiedName()));
+    Chart chart = createEntity(chartRequest, client);
+
+    // Create new dashboard
+    CreateDashboard dashboardRequest2 = new CreateDashboard();
+    dashboardRequest2.setName(ns.prefix("new_dashboard"));
+    dashboardRequest2.setService(service.getFullyQualifiedName());
+    Dashboard dashboard2 = client.dashboards().create(dashboardRequest2);
+
+    // Patch chart to change dashboard
+    Chart chartWithDashboards = client.charts().get(chart.getId().toString(), "dashboards");
+    chartWithDashboards.setDashboards(List.of(dashboard2.getEntityReference()));
+    Chart patched = patchEntity(chart.getId().toString(), chartWithDashboards, client);
+
+    // Verify dashboard changed
+    Chart verifyChart = client.charts().get(patched.getId().toString(), "dashboards");
+    assertNotNull(verifyChart.getDashboards());
+    assertEquals(1, verifyChart.getDashboards().size());
+    assertEquals(dashboard2.getId(), verifyChart.getDashboards().get(0).getId());
   }
 }

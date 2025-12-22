@@ -728,6 +728,215 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     assertTrue(response.getData().size() >= 3);
   }
 
+  @Test
+  void test_listTeamsWithParentTeamFilter(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create parent team
+    CreateTeam createParent =
+        new CreateTeam()
+            .withName(ns.prefix("parentForList"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withDescription("Parent team for filter test");
+    Team parent = createEntity(createParent, client);
+
+    // Create child teams
+    CreateTeam createChild1 =
+        new CreateTeam()
+            .withName(ns.prefix("child1ForList"))
+            .withTeamType(TeamType.GROUP)
+            .withParents(List.of(parent.getId()))
+            .withDescription("Child 1");
+    Team child1 = createEntity(createChild1, client);
+
+    CreateTeam createChild2 =
+        new CreateTeam()
+            .withName(ns.prefix("child2ForList"))
+            .withTeamType(TeamType.GROUP)
+            .withParents(List.of(parent.getId()))
+            .withDescription("Child 2");
+    Team child2 = createEntity(createChild2, client);
+
+    // List teams with parent filter
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.addFilter("parentTeam", parent.getName());
+    ListResponse<Team> response = listEntities(params, client);
+
+    assertNotNull(response.getData());
+    assertEquals(2, response.getData().size());
+    assertTrue(response.getData().stream().anyMatch(t -> t.getId().equals(child1.getId())));
+    assertTrue(response.getData().stream().anyMatch(t -> t.getId().equals(child2.getId())));
+  }
+
+  @Test
+  void test_inheritDomain(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create parent team with domain
+    String domainFqn = testDomain().getFullyQualifiedName();
+    CreateTeam createParent =
+        new CreateTeam()
+            .withName(ns.prefix("parentWithDomain"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withDomains(List.of(domainFqn))
+            .withDescription("Parent with domain");
+    Team parent = createEntity(createParent, client);
+
+    // Create child team without domain - should inherit from parent
+    CreateTeam createChild =
+        new CreateTeam()
+            .withName(ns.prefix("childInheritDomain"))
+            .withTeamType(TeamType.GROUP)
+            .withParents(List.of(parent.getId()))
+            .withDescription("Child without explicit domain");
+    Team child = createEntity(createChild, client);
+
+    // Fetch child with domains field
+    Team fetchedChild = client.teams().get(child.getId().toString(), "domains");
+    assertNotNull(fetchedChild.getDomains());
+    assertFalse(fetchedChild.getDomains().isEmpty());
+    assertTrue(
+        fetchedChild.getDomains().stream()
+            .anyMatch(d -> d.getFullyQualifiedName().equals(domainFqn)));
+  }
+
+  @Test
+  void test_updateTeamParent(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Team orgTeam = client.teams().getByName("Organization");
+
+    // Create two business units
+    CreateTeam createBu1 =
+        new CreateTeam()
+            .withName(ns.prefix("bu1ForParentUpdate"))
+            .withTeamType(TeamType.BUSINESS_UNIT)
+            .withParents(List.of(orgTeam.getId()))
+            .withDescription("BU 1");
+    Team bu1 = createEntity(createBu1, client);
+
+    CreateTeam createBu2 =
+        new CreateTeam()
+            .withName(ns.prefix("bu2ForParentUpdate"))
+            .withTeamType(TeamType.BUSINESS_UNIT)
+            .withParents(List.of(orgTeam.getId()))
+            .withDescription("BU 2");
+    Team bu2 = createEntity(createBu2, client);
+
+    // Create division under bu1
+    CreateTeam createDiv =
+        new CreateTeam()
+            .withName(ns.prefix("divForParentUpdate"))
+            .withTeamType(TeamType.DIVISION)
+            .withParents(List.of(bu1.getId()))
+            .withDescription("Division under BU1");
+    Team div = createEntity(createDiv, client);
+
+    // Verify initial parent
+    Team fetchedDiv = client.teams().get(div.getId().toString(), "parents");
+    assertTrue(fetchedDiv.getParents().stream().anyMatch(p -> p.getId().equals(bu1.getId())));
+
+    // Update division parent from bu1 to bu2
+    fetchedDiv.setParents(List.of(bu2.getEntityReference()));
+    Team updated = patchEntity(fetchedDiv.getId().toString(), fetchedDiv, client);
+
+    // Verify parent changed
+    Team verifyDiv = client.teams().get(updated.getId().toString(), "parents");
+    assertTrue(verifyDiv.getParents().stream().anyMatch(p -> p.getId().equals(bu2.getId())));
+    assertFalse(verifyDiv.getParents().stream().anyMatch(p -> p.getId().equals(bu1.getId())));
+  }
+
+  @Test
+  void test_teamWithOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTeam create =
+        new CreateTeam()
+            .withName(ns.prefix("teamWithOwner"))
+            .withTeamType(TeamType.GROUP)
+            .withOwners(List.of(testUser1().getEntityReference()))
+            .withDescription("Team with owner");
+
+    Team team = createEntity(create, client);
+    assertNotNull(team.getId());
+
+    // Fetch with owners field
+    Team fetched = client.teams().get(team.getId().toString(), "owners");
+    assertNotNull(fetched.getOwners());
+    assertFalse(fetched.getOwners().isEmpty());
+    assertEquals(testUser1().getId(), fetched.getOwners().get(0).getId());
+  }
+
+  @Test
+  void test_departmentCanHaveMultipleParents(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Team orgTeam = client.teams().getByName("Organization");
+
+    // Create two divisions
+    CreateTeam createDiv1 =
+        new CreateTeam()
+            .withName(ns.prefix("div1MultiParent"))
+            .withTeamType(TeamType.DIVISION)
+            .withParents(List.of(orgTeam.getId()))
+            .withDescription("Division 1");
+    Team div1 = createEntity(createDiv1, client);
+
+    CreateTeam createDiv2 =
+        new CreateTeam()
+            .withName(ns.prefix("div2MultiParent"))
+            .withTeamType(TeamType.DIVISION)
+            .withParents(List.of(orgTeam.getId()))
+            .withDescription("Division 2");
+    Team div2 = createEntity(createDiv2, client);
+
+    // Create department with multiple parents
+    CreateTeam createDept =
+        new CreateTeam()
+            .withName(ns.prefix("deptMultiParent"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withParents(List.of(div1.getId(), div2.getId()))
+            .withDescription("Department with multiple parents");
+    Team dept = createEntity(createDept, client);
+
+    // Verify department has both parents
+    Team fetched = client.teams().get(dept.getId().toString(), "parents");
+    assertNotNull(fetched.getParents());
+    assertEquals(2, fetched.getParents().size());
+    assertTrue(fetched.getParents().stream().anyMatch(p -> p.getId().equals(div1.getId())));
+    assertTrue(fetched.getParents().stream().anyMatch(p -> p.getId().equals(div2.getId())));
+  }
+
+  @Test
+  void test_businessUnitCanOnlyHaveOneParent(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Team orgTeam = client.teams().getByName("Organization");
+
+    // Create first BU
+    CreateTeam createBu1 =
+        new CreateTeam()
+            .withName(ns.prefix("bu1SingleParent"))
+            .withTeamType(TeamType.BUSINESS_UNIT)
+            .withParents(List.of(orgTeam.getId()))
+            .withDescription("BU 1");
+    Team bu1 = createEntity(createBu1, client);
+
+    // Try to create BU with multiple parents - should fail
+    CreateTeam createBu2 =
+        new CreateTeam()
+            .withName(ns.prefix("buInvalidMultiParent"))
+            .withTeamType(TeamType.BUSINESS_UNIT)
+            .withParents(List.of(orgTeam.getId(), bu1.getId()))
+            .withDescription("BU with multiple parents - invalid");
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(createBu2, client),
+        "Business Unit can only have one parent");
+  }
+
   private User createTestUser(TestNamespace ns, String suffix, OpenMetadataClient client) {
     String name = ns.prefix(suffix);
     String sanitized = name.replaceAll("[^a-zA-Z0-9._-]", "");

@@ -262,4 +262,245 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         () -> createEntity(request2, client),
         "Creating duplicate tag in same classification should fail");
   }
+
+  @Test
+  void post_newTagsOnNonExistentParents_4xx(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(client, ns);
+
+    // Attempt to create tag with non-existent parent
+    CreateTag request = new CreateTag();
+    request.setName(ns.prefix("orphan_tag"));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setParent(classification.getFullyQualifiedName() + ".non_existent_parent");
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request, client),
+        "Creating tag with non-existent parent should fail");
+  }
+
+  @Test
+  void test_tagVersionHistory(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(client, ns);
+
+    CreateTag request = new CreateTag();
+    request.setName(ns.prefix("tag_version"));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Initial description");
+
+    Tag tag = createEntity(request, client);
+    Double initialVersion = tag.getVersion();
+
+    // Update to create new version
+    tag.setDescription("Updated description");
+    Tag updated = patchEntity(tag.getId().toString(), tag, client);
+    assertTrue(updated.getVersion() >= initialVersion);
+
+    // Get version history
+    EntityHistory history = getVersionHistory(tag.getId(), client);
+    assertNotNull(history);
+    assertTrue(history.getVersions().size() >= 1);
+  }
+
+  @Test
+  void test_tagSoftDeleteAndRestore(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(client, ns);
+
+    CreateTag request = new CreateTag();
+    request.setName(ns.prefix("tag_delete"));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Tag for soft delete test");
+
+    Tag tag = createEntity(request, client);
+    assertNotNull(tag.getId());
+
+    // Soft delete
+    deleteEntity(tag.getId().toString(), client);
+
+    // Should be able to get with include deleted
+    Tag deleted = getEntityIncludeDeleted(tag.getId().toString(), client);
+    assertNotNull(deleted);
+    assertTrue(deleted.getDeleted());
+
+    // Restore
+    restoreEntity(tag.getId().toString(), client);
+    Tag restored = getEntity(tag.getId().toString(), client);
+    assertNotNull(restored);
+    assertFalse(restored.getDeleted());
+  }
+
+  @Test
+  void test_tagHardDelete(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(client, ns);
+
+    CreateTag request = new CreateTag();
+    request.setName(ns.prefix("tag_hard_delete"));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Tag for hard delete test");
+
+    Tag tag = createEntity(request, client);
+    assertNotNull(tag.getId());
+
+    // Hard delete
+    hardDeleteEntity(tag.getId().toString(), client);
+
+    // Should not be retrievable
+    assertThrows(Exception.class, () -> getEntity(tag.getId().toString(), client));
+    assertThrows(Exception.class, () -> getEntityIncludeDeleted(tag.getId().toString(), client));
+  }
+
+  @Test
+  void test_tagGetByName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(client, ns);
+
+    CreateTag request = new CreateTag();
+    request.setName(ns.prefix("tag_by_name"));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Tag for getByName test");
+
+    Tag tag = createEntity(request, client);
+
+    // Get by FQN
+    Tag fetched = getEntityByName(tag.getFullyQualifiedName(), client);
+    assertNotNull(fetched);
+    assertEquals(tag.getId(), fetched.getId());
+    assertEquals(tag.getName(), fetched.getName());
+  }
+
+  @Test
+  void test_tagDisplayName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(client, ns);
+
+    CreateTag request = new CreateTag();
+    request.setName(ns.prefix("tag_display"));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDisplayName("My Display Tag");
+    request.setDescription("Tag for display name test");
+
+    Tag tag = createEntity(request, client);
+    assertEquals("My Display Tag", tag.getDisplayName());
+
+    // Update display name
+    tag.setDisplayName("Updated Display Name");
+    Tag updated = patchEntity(tag.getId().toString(), tag, client);
+    assertEquals("Updated Display Name", updated.getDisplayName());
+  }
+
+  @Test
+  void test_tagFQNFormat(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(client, ns);
+
+    CreateTag request = new CreateTag();
+    String tagName = ns.prefix("tag_fqn");
+    request.setName(tagName);
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Tag for FQN format test");
+
+    Tag tag = createEntity(request, client);
+
+    // Verify FQN format: classification.tag
+    String expectedFQN = classification.getFullyQualifiedName() + "." + tagName;
+    assertEquals(expectedFQN, tag.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_listTagsPagination(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(client, ns);
+
+    // Create multiple tags
+    for (int i = 0; i < 5; i++) {
+      CreateTag request = new CreateTag();
+      request.setName(ns.prefix("pagination_tag_" + i));
+      request.setClassification(classification.getFullyQualifiedName());
+      request.setDescription("Pagination tag " + i);
+      createEntity(request, client);
+    }
+
+    // List with limit
+    ListParams params = new ListParams();
+    params.setLimit(2);
+    ListResponse<Tag> response = listEntities(params, client);
+    assertNotNull(response);
+    assertTrue(response.getData().size() <= 2);
+  }
+
+  @Test
+  void test_nestedTagFQN(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(client, ns);
+
+    // Create parent tag
+    CreateTag parentRequest = new CreateTag();
+    parentRequest.setName(ns.prefix("parent_fqn"));
+    parentRequest.setClassification(classification.getFullyQualifiedName());
+    parentRequest.setDescription("Parent tag for FQN test");
+    Tag parentTag = createEntity(parentRequest, client);
+
+    // Create child tag
+    CreateTag childRequest = new CreateTag();
+    String childName = ns.prefix("child_fqn");
+    childRequest.setName(childName);
+    childRequest.setClassification(classification.getFullyQualifiedName());
+    childRequest.setParent(parentTag.getFullyQualifiedName());
+    childRequest.setDescription("Child tag for FQN test");
+    Tag childTag = createEntity(childRequest, client);
+
+    // Verify nested FQN format: classification.parent.child
+    String expectedFQN = parentTag.getFullyQualifiedName() + "." + childName;
+    assertEquals(expectedFQN, childTag.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_tagWithMutuallyExclusiveFlag(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create a mutually exclusive classification
+    String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
+    CreateClassification classificationRequest = new CreateClassification();
+    classificationRequest.setName(ns.prefix("mutualExclusive") + "_" + uniqueSuffix);
+    classificationRequest.setDescription("Mutually exclusive classification");
+    classificationRequest.setMutuallyExclusive(true);
+    Classification classification = client.classifications().create(classificationRequest);
+
+    // Create a tag under this classification
+    CreateTag request = new CreateTag();
+    request.setName(ns.prefix("exclusive_tag"));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Tag in mutually exclusive classification");
+
+    Tag tag = createEntity(request, client);
+    assertNotNull(tag);
+    // The tag inherits mutually exclusive from classification
+  }
+
+  @Test
+  void test_tagWithOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Classification classification = createClassification(client, ns);
+
+    CreateTag request = new CreateTag();
+    request.setName(ns.prefix("tag_with_owner"));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Tag for owner test");
+
+    Tag tag = createEntity(request, client);
+    assertNotNull(tag);
+
+    // Update with owner
+    tag.setOwners(java.util.List.of(testUser1().getEntityReference()));
+    Tag updated = patchEntity(tag.getId().toString(), tag, client);
+
+    // Verify owner
+    Tag fetched = client.tags().get(updated.getId().toString(), "owners");
+    assertNotNull(fetched.getOwners());
+    assertFalse(fetched.getOwners().isEmpty());
+  }
 }

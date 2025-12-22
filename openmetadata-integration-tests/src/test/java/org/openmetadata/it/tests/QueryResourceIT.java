@@ -392,4 +392,169 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
     assertNotEquals(
         originalChecksum, updated.getChecksum(), "Checksum should change when query text changes");
   }
+
+  @Test
+  void patch_queryAttributes_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = getOrCreateTable(ns, client);
+    DatabaseService service = getOrCreateDatabaseService(ns, client);
+
+    CreateQuery request =
+        new CreateQuery()
+            .withName(ns.prefix("query_patch"))
+            .withQuery("SELECT * FROM patch_test")
+            .withQueryUsedIn(List.of(table.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDuration(1.0)
+            .withQueryDate(System.currentTimeMillis());
+
+    Query query = createEntity(request, client);
+
+    // Patch duration
+    query.setDuration(5.0);
+    Query patched = patchEntity(query.getId().toString(), query, client);
+    assertEquals(5.0, patched.getDuration());
+
+    // Patch description
+    patched.setDescription("Patched description");
+    Query patched2 = patchEntity(patched.getId().toString(), patched, client);
+    assertEquals("Patched description", patched2.getDescription());
+  }
+
+  @Test
+  void test_queryVersionHistory(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = getOrCreateTable(ns, client);
+    DatabaseService service = getOrCreateDatabaseService(ns, client);
+
+    CreateQuery request =
+        new CreateQuery()
+            .withName(ns.prefix("query_versions"))
+            .withQuery("SELECT * FROM version_test")
+            .withQueryUsedIn(List.of(table.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDescription("Version 1")
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+
+    Query query = createEntity(request, client);
+    Double v1 = query.getVersion();
+
+    // Update description
+    query.setDescription("Version 2");
+    Query v2Query = patchEntity(query.getId().toString(), query, client);
+    assertTrue(v2Query.getVersion() > v1);
+
+    // Get version history
+    EntityHistory history = client.queries().getVersionList(query.getId());
+    assertNotNull(history);
+    assertNotNull(history.getVersions());
+    assertTrue(history.getVersions().size() >= 2);
+  }
+
+  @Test
+  void test_queryWithOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = getOrCreateTable(ns, client);
+    DatabaseService service = getOrCreateDatabaseService(ns, client);
+
+    CreateQuery request =
+        new CreateQuery()
+            .withName(ns.prefix("query_with_owner"))
+            .withQuery("SELECT * FROM owner_test")
+            .withQueryUsedIn(List.of(table.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withOwners(List.of(testUser1().getEntityReference()))
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+
+    Query query = createEntity(request, client);
+    assertNotNull(query);
+
+    // Verify owner
+    Query fetched = client.queries().get(query.getId().toString(), "owners");
+    assertNotNull(fetched.getOwners());
+    assertFalse(fetched.getOwners().isEmpty());
+    assertTrue(fetched.getOwners().stream().anyMatch(o -> o.getId().equals(testUser1().getId())));
+  }
+
+  @Test
+  void test_queryHardDelete(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = getOrCreateTable(ns, client);
+    DatabaseService service = getOrCreateDatabaseService(ns, client);
+
+    CreateQuery request =
+        new CreateQuery()
+            .withName(ns.prefix("query_hard_delete"))
+            .withQuery("SELECT * FROM delete_test")
+            .withQueryUsedIn(List.of(table.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDuration(0.0)
+            .withQueryDate(System.currentTimeMillis());
+
+    Query query = createEntity(request, client);
+    String queryId = query.getId().toString();
+
+    // Hard delete
+    hardDeleteEntity(queryId, client);
+
+    // Verify completely gone
+    assertThrows(
+        Exception.class,
+        () -> getEntity(queryId, client),
+        "Hard deleted query should not be retrievable");
+  }
+
+  @Test
+  void list_queries(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = getOrCreateTable(ns, client);
+    DatabaseService service = getOrCreateDatabaseService(ns, client);
+
+    // Create multiple queries
+    for (int i = 0; i < 3; i++) {
+      CreateQuery request =
+          new CreateQuery()
+              .withName(ns.prefix("query_list_" + i))
+              .withQuery("SELECT " + i + " FROM test_" + i)
+              .withQueryUsedIn(List.of(table.getEntityReference()))
+              .withService(service.getFullyQualifiedName())
+              .withDuration(0.0)
+              .withQueryDate(System.currentTimeMillis());
+      createEntity(request, client);
+    }
+
+    // List queries
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    ListResponse<Query> response = listEntities(params, client);
+
+    assertNotNull(response.getData());
+    assertTrue(response.getData().size() >= 3);
+  }
+
+  @Test
+  void test_queryWithDuration(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = getOrCreateTable(ns, client);
+    DatabaseService service = getOrCreateDatabaseService(ns, client);
+
+    CreateQuery request =
+        new CreateQuery()
+            .withName(ns.prefix("query_duration"))
+            .withQuery("SELECT * FROM duration_test WHERE complex_condition = true")
+            .withQueryUsedIn(List.of(table.getEntityReference()))
+            .withService(service.getFullyQualifiedName())
+            .withDuration(15.75)
+            .withQueryDate(System.currentTimeMillis());
+
+    Query query = createEntity(request, client);
+    assertEquals(15.75, query.getDuration());
+
+    // Update duration
+    query.setDuration(25.5);
+    Query updated = patchEntity(query.getId().toString(), query, client);
+    assertEquals(25.5, updated.getDuration());
+  }
 }

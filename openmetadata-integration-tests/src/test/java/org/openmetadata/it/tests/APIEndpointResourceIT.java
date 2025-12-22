@@ -58,11 +58,13 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
       String name, TestNamespace ns, OpenMetadataClient client) {
     APICollection collection = getOrCreateAPICollection(ns, client);
 
+    // Use a safe URL - don't embed the name in the URL as it may contain invalid characters
+    String safeId = java.util.UUID.randomUUID().toString().substring(0, 8);
     return new CreateAPIEndpoint()
         .withName(name)
         .withDescription("Test API endpoint")
         .withApiCollection(collection.getFullyQualifiedName())
-        .withEndpointURL(URI.create("https://localhost:8585/api/v1/" + name))
+        .withEndpointURL(URI.create("https://localhost:8585/api/v1/endpoint-" + safeId))
         .withRequestMethod(APIRequestMethod.GET);
   }
 
@@ -157,7 +159,8 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
 
   @Override
   protected APIEndpoint getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.apiEndpoints().get(id, "owners,followers,tags,domain", "deleted");
+    // APIEndpoint supports: owners,followers,tags,extension,domains,dataProducts,sourceHash
+    return client.apiEndpoints().get(id, "owners,followers,tags,domains", "deleted");
   }
 
   @Override

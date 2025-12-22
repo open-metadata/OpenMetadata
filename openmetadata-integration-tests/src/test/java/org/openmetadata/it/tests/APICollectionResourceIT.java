@@ -29,6 +29,11 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateAPICollection> {
 
+  // APICollection doesn't support followers
+  {
+    supportsFollowers = false;
+  }
+
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
@@ -49,11 +54,13 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
       String name, TestNamespace ns, OpenMetadataClient client) {
     ApiService service = APIServiceTestFactory.createRest(client, ns);
 
+    // Use a safe URL - don't embed the name in the URL as it may contain invalid characters
+    String safeId = UUID.randomUUID().toString().substring(0, 8);
     return new CreateAPICollection()
         .withName(name)
         .withDescription("Test API collection")
         .withService(service.getFullyQualifiedName())
-        .withEndpointURL(URI.create("https://localhost:8585/api/v1/" + name));
+        .withEndpointURL(URI.create("https://localhost:8585/api/v1/endpoint-" + safeId));
   }
 
   @Override
@@ -131,7 +138,8 @@ public class APICollectionResourceIT extends BaseEntityIT<APICollection, CreateA
 
   @Override
   protected APICollection getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.apiCollections().get(id, "owners,followers,tags,domain", "deleted");
+    // APICollection supports: owners,apiEndpoints,tags,extension,domains,sourceHash
+    return client.apiCollections().get(id, "owners,tags,domains", "deleted");
   }
 
   @Override
