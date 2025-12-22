@@ -255,14 +255,16 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.test_case.parameterValues, "threshold", int, default=0
         )
         if column_diff:
-            # If there are column differences, we set extra_columns to the common columns for the diff
-            common_columns = list(
-                set(column_diff.schemaTable1.schema.keys())
-                & set(column_diff.schemaTable2.schema.keys())
+            # Column schema differences detected - return Failed result immediately
+            # Don't attempt data diff as schemas don't match
+            return self.get_row_diff_test_case_result(
+                threshold=threshold,
+                total_diffs=1,  # Indicate differences found
+                changed=0,
+                removed=0,
+                added=0,
+                column_diff=column_diff,
             )
-            self.runtime_params.extraColumns = common_columns
-            self.runtime_params.table1.extra_columns = common_columns
-            self.runtime_params.table2.extra_columns = common_columns
         table_diff_iter = self.get_table_diff()
 
         if not threshold or self.test_case.computePassedFailedRowCount:
