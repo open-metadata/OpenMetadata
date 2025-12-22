@@ -1,0 +1,698 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.clients.pipeline.k8s;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.apis.BatchV1Api;
+import io.kubernetes.client.openapi.apis.CoreV1Api;
+import io.kubernetes.client.openapi.models.V1ConfigMap;
+import io.kubernetes.client.openapi.models.V1CronJob;
+import io.kubernetes.client.openapi.models.V1CronJobSpec;
+import io.kubernetes.client.openapi.models.V1EnvVar;
+import io.kubernetes.client.openapi.models.V1Job;
+import io.kubernetes.client.openapi.models.V1JobList;
+import io.kubernetes.client.openapi.models.V1JobStatus;
+import io.kubernetes.client.openapi.models.V1ObjectMeta;
+import io.kubernetes.client.openapi.models.V1PodSpec;
+import io.kubernetes.client.openapi.models.V1Secret;
+import io.kubernetes.client.openapi.models.V1Status;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
+
+@ExtendWith(MockitoExtension.class)
+class K8sPipelineClientTest {
+
+  @Mock private BatchV1Api batchApi;
+  @Mock private CoreV1Api coreApi;
+  @Mock private BatchV1Api.APIcreateNamespacedJobRequest createJobRequest;
+  @Mock private BatchV1Api.APIlistNamespacedJobRequest listJobRequest;
+  @Mock private BatchV1Api.APIdeleteNamespacedJobRequest deleteJobRequest;
+  @Mock private BatchV1Api.APIreadNamespacedCronJobRequest readCronJobRequest;
+  @Mock private BatchV1Api.APIreplaceNamespacedCronJobRequest replaceCronJobRequest;
+  @Mock private BatchV1Api.APIcreateNamespacedCronJobRequest createCronJobRequest;
+  @Mock private BatchV1Api.APIdeleteNamespacedCronJobRequest deleteCronJobRequest;
+  @Mock private CoreV1Api.APIcreateNamespacedConfigMapRequest createConfigMapRequest;
+  @Mock private CoreV1Api.APIreadNamespacedConfigMapRequest readConfigMapRequest;
+  @Mock private CoreV1Api.APIreplaceNamespacedConfigMapRequest replaceConfigMapRequest;
+  @Mock private CoreV1Api.APIcreateNamespacedSecretRequest createSecretRequest;
+  @Mock private CoreV1Api.APIreadNamespacedSecretRequest readSecretRequest;
+  @Mock private CoreV1Api.APIreplaceNamespacedSecretRequest replaceSecretRequest;
+  @Mock private CoreV1Api.APIdeleteNamespacedConfigMapRequest deleteConfigMapRequest;
+  @Mock private CoreV1Api.APIdeleteNamespacedSecretRequest deleteSecretRequest;
+  @Mock private CoreV1Api.APIlistNamespacedPodRequest listPodRequest;
+
+  private K8sPipelineClient client;
+  private static final String NAMESPACE = "openmetadata-pipelines";
+
+  @BeforeEach
+  void setUp() throws Exception {
+    Parameters params = new Parameters();
+    params.setAdditionalProperty("namespace", NAMESPACE);
+    params.setAdditionalProperty("inCluster", "false");
+    params.setAdditionalProperty("skipInit", "true");
+    params.setAdditionalProperty("ingestionImage", "openmetadata/ingestion:test");
+    params.setAdditionalProperty("serviceAccountName", "test-sa");
+
+    PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
+    config.setEnabled(true);
+    config.setMetadataApiEndpoint("http://localhost:8585/api");
+    config.setParameters(params);
+
+    client = new K8sPipelineClient(config);
+    client.setBatchApi(batchApi);
+    client.setCoreApi(coreApi);
+  }
+
+  @Test
+  void testDeployPipelineWithSchedule() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+
+    when(coreApi.readNamespacedConfigMap(any(), eq(NAMESPACE))).thenReturn(readConfigMapRequest);
+    when(readConfigMapRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedConfigMap(eq(NAMESPACE), any()))
+        .thenReturn(createConfigMapRequest);
+    when(createConfigMapRequest.execute()).thenReturn(new V1ConfigMap());
+
+    when(coreApi.readNamespacedSecret(any(), eq(NAMESPACE))).thenReturn(readSecretRequest);
+    when(readSecretRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedSecret(eq(NAMESPACE), any())).thenReturn(createSecretRequest);
+    when(createSecretRequest.execute()).thenReturn(new V1Secret());
+
+    when(batchApi.readNamespacedCronJob(any(), eq(NAMESPACE))).thenReturn(readCronJobRequest);
+    when(readCronJobRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(batchApi.createNamespacedCronJob(eq(NAMESPACE), any())).thenReturn(createCronJobRequest);
+    when(createCronJobRequest.execute()).thenReturn(new V1CronJob());
+
+    PipelineServiceClientResponse response = client.deployPipeline(pipeline, null);
+
+    assertEquals(200, response.getCode());
+    assertTrue(pipeline.getDeployed());
+    verify(coreApi).createNamespacedConfigMap(eq(NAMESPACE), any());
+    verify(coreApi).createNamespacedSecret(eq(NAMESPACE), any());
+    verify(batchApi).createNamespacedCronJob(eq(NAMESPACE), any());
+  }
+
+  @Test
+  void testDeployPipelineWithoutSchedule() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(coreApi.readNamespacedConfigMap(any(), eq(NAMESPACE))).thenReturn(readConfigMapRequest);
+    when(readConfigMapRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedConfigMap(eq(NAMESPACE), any()))
+        .thenReturn(createConfigMapRequest);
+    when(createConfigMapRequest.execute()).thenReturn(new V1ConfigMap());
+
+    when(coreApi.readNamespacedSecret(any(), eq(NAMESPACE))).thenReturn(readSecretRequest);
+    when(readSecretRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedSecret(eq(NAMESPACE), any())).thenReturn(createSecretRequest);
+    when(createSecretRequest.execute()).thenReturn(new V1Secret());
+
+    when(batchApi.deleteNamespacedCronJob(any(), eq(NAMESPACE))).thenReturn(deleteCronJobRequest);
+    when(deleteCronJobRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+
+    PipelineServiceClientResponse response = client.deployPipeline(pipeline, null);
+
+    assertEquals(200, response.getCode());
+    assertTrue(pipeline.getDeployed());
+    verify(batchApi, never()).createNamespacedCronJob(any(), any());
+  }
+
+  @Test
+  void testRunPipelineCreatesJob() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    PipelineServiceClientResponse response = client.runPipeline(pipeline, null);
+
+    assertEquals(200, response.getCode());
+    assertTrue(response.getReason().contains("triggered"));
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+
+    V1Job createdJob = jobCaptor.getValue();
+    assertNotNull(createdJob.getMetadata());
+    assertTrue(createdJob.getMetadata().getName().startsWith("om-job-test-pipeline-"));
+    assertEquals(
+        "test-pipeline", createdJob.getMetadata().getLabels().get("app.kubernetes.io/pipeline"));
+  }
+
+  @Test
+  void testKillIngestionDeletesActiveJobs() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    V1Job activeJob =
+        new V1Job()
+            .metadata(new V1ObjectMeta().name("om-job-test-pipeline-abc123"))
+            .status(new V1JobStatus().active(1));
+    V1JobList jobList = new V1JobList().items(List.of(activeJob));
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.labelSelector(any())).thenReturn(listJobRequest);
+    when(listJobRequest.execute()).thenReturn(jobList);
+    when(batchApi.deleteNamespacedJob(any(), eq(NAMESPACE))).thenReturn(deleteJobRequest);
+    when(deleteJobRequest.propagationPolicy(any())).thenReturn(deleteJobRequest);
+    when(deleteJobRequest.execute()).thenReturn(new V1Status());
+
+    PipelineServiceClientResponse response = client.killIngestion(pipeline);
+
+    assertEquals(200, response.getCode());
+    assertTrue(response.getReason().contains("1"));
+    verify(batchApi).deleteNamespacedJob(eq("om-job-test-pipeline-abc123"), eq(NAMESPACE));
+  }
+
+  @Test
+  void testToggleIngestionSuspendsCronJob() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+    pipeline.setEnabled(true);
+
+    V1CronJob cronJob =
+        new V1CronJob()
+            .metadata(new V1ObjectMeta().name("om-cronjob-test-pipeline"))
+            .spec(new V1CronJobSpec().suspend(false));
+
+    when(batchApi.readNamespacedCronJob(any(), eq(NAMESPACE))).thenReturn(readCronJobRequest);
+    when(readCronJobRequest.execute()).thenReturn(cronJob);
+    when(batchApi.replaceNamespacedCronJob(any(), eq(NAMESPACE), any()))
+        .thenReturn(replaceCronJobRequest);
+    when(replaceCronJobRequest.execute()).thenReturn(cronJob);
+
+    PipelineServiceClientResponse response = client.toggleIngestion(pipeline);
+
+    assertEquals(200, response.getCode());
+    assertTrue(response.getReason().contains("disabled"));
+    assertFalse(pipeline.getEnabled());
+
+    ArgumentCaptor<V1CronJob> cronJobCaptor = ArgumentCaptor.forClass(V1CronJob.class);
+    verify(batchApi).replaceNamespacedCronJob(any(), eq(NAMESPACE), cronJobCaptor.capture());
+    assertTrue(cronJobCaptor.getValue().getSpec().getSuspend());
+  }
+
+  @Test
+  void testToggleIngestionEnablesCronJob() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+    pipeline.setEnabled(false);
+
+    V1CronJob cronJob =
+        new V1CronJob()
+            .metadata(new V1ObjectMeta().name("om-cronjob-test-pipeline"))
+            .spec(new V1CronJobSpec().suspend(true));
+
+    when(batchApi.readNamespacedCronJob(any(), eq(NAMESPACE))).thenReturn(readCronJobRequest);
+    when(readCronJobRequest.execute()).thenReturn(cronJob);
+    when(batchApi.replaceNamespacedCronJob(any(), eq(NAMESPACE), any()))
+        .thenReturn(replaceCronJobRequest);
+    when(replaceCronJobRequest.execute()).thenReturn(cronJob);
+
+    PipelineServiceClientResponse response = client.toggleIngestion(pipeline);
+
+    assertEquals(200, response.getCode());
+    assertTrue(response.getReason().contains("enabled"));
+    assertTrue(pipeline.getEnabled());
+  }
+
+  @Test
+  void testDeletePipelineRemovesAllResources() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.labelSelector(any())).thenReturn(listJobRequest);
+    when(listJobRequest.execute()).thenReturn(new V1JobList().items(List.of()));
+
+    when(batchApi.deleteNamespacedCronJob(any(), eq(NAMESPACE))).thenReturn(deleteCronJobRequest);
+    when(deleteCronJobRequest.execute()).thenReturn(new V1Status());
+
+    when(coreApi.deleteNamespacedSecret(any(), eq(NAMESPACE))).thenReturn(deleteSecretRequest);
+    when(deleteSecretRequest.execute()).thenReturn(new V1Status());
+
+    when(coreApi.deleteNamespacedConfigMap(any(), eq(NAMESPACE)))
+        .thenReturn(deleteConfigMapRequest);
+    when(deleteConfigMapRequest.execute()).thenReturn(new V1Status());
+
+    PipelineServiceClientResponse response = client.deletePipeline(pipeline);
+
+    assertEquals(200, response.getCode());
+    verify(batchApi).deleteNamespacedCronJob(eq("om-cronjob-test-pipeline"), eq(NAMESPACE));
+    verify(coreApi).deleteNamespacedSecret(eq("om-secret-test-pipeline"), eq(NAMESPACE));
+    verify(coreApi).deleteNamespacedConfigMap(eq("om-config-test-pipeline"), eq(NAMESPACE));
+  }
+
+  @Test
+  void testGetQueuedPipelineStatus() throws Exception {
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    OffsetDateTime now = OffsetDateTime.now();
+    V1Job runningJob =
+        new V1Job()
+            .metadata(
+                new V1ObjectMeta()
+                    .name("om-job-test-pipeline-abc123")
+                    .labels(Map.of("app.kubernetes.io/run-id", "test-run-id")))
+            .status(new V1JobStatus().active(1).startTime(now));
+
+    V1Job succeededJob =
+        new V1Job()
+            .metadata(
+                new V1ObjectMeta()
+                    .name("om-job-test-pipeline-def456")
+                    .labels(Map.of("app.kubernetes.io/run-id", "test-run-id-2")))
+            .status(
+                new V1JobStatus()
+                    .succeeded(1)
+                    .startTime(now.minusHours(1))
+                    .completionTime(now.minusMinutes(30)));
+
+    V1JobList jobList = new V1JobList().items(List.of(runningJob, succeededJob));
+
+    when(batchApi.listNamespacedJob(eq(NAMESPACE))).thenReturn(listJobRequest);
+    when(listJobRequest.labelSelector(any())).thenReturn(listJobRequest);
+    when(listJobRequest.execute()).thenReturn(jobList);
+
+    List<PipelineStatus> statuses = client.getQueuedPipelineStatus(pipeline);
+
+    assertEquals(2, statuses.size());
+
+    PipelineStatus runningStatus =
+        statuses.stream()
+            .filter(s -> s.getPipelineState() == PipelineStatusType.RUNNING)
+            .findFirst()
+            .orElse(null);
+    assertNotNull(runningStatus);
+    assertEquals("test-run-id", runningStatus.getRunId());
+
+    PipelineStatus succeededStatus =
+        statuses.stream()
+            .filter(s -> s.getPipelineState() == PipelineStatusType.SUCCESS)
+            .findFirst()
+            .orElse(null);
+    assertNotNull(succeededStatus);
+    assertEquals("test-run-id-2", succeededStatus.getRunId());
+  }
+
+  @Test
+  void testDeployPipelineRollbackOnCronJobFailure() throws Exception {
+    // Tests P0: Resource cleanup on partial deployment failure
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+
+    // ConfigMap creation succeeds
+    when(coreApi.readNamespacedConfigMap(any(), eq(NAMESPACE))).thenReturn(readConfigMapRequest);
+    when(readConfigMapRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedConfigMap(eq(NAMESPACE), any()))
+        .thenReturn(createConfigMapRequest);
+    when(createConfigMapRequest.execute()).thenReturn(new V1ConfigMap());
+
+    // Secret creation succeeds
+    when(coreApi.readNamespacedSecret(any(), eq(NAMESPACE))).thenReturn(readSecretRequest);
+    when(readSecretRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedSecret(eq(NAMESPACE), any())).thenReturn(createSecretRequest);
+    when(createSecretRequest.execute()).thenReturn(new V1Secret());
+
+    // CronJob creation fails with 403 (non-retryable)
+    when(batchApi.readNamespacedCronJob(any(), eq(NAMESPACE))).thenReturn(readCronJobRequest);
+    when(readCronJobRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(batchApi.createNamespacedCronJob(eq(NAMESPACE), any())).thenReturn(createCronJobRequest);
+    when(createCronJobRequest.execute()).thenThrow(new ApiException(403, "Forbidden"));
+
+    // Setup rollback mocks
+    when(coreApi.deleteNamespacedConfigMap(any(), eq(NAMESPACE)))
+        .thenReturn(deleteConfigMapRequest);
+    when(deleteConfigMapRequest.execute()).thenReturn(new V1Status());
+    when(coreApi.deleteNamespacedSecret(any(), eq(NAMESPACE))).thenReturn(deleteSecretRequest);
+    when(deleteSecretRequest.execute()).thenReturn(new V1Status());
+
+    // Verify deployment fails and rollback occurs
+    assertThrows(
+        IngestionPipelineDeploymentException.class, () -> client.deployPipeline(pipeline, null));
+
+    // Verify rollback deleted the created resources
+    verify(coreApi).deleteNamespacedConfigMap(eq("om-config-test-pipeline"), eq(NAMESPACE));
+    verify(coreApi).deleteNamespacedSecret(eq("om-secret-test-pipeline"), eq(NAMESPACE));
+  }
+
+  @Test
+  void testOptimisticLockingUsesResourceVersion() throws Exception {
+    // Tests P1: Optimistic locking with resourceVersion
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", "0 * * * *");
+
+    // ConfigMap exists with resourceVersion
+    V1ConfigMap existingConfigMap =
+        new V1ConfigMap()
+            .metadata(new V1ObjectMeta().name("om-config-test-pipeline").resourceVersion("12345"));
+    when(coreApi.readNamespacedConfigMap(any(), eq(NAMESPACE))).thenReturn(readConfigMapRequest);
+    when(readConfigMapRequest.execute()).thenReturn(existingConfigMap);
+    when(coreApi.replaceNamespacedConfigMap(any(), eq(NAMESPACE), any()))
+        .thenReturn(replaceConfigMapRequest);
+    when(replaceConfigMapRequest.execute()).thenReturn(new V1ConfigMap());
+
+    // Secret exists with resourceVersion
+    V1Secret existingSecret =
+        new V1Secret()
+            .metadata(new V1ObjectMeta().name("om-secret-test-pipeline").resourceVersion("67890"));
+    when(coreApi.readNamespacedSecret(any(), eq(NAMESPACE))).thenReturn(readSecretRequest);
+    when(readSecretRequest.execute()).thenReturn(existingSecret);
+    when(coreApi.replaceNamespacedSecret(any(), eq(NAMESPACE), any()))
+        .thenReturn(replaceSecretRequest);
+    when(replaceSecretRequest.execute()).thenReturn(new V1Secret());
+
+    // CronJob exists with resourceVersion
+    V1CronJob existingCronJob =
+        new V1CronJob()
+            .metadata(new V1ObjectMeta().name("om-cronjob-test-pipeline").resourceVersion("11111"))
+            .spec(new V1CronJobSpec().schedule("0 * * * *"));
+    when(batchApi.readNamespacedCronJob(any(), eq(NAMESPACE))).thenReturn(readCronJobRequest);
+    when(readCronJobRequest.execute()).thenReturn(existingCronJob);
+    when(batchApi.replaceNamespacedCronJob(any(), eq(NAMESPACE), any()))
+        .thenReturn(replaceCronJobRequest);
+    when(replaceCronJobRequest.execute()).thenReturn(new V1CronJob());
+
+    PipelineServiceClientResponse response = client.deployPipeline(pipeline, null);
+    assertEquals(200, response.getCode());
+
+    // Verify resourceVersion is set on updates
+    ArgumentCaptor<V1ConfigMap> configMapCaptor = ArgumentCaptor.forClass(V1ConfigMap.class);
+    verify(coreApi).replaceNamespacedConfigMap(any(), eq(NAMESPACE), configMapCaptor.capture());
+    assertEquals("12345", configMapCaptor.getValue().getMetadata().getResourceVersion());
+
+    ArgumentCaptor<V1Secret> secretCaptor = ArgumentCaptor.forClass(V1Secret.class);
+    verify(coreApi).replaceNamespacedSecret(any(), eq(NAMESPACE), secretCaptor.capture());
+    assertEquals("67890", secretCaptor.getValue().getMetadata().getResourceVersion());
+
+    ArgumentCaptor<V1CronJob> cronJobCaptor = ArgumentCaptor.forClass(V1CronJob.class);
+    verify(batchApi).replaceNamespacedCronJob(any(), eq(NAMESPACE), cronJobCaptor.capture());
+    assertEquals("11111", cronJobCaptor.getValue().getMetadata().getResourceVersion());
+  }
+
+  @Test
+  void testSecurityContextIsSetOnJob() throws Exception {
+    // Tests P0: Pod security context (non-root, drop capabilities)
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    client.runPipeline(pipeline, null);
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+
+    V1Job createdJob = jobCaptor.getValue();
+    V1PodSpec podSpec = createdJob.getSpec().getTemplate().getSpec();
+
+    // Verify pod security context
+    assertNotNull(podSpec.getSecurityContext());
+    assertTrue(podSpec.getSecurityContext().getRunAsNonRoot());
+    assertEquals(1000L, podSpec.getSecurityContext().getRunAsUser());
+    assertEquals(1000L, podSpec.getSecurityContext().getRunAsGroup());
+    assertEquals(1000L, podSpec.getSecurityContext().getFsGroup());
+
+    // Verify container security context
+    assertNotNull(podSpec.getContainers().get(0).getSecurityContext());
+    assertTrue(podSpec.getContainers().get(0).getSecurityContext().getRunAsNonRoot());
+    assertFalse(podSpec.getContainers().get(0).getSecurityContext().getAllowPrivilegeEscalation());
+    assertNotNull(podSpec.getContainers().get(0).getSecurityContext().getCapabilities());
+    assertTrue(
+        podSpec
+            .getContainers()
+            .get(0)
+            .getSecurityContext()
+            .getCapabilities()
+            .getDrop()
+            .contains("ALL"));
+  }
+
+  @Test
+  void testRetryOnTransientFailure() throws Exception {
+    // Tests P0: Retry logic with exponential backoff for K8s API calls
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    // First call fails with 503 (retryable), second call succeeds
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute())
+        .thenThrow(new ApiException(503, "Service Unavailable"))
+        .thenReturn(new V1Job());
+
+    PipelineServiceClientResponse response = client.runPipeline(pipeline, null);
+
+    assertEquals(200, response.getCode());
+    // Verify the API was called twice (initial + 1 retry)
+    verify(batchApi, times(2)).createNamespacedJob(eq(NAMESPACE), any());
+  }
+
+  @Test
+  void testNoRetryOnNonRetryableError() throws Exception {
+    // Tests P0: Retry logic should NOT retry on 4xx errors (except 429)
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenThrow(new ApiException(403, "Forbidden"));
+
+    assertThrows(
+        IngestionPipelineDeploymentException.class, () -> client.runPipeline(pipeline, null));
+
+    // Verify the API was only called once (no retry)
+    verify(batchApi, times(1)).createNamespacedJob(eq(NAMESPACE), any());
+  }
+
+  @Test
+  void testDetailedErrorMessageOnFailure() throws Exception {
+    // Tests P1: Detailed error messages with hints
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    ApiException apiException = new ApiException(403, "Forbidden");
+    when(createJobRequest.execute()).thenThrow(apiException);
+
+    IngestionPipelineDeploymentException exception =
+        assertThrows(
+            IngestionPipelineDeploymentException.class, () -> client.runPipeline(pipeline, null));
+
+    // Verify error message contains helpful context
+    String message = exception.getMessage();
+    assertTrue(message.contains("403"), "Should contain HTTP status code");
+    assertTrue(
+        message.contains("openmetadata-pipelines") || message.contains("namespace"),
+        "Should contain namespace context");
+  }
+
+  @Test
+  void testExtraEnvironmentVariables() throws Exception {
+    // Tests P2: Extra environment variables support
+    Parameters params = new Parameters();
+    params.setAdditionalProperty("namespace", NAMESPACE);
+    params.setAdditionalProperty("skipInit", "true");
+    params.setAdditionalProperty("ingestionImage", "openmetadata/ingestion:test");
+    params.setAdditionalProperty("extraEnvVars", "HTTP_PROXY=http://proxy:8080,NO_PROXY=localhost");
+
+    PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
+    config.setEnabled(true);
+    config.setMetadataApiEndpoint("http://localhost:8585/api");
+    config.setParameters(params);
+
+    K8sPipelineClient clientWithEnvVars = new K8sPipelineClient(config);
+    clientWithEnvVars.setBatchApi(batchApi);
+    clientWithEnvVars.setCoreApi(coreApi);
+
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    clientWithEnvVars.runPipeline(pipeline, null);
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+
+    V1Job createdJob = jobCaptor.getValue();
+    List<V1EnvVar> envVars =
+        createdJob.getSpec().getTemplate().getSpec().getContainers().get(0).getEnv();
+
+    // Verify extra env vars are present
+    assertTrue(
+        envVars.stream()
+            .anyMatch(
+                e -> "HTTP_PROXY".equals(e.getName()) && "http://proxy:8080".equals(e.getValue())),
+        "Should contain HTTP_PROXY env var");
+    assertTrue(
+        envVars.stream()
+            .anyMatch(e -> "NO_PROXY".equals(e.getName()) && "localhost".equals(e.getValue())),
+        "Should contain NO_PROXY env var");
+  }
+
+  @Test
+  void testPodAnnotations() throws Exception {
+    // Tests P2: Pod annotations support
+    Parameters params = new Parameters();
+    params.setAdditionalProperty("namespace", NAMESPACE);
+    params.setAdditionalProperty("skipInit", "true");
+    params.setAdditionalProperty("ingestionImage", "openmetadata/ingestion:test");
+    params.setAdditionalProperty(
+        "podAnnotations", "prometheus.io/scrape=true,sidecar.istio.io/inject=false");
+
+    PipelineServiceClientConfiguration config = new PipelineServiceClientConfiguration();
+    config.setEnabled(true);
+    config.setMetadataApiEndpoint("http://localhost:8585/api");
+    config.setParameters(params);
+
+    K8sPipelineClient clientWithAnnotations = new K8sPipelineClient(config);
+    clientWithAnnotations.setBatchApi(batchApi);
+    clientWithAnnotations.setCoreApi(coreApi);
+
+    IngestionPipeline pipeline = createTestPipeline("test-pipeline", null);
+
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    clientWithAnnotations.runPipeline(pipeline, null);
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+
+    V1Job createdJob = jobCaptor.getValue();
+    Map<String, String> annotations =
+        createdJob.getSpec().getTemplate().getMetadata().getAnnotations();
+
+    assertNotNull(annotations, "Should have annotations");
+    assertEquals("true", annotations.get("prometheus.io/scrape"));
+    assertEquals("false", annotations.get("sidecar.istio.io/inject"));
+  }
+
+  @Test
+  void testCronScheduleConversion() throws Exception {
+    IngestionPipeline hourlyPipeline = createTestPipeline("hourly", "@hourly");
+    IngestionPipeline dailyPipeline = createTestPipeline("daily", "@daily");
+    IngestionPipeline weeklyPipeline = createTestPipeline("weekly", "@weekly");
+    IngestionPipeline monthlyPipeline = createTestPipeline("monthly", "@monthly");
+    IngestionPipeline customPipeline = createTestPipeline("custom", "30 2 * * 1-5");
+
+    setupDeploymentMocks();
+
+    ArgumentCaptor<V1CronJob> cronJobCaptor = ArgumentCaptor.forClass(V1CronJob.class);
+
+    client.deployPipeline(hourlyPipeline, null);
+    verify(batchApi, times(1)).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
+    assertEquals("0 * * * *", cronJobCaptor.getValue().getSpec().getSchedule());
+
+    resetAllMocks();
+    setupDeploymentMocks();
+    client.deployPipeline(dailyPipeline, null);
+    verify(batchApi, times(1)).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
+    assertEquals("0 0 * * *", cronJobCaptor.getValue().getSpec().getSchedule());
+
+    resetAllMocks();
+    setupDeploymentMocks();
+    client.deployPipeline(weeklyPipeline, null);
+    verify(batchApi, times(1)).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
+    assertEquals("0 0 * * 0", cronJobCaptor.getValue().getSpec().getSchedule());
+
+    resetAllMocks();
+    setupDeploymentMocks();
+    client.deployPipeline(monthlyPipeline, null);
+    verify(batchApi, times(1)).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
+    assertEquals("0 0 1 * *", cronJobCaptor.getValue().getSpec().getSchedule());
+
+    resetAllMocks();
+    setupDeploymentMocks();
+    client.deployPipeline(customPipeline, null);
+    verify(batchApi, times(1)).createNamespacedCronJob(eq(NAMESPACE), cronJobCaptor.capture());
+    assertEquals("30 2 * * 1-5", cronJobCaptor.getValue().getSpec().getSchedule());
+  }
+
+  private void resetAllMocks() {
+    reset(
+        batchApi,
+        coreApi,
+        readConfigMapRequest,
+        createConfigMapRequest,
+        readSecretRequest,
+        createSecretRequest,
+        readCronJobRequest,
+        createCronJobRequest);
+  }
+
+  private void setupDeploymentMocks() throws ApiException {
+    when(coreApi.readNamespacedConfigMap(any(), eq(NAMESPACE))).thenReturn(readConfigMapRequest);
+    when(readConfigMapRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedConfigMap(eq(NAMESPACE), any()))
+        .thenReturn(createConfigMapRequest);
+    when(createConfigMapRequest.execute()).thenReturn(new V1ConfigMap());
+
+    when(coreApi.readNamespacedSecret(any(), eq(NAMESPACE))).thenReturn(readSecretRequest);
+    when(readSecretRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(coreApi.createNamespacedSecret(eq(NAMESPACE), any())).thenReturn(createSecretRequest);
+    when(createSecretRequest.execute()).thenReturn(new V1Secret());
+
+    when(batchApi.readNamespacedCronJob(any(), eq(NAMESPACE))).thenReturn(readCronJobRequest);
+    when(readCronJobRequest.execute()).thenThrow(new ApiException(404, "Not found"));
+    when(batchApi.createNamespacedCronJob(eq(NAMESPACE), any())).thenReturn(createCronJobRequest);
+    when(createCronJobRequest.execute()).thenReturn(new V1CronJob());
+  }
+
+  private IngestionPipeline createTestPipeline(String name, String schedule) {
+    AirflowConfig airflowConfig = new AirflowConfig();
+    if (schedule != null) {
+      airflowConfig.setScheduleInterval(schedule);
+    }
+    airflowConfig.setPipelineTimezone("UTC");
+
+    EntityReference serviceRef = new EntityReference();
+    serviceRef.setId(UUID.randomUUID());
+    serviceRef.setName("test-service");
+    serviceRef.setType("databaseService");
+
+    IngestionPipeline pipeline = new IngestionPipeline();
+    pipeline.setId(UUID.randomUUID());
+    pipeline.setName(name);
+    pipeline.setFullyQualifiedName("test-service." + name);
+    pipeline.setPipelineType(PipelineType.METADATA);
+    pipeline.setAirflowConfig(airflowConfig);
+    pipeline.setService(serviceRef);
+    pipeline.setDeployed(false);
+    pipeline.setEnabled(true);
+
+    return pipeline;
+  }
+}

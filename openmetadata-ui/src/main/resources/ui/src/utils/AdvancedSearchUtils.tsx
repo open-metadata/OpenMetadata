@@ -88,10 +88,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     return (
       <Icon
         className="action action--DELETE"
-        component={
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          CloseCircleOutlined as React.ForwardRefExoticComponent<any>
-        }
+        component={CloseCircleOutlined as React.ForwardRefExoticComponent<any>}
         data-testid="advanced-search-delete-rule"
         onClick={props?.onClick}
       />

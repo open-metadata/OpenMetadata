@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 from testcontainers.core.container import DockerContainer
 
 
-class AbstractTestContainer(ABC):
+class AbstractTestContainer(ABC, DockerContainer):
     @abstractmethod
     def get_connection_url(self) -> str:
         raise NotImplementedError
