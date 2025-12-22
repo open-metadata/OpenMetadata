@@ -34,7 +34,9 @@ const TabsLabel = ({
       <div className="d-flex justify-between gap-1">
         {name}
         {isLoading ? (
-          <span data-testid="loading-skeleton" className="d-flex justify-center items-center">
+          <span
+            data-testid="loading-skeleton"
+            className="d-flex justify-center items-center">
             <Loader size="small" />
           </span>
         ) : (
