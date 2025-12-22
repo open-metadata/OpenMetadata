@@ -38,11 +38,13 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
+  addEdge,
   Connection,
   Edge,
   getConnectedEdges,
   getIncomers,
   getOutgoers,
+  MarkerType,
   Node,
   NodeProps,
   ReactFlowInstance,
@@ -1014,7 +1016,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
-  const onNodeAdd = (xPos: number, yPos: number) => {
+  const onNodeAdd = (sourceNodeId: string, xPos: number, yPos: number) => {
     const position = {
       x: xPos + NODE_WIDTH,
       y: yPos,
@@ -1025,7 +1027,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       nodeType: EntityLineageNodeType.DEFAULT,
       position,
       className: '',
-      connectable: false,
+      // connectable: false,
       selectable: false,
       type: EntityLineageNodeType.DEFAULT,
       data: {
@@ -1046,6 +1048,18 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     };
     setNodes([...nodes, newNode as Node]);
     setNewAddedNode(newNode as Node);
+
+    const edge = {
+      source: sourceNodeId,
+      sourceHandle: sourceNodeId,
+      target: nodeId,
+      targetHandle: nodeId,
+
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+      },
+    } as Edge;
+    setEdges((eds) => addEdge(edge, eds));
   };
 
   const selectLoadMoreNode = async (node: Node) => {
@@ -1230,6 +1244,16 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const onConnect = useCallback(
     (params: Edge | Connection) => {
       console.log('params', params);
+      // const edge = {
+      //   ...params,
+      //   type: 'custom-edge',
+      //   markerEnd: {
+      //     type: MarkerType.ArrowClosed,
+      //   },
+      // };
+      // setEdges((eds) => addEdge(edge, eds));
+      // return;
+
       const { target, source, sourceHandle, targetHandle } = params;
 
       if (target === source) {

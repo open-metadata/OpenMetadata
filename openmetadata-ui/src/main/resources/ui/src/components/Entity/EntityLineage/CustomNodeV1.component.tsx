@@ -149,7 +149,11 @@ const ExpandCollapseHandles = memo(
   }
 );
 
-const MeatballMenu = ({ data }: { data: { xPos: number; yPos: number } }) => {
+const MeatballMenu = ({
+  data,
+}: {
+  data: { nodeId: string; xPos: number; yPos: number };
+}) => {
   const { t } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -161,7 +165,7 @@ const MeatballMenu = ({ data }: { data: { xPos: number; yPos: number } }) => {
 
   const handleAddUpstream = () => {
     handleClose();
-    onNodeAdd(data.xPos, data.yPos);
+    onNodeAdd(data.nodeId, data.xPos, data.yPos);
   };
 
   return (
@@ -257,17 +261,13 @@ const CustomNodeV1 = (props: NodeProps) => {
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
   const isSelected = selectedNode === node;
   const {
-    id,
     fullyQualifiedName,
     upstreamLineage = [],
     upstreamExpandPerformed = false,
     downstreamExpandPerformed = false,
   } = node;
+  const { id } = props;
   const [isTraced, setIsTraced] = useState(false);
-
-  useEffect(() => {
-    console.log(node.name, props.xPos, props.yPos);
-  }, []);
 
   const showDqTracing = useMemo(
     () =>
@@ -432,7 +432,9 @@ const CustomNodeV1 = (props: NodeProps) => {
         />
       </div>
       {!isNewNode && (
-        <MeatballMenu data={{ xPos: props.xPos, yPos: props.yPos }} />
+        <MeatballMenu
+          data={{ nodeId: id, xPos: props.xPos, yPos: props.yPos }}
+        />
       )}
     </div>
   );
