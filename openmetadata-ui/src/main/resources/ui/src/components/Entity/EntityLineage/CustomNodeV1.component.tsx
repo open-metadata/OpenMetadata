@@ -149,13 +149,19 @@ const ExpandCollapseHandles = memo(
   }
 );
 
-const MeatballMenu = () => {
+const MeatballMenu = ({ data }: { data: { xPos: number; yPos: number } }) => {
   const { t } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+  const { onNodeAdd } = useLineageProvider();
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleAddUpstream = () => {
+    handleClose();
+    onNodeAdd(data.xPos, data.yPos);
   };
 
   return (
@@ -166,7 +172,8 @@ const MeatballMenu = () => {
         aria-label="more options"
         onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
           e.stopPropagation();
-          setAnchorEl(e.currentTarget);
+          // setAnchorEl(e.currentTarget);
+          handleAddUpstream();
         }}>
         <MoreVertIcon sx={{ pointerEvents: 'none' }} />
       </IconButton>
@@ -179,7 +186,7 @@ const MeatballMenu = () => {
         }}
         className="manage-node-menu"
         id="menu"
-        open={open}
+        open={false}
         sx={{
           '.MuiPaper-root': {
             width: 'max-content',
@@ -201,13 +208,13 @@ const MeatballMenu = () => {
           e.stopPropagation();
         }}
         onClose={() => setAnchorEl(null)}>
+        <MenuItem onClick={handleAddUpstream}>
+          <ArrowForwardIcon />
+          {t('label.edit-downstream')}
+        </MenuItem>
         <MenuItem onClick={handleClose}>
           <ArrowBackIcon />
           {t('label.edit-upstream')}
-        </MenuItem>
-        <MenuItem onClick={handleClose}>
-          <ArrowForwardIcon />
-          {t('label.edit-downstream')}
         </MenuItem>
         <Divider />
         <MenuItem onClick={handleClose}>
@@ -257,6 +264,10 @@ const CustomNodeV1 = (props: NodeProps) => {
     downstreamExpandPerformed = false,
   } = node;
   const [isTraced, setIsTraced] = useState(false);
+
+  useEffect(() => {
+    console.log(node.name, props.xPos, props.yPos);
+  }, []);
 
   const showDqTracing = useMemo(
     () =>
@@ -420,7 +431,9 @@ const CustomNodeV1 = (props: NodeProps) => {
           node={node}
         />
       </div>
-      <MeatballMenu />
+      {!isNewNode && (
+        <MeatballMenu data={{ xPos: props.xPos, yPos: props.yPos }} />
+      )}
     </div>
   );
 };

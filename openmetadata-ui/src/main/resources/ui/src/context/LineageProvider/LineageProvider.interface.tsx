@@ -86,6 +86,7 @@ export interface LineageContextType {
   setSelectedQuickFilters: Dispatch<SetStateAction<ExploreQuickFilterField[]>>;
   onDrawerClose: () => void;
   onNodeDrop: (event: DragEvent, reactFlowBounds: DOMRect) => void;
+  onNodeAdd: (xPos: number, yPos: number) => void;
   onNodeCollapse: (node: Node | NodeProps, direction: LineageDirection) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
