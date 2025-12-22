@@ -452,16 +452,11 @@ export const getField = (field: FieldProp) => {
     }
 
     case FieldTypes.AUTOCOMPLETE_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
       return (
         <Form.Item {...formProps}>
           <MUIAutocomplete
             label={muiLabel as string}
             placeholder={placeholder}
-            required={isRequired}
             {...(props as MUIAutocompleteProps)}
           />
         </Form.Item>
@@ -469,15 +464,10 @@ export const getField = (field: FieldProp) => {
     }
 
     case FieldTypes.SWITCH_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
       return (
         <Form.Item {...formProps} valuePropName="checked">
           <MUISwitch
             label={muiLabel as string}
-            required={isRequired}
             {...(props as MUISwitchProps)}
           />
         </Form.Item>
