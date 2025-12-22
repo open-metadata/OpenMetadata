@@ -145,7 +145,7 @@ class LineageParser:
             )
 
         except SQLLineageException as exc:
-            logger.debug(traceback.format_exc())
+            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
             logger.warning(
                 f"[{self.query_hash}] Cannot extract source table information from query"
                 f" [{self.masked_query or self.query}]: {exc}"
@@ -212,7 +212,7 @@ class LineageParser:
             logger.warning(
                 f"[{self.query_hash}] Failed to fetch column level lineage due to: {err}"
             )
-            logger.debug(traceback.format_exc())
+            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
         return column_lineage
 
     @cached_property
@@ -467,7 +467,7 @@ class LineageParser:
                 logger.debug(
                     f"[{self.query_hash}] Cannot process comparison {comparison}: {exc}"
                 )
-                logger.debug(traceback.format_exc())
+                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
 
     @cached_property
     def table_joins(self) -> Dict[str, List[TableColumnJoin]]:
@@ -622,7 +622,7 @@ class LineageParser:
                     f" error: {err}"
                 )
                 logger.debug(self.query_parsing_failure_reason)
-                logger.debug(traceback.format_exc())
+                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
                 lr_sqlglot = None
 
             if lr_sqlglot:
@@ -679,7 +679,7 @@ class LineageParser:
                     f" error: {err}"
                 )
                 logger.debug(self.query_parsing_failure_reason)
-                logger.debug(traceback.format_exc())
+                logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
                 lr_sqlfluff = None
 
             if lr_sqlfluff:
@@ -732,7 +732,7 @@ class LineageParser:
                 f" error: {err}"
             )
             logger.debug(self.query_parsing_failure_reason)
-            logger.debug(traceback.format_exc())
+            logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
             # All parsers SqlGlot, SqlFluff, SqlParse have failed to parse the query
             lr_sqlparse = None
 
