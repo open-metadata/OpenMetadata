@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
@@ -3959,5 +3960,19 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Now refresh it
     Request refreshRequest = new Request("POST", "/" + getTableSearchIndexName() + "/_refresh");
     searchClient.performRequest(refreshRequest);
+  }
+
+  // ===================================================================
+  // VERSION HISTORY SUPPORT
+  // ===================================================================
+
+  @Override
+  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
+    return client.tables().getVersionList(id);
+  }
+
+  @Override
+  protected Table getVersion(UUID id, Double version, OpenMetadataClient client) {
+    return client.tables().getVersion(id.toString(), version);
   }
 }

@@ -19,6 +19,16 @@ public class TestNamespace {
     return base + "__" + RUN_ID + "__" + classId + (methodId != null ? ("__" + methodId) : "");
   }
 
+  /** Short prefix for entities with nested hierarchies to avoid exceeding FQN length limit. */
+  public String shortPrefix() {
+    // Use first 8 chars of run ID + short hash of method name + random suffix for uniqueness
+    String shortRun = RUN_ID.substring(0, 8);
+    String methodHash =
+        methodId != null ? Integer.toHexString(Math.abs(methodId.hashCode()) % 0xFFFF) : "0";
+    String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 4);
+    return shortRun + methodHash + uniqueSuffix;
+  }
+
   public String runTagKey() {
     return "testRunId";
   }

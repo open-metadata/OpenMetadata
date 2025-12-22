@@ -37,6 +37,7 @@ import org.openmetadata.sdk.services.glossary.GlossaryTermService;
 import org.openmetadata.sdk.services.importexport.ImportExportAPI;
 import org.openmetadata.sdk.services.ingestion.IngestionPipelineService;
 import org.openmetadata.sdk.services.lineage.LineageAPI;
+import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.search.SearchAPI;
 import org.openmetadata.sdk.services.services.APIServiceService;
 import org.openmetadata.sdk.services.services.DashboardServiceService;
@@ -49,6 +50,7 @@ import org.openmetadata.sdk.services.services.SearchServiceService;
 import org.openmetadata.sdk.services.services.StorageServiceService;
 import org.openmetadata.sdk.services.storages.ContainerService;
 import org.openmetadata.sdk.services.teams.PersonaService;
+import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.TeamService;
 import org.openmetadata.sdk.services.teams.UserService;
 import org.openmetadata.sdk.services.tests.TestCaseService;
@@ -78,6 +80,10 @@ public class OpenMetadataClient {
   private final UserService users;
   private final TeamService teams;
   private final PersonaService personas;
+  private final RoleService roles;
+
+  // Policies
+  private final PolicyService policies;
 
   // Storages
   private final ContainerService containers;
@@ -158,6 +164,10 @@ public class OpenMetadataClient {
     this.users = new UserService(httpClient);
     this.teams = new TeamService(httpClient);
     this.personas = new PersonaService(httpClient);
+    this.roles = new RoleService(httpClient);
+
+    // Initialize policy services
+    this.policies = new PolicyService(httpClient);
 
     // Initialize storage services
     this.containers = new ContainerService(httpClient);
@@ -274,6 +284,14 @@ public class OpenMetadataClient {
 
   public TeamService teams() {
     return teams;
+  }
+
+  public RoleService roles() {
+    return roles;
+  }
+
+  public PolicyService policies() {
+    return policies;
   }
 
   public PersonaService personas() {

@@ -20,6 +20,7 @@ import okhttp3.ResponseBody;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.AuthenticationException;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.exceptions.RateLimitException;
@@ -316,6 +317,8 @@ public class OpenMetadataHttpClient implements HttpClient {
         throw new InvalidRequestException(errorMessage);
       case 401:
         throw new AuthenticationException(errorMessage);
+      case 409:
+        throw new ConflictException(errorMessage);
       case 429:
         String retryAfter = response.header("Retry-After");
         long retryAfterSeconds = retryAfter != null ? Long.parseLong(retryAfter) : -1;

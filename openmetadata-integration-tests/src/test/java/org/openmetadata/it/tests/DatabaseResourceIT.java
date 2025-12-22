@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -643,5 +644,19 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
     // Verify database is completely removed from RDF
     org.openmetadata.service.util.RdfTestUtils.verifyEntityNotInRdf(databaseFqn);
+  }
+
+  // ===================================================================
+  // VERSION HISTORY SUPPORT
+  // ===================================================================
+
+  @Override
+  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
+    return client.databases().getVersionList(id);
+  }
+
+  @Override
+  protected Database getVersion(UUID id, Double version, OpenMetadataClient client) {
+    return client.databases().getVersion(id.toString(), version);
   }
 }
