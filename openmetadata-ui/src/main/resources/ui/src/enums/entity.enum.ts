@@ -155,7 +155,6 @@ export enum TabSpecificField {
   STATE = 'state',
   SUMMARY = 'summary',
   TABLE_CONSTRAINTS = 'tableConstraints',
-  TABLE_PROFILE = 'profile',
   TABLE_QUERIES = 'tableQueries',
   TAGS = 'tags',
   TARGET_DEFINITION = 'targetDefinition',
