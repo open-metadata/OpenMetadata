@@ -199,6 +199,13 @@ public class SearchRepository {
     clusterAlias = searchConfiguration != null ? searchConfiguration.getClusterAlias() : "";
     loadIndexMappings();
     registerSearchIndexHandler();
+    createIndexesIfNeeded();
+  }
+
+  public void createIndexesIfNeeded() {
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      createIndex(indexMapping);
+    }
   }
 
   /**
