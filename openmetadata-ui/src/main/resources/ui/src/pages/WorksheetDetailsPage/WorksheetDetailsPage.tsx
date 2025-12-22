@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined, omitBy, toString } from 'lodash';
+import { get, isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -174,7 +174,7 @@ const WorksheetDetailsPage = () => {
         USERId,
         EntityType.WORKSHEET
       );
-      const { newValue } = res.changeDescription?.fieldsAdded?.[0];
+      const { newValue } = get(res, 'changeDescription.fieldsAdded[0]', {});
       setWorksheetDetails((prev) => ({
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
