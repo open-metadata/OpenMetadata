@@ -16,6 +16,7 @@ from functools import partial
 from typing import Optional
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import text
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -41,13 +42,17 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections_utils import kill_active_connections
+from metadata.ingestion.source.database.redshift.models import RedshiftInstanceType
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATIONS,
     REDSHIFT_GET_DATABASE_NAMES,
-    REDSHIFT_TEST_GET_QUERIES,
+    REDSHIFT_TEST_GET_QUERIES_MAP,
     REDSHIFT_TEST_PARTITION_DETAILS,
 )
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 def get_connection(connection: RedshiftConnection) -> Engine:
@@ -59,6 +64,42 @@ def get_connection(connection: RedshiftConnection) -> Engine:
         get_connection_url_fn=get_connection_url_common,
         get_connection_args_fn=get_connection_args_common,
     )
+
+
+def get_redshift_instance_type(engine: Engine) -> RedshiftInstanceType:
+    """
+    Detect whether the connected Amazon Redshift deployment is Provisioned
+    or Serverless by probing for STL system table availability.
+
+    Serverless deployments do not have access to STL_* system tables due to
+    their architecture. Use SYS_* views instead for Serverless compatibility.
+
+    Reference: https://docs.aws.amazon.com/redshift/latest/dg/cm_chap_system-tables.html#sys_view_migration-use_cases
+
+    Args:
+        engine (Engine): SQLAlchemy engine connected to a Redshift endpoint.
+
+    Returns:
+        RedshiftInstanceType: PROVISIONED if STL tables are accessible,
+                              SERVERLESS otherwise.
+    """
+    probe_query = text("SELECT 1 FROM pg_catalog.stl_query LIMIT 1")
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(probe_query)
+
+        logger.info(
+            "Redshift instance type detected: PROVISIONED (STL tables accessible)"
+        )
+        return RedshiftInstanceType.PROVISIONED
+
+    except ProgrammingError:
+        logger.info(
+            "Redshift instance type detected: SERVERLESS "
+            "(STL tables not accessible, will use SYS_* views)"
+        )
+        return RedshiftInstanceType.SERVERLESS
 
 
 def test_connection(
@@ -80,12 +121,27 @@ def test_connection(
 
     def test_get_queries_permissions(engine_: Engine):
         """Check if we have the right permissions to list queries"""
+        redshift_instance_type = get_redshift_instance_type(engine_)
+
         with engine_.connect() as conn:
-            res = conn.execute(REDSHIFT_TEST_GET_QUERIES).fetchone()
-            if not all(res):
-                raise SourceConnectionException(
-                    f"We don't have the right permissions to list queries - {res}"
-                )
+            if redshift_instance_type == RedshiftInstanceType.PROVISIONED:
+                res = conn.execute(
+                    REDSHIFT_TEST_GET_QUERIES_MAP[RedshiftInstanceType.PROVISIONED]
+                ).fetchone()
+                if not all(res):
+                    raise SourceConnectionException(
+                        "We don't have the right permissions to list queries from stl views (Redshift Provisioned)"
+                        f" - {res}"
+                    )
+            else:
+                res = conn.execute(
+                    REDSHIFT_TEST_GET_QUERIES_MAP[RedshiftInstanceType.SERVERLESS]
+                ).fetchone()
+                if not all(res):
+                    raise SourceConnectionException(
+                        "We don't have the right permissions to list queries from sys views (Redshift Serverless)"
+                        f" - {res}"
+                    )
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),

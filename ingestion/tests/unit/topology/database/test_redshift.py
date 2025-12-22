@@ -14,12 +14,19 @@ Test Redshift using the topology
 """
 
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.ingestion.source.database.redshift.connection import (
+    get_redshift_instance_type,
+)
 from metadata.ingestion.source.database.redshift.metadata import RedshiftSource
+from metadata.ingestion.source.database.redshift.models import RedshiftInstanceType
+from metadata.ingestion.source.database.redshift.queries import (
+    REDSHIFT_SQL_STATEMENT_MAP,
+)
 
 mock_redshift_config = {
     "source": {
@@ -84,3 +91,26 @@ class RedshiftUnitTest(TestCase):
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.redshift_source.close()
+
+    def test_detect_provisioned_when_stl_accessible(self):
+        """Verify Provisioned is detected when STL tables are accessible"""
+        mock_engine = Mock()
+        mock_conn = Mock()
+        mock_context = Mock()
+        mock_context.__enter__ = Mock(return_value=mock_conn)
+        mock_context.__exit__ = Mock(return_value=False)
+        mock_engine.connect.return_value = mock_context
+        mock_conn.execute.return_value = Mock()  # STL query succeeds
+
+        result = get_redshift_instance_type(mock_engine)
+
+        self.assertEqual(result, RedshiftInstanceType.PROVISIONED)
+        mock_conn.execute.assert_called_once()
+
+    def test_provisioned_uses_stl_queries(self):
+        """Verify Provisioned uses STL-based queries"""
+        sql = REDSHIFT_SQL_STATEMENT_MAP[RedshiftInstanceType.PROVISIONED]
+
+        # Must use STL tables
+        self.assertIn("stl_query", sql)
+        self.assertIn("stl_querytext", sql)
