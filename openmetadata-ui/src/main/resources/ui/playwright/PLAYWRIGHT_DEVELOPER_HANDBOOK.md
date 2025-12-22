@@ -213,11 +213,6 @@ describe('Table operations', () => {
       data: { name: 'test-table', database: 'test-db' }
     });
   });
-
-  afterAll(async ({ apiContext }) => {
-    // Cleanup via API
-    await apiContext.delete(`/api/v1/tables/${testTable.id}`);
-  });
 });
 ```
 
