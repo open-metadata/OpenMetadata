@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.commonmark.Extension;
 import org.commonmark.ext.autolink.AutolinkExtension;
 import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension;
+import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
 
@@ -18,7 +19,8 @@ public final class MarkdownParser {
 
   static {
     List<Extension> extensions =
-        List.of(AutolinkExtension.create(), StrikethroughExtension.create());
+        List.of(
+            AutolinkExtension.create(), StrikethroughExtension.create(), TablesExtension.create());
     PARSER = Parser.builder().extensions(extensions).build();
   }
 

@@ -21,23 +21,37 @@ public class TeamsAdaptiveCardRenderer extends BaseMarkdownChannelRenderer<Teams
 
   @Override
   protected NotificationMessage doRender(Node document, Node subjectNode) {
-    TeamsCardAssembler visitor = new TeamsCardAssembler();
+    // 1. Create the container for the final card body
+    List<TeamsMessage.BodyItem> cardBody = new ArrayList<>();
 
+    // 2. Render and add the Subject (if present) manually
     if (subjectNode != null) {
       String subject = extractPlainText(subjectNode);
       if (!subject.isEmpty()) {
-        visitor.body.add(visitor.createTextBlock(subject, "heading", 2, true));
+        cardBody.add(
+            TeamsMessage.TextBlock.builder()
+                .type("TextBlock")
+                .text(subject)
+                .size("Large")
+                .weight("Bolder")
+                .wrap(true)
+                .build());
       }
     }
 
+    // 3. Run the Visitor to generate the Markdown body
+    TeamsCardAssembler visitor = new TeamsCardAssembler();
     document.accept(visitor);
-    visitor.flushCurrentText();
 
+    // 4. Combine the results (using the new getter from the Assembler)
+    cardBody.addAll(visitor.getBodyItems());
+
+    // 5. Build the final Adaptive Card
     TeamsMessage.AdaptiveCardContent adaptiveCard =
         TeamsMessage.AdaptiveCardContent.builder()
             .type("AdaptiveCard")
             .version("1.4")
-            .body(visitor.body)
+            .body(cardBody)
             .build();
 
     TeamsMessage.Attachment attachment =
@@ -46,9 +60,6 @@ public class TeamsAdaptiveCardRenderer extends BaseMarkdownChannelRenderer<Teams
             .content(adaptiveCard)
             .build();
 
-    List<TeamsMessage.Attachment> attachments = new ArrayList<>();
-    attachments.add(attachment);
-
-    return TeamsMessage.builder().type("message").attachments(attachments).build();
+    return TeamsMessage.builder().type("message").attachments(List.of(attachment)).build();
   }
 }
