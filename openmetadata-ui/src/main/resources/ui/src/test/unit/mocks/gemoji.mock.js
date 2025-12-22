@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-/* eslint-disable */
+ 
 module.exports = {
   'g-emoji': jest.fn().mockReturnValue('g-emoji'),
 };
