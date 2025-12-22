@@ -194,6 +194,7 @@ export const getMutuallyExclusiveField = ({
     id: 'tags_mutuallyExclusive',
     'data-testid': 'mutually-exclusive-button',
     disabled,
+    className: 'mutually-exclusive-switch',
   },
   helperTextType: HelperTextType.ALERT,
   showHelperText,

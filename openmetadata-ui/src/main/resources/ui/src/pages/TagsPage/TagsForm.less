@@ -13,24 +13,8 @@
 @import (reference) '../../styles/variables.less';
 
 .tags-form {
-  .form-switch-container .ant-form-item-control-input {
-    min-height: 0;
-    & .ant-form-item-control-input-content {
-      line-height: 1rem;
-    }
-  }
-  .MuiTextField-root .MuiFormHelperText-root {
-    margin: 0;
-  }
-
-  .MuiFormLabel-root,
-  .description-form-item label {
-    font-weight: @font-medium;
-    color: @grey-700;
-
-    .MuiInputLabel-asterisk {
-      color: @error-color;
-    }
+  .mutually-exclusive-switch {
+    line-height: 1rem;
   }
 
   .description-text-area .block-editor-wrapper {

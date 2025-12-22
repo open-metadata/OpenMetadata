@@ -1,5 +1,3 @@
-import { AutocompleteProps } from '@mui/material';
-
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +10,9 @@ import { AutocompleteProps } from '@mui/material';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { AutocompleteProps } from '@mui/material';
+
 export interface MUIAutocompleteProps
   extends Omit<
     AutocompleteProps<string, true, false, true>,

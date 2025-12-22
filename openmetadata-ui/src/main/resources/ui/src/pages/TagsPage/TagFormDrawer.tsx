@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Drawer, IconButton, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Drawer,
+  IconButton,
+  Typography,
+} from '@mui/material';
 import { XClose } from '@untitledui/icons';
 import { isUndefined } from 'lodash';
 import { FC } from 'react';
@@ -95,6 +102,7 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
         }}>
         <Button
           data-testid="cancel-button"
+          disabled={isLoading}
           variant="outlined"
           onClick={onClose}>
           {t('label.cancel')}
@@ -102,9 +110,11 @@ const TagFormDrawer: FC<TagFormDrawerProps> = ({
         <Button
           data-testid="save-button"
           disabled={isLoading}
+          loading={isLoading}
+          loadingIndicator={<CircularProgress color="inherit" size={18} />}
           variant="contained"
           onClick={() => formRef.submit()}>
-          {isLoading ? t('label.saving') : t('label.save')}
+          {t('label.save')}
         </Button>
       </Box>
     </Drawer>

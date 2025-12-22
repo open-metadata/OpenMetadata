@@ -41,7 +41,7 @@ const MUISelect: FC<MUISelectProps> = ({
   options = [],
   placeholder,
   required,
-  value,
+  value = '',
   onChange,
   error,
   size = 'small',
@@ -70,24 +70,16 @@ const MUISelect: FC<MUISelectProps> = ({
         }}
         label={label}
         labelId={labelId}
-        renderValue={(selected) => {
-          if (!selected) {
-            return (
-              <Typography sx={{ color: theme.palette.grey[500] }}>
-                {placeholder}
-              </Typography>
-            );
-          }
-
-          const selectedOption = options.find(
-            (option) => option.value === selected
-          );
-
-          return selectedOption?.label ?? (selected as string | number);
-        }}
-        value={value || ''}
+        value={value}
         onChange={onChange}
         {...props}>
+        {placeholder && (
+          <MenuItem disabled value="">
+            <Typography sx={{ color: theme.palette.grey[500] }}>
+              {placeholder}
+            </Typography>
+          </MenuItem>
+        )}
         {options.map((option) => (
           <MenuItem
             disabled={option.disabled}

@@ -49,9 +49,6 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
         required={required}
         sx={{
           fontSize: (theme) => theme.typography.body2.fontSize,
-          '& .MuiFormLabel-asterisk': {
-            color: 'error.main',
-          },
         }}>
         {label}
       </FormLabel>

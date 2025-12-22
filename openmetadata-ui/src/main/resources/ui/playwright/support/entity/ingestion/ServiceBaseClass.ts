@@ -394,8 +394,11 @@ class ServiceBaseClass {
   };
 
   handleIngestionRetry = async (ingestionType = 'metadata', page: Page) => {
-    await page.waitForTimeout(2000);
     const { apiContext } = await getApiContext(page);
+
+    // Need to wait before start polling as Ingestion is taking time to reflect state on their db
+    // Queued status are not stored in DB. cc: @ulixius9
+    await page.waitForTimeout(2000);
 
     const response = await apiContext
       .get(
