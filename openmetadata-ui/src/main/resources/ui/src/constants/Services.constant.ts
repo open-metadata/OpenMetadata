@@ -387,10 +387,10 @@ export const STEPS_FOR_EDIT_SERVICE: Array<StepperStepType> = [
 export const SERVICE_DEFAULT_ERROR_MAP = {
   serviceType: false,
 };
-// 3 minutes timeout to wait for test connection status
+// 4 minutes timeout to wait for test connection status
 // Increasing it temporarily while we investigate test connection delays
 // @pmbrull
-export const FETCHING_EXPIRY_TIME = 3 * 60 * 1000;
+export const FETCHING_EXPIRY_TIME = 4 * 60 * 1000;
 export const FETCH_INTERVAL = 2000;
 export const WORKFLOW_COMPLETE_STATUS = [
   WorkflowStatus.Failed,
