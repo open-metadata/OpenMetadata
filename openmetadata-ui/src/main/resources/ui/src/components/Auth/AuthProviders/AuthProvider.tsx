@@ -81,6 +81,7 @@ import {
 import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import {
+  clearOidcToken,
   getOidcToken,
   getRefreshToken,
   setOidcToken,
@@ -264,7 +265,7 @@ export const AuthProvider = ({
 
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
-    setOidcToken('');
+    clearOidcToken();
     setRefreshToken('');
     setIsAuthenticated(false);
     setApplicationLoading(false);
