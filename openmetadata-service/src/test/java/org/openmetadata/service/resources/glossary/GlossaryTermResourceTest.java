@@ -24,6 +24,8 @@ import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.csv.EntityCsvTest.assertSummary;
+import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.GLOSSARY;
@@ -62,6 +64,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -104,6 +107,7 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.CustomPropertyConfig;
@@ -117,13 +121,16 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -2854,59 +2861,204 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Test
   void test_searchGlossaryTerms() throws IOException {
     // Create a glossary for testing
-    Glossary glossary =
-        glossaryTest.createEntity(
-            glossaryTest.createRequest("searchTestGlossary"), ADMIN_AUTH_HEADERS);
+    CreateGlossary createGlossary =
+        glossaryTest
+            .createRequest("searchTestGlossary")
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()))
+            .withOwners(List.of(USER1.getEntityReference()))
+            .withReviewers(List.of(USER2.getEntityReference()));
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
 
-    // Create multiple glossary terms with different names
-    List<GlossaryTerm> terms = new ArrayList<>();
-    for (int i = 1; i <= 10; i++) {
-      CreateGlossaryTerm createTerm =
-          createRequest("SearchTerm" + i)
+    // Create a related term first with displayName different from name
+    CreateGlossaryTerm relatedTermRequest =
+        createRequest("RelatedTerm")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDisplayName("Associated Business Term")
+            .withDescription("Related term for search testing");
+    GlossaryTerm relatedTerm = createEntity(relatedTermRequest, ADMIN_AUTH_HEADERS);
+
+    // Create parent term with all fields populated (domains are inherited from glossary)
+    CreateGlossaryTerm parentTermRequest =
+        createRequest("ParentSearchTerm")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDisplayName("Main Parent Business Concept")
+            .withDescription("Parent term with all fields for search testing")
+            .withRelatedTerms(List.of(relatedTerm.getFullyQualifiedName()))
+            .withReviewers(List.of(USER1.getEntityReference()))
+            .withOwners(List.of(USER2.getEntityReference()))
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+    GlossaryTerm parentTerm = createEntity(parentTermRequest, ADMIN_AUTH_HEADERS);
+
+    // Create child terms to populate children field with displayNames different from names
+    List<GlossaryTerm> childTerms = new ArrayList<>();
+    for (int i = 1; i <= 3; i++) {
+      CreateGlossaryTerm childRequest =
+          createRequest("ChildSearchTerm" + i)
               .withGlossary(glossary.getFullyQualifiedName())
-              .withDescription("This is SearchTerm " + i + " for testing search functionality");
-      GlossaryTerm term = createEntity(createTerm, ADMIN_AUTH_HEADERS);
-      terms.add(term);
+              .withDisplayName("Child Business Concept " + i)
+              .withParent(parentTerm.getFullyQualifiedName())
+              .withDescription("Child term " + i);
+      GlossaryTerm childTerm = createEntity(childRequest, ADMIN_AUTH_HEADERS);
+      childTerms.add(childTerm);
+    }
+
+    // Create tables with the parent term tag to generate usageCount
+    TableResourceTest tableTest = new TableResourceTest();
+    TagLabel termLabel = EntityUtil.toTagLabel(parentTerm);
+    List<Table> tables = new ArrayList<>();
+    for (int i = 1; i <= 2; i++) {
+      CreateTable createTable =
+          tableTest.createRequest("searchTestTable" + i).withTags(List.of(termLabel));
+      Table table = tableTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+      tables.add(table);
     }
 
     // Test 1: Search by exact term name
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("q", "SearchTerm5");
+    queryParams.put("q", "ChildSearchTerm3");
     queryParams.put("glossaryFqn", glossary.getFullyQualifiedName());
     queryParams.put("limit", "10");
     queryParams.put("offset", "0");
 
     ResultList<GlossaryTerm> searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(1, searchResults.getData().size());
-    assertEquals("SearchTerm5", searchResults.getData().get(0).getName());
+    assertEquals(1, searchResults.getData().size(), "Should find exactly one child term");
+    assertEquals("ChildSearchTerm3", searchResults.getData().get(0).getName());
 
-    // Test 2: Partial search
-    queryParams.put("q", "Term");
+    // Test 2: Partial search - search for common term prefix
+    queryParams.put("q", "SearchTerm");
+    queryParams.remove("offset");
     searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(10, searchResults.getData().size());
+    assertTrue(
+        searchResults.getData().size() >= 4,
+        "Should find multiple terms with 'SearchTerm' in the name (ParentSearchTerm + 3 children)");
 
     // Test 3: Search with pagination
-    queryParams.put("limit", "5");
+    queryParams.put("limit", "4");
     searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(5, searchResults.getData().size());
+    assertEquals(4, searchResults.getData().size());
 
     // Test 4: Search with offset
-    queryParams.put("offset", "5");
+    queryParams.put("offset", "1");
+    queryParams.put("limit", "3");
     searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(5, searchResults.getData().size());
+    assertEquals(3, searchResults.getData().size());
+    queryParams.put("offset", "0"); // reset offset for next tests
 
-    // Test 5: Search with display name (if terms had display names)
-    // Skip this test since our test terms don't have display names set
-
-    // Test 6: Search with no results
+    // Test 5: Search with no results
     queryParams.put("q", "NonExistentTerm");
     searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(0, searchResults.getData().size());
+    assertEquals(0, searchResults.getData().size(), "Should find no results for non-existent term");
 
-    // Clean up - hard delete terms first, then glossary
-    for (GlossaryTerm term : terms) {
-      deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+    // Test 6: Search by displayName (search for "Associated Business" from displayName)
+    queryParams.put("q", "Associated Business");
+    searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+    assertFalse(
+        searchResults.getData().isEmpty(), "Should find at least one term by displayName search");
+    GlossaryTerm relatedTermResult =
+        searchResults.getData().stream()
+            .filter(t -> t.getName().equals("RelatedTerm"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(relatedTermResult, "Should find RelatedTerm by its displayName");
+    assertEquals(
+        "Associated Business Term",
+        relatedTermResult.getDisplayName(),
+        "DisplayName should match 'Associated Business Term'");
+
+    // Test7 : Search with all fields specified
+    queryParams.put("q", "ParentSearchTerm");
+    queryParams.put("glossaryFqn", glossary.getFullyQualifiedName());
+    queryParams.put("limit", "50");
+    queryParams.put("offset", "0");
+    queryParams.put(
+        "fields",
+        "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount");
+
+    searchResults = searchGlossaryTerms(queryParams, ADMIN_AUTH_HEADERS);
+
+    // Validate results
+    assertEquals(1, searchResults.getData().size(), "Should find exactly one parent term");
+    GlossaryTerm result = searchResults.getData().get(0);
+    assertEquals("ParentSearchTerm", result.getName());
+    assertEquals(
+        "Main Parent Business Concept",
+        result.getDisplayName(),
+        "Parent term displayName should match");
+
+    // Validate children field
+    assertNotNull(result.getChildren(), "Children field should not be null");
+    assertEquals(
+        3, result.getChildren().size(), "Should have 3 children as per childrenCount field");
+    assertTrue(
+        result.getChildren().stream().anyMatch(c -> c.getName().equals("ChildSearchTerm1")),
+        "Should contain ChildSearchTerm1");
+    // Validate child displayNames are different from names
+    EntityReference child1 =
+        result.getChildren().stream()
+            .filter(c -> c.getName().equals("ChildSearchTerm1"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(child1, "ChildSearchTerm1 should exist");
+    assertEquals(
+        "Child Business Concept 1", child1.getDisplayName(), "Child displayName should match");
+
+    // Validate relatedTerms field
+    assertNotNull(result.getRelatedTerms(), "RelatedTerms field should not be null");
+    assertEquals(1, result.getRelatedTerms().size(), "Should have 1 related term");
+    assertEquals(
+        "RelatedTerm", result.getRelatedTerms().get(0).getName(), "Related term name should match");
+    assertEquals(
+        "Associated Business Term",
+        result.getRelatedTerms().get(0).getDisplayName(),
+        "Related term displayName should match");
+
+    // Validate reviewers field (term may inherit from glossary, so check USER1 is present)
+    assertNotNull(result.getReviewers(), "Reviewers field should not be null");
+    assertFalse(result.getReviewers().isEmpty(), "Should have at least one reviewer");
+    assertTrue(
+        result.getReviewers().stream().anyMatch(r -> r.getName().equals(USER1.getName())),
+        "Should contain USER1 as a reviewer");
+
+    // Validate owners field
+    assertNotNull(result.getOwners(), "Owners field should not be null");
+    assertEquals(1, result.getOwners().size(), "Should have 1 owner");
+    assertEquals(USER2.getName(), result.getOwners().get(0).getName(), "Owner should be USER2");
+
+    // Validate tags field
+    assertNotNull(result.getTags(), "Tags field should not be null");
+    assertEquals(2, result.getTags().size(), "Should have 2 tags");
+    Set<String> tagFqns = new HashSet<>();
+    result.getTags().forEach(tag -> tagFqns.add(tag.getTagFQN()));
+    assertTrue(tagFqns.contains("PII.Sensitive"), "Should contain PII.Sensitive tag");
+    assertTrue(
+        tagFqns.contains("PersonalData.Personal"), "Should contain PersonalData.Personal tag");
+
+    // Validate usageCount field
+    assertNotNull(result.getUsageCount(), "UsageCount field should not be null");
+    assertTrue(
+        result.getUsageCount() >= 2, "Usage count should be at least 2 (from the 2 tables tagged)");
+
+    // Validate domains field
+    assertNotNull(result.getDomains(), "Domains field should not be null");
+    assertEquals(1, result.getDomains().size(), "Should have 1 domain");
+    assertEquals(
+        DOMAIN.getFullyQualifiedName(),
+        result.getDomains().get(0).getFullyQualifiedName(),
+        "Domain should match");
+
+    // Validate childrenCount field
+    assertNotNull(result.getChildrenCount(), "ChildrenCount field should not be null");
+    assertEquals(3, result.getChildrenCount().intValue(), "Children count should be 3");
+
+    // Clean up - delete in proper order
+    for (Table table : tables) {
+      tableTest.deleteEntity(table.getId(), true, true, ADMIN_AUTH_HEADERS);
     }
+    for (GlossaryTerm child : childTerms) {
+      deleteEntity(child.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
+    deleteEntity(parentTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(relatedTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
     glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
   }
 
@@ -3999,6 +4151,689 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         2,
         childrenAfterDeletes.getData().size(),
         "Listing children must work - this fails without the fix!");
+  }
+
+  @Test
+  void testGlossaryTermLevelImportExport() throws IOException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 120);
+
+    Glossary glossary =
+        glossaryTest.createEntity(
+            glossaryTest.createRequest("termImportExportTest"), ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm parentTerm = createTerm(glossary, null, "parentTerm");
+
+    String user1 = USER1.getName();
+    String user2 = USER2.getName();
+    String team11 = TEAM11.getName();
+    List<String> reviewerRef =
+        listOf(user1, user2).stream().sorted(Comparator.naturalOrder()).toList();
+
+    TypeResourceTest typeResourceTest = new TypeResourceTest();
+    Type entityType =
+        typeResourceTest.getEntityByName(
+            Entity.GLOSSARY_TERM, "customProperties", ADMIN_AUTH_HEADERS);
+
+    CustomPropertyConfig dateTimeConfig =
+        new CustomPropertyConfig().withConfig("dd-MM-yyyy HH:mm:ss");
+    CustomPropertyConfig timeConfig = new CustomPropertyConfig().withConfig("HH:mm:ss");
+    CustomPropertyConfig enumConfig =
+        new CustomPropertyConfig()
+            .withConfig(
+                Map.of(
+                    "values",
+                    List.of("val1", "val2", "val3", "val4", "val5"),
+                    "multiSelect",
+                    true));
+
+    CustomProperty[] customProperties = {
+      new CustomProperty()
+          .withName("termEmailCp")
+          .withDescription("email type custom property")
+          .withPropertyType(EMAIL_TYPE.getEntityReference()),
+      new CustomProperty()
+          .withName("termDateCp")
+          .withDescription("dd-MM-yyyy format time")
+          .withPropertyType(DATECP_TYPE.getEntityReference())
+          .withCustomPropertyConfig(new CustomPropertyConfig().withConfig("dd-MM-yyyy")),
+      new CustomProperty()
+          .withName("termDateTimeCp")
+          .withDescription("dd-MM-yyyy HH:mm:ss format dateTime")
+          .withPropertyType(DATETIMECP_TYPE.getEntityReference())
+          .withCustomPropertyConfig(dateTimeConfig),
+      new CustomProperty()
+          .withName("termTimeCp")
+          .withDescription("HH:mm:ss format time")
+          .withPropertyType(TIMECP_TYPE.getEntityReference())
+          .withCustomPropertyConfig(timeConfig),
+      new CustomProperty()
+          .withName("termIntegerCp")
+          .withDescription("integer type custom property")
+          .withPropertyType(INT_TYPE.getEntityReference()),
+      new CustomProperty()
+          .withName("termDurationCp")
+          .withDescription("duration type custom property")
+          .withPropertyType(DURATION_TYPE.getEntityReference()),
+      new CustomProperty()
+          .withName("termMarkdownCp")
+          .withDescription("markdown type custom property")
+          .withPropertyType(MARKDOWN_TYPE.getEntityReference()),
+      new CustomProperty()
+          .withName("termStringCp")
+          .withDescription("string type custom property")
+          .withPropertyType(STRING_TYPE.getEntityReference()),
+      new CustomProperty()
+          .withName("termEntRefCp")
+          .withDescription("entity Reference type custom property")
+          .withPropertyType(ENTITY_REFERENCE_TYPE.getEntityReference())
+          .withCustomPropertyConfig(new CustomPropertyConfig().withConfig(List.of("user"))),
+      new CustomProperty()
+          .withName("termEntRefListCp")
+          .withDescription("entity Reference List type custom property")
+          .withPropertyType(ENTITY_REFERENCE_LIST_TYPE.getEntityReference())
+          .withCustomPropertyConfig(
+              new CustomPropertyConfig()
+                  .withConfig(
+                      List.of(
+                          Entity.TABLE,
+                          Entity.STORED_PROCEDURE,
+                          Entity.DATABASE_SCHEMA,
+                          Entity.DATABASE,
+                          Entity.DASHBOARD,
+                          Entity.DASHBOARD_DATA_MODEL,
+                          Entity.PIPELINE,
+                          Entity.TOPIC,
+                          Entity.CONTAINER,
+                          Entity.SEARCH_INDEX,
+                          Entity.MLMODEL,
+                          Entity.GLOSSARY_TERM))),
+      new CustomProperty()
+          .withName("termTimeIntervalCp")
+          .withDescription("timeInterval type custom property")
+          .withPropertyType(TIME_INTERVAL_TYPE.getEntityReference()),
+      new CustomProperty()
+          .withName("termNumberCp")
+          .withDescription("number custom property")
+          .withPropertyType(INT_TYPE.getEntityReference()),
+      new CustomProperty()
+          .withName("termQueryCp")
+          .withDescription("query custom property")
+          .withPropertyType(SQLQUERY_TYPE.getEntityReference()),
+      new CustomProperty()
+          .withName("termTimestampCp")
+          .withDescription("timestamp type custom property")
+          .withPropertyType(TIMESTAMP_TYPE.getEntityReference()),
+      new CustomProperty()
+          .withName("termEnumCpSingle")
+          .withDescription("enum type custom property with multiselect = false")
+          .withPropertyType(ENUM_TYPE.getEntityReference())
+          .withCustomPropertyConfig(
+              new CustomPropertyConfig()
+                  .withConfig(
+                      Map.of(
+                          "values",
+                          List.of("single1", "single2", "single3", "single4"),
+                          "multiSelect",
+                          false))),
+      new CustomProperty()
+          .withName("termEnumCpMulti")
+          .withDescription("enum type custom property with multiselect = true")
+          .withPropertyType(ENUM_TYPE.getEntityReference())
+          .withCustomPropertyConfig(enumConfig),
+      new CustomProperty()
+          .withName("termTableCol1Cp")
+          .withDescription("table type custom property with 1 column")
+          .withPropertyType(TABLE_TYPE.getEntityReference())
+          .withCustomPropertyConfig(
+              new CustomPropertyConfig()
+                  .withConfig(
+                      Map.of("columns", List.of("columnName1", "columnName2", "columnName3")))),
+      new CustomProperty()
+          .withName("termTableCol3Cp")
+          .withDescription("table type custom property with 3 columns")
+          .withPropertyType(TABLE_TYPE.getEntityReference())
+          .withCustomPropertyConfig(
+              new CustomPropertyConfig()
+                  .withConfig(
+                      Map.of("columns", List.of("columnName1", "columnName2", "columnName3")))),
+    };
+
+    for (CustomProperty customProperty : customProperties) {
+      entityType =
+          typeResourceTest.addAndCheckCustomProperty(
+              entityType.getId(), customProperty, OK, ADMIN_AUTH_HEADERS);
+    }
+
+    // Import child terms under parentTerm
+    String csvData =
+        createCsv(
+            GlossaryRepository.GlossaryCsv.HEADERS,
+            listOf(
+                String.format(
+                    "termImportExportTest.parentTerm,t1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s,\"#FF5733\",https://example.com/icon1.png,\"termDateCp:18-09-2024;termDateTimeCp:18-09-2024 01:09:34;termDurationCp:PT5H30M10S;termEmailCp:admin@open-metadata.org;termEntRefCp:team:\"\"%s\"\";termEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
+                    reviewerRef.get(0), user1, "Approved", team11, user1, user2),
+                String.format(
+                    "termImportExportTest.parentTerm,t2,dsp2,dsc2,h1;h3;h3,,term2;https://term2,PII.NonSensitive,,user:%s,%s,\"#00FF00\",https://example.com/icon2.svg,\"termEnumCpMulti:val1|val2|val3;termEnumCpSingle:single1;termIntegerCp:7777;termMarkdownCp:# Sample Markdown Text;termNumberCp:123456;\"\"termQueryCp:select col,row from table where id ='30';\"\";termStringCp:sample string content;termTimeCp:10:08:45;termTimeIntervalCp:1726142300000:17261420000;termTimestampCp:1726142400000\"",
+                    user1, "Approved"),
+                String.format(
+                    "termImportExportTest.parentTerm.t1,t11,dsp3,dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,,,",
+                    reviewerRef.getFirst(), team11, "Draft")),
+            listOf());
+
+    CsvImportResult result = importCsv(parentTerm.getFullyQualifiedName(), csvData, false);
+    assertEquals(4, result.getNumberOfRowsProcessed());
+    assertEquals(4, result.getNumberOfRowsPassed());
+
+    // Export and verify
+    String exportedCsv = exportCsv(parentTerm.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+
+    // Verify all terms were created with correct fields
+    GlossaryTerm t1 =
+        getEntityByName(
+            "termImportExportTest.parentTerm.t1",
+            "owners,reviewers,tags,synonyms,relatedTerms,references,extension,parent,style",
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(t1);
+    assertEquals("dsp1", t1.getDisplayName());
+    assertEquals("dsc1,1", t1.getDescription());
+    assertEquals(List.of("h1", "h2", "h3"), t1.getSynonyms());
+    assertEquals(1, t1.getReferences().size());
+    assertEquals("term1", t1.getReferences().getFirst().getName());
+    assertEquals("http://term1", t1.getReferences().getFirst().getEndpoint().toString());
+    assertEquals("PII.None", t1.getTags().getFirst().getTagFQN());
+    assertEquals(reviewerRef.getFirst(), t1.getReviewers().getFirst().getName());
+    assertEquals(user1, t1.getOwners().getFirst().getName());
+    assertEquals(EntityStatus.APPROVED, t1.getEntityStatus());
+    assertEquals("#FF5733", t1.getStyle().getColor());
+    assertEquals("https://example.com/icon1.png", t1.getStyle().getIconURL());
+
+    Object t1Extension = t1.getExtension();
+    if (t1Extension instanceof Map<?, ?> t1ExtMap) {
+      assertEquals("18-09-2024", t1ExtMap.get("termDateCp").toString());
+      assertEquals("18-09-2024 01:09:34", t1ExtMap.get("termDateTimeCp").toString());
+      assertEquals("PT5H30M10S", t1ExtMap.get("termDurationCp").toString());
+      assertEquals("admin@open-metadata.org", t1ExtMap.get("termEmailCp").toString());
+      assertTrue(t1ExtMap.get("termEntRefCp").toString().contains(team11));
+      String entRefListValue = t1ExtMap.get("termEntRefListCp").toString();
+      assertTrue(entRefListValue.contains(user1));
+      assertTrue(entRefListValue.contains(user2));
+    }
+
+    GlossaryTerm t2 =
+        getEntityByName(
+            "termImportExportTest.parentTerm.t2",
+            "owners,reviewers,tags,synonyms,relatedTerms,references,extension,parent,style",
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(t2);
+    assertEquals("dsp2", t2.getDisplayName());
+    assertEquals("dsc2", t2.getDescription());
+    assertEquals(List.of("h1", "h3", "h3"), t2.getSynonyms());
+    assertEquals(1, t2.getReferences().size());
+    assertEquals("term2", t2.getReferences().getFirst().getName());
+    assertEquals("https://term2", t2.getReferences().getFirst().getEndpoint().toString());
+    assertEquals("PII.NonSensitive", t2.getTags().getFirst().getTagFQN());
+    assertEquals(user1, t2.getOwners().getFirst().getName());
+    assertEquals(EntityStatus.APPROVED, t2.getEntityStatus());
+    assertEquals("#00FF00", t2.getStyle().getColor());
+    assertEquals("https://example.com/icon2.svg", t2.getStyle().getIconURL());
+
+    Object t2Extension = t2.getExtension();
+    if (t2Extension instanceof Map<?, ?> t2ExtMap) {
+      String enumMulti = t2ExtMap.get("termEnumCpMulti").toString();
+      assertTrue(enumMulti.contains("val1"));
+      assertTrue(enumMulti.contains("val2"));
+      assertTrue(enumMulti.contains("val3"));
+      assertTrue(t2ExtMap.get("termEnumCpSingle").toString().contains("single1"));
+      assertEquals("7777", t2ExtMap.get("termIntegerCp").toString());
+      assertEquals("# Sample Markdown Text", t2ExtMap.get("termMarkdownCp").toString());
+      assertEquals("123456", t2ExtMap.get("termNumberCp").toString());
+      assertEquals(
+          "select col,row from table where id ='30';", t2ExtMap.get("termQueryCp").toString());
+      assertEquals("sample string content", t2ExtMap.get("termStringCp").toString());
+      assertEquals("10:08:45", t2ExtMap.get("termTimeCp").toString());
+      String timeIntervalValue = t2ExtMap.get("termTimeIntervalCp").toString();
+      assertTrue(
+          timeIntervalValue.contains("1726142300000") && timeIntervalValue.contains("17261420000"));
+      assertEquals("1726142400000", t2ExtMap.get("termTimestampCp").toString());
+    }
+
+    GlossaryTerm t11 =
+        getEntityByName(
+            "termImportExportTest.parentTerm.t1.t11",
+            "owners,reviewers,tags,synonyms,parent",
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(t11);
+    assertEquals("dsp3", t11.getDisplayName());
+    assertEquals("dsc11", t11.getDescription());
+    assertEquals(List.of("h1", "h3", "h3"), t11.getSynonyms());
+    assertEquals(reviewerRef.getFirst(), t11.getReviewers().getFirst().getName());
+    assertEquals(team11, t11.getOwners().getFirst().getName());
+    assertEquals(EntityStatus.DRAFT, t11.getEntityStatus());
+    assertEquals(t1.getId(), t11.getParent().getId());
+
+    deleteEntity(t11.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(t2.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(t1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(parentTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 10);
+  }
+
+  @Test
+  void testGlossaryTermCsvImportSameCSV() throws IOException {
+    Glossary glossary =
+        glossaryTest.createEntity(
+            glossaryTest.createRequest("csvImportSameData"), ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm relatedTerm = createTerm(glossary, null, "relatedTerm");
+
+    GlossaryTerm parentTerm = createTerm(glossary, null, "importParent");
+    String parentJson = JsonUtils.pojoToJson(parentTerm);
+    TermReference reference1 =
+        new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
+    TermReference reference2 =
+        new TermReference().withName("reference2").withEndpoint(URI.create("http://reference2"));
+    parentTerm
+        .withDisplayName("Import Parent")
+        .withDescription("Import parent description")
+        .withSynonyms(List.of("importSyn1", "importSyn2"))
+        .withTags(List.of(PII_SENSITIVE_TAG_LABEL))
+        .withReviewers(List.of(USER1_REF))
+        .withOwners(List.of(USER1_REF))
+        .withRelatedTerms(List.of(relatedTerm.getEntityReference()))
+        .withReferences(List.of(reference1, reference2))
+        .withStyle(new Style().withColor("#FF5733").withIconURL("https://example.com/icon.png"));
+    parentTerm = patchEntity(parentTerm.getId(), parentJson, parentTerm, ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm childTerm = createTerm(glossary, parentTerm, "importChild");
+    String childJson = JsonUtils.pojoToJson(childTerm);
+    childTerm
+        .withDisplayName("Import Child")
+        .withDescription("Import child description")
+        .withSynonyms(List.of("childImportSyn1"))
+        .withTags(List.of(PERSONAL_DATA_TAG_LABEL))
+        .withReviewers(List.of(USER2_REF))
+        .withOwners(List.of(TEAM11_REF))
+        .withRelatedTerms(List.of(relatedTerm.getEntityReference()));
+    childTerm = patchEntity(childTerm.getId(), childJson, childTerm, ADMIN_AUTH_HEADERS);
+
+    String exportedCsv = exportCsv(parentTerm.getFullyQualifiedName());
+
+    CsvImportResult result = importCsv(parentTerm.getFullyQualifiedName(), exportedCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
+
+    GlossaryTerm childAfterImport =
+        getEntityByName(
+            childTerm.getFullyQualifiedName(),
+            "owners,reviewers,tags,parent,relatedTerms",
+            ADMIN_AUTH_HEADERS);
+    assertEquals(childTerm.getName(), childAfterImport.getName());
+    assertEquals(childTerm.getDisplayName(), childAfterImport.getDisplayName());
+    assertEquals(childTerm.getDescription(), childAfterImport.getDescription());
+    assertEquals(childTerm.getSynonyms(), childAfterImport.getSynonyms());
+    TestUtils.validateTags(childTerm.getTags(), childAfterImport.getTags());
+    assertEquals(childTerm.getReviewers().size(), childAfterImport.getReviewers().size());
+    assertEquals(
+        childTerm.getReviewers().getFirst().getId(),
+        childAfterImport.getReviewers().getFirst().getId());
+    assertEquals(childTerm.getOwners().size(), childAfterImport.getOwners().size());
+    assertEquals(
+        childTerm.getOwners().getFirst().getId(), childAfterImport.getOwners().getFirst().getId());
+    assertEquals(childTerm.getParent().getId(), childAfterImport.getParent().getId());
+    assertEquals(childTerm.getRelatedTerms().size(), childAfterImport.getRelatedTerms().size());
+    assertEquals(
+        childTerm.getRelatedTerms().getFirst().getId(),
+        childAfterImport.getRelatedTerms().getFirst().getId());
+
+    deleteEntity(relatedTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(childTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(parentTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testGlossaryTermCsvImportWithModifications() throws IOException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 120);
+
+    Glossary glossary =
+        glossaryTest.createEntity(
+            glossaryTest.createRequest("csvImportModified"), ADMIN_AUTH_HEADERS);
+
+    TypeResourceTest typeResourceTest = new TypeResourceTest();
+    Type entityType =
+        typeResourceTest.getEntityByName(
+            Entity.GLOSSARY_TERM, "customProperties", ADMIN_AUTH_HEADERS);
+
+    CustomProperty stringCp =
+        new CustomProperty()
+            .withName("termModStringCp")
+            .withDescription("string type custom property")
+            .withPropertyType(STRING_TYPE.getEntityReference());
+    typeResourceTest.addAndCheckCustomProperty(
+        entityType.getId(), stringCp, OK, ADMIN_AUTH_HEADERS);
+
+    CustomProperty intCp =
+        new CustomProperty()
+            .withName("termModIntCp")
+            .withDescription("integer type custom property")
+            .withPropertyType(INT_TYPE.getEntityReference());
+    typeResourceTest.addAndCheckCustomProperty(entityType.getId(), intCp, OK, ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm parentTerm = createTerm(glossary, null, "modifyParent");
+    String parentJson = JsonUtils.pojoToJson(parentTerm);
+    parentTerm
+        .withDisplayName("Original Parent")
+        .withDescription("Original parent description")
+        .withSynonyms(List.of("origSyn1", "origSyn2"))
+        .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+    parentTerm = patchEntity(parentTerm.getId(), parentJson, parentTerm, ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm child1 = createTerm(glossary, parentTerm, "modifyChild1");
+    String child1Json = JsonUtils.pojoToJson(child1);
+    child1
+        .withDisplayName("Original Child 1")
+        .withDescription("Original child 1 description")
+        .withSynonyms(List.of("origChild1Syn1"))
+        .withTags(List.of(PERSONAL_DATA_TAG_LABEL));
+    child1 = patchEntity(child1.getId(), child1Json, child1, ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm child2 = createTerm(glossary, parentTerm, "modifyChild2");
+    String child2Json = JsonUtils.pojoToJson(child2);
+    child2
+        .withDisplayName("Original Child 2")
+        .withDescription("Original child 2 description")
+        .withSynonyms(List.of("origChild2Syn1"))
+        .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+    child2 = patchEntity(child2.getId(), child2Json, child2, ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm grandchild = createTerm(glossary, child1, "modifyGrandchild");
+    String grandchildJson = JsonUtils.pojoToJson(grandchild);
+    grandchild
+        .withDisplayName("Original Grandchild")
+        .withDescription("Original grandchild description")
+        .withSynonyms(List.of("origGrandchildSyn1"));
+    grandchild = patchEntity(grandchild.getId(), grandchildJson, grandchild, ADMIN_AUTH_HEADERS);
+
+    String exportedCsv = exportCsv(parentTerm.getFullyQualifiedName());
+
+    String modifiedCsv =
+        exportedCsv
+            .replace("Original Child 1", "Modified Child 1")
+            .replace("Original child 1 description", "Modified child 1 description")
+            .replace("origChild1Syn1", "modChild1Syn1;modChild1Syn2")
+            .replace("Original Child 2", "Modified Child 2")
+            .replace("Original child 2 description", "Modified child 2 description")
+            .replace("Original Grandchild", "Modified Grandchild")
+            .replace("Original grandchild description", "Modified grandchild description");
+
+    modifiedCsv =
+        modifiedCsv.replace(
+            "Draft,,https://,", "Approved,,https://,termModStringCp:test value;termModIntCp:42");
+
+    CsvImportResult result = importCsv(parentTerm.getFullyQualifiedName(), modifiedCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 4, 4, 0);
+
+    GlossaryTerm child1AfterUpdate =
+        getEntityByName(
+            child1.getFullyQualifiedName(),
+            "owners,reviewers,tags,extension,parent",
+            ADMIN_AUTH_HEADERS);
+    assertEquals("Modified Child 1", child1AfterUpdate.getDisplayName());
+    assertEquals("Modified child 1 description", child1AfterUpdate.getDescription());
+    assertTrue(child1AfterUpdate.getSynonyms().contains("modChild1Syn1"));
+    assertTrue(child1AfterUpdate.getSynonyms().contains("modChild1Syn2"));
+
+    Object extension = child1AfterUpdate.getExtension();
+    if (extension instanceof Map<?, ?> extMap) {
+      assertEquals("test value", extMap.get("termModStringCp").toString());
+      assertEquals("42", extMap.get("termModIntCp").toString());
+    }
+
+    GlossaryTerm child2AfterUpdate =
+        getEntityByName(
+            child2.getFullyQualifiedName(), "owners,reviewers,tags,parent", ADMIN_AUTH_HEADERS);
+    assertEquals("Modified Child 2", child2AfterUpdate.getDisplayName());
+    assertEquals("Modified child 2 description", child2AfterUpdate.getDescription());
+
+    GlossaryTerm grandchildAfterUpdate =
+        getEntityByName(
+            grandchild.getFullyQualifiedName(), "owners,reviewers,tags,parent", ADMIN_AUTH_HEADERS);
+    assertEquals("Modified Grandchild", grandchildAfterUpdate.getDisplayName());
+    assertEquals("Modified grandchild description", grandchildAfterUpdate.getDescription());
+
+    deleteEntity(grandchild.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(child2.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(child1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(parentTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 10);
+  }
+
+  @Test
+  void testGlossaryTermCsvImportClearFields() throws IOException {
+    Glossary glossary =
+        glossaryTest.createEntity(glossaryTest.createRequest("csvClearFields"), ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm term = createTerm(glossary, null, "clearFieldsTerm");
+    String termJson = JsonUtils.pojoToJson(term);
+    term.withDisplayName("Display Name")
+        .withDescription("Description text")
+        .withSynonyms(List.of("syn1", "syn2"))
+        .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+    term = patchEntity(term.getId(), termJson, term, ADMIN_AUTH_HEADERS);
+
+    String clearCsv =
+        createCsv(
+            GlossaryRepository.GlossaryCsv.HEADERS,
+            listOf(",clearFieldsTerm,Display Name,New description only,,,,,,,Approved,,,"),
+            null);
+
+    CsvImportResult result = importCsv(term.getFullyQualifiedName(), clearCsv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
+
+    GlossaryTerm termAfterClear =
+        getEntityByName(term.getFullyQualifiedName(), "owners,reviewers,tags", ADMIN_AUTH_HEADERS);
+    assertEquals("New description only", termAfterClear.getDescription());
+    assertTrue(listOrEmpty(termAfterClear.getSynonyms()).isEmpty());
+    assertTrue(listOrEmpty(termAfterClear.getRelatedTerms()).isEmpty());
+    assertTrue(listOrEmpty(termAfterClear.getTags()).isEmpty());
+
+    deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testGlossaryTermCsvExportHierarchy() throws IOException {
+    Glossary glossary =
+        glossaryTest.createEntity(
+            glossaryTest.createRequest("csvHierarchyTest"), ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm root = createTerm(glossary, null, "root");
+    String rootJson = JsonUtils.pojoToJson(root);
+    root.withDisplayName("Root Term").withDescription("Root description");
+    root = patchEntity(root.getId(), rootJson, root, ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm child1 = createTerm(glossary, root, "child1");
+    String child1Json = JsonUtils.pojoToJson(child1);
+    child1.withDisplayName("Child 1").withDescription("Child 1 description");
+    child1 = patchEntity(child1.getId(), child1Json, child1, ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm child2 = createTerm(glossary, root, "child2");
+    String child2Json = JsonUtils.pojoToJson(child2);
+    child2.withDisplayName("Child 2").withDescription("Child 2 description");
+    child2 = patchEntity(child2.getId(), child2Json, child2, ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm grandchild = createTerm(glossary, child1, "grandchild");
+    String grandchildJson = JsonUtils.pojoToJson(grandchild);
+    grandchild.withDisplayName("Grandchild").withDescription("Grandchild description");
+    grandchild = patchEntity(grandchild.getId(), grandchildJson, grandchild, ADMIN_AUTH_HEADERS);
+
+    String exportedCsv = exportCsv(root.getFullyQualifiedName());
+
+    assertTrue(exportedCsv.contains("csvHierarchyTest.root,child1"));
+    assertTrue(exportedCsv.contains("csvHierarchyTest.root,child2"));
+    assertTrue(exportedCsv.contains("csvHierarchyTest.root.child1,grandchild"));
+
+    String[] lines = exportedCsv.split("\n");
+    assertTrue(lines.length >= 4);
+
+    deleteEntity(grandchild.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(child2.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(child1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(root.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testGlossaryTermCsvImportHierarchyWithNewTerms() throws IOException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 120);
+
+    Glossary glossary =
+        glossaryTest.createEntity(
+            glossaryTest.createRequest("csvImportNewTerms"), ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm root = createTerm(glossary, null, "root");
+    String rootJson = JsonUtils.pojoToJson(root);
+    root.withDisplayName("Root Term").withDescription("Root description");
+    root = patchEntity(root.getId(), rootJson, root, ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm existingChild = createTerm(glossary, root, "existingChild");
+    String existingChildJson = JsonUtils.pojoToJson(existingChild);
+    existingChild.withDisplayName("Existing Child").withDescription("Existing child description");
+    existingChild =
+        patchEntity(existingChild.getId(), existingChildJson, existingChild, ADMIN_AUTH_HEADERS);
+
+    String csvWithNewTerms =
+        createCsv(
+            GlossaryRepository.GlossaryCsv.HEADERS,
+            listOf(
+                ",root,Root Term,Root description,,,,,,,Approved,,,",
+                "csvImportNewTerms.root,existingChild,Existing Child,Existing child description,,,,,,,Approved,,,",
+                "csvImportNewTerms.root,newChild1,New Child 1,New child 1 description,,,,,,,Draft,,,",
+                "csvImportNewTerms.root,newChild2,New Child 2,New child 2 description,,,,,,,Draft,,,",
+                "csvImportNewTerms.root.newChild1,newGrandchild,New Grandchild,New grandchild description,,,,,,,Draft,,,"),
+            null);
+
+    CsvImportResult result = importCsv(root.getFullyQualifiedName(), csvWithNewTerms, false);
+    assertSummary(result, ApiStatus.SUCCESS, 6, 6, 0);
+
+    GlossaryTerm newChild1 =
+        getEntityByName(
+            "csvImportNewTerms.root.newChild1", "parent,owners,reviewers,tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(newChild1);
+    assertEquals("New Child 1", newChild1.getDisplayName());
+    assertEquals("New child 1 description", newChild1.getDescription());
+    assertEquals(root.getId(), newChild1.getParent().getId());
+
+    GlossaryTerm newChild2 =
+        getEntityByName(
+            "csvImportNewTerms.root.newChild2", "parent,owners,reviewers,tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(newChild2);
+    assertEquals("New Child 2", newChild2.getDisplayName());
+
+    GlossaryTerm newGrandchild =
+        getEntityByName(
+            "csvImportNewTerms.root.newChild1.newGrandchild",
+            "parent,owners,reviewers,tags",
+            ADMIN_AUTH_HEADERS);
+    assertNotNull(newGrandchild);
+    assertEquals("New Grandchild", newGrandchild.getDisplayName());
+    assertEquals(newChild1.getId(), newGrandchild.getParent().getId());
+
+    deleteEntity(newGrandchild.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(newChild2.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(newChild1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(root.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+
+    eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 10);
+  }
+
+  @Test
+  void testGlossaryTermCsvImportDryRun() throws IOException {
+    Glossary glossary =
+        glossaryTest.createEntity(glossaryTest.createRequest("csvDryRunTest"), ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm root = createTerm(glossary, null, "root");
+    String rootJson = JsonUtils.pojoToJson(root);
+    root.withDisplayName("Root Term").withDescription("Root description");
+    root = patchEntity(root.getId(), rootJson, root, ADMIN_AUTH_HEADERS);
+
+    String csvWithChanges =
+        createCsv(
+            GlossaryRepository.GlossaryCsv.HEADERS,
+            listOf(
+                ",root,Modified Root,Modified root description,,,,,,,Approved,,,",
+                "csvDryRunTest.root,newTerm,New Term,New term description,,,,,,,Draft,,,"),
+            null);
+
+    CsvImportResult dryRunResult = importCsv(root.getFullyQualifiedName(), csvWithChanges, true);
+    assertSummary(dryRunResult, ApiStatus.SUCCESS, 3, 3, 0);
+    assertTrue(dryRunResult.getDryRun());
+
+    GlossaryTerm rootAfterDryRun =
+        getEntityByName(root.getFullyQualifiedName(), "owners,reviewers,tags", ADMIN_AUTH_HEADERS);
+    assertEquals("Root Term", rootAfterDryRun.getDisplayName());
+    assertEquals("Root description", rootAfterDryRun.getDescription());
+
+    assertThrows(
+        HttpResponseException.class,
+        () ->
+            getEntityByName(
+                "csvDryRunTest.root.newTerm", "parent,owners,reviewers,tags", ADMIN_AUTH_HEADERS));
+
+    CsvImportResult actualImport = importCsv(root.getFullyQualifiedName(), csvWithChanges, false);
+    assertSummary(actualImport, ApiStatus.SUCCESS, 3, 3, 0);
+    assertFalse(actualImport.getDryRun());
+
+    GlossaryTerm rootAfterImport =
+        getEntityByName(root.getFullyQualifiedName(), "owners,reviewers,tags", ADMIN_AUTH_HEADERS);
+    assertEquals("Modified Root", rootAfterImport.getDisplayName());
+    assertEquals("Modified root description", rootAfterImport.getDescription());
+
+    GlossaryTerm newTerm =
+        getEntityByName(
+            "csvDryRunTest.root.newTerm", "parent,owners,reviewers,tags", ADMIN_AUTH_HEADERS);
+    assertNotNull(newTerm);
+    assertEquals("New Term", newTerm.getDisplayName());
+
+    deleteEntity(newTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(root.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testGlossaryTermCsvDryRunWithValidationErrors() throws IOException {
+    Glossary glossary =
+        glossaryTest.createEntity(
+            glossaryTest.createRequest("csvDryRunErrorTest"), ADMIN_AUTH_HEADERS);
+
+    GlossaryTerm root = createTerm(glossary, null, "root");
+
+    String csvWithInvalidData =
+        createCsv(
+            GlossaryRepository.GlossaryCsv.HEADERS,
+            listOf(
+                ",root,Root Term,Root description,,,,,,,Approved,,,",
+                "csvDryRunErrorTest.nonExistentParent,invalidChild,Invalid Child,Invalid description,,,,,,,Draft,,,"),
+            null);
+
+    CsvImportResult dryRunResult =
+        importCsv(root.getFullyQualifiedName(), csvWithInvalidData, true);
+    assertTrue(dryRunResult.getDryRun());
+    assertTrue(dryRunResult.getNumberOfRowsFailed() > 0);
+
+    deleteEntity(root.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test
