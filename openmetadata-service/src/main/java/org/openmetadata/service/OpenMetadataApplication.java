@@ -854,30 +854,23 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   /**
-   * Populate ServiceRegistry with services from Dagger component.
+   * Get ServiceRegistry from Dagger component.
    *
-   * <p>This method uses reflection-based discovery to automatically find all @Service annotated
-   * classes, retrieve their instances from the Dagger ApplicationComponent, and register them in
-   * the ServiceRegistry.
+   * <p>The ServiceRegistry is provided by Dagger's ServiceModule and is already fully initialized
+   * with all entity services. This method simply retrieves the singleton instance from the
+   * component.
    *
-   * <p>Services are discovered and registered automatically - no manual registration needed. When
-   * new services are created with @Service annotation and added to ApplicationComponent, they will
-   * be automatically discovered and registered.
+   * <p>Services are automatically registered during Dagger graph construction. When new services
+   * are created with @Service annotation and added to ServiceModule, they will be automatically
+   * included in the ServiceRegistry.
    *
    * @param component Dagger ApplicationComponent
-   * @return ServiceRegistry populated with service instances
+   * @return ServiceRegistry singleton with all services registered
    */
   protected org.openmetadata.service.services.ServiceRegistry populateServiceRegistry(
       org.openmetadata.service.di.ApplicationComponent component) {
-    LOG.info("Populating ServiceRegistry from Dagger component via automatic discovery");
-
-    org.openmetadata.service.services.ServiceRegistry serviceRegistry =
-        new org.openmetadata.service.services.ServiceRegistry();
-
-    // Automatically discover and register all @Service annotated services
-    serviceRegistry.initializeFromComponent(component);
-
-    return serviceRegistry;
+    LOG.info("Retrieving ServiceRegistry from Dagger component");
+    return component.serviceRegistry();
   }
 
   public static void main(String[] args) throws Exception {

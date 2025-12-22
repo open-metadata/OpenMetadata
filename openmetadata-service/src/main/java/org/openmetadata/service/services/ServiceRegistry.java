@@ -13,18 +13,10 @@
 
 package org.openmetadata.service.services;
 
-import io.github.classgraph.ClassGraph;
-import io.github.classgraph.ClassInfo;
-import io.github.classgraph.ClassInfoList;
-import io.github.classgraph.ScanResult;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.service.di.ApplicationComponent;
 import org.openmetadata.service.exception.EntityNotFoundException;
 
 /**
@@ -147,134 +139,30 @@ public class ServiceRegistry {
   }
 
   /**
-   * Initialize the service registry by discovering all @Service annotated classes and retrieving
-   * instances from the Dagger ApplicationComponent.
+   * Initialize the service registry by discovering all @Service annotated classes.
    *
-   * <p>This method uses ClassGraph to scan for all classes annotated with @Service, extracts the
-   * entityType from the annotation, and uses reflection to get the corresponding service instance
-   * from the ApplicationComponent.
+   * <p>This method is called by ServiceModule during Dagger graph construction. Services are
+   * registered by their entity type as defined in the @Service annotation.
    *
-   * <p>Services are registered in order based on the order() attribute in the @Service annotation.
-   *
-   * @param component The Dagger ApplicationComponent containing service instances
+   * @param services Array of service instances to register
    */
-  public void initializeFromComponent(ApplicationComponent component) {
-    LOG.info(
-        "Initializing ServiceRegistry from ApplicationComponent via @Service annotation discovery");
+  public void initializeServices(EntityService<?>... services) {
+    LOG.info("Initializing ServiceRegistry with {} services", services.length);
 
-    List<ServiceDetails> serviceDetails = discoverServices();
-
-    // Sort by order
-    serviceDetails.sort(Comparator.comparingInt(ServiceDetails::order));
-
-    // Register each service
-    for (ServiceDetails details : serviceDetails) {
-      try {
-        // Get service instance from ApplicationComponent using reflection
-        EntityService<?> service = getServiceFromComponent(component, details.serviceClass());
-
-        // Register by entity type
-        register(details.entityType(), service);
-
-        LOG.info(
-            "Registered service: {} for entity type: {} (order: {})",
-            details.serviceClass().getSimpleName(),
-            details.entityType(),
-            details.order());
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to register service: {} for entity type: {}",
-            details.serviceClass().getSimpleName(),
-            details.entityType(),
-            e);
-        throw new RuntimeException(
-            "Failed to initialize service: " + details.serviceClass().getSimpleName(), e);
+    for (EntityService<?> service : services) {
+      Service annotation = service.getClass().getAnnotation(Service.class);
+      if (annotation != null) {
+        register(annotation.entityType(), service);
+        LOG.debug(
+            "Registered service: {} for entity type: {}",
+            service.getClass().getSimpleName(),
+            annotation.entityType());
+      } else {
+        LOG.warn(
+            "Service {} does not have @Service annotation", service.getClass().getSimpleName());
       }
     }
 
     LOG.info("ServiceRegistry initialized with {} services", size());
   }
-
-  /**
-   * Discover all @Service annotated classes using ClassGraph.
-   *
-   * @return List of ServiceDetails containing service class and metadata
-   */
-  private static List<ServiceDetails> discoverServices() {
-    LOG.debug("Scanning for @Service annotated classes");
-
-    List<ServiceDetails> services = new ArrayList<>();
-
-    try (ScanResult scanResult =
-        new ClassGraph()
-            .enableAnnotationInfo()
-            .acceptPackages("org.openmetadata", "io.collate")
-            .scan()) {
-
-      ClassInfoList classList = scanResult.getClassesWithAnnotation(Service.class);
-
-      for (ClassInfo classInfo : classList) {
-        try {
-          Class<?> serviceClass = classInfo.loadClass();
-          Service annotation = serviceClass.getAnnotation(Service.class);
-
-          if (annotation != null) {
-            ServiceDetails details =
-                new ServiceDetails(serviceClass, annotation.entityType(), annotation.order());
-            services.add(details);
-            LOG.debug(
-                "Discovered service: {} for entity type: {}",
-                serviceClass.getSimpleName(),
-                annotation.entityType());
-          }
-        } catch (Exception e) {
-          LOG.warn("Failed to load service class: {}", classInfo.getName(), e);
-        }
-      }
-    }
-
-    LOG.info("Discovered {} services", services.size());
-    return services;
-  }
-
-  /**
-   * Get service instance from ApplicationComponent using Dagger's service map.
-   *
-   * <p>This method uses the service map provided by Dagger's @IntoMap multibindings to look up
-   * service instances by class. This is type-safe and doesn't rely on naming conventions.
-   *
-   * <p>For example: AIApplicationService.class -> component.services().get(AIApplicationService.class)
-   *
-   * @param component The ApplicationComponent
-   * @param serviceClass The service class
-   * @return The service instance
-   * @throws Exception if the service cannot be retrieved
-   */
-  private EntityService<?> getServiceFromComponent(
-      ApplicationComponent component, Class<?> serviceClass) throws Exception {
-
-    LOG.debug("Looking up service: {} from Dagger service map", serviceClass.getSimpleName());
-
-    // Get service from Dagger's multibinding map
-    Object serviceInstance = component.services().get(serviceClass);
-
-    if (serviceInstance == null) {
-      throw new IllegalStateException(
-          "Service not found in Dagger map: "
-              + serviceClass.getSimpleName()
-              + ". Ensure the service has @IntoMap and @ServiceClassKey annotations in ServiceModule.");
-    }
-
-    if (!(serviceInstance instanceof EntityService)) {
-      throw new IllegalStateException(
-          "Service " + serviceClass.getSimpleName() + " is not an EntityService instance");
-    }
-
-    return (EntityService<?>) serviceInstance;
-  }
-
-  /**
-   * Internal record for holding service discovery details.
-   */
-  private record ServiceDetails(Class<?> serviceClass, String entityType, int order) {}
 }

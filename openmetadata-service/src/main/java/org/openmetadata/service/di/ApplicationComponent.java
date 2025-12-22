@@ -14,7 +14,6 @@
 package org.openmetadata.service.di;
 
 import dagger.Component;
-import java.util.Map;
 import java.util.Set;
 import javax.inject.Singleton;
 import org.openmetadata.service.di.providers.ApplicationInitializer;
@@ -134,15 +133,14 @@ public interface ApplicationComponent {
   Set<JerseyRegistrar> jerseyRegistrars();
 
   /**
-   * Provides a map of service classes to their instances.
+   * Provides ServiceRegistry instance with all services registered.
    *
-   * <p>This map is populated automatically by Dagger using @IntoMap bindings in ServiceModule.
-   * Each service class is mapped to its singleton instance, enabling type-safe service lookup
-   * without reflection.
+   * <p>The ServiceRegistry is initialized during Dagger graph construction with all entity
+   * services. Services can be looked up by entity type string or service class.
    *
-   * @return Map of service classes to service instances
+   * @return ServiceRegistry singleton
    */
-  Map<Class<?>, Object> services();
+  org.openmetadata.service.services.ServiceRegistry serviceRegistry();
 
   /**
    * Provides TableService instance.
