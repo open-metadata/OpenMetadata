@@ -124,24 +124,15 @@ def test_connection(
         redshift_instance_type = get_redshift_instance_type(engine_)
 
         with engine_.connect() as conn:
-            if redshift_instance_type == RedshiftInstanceType.PROVISIONED:
-                res = conn.execute(
-                    REDSHIFT_TEST_GET_QUERIES_MAP[RedshiftInstanceType.PROVISIONED]
-                ).fetchone()
-                if not all(res):
-                    raise SourceConnectionException(
-                        "We don't have the right permissions to list queries from stl views (Redshift Provisioned)"
-                        f" - {res}"
-                    )
-            else:
-                res = conn.execute(
-                    REDSHIFT_TEST_GET_QUERIES_MAP[RedshiftInstanceType.SERVERLESS]
-                ).fetchone()
-                if not all(res):
-                    raise SourceConnectionException(
-                        "We don't have the right permissions to list queries from sys views (Redshift Serverless)"
-                        f" - {res}"
-                    )
+            res = conn.execute(
+                REDSHIFT_TEST_GET_QUERIES_MAP[redshift_instance_type]
+            ).fetchone()
+            if not all(res):
+                raise SourceConnectionException(
+                    f"We don't have the right permissions to list queries from sys views (Redshift Serverless) - {res}"
+                    if redshift_instance_type == RedshiftInstanceType.SERVERLESS
+                    else f"We don't have the right permissions to list queries from stl views (Redshift Provisioned) - {res}"  # noqa: E501
+                )
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
