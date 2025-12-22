@@ -40,6 +40,10 @@ import {
   checkDefaultStateForNavigationTree,
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
+import {
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
@@ -231,13 +235,19 @@ test.describe('Persona customize UI tab', async () => {
         );
 
         // Select navigation persona
-        await redirectToHomePage(userPage);
         await userPage.getByTestId('dropdown-profile').click();
+        const personaDocsStore = userPage.waitForResponse(
+          `/api/v1/docStore/name/persona.${getEncodedFqn(
+            navigationPersona.responseData.fullyQualifiedName ?? ''
+          )}*`
+        );
         await userPage
           .getByRole('menuitem', {
             name: navigationPersona.responseData.displayName,
           })
           .click();
+        await personaDocsStore;
+        await waitForAllLoadersToDisappear(userPage);
         await clickOutside(userPage);
 
         // Validate changes in navigation tree
@@ -799,15 +809,9 @@ test.describe('Persona customization', () => {
 
       // Need to find persona card and click as the list might get paginated
       await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
-      
-      const personaDetailsResponse = adminPage.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/personas/name/') &&
-          response.status() === 200
-      );
+
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-      await personaDetailsResponse;
-      
+
       await adminPage.getByText('Governance').click();
       await adminPage.getByText('Domain', { exact: true }).click();
 
@@ -867,7 +871,7 @@ test.describe('Persona customization', () => {
         );
         await entity?.visitEntityPage(userPage);
         await domainResponse;
-        
+
         await userPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });

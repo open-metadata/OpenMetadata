@@ -5,6 +5,14 @@
   "description": "Configuration for RDF/Knowledge Graph support in OpenMetadata",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.configuration.rdf.RdfConfiguration",
+  "definitions": {
+    "reasoningLevel": {
+      "description": "Level of reasoning/inference to apply to SPARQL queries",
+      "type": "string",
+      "enum": ["NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"],
+      "default": "NONE"
+    }
+  },
   "properties": {
     "enabled": {
       "description": "Enable or disable RDF support",
@@ -40,6 +48,21 @@
       "type": "string",
       "format": "uri",
       "default": "https://open-metadata.org/"
+    },
+    "inferenceEnabled": {
+      "description": "Enable inference/reasoning on SPARQL queries. When enabled, SPARQL queries will use the inference engine to derive additional triples based on the reasoning level.",
+      "type": "boolean",
+      "default": true
+    },
+    "defaultInferenceLevel": {
+      "description": "Default reasoning level for SPARQL queries when inference is enabled. CUSTOM provides OpenMetadata-specific inference rules including transitive lineage traversal and inverse relationships.",
+      "$ref": "#/definitions/reasoningLevel",
+      "default": "CUSTOM"
+    },
+    "cacheInferredTriples": {
+      "description": "Cache inferred triples for better query performance (requires more storage)",
+      "type": "boolean",
+      "default": false
     }
   },
   "required": ["enabled", "storageType"],

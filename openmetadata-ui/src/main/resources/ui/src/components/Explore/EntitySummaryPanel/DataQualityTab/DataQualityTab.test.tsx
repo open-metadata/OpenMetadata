@@ -118,7 +118,7 @@ jest.mock('antd', () => {
       Text: jest
         .fn()
         .mockImplementation(
-          ({ children, className, ellipsis, strong, ...props }) => (
+          ({ children, className, ellipsis, strong: _strong, ...props }) => (
             <span
               className={className}
               data-ellipsis={ellipsis}
