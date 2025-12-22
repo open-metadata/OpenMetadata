@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -15,31 +16,36 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.DatabaseSchemas;
 
 @ExtendWith(TestNamespaceExtension.class)
 public class DatabaseHierarchyIT {
 
+  @BeforeAll
+  static void setup() {
+    // Initialize fluent APIs (triggers client creation which sets up all fluent APIs)
+    SdkClients.adminClient();
+  }
+
   @Test
   void createDatabaseSchemaTable(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    // Service
-    DatabaseService svc = DatabaseServiceTestFactory.create(client, ns, "Postgres", "{}");
+    // Service - uses fluent API, no client parameter needed
+    DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
     assertNotNull(svc.getId());
 
-    // Database
-    Database db = DatabaseTestFactory.create(client, ns, svc.getFullyQualifiedName());
+    // Database - uses fluent API
+    Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
     assertNotNull(db.getId());
 
-    // Schema
-    DatabaseSchema schema =
-        DatabaseSchemaTestFactory.create(client, ns, db.getFullyQualifiedName());
+    // Schema - uses fluent API
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
     assertNotNull(schema.getId());
-    DatabaseSchemaTestFactory.updateDescription(client, schema.getId().toString(), "updated");
 
-    // Table
-    Table table = TableTestFactory.createSimple(client, ns, schema.getFullyQualifiedName());
+    // Update schema description using fluent API
+    DatabaseSchemas.find(schema.getId().toString()).fetch().withDescription("updated").save();
+
+    // Table - uses fluent API
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
     assertNotNull(table.getId());
   }
 }

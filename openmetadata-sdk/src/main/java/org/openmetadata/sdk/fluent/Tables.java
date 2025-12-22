@@ -131,6 +131,26 @@ public final class Tables {
       return this;
     }
 
+    public TableCreator inSchema(String schemaFQN) {
+      request.setDatabaseSchema(schemaFQN);
+      return this;
+    }
+
+    public TableCreator withColumns(List<Column> columns) {
+      request.setColumns(columns);
+      return this;
+    }
+
+    public TableCreator withColumns(Column... columns) {
+      request.setColumns(Arrays.asList(columns));
+      return this;
+    }
+
+    public TableCreator withTags(List<TagLabel> tags) {
+      request.setTags(tags);
+      return this;
+    }
+
     public Table execute() {
       return client.tables().create(request);
     }

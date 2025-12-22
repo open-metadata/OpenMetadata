@@ -1,42 +1,39 @@
 package org.openmetadata.it.factories;
 
 import org.openmetadata.it.util.TestNamespace;
-import org.openmetadata.schema.api.data.CreateDatabase;
-import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.DatabaseSchemas;
+import org.openmetadata.sdk.fluent.Databases;
 
+/**
+ * Factory for creating DatabaseSchema entities in integration tests using fluent API.
+ *
+ * <p>Uses the static fluent API from {@link DatabaseSchemas}. Ensure
+ * fluent APIs are initialized before using these methods.
+ */
 public class DatabaseSchemaTestFactory {
-  public static DatabaseSchema create(
-      OpenMetadataClient client, TestNamespace ns, String databaseFqn) {
-    String name = ns.prefix("schema");
-    CreateDatabaseSchema req = new CreateDatabaseSchema();
-    req.setName(name);
-    req.setDatabase(databaseFqn);
-    return client.databaseSchemas().create(req);
+
+  /**
+   * Create a schema with database FQN using fluent API.
+   */
+  public static DatabaseSchema create(TestNamespace ns, String databaseFqn) {
+    return DatabaseSchemas.create().name(ns.prefix("schema")).in(databaseFqn).execute();
   }
 
-  public static DatabaseSchema createSimple(
-      OpenMetadataClient client, TestNamespace ns, DatabaseService service) {
-    // Create database first
-    CreateDatabase dbReq = new CreateDatabase();
-    dbReq.setName(ns.prefix("db"));
-    dbReq.setService(service.getFullyQualifiedName());
-    Database database = client.databases().create(dbReq);
+  /**
+   * Create a schema with its parent database using fluent API.
+   */
+  public static DatabaseSchema createSimple(TestNamespace ns, DatabaseService service) {
+    // Create database first using fluent API
+    Database database =
+        Databases.create().name(ns.prefix("db")).in(service.getFullyQualifiedName()).execute();
 
-    // Then create schema
-    String schemaName = ns.prefix("schema");
-    CreateDatabaseSchema req = new CreateDatabaseSchema();
-    req.setName(schemaName);
-    req.setDatabase(database.getFullyQualifiedName());
-    return client.databaseSchemas().create(req);
-  }
-
-  public static void updateDescription(OpenMetadataClient client, String id, String description) {
-    DatabaseSchema schema = client.databaseSchemas().get(id);
-    schema.setDescription(description);
-    client.databaseSchemas().update(id, schema);
+    // Then create schema using fluent API
+    return DatabaseSchemas.create()
+        .name(ns.prefix("schema"))
+        .in(database.getFullyQualifiedName())
+        .execute();
   }
 }

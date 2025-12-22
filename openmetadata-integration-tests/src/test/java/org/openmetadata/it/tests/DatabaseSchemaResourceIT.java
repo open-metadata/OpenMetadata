@@ -35,7 +35,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
 
   @Override
   protected CreateDatabaseSchema createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     Database database = createDatabase(client, ns, service);
 
     CreateDatabaseSchema request = new CreateDatabaseSchema();
@@ -49,7 +49,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   @Override
   protected CreateDatabaseSchema createRequest(
       String name, TestNamespace ns, OpenMetadataClient client) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     Database database = createDatabase(client, ns, service);
 
     CreateDatabaseSchema request = new CreateDatabaseSchema();
@@ -179,7 +179,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   @Test
   void post_schemaWithSourceUrl_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     Database database = createDatabase(client, ns, service);
 
     CreateDatabaseSchema request = new CreateDatabaseSchema();
@@ -195,7 +195,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   @Test
   void put_schemaDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     Database database = createDatabase(client, ns, service);
 
     CreateDatabaseSchema request = new CreateDatabaseSchema();
@@ -217,7 +217,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create database service and database
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     Database database = createDatabase(client, ns, service);
 
     // Create schema under the database

@@ -46,7 +46,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
   @Override
   protected CreateDatabase createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
     // Database requires a database service as parent
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     CreateDatabase request = new CreateDatabase();
     request.setName(ns.prefix("db"));
@@ -60,7 +60,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     // Note: This creates a new service each time, which means duplicate detection
     // only applies within the same service. For cross-service duplicates,
     // the test would need to be customized.
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     CreateDatabase request = new CreateDatabase();
     request.setName(name);
@@ -150,7 +150,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create service once
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     // Create first database
     CreateDatabase createRequest =
@@ -182,7 +182,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create Snowflake service
-    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(ns);
     assertNotNull(service.getId());
     assertNotNull(service.getFullyQualifiedName());
 
@@ -235,8 +235,8 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Test with multiple service types
-    DatabaseService postgresService = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseService snowflakeService = DatabaseServiceTestFactory.createSnowflake(client, ns);
+    DatabaseService postgresService = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseService snowflakeService = DatabaseServiceTestFactory.createSnowflake(ns);
 
     // Create databases for each service
     CreateDatabase postgresDbRequest = new CreateDatabase();
@@ -406,8 +406,8 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create databases with different services
-    DatabaseService postgresService = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseService snowflakeService = DatabaseServiceTestFactory.createSnowflake(client, ns);
+    DatabaseService postgresService = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseService snowflakeService = DatabaseServiceTestFactory.createSnowflake(ns);
 
     Database db1 =
         createEntity(
@@ -520,7 +520,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create database service first
-    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(ns);
 
     // Get user reference for owner
     org.openmetadata.schema.entity.teams.User user =
@@ -582,7 +582,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create database
-    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(ns);
     CreateDatabase createRequest = new CreateDatabase();
     createRequest.setName(ns.prefix("rdf_soft_delete_db"));
     createRequest.setService(service.getFullyQualifiedName());
@@ -627,7 +627,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create database
-    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createSnowflake(ns);
     CreateDatabase createRequest = new CreateDatabase();
     createRequest.setName(ns.prefix("rdf_hard_delete_db"));
     createRequest.setService(service.getFullyQualifiedName());

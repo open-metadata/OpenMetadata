@@ -102,8 +102,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Tables are scoped by schema, so duplicates only conflict within same schema
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     // Create first table
     CreateTable createRequest = new CreateTable();
@@ -134,8 +134,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   @Override
   protected CreateTable createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     CreateTable request = new CreateTable();
     request.setName(ns.prefix("table"));
@@ -153,8 +153,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   @Override
   protected CreateTable createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     CreateTable request = new CreateTable();
     request.setName(name);
@@ -235,8 +235,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Test
   void post_tableWithoutColumnDataLength_400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     String[] dataTypes = {"CHAR", "VARCHAR", "BINARY", "VARBINARY"};
 
@@ -261,8 +261,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Test
   void post_tableInvalidPrecisionScale_400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     // Test 1: Scale set without precision
     CreateTable createRequest1 = new CreateTable();
@@ -303,8 +303,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Test
   void post_tableInvalidArrayColumn_400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     CreateTable createRequest = new CreateTable();
     createRequest.setName(ns.prefix("table_invalid_array"));
@@ -326,8 +326,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Test
   void post_duplicateColumnName_400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     CreateTable createRequest = new CreateTable();
     createRequest.setName(ns.prefix("table_duplicate_cols"));
@@ -358,8 +358,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void post_validTables_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     CreateTable create = new CreateTable();
     create.setName(ns.prefix("table_with_desc"));
@@ -392,8 +392,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void post_tableWithColumnWithDots(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     Column column = new Column();
     column.setName("col.umn");
@@ -420,8 +420,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void post_tableWithPartition(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     Column col1 = new Column();
     col1.setName("user_id");
@@ -473,8 +473,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Test
   void post_put_patch_complexColumnTypes(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     // Create complex column: array<int>
     Column c1 = new Column();
@@ -553,8 +553,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_columnConstraintUpdate_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     Column col1 = new Column();
     col1.setName("c1");
@@ -658,8 +658,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_updateColumns_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     Column c1 = new Column();
     c1.setName("c1");
@@ -693,8 +693,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void patch_tableColumns_200_ok(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     Column col1 = new Column();
     col1.setName("c1");
@@ -733,8 +733,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Test
   void put_columnUpdateWithDescriptionPersists_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     Column c1 = new Column();
     c1.setName("c1");
@@ -771,8 +771,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     OpenMetadataClient client = SdkClients.adminClient();
 
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     CreateTable createRequest = new CreateTable();
     createRequest.setName(ns.prefix("rdf_table"));
@@ -797,8 +797,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     OpenMetadataClient client = SdkClients.adminClient();
 
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     CreateTable createRequest = createMinimalRequest(ns, client);
     createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
@@ -825,8 +825,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     OpenMetadataClient client = SdkClients.adminClient();
 
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     CreateTable createRequest = createMinimalRequest(ns, client);
     createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
@@ -847,8 +847,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Test
   void put_tableWithColumnWithOrdinalPositionAndWithoutOrdinalPosition(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     Column column1 = new Column();
     column1.setName("column1");
@@ -1604,7 +1604,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a database service first
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     // Create database with retention period
     CreateDatabase createDatabase =
@@ -1654,8 +1654,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     org.openmetadata.sdk.entities.Table.setDefaultClient(client);
 
     // Create database service and schema
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     // Create a table with columns using fluent API
     String tableName = ns.prefix("sdk_columns_table");
@@ -1733,10 +1733,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a user as owner
-    User owner = UserTestFactory.createUser(client, ns, "db_owner");
+    User owner = UserTestFactory.createUser(ns, "db_owner");
 
     // Create database service
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     // Create database with owner
     CreateDatabase createDb =
@@ -1783,7 +1783,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create a unique owner user for this test
-    User owner = UserTestFactory.createUser(adminClient, ns, "table_owner");
+    User owner = UserTestFactory.createUser(ns, "table_owner");
 
     // Create table owned by the test user
     CreateTable createRequest = createRequest(ns.prefix("owner_update_table"), ns, adminClient);
@@ -1817,8 +1817,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create two unique users for this test
-    User user1 = UserTestFactory.createUser(adminClient, ns, "owner_user");
-    User user2 = UserTestFactory.createUser(adminClient, ns, "other_user");
+    User user1 = UserTestFactory.createUser(ns, "owner_user");
+    User user2 = UserTestFactory.createUser(ns, "other_user");
 
     // Create table owned by user1
     CreateTable createRequest = createRequest(ns.prefix("other_user_table"), ns, adminClient);
@@ -1873,7 +1873,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create a regular user
-    User regularUser = UserTestFactory.createUser(adminClient, ns, "regular_user");
+    User regularUser = UserTestFactory.createUser(ns, "regular_user");
 
     CreateTable createRequest = createRequest(ns.prefix("desc_table"), ns, adminClient);
     Table table = adminClient.tables().create(createRequest);
@@ -1897,8 +1897,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create two unique users
-    User owner = UserTestFactory.createUser(adminClient, ns, "display_owner");
-    User nonOwner = UserTestFactory.createUser(adminClient, ns, "display_nonowner");
+    User owner = UserTestFactory.createUser(ns, "display_owner");
+    User nonOwner = UserTestFactory.createUser(ns, "display_nonowner");
 
     CreateTable createRequest = createRequest(ns.prefix("display_name_table"), ns, adminClient);
     createRequest.setOwners(
@@ -2021,8 +2021,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Domain domain = client.domains().create(createDomain);
 
     // Create table with domain
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     CreateTable createRequest =
         createRequest(ns.prefix("domain_table"), ns, client)
@@ -2233,7 +2233,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     String shortId = UUID.randomUUID().toString().substring(0, 8);
 
     // Create database with short name
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     CreateDatabase dbReq = new CreateDatabase();
     dbReq.setName("db_" + shortId);
     dbReq.setService(service.getFullyQualifiedName());
@@ -2306,7 +2306,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user as owner
-    User owner = UserTestFactory.createUser(client, ns, "bulk_owner");
+    User owner = UserTestFactory.createUser(ns, "bulk_owner");
 
     // Create 3 tables with owner
     for (int i = 0; i < 3; i++) {
@@ -2568,7 +2568,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create data steward user
-    User dataSteward = UserTestFactory.createUser(adminClient, ns, "data_steward");
+    User dataSteward = UserTestFactory.createUser(ns, "data_steward");
 
     // Create classification and tag
     CreateClassification createClassification =
@@ -2615,7 +2615,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create data consumer user
-    User dataConsumer = UserTestFactory.createUser(adminClient, ns, "data_consumer");
+    User dataConsumer = UserTestFactory.createUser(ns, "data_consumer");
 
     // Create table
     CreateTable req = createRequest(ns.prefix("consumer_table"), ns, adminClient);
@@ -2649,8 +2649,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create owner and non-owner users
-    User owner = UserTestFactory.createUser(adminClient, ns, "owner");
-    User nonOwner = UserTestFactory.createUser(adminClient, ns, "non_owner");
+    User owner = UserTestFactory.createUser(ns, "owner");
+    User nonOwner = UserTestFactory.createUser(ns, "non_owner");
 
     // Create table with owner
     CreateTable req = createRequest(ns.prefix("constraint_table"), ns, adminClient);
@@ -2764,14 +2764,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create user as owner of database
-    User owner = UserTestFactory.createUser(adminClient, ns, "db_owner");
+    User owner = UserTestFactory.createUser(ns, "db_owner");
 
     // Create database with owner
     CreateDatabase createDb =
         new CreateDatabase()
             .withName(ns.prefix("inherit_perm_db"))
-            .withService(
-                DatabaseServiceTestFactory.createPostgres(adminClient, ns).getFullyQualifiedName())
+            .withService(DatabaseServiceTestFactory.createPostgres(ns).getFullyQualifiedName())
             .withOwners(
                 List.of(
                     new EntityReference()
@@ -2930,7 +2929,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user as owner
-    User owner = UserTestFactory.createUser(client, ns, "field_owner");
+    User owner = UserTestFactory.createUser(ns, "field_owner");
 
     // Create classification and tag
     CreateClassification createClassification =
@@ -2981,7 +2980,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     String shortId = UUID.randomUUID().toString().substring(0, 8);
 
     // Create database with short name
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     CreateDatabase dbReq = new CreateDatabase();
     dbReq.setName("db_" + shortId);
     dbReq.setService(service.getFullyQualifiedName());
@@ -3639,10 +3638,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create owner user
-    User owner = UserTestFactory.createUser(adminClient, ns, "pii_owner");
+    User owner = UserTestFactory.createUser(ns, "pii_owner");
 
     // Create another user (non-owner)
-    User nonOwner = UserTestFactory.createUser(adminClient, ns, "pii_non_owner");
+    User nonOwner = UserTestFactory.createUser(ns, "pii_non_owner");
 
     // Create PII.Sensitive tag
     CreateClassification piiClassification =
@@ -3718,8 +3717,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create owner user
-    User owner = UserTestFactory.createUser(adminClient, ns, "pii_profile_owner");
-    User nonOwner = UserTestFactory.createUser(adminClient, ns, "pii_profile_non_owner");
+    User owner = UserTestFactory.createUser(ns, "pii_profile_owner");
+    User nonOwner = UserTestFactory.createUser(ns, "pii_profile_non_owner");
 
     // Create PII.Sensitive tag
     CreateClassification piiClassification =
@@ -3797,8 +3796,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create owner and non-owner
-    User owner = UserTestFactory.createUser(adminClient, ns, "pii_col_owner");
-    User nonOwner = UserTestFactory.createUser(adminClient, ns, "pii_col_non_owner");
+    User owner = UserTestFactory.createUser(ns, "pii_col_owner");
+    User nonOwner = UserTestFactory.createUser(ns, "pii_col_non_owner");
 
     // Create PII.Sensitive tag
     CreateClassification piiClassification =

@@ -2,60 +2,31 @@ package org.openmetadata.it.factories;
 
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.entity.data.Database;
-import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.fluent.builders.DatabaseBuilder;
+import org.openmetadata.sdk.fluent.Databases;
 
 /**
  * Factory for creating Database entities in integration tests using fluent API.
  *
- * <p>Migrated from: org.openmetadata.service.resources.databases.DatabaseResourceTest Provides
- * namespace-isolated entity creation with consistent patterns.
+ * <p>Uses the static fluent API from {@link Databases}. Ensure
+ * {@code Databases.setDefaultClient(client)} is called before using these methods.
  */
 public class DatabaseTestFactory {
 
   /**
-   * Create a database with default settings using fluent builder.
+   * Create a database with default settings using fluent API.
    */
-  public static Database create(OpenMetadataClient client, TestNamespace ns, String serviceFqn) {
-    return DatabaseBuilder.create(client)
+  public static Database create(TestNamespace ns, String serviceFqn) {
+    return Databases.create()
         .name(ns.prefix("db"))
-        .serviceFQN(serviceFqn)
-        .description("Test database created by integration test")
-        .create();
+        .in(serviceFqn)
+        .withDescription("Test database created by integration test")
+        .execute();
   }
 
   /**
-   * Create database with custom name using fluent builder.
+   * Create database with custom name using fluent API.
    */
-  public static Database createWithName(
-      OpenMetadataClient client, TestNamespace ns, String serviceFqn, String baseName) {
-    return DatabaseBuilder.create(client).name(ns.prefix(baseName)).serviceFQN(serviceFqn).create();
-  }
-
-  /**
-   * Attempt to create database without service (for negative testing). This should throw an
-   * exception because service is required.
-   */
-  public static Database createWithoutService(OpenMetadataClient client, TestNamespace ns) {
-    // Build without service - will throw IllegalStateException from builder
-    return DatabaseBuilder.create(client).name(ns.prefix("db")).create();
-  }
-
-  /** Get database by ID. */
-  public static Database getById(OpenMetadataClient client, String id) {
-    return client.databases().get(id);
-  }
-
-  /** Update database description. */
-  public static Database updateDescription(
-      OpenMetadataClient client, String id, String description) {
-    Database db = client.databases().get(id);
-    db.setDescription(description);
-    return client.databases().update(id, db);
-  }
-
-  /** Delete database. */
-  public static void delete(OpenMetadataClient client, String id) {
-    client.databases().delete(id);
+  public static Database createWithName(TestNamespace ns, String serviceFqn, String baseName) {
+    return Databases.create().name(ns.prefix(baseName)).in(serviceFqn).execute();
   }
 }

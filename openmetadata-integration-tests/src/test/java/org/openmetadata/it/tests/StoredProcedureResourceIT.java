@@ -40,8 +40,8 @@ public class StoredProcedureResourceIT
   @Override
   protected CreateStoredProcedure createMinimalRequest(
       TestNamespace ns, OpenMetadataClient client) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     StoredProcedureCode code =
         new StoredProcedureCode()
@@ -61,8 +61,8 @@ public class StoredProcedureResourceIT
   @Override
   protected CreateStoredProcedure createRequest(
       String name, TestNamespace ns, OpenMetadataClient client) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     StoredProcedureCode code =
         new StoredProcedureCode()
@@ -193,8 +193,8 @@ public class StoredProcedureResourceIT
   @Test
   void post_storedProcWithCode_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     StoredProcedureCode code =
         new StoredProcedureCode()
@@ -216,8 +216,8 @@ public class StoredProcedureResourceIT
   @Test
   void post_storedProcWithSourceUrl_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     StoredProcedureCode code =
         new StoredProcedureCode()
@@ -239,8 +239,8 @@ public class StoredProcedureResourceIT
   @Test
   void put_storedProcCode_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     StoredProcedureCode initialCode =
         new StoredProcedureCode()
@@ -273,8 +273,8 @@ public class StoredProcedureResourceIT
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create database service and schema
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(client, ns, service);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     StoredProcedureCode code =
         new StoredProcedureCode()

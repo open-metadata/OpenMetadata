@@ -60,12 +60,9 @@ public class IngestionPipelineResourceIT
   }
 
   @BeforeAll
-  void checkK8sEnabled() {
-    if (!TestSuiteBootstrap.isK8sEnabled()) {
-      LOG.warn(
-          "K8s not enabled - IngestionPipeline delete tests will fail. "
-              + "Set ENABLE_K8S_TESTS=true to enable K8s support.");
-    }
+  void setupK8s() {
+    // IngestionPipelineResourceIT requires K8s for delete/deploy operations
+    TestSuiteBootstrap.setupK8s();
   }
 
   // ===================================================================
@@ -75,7 +72,7 @@ public class IngestionPipelineResourceIT
   @Override
   protected CreateIngestionPipeline createMinimalRequest(
       TestNamespace ns, OpenMetadataClient client) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     DatabaseServiceMetadataPipeline metadataPipeline =
         new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true).withIncludeViews(true);
@@ -94,7 +91,7 @@ public class IngestionPipelineResourceIT
   @Override
   protected CreateIngestionPipeline createRequest(
       String name, TestNamespace ns, OpenMetadataClient client) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     DatabaseServiceMetadataPipeline metadataPipeline =
         new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true).withIncludeViews(true);
@@ -210,7 +207,7 @@ public class IngestionPipelineResourceIT
   @Test
   void post_ingestionPipelineWithMetadataType_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     DatabaseServiceMetadataPipeline metadataPipeline =
         new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true).withIncludeViews(true);
@@ -232,7 +229,7 @@ public class IngestionPipelineResourceIT
   @Test
   void post_ingestionPipelineWithFilterPatterns_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     DatabaseServiceMetadataPipeline metadataPipeline =
         new DatabaseServiceMetadataPipeline()
@@ -260,7 +257,7 @@ public class IngestionPipelineResourceIT
   @Test
   void put_ingestionPipelineDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     DatabaseServiceMetadataPipeline metadataPipeline =
         new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
@@ -286,7 +283,7 @@ public class IngestionPipelineResourceIT
   @Test
   void test_ingestionPipelineNameUniquenessWithinService(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     String pipelineName = ns.prefix("unique_ing");
     DatabaseServiceMetadataPipeline metadataPipeline =
