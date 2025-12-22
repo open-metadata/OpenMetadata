@@ -152,10 +152,6 @@ const TagsV1 = ({
       });
     }
 
-    if (tag.labelType === LabelType.Generated) {
-      return <AutomatedTag width={16} />;
-    }
-
     return startIcon;
   }, [hideIcon, tag.style?.iconURL, startIcon]);
 
@@ -189,7 +185,7 @@ const TagsV1 = ({
         data-testid="tag-redirect-link"
         to={redirectLink}>
         <TagChip
-          icon={renderTagIcon}
+          icon={<AutomatedTag width={16} />}
           label={tagName || ''}
           labelDataTestId={`tag-${tag.tagFQN}`}
           sx={{
