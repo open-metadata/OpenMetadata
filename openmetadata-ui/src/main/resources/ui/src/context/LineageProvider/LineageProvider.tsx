@@ -80,6 +80,7 @@ import {
 } from '../../constants/Export.constants';
 import {
   ELEMENT_DELETE_STATE,
+  NODE_WIDTH,
   ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
@@ -152,6 +153,7 @@ import {
   LineagePlatformView,
   LineageProviderProps,
 } from './LineageProvider.interface';
+import NodeSuggestionsAddStream from '../../components/Entity/EntityLineage/NodeSuggestionsAddStream.component';
 
 export const LineageContext = createContext({} as LineageContextType);
 
@@ -167,7 +169,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(true);
   const [selectedNode, setSelectedNode] = useState<SourceType>(
     {} as SourceType
   );
@@ -1012,6 +1014,40 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
+  const onNodeAdd = (xPos: number, yPos: number) => {
+    const position = {
+      x: xPos + NODE_WIDTH,
+      y: yPos,
+    };
+    const nodeId = uniqueId();
+    const newNode = {
+      id: nodeId,
+      nodeType: EntityLineageNodeType.DEFAULT,
+      position,
+      className: '',
+      connectable: false,
+      selectable: false,
+      type: EntityLineageNodeType.DEFAULT,
+      data: {
+        label: (
+          <>
+            <LineageNodeRemoveButton
+              onRemove={() => removeNodeHandler(newNode as Node)}
+            />
+
+            <NodeSuggestionsAddStream
+              onSelectHandler={(value) => onEntitySelect(value, nodeId)}
+            />
+          </>
+        ),
+        isEditMode,
+        isNewNode: true,
+      },
+    };
+    setNodes([...nodes, newNode as Node]);
+    setNewAddedNode(newNode as Node);
+  };
+
   const selectLoadMoreNode = async (node: Node) => {
     const { pagination_data, direction } = node.data.node;
     const { parentId, index: from } = pagination_data;
@@ -1193,6 +1229,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const onConnect = useCallback(
     (params: Edge | Connection) => {
+      console.log('params', params);
       const { target, source, sourceHandle, targetHandle } = params;
 
       if (target === source) {
@@ -1816,6 +1853,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onConnectStart,
       onConnectEnd,
       onNodeDrop,
+      onNodeAdd,
       onNodeCollapse,
       onColumnClick,
       onColumnMouseEnter,
@@ -1880,6 +1918,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     onConnectStart,
     onConnectEnd,
     onNodeDrop,
+    onNodeAdd,
     onNodeCollapse,
     onColumnClick,
     onColumnMouseEnter,
