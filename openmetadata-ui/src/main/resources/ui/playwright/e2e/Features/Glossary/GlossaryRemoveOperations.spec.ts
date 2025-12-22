@@ -303,7 +303,6 @@ test.describe('Glossary Remove Operations', () => {
       await glossaryTerm.create(apiContext);
 
       await redirectToHomePage(page);
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.responseData.displayName);
       await selectActiveGlossaryTerm(

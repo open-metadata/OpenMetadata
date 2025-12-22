@@ -190,7 +190,7 @@ test.describe('Glossary tests', () => {
 
   // S-S03: Search is case-insensitive
   test('should perform case-insensitive search', async ({ page }) => {
-    glossary.visitEntityPage(page);
+    await glossary.visitEntityPage(page);
 
     // Wait for terms to load
     await page.waitForSelector('[data-testid="glossary-terms-table"]');
@@ -239,7 +239,7 @@ test.describe('Glossary tests', () => {
   test('should show empty state when search returns no results', async ({
     page,
   }) => {
-    glossary.visitEntityPage(page);
+    await glossary.visitEntityPage(page);
 
     // Wait for terms to load
     await page.waitForSelector('[data-testid="glossary-terms-table"]');
@@ -270,7 +270,7 @@ test.describe('Glossary tests', () => {
 
   // S-F03: Filter by InReview status
   test('should filter by InReview status', async ({ page }) => {
-    glossary.visitEntityPage(page);
+    await glossary.visitEntityPage(page);
 
     // Wait for terms to load
     await page.waitForSelector('[data-testid="glossary-terms-table"]');
@@ -306,7 +306,7 @@ test.describe('Glossary tests', () => {
 
   // S-F04: Filter by multiple statuses
   test('should filter by multiple statuses', async ({ page }) => {
-    glossary.visitEntityPage(page);
+    await glossary.visitEntityPage(page);
 
     // Wait for terms to load
     await page.waitForSelector('[data-testid="glossary-terms-table"]');

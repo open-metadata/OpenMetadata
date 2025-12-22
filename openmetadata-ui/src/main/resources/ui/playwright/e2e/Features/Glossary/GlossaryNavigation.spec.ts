@@ -55,9 +55,9 @@ test.describe('Glossary Navigation', () => {
 
       // Click on Activity Feeds & Tasks tab
       const activityTab = page.getByTestId('activity_feed');
-      await activityTab.click();
 
       const activityLoadResponse = page.waitForResponse('/api/v1/feed*');
+      await activityTab.click();
       await activityLoadResponse;
 
       // Wait for loader to disappear
