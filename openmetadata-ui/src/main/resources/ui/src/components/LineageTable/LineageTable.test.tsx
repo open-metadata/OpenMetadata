@@ -44,13 +44,17 @@ jest.mock('../../hooks/useFqn');
 jest.mock('../../utils/useRequiredParams');
 jest.mock('./useLineageTableState');
 jest.mock('../../rest/lineageAPI');
+jest.mock('../../utils/StringsUtils', () => ({
+  ...jest.requireActual('../../utils/StringsUtils'),
+  stringToHTML: jest.fn((str: string) => str),
+}));
 jest.mock('../../utils/Lineage/LineageUtils');
 jest.mock('./LineageTable.styled', () => {
   const { Menu: MuiMenu } = jest.requireActual('@mui/material');
 
   return {
     StyledMenu: (props: React.ComponentProps<typeof MuiMenu>) => (
-      <MuiMenu {...props} container={document.body} />
+      <MuiMenu {...props} />
     ),
     StyledToggleButtonGroup: ToggleButtonGroup,
     StyledIconButton: IconButton,
@@ -280,7 +284,7 @@ describe('LineageTable', () => {
   });
 
   it('should open impact level menu when clicked', async () => {
-    const { container } = render(<LineageTable entity={mockEntity} />, {
+    render(<LineageTable entity={mockEntity} />, {
       wrapper: MemoryRouter,
     });
 
@@ -293,7 +297,7 @@ describe('LineageTable', () => {
     fireEvent.click(impactButton);
 
     await waitFor(() => {
-      const menu = container.querySelector('[role="presentation"]');
+      const menu = screen.getByRole('menu');
 
       expect(menu).toBeInTheDocument();
     });
