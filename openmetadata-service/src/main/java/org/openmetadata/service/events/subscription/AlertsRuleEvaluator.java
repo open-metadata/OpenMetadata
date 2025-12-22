@@ -251,7 +251,7 @@ public class AlertsRuleEvaluator {
             JsonUtils.readOrConvertValues(fieldChange.getNewValue(), ResultSummary.class);
 
         for (ResultSummary resultSummary : resultSummaries) {
-          if (testResults.contains(resultSummary.getStatus().value())) {
+          if (!nullOrEmpty(resultSummary.getStatus()) && testResults.contains(resultSummary.getStatus().value())) {
             return true;
           }
         }
