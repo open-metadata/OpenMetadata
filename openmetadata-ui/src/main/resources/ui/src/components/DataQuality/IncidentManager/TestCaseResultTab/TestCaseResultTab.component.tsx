@@ -76,23 +76,22 @@ const TestCaseResultTab = () => {
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
   const [testDefinition, setTestDefinition] = useState<TestDefinition>();
 
-  useEffect(() => {
-    const fetchTestDefinition = async () => {
-      if (testCaseData?.testDefinition?.id) {
-        try {
-          const definition = await getTestDefinitionById(
-            testCaseData.testDefinition.id
-          );
-          setTestDefinition(definition);
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error('Failed to fetch test definition:', error);
-        }
+  const fetchTestDefinition = useCallback(async () => {
+    if (testCaseData?.testDefinition?.id) {
+      try {
+        const definition = await getTestDefinitionById(
+          testCaseData.testDefinition.id
+        );
+        setTestDefinition(definition);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-    };
-
-    fetchTestDefinition();
+    }
   }, [testCaseData?.testDefinition?.id]);
+
+  useEffect(() => {
+    fetchTestDefinition();
+  }, [fetchTestDefinition]);
 
   const showComputeRowCount = useMemo(() => {
     return (
