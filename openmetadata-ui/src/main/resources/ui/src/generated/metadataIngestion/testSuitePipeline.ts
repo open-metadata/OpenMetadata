@@ -986,7 +986,7 @@ export interface ConfigObject {
      *
      * Choose between Connected App (OAuth 2.0) or Basic Authentication.
      */
-    authentication?: Ation;
+    authentication?: Authenticationation;
     /**
      * Org ID for multi-tenant ThoughtSpot instances. This is applicable for ThoughtSpot Cloud
      * only.
@@ -2412,23 +2412,15 @@ export enum NoConfigAuthenticationTypes {
  *
  * Choose between Connected App (OAuth 2.0) or Basic Authentication.
  *
- * Authentication method for MuleSoft Anypoint Platform.
- *
- * OAuth 2.0 client credentials authentication using Connected App.
- *
- * Username and password authentication for Anypoint Platform.
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
  */
-export interface Ation {
+export interface Authenticationation {
     /**
      * Password to access the service.
-     *
-     * Anypoint Platform password.
      */
     password?: string;
     /**
      * Username to access the service.
-     *
-     * Anypoint Platform username.
      */
     username?: string;
     /**
@@ -2436,29 +2428,13 @@ export interface Ation {
      */
     accessToken?: string;
     /**
-     * Authentication type (ConnectedApp).
-     *
-     * Authentication type (Basic).
-     */
-    authType?: AuthenticationType;
-    /**
-     * Connected App Client ID from Anypoint Platform.
+     * Client ID for the application registered in Airbyte.
      */
     clientId?: string;
     /**
-     * Connected App Client Secret from Anypoint Platform.
+     * Client Secret for the application registered in Airbyte.
      */
     clientSecret?: string;
-}
-
-/**
- * Authentication type (ConnectedApp).
- *
- * Authentication type (Basic).
- */
-export enum AuthenticationType {
-    Basic = "Basic",
-    ConnectedApp = "ConnectedApp",
 }
 
 export interface AuthenticationModeObject {

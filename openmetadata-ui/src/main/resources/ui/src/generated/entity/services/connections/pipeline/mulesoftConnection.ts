@@ -17,7 +17,7 @@ export interface MulesoftConnection {
     /**
      * Choose between Connected App (OAuth 2.0) or Basic Authentication.
      */
-    authentication: MulesoftAuthentication;
+    authentication: Authentication;
     /**
      * Anypoint Platform Environment ID. If not provided, the connector will discover all
      * accessible environments.
@@ -47,45 +47,27 @@ export interface MulesoftConnection {
 /**
  * Choose between Connected App (OAuth 2.0) or Basic Authentication.
  *
- * Authentication method for MuleSoft Anypoint Platform.
+ * Basic Auth Credentials
  *
- * OAuth 2.0 client credentials authentication using Connected App.
- *
- * Username and password authentication for Anypoint Platform.
+ * OAuth 2.0 client credentials authentication for Airbyte Cloud
  */
-export interface MulesoftAuthentication {
+export interface Authentication {
     /**
-     * Authentication type (ConnectedApp).
-     *
-     * Authentication type (Basic).
-     */
-    authType?: AuthenticationType;
-    /**
-     * Connected App Client ID from Anypoint Platform.
-     */
-    clientId?: string;
-    /**
-     * Connected App Client Secret from Anypoint Platform.
-     */
-    clientSecret?: string;
-    /**
-     * Anypoint Platform password.
+     * Password to access the service.
      */
     password?: string;
     /**
-     * Anypoint Platform username.
+     * Username to access the service.
      */
     username?: string;
-}
-
-/**
- * Authentication type (ConnectedApp).
- *
- * Authentication type (Basic).
- */
-export enum AuthenticationType {
-    Basic = "Basic",
-    ConnectedApp = "ConnectedApp",
+    /**
+     * Client ID for the application registered in Airbyte.
+     */
+    clientId?: string;
+    /**
+     * Client Secret for the application registered in Airbyte.
+     */
+    clientSecret?: string;
 }
 
 /**

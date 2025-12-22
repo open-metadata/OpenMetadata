@@ -11,72 +11,6 @@
       "type": "string",
       "enum": ["Mulesoft"],
       "default": "Mulesoft"
-    },
-    "mulesoftAuthentication": {
-      "title": "Mulesoft Authentication",
-      "description": "Authentication method for MuleSoft Anypoint Platform.",
-      "oneOf": [
-        {
-          "$ref": "#/definitions/connectedAppAuth"
-        },
-        {
-          "$ref": "#/definitions/basicAuth"
-        }
-      ]
-    },
-    "connectedAppAuth": {
-      "title": "Connected App Authentication",
-      "description": "OAuth 2.0 client credentials authentication using Connected App.",
-      "type": "object",
-      "properties": {
-        "authType": {
-          "title": "Authentication Type",
-          "description": "Authentication type (ConnectedApp).",
-          "type": "string",
-          "enum": ["ConnectedApp"],
-          "default": "ConnectedApp"
-        },
-        "clientId": {
-          "title": "Client ID",
-          "description": "Connected App Client ID from Anypoint Platform.",
-          "type": "string"
-        },
-        "clientSecret": {
-          "title": "Client Secret",
-          "description": "Connected App Client Secret from Anypoint Platform.",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "additionalProperties": false,
-      "required": ["clientId", "clientSecret"]
-    },
-    "basicAuth": {
-      "title": "Basic Authentication",
-      "description": "Username and password authentication for Anypoint Platform.",
-      "type": "object",
-      "properties": {
-        "authType": {
-          "title": "Authentication Type",
-          "description": "Authentication type (Basic).",
-          "type": "string",
-          "enum": ["Basic"],
-          "default": "Basic"
-        },
-        "username": {
-          "title": "Username",
-          "description": "Anypoint Platform username.",
-          "type": "string"
-        },
-        "password": {
-          "title": "Password",
-          "description": "Anypoint Platform password.",
-          "type": "string",
-          "format": "password"
-        }
-      },
-      "additionalProperties": false,
-      "required": ["username", "password"]
     }
   },
   "properties": {
@@ -97,7 +31,16 @@
     "authentication": {
       "title": "Authentication",
       "description": "Choose between Connected App (OAuth 2.0) or Basic Authentication.",
-      "$ref": "#/definitions/mulesoftAuthentication"
+      "oneOf": [
+        {
+          "title": "Basic Authentication",
+          "$ref": "../../../../security/credentials/basicAuth.json"
+        },
+        {
+          "title": "OAuth 2.0 Client Credentials (Connected App)",
+          "$ref": "./airbyte/oauthClientAuth.json"
+        }
+      ]
     },
     "organizationId": {
       "title": "Organization ID",

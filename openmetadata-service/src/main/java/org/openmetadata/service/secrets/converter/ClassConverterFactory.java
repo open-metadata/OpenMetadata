@@ -59,6 +59,7 @@ import org.openmetadata.schema.services.connections.pipeline.WherescapeConnectio
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.security.RangerConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
+import org.openmetadata.schema.services.connections.pipeline.MulesoftConnection;
 
 /** Factory class to get a `ClassConverter` based on the service class. */
 public final class ClassConverterFactory {
@@ -99,6 +100,7 @@ public final class ClassConverterFactory {
             Map.entry(SSOAuthMechanism.class, new SSOAuthMechanismClassConverter()),
             Map.entry(TableauConnection.class, new TableauConnectionClassConverter()),
             Map.entry(ThoughtSpotConnection.class, new ThoughtSpotConnectionClassConverter()),
+            Map.entry(MulesoftConnection.class, new MulesoftConnectionClassConverter()),
             Map.entry(SalesforceConnection.class, new SalesforceConnectorClassConverter()),
             Map.entry(
                 TestServiceConnectionRequest.class,
