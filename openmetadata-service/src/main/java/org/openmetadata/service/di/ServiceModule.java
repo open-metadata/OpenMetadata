@@ -15,6 +15,7 @@ package org.openmetadata.service.di;
 
 import dagger.Module;
 import dagger.Provides;
+import dagger.multibindings.IntoMap;
 import javax.inject.Singleton;
 import org.openmetadata.service.jdbi3.AIApplicationRepository;
 import org.openmetadata.service.jdbi3.AIGovernancePolicyRepository;
@@ -188,6 +189,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(TableService.class)
   public TableService provideTableService(
       TableRepository tableRepository,
       SearchRepository searchRepository,
@@ -207,6 +210,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(DatabaseService.class)
   public DatabaseService provideDatabaseService(
       DatabaseRepository databaseRepository,
       SearchRepository searchRepository,
@@ -226,6 +231,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(DatabaseSchemaService.class)
   public DatabaseSchemaService provideDatabaseSchemaService(
       DatabaseSchemaRepository databaseSchemaRepository,
       SearchRepository searchRepository,
@@ -246,6 +253,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(QueryService.class)
   public QueryService provideQueryService(
       QueryRepository queryRepository,
       SearchRepository searchRepository,
@@ -265,6 +274,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(StoredProcedureService.class)
   public StoredProcedureService provideStoredProcedureService(
       StoredProcedureRepository storedProcedureRepository,
       SearchRepository searchRepository,
@@ -285,6 +296,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(DashboardService.class)
   public DashboardService provideDashboardService(
       DashboardRepository dashboardRepository,
       SearchRepository searchRepository,
@@ -304,6 +317,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(ChartService.class)
   public ChartService provideChartService(
       ChartRepository chartRepository,
       SearchRepository searchRepository,
@@ -323,6 +338,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(DashboardDataModelService.class)
   public DashboardDataModelService provideDashboardDataModelService(
       DashboardDataModelRepository dashboardDataModelRepository,
       SearchRepository searchRepository,
@@ -343,6 +360,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(PipelineService.class)
   public PipelineService providePipelineService(
       PipelineRepository pipelineRepository,
       SearchRepository searchRepository,
@@ -362,6 +381,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(IngestionPipelineService.class)
   public IngestionPipelineService provideIngestionPipelineService(
       IngestionPipelineRepository ingestionPipelineRepository,
       SearchRepository searchRepository,
@@ -382,6 +403,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(MlModelService.class)
   public MlModelService provideMlModelService(
       MlModelRepository mlModelRepository,
       SearchRepository searchRepository,
@@ -401,6 +424,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(LLMModelService.class)
   public LLMModelService provideLLMModelService(
       LLMModelRepository llmModelRepository,
       SearchRepository searchRepository,
@@ -420,6 +445,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(TopicService.class)
   public TopicService provideTopicService(
       TopicRepository topicRepository,
       SearchRepository searchRepository,
@@ -439,6 +466,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(SearchIndexService.class)
   public SearchIndexService provideSearchIndexService(
       SearchIndexRepository searchIndexRepository,
       SearchRepository searchRepository,
@@ -459,6 +488,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(ContainerService.class)
   public ContainerService provideContainerService(
       ContainerRepository containerRepository,
       SearchRepository searchRepository,
@@ -478,6 +509,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(DirectoryService.class)
   public DirectoryService provideDirectoryService(
       DirectoryRepository directoryRepository,
       SearchRepository searchRepository,
@@ -497,6 +530,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(FileService.class)
   public FileService provideFileService(
       FileRepository fileRepository,
       SearchRepository searchRepository,
@@ -516,6 +551,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(SpreadsheetService.class)
   public SpreadsheetService provideSpreadsheetService(
       SpreadsheetRepository spreadsheetRepository,
       SearchRepository searchRepository,
@@ -536,6 +573,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(APICollectionService.class)
   public APICollectionService provideAPICollectionService(
       APICollectionRepository apiCollectionRepository,
       SearchRepository searchRepository,
@@ -556,6 +595,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(APIEndpointService.class)
   public APIEndpointService provideAPIEndpointService(
       APIEndpointRepository apiEndpointRepository,
       SearchRepository searchRepository,
@@ -576,6 +617,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(GlossaryService.class)
   public GlossaryService provideGlossaryService(
       GlossaryRepository glossaryRepository,
       SearchRepository searchRepository,
@@ -595,6 +638,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(GlossaryTermService.class)
   public GlossaryTermService provideGlossaryTermService(
       GlossaryTermRepository glossaryTermRepository,
       SearchRepository searchRepository,
@@ -615,6 +660,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(TagService.class)
   public TagService provideTagService(
       TagRepository tagRepository,
       SearchRepository searchRepository,
@@ -634,6 +681,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(ClassificationService.class)
   public ClassificationService provideClassificationService(
       ClassificationRepository classificationRepository,
       SearchRepository searchRepository,
@@ -654,6 +703,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(PolicyService.class)
   public PolicyService providePolicyService(
       PolicyRepository policyRepository,
       SearchRepository searchRepository,
@@ -673,6 +724,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(RoleService.class)
   public RoleService provideRoleService(
       RoleRepository roleRepository,
       SearchRepository searchRepository,
@@ -692,6 +745,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(TestDefinitionService.class)
   public TestDefinitionService provideTestDefinitionService(
       TestDefinitionRepository testDefinitionRepository,
       SearchRepository searchRepository,
@@ -712,6 +767,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(TestSuiteService.class)
   public TestSuiteService provideTestSuiteService(
       TestSuiteRepository testSuiteRepository,
       SearchRepository searchRepository,
@@ -731,6 +788,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(TestCaseService.class)
   public TestCaseService provideTestCaseService(
       TestCaseRepository testCaseRepository,
       SearchRepository searchRepository,
@@ -751,6 +810,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(TestConnectionDefinitionService.class)
   public TestConnectionDefinitionService provideTestConnectionDefinitionService(
       TestConnectionDefinitionRepository testConnectionDefinitionRepository,
       SearchRepository searchRepository,
@@ -770,6 +831,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(AIApplicationService.class)
   public AIApplicationService provideAIApplicationService(
       AIApplicationRepository aiApplicationRepository,
       SearchRepository searchRepository,
@@ -790,6 +853,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(AIGovernancePolicyService.class)
   public AIGovernancePolicyService provideAIGovernancePolicyService(
       AIGovernancePolicyRepository aiGovernancePolicyRepository,
       SearchRepository searchRepository,
@@ -810,6 +875,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(PromptTemplateService.class)
   public PromptTemplateService providePromptTemplateService(
       PromptTemplateRepository promptTemplateRepository,
       SearchRepository searchRepository,
@@ -830,6 +897,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(TeamService.class)
   public TeamService provideTeamService(
       TeamRepository teamRepository,
       SearchRepository searchRepository,
@@ -849,6 +918,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(PersonaService.class)
   public PersonaService providePersonaService(
       PersonaRepository personaRepository,
       SearchRepository searchRepository,
@@ -868,6 +939,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(UserService.class)
   public UserService provideUserService(
       UserRepository userRepository,
       SearchRepository searchRepository,
@@ -887,6 +960,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(DomainService.class)
   public DomainService provideDomainService(
       DomainRepository domainRepository,
       SearchRepository searchRepository,
@@ -906,6 +981,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(DataProductService.class)
   public DataProductService provideDataProductService(
       DataProductRepository dataProductRepository,
       SearchRepository searchRepository,
@@ -926,6 +1003,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(AppService.class)
   public AppService provideAppService(
       AppRepository appRepository,
       SearchRepository searchRepository,
@@ -945,6 +1024,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(AppMarketPlaceService.class)
   public AppMarketPlaceService provideAppMarketPlaceService(
       AppMarketPlaceRepository appMarketPlaceRepository,
       SearchRepository searchRepository,
@@ -965,6 +1046,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(BotService.class)
   public BotService provideBotService(
       BotRepository botRepository,
       SearchRepository searchRepository,
@@ -984,6 +1067,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(DataContractService.class)
   public DataContractService provideDataContractService(
       DataContractRepository dataContractRepository,
       SearchRepository searchRepository,
@@ -1004,6 +1089,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(MetricService.class)
   public MetricService provideMetricService(
       MetricRepository metricRepository,
       SearchRepository searchRepository,
@@ -1023,6 +1110,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(DataInsightChartService.class)
   public DataInsightChartService provideDataInsightChartService(
       DataInsightChartRepository dataInsightChartRepository,
       SearchRepository searchRepository,
@@ -1043,6 +1132,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(KpiService.class)
   public KpiService provideKpiService(
       KpiRepository kpiRepository,
       SearchRepository searchRepository,
@@ -1062,6 +1153,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(EventSubscriptionService.class)
   public EventSubscriptionService provideEventSubscriptionService(
       EventSubscriptionRepository eventSubscriptionRepository,
       SearchRepository searchRepository,
@@ -1082,6 +1175,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(NotificationTemplateService.class)
   public NotificationTemplateService provideNotificationTemplateService(
       NotificationTemplateRepository notificationTemplateRepository,
       SearchRepository searchRepository,
@@ -1102,6 +1197,8 @@ public class ServiceModule {
    */
   @Provides
   @Singleton
+  @IntoMap
+  @ServiceClassKey(WorkflowService.class)
   public WorkflowService provideWorkflowService(
       WorkflowRepository workflowRepository,
       SearchRepository searchRepository,

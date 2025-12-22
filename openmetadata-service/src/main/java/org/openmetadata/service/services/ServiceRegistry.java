@@ -17,7 +17,6 @@ import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ClassInfo;
 import io.github.classgraph.ClassInfoList;
 import io.github.classgraph.ScanResult;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -239,12 +238,12 @@ public class ServiceRegistry {
   }
 
   /**
-   * Get service instance from ApplicationComponent using reflection.
+   * Get service instance from ApplicationComponent using Dagger's service map.
    *
-   * <p>This method converts the service class name to a method name on ApplicationComponent and
-   * invokes it to get the service instance.
+   * <p>This method uses the service map provided by Dagger's @IntoMap multibindings to look up
+   * service instances by class. This is type-safe and doesn't rely on naming conventions.
    *
-   * <p>For example: TableService -> tableService() -> component.tableService()
+   * <p>For example: AIApplicationService.class -> component.services().get(AIApplicationService.class)
    *
    * @param component The ApplicationComponent
    * @param serviceClass The service class
@@ -254,21 +253,21 @@ public class ServiceRegistry {
   private EntityService<?> getServiceFromComponent(
       ApplicationComponent component, Class<?> serviceClass) throws Exception {
 
-    // Convert class name to method name (e.g., TableService -> tableService)
-    String className = serviceClass.getSimpleName();
-    String methodName = Character.toLowerCase(className.charAt(0)) + className.substring(1);
+    LOG.debug("Looking up service: {} from Dagger service map", serviceClass.getSimpleName());
 
-    LOG.debug("Looking for method: {} on ApplicationComponent", methodName);
+    // Get service from Dagger's multibinding map
+    Object serviceInstance = component.services().get(serviceClass);
 
-    // Get method from ApplicationComponent
-    Method method = component.getClass().getMethod(methodName);
-
-    // Invoke method to get service instance
-    Object serviceInstance = method.invoke(component);
+    if (serviceInstance == null) {
+      throw new IllegalStateException(
+          "Service not found in Dagger map: "
+              + serviceClass.getSimpleName()
+              + ". Ensure the service has @IntoMap and @ServiceClassKey annotations in ServiceModule.");
+    }
 
     if (!(serviceInstance instanceof EntityService)) {
       throw new IllegalStateException(
-          "Method " + methodName + " did not return an EntityService instance");
+          "Service " + serviceClass.getSimpleName() + " is not an EntityService instance");
     }
 
     return (EntityService<?>) serviceInstance;
