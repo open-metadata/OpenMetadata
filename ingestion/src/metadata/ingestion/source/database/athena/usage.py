@@ -45,7 +45,11 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
                     startTime=query.Status.SubmissionDateTime.isoformat(
                         DATETIME_SEPARATOR, DATETIME_TIME_SPEC
                     ),
-                    endTime=query.Status.SubmissionDateTime.isoformat(
+                    endTime=query.Status.CompletionDateTime.isoformat(
+                        DATETIME_SEPARATOR, DATETIME_TIME_SPEC
+                    )
+                    if query.Status.CompletionDateTime
+                    else query.Status.SubmissionDateTime.isoformat(
                         DATETIME_SEPARATOR, DATETIME_TIME_SPEC
                     ),
                     analysisDate=query.Status.SubmissionDateTime,
@@ -53,7 +57,7 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
                     duration=query.Statistics.TotalExecutionTimeInMillis
                     if query.Statistics
                     else None,
-                    aborted=query.Status.State == QUERY_ABORTED_STATE,
+                    aborted=query.Status.State.upper() == QUERY_ABORTED_STATE,
                 )
                 for query in query_list.QueryExecutions
                 if query.Status
