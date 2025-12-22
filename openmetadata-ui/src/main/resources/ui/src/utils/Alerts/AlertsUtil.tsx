@@ -1230,8 +1230,11 @@ export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]
 ) => {
   const formattedDestinations = destinations?.map((destination) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { destinationType, config, ...otherData } = destination;
+    const {
+      destinationType: _destinationType,
+      config,
+      ...otherData
+    } = destination;
 
     const headers = getConfigHeaderObjectFromArray(config?.headers);
     const queryParams = getConfigQueryParamsObjectFromArray(
