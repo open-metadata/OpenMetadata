@@ -13,7 +13,7 @@
   <packaging>jar</packaging>
 
   <properties>
-    <maven.surefire.version>3.2.5</maven.surefire.version>
+    <maven.surefire.version>3.1.2</maven.surefire.version>
     <junit.jupiter.version>5.10.2</junit.jupiter.version>
     <junit.platform.version>1.10.2</junit.platform.version>
   </properties>
@@ -124,10 +124,11 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${maven.surefire.version}</version>
         <configuration>
-          <!-- Run multiple test classes in parallel using multiple JVM forks -->
-          <forkCount>4</forkCount>
+          <!-- Single JVM fork - parallelism is handled by JUnit 5 internally -->
+          <!-- This ensures LauncherSessionListener starts containers ONCE -->
+          <forkCount>1</forkCount>
           <reuseForks>true</reuseForks>
-          <argLine>-Xmx2048m -XX:+UseG1GC</argLine>
+          <argLine>-Xmx4096m -XX:+UseG1GC</argLine>
           <includes>
             <include>**/*IT.java</include>
             <include>**/*Test.java</include>

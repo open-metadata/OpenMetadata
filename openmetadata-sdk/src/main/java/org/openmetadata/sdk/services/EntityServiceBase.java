@@ -30,9 +30,9 @@ public abstract class EntityServiceBase<T> {
     this.httpClient = httpClient;
     this.basePath = basePath;
     this.objectMapper = new ObjectMapper();
-    // Configure to include null values to ensure proper patch generation
+    // Configure to exclude null values to avoid sending computed fields like childrenCount
     this.objectMapper.setSerializationInclusion(
-        com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS);
+        com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
   }
 
   public T create(T entity) throws OpenMetadataException {
@@ -201,6 +201,11 @@ public abstract class EntityServiceBase<T> {
 
       JsonNode originalNode = objectMapper.readTree(originalJson);
       updatedNode = objectMapper.readTree(updatedJson);
+
+      // Remove computed/read-only fields that cannot be patched
+      removeComputedFields(originalNode);
+      removeComputedFields(updatedNode);
+
       JsonNode patch = JsonDiff.asJson(originalNode, updatedNode);
 
       // Build request options with ETag if provided
@@ -250,6 +255,26 @@ public abstract class EntityServiceBase<T> {
     }
 
     return false;
+  }
+
+  private static final Set<String> COMPUTED_FIELDS =
+      Set.of(
+          "childrenCount",
+          "userCount",
+          "termCount",
+          "usageCount",
+          "changeDescription",
+          "href",
+          "usageSummary",
+          "followers",
+          "votes");
+
+  private void removeComputedFields(JsonNode node) {
+    if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode objectNode) {
+      for (String field : COMPUTED_FIELDS) {
+        objectNode.remove(field);
+      }
+    }
   }
 
   public T patch(UUID id, JsonNode patchDocument) throws OpenMetadataException {
