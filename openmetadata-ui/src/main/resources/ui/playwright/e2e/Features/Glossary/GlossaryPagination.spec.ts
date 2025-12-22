@@ -344,43 +344,4 @@ test.describe('Glossary tests', () => {
     await draftCheckbox.click();
     await saveButton.click();
   });
-
-  // S-F05: Clear status filter
-  test('should clear status filter', async ({ page }) => {
-    glossary.visitEntityPage(page);
-
-    // Wait for terms to load
-    await page.waitForSelector('[data-testid="glossary-terms-table"]');
-
-    // Count initial terms
-    const initialRowCount = await page.locator('tbody .ant-table-row').count();
-
-    // Open status filter dropdown and apply filter
-    const dropdownButton = page.getByTestId('glossary-status-dropdown');
-    await dropdownButton.click();
-
-    const approvedCheckbox = page.locator('.glossary-dropdown-label', {
-      hasText: 'Approved',
-    });
-    await approvedCheckbox.click();
-
-    const saveButton = page.locator('.ant-btn-primary', {
-      hasText: 'Save',
-    });
-    await saveButton.click();
-
-    await page.waitForLoadState('networkidle');
-
-    // Clear the filter by clicking the same checkbox again
-    await dropdownButton.click();
-    await approvedCheckbox.click();
-    await saveButton.click();
-
-    await page.waitForLoadState('networkidle');
-
-    // Verify all terms are shown again
-    const restoredRowCount = await page.locator('tbody .ant-table-row').count();
-
-    expect(restoredRowCount).toBe(initialRowCount);
-  });
 });

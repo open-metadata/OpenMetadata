@@ -122,10 +122,9 @@ test.describe('Glossary Navigation', () => {
 
       await expect(assetsTab).toBeVisible();
 
+      const assetsLoadResponse = page.waitForResponse('/api/v1/search/query*');
       // Click on Assets tab
       await assetsTab.click();
-
-      const assetsLoadResponse = page.waitForResponse('/api/v1/search/query*');
       await assetsLoadResponse;
 
       // Wait for loader to disappear

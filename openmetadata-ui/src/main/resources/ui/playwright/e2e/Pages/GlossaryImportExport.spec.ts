@@ -156,6 +156,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
+        await page.waitForLoadState('networkidle');
         const fileInput = page.getByTestId('upload-file-widget');
         await fileInput?.setInputFiles([
           'downloads/' + glossary1.data.displayName + '.csv',
@@ -270,6 +271,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
+        await page.waitForLoadState('networkidle');
 
         const initialCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
 ,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,
@@ -333,6 +335,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
           await page.click('[data-testid="manage-button"]');
           await page.click('[data-testid="import-button-description"]');
+          await page.waitForLoadState('networkidle');
 
           const circularCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
 ${circularRefGlossary.data.name}.name1,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,
@@ -412,6 +415,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
           await page.click('[data-testid="manage-button"]');
           await page.click('[data-testid="import-button-description"]');
+          await page.waitForLoadState('networkidle');
 
           // CSV with missing name (required field)
           const missingNameCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
@@ -472,6 +476,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
 
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
+        await page.waitForLoadState('networkidle');
 
         // CSV with reference to non-existent parent
         const invalidParentCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
@@ -537,6 +542,7 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
 
           await page.click('[data-testid="manage-button"]');
           await page.click('[data-testid="import-button-description"]');
+          await page.waitForLoadState('networkidle');
 
           // CSV with one valid term and one with circular reference
           const mixedCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension

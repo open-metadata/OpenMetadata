@@ -351,100 +351,112 @@ test.describe('Large Glossary Performance Tests', () => {
 });
 
 test.describe('Large Glossary Child Term Performace', () => {
+  const TOTAL_TERMS = 1; // Reduced for test performance
+  const glossary = new Glossary();
+  const glossaryTerms: GlossaryTerm[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(8 * 60 * 1000);
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await glossary.create(apiContext);
+
+    // Create many terms with nested structure
+    for (let i = 0; i < TOTAL_TERMS; i++) {
+      const term = new GlossaryTerm(glossary, undefined, `Term_${i + 1}`);
+      await term.create(apiContext);
+      glossaryTerms.push(term);
+
+      for (let j = 0; j < 100; j++) {
+        const childTerm = new GlossaryTerm(
+          glossary,
+          term.responseData.fullyQualifiedName,
+          `Term_${i + 1}_Child_${j + 1}`
+        );
+        await childTerm.create(apiContext);
+        glossaryTerms.push(childTerm);
+      }
+    }
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    test.setTimeout(8 * 60 * 1000);
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    // // Clean up all terms and glossary
+    for (const term of glossaryTerms.reverse()) {
+      await term.delete(apiContext);
+    }
+    await glossary.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await glossary.visitEntityPage(page);
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+  });
+
   test('should handle large number of glossary child term with pagination', async ({
     page,
   }) => {
-    test.setTimeout(8 * 60 * 1000);
+    // Find a term with children (Term_5)
+    const term5Row = page.locator('tr', { hasText: 'Term_1' }).first();
+    const expandIcon = term5Row.locator('[data-testid="expand-icon"]');
 
-    const { apiContext, afterAction } = await getApiContext(page);
-    const TOTAL_TERMS = 1; // Reduced for test performance
-    const glossary = new Glossary();
-    const glossaryTerms: GlossaryTerm[] = [];
+    // Click to expand
+    const childTermReq = page.waitForResponse(
+      'api/v1/glossaryTerms?directChildrenOf*'
+    );
+    await expandIcon.click();
+    await childTermReq;
 
-    try {
-      await glossary.create(apiContext);
+    // Wait for children to load
+    await expect(
+      page.getByText('Term_1_Child_1', { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText('Term_1_Child_2', { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText('Term_1_Child_3', { exact: true })
+    ).toBeVisible();
 
-      // Create many terms with nested structure
-      for (let i = 0; i < TOTAL_TERMS; i++) {
-        const term = new GlossaryTerm(glossary, undefined, `Term_${i + 1}`);
-        await term.create(apiContext);
-        glossaryTerms.push(term);
+    const initialTerms = await page
+      .locator('tbody .ant-table-row-level-1')
+      .count();
 
-        for (let j = 0; j < 100; j++) {
-          const childTerm = new GlossaryTerm(
-            glossary,
-            term.responseData.fullyQualifiedName,
-            `Term_${i + 1}_Child_${j + 1}`
-          );
-          await childTerm.create(apiContext);
-          glossaryTerms.push(childTerm);
-        }
-      }
+    // 51 because last row contain button to view next 50 terms
+    expect(initialTerms).toBe(51);
 
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.responseData.displayName);
+    const buttonText = await page
+      .getByTestId('load-more-children-button')
+      .textContent();
 
-      // Find a term with children (Term_5)
-      const term5Row = page.locator('tr', { hasText: 'Term_1' }).first();
-      const expandIcon = term5Row.getByTestId('expand-icon');
+    expect(buttonText).toContain('View 50 more');
 
-      // Click to expand
-      const childTermReq = page.waitForResponse(
-        'api/v1/glossaryTerms?directChildrenOf*'
-      );
-      await expandIcon.click();
-      await childTermReq;
+    await page.getByTestId('load-more-children-button').click();
+    await childTermReq;
 
-      // Wait for children to load
-      await expect(
-        page.getByText('Term_1_Child_1', { exact: true })
-      ).toBeVisible();
-      await expect(
-        page.getByText('Term_1_Child_2', { exact: true })
-      ).toBeVisible();
-      await expect(
-        page.getByText('Term_1_Child_3', { exact: true })
-      ).toBeVisible();
+    await expect(
+      page.getByText('Term_1_Child_54', { exact: true })
+    ).toBeVisible();
 
-      const initialTerms = await page
-        .locator('tbody .ant-table-row-level-1')
-        .count();
+    const finalTerms = await page
+      .locator('tbody .ant-table-row-level-1')
+      .count();
 
-      // 51 because last row contain button to view next 50 terms
-      expect(initialTerms).toBe(51);
+    expect(finalTerms).toBe(100);
 
-      const buttonText = await page
-        .getByTestId('load-more-children-button')
-        .textContent();
+    // Click to collapse
+    await expandIcon.click();
 
-      expect(buttonText).toContain('View 50 more');
-
-      await page.getByTestId('load-more-children-button').click();
-      await childTermReq;
-
-      await expect(
-        page.getByText('Term_1_Child_54', { exact: true })
-      ).toBeVisible();
-
-      const finalTerms = await page
-        .locator('tbody .ant-table-row-level-1')
-        .count();
-
-      expect(finalTerms).toBe(100);
-
-      // Click to collapse
-      await expandIcon.click();
-
-      // Verify children are hidden
-      await expect(page.getByText('Term_1_Child_1')).not.toBeVisible();
-    } finally {
-      // Clean up all terms and glossary
-      for (const term of glossaryTerms.reverse()) {
-        await term.delete(apiContext);
-      }
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
+    // Verify children are hidden
+    await expect(page.getByText('Term_1_Child_1')).not.toBeVisible();
   });
 });
