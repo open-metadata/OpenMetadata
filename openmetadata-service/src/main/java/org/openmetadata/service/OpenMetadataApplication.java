@@ -13,8 +13,6 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
-
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -166,7 +164,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
   protected Limits limits;
-
   protected Jdbi jdbi;
   private Environment environment;
   private org.openmetadata.service.di.ApplicationComponent daggerComponent;
@@ -194,11 +191,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     validateConfiguration(catalogConfig);
 
-    // 2. Database and search initialization (still manual for now - will be refactored in next
-    // phase)
-    jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
-    Entity.setCollectionDAO(getDao(jdbi));
-    Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
+    // 2. Database and search initialization via DI
+    jdbi = daggerComponent.jdbi();
+    Entity.setCollectionDAO(daggerComponent.collectionDAO());
+    Entity.setJobDAO(daggerComponent.jobDAO());
     Entity.setJdbi(jdbi);
 
     initializeSearchRepository(catalogConfig);

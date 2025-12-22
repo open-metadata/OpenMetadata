@@ -133,6 +133,27 @@ public interface ApplicationComponent {
   Set<JerseyRegistrar> jerseyRegistrars();
 
   /**
+   * Provides Jdbi instance for database access.
+   *
+   * @return Jdbi singleton
+   */
+  org.jdbi.v3.core.Jdbi jdbi();
+
+  /**
+   * Provides CollectionDAO instance for entity data access.
+   *
+   * @return CollectionDAO singleton
+   */
+  org.openmetadata.service.jdbi3.CollectionDAO collectionDAO();
+
+  /**
+   * Provides JobDAO instance for background job management.
+   *
+   * @return JobDAO singleton
+   */
+  org.openmetadata.service.jobs.JobDAO jobDAO();
+
+  /**
    * Provides ServiceRegistry instance with all services registered.
    *
    * <p>The ServiceRegistry is initialized during Dagger graph construction with all entity
