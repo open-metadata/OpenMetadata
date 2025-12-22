@@ -20,20 +20,31 @@ import org.openmetadata.service.jdbi3.AIApplicationRepository;
 import org.openmetadata.service.jdbi3.AIGovernancePolicyRepository;
 import org.openmetadata.service.jdbi3.APICollectionRepository;
 import org.openmetadata.service.jdbi3.APIEndpointRepository;
+import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
+import org.openmetadata.service.jdbi3.AppRepository;
+import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.ContainerRepository;
 import org.openmetadata.service.jdbi3.DashboardDataModelRepository;
 import org.openmetadata.service.jdbi3.DashboardRepository;
+import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.DataInsightChartRepository;
+import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DirectoryRepository;
+import org.openmetadata.service.jdbi3.DomainRepository;
+import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.FileRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.LLMModelRepository;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.jdbi3.MlModelRepository;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.jdbi3.PersonaRepository;
 import org.openmetadata.service.jdbi3.PipelineRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
@@ -52,27 +63,40 @@ import org.openmetadata.service.jdbi3.TestDefinitionRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.jdbi3.TopicRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.resources.ai.AIApplicationMapper;
 import org.openmetadata.service.resources.ai.AIGovernancePolicyMapper;
 import org.openmetadata.service.resources.ai.LLMModelMapper;
 import org.openmetadata.service.resources.ai.PromptTemplateMapper;
 import org.openmetadata.service.resources.apis.APICollectionMapper;
 import org.openmetadata.service.resources.apis.APIEndpointMapper;
+import org.openmetadata.service.resources.apps.AppMapper;
+import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
+import org.openmetadata.service.resources.automations.WorkflowMapper;
+import org.openmetadata.service.resources.bots.BotMapper;
 import org.openmetadata.service.resources.charts.ChartMapper;
 import org.openmetadata.service.resources.dashboards.DashboardMapper;
+import org.openmetadata.service.resources.data.DataContractMapper;
 import org.openmetadata.service.resources.databases.DatabaseMapper;
 import org.openmetadata.service.resources.databases.DatabaseSchemaMapper;
 import org.openmetadata.service.resources.databases.StoredProcedureMapper;
 import org.openmetadata.service.resources.databases.TableMapper;
+import org.openmetadata.service.resources.datainsight.DataInsightChartMapper;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelMapper;
+import org.openmetadata.service.resources.domains.DataProductMapper;
+import org.openmetadata.service.resources.domains.DomainMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseMapper;
 import org.openmetadata.service.resources.dqtests.TestDefinitionMapper;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.drives.DirectoryMapper;
 import org.openmetadata.service.resources.drives.FileMapper;
 import org.openmetadata.service.resources.drives.SpreadsheetMapper;
+import org.openmetadata.service.resources.events.NotificationTemplateMapper;
+import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.resources.glossary.GlossaryMapper;
 import org.openmetadata.service.resources.glossary.GlossaryTermMapper;
+import org.openmetadata.service.resources.kpi.KpiMapper;
+import org.openmetadata.service.resources.metrics.MetricMapper;
 import org.openmetadata.service.resources.mlmodels.MlModelMapper;
 import org.openmetadata.service.resources.pipelines.PipelineMapper;
 import org.openmetadata.service.resources.policies.PolicyMapper;
@@ -94,24 +118,36 @@ import org.openmetadata.service.services.ai.AIGovernancePolicyService;
 import org.openmetadata.service.services.ai.PromptTemplateService;
 import org.openmetadata.service.services.apis.APICollectionService;
 import org.openmetadata.service.services.apis.APIEndpointService;
+import org.openmetadata.service.services.apps.AppMarketPlaceService;
+import org.openmetadata.service.services.apps.AppService;
+import org.openmetadata.service.services.automations.WorkflowService;
+import org.openmetadata.service.services.bots.BotService;
 import org.openmetadata.service.services.connections.TestConnectionDefinitionService;
 import org.openmetadata.service.services.dashboards.ChartService;
 import org.openmetadata.service.services.dashboards.DashboardDataModelService;
 import org.openmetadata.service.services.dashboards.DashboardService;
+import org.openmetadata.service.services.data.DataContractService;
 import org.openmetadata.service.services.databases.DatabaseSchemaService;
 import org.openmetadata.service.services.databases.DatabaseService;
 import org.openmetadata.service.services.databases.QueryService;
 import org.openmetadata.service.services.databases.StoredProcedureService;
 import org.openmetadata.service.services.databases.TableService;
+import org.openmetadata.service.services.datainsight.DataInsightChartService;
+import org.openmetadata.service.services.domains.DataProductService;
+import org.openmetadata.service.services.domains.DomainService;
 import org.openmetadata.service.services.dqtests.TestCaseService;
 import org.openmetadata.service.services.dqtests.TestDefinitionService;
 import org.openmetadata.service.services.dqtests.TestSuiteService;
 import org.openmetadata.service.services.drives.DirectoryService;
 import org.openmetadata.service.services.drives.FileService;
 import org.openmetadata.service.services.drives.SpreadsheetService;
+import org.openmetadata.service.services.events.EventSubscriptionService;
+import org.openmetadata.service.services.events.NotificationTemplateService;
 import org.openmetadata.service.services.glossary.GlossaryService;
 import org.openmetadata.service.services.glossary.GlossaryTermService;
+import org.openmetadata.service.services.kpi.KpiService;
 import org.openmetadata.service.services.messaging.TopicService;
+import org.openmetadata.service.services.metrics.MetricService;
 import org.openmetadata.service.services.ml.LLMModelService;
 import org.openmetadata.service.services.ml.MlModelService;
 import org.openmetadata.service.services.pipelines.IngestionPipelineService;
@@ -838,6 +874,240 @@ public class ServiceModule {
       Authorizer authorizer,
       UserMapper userMapper) {
     return new UserService(userRepository, searchRepository, authorizer, userMapper);
+  }
+
+  /**
+   * Provides DomainService instance.
+   *
+   * @param domainRepository DomainRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param domainMapper DomainMapper for entity mapping
+   * @return DomainService singleton
+   */
+  @Provides
+  @Singleton
+  public DomainService provideDomainService(
+      DomainRepository domainRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      DomainMapper domainMapper) {
+    return new DomainService(domainRepository, searchRepository, authorizer, domainMapper);
+  }
+
+  /**
+   * Provides DataProductService instance.
+   *
+   * @param dataProductRepository DataProductRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param dataProductMapper DataProductMapper for entity mapping
+   * @return DataProductService singleton
+   */
+  @Provides
+  @Singleton
+  public DataProductService provideDataProductService(
+      DataProductRepository dataProductRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      DataProductMapper dataProductMapper) {
+    return new DataProductService(
+        dataProductRepository, searchRepository, authorizer, dataProductMapper);
+  }
+
+  /**
+   * Provides AppService instance.
+   *
+   * @param appRepository AppRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param appMapper AppMapper for entity mapping
+   * @return AppService singleton
+   */
+  @Provides
+  @Singleton
+  public AppService provideAppService(
+      AppRepository appRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      AppMapper appMapper) {
+    return new AppService(appRepository, searchRepository, authorizer, appMapper);
+  }
+
+  /**
+   * Provides AppMarketPlaceService instance.
+   *
+   * @param appMarketPlaceRepository AppMarketPlaceRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param appMarketPlaceMapper AppMarketPlaceMapper for entity mapping
+   * @return AppMarketPlaceService singleton
+   */
+  @Provides
+  @Singleton
+  public AppMarketPlaceService provideAppMarketPlaceService(
+      AppMarketPlaceRepository appMarketPlaceRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      AppMarketPlaceMapper appMarketPlaceMapper) {
+    return new AppMarketPlaceService(
+        appMarketPlaceRepository, searchRepository, authorizer, appMarketPlaceMapper);
+  }
+
+  /**
+   * Provides BotService instance.
+   *
+   * @param botRepository BotRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param botMapper BotMapper for entity mapping
+   * @return BotService singleton
+   */
+  @Provides
+  @Singleton
+  public BotService provideBotService(
+      BotRepository botRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      BotMapper botMapper) {
+    return new BotService(botRepository, searchRepository, authorizer, botMapper);
+  }
+
+  /**
+   * Provides DataContractService instance.
+   *
+   * @param dataContractRepository DataContractRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param dataContractMapper DataContractMapper for entity mapping
+   * @return DataContractService singleton
+   */
+  @Provides
+  @Singleton
+  public DataContractService provideDataContractService(
+      DataContractRepository dataContractRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      DataContractMapper dataContractMapper) {
+    return new DataContractService(
+        dataContractRepository, searchRepository, authorizer, dataContractMapper);
+  }
+
+  /**
+   * Provides MetricService instance.
+   *
+   * @param metricRepository MetricRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param metricMapper MetricMapper for entity mapping
+   * @return MetricService singleton
+   */
+  @Provides
+  @Singleton
+  public MetricService provideMetricService(
+      MetricRepository metricRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      MetricMapper metricMapper) {
+    return new MetricService(metricRepository, searchRepository, authorizer, metricMapper);
+  }
+
+  /**
+   * Provides DataInsightChartService instance.
+   *
+   * @param dataInsightChartRepository DataInsightChartRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param dataInsightChartMapper DataInsightChartMapper for entity mapping
+   * @return DataInsightChartService singleton
+   */
+  @Provides
+  @Singleton
+  public DataInsightChartService provideDataInsightChartService(
+      DataInsightChartRepository dataInsightChartRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      DataInsightChartMapper dataInsightChartMapper) {
+    return new DataInsightChartService(
+        dataInsightChartRepository, searchRepository, authorizer, dataInsightChartMapper);
+  }
+
+  /**
+   * Provides KpiService instance.
+   *
+   * @param kpiRepository KpiRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param kpiMapper KpiMapper for entity mapping
+   * @return KpiService singleton
+   */
+  @Provides
+  @Singleton
+  public KpiService provideKpiService(
+      KpiRepository kpiRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      KpiMapper kpiMapper) {
+    return new KpiService(kpiRepository, searchRepository, authorizer, kpiMapper);
+  }
+
+  /**
+   * Provides EventSubscriptionService instance.
+   *
+   * @param eventSubscriptionRepository EventSubscriptionRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param eventSubscriptionMapper EventSubscriptionMapper for entity mapping
+   * @return EventSubscriptionService singleton
+   */
+  @Provides
+  @Singleton
+  public EventSubscriptionService provideEventSubscriptionService(
+      EventSubscriptionRepository eventSubscriptionRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      EventSubscriptionMapper eventSubscriptionMapper) {
+    return new EventSubscriptionService(
+        eventSubscriptionRepository, searchRepository, authorizer, eventSubscriptionMapper);
+  }
+
+  /**
+   * Provides NotificationTemplateService instance.
+   *
+   * @param notificationTemplateRepository NotificationTemplateRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param notificationTemplateMapper NotificationTemplateMapper for entity mapping
+   * @return NotificationTemplateService singleton
+   */
+  @Provides
+  @Singleton
+  public NotificationTemplateService provideNotificationTemplateService(
+      NotificationTemplateRepository notificationTemplateRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      NotificationTemplateMapper notificationTemplateMapper) {
+    return new NotificationTemplateService(
+        notificationTemplateRepository, searchRepository, authorizer, notificationTemplateMapper);
+  }
+
+  /**
+   * Provides WorkflowService instance.
+   *
+   * @param workflowRepository WorkflowRepository for data access
+   * @param searchRepository SearchRepository for search operations
+   * @param authorizer Authorizer for access control
+   * @param workflowMapper WorkflowMapper for entity mapping
+   * @return WorkflowService singleton
+   */
+  @Provides
+  @Singleton
+  public WorkflowService provideWorkflowService(
+      WorkflowRepository workflowRepository,
+      SearchRepository searchRepository,
+      Authorizer authorizer,
+      WorkflowMapper workflowMapper) {
+    return new WorkflowService(workflowRepository, searchRepository, authorizer, workflowMapper);
   }
 
   // Additional service providers will be added here as we migrate entities

@@ -66,12 +66,13 @@ public class MetricRepository extends EntityRepository<Metric> {
   private static final String UPDATE_FIELDS = "relatedMetrics";
   private static final String PATCH_FIELDS = "relatedMetrics";
 
-  public MetricRepository() {
+  @javax.inject.Inject
+  public MetricRepository(CollectionDAO collectionDAO) {
     super(
         MetricResource.COLLECTION_PATH,
         Entity.METRIC,
         Metric.class,
-        Entity.getCollectionDAO().metricDAO(),
+        collectionDAO.metricDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
@@ -79,6 +80,11 @@ public class MetricRepository extends EntityRepository<Metric> {
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("relatedMetrics", this::fetchAndSetRelatedMetrics);
+  }
+
+  @Deprecated
+  public MetricRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

@@ -42,17 +42,23 @@ public class AppRepository extends EntityRepository<App> {
 
   public static final String UPDATE_FIELDS = "appConfiguration,appSchedule";
 
-  public AppRepository() {
+  @javax.inject.Inject
+  public AppRepository(CollectionDAO collectionDAO) {
     super(
         AppResource.COLLECTION_PATH,
         Entity.APPLICATION,
         App.class,
-        Entity.getCollectionDAO().applicationDAO(),
+        collectionDAO.applicationDAO(),
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = false;
     quoteFqn = true;
     fieldFetchers.put("bot", this::fetchAndSetBotUser);
+  }
+
+  @Deprecated
+  public AppRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

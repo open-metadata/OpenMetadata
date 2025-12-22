@@ -22,21 +22,33 @@ import org.openmetadata.service.resources.ai.LLMModelMapper;
 import org.openmetadata.service.resources.ai.PromptTemplateMapper;
 import org.openmetadata.service.resources.apis.APICollectionMapper;
 import org.openmetadata.service.resources.apis.APIEndpointMapper;
+import org.openmetadata.service.resources.apps.AppMapper;
+import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
+import org.openmetadata.service.resources.automations.WorkflowMapper;
+import org.openmetadata.service.resources.bots.BotMapper;
 import org.openmetadata.service.resources.charts.ChartMapper;
 import org.openmetadata.service.resources.dashboards.DashboardMapper;
+import org.openmetadata.service.resources.data.DataContractMapper;
 import org.openmetadata.service.resources.databases.DatabaseMapper;
 import org.openmetadata.service.resources.databases.DatabaseSchemaMapper;
 import org.openmetadata.service.resources.databases.StoredProcedureMapper;
 import org.openmetadata.service.resources.databases.TableMapper;
+import org.openmetadata.service.resources.datainsight.DataInsightChartMapper;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelMapper;
+import org.openmetadata.service.resources.domains.DataProductMapper;
+import org.openmetadata.service.resources.domains.DomainMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseMapper;
 import org.openmetadata.service.resources.dqtests.TestDefinitionMapper;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.drives.DirectoryMapper;
 import org.openmetadata.service.resources.drives.FileMapper;
 import org.openmetadata.service.resources.drives.SpreadsheetMapper;
+import org.openmetadata.service.resources.events.NotificationTemplateMapper;
+import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.resources.glossary.GlossaryMapper;
 import org.openmetadata.service.resources.glossary.GlossaryTermMapper;
+import org.openmetadata.service.resources.kpi.KpiMapper;
+import org.openmetadata.service.resources.metrics.MetricMapper;
 import org.openmetadata.service.resources.mlmodels.MlModelMapper;
 import org.openmetadata.service.resources.pipelines.PipelineMapper;
 import org.openmetadata.service.resources.policies.PolicyMapper;
@@ -523,6 +535,166 @@ public class MapperModule {
   @Singleton
   public UserMapper provideUserMapper() {
     return new UserMapper();
+  }
+
+  /**
+   * Provides DomainMapper instance.
+   *
+   * <p>DomainMapper handles conversion from CreateDomain to Domain entity.
+   *
+   * @return DomainMapper singleton
+   */
+  @Provides
+  @Singleton
+  public DomainMapper provideDomainMapper() {
+    return new DomainMapper();
+  }
+
+  /**
+   * Provides DataProductMapper instance.
+   *
+   * <p>DataProductMapper handles conversion from CreateDataProduct to DataProduct entity.
+   *
+   * @return DataProductMapper singleton
+   */
+  @Provides
+  @Singleton
+  public DataProductMapper provideDataProductMapper() {
+    return new DataProductMapper();
+  }
+
+  /**
+   * Provides AppMapper instance.
+   *
+   * <p>AppMapper handles conversion from CreateApp to App entity.
+   *
+   * @return AppMapper singleton
+   */
+  @Provides
+  @Singleton
+  public AppMapper provideAppMapper() {
+    return new AppMapper();
+  }
+
+  /**
+   * Provides AppMarketPlaceMapper instance.
+   *
+   * <p>AppMarketPlaceMapper handles conversion from CreateAppMarketPlaceDefinition to
+   * AppMarketPlaceDefinition entity.
+   *
+   * @return AppMarketPlaceMapper singleton
+   */
+  @Provides
+  @Singleton
+  public AppMarketPlaceMapper provideAppMarketPlaceMapper() {
+    return new AppMarketPlaceMapper();
+  }
+
+  /**
+   * Provides BotMapper instance.
+   *
+   * <p>BotMapper handles conversion from CreateBot to Bot entity.
+   *
+   * @return BotMapper singleton
+   */
+  @Provides
+  @Singleton
+  public BotMapper provideBotMapper() {
+    return new BotMapper();
+  }
+
+  /**
+   * Provides DataContractMapper instance.
+   *
+   * <p>DataContractMapper handles conversion from CreateDataContract to DataContract entity.
+   *
+   * @return DataContractMapper singleton
+   */
+  @Provides
+  @Singleton
+  public DataContractMapper provideDataContractMapper() {
+    return new DataContractMapper();
+  }
+
+  /**
+   * Provides MetricMapper instance.
+   *
+   * <p>MetricMapper handles conversion from CreateMetric to Metric entity.
+   *
+   * @return MetricMapper singleton
+   */
+  @Provides
+  @Singleton
+  public MetricMapper provideMetricMapper() {
+    return new MetricMapper();
+  }
+
+  /**
+   * Provides DataInsightChartMapper instance.
+   *
+   * <p>DataInsightChartMapper handles conversion from CreateDataInsightChart to DataInsightChart
+   * entity.
+   *
+   * @return DataInsightChartMapper singleton
+   */
+  @Provides
+  @Singleton
+  public DataInsightChartMapper provideDataInsightChartMapper() {
+    return new DataInsightChartMapper();
+  }
+
+  /**
+   * Provides KpiMapper instance.
+   *
+   * <p>KpiMapper handles conversion from CreateKpi to Kpi entity.
+   *
+   * @return KpiMapper singleton
+   */
+  @Provides
+  @Singleton
+  public KpiMapper provideKpiMapper() {
+    return new KpiMapper();
+  }
+
+  /**
+   * Provides EventSubscriptionMapper instance.
+   *
+   * <p>EventSubscriptionMapper handles conversion from CreateEventSubscription to
+   * EventSubscription entity.
+   *
+   * @return EventSubscriptionMapper singleton
+   */
+  @Provides
+  @Singleton
+  public EventSubscriptionMapper provideEventSubscriptionMapper() {
+    return new EventSubscriptionMapper();
+  }
+
+  /**
+   * Provides NotificationTemplateMapper instance.
+   *
+   * <p>NotificationTemplateMapper handles conversion from CreateNotificationTemplate to
+   * NotificationTemplate entity.
+   *
+   * @return NotificationTemplateMapper singleton
+   */
+  @Provides
+  @Singleton
+  public NotificationTemplateMapper provideNotificationTemplateMapper() {
+    return new NotificationTemplateMapper();
+  }
+
+  /**
+   * Provides WorkflowMapper instance.
+   *
+   * <p>WorkflowMapper handles conversion from CreateWorkflow to Workflow entity.
+   *
+   * @return WorkflowMapper singleton
+   */
+  @Provides
+  @Singleton
+  public WorkflowMapper provideWorkflowMapper() {
+    return new WorkflowMapper();
   }
 
   // Additional mapper providers will be added here as we migrate entities

@@ -21,23 +21,32 @@ import org.openmetadata.service.jdbi3.AIApplicationRepository;
 import org.openmetadata.service.jdbi3.AIGovernancePolicyRepository;
 import org.openmetadata.service.jdbi3.APICollectionRepository;
 import org.openmetadata.service.jdbi3.APIEndpointRepository;
+import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
+import org.openmetadata.service.jdbi3.AppRepository;
+import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ContainerRepository;
 import org.openmetadata.service.jdbi3.DashboardDataModelRepository;
 import org.openmetadata.service.jdbi3.DashboardRepository;
+import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DirectoryRepository;
 import org.openmetadata.service.jdbi3.DomainRepository;
+import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.FileRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.LLMModelRepository;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.jdbi3.MlModelRepository;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.jdbi3.PersonaRepository;
 import org.openmetadata.service.jdbi3.PipelineRepository;
 import org.openmetadata.service.jdbi3.PolicyRepository;
@@ -56,6 +65,7 @@ import org.openmetadata.service.jdbi3.TestDefinitionRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.jdbi3.TopicRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.jdbi3.WorkflowRepository;
 
 /**
  * Dagger module providing entity repository instances.
@@ -606,6 +616,151 @@ public class RepositoryModule {
   @Singleton
   public DataProductRepository provideDataProductRepository(CollectionDAO collectionDAO) {
     return new DataProductRepository(collectionDAO);
+  }
+
+  /**
+   * Provides AppRepository instance with dependency injection.
+   *
+   * <p>Dagger automatically provides the CollectionDAO dependency from CoreModule.
+   *
+   * @param collectionDAO CollectionDAO for entity data access (injected by Dagger)
+   * @return AppRepository singleton
+   */
+  @Provides
+  @Singleton
+  public AppRepository provideAppRepository(CollectionDAO collectionDAO) {
+    return new AppRepository(collectionDAO);
+  }
+
+  /**
+   * Provides AppMarketPlaceRepository instance with dependency injection.
+   *
+   * <p>Dagger automatically provides the CollectionDAO dependency from CoreModule.
+   *
+   * @param collectionDAO CollectionDAO for entity data access (injected by Dagger)
+   * @return AppMarketPlaceRepository singleton
+   */
+  @Provides
+  @Singleton
+  public AppMarketPlaceRepository provideAppMarketPlaceRepository(CollectionDAO collectionDAO) {
+    return new AppMarketPlaceRepository(collectionDAO);
+  }
+
+  /**
+   * Provides BotRepository instance with dependency injection.
+   *
+   * <p>Dagger automatically provides the CollectionDAO dependency from CoreModule.
+   *
+   * @param collectionDAO CollectionDAO for entity data access (injected by Dagger)
+   * @return BotRepository singleton
+   */
+  @Provides
+  @Singleton
+  public BotRepository provideBotRepository(CollectionDAO collectionDAO) {
+    return new BotRepository(collectionDAO);
+  }
+
+  /**
+   * Provides DataContractRepository instance with dependency injection.
+   *
+   * <p>Dagger automatically provides CollectionDAO and OpenMetadataApplicationConfig dependencies
+   * from CoreModule.
+   *
+   * @param collectionDAO CollectionDAO for entity data access (injected by Dagger)
+   * @param config OpenMetadataApplicationConfig for application configuration (injected by Dagger)
+   * @return DataContractRepository singleton
+   */
+  @Provides
+  @Singleton
+  public DataContractRepository provideDataContractRepository(
+      CollectionDAO collectionDAO, OpenMetadataApplicationConfig config) {
+    return new DataContractRepository(collectionDAO, config);
+  }
+
+  /**
+   * Provides MetricRepository instance with dependency injection.
+   *
+   * <p>Dagger automatically provides the CollectionDAO dependency from CoreModule.
+   *
+   * @param collectionDAO CollectionDAO for entity data access (injected by Dagger)
+   * @return MetricRepository singleton
+   */
+  @Provides
+  @Singleton
+  public MetricRepository provideMetricRepository(CollectionDAO collectionDAO) {
+    return new MetricRepository(collectionDAO);
+  }
+
+  /**
+   * Provides DataInsightChartRepository instance with dependency injection.
+   *
+   * <p>Dagger automatically provides the CollectionDAO dependency from CoreModule.
+   *
+   * @param collectionDAO CollectionDAO for entity data access (injected by Dagger)
+   * @return DataInsightChartRepository singleton
+   */
+  @Provides
+  @Singleton
+  public DataInsightChartRepository provideDataInsightChartRepository(CollectionDAO collectionDAO) {
+    return new DataInsightChartRepository(collectionDAO);
+  }
+
+  /**
+   * Provides KpiRepository instance with dependency injection.
+   *
+   * <p>Dagger automatically provides the CollectionDAO dependency from CoreModule.
+   *
+   * @param collectionDAO CollectionDAO for entity data access (injected by Dagger)
+   * @return KpiRepository singleton
+   */
+  @Provides
+  @Singleton
+  public KpiRepository provideKpiRepository(CollectionDAO collectionDAO) {
+    return new KpiRepository(collectionDAO);
+  }
+
+  /**
+   * Provides EventSubscriptionRepository instance with dependency injection.
+   *
+   * <p>Dagger automatically provides the CollectionDAO dependency from CoreModule.
+   *
+   * @param collectionDAO CollectionDAO for entity data access (injected by Dagger)
+   * @return EventSubscriptionRepository singleton
+   */
+  @Provides
+  @Singleton
+  public EventSubscriptionRepository provideEventSubscriptionRepository(
+      CollectionDAO collectionDAO) {
+    return new EventSubscriptionRepository(collectionDAO);
+  }
+
+  /**
+   * Provides NotificationTemplateRepository instance with dependency injection.
+   *
+   * <p>Dagger automatically provides the CollectionDAO dependency from CoreModule.
+   *
+   * @param collectionDAO CollectionDAO for entity data access (injected by Dagger)
+   * @return NotificationTemplateRepository singleton
+   */
+  @Provides
+  @Singleton
+  public NotificationTemplateRepository provideNotificationTemplateRepository(
+      CollectionDAO collectionDAO) {
+    return new NotificationTemplateRepository(collectionDAO);
+  }
+
+  /**
+   * Provides WorkflowRepository instance with dependency injection.
+   *
+   * <p>Dagger automatically provides the CollectionDAO dependency from CoreModule.
+   *
+   * @param collectionDAO CollectionDAO for entity data access (injected by Dagger)
+   * @return WorkflowRepository singleton
+   */
+  @Provides
+  @Singleton
+  public WorkflowRepository provideWorkflowRepository(CollectionDAO collectionDAO) {
+    return new WorkflowRepository(collectionDAO);
   }
 
   // Additional repository providers will be added here as we migrate entities

@@ -9,16 +9,22 @@ import org.openmetadata.service.util.EntityUtil;
 
 public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDefinition> {
 
-  public AppMarketPlaceRepository() {
+  @javax.inject.Inject
+  public AppMarketPlaceRepository(CollectionDAO collectionDAO) {
     super(
         AppMarketPlaceResource.COLLECTION_PATH,
         Entity.APP_MARKET_PLACE_DEF,
         AppMarketPlaceDefinition.class,
-        Entity.getCollectionDAO().applicationMarketPlaceDAO(),
+        collectionDAO.applicationMarketPlaceDAO(),
         "",
         "");
     supportsSearch = false;
     quoteFqn = true;
+  }
+
+  @Deprecated
+  public AppMarketPlaceRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

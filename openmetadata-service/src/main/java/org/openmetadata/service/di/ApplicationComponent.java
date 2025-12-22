@@ -20,24 +20,36 @@ import org.openmetadata.service.services.ai.AIGovernancePolicyService;
 import org.openmetadata.service.services.ai.PromptTemplateService;
 import org.openmetadata.service.services.apis.APICollectionService;
 import org.openmetadata.service.services.apis.APIEndpointService;
+import org.openmetadata.service.services.apps.AppMarketPlaceService;
+import org.openmetadata.service.services.apps.AppService;
+import org.openmetadata.service.services.automations.WorkflowService;
+import org.openmetadata.service.services.bots.BotService;
 import org.openmetadata.service.services.connections.TestConnectionDefinitionService;
 import org.openmetadata.service.services.dashboards.ChartService;
 import org.openmetadata.service.services.dashboards.DashboardDataModelService;
 import org.openmetadata.service.services.dashboards.DashboardService;
+import org.openmetadata.service.services.data.DataContractService;
 import org.openmetadata.service.services.databases.DatabaseSchemaService;
 import org.openmetadata.service.services.databases.DatabaseService;
 import org.openmetadata.service.services.databases.QueryService;
 import org.openmetadata.service.services.databases.StoredProcedureService;
 import org.openmetadata.service.services.databases.TableService;
+import org.openmetadata.service.services.datainsight.DataInsightChartService;
+import org.openmetadata.service.services.domains.DataProductService;
+import org.openmetadata.service.services.domains.DomainService;
 import org.openmetadata.service.services.dqtests.TestCaseService;
 import org.openmetadata.service.services.dqtests.TestDefinitionService;
 import org.openmetadata.service.services.dqtests.TestSuiteService;
 import org.openmetadata.service.services.drives.DirectoryService;
 import org.openmetadata.service.services.drives.FileService;
 import org.openmetadata.service.services.drives.SpreadsheetService;
+import org.openmetadata.service.services.events.EventSubscriptionService;
+import org.openmetadata.service.services.events.NotificationTemplateService;
 import org.openmetadata.service.services.glossary.GlossaryService;
 import org.openmetadata.service.services.glossary.GlossaryTermService;
+import org.openmetadata.service.services.kpi.KpiService;
 import org.openmetadata.service.services.messaging.TopicService;
+import org.openmetadata.service.services.metrics.MetricService;
 import org.openmetadata.service.services.ml.LLMModelService;
 import org.openmetadata.service.services.ml.MlModelService;
 import org.openmetadata.service.services.pipelines.IngestionPipelineService;
@@ -334,6 +346,90 @@ public interface ApplicationComponent {
    * @return UserService singleton
    */
   UserService userService();
+
+  /**
+   * Provides DomainService instance.
+   *
+   * @return DomainService singleton
+   */
+  DomainService domainService();
+
+  /**
+   * Provides DataProductService instance.
+   *
+   * @return DataProductService singleton
+   */
+  DataProductService dataProductService();
+
+  /**
+   * Provides AppService instance.
+   *
+   * @return AppService singleton
+   */
+  AppService appService();
+
+  /**
+   * Provides AppMarketPlaceService instance.
+   *
+   * @return AppMarketPlaceService singleton
+   */
+  AppMarketPlaceService appMarketPlaceService();
+
+  /**
+   * Provides BotService instance.
+   *
+   * @return BotService singleton
+   */
+  BotService botService();
+
+  /**
+   * Provides DataContractService instance.
+   *
+   * @return DataContractService singleton
+   */
+  DataContractService dataContractService();
+
+  /**
+   * Provides MetricService instance.
+   *
+   * @return MetricService singleton
+   */
+  MetricService metricService();
+
+  /**
+   * Provides DataInsightChartService instance.
+   *
+   * @return DataInsightChartService singleton
+   */
+  DataInsightChartService dataInsightChartService();
+
+  /**
+   * Provides KpiService instance.
+   *
+   * @return KpiService singleton
+   */
+  KpiService kpiService();
+
+  /**
+   * Provides EventSubscriptionService instance.
+   *
+   * @return EventSubscriptionService singleton
+   */
+  EventSubscriptionService eventSubscriptionService();
+
+  /**
+   * Provides NotificationTemplateService instance.
+   *
+   * @return NotificationTemplateService singleton
+   */
+  NotificationTemplateService notificationTemplateService();
+
+  /**
+   * Provides WorkflowService instance.
+   *
+   * @return WorkflowService singleton
+   */
+  WorkflowService workflowService();
 
   // Additional service accessors will be added here as we migrate entities
 }
