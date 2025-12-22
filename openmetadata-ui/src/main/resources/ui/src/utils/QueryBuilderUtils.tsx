@@ -64,20 +64,20 @@ export const resolveFieldType = (
 
   // Traverse nested subfields if there are more parts
   for (let i = 1; i < fieldParts.length; i++) {
-    if (i === 1 && (currentField as any)?.subfields) {
+    if (i === 1 && (currentField as Field)?.subfields) {
       // Join the remaining parts and check if it exists as a single subfield
       const remainingPath = fieldParts.slice(1).join('.');
-      const remainingField = (currentField as any).subfields[remainingPath];
+      const remainingField = (currentField as Field).subfields[remainingPath];
       if (remainingField?.type) {
         return remainingField.type;
       }
     }
 
     // If no specific path found, continue with normal traversal
-    if (!(currentField as any)?.subfields?.[fieldParts[i]]) {
+    if (!(currentField as Field)?.subfields?.[fieldParts[i]]) {
       return undefined; // Subfield not found
     }
-    currentField = (currentField as any).subfields[
+    currentField = (currentField as Field).subfields[
       fieldParts[i]
     ] as FieldOrGroup;
   }
