@@ -12,6 +12,7 @@ import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
@@ -30,6 +31,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -219,7 +221,8 @@ public class AlertsRuleEvaluator {
     if (changeEvent == null || changeEvent.getChangeDescription() == null) {
       return false;
     }
-    if (!changeEvent.getEntityType().equals(TEST_CASE)) {
+    if (!changeEvent.getEntityType().equals(TEST_CASE)
+        && !changeEvent.getEntityType().equals(TEST_SUITE)) {
       // in case the entity is not test case return since the filter doesn't apply
       return true;
     }
@@ -237,6 +240,18 @@ public class AlertsRuleEvaluator {
         TestCaseStatus status = testCaseResult.getTestCaseStatus();
         for (String givenStatus : testResults) {
           if (givenStatus.equalsIgnoreCase(status.value())) {
+            return true;
+          }
+        }
+      }
+
+      if (fieldChange.getName().equals("testCaseResultSummary")
+          && fieldChange.getNewValue() != null) {
+        List<ResultSummary> resultSummaries =
+            JsonUtils.readOrConvertValues(fieldChange.getNewValue(), ResultSummary.class);
+
+        for (ResultSummary resultSummary : resultSummaries) {
+          if (testResults.contains(resultSummary.getStatus().value())) {
             return true;
           }
         }
