@@ -13,18 +13,7 @@ Utilities for working with the Presidio Library.
 """
 import inspect
 import logging
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    Union,
-    cast,
-)
+from typing import Any, Callable, Iterable, List, Optional, Set, Type, Union, cast
 
 import spacy
 from dateutil import parser
@@ -126,24 +115,6 @@ recognizer_factories = class_register()
 
 
 class SanitizedCreditCardRecognizer(CreditCardRecognizer):
-    """Credit card recognizer with text sanitization capabilities."""
-
-    # Common character replacements for sanitizing input text
-    REPLACEMENT_PAIRS: List[Tuple[str, str]] = [
-        ("-", ""),  # Remove hyphens
-        (" ", ""),  # Remove spaces
-        (".", ""),  # Remove dots
-    ]
-
-    def sanitize_value(
-        self, text: str, replacement_pairs: List[Tuple[str, str]]
-    ) -> str:
-        """Sanitize input text by applying replacement pairs."""
-        sanitized = text
-        for old, new in replacement_pairs:
-            sanitized = sanitized.replace(old, new)
-        return sanitized
-
     def analyze(
         self,
         text: str,
@@ -152,7 +123,7 @@ class SanitizedCreditCardRecognizer(CreditCardRecognizer):
         regex_flags: Optional[int] = None,
     ) -> List[RecognizerResult]:
         return super().analyze(
-            self.sanitize_value(text, self.REPLACEMENT_PAIRS),
+            self.sanitize_value(text, self.replacement_pairs),
             entities,
             nlp_artifacts,
             regex_flags,
