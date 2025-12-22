@@ -94,7 +94,7 @@ describe('searchAPI tests', () => {
           Promise.resolve({ data: mockTableSearchResponse })
         ),
     }));
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const { searchQuery } = require('./searchAPI');
     const res = await searchQuery({ searchIndex: SearchIndex.TABLE });
 
@@ -114,7 +114,7 @@ describe('searchAPI tests', () => {
           Promise.resolve({ data: mockTableSearchResponse })
         ),
     }));
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const { searchQuery } = require('./searchAPI');
     const res = await searchQuery({ searchIndex: SearchIndex.TABLE });
 

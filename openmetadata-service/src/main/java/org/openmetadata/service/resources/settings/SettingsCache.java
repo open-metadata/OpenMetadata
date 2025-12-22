@@ -223,7 +223,23 @@ public class SettingsCache {
                   new LineageSettings()
                       .withDownstreamDepth(2)
                       .withUpstreamDepth(2)
-                      .withLineageLayer(LineageLayer.ENTITY_LINEAGE));
+                      .withLineageLayer(LineageLayer.ENTITY_LINEAGE)
+                      .withGraphPerformanceConfig(
+                          new org.openmetadata.schema.api.lineage.GraphPerformanceConfig()
+                              .withSmallGraphThreshold(5000)
+                              .withMediumGraphThreshold(50000)
+                              .withMaxInMemoryNodes(100000)
+                              .withSmallGraphBatchSize(10000)
+                              .withMediumGraphBatchSize(5000)
+                              .withLargeGraphBatchSize(1000)
+                              .withStreamingBatchSize(500)
+                              .withEnableCaching(true)
+                              .withCacheTTLSeconds(300)
+                              .withMaxCachedGraphs(100)
+                              .withEnableProgressTracking(false)
+                              .withProgressReportInterval(1000)
+                              .withUseScrollForLargeGraphs(true)
+                              .withScrollTimeoutMinutes(5)));
       Entity.getSystemRepository().createNewSetting(setting);
     }
 

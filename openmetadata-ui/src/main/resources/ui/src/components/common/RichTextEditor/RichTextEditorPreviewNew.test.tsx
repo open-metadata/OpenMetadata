@@ -138,8 +138,6 @@ describe('RichTextEditorPreviewNew', () => {
     const parser = screen.getByTestId('markdown-parser');
     const style = parser.style;
 
-    console.log('style when expanded:', style);
-
     expect(style.display).toBe('');
     expect(style.WebkitBoxOrient).not.toBeDefined();
     expect(style.overflow).toBe('');
