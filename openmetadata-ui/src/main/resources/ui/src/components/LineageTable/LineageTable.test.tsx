@@ -75,6 +75,10 @@ jest.mock('../../utils/CommonUtils', () => ({
     .mockImplementation((fqn: string) => fqn),
 }));
 
+jest.mock('../../utils/Fqn', () => ({
+  split: jest.fn().mockReturnValue(['mockGlossary']),
+}));
+
 jest.mock('lodash', () => {
   const module = jest.requireActual('lodash');
   module.debounce = jest.fn((fn) => fn);
@@ -351,7 +355,7 @@ describe('LineageTable', () => {
         id: 'col1',
         fromEntity: { fullyQualifiedName: 'test.table1', name: 'table1' },
         toEntity: { fullyQualifiedName: 'test.table2', name: 'table2' },
-        column: { fromColumns: ['col1'], toColumn: ['col2'] },
+        columns: { fromColumns: ['col1'], toColumn: ['col2'] },
       },
     ];
 

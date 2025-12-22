@@ -77,10 +77,7 @@ import Table from '../common/Table/Table';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
-import {
-  ColumnLevelLineageNode,
-  LineageNode,
-} from '../Lineage/Lineage.interface';
+import { EdgeFromToData, LineageNode } from '../Lineage/Lineage.interface';
 import {
   SearchedDataProps,
   SourceType,
@@ -645,17 +642,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   );
 
   // Define columns for column-level impact analysis
-  const columnImpactColumns: ColumnsType<ColumnLevelLineageNode> = useMemo(
+  const columnImpactColumns: ColumnsType<SourceType> = useMemo(
     () => [
       {
         title: t('label.source'),
         dataIndex: 'fromEntity',
         key: 'fromEntity',
-        sorter: (a, b) =>
-          a.fromEntity.fullyQualifiedName?.localeCompare(
-            b.fromEntity.fullyQualifiedName ?? ''
-          ),
-        render: (record?: EntityReference) => (
+        render: (record?: EdgeFromToData) => (
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
@@ -674,18 +667,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         title: t('label.source-column-plural'),
         dataIndex: ['fromColumn'],
         key: 'fromColumn',
-        sorter: (a, b) => a.fromColumn?.localeCompare(b.fromColumn ?? ''),
         render: columnNameRender,
       },
       {
         title: t('label.impacted'),
         dataIndex: 'toEntity',
         key: 'toEntity',
-        sorter: (a, b) =>
-          a.toEntity?.fullyQualifiedName?.localeCompare(
-            b.toEntity?.fullyQualifiedName ?? ''
-          ),
-        render: (record?: EntityReference) => (
+        render: (record?: EdgeFromToData) => (
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
@@ -704,7 +692,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         title: t('label.impacted-column-plural'),
         dataIndex: ['toColumn'],
         key: 'toColumn',
-        sorter: (a, b) => a.toColumn?.localeCompare(b.toColumn ?? ''),
         render: columnNameRender,
       },
       ...tableColumns.slice(1),
@@ -752,9 +739,11 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ? downstreamColumnLineageNodes
           : upstreamColumnLineageNodes;
 
+      const source = nodes.slice(currentPage - 1, currentPage - 1 + pageSize);
+
       return {
         columns: columnImpactColumns,
-        dataSource: nodes,
+        dataSource: source,
       };
     }
   }, [
