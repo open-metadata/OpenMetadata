@@ -97,6 +97,7 @@ public class ConfigResource {
       responseAuthConfig.setProviderName(yamlConfig.getProviderName());
       responseAuthConfig.setClientType(yamlConfig.getClientType());
       responseAuthConfig.setEnableSelfSignup(yamlConfig.getEnableSelfSignup());
+      responseAuthConfig.setEnableAutoRedirect(yamlConfig.getEnableAutoRedirect());
       responseAuthConfig.setJwtPrincipalClaims(yamlConfig.getJwtPrincipalClaims());
       responseAuthConfig.setJwtPrincipalClaimsMapping(yamlConfig.getJwtPrincipalClaimsMapping());
       responseAuthConfig.setClientId(yamlConfig.getClientId());
