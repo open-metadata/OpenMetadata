@@ -199,8 +199,15 @@ public class SearchRepository {
     clusterAlias = searchConfiguration != null ? searchConfiguration.getClusterAlias() : "";
     loadIndexMappings();
     registerSearchIndexHandler();
+    createIndexesIfNeeded();
   }
 
+  public void createIndexesIfNeeded() {
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      createIndex(indexMapping);
+    }
+  }
+  
   /**
    * Register the SearchIndexHandler as the primary handler for search indexing operations.
    * This handler will handle the actual search indexing when entities are created/updated/deleted.
