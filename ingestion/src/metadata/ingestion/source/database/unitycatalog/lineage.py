@@ -131,7 +131,7 @@ class UnitycatalogLineageSource(Source):
                     source=LineageSource.ExternalTableLineage,
                 )
             logger.debug(
-                f"No container column lineage found or {table_entity.fullyQualifiedName.root}"
+                f"No container column lineage found for {table_entity.fullyQualifiedName.root}"
             )
             return None
         except Exception as exc:
