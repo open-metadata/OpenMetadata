@@ -309,7 +309,6 @@ SELECT
 
 REDSHIFT_SERVERLESS_TEST_GET_QUERIES = """
 SELECT
-    has_table_privilege('SVV_TABLE_INFO', 'SELECT') as can_access_svv_table_info,
     has_table_privilege('SYS_QUERY_HISTORY', 'SELECT') as can_access_sys_query_history,
     has_table_privilege('SYS_QUERY_TEXT', 'SELECT') as can_access_sys_query_text,
     has_table_privilege('SYS_QUERY_DETAIL', 'SELECT') as can_access_sys_query_detail,
