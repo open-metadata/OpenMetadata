@@ -1103,6 +1103,11 @@
       <artifactId>commonmark-ext-autolink</artifactId>
       <version>${commonmark.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-gfm-tables</artifactId>
+      <version>${commonmark.version}</version>
+    </dependency>
     <!-- Flexmark HTML to Markdown Converter -->
     <dependency>
       <groupId>com.vladsch.flexmark</groupId>
