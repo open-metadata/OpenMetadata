@@ -17,7 +17,9 @@ import dagger.Module;
 import dagger.Provides;
 import javax.inject.Singleton;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
@@ -96,5 +98,13 @@ public class CoreModule {
   @Singleton
   public OpenMetadataApplicationConfig provideConfig() {
     return config;
+  }
+
+  @Provides
+  @Singleton
+  public PipelineServiceClientInterface providePipelineServiceClient(
+      OpenMetadataApplicationConfig config) {
+    return PipelineServiceClientFactory.createPipelineServiceClient(
+        config.getPipelineServiceClientConfiguration());
   }
 }

@@ -582,12 +582,15 @@ public class MapperModule {
    * <p>AppMarketPlaceMapper handles conversion from CreateAppMarketPlaceDefinition to
    * AppMarketPlaceDefinition entity.
    *
+   * @param pipelineServiceClient PipelineServiceClientInterface for app validation (injected by
+   *     Dagger)
    * @return AppMarketPlaceMapper singleton
    */
   @Provides
   @Singleton
-  public AppMarketPlaceMapper provideAppMarketPlaceMapper() {
-    return new AppMarketPlaceMapper();
+  public AppMarketPlaceMapper provideAppMarketPlaceMapper(
+      org.openmetadata.sdk.PipelineServiceClientInterface pipelineServiceClient) {
+    return new AppMarketPlaceMapper(pipelineServiceClient);
   }
 
   /**
