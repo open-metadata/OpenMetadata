@@ -588,14 +588,20 @@ const TagPage = () => {
       },
     ];
 
-    const recognizerTab = tagClassBase.getRecognizerTab(
-      tagItem,
-      activeTab,
-      t,
-      tagItem?.recognizers?.length || 0
-    );
-    if (recognizerTab) {
-      items.push(recognizerTab);
+    const recognizerTabContent = tagClassBase.getRecognizerTabContent(tagItem);
+    if (recognizerTabContent) {
+      items.push({
+        key: 'recognizer',
+        label: (
+          <TabsLabel
+            count={tagItem?.recognizers?.length || 0}
+            id="recognizer"
+            isActive={activeTab === TagTabs.RECOGNIZER}
+            name={t('label.recognizer-plural')}
+          />
+        ),
+        children: recognizerTabContent,
+      });
     }
 
     return items;

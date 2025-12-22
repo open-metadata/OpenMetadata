@@ -45,15 +45,11 @@ import { FilterPatternProps } from '../components/common/FilterPattern/filterPat
 import FormItemLabel from '../components/common/Form/FormItemLabel';
 import { MUIIconPicker } from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import MUIAutocomplete, {
-  MUIAutocompleteProps,
-} from '../components/common/MUIAutocomplete';
 import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUISelect from '../components/common/MUISelect/MUISelect';
-import MUISwitch, { MUISwitchProps } from '../components/common/MUISwitch';
 import MUITagSuggestion from '../components/common/MUITagSuggestion/MUITagSuggestion';
 import MUITextField from '../components/common/MUITextField/MUITextField';
 import MUIUserTeamSelect, {
@@ -69,6 +65,10 @@ import { UserSelectableListProps } from '../components/common/UserSelectableList
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
 import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
+import MUIAutocomplete, {
+  MUIAutocompleteProps,
+} from '../components/form/MUIAutocomplete';
+import MUISwitch, { MUISwitchProps } from '../components/form/MUISwitch';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
   FieldProp,

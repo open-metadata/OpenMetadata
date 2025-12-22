@@ -1,6 +1,6 @@
 import { AutocompleteProps } from '@mui/material';
 
-export /*
+/*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@ export /*
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-interface MUIAutocompleteProps
+export interface MUIAutocompleteProps
   extends Omit<
     AutocompleteProps<string, true, false, true>,
     'renderInput' | 'onChange' | 'value' | 'options'

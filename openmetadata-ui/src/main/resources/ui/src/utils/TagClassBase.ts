@@ -249,16 +249,9 @@ class TagClassBase {
     return null;
   };
 
-  public getRecognizerTab = (
-    _tagData: Tag,
-    _activeTab: string,
-    _t: (key: string) => string,
-    _count?: number
-  ): {
-    label: React.ReactElement;
-    key: string;
-    children: React.ReactElement;
-  } | null => {
+  public getRecognizerTabContent = (
+    _tagData: Tag
+  ): React.ReactElement | null => {
     return null;
   };
 

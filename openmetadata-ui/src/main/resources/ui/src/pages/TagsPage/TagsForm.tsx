@@ -18,7 +18,10 @@ import { Suspense, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
-import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
+import {
+  DEFAULT_FORM_VALUE,
+  TAG_NAME_VALIDATION_RULES,
+} from '../../constants/Tags.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { useEntityRules } from '../../hooks/useEntityRules';
@@ -26,7 +29,7 @@ import { FieldProp } from '../../interface/FormUtils.interface';
 import { generateFormFields, getField } from '../../utils/formUtils';
 import tagClassBase from '../../utils/TagClassBase';
 import {
-  getColorField,
+  COLOR_FIELD,
   getDescriptionField,
   getDisabledField,
   getDisplayNameField,
@@ -103,78 +106,135 @@ const TagsForm = ({
     [isEditing, isClassification, permissions]
   );
 
-  const iconField = useMemo(
-    () => getIconField(t, selectedColor),
-    [t, selectedColor]
+  const iconField = useMemo(() => {
+    const field = getIconField(selectedColor);
+
+    return {
+      ...field,
+      muiLabel: t(field.muiLabel),
+      props: {
+        ...field.props,
+        placeholder: t(field.placeholder),
+      },
+    };
+  }, [t, selectedColor]);
+
+  const colorField = useMemo(
+    () => ({
+      ...COLOR_FIELD,
+      muiLabel: t(COLOR_FIELD.muiLabel),
+    }),
+    [t]
   );
 
-  const colorField = useMemo(() => getColorField(t), [t]);
+  const nameField = useMemo(() => {
+    const field = getNameField(disableNameField || false);
 
-  const nameField = useMemo(
-    () => getNameField(t, disableNameField || false),
-    [t, disableNameField]
-  );
+    return {
+      ...field,
+      label: <>{t(field.label as string)}</>,
+      placeholder: t(field.placeholder as string),
+      rules: TAG_NAME_VALIDATION_RULES.map((rule) => ({
+        ...rule,
+        message: rule.message
+          ? t(rule.message, {
+              ...rule.messageData,
+              field: rule.messageData?.field
+                ? t(rule.messageData.field)
+                : undefined,
+              entity: rule.messageData?.entity
+                ? t(rule.messageData.entity)
+                : undefined,
+            })
+          : undefined,
+      })),
+    };
+  }, [t, disableNameField]);
 
-  const displayNameField = useMemo(
-    () => getDisplayNameField(t, disableDisplayNameField),
-    [t, disableDisplayNameField]
-  );
+  const displayNameField = useMemo(() => {
+    const field = getDisplayNameField(disableDisplayNameField);
 
-  const ownerField = useMemo(
-    () =>
-      getOwnerField(t, {
-        canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
-        canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
-      }),
-    [
-      t,
-      entityRules.canAddMultipleUserOwners,
-      entityRules.canAddMultipleTeamOwner,
-    ]
-  );
+    return {
+      ...field,
+      label: t(field.label),
+      placeholder: t(field.placeholder),
+    };
+  }, [t, disableDisplayNameField]);
 
-  const domainField = useMemo(
-    () =>
-      getDomainField(t, {
-        canAddMultipleDomains: entityRules.canAddMultipleDomains,
-      }),
-    [t, entityRules.canAddMultipleDomains]
-  );
+  const ownerField = useMemo(() => {
+    const field = getOwnerField({
+      canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
+      canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
+    });
 
-  const formFields: FieldProp[] = useMemo(
-    () => [
-      getDescriptionField(t, {
-        initialValue: initialValues?.description ?? '',
-        readonly: disableDescriptionField,
-      }),
-      ...(isSystemTag && !isTier
-        ? ([
-            getDisabledField(t, {
-              initialValue: initialValues?.disabled ?? false,
-              disabled: disableDisabledField,
-            }),
-          ] as FieldProp[])
-        : []),
-    ],
-    [
-      t,
-      initialValues?.description,
-      initialValues?.disabled,
-      disableDescriptionField,
-      disableDisabledField,
-      isSystemTag,
-      isTier,
-    ]
-  );
+    return {
+      ...field,
+      label: t(field.label),
+    };
+  }, [
+    t,
+    entityRules.canAddMultipleUserOwners,
+    entityRules.canAddMultipleTeamOwner,
+  ]);
 
-  const mutuallyExclusiveField = useMemo(
-    () =>
-      getMutuallyExclusiveField(t, {
-        disabled: disableMutuallyExclusiveField,
-        showHelperText: Boolean(isMutuallyExclusive),
-      }),
-    [t, disableMutuallyExclusiveField, isMutuallyExclusive]
-  );
+  const domainField = useMemo(() => {
+    const field = getDomainField({
+      canAddMultipleDomains: entityRules.canAddMultipleDomains,
+    });
+
+    return {
+      ...field,
+      label: t(field.label),
+    };
+  }, [t, entityRules.canAddMultipleDomains]);
+
+  const formFields: FieldProp[] = useMemo(() => {
+    const descriptionField = getDescriptionField({
+      initialValue: initialValues?.description ?? '',
+      readonly: disableDescriptionField,
+    });
+
+    const fields: FieldProp[] = [
+      {
+        ...descriptionField,
+        label: t(descriptionField.label),
+      },
+    ];
+
+    if (isSystemTag && !isTier) {
+      const disabledField = getDisabledField({
+        initialValue: initialValues?.disabled ?? false,
+        disabled: disableDisabledField,
+      });
+
+      fields.push({
+        ...disabledField,
+        label: t(disabledField.label),
+      });
+    }
+
+    return fields;
+  }, [
+    t,
+    initialValues?.description,
+    initialValues?.disabled,
+    disableDescriptionField,
+    disableDisabledField,
+    isSystemTag,
+    isTier,
+  ]);
+
+  const mutuallyExclusiveField = useMemo(() => {
+    const field = getMutuallyExclusiveField({
+      disabled: disableMutuallyExclusiveField,
+      showHelperText: Boolean(isMutuallyExclusive),
+    });
+
+    return {
+      ...field,
+      label: t(field.label),
+    };
+  }, [t, disableMutuallyExclusiveField, isMutuallyExclusive]);
 
   const autoClassificationComponent = useMemo(
     () =>
@@ -233,7 +293,7 @@ const TagsForm = ({
 
         {/* Icon and Color row */}
         {!isClassification && (
-          <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid container spacing={2}>
             <Grid>{getField(iconField)}</Grid>
             <Grid sx={{ ml: 'auto' }}>{getField(colorField)}</Grid>
           </Grid>

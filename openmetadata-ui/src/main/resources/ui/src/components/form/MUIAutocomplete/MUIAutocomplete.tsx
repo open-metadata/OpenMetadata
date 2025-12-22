@@ -12,7 +12,7 @@
  */
 import { Autocomplete } from '@mui/material';
 import { FC, memo, useCallback } from 'react';
-import MUITextField from '../MUITextField/MUITextField';
+import MUITextField from '../../common/MUITextField/MUITextField';
 import { MUIAutocompleteProps } from './MUIAutocomplete.interface';
 
 const MUIAutocomplete: FC<MUIAutocompleteProps> = ({

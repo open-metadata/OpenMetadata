@@ -291,19 +291,9 @@ const TagsV1 = ({
       <Tooltip
         arrow
         enterDelay={500}
-        placement="bottom-start"
+        placement="top"
         slotProps={{
-          tooltip: {
-            sx: {
-              backgroundColor: (theme) => theme.palette.grey[900],
-              color: (theme) => theme.palette.common.white,
-            },
-          },
-          arrow: {
-            sx: {
-              color: (theme) => theme.palette.grey[900],
-            },
-          },
+          tooltip: { className: 'tags-tooltip' },
         }}
         title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
         {automatedTagChip}
@@ -319,19 +309,9 @@ const TagsV1 = ({
         <Tooltip
           arrow
           enterDelay={500}
-          placement="bottom-start"
+          placement="top"
           slotProps={{
-            tooltip: {
-              sx: {
-                backgroundColor: (theme) => theme.palette.grey[700],
-                color: (theme) => theme.palette.common.white,
-              },
-            },
-            arrow: {
-              sx: {
-                color: (theme) => theme.palette.grey[700],
-              },
-            },
+            tooltip: { className: 'tags-tooltip' },
           }}
           title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
           {tagChip}

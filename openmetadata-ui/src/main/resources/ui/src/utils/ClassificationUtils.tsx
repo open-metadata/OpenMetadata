@@ -85,23 +85,7 @@ export const getCommonColumns = (options?: {
         }
 
         return (
-          <MUITooltip
-            arrow
-            enterDelay={500}
-            slotProps={{
-              tooltip: {
-                sx: {
-                  backgroundColor: (theme) => theme.palette.grey[700],
-                  color: (theme) => theme.palette.common.white,
-                },
-              },
-              arrow: {
-                sx: {
-                  color: (theme) => theme.palette.grey[700],
-                },
-              },
-            }}
-            title={tooltipTitle}>
+          <MUITooltip arrow placement="top" title={tooltipTitle}>
             <Switch
               checked={!record.disabled}
               data-testid={`tag-disable-toggle-${record.name}`}
