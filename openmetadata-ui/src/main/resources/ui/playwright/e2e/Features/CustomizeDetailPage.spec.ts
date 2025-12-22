@@ -22,7 +22,6 @@ import {
 } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { Domain } from '../../support/domain/Domain';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -889,125 +888,6 @@ test.describe('Persona customization', () => {
 
         await expect(
           userPage.getByRole('tab', { name: 'Data Products' })
-        ).toBeVisible();
-      }
-    );
-  });
-
-  test("Data Product - customize tab label should only render if it's customized by user", async ({
-    adminPage,
-    userPage,
-  }) => {
-    // Create a domain first since DataProduct needs it
-    const domain = new Domain();
-    let entity:
-      | {
-          create: (context: APIRequestContext) => Promise<unknown>;
-          visitEntityPage: (page: Page) => Promise<unknown>;
-        }
-      | undefined = undefined;
-
-    await test.step('pre-requisite', async () => {
-      const { apiContext } = await getApiContext(adminPage);
-      // Create domain first
-      await domain.create(apiContext);
-      // Create DataProduct with the domain
-      const DataProduct = (await import('../support/domain/DataProduct'))
-        .DataProduct;
-      entity = new DataProduct([domain]);
-      await entity.create(apiContext);
-    });
-
-    await test.step(
-      'apply tab label customization for Data Product',
-      async () => {
-        const personaListResponse =
-          adminPage.waitForResponse(`/api/v1/personas?*`);
-        await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-        await personaListResponse;
-
-        // Need to find persona card and click as the list might get paginated
-        await navigateToPersonaWithPagination(
-          adminPage,
-          persona.data.name,
-          true
-        );
-
-        await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
-
-        await adminPage.getByText('Governance').click();
-        // Navigate to Domain first, then Data Product as submenu
-        await adminPage.getByText('Domain', { exact: true }).click();
-        await adminPage.getByText('Data Product', { exact: true }).click();
-
-        await adminPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        await expect(
-          adminPage
-            .getByTestId('customize-tab-card')
-            .getByTestId(`tab-documentation`)
-        ).toBeVisible();
-
-        await adminPage
-          .getByTestId('customize-tab-card')
-          .getByTestId(`tab-documentation`)
-          .click();
-
-        await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
-
-        await expect(adminPage.getByRole('dialog')).toBeVisible();
-
-        await adminPage.getByRole('dialog').getByRole('textbox').clear();
-        await adminPage
-          .getByRole('dialog')
-          .getByRole('textbox')
-          .fill('Product Details');
-
-        await adminPage
-          .getByRole('dialog')
-          .getByRole('button', { name: 'Ok' })
-          .click();
-
-        await expect(
-          adminPage
-            .getByTestId('customize-tab-card')
-            .getByTestId(`tab-documentation`)
-        ).toHaveText('Product Details');
-
-        await adminPage.getByTestId('save-button').click();
-
-        await toastNotification(
-          adminPage,
-          /^Page layout (created|updated) successfully\.$/
-        );
-      }
-    );
-
-    await test.step(
-      'validate applied label change for Data Product Documentation tab',
-      async () => {
-        await redirectToHomePage(userPage);
-
-        await entity?.visitEntityPage(userPage);
-
-        await userPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        // Verify the custom tab name is displayed
-        await expect(
-          userPage.getByRole('tab', { name: 'Product Details' })
-        ).toBeVisible();
-
-        // Verify other tabs still show default names
-        await expect(
-          userPage.getByRole('tab', { name: 'Assets' })
-        ).toBeVisible();
-
-        await expect(
-          userPage.getByRole('tab', { name: 'Activity Feed & Tasks' })
         ).toBeVisible();
       }
     );

@@ -132,16 +132,11 @@ export const getCustomizePageOptions = (
     case 'governance':
       return list.reduce((acc, item) => {
         if (
-          [PageType.Glossary, PageType.GlossaryTerm, PageType.Domain].includes(
+          [PageType.Glossary, PageType.GlossaryTerm, PageType.Domain, PageType.DataProduct].includes(
             item
           )
         ) {
-          const menuItem = generateSettingItems(item);
-          // Add DataProduct as a child of Domain
-          if (item === PageType.Domain) {
-            menuItem.items = [generateSettingItems(PageType.DataProduct)];
-          }
-          acc.push(menuItem);
+          acc.push(generateSettingItems(item));
         }
 
         return acc;
