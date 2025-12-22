@@ -61,12 +61,13 @@ public class MlModelRepository extends EntityRepository<MlModel> {
   private static final String MODEL_UPDATE_FIELDS = "dashboard";
   private static final String MODEL_PATCH_FIELDS = "dashboard";
 
-  public MlModelRepository() {
+  @javax.inject.Inject
+  public MlModelRepository(CollectionDAO collectionDAO) {
     super(
         MlModelResource.COLLECTION_PATH,
         Entity.MLMODEL,
         MlModel.class,
-        Entity.getCollectionDAO().mlModelDAO(),
+        collectionDAO.mlModelDAO(),
         MODEL_PATCH_FIELDS,
         MODEL_UPDATE_FIELDS);
     supportsSearch = true;
@@ -74,6 +75,11 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("dashboard", this::fetchAndSetDashboards);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
+  }
+
+  @Deprecated
+  public MlModelRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   public static MlFeature findMlFeature(List<MlFeature> features, String featureName) {

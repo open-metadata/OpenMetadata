@@ -186,6 +186,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   protected Jdbi jdbi;
   private Environment environment;
+  private org.openmetadata.service.di.ApplicationComponent daggerComponent;
 
   @Override
   public void run(OpenMetadataApplicationConfig catalogConfig, Environment environment)
@@ -299,7 +300,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EventPubSub.start();
 
     ApplicationHandler.initialize(catalogConfig);
-    registerResources(catalogConfig, environment, jdbi);
+
+    // Initialize Dagger dependency injection component
+    daggerComponent = initializeDaggerComponent(catalogConfig);
+
+    // Populate ServiceRegistry with services from Dagger component
+    org.openmetadata.service.services.ServiceRegistry serviceRegistry =
+        populateServiceRegistry(daggerComponent);
+
+    // Register resources with ServiceRegistry for dependency injection
+    registerResources(catalogConfig, environment, jdbi, serviceRegistry);
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
@@ -818,7 +828,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerResources(
-      OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
+      OpenMetadataApplicationConfig config,
+      Environment environment,
+      Jdbi jdbi,
+      org.openmetadata.service.services.ServiceRegistry serviceRegistry) {
     CollectionRegistry.initialize();
     CollectionRegistry.getInstance()
         .registerResources(
@@ -827,7 +840,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             config,
             authorizer,
             SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
-            limits);
+            limits,
+            serviceRegistry);
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 
@@ -899,6 +913,70 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
     }
+  }
+
+  /**
+   * Initialize Dagger dependency injection component.
+   *
+   * <p>This method builds the Dagger ApplicationComponent with all required dependencies:
+   *
+   * <ul>
+   *   <li>CoreModule - provides JDBI, CollectionDAO, SearchRepository, Authorizer
+   *   <li>RepositoryModule - provides entity repositories (e.g., TableRepository)
+   *   <li>ServiceModule - provides entity services (e.g., TableService)
+   * </ul>
+   *
+   * <p>The component is built using the builder pattern and all modules are initialized with the
+   * application's infrastructure components.
+   *
+   * @return ApplicationComponent with all dependencies wired
+   */
+  protected org.openmetadata.service.di.ApplicationComponent initializeDaggerComponent(
+      OpenMetadataApplicationConfig config) {
+    LOG.info("Initializing Dagger dependency injection component");
+
+    // Get infrastructure components
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    org.openmetadata.service.search.SearchRepository searchRepository =
+        Entity.getSearchRepository();
+
+    // Build Dagger component
+    org.openmetadata.service.di.ApplicationComponent component =
+        org.openmetadata.service.di.DaggerApplicationComponent.builder()
+            .coreModule(
+                new org.openmetadata.service.di.CoreModule(
+                    jdbi, collectionDAO, searchRepository, authorizer, config))
+            .build();
+
+    LOG.info("Dagger component initialized successfully");
+    return component;
+  }
+
+  /**
+   * Populate ServiceRegistry with services from Dagger component.
+   *
+   * <p>This method uses reflection-based discovery to automatically find all @Service annotated
+   * classes, retrieve their instances from the Dagger ApplicationComponent, and register them in
+   * the ServiceRegistry.
+   *
+   * <p>Services are discovered and registered automatically - no manual registration needed. When
+   * new services are created with @Service annotation and added to ApplicationComponent, they will
+   * be automatically discovered and registered.
+   *
+   * @param component Dagger ApplicationComponent
+   * @return ServiceRegistry populated with service instances
+   */
+  protected org.openmetadata.service.services.ServiceRegistry populateServiceRegistry(
+      org.openmetadata.service.di.ApplicationComponent component) {
+    LOG.info("Populating ServiceRegistry from Dagger component via automatic discovery");
+
+    org.openmetadata.service.services.ServiceRegistry serviceRegistry =
+        new org.openmetadata.service.services.ServiceRegistry();
+
+    // Automatically discover and register all @Service annotated services
+    serviceRegistry.initializeFromComponent(component);
+
+    return serviceRegistry;
   }
 
   public static void main(String[] args) throws Exception {

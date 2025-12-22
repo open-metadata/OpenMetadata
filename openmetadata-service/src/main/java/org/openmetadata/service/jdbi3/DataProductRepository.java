@@ -87,12 +87,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
-  public DataProductRepository() {
+  @javax.inject.Inject
+  public DataProductRepository(CollectionDAO collectionDAO) {
     super(
         DataProductResource.COLLECTION_PATH,
         Entity.DATA_PRODUCT,
         DataProduct.class,
-        Entity.getCollectionDAO().dataProductDAO(),
+        collectionDAO.dataProductDAO(),
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
@@ -104,6 +105,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("experts", this::fetchAndSetExperts);
+  }
+
+  @Deprecated
+  public DataProductRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

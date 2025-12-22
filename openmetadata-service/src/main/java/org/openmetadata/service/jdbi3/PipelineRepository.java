@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -94,12 +95,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final String PIPELINE_PATCH_FIELDS = "tasks";
   public static final String PIPELINE_STATUS_EXTENSION = "pipeline.pipelineStatus";
 
-  public PipelineRepository() {
+  @Inject
+  public PipelineRepository(CollectionDAO collectionDAO) {
     super(
         PipelineResource.COLLECTION_PATH,
         Entity.PIPELINE,
         Pipeline.class,
-        Entity.getCollectionDAO().pipelineDAO(),
+        collectionDAO.pipelineDAO(),
         PIPELINE_PATCH_FIELDS,
         PIPELINE_UPDATE_FIELDS);
     supportsSearch = true;
@@ -108,6 +110,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     fieldFetchers.put("pipelineStatus", this::fetchAndSetPipelineStatuses);
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetTaskFieldsInBulk);
+  }
+
+  @Deprecated
+  public PipelineRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

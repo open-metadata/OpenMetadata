@@ -36,16 +36,22 @@ public class PersonaRepository extends EntityRepository<Persona> {
   static final String PERSONA_PATCH_FIELDS = "users,default";
   static final String FIELD_USERS = "users";
 
-  public PersonaRepository() {
+  @javax.inject.Inject
+  public PersonaRepository(CollectionDAO collectionDAO) {
     super(
         PersonaResource.COLLECTION_PATH,
         PERSONA,
         Persona.class,
-        Entity.getCollectionDAO().personaDAO(),
+        collectionDAO.personaDAO(),
         PERSONA_PATCH_FIELDS,
         PERSONA_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = false;
+  }
+
+  @Deprecated
+  public PersonaRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

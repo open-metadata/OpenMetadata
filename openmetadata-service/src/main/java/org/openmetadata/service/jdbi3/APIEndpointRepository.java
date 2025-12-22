@@ -57,18 +57,24 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
 
-  public APIEndpointRepository() {
+  @javax.inject.Inject
+  public APIEndpointRepository(CollectionDAO collectionDAO) {
     super(
         APIEndpointResource.COLLECTION_PATH,
         Entity.API_ENDPOINT,
         APIEndpoint.class,
-        Entity.getCollectionDAO().apiEndpointDAO(),
+        collectionDAO.apiEndpointDAO(),
         "",
         "");
     supportsSearch = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetSchemaFieldTags);
+  }
+
+  @Deprecated
+  public APIEndpointRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

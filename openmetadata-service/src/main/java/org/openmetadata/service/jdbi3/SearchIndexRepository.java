@@ -62,12 +62,13 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
-  public SearchIndexRepository() {
+  @javax.inject.Inject
+  public SearchIndexRepository(CollectionDAO collectionDAO) {
     super(
         SearchIndexResource.COLLECTION_PATH,
         Entity.SEARCH_INDEX,
         SearchIndex.class,
-        Entity.getCollectionDAO().searchIndexDAO(),
+        collectionDAO.searchIndexDAO(),
         "",
         "");
     supportsSearch = true;
@@ -75,6 +76,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_FOLLOWERS, this::fetchAndSetFollowers);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetFieldTags);
+  }
+
+  @Deprecated
+  public SearchIndexRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

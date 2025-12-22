@@ -34,15 +34,21 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class APICollectionRepository extends EntityRepository<APICollection> {
 
-  public APICollectionRepository() {
+  @javax.inject.Inject
+  public APICollectionRepository(CollectionDAO collectionDAO) {
     super(
         APICollectionResource.COLLECTION_PATH,
         Entity.API_COLLECTION,
         APICollection.class,
-        Entity.getCollectionDAO().apiCollectionDAO(),
+        collectionDAO.apiCollectionDAO(),
         "",
         "");
     supportsSearch = true;
+  }
+
+  @Deprecated
+  public APICollectionRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

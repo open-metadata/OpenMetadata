@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.inject.Inject;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -28,15 +29,21 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl";
   static final String UPDATE_FIELDS = "storedProcedureCode,sourceUrl";
 
-  public StoredProcedureRepository() {
+  @Inject
+  public StoredProcedureRepository(CollectionDAO collectionDAO) {
     super(
         StoredProcedureResource.COLLECTION_PATH,
         STORED_PROCEDURE,
         StoredProcedure.class,
-        Entity.getCollectionDAO().storedProcedureDAO(),
+        collectionDAO.storedProcedureDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+  }
+
+  @Deprecated
+  public StoredProcedureRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import javax.inject.Inject;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -88,16 +89,23 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Getter private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
-  public IngestionPipelineRepository(OpenMetadataApplicationConfig config) {
+  @Inject
+  public IngestionPipelineRepository(
+      CollectionDAO collectionDAO, OpenMetadataApplicationConfig config) {
     super(
         IngestionPipelineResource.COLLECTION_PATH,
         Entity.INGESTION_PIPELINE,
         IngestionPipeline.class,
-        Entity.getCollectionDAO().ingestionPipelineDAO(),
+        collectionDAO.ingestionPipelineDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     this.supportsSearch = true;
     this.openMetadataApplicationConfig = config;
+  }
+
+  @Deprecated
+  public IngestionPipelineRepository(OpenMetadataApplicationConfig config) {
+    this(Entity.getCollectionDAO(), config);
   }
 
   @Override
