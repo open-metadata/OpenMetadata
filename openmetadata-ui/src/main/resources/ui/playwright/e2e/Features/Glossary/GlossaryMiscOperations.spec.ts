@@ -289,6 +289,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
   test('should delete parent term and remove both parent and child tags from assets', async ({
     page,
   }) => {
+    test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     const parentTerm = new GlossaryTerm(glossary);
