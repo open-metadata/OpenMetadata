@@ -207,7 +207,7 @@ public class SearchRepository {
       createIndex(indexMapping);
     }
   }
-  
+
   /**
    * Register the SearchIndexHandler as the primary handler for search indexing operations.
    * This handler will handle the actual search indexing when entities are created/updated/deleted.
