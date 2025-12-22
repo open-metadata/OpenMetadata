@@ -2413,8 +2413,9 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
       await performExpandAll(page);
 
-      const escapedParentFqn =
-        parentTerm.responseData.fullyQualifiedName.replace(/"/g, '\\"');
+      const escapedParentFqn = parentTerm.responseData.fullyQualifiedName
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"');
       const parentRow = page.locator(`[data-row-key="${escapedParentFqn}"]`);
       await parentRow.getByTestId('add-classification').click();
 
@@ -2743,10 +2744,9 @@ test.describe('Glossary tests', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
       await performExpandAll(page);
 
-      const escapedFqn = glossaryTerm.responseData.fullyQualifiedName.replace(
-        /"/g,
-        '\\"'
-      );
+      const escapedFqn = glossaryTerm.responseData.fullyQualifiedName
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"');
       const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
       const glossaryTermRes = page.waitForResponse(
         '/api/v1/glossaryTerms/name/*'
