@@ -15,89 +15,72 @@ package org.openmetadata.service.di;
 
 import dagger.Module;
 import dagger.Provides;
+import io.dropwizard.core.setup.Environment;
 import javax.inject.Singleton;
-import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.Authorizer;
 
 /**
- * Dagger module providing core infrastructure components.
+ * Dagger module providing core application components.
  *
- * <p>This module provides the foundational infrastructure needed by all other modules:
+ * <p>This module provides the foundational components initialized during application startup:
  *
  * <ul>
- *   <li>JDBI for database access
- *   <li>CollectionDAO for entity data access
- *   <li>SearchRepository for search operations
- *   <li>Authorizer for access control
- *   <li>OpenMetadataApplicationConfig for application configuration
+ *   <li>Environment - Dropwizard environment for lifecycle management
+ *   <li>OpenMetadataApplicationConfig - Application configuration
+ *   <li>Authorizer - Access control and authorization
+ *   <li>PipelineServiceClientInterface - Pipeline service client
  * </ul>
  *
- * <p>These components are typically initialized during application startup and passed to this
- * module.
+ * <p>Other infrastructure components (JDBI, CollectionDAO, SearchRepository) are provided by
+ * specialized modules:
+ *
+ * <ul>
+ *   <li>DatabaseModule - provides JDBI, CollectionDAO, JobDAO
+ *   <li>SearchModule - provides SearchRepository
+ * </ul>
+ *
+ * <p>These components are passed to CoreModule during application initialization and made available
+ * to other modules via dependency injection.
  */
 @Module
 public class CoreModule {
-  private final Jdbi jdbi;
-  private final CollectionDAO collectionDAO;
-  private final SearchRepository searchRepository;
-  private final Authorizer authorizer;
+  private final Environment environment;
   private final OpenMetadataApplicationConfig config;
+  private final Authorizer authorizer;
 
   /**
    * Constructor for CoreModule.
    *
-   * @param jdbi JDBI instance for database access
-   * @param collectionDAO CollectionDAO for entity operations
-   * @param searchRepository SearchRepository for search operations
-   * @param authorizer Authorizer for access control
+   * @param environment Dropwizard environment for lifecycle management
    * @param config OpenMetadataApplicationConfig for application configuration
+   * @param authorizer Authorizer for access control
    */
   public CoreModule(
-      Jdbi jdbi,
-      CollectionDAO collectionDAO,
-      SearchRepository searchRepository,
-      Authorizer authorizer,
-      OpenMetadataApplicationConfig config) {
-    this.jdbi = jdbi;
-    this.collectionDAO = collectionDAO;
-    this.searchRepository = searchRepository;
-    this.authorizer = authorizer;
+      Environment environment, OpenMetadataApplicationConfig config, Authorizer authorizer) {
+    this.environment = environment;
     this.config = config;
+    this.authorizer = authorizer;
   }
 
   @Provides
   @Singleton
-  public Jdbi provideJdbi() {
-    return jdbi;
-  }
-
-  @Provides
-  @Singleton
-  public CollectionDAO provideCollectionDAO() {
-    return collectionDAO;
-  }
-
-  @Provides
-  @Singleton
-  public SearchRepository provideSearchRepository() {
-    return searchRepository;
-  }
-
-  @Provides
-  @Singleton
-  public Authorizer provideAuthorizer() {
-    return authorizer;
+  public Environment provideEnvironment() {
+    return environment;
   }
 
   @Provides
   @Singleton
   public OpenMetadataApplicationConfig provideConfig() {
     return config;
+  }
+
+  @Provides
+  @Singleton
+  public Authorizer provideAuthorizer() {
+    return authorizer;
   }
 
   @Provides

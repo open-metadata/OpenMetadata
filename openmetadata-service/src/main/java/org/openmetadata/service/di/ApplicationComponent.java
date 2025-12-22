@@ -14,7 +14,14 @@
 package org.openmetadata.service.di;
 
 import dagger.Component;
+import java.util.Set;
 import javax.inject.Singleton;
+import org.openmetadata.service.di.providers.ApplicationInitializer;
+import org.openmetadata.service.di.providers.ConfigurationInitializer;
+import org.openmetadata.service.di.providers.FilterRegistrar;
+import org.openmetadata.service.di.providers.JerseyRegistrar;
+import org.openmetadata.service.di.providers.MCPServerFactory;
+import org.openmetadata.service.di.providers.SecurityInitializer;
 import org.openmetadata.service.services.ai.AIApplicationService;
 import org.openmetadata.service.services.ai.AIGovernancePolicyService;
 import org.openmetadata.service.services.ai.PromptTemplateService;
@@ -70,10 +77,15 @@ import org.openmetadata.service.services.teams.UserService;
  * <p>This component is the root of the dependency injection graph. It combines:
  *
  * <ul>
- *   <li>CoreModule - provides JDBI, DAOs, Search, Authorizer
+ *   <li>CoreModule - provides Environment, Config
+ *   <li>DatabaseModule - provides JDBI, CollectionDAO, JobDAO
+ *   <li>SearchModule - provides SearchRepository
  *   <li>RepositoryModule - provides entity repositories
  *   <li>MapperModule - provides entity mappers
  *   <li>ServiceModule - provides entity services
+ *   <li>ComponentsModule - provides initializers and registrars
+ *   <li>OpenMetadataModule - provides OpenMetadata-specific implementations (can be overridden by
+ *       Collate)
  * </ul>
  *
  * <p>The component is built during application initialization and provides access to services for
@@ -81,7 +93,11 @@ import org.openmetadata.service.services.teams.UserService;
  *
  * <pre>{@code
  * ApplicationComponent component = DaggerApplicationComponent.builder()
- *     .coreModule(new CoreModule(jdbi, collectionDAO, searchRepository, authorizer))
+ *     .coreModule(new CoreModule(environment, config, authorizer))
+ *     .databaseModule(new DatabaseModule())
+ *     .searchModule(new SearchModule())
+ *     .componentsModule(new ComponentsModule())
+ *     .openMetadataModule(new OpenMetadataModule())
  *     .build();
  *
  * TableService tableService = component.tableService();
@@ -92,8 +108,29 @@ import org.openmetadata.service.services.teams.UserService;
  */
 @Singleton
 @Component(
-    modules = {CoreModule.class, RepositoryModule.class, MapperModule.class, ServiceModule.class})
+    modules = {
+      CoreModule.class,
+      DatabaseModule.class,
+      SearchModule.class,
+      RepositoryModule.class,
+      MapperModule.class,
+      ServiceModule.class,
+      ComponentsModule.class,
+      OpenMetadataModule.class
+    })
 public interface ApplicationComponent {
+
+  ConfigurationInitializer configurationInitializer();
+
+  SecurityInitializer securityInitializer();
+
+  ApplicationInitializer applicationInitializer();
+
+  MCPServerFactory mcpServerFactory();
+
+  Set<FilterRegistrar> filterRegistrars();
+
+  Set<JerseyRegistrar> jerseyRegistrars();
 
   /**
    * Provides TableService instance.

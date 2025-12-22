@@ -62,22 +62,15 @@ import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.websocket.server.config.JettyWebSocketServletContainerInitializer;
-import org.glassfish.jersey.media.multipart.MultiPartFeature;
-import org.glassfish.jersey.server.ServerProperties;
 import org.hibernate.validator.messageinterpolation.ResourceBundleMessageInterpolator;
 import org.hibernate.validator.resourceloading.PlatformResourceBundleLocator;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.search.IndexMappingLoader;
-import org.openmetadata.service.apps.ApplicationContext;
-import org.openmetadata.service.apps.ApplicationHandler;
-import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -89,12 +82,9 @@ import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
-import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
@@ -112,13 +102,7 @@ import org.openmetadata.service.monitoring.JettyMetricsIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.resources.filters.ETagRequestFilter;
-import org.openmetadata.service.resources.filters.ETagResponseFilter;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.secrets.SecretsManagerFactory;
-import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthCallbackServlet;
 import org.openmetadata.service.security.AuthLoginServlet;
 import org.openmetadata.service.security.AuthLogoutServlet;
@@ -151,7 +135,6 @@ import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CustomParameterNameProvider;
-import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.quartz.SchedulerException;
 
 /** Main catalog application */
@@ -203,65 +186,33 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     this.environment = environment;
 
-    OpenMetadataApplicationConfigHolder.initialize(catalogConfig);
+    // Initialize Dagger dependency injection component first
+    daggerComponent = initializeDaggerComponent(catalogConfig);
+
+    // 1. Configuration initialization via DI
+    daggerComponent.configurationInitializer().initialize(catalogConfig);
 
     validateConfiguration(catalogConfig);
 
-    // Instantiate incident severity classifier
-    IncidentSeverityClassifierInterface.createInstance();
-
-    // Initialize the IndexMapping class
-    IndexMappingLoader.init(catalogConfig.getElasticSearchConfiguration());
-
-    // init for dataSourceFactory
-    DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
-
-    // Metrics initialization now handled by MicrometerBundle
-
+    // 2. Database and search initialization (still manual for now - will be refactored in next
+    // phase)
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
     initializeSearchRepository(catalogConfig);
-    // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
-    // as first step register all the repositories
-    Entity.initializeRepositories(catalogConfig, jdbi);
 
-    // Configure the Fernet instance
-    Fernet.getInstance().setFernetKey(catalogConfig);
+    // 3. Application initialization via DI
+    daggerComponent.applicationInitializer().initialize(catalogConfig, jdbi);
 
-    // Initialize Workflow Handler
-    WorkflowHandler.initialize(catalogConfig);
-
-    // Init Settings Cache after repositories
-    SettingsCache.initialize(catalogConfig);
-
-    SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
-
-    // Instantiate JWT Token Generator
-    JWTTokenGenerator.getInstance()
-        .init(
-            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
-            catalogConfig.getJwtTokenConfiguration());
+    // 4. Security initialization via DI
+    daggerComponent.securityInitializer().initialize(this, catalogConfig, environment);
 
     initializeWebsockets(catalogConfig, environment);
 
-    // init Secret Manager
-    SecretsManagerFactory.createSecretsManager(
-        catalogConfig.getSecretsManagerConfiguration(), catalogConfig.getClusterName());
-
-    // init Entity Masker
-    EntityMaskerFactory.createEntityMasker();
-
-    // Set the Database type for choosing correct queries from annotations
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(
-            new ConnectionAwareAnnotationSqlLocator(
-                catalogConfig.getDataSourceFactory().getDriverClass()));
-
-    // Configure validator to use simple message interpolation
+    // Configure validator
     environment.setValidator(
         Validation.byDefaultProvider()
             .configure()
@@ -272,55 +223,31 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             .buildValidatorFactory()
             .getValidator());
 
-    // Validate native migrations
     validateMigrations(jdbi, catalogConfig);
 
-    // Register Authorizer
+    // Register Authorizer, Authenticator, Limits
     registerAuthorizer(catalogConfig, environment);
-
-    // Register Authenticator
     registerAuthenticator(SecurityConfigurationManager.getInstance());
-
-    // Register Limits
     registerLimits(catalogConfig);
 
-    // Unregister dropwizard default exception mappers
-    ((DefaultServerFactory) catalogConfig.getServerFactory())
-        .setRegisterDefaultExceptionMappers(false);
-    environment.jersey().property(ServerProperties.RESPONSE_SET_STATUS_OVER_SEND_ERROR, true);
-    environment.jersey().register(MultiPartFeature.class);
+    // 5. Jersey configuration via DI
+    daggerComponent.jerseyRegistrars().forEach(r -> r.register(environment, catalogConfig));
 
-    // Exception Mappers
+    // Exception Mappers and Health Check
     registerExceptionMappers(environment);
-
-    // Health Check
     registerHealthCheck(environment);
-
-    // start event hub before registering publishers
-    EventPubSub.start();
-
-    ApplicationHandler.initialize(catalogConfig);
-
-    // Initialize Dagger dependency injection component
-    daggerComponent = initializeDaggerComponent(catalogConfig);
 
     // Populate ServiceRegistry with services from Dagger component
     org.openmetadata.service.services.ServiceRegistry serviceRegistry =
         populateServiceRegistry(daggerComponent);
 
-    // Register resources with ServiceRegistry for dependency injection
+    // Register resources with ServiceRegistry
     registerResources(catalogConfig, environment, jdbi, serviceRegistry);
 
-    // Register Event Handler
-    registerEventFilter(catalogConfig, environment);
+    // 6. Filter registration via DI
+    daggerComponent.filterRegistrars().forEach(r -> r.register(environment, catalogConfig));
 
-    // Register ETag Filters for optimistic concurrency control
-    environment.jersey().register(ETagRequestFilter.class);
-    environment.jersey().register(ETagResponseFilter.class);
-
-    // Register User Activity Tracking
-    registerUserActivityTracking(environment);
-
+    // Lifecycle management
     environment.lifecycle().manage(new ManagedShutdown());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();
@@ -328,52 +255,23 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
 
-    // Register Event publishers
+    // Event publishers and post-initialization
     registerEventPublisher(catalogConfig);
-
-    // start authorizer after event publishers
-    // authorizer creates admin/bot users, ES publisher should start before to index users created
-    // by authorizer
     authorizer.init(catalogConfig);
-
-    // authenticationHandler Handles auth related activities
     authenticatorHandler.init(catalogConfig);
 
     registerMicrometerFilter(environment, catalogConfig.getEventMonitorConfiguration());
-
     registerSamlServlets(catalogConfig, environment);
-
-    // Asset Servlet Registration
     registerAssetServlet(catalogConfig, catalogConfig.getWebConfiguration(), environment);
 
-    // Register MCP
-    registerMCPServer(catalogConfig, environment);
+    // 7. MCP Server registration via DI
+    daggerComponent
+        .mcpServerFactory()
+        .registerMCPServer(environment, authorizer, limits, catalogConfig);
 
-    // Handle Services Jobs
     registerHealthCheckJobs(catalogConfig);
-
-    // Register Auth Handlers
     registerAuthServlets(catalogConfig, environment);
-
-    // Register User Metrics Servlet
     registerUserMetricsServlet(environment);
-  }
-
-  protected void registerMCPServer(
-      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
-    try {
-      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
-        Class<?> mcpServerClass = Class.forName("org.openmetadata.mcp.McpServer");
-        McpServerProvider mcpServer =
-            (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
-        mcpServer.initializeMcpServer(environment, authorizer, limits, catalogConfig);
-        LOG.info("MCP Server registered successfully");
-      }
-    } catch (ClassNotFoundException ex) {
-      LOG.info("MCP module not found in classpath, skipping MCP server initialization");
-    } catch (Exception ex) {
-      LOG.error("Error initializing MCP server", ex);
-    }
   }
 
   protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
@@ -933,22 +831,25 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
    */
   protected org.openmetadata.service.di.ApplicationComponent initializeDaggerComponent(
       OpenMetadataApplicationConfig config) {
-    LOG.info("Initializing Dagger dependency injection component");
+    LOG.info("Initializing Dagger dependency injection component with modular architecture");
 
-    // Get infrastructure components
-    CollectionDAO collectionDAO = Entity.getCollectionDAO();
-    org.openmetadata.service.search.SearchRepository searchRepository =
-        Entity.getSearchRepository();
-
-    // Build Dagger component
+    // Build Dagger component with all modules
+    // CoreModule provides: Environment, Config, Authorizer, PipelineServiceClient
+    // DatabaseModule provides: JDBI, CollectionDAO, JobDAO (via CollectionDAOProvider)
+    // SearchModule provides: SearchRepository (via SearchRepositoryProvider)
+    // ComponentsModule provides: Initializers and registrars for modular initialization
+    // OpenMetadataModule provides: Default implementations of providers
+    // RepositoryModule, MapperModule, ServiceModule provide entity infrastructure
     org.openmetadata.service.di.ApplicationComponent component =
         org.openmetadata.service.di.DaggerApplicationComponent.builder()
-            .coreModule(
-                new org.openmetadata.service.di.CoreModule(
-                    jdbi, collectionDAO, searchRepository, authorizer, config))
+            .coreModule(new org.openmetadata.service.di.CoreModule(environment, config, authorizer))
+            .databaseModule(new org.openmetadata.service.di.DatabaseModule())
+            .searchModule(new org.openmetadata.service.di.SearchModule())
+            .componentsModule(new org.openmetadata.service.di.ComponentsModule())
+            .openMetadataModule(new org.openmetadata.service.di.OpenMetadataModule())
             .build();
 
-    LOG.info("Dagger component initialized successfully");
+    LOG.info("Dagger component initialized successfully with modular architecture");
     return component;
   }
 
