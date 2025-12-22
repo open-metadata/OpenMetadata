@@ -2,7 +2,7 @@
 
 ## Summary (Updated: 2025-12-21)
 
-**Total Tests: 2,383 passing in ~2:50 min (parallel execution)**
+**Total Tests: 2,792 passing in ~3:14 min (parallel execution)**
 
 ---
 
@@ -10,14 +10,14 @@
 
 | Category | Original | Migrated | Remaining | Coverage |
 |----------|----------|----------|-----------|----------|
-| Entity Resource Tests | 45 | 22 | 23 | 49% |
+| Entity Resource Tests | 45 | 26 | 19 | 58% |
 | Service Resource Tests | 12 | 0 | 12 | 0% |
 | Non-Entity Resource Tests | 18 | 0 | 18 | 0% |
-| **Total** | **75** | **22** | **53** | **29%** |
+| **Total** | **75** | **26** | **49** | **35%** |
 
 ---
 
-## Migrated Entity Tests (22 classes) ✅
+## Migrated Entity Tests (26 classes) ✅
 
 | Original Test | Migrated IT | Status | Inherited Tests |
 |---------------|-------------|--------|-----------------|
@@ -27,11 +27,15 @@
 | DashboardResourceTest | DashboardResourceIT | ✅ Complete | 96+ |
 | DatabaseResourceTest | DatabaseResourceIT | ✅ Complete | 96+ |
 | DatabaseSchemaResourceTest | DatabaseSchemaResourceIT | ✅ Complete | 96+ |
+| DataProductResourceTest | DataProductResourceIT | ✅ Complete | 96+ |
 | DomainResourceTest | DomainResourceIT | ✅ Complete | 96+ |
 | GlossaryResourceTest | GlossaryResourceIT | ✅ Complete | 96+ |
+| GlossaryTermResourceTest | GlossaryTermResourceIT | ✅ Complete | 96+ |
+| MetricResourceTest | MetricResourceIT | ✅ Complete | 96+ |
 | MlModelResourceTest | MlModelResourceIT | ✅ Complete | 96+ |
 | PipelineResourceTest | PipelineResourceIT | ✅ Complete | 96+ |
 | PolicyResourceTest | PolicyResourceIT | ✅ Complete | 96+ |
+| QueryResourceTest | QueryResourceIT | ✅ Complete | 96+ |
 | RoleResourceTest | RoleResourceIT | ✅ Complete | 96+ |
 | SearchIndexResourceTest | SearchIndexResourceIT | ✅ Complete | 96+ |
 | StoredProcedureResourceTest | StoredProcedureResourceIT | ✅ Complete | 96+ |
@@ -46,14 +50,10 @@
 
 ---
 
-## Remaining Entity Tests (23 classes) - Priority: HIGH
+## Remaining Entity Tests (19 classes) - Priority: MEDIUM
 
 | Original Test | Priority | Notes |
 |---------------|----------|-------|
-| GlossaryTermResourceTest | HIGH | Child of Glossary, important |
-| DataProductResourceTest | HIGH | Part of Domain hierarchy |
-| QueryResourceTest | HIGH | Data asset |
-| MetricResourceTest | HIGH | Data asset |
 | APICollectionResourceTest | MEDIUM | API entity |
 | APIEndpointResourceTest | MEDIUM | API entity |
 | BotResourceTest | MEDIUM | System entity |
@@ -185,13 +185,17 @@ Each migrated entity inherits these tests from BaseEntityIT:
 
 ## Feature Flags per Entity
 
-| Entity | supportsFollowers | supportsTags | supportsDataProducts | supportsNameLengthValidation |
-|--------|-------------------|--------------|----------------------|------------------------------|
-| Classification | ❌ | ❌ | ❌ | ✅ |
-| TestSuite | ❌ | ✅ | ❌ | ✅ |
-| TestDefinition | ❌ | ❌ | ❌ | ❌ |
-| TestCase | ❌ | ❌ | ❌ | ❌ |
-| All others | ✅ | ✅ | ✅ | ✅ |
+| Entity | supportsFollowers | supportsTags | supportsDataProducts | supportsNameLengthValidation | supportsSoftDelete | supportsPatchDomains |
+|--------|-------------------|--------------|----------------------|------------------------------|--------------------|-----------------------|
+| Classification | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| DataProduct | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| GlossaryTerm | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Metric | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Query | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| TestSuite | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| TestDefinition | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| TestCase | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| All others | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -227,20 +231,20 @@ Each migrated entity inherits these tests from BaseEntityIT:
 ## Latest Test Run (2025-12-21)
 
 ```
-Tests run: 2383, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 2792, Failures: 0, Errors: 0, Skipped: 0
 BUILD SUCCESS
-Time: 2:50 min (parallel execution)
+Time: 3:14 min (parallel execution)
 ```
 
 ---
 
 ## Next Migration Priorities
 
-### Phase 1: High Priority Entity Tests
-1. GlossaryTermResourceTest → GlossaryTermResourceIT
-2. DataProductResourceTest → DataProductResourceIT
-3. QueryResourceTest → QueryResourceIT
-4. MetricResourceTest → MetricResourceIT
+### Phase 1: ✅ COMPLETED - High Priority Entity Tests
+1. ✅ GlossaryTermResourceTest → GlossaryTermResourceIT
+2. ✅ DataProductResourceTest → DataProductResourceIT
+3. ✅ QueryResourceTest → QueryResourceIT
+4. ✅ MetricResourceTest → MetricResourceIT
 
 ### Phase 2: Medium Priority Entity Tests
 5. APICollectionResourceTest → APICollectionResourceIT
@@ -249,10 +253,12 @@ Time: 2:50 min (parallel execution)
 8. PersonaResourceTest → PersonaResourceIT
 9. EventSubscriptionResourceTest → EventSubscriptionResourceIT
 10. IngestionPipelineResourceTest → IngestionPipelineResourceIT
+11. KpiResourceTest → KpiResourceIT
+12. DashboardDataModelResourceTest → DashboardDataModelResourceIT
 
 ### Phase 3: Service Tests
-11. DatabaseServiceResourceTest → DatabaseServiceResourceIT
-12. DashboardServiceResourceTest → DashboardServiceResourceIT
+13. DatabaseServiceResourceTest → DatabaseServiceResourceIT
+14. DashboardServiceResourceTest → DashboardServiceResourceIT
 ... (all service tests)
 
 ### Phase 4: Non-Entity Tests
