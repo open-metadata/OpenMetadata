@@ -18,9 +18,14 @@ GRANT SELECT ON TABLE svv_table_info to test_user;
 
 Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `svv_table_info` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
+Information on **System Metrics** profiling can be found <a href="https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/metrics#redshift" target="_blank">here</a>.
+
 ### Usage & Lineage
 
-For the usage and lineage workflow, the user will need `SELECT` privilege on `STL_QUERY` table. You can find more information on the usage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage" target="_blank">here</a> and the lineage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/lineage" target="_blank">here</a>.
+For the usage and lineage workflow, the user will need `SELECT` privilege on:
+- `STL_QUERY`, `STL_QUERYTEXT`, `STL_SCAN` and `SVL_STORED_PROC_CALL` views for Provisioned cluster
+- `SYS_QUERY_HISTORY`, `SYS_QUERY_TEXT`, `SYS_QUERY_DETAIL` and `SYS_PROCEDURE_CALL` for Serverless instance.
+You can find more information on the usage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/usage" target="_blank">here</a> and the lineage workflow <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/lineage" target="_blank">here</a>.
 
 You can find further information on the Redshift connector in the <a href="https://docs.open-metadata.org/connectors/database/redshift" target="_blank">docs</a>.
 

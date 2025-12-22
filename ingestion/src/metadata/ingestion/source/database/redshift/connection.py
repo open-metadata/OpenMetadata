@@ -16,6 +16,7 @@ from functools import partial
 from typing import Optional
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import text
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -41,11 +42,11 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections_utils import kill_active_connections
+from metadata.ingestion.source.database.redshift.models import RedshiftInstanceType
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATIONS,
     REDSHIFT_GET_DATABASE_NAMES,
-    REDSHIFT_TEST_GET_QUERIES,
-    REDSHIFT_TEST_GET_SERVERLESS_QUERIES,
+    REDSHIFT_TEST_GET_QUERIES_MAP,
     REDSHIFT_TEST_PARTITION_DETAILS,
 )
 from metadata.utils.constants import THREE_MIN
@@ -65,28 +66,40 @@ def get_connection(connection: RedshiftConnection) -> Engine:
     )
 
 
-def detect_redshift_serverless(engine: Engine) -> bool:
+def get_redshift_instance_type(engine: Engine) -> RedshiftInstanceType:
     """
-    Detect if the Redshift deployment is Serverless or Provisioned.
+    Detect whether the connected Amazon Redshift deployment is Provisioned
+    or Serverless by probing for STL system table availability.
 
-    Redshift Serverless doesn't have access to STL/SVV system tables,
-    so we try to query an STL table to determine the deployment type.
+    Serverless deployments do not have access to STL_* system tables due to
+    their architecture. Use SYS_* views instead for Serverless compatibility.
+
+    Reference: https://docs.aws.amazon.com/redshift/latest/dg/cm_chap_system-tables.html#sys_view_migration-use_cases
 
     Args:
-        engine: SQLAlchemy engine connected to Redshift
+        engine (Engine): SQLAlchemy engine connected to a Redshift endpoint.
 
     Returns:
-        bool: True if Serverless, False if Provisioned
+        RedshiftInstanceType: PROVISIONED if STL tables are accessible,
+                              SERVERLESS otherwise.
     """
+    probe_query = text("SELECT 1 FROM pg_catalog.stl_query LIMIT 1")
+
     try:
         with engine.connect() as conn:
-            # Try to access STL_QUERY - this will fail in Serverless
-            conn.execute(text("SELECT 1 FROM pg_catalog.stl_query LIMIT 1"))
-            logger.info("Detected Redshift Provisioned cluster (STL tables accessible)")
-            return False  # Provisioned
-    except Exception as exc:
-        logger.info(f"Detected Redshift Serverless (STL tables not accessible): {exc}")
-        return True  # Serverless
+            conn.execute(probe_query)
+
+        logger.info(
+            "Redshift instance type detected: PROVISIONED (STL tables accessible)"
+        )
+        return RedshiftInstanceType.PROVISIONED
+
+    except ProgrammingError:
+        logger.info(
+            "Redshift instance type detected: SERVERLESS "
+            "(STL tables not accessible, will use SYS_* views)"
+        )
+        return RedshiftInstanceType.SERVERLESS
 
 
 def test_connection(
@@ -108,43 +121,39 @@ def test_connection(
 
     def test_get_queries_permissions(engine_: Engine):
         """Check if we have the right permissions to list queries"""
-        with engine_.connect() as conn:
-            res = conn.execute(text(REDSHIFT_TEST_GET_QUERIES)).fetchone()
-            if not all(res):
-                raise SourceConnectionException(
-                    f"We don't have the right permissions to list queries - {res}"
-                )
+        redshift_instance_type = get_redshift_instance_type(engine_)
 
-    def test_get_serverless_queries_permissions(engine_: Engine):
-        """Check if we have the right permissions to list queries in Serverless"""
         with engine_.connect() as conn:
-            res = conn.execute(text(REDSHIFT_TEST_GET_SERVERLESS_QUERIES)).fetchone()
-            if not all(res):
-                raise SourceConnectionException(
-                    f"We don't have the right permissions to list queries in Serverless - {res}"
-                )
-
-    # Detect if this is Redshift Serverless
-    is_serverless = detect_redshift_serverless(engine)
+            if redshift_instance_type == RedshiftInstanceType.PROVISIONED:
+                res = conn.execute(
+                    REDSHIFT_TEST_GET_QUERIES_MAP[RedshiftInstanceType.PROVISIONED]
+                ).fetchone()
+                if not all(res):
+                    raise SourceConnectionException(
+                        "We don't have the right permissions to list queries from stl views (Redshift Provisioned)"
+                        f" - {res}"
+                    )
+            else:
+                res = conn.execute(
+                    REDSHIFT_TEST_GET_QUERIES_MAP[RedshiftInstanceType.SERVERLESS]
+                ).fetchone()
+                if not all(res):
+                    raise SourceConnectionException(
+                        "We don't have the right permissions to list queries from sys views (Redshift Serverless)"
+                        f" - {res}"
+                    )
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
         "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
         "GetTables": partial(test_query, statement=table_and_view_query, engine=engine),
         "GetViews": partial(test_query, statement=table_and_view_query, engine=engine),
-        "GetQueries": partial(
-            (
-                test_get_serverless_queries_permissions
-                if is_serverless
-                else test_get_queries_permissions
-            ),
-            engine,
-        ),
+        "GetQueries": partial(test_get_queries_permissions, engine),
         "GetDatabases": partial(
-            test_query, statement=text(REDSHIFT_GET_DATABASE_NAMES), engine=engine
+            test_query, statement=REDSHIFT_GET_DATABASE_NAMES, engine=engine
         ),
         "GetPartitionTableDetails": partial(
-            test_query, statement=text(REDSHIFT_TEST_PARTITION_DETAILS), engine=engine
+            test_query, statement=REDSHIFT_TEST_PARTITION_DETAILS, engine=engine
         ),
     }
 
