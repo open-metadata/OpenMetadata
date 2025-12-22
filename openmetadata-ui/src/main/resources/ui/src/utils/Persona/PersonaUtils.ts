@@ -136,7 +136,12 @@ export const getCustomizePageOptions = (
             item
           )
         ) {
-          acc.push(generateSettingItems(item));
+          const menuItem = generateSettingItems(item);
+          // Add DataProduct as a child of Domain
+          if (item === PageType.Domain) {
+            menuItem.items = [generateSettingItems(PageType.DataProduct)];
+          }
+          acc.push(menuItem);
         }
 
         return acc;
@@ -148,6 +153,7 @@ export const getCustomizePageOptions = (
             PageType.Glossary,
             PageType.GlossaryTerm,
             PageType.Domain,
+            PageType.DataProduct,
             PageType.LandingPage,
           ].includes(item)
         ) {

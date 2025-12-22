@@ -18,7 +18,6 @@ import {
   DASHBOARD_DEFAULT_TABS,
   DATABASE_DEFAULT_TABS,
   DATABASE_SCHEMA_DEFAULT_TABS,
-  DATA_PRODUCT_DEFAULT_TABS,
   DOMAIN_DEFAULT_TABS,
   ECustomizedDataAssets,
   ECustomizedGovernance,
@@ -32,7 +31,6 @@ import {
   TOPIC_DEFAULT_TABS,
 } from '../constant/customizeDetail';
 import { Domain } from '../support/domain/Domain';
-import { DataProduct } from '../support/domain/DataProduct';
 import { ApiCollectionClass } from '../support/entity/ApiCollectionClass';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
@@ -81,9 +79,6 @@ export const getCustomizeDetailsEntity = (
       return new ApiEndpointClass();
     case ECustomizedGovernance.DOMAIN:
       return new Domain();
-    case ECustomizedGovernance.DATA_PRODUCT:
-      // DataProduct needs a domain, so we create one inline
-      return new DataProduct([new Domain()]);
     case ECustomizedGovernance.GLOSSARY:
       return new Glossary();
     case ECustomizedGovernance.GLOSSARY_TERM:
@@ -125,8 +120,6 @@ export const getCustomizeDetailsDefaultTabs = (
       return DATABASE_DEFAULT_TABS;
     case ECustomizedGovernance.DOMAIN:
       return DOMAIN_DEFAULT_TABS;
-    case ECustomizedGovernance.DATA_PRODUCT:
-      return DATA_PRODUCT_DEFAULT_TABS;
     case ECustomizedGovernance.GLOSSARY:
       return GLOSSARY_DEFAULT_TABS;
     case ECustomizedGovernance.GLOSSARY_TERM:

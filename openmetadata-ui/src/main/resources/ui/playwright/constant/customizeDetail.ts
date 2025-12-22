@@ -28,7 +28,6 @@ export enum ECustomizedDataAssets {
 
 export enum ECustomizedGovernance {
   DOMAIN = 'Domain',
-  DATA_PRODUCT = 'Data Product',
   GLOSSARY = 'Glossary',
   GLOSSARY_TERM = 'Glossary Term',
 }
@@ -222,13 +221,6 @@ export const DOMAIN_DEFAULT_TABS = [
   EntityTabs.ASSETS,
   EntityTabs.CUSTOM_PROPERTIES,
   EntityTabs.ACTIVITY_FEED,
-];
-
-export const DATA_PRODUCT_DEFAULT_TABS = [
-  EntityTabs.DOCUMENTATION,
-  EntityTabs.ASSETS,
-  EntityTabs.ACTIVITY_FEED,
-  EntityTabs.CUSTOM_PROPERTIES,
 ];
 
 export const GLOSSARY_DEFAULT_TABS = [
