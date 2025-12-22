@@ -42,8 +42,17 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
 
 test.slow();
 
+/**
+ * Dimensionality Tests
+ * @description Creates a dimension-level test case, edits dimension columns, and validates the dimension selector in the details view.
+ */
 test('Dimensionality Tests', async ({ page }) => {
   await test.step('Add dimensionality test case', async () => {
+    /**
+     * Step 1: Create dimension-level test case
+     * @description Opens the create form in Dimension Level mode, selects a primary column and dimension columns,
+     * chooses the test definition, submits, waits for pipeline deploy endpoints, and verifies the new test.
+     */
     await redirectToHomePage(page);
     await visitDataQualityTab(page, table);
     await page.click('[data-testid="profiler-add-table-test-btn"]');
@@ -127,6 +136,11 @@ test('Dimensionality Tests', async ({ page }) => {
   });
 
   await test.step('Edit dimensionality from entity page', async () => {
+    /**
+     * Step 2: Edit dimension columns
+     * @description Opens the edit drawer for the created test, adds a new dimension column, submits a PATCH,
+     * and verifies a successful update response.
+     */
     await page
       .getByTestId(
         `action-dropdown-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}`
@@ -168,6 +182,11 @@ test('Dimensionality Tests', async ({ page }) => {
   });
 
   await test.step('Details page should show updated dimensions', async () => {
+    /**
+     * Step 3: Validate details view dimensions
+     * @description Opens the dimension results from the test card, ensures the dimensionality view and selector are visible,
+     * and verifies both original and edited dimension values are present in the selector options.
+     */
     await expect(
       page.locator(
         `[data-testid="dimension-count-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}"]`

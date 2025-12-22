@@ -199,6 +199,13 @@ public class SearchRepository {
     clusterAlias = searchConfiguration != null ? searchConfiguration.getClusterAlias() : "";
     loadIndexMappings();
     registerSearchIndexHandler();
+    createIndexesIfNeeded();
+  }
+
+  public void createIndexesIfNeeded() {
+    for (IndexMapping indexMapping : entityIndexMap.values()) {
+      createIndex(indexMapping);
+    }
   }
 
   /**
@@ -1500,6 +1507,28 @@ public class SearchRepository {
         queryString);
   }
 
+  public SearchResultListMapper listWithOffset(
+      SearchListFilter filter,
+      int limit,
+      int offset,
+      String entityType,
+      SearchSortFilter searchSortFilter,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithOffset(
+        filter.getCondition(entityType),
+        limit,
+        offset,
+        index.getIndexName(clusterAlias),
+        searchSortFilter,
+        q,
+        queryString,
+        subjectContext);
+  }
+
   public SearchResultListMapper listWithDeepPagination(
       String entityType,
       String query,
@@ -1615,6 +1644,15 @@ public class SearchRepository {
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
+  }
+
+  public DataQualityReport genericAggregation(
+      String query,
+      String index,
+      SearchAggregation aggregationMetadata,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.genericAggregation(query, index, aggregationMetadata, subjectContext);
   }
 
   public Response listDataInsightChartResult(

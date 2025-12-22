@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.10.0-SNAPSHOT</version>
+    <version>1.12.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -642,6 +642,12 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>k3s</artifactId>
+      <version>${org.testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.opensearch</groupId>
       <artifactId>opensearch-testcontainers</artifactId>
       <version>2.0.1</version>
@@ -927,6 +933,11 @@
       <version>${resilience4j-ratelimiter.version}</version>
     </dependency>
     <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-retry</artifactId>
+      <version>${resilience4j-ratelimiter.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.junit.platform</groupId>
       <artifactId>junit-platform-commons</artifactId>
       <version>1.9.3</version>
@@ -1077,6 +1088,11 @@
     <dependency>
       <groupId>org.commonmark</groupId>
       <artifactId>commonmark-ext-autolink</artifactId>
+      <version>${commonmark.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-gfm-tables</artifactId>
       <version>${commonmark.version}</version>
     </dependency>
     <!-- Flexmark HTML to Markdown Converter -->
@@ -1282,44 +1298,44 @@
         </build>
       </profile>
       <profile>
-        <id>postgres-rdf-tests</id>
-        <build>
-          <plugins>
-            <plugin>
-              <groupId>org.apache.maven.plugins</groupId>
-              <artifactId>maven-surefire-plugin</artifactId>
-              <version>${maven-surefire.version}</version>
-              <configuration>
-                <reuseForks>false</reuseForks>
-                <parallel>classes</parallel>
-                <forkCount>1C</forkCount>
-                <argLine>-Xmx2G</argLine>
-                <systemPropertyVariables>
-                  <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
-                  <jdbcContainerImage>postgres:15</jdbcContainerImage>
-                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
-                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
-                  <runESTestCases>false</runESTestCases>
-                  <enableRdf>true</enableRdf>
-                  <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
-                  <api.version>1.44</api.version>
-                </systemPropertyVariables>
-              </configuration>
-              <executions>
-                <execution>
-                  <id>postgres-rdf-integration-tests</id>
-                  <phase>test</phase>
-                  <configuration>
-                    <includes>
-                      <include>**/*Test.java</include>
-                      <include>**/*ResourceTest.java</include>
-                    </includes>
-                  </configuration>
-                </execution>
-              </executions>
-            </plugin>
-          </plugins>
-        </build>
+          <id>postgres-rdf-tests</id>
+          <build>
+              <plugins>
+                  <plugin>
+                      <groupId>org.apache.maven.plugins</groupId>
+                      <artifactId>maven-surefire-plugin</artifactId>
+                      <version>${maven-surefire.version}</version>
+                      <configuration>
+                          <reuseForks>false</reuseForks>
+                          <parallel>classes</parallel>
+                          <forkCount>1C</forkCount>
+                          <argLine>-Xmx2G</argLine>
+                          <systemPropertyVariables>
+                              <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                              <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                              <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
+                              <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                              <runESTestCases>false</runESTestCases>
+                              <enableRdf>true</enableRdf>
+                              <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                              <api.version>1.44</api.version>
+                          </systemPropertyVariables>
+                      </configuration>
+                      <executions>
+                          <execution>
+                              <id>postgres-rdf-integration-tests</id>
+                              <phase>test</phase>
+                              <configuration>
+                                  <includes>
+                                      <include>**/*Test.java</include>
+                                      <include>**/*ResourceTest.java</include>
+                                  </includes>
+                              </configuration>
+                          </execution>
+                      </executions>
+                  </plugin>
+              </plugins>
+          </build>
       </profile>
       <profile>
         <id>mysql-redis-tests</id>

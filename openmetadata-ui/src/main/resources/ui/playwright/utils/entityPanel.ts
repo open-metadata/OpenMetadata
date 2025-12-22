@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+import { redirectToExplorePage } from './common';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -95,7 +96,9 @@ export const editTags = async (
     .scrollIntoViewIfNeeded();
 
   const searchTagResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${tagName}*index=tag_search_index*`
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      tagName
+    )}*index=tag_search_index*`
   );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
@@ -112,6 +115,8 @@ export const editTags = async (
     if (await updateBtn.isVisible()) {
       await updateBtn.click();
       await waitForPatchResponse(page);
+
+      await expect(page.getByText(/Tags updated successfully/i)).toBeVisible();
     }
   }
 };
@@ -303,7 +308,9 @@ export const verifyDeletedEntityNotVisible = async (
     `[data-testid="${searchBarTestId}"]`
   );
   const searchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${entityName}*index=${searchIndexMap[searchIndexType]}*`
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(`index=${searchIndexMap[searchIndexType]}`)
   );
   await searchBar.fill(entityName);
   await searchResponse;
@@ -344,3 +351,22 @@ export const navigateToIncidentsTab = async (page: Page) => {
     });
   }
 };
+
+export async function navigateToExploreAndSelectTable(
+  page: Page,
+  entityName: string
+) {
+  await redirectToExplorePage(page);
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  const permissionsResponse = page.waitForResponse((response) =>
+    response.url().includes('/permissions')
+  );
+
+  await openEntitySummaryPanel(page, entityName);
+
+  await permissionsResponse;
+}

@@ -289,6 +289,14 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
 export const LINEAGE_DROPDOWN_ITEMS = [
   ...COMMON_DROPDOWN_ITEMS,
   {
+    label: 'label.database',
+    key: EntityFields.DATABASE,
+  },
+  {
+    label: 'label.schema',
+    key: EntityFields.DATABASE_SCHEMA,
+  },
+  {
     label: 'label.column',
     key: EntityFields.COLUMN,
   },
@@ -308,6 +316,13 @@ export const TEXT_FIELD_DESCRIPTION_OPERATORS = [
   'not_like',
   'is_null',
   'is_not_null',
+];
+
+export const MULTISELECT_FIELD_OPERATORS = [
+  'multiselect_contains',
+  'multiselect_not_contains',
+  'multiselect_equals',
+  'multiselect_not_equals',
 ];
 
 export const RANGE_FIELD_OPERATORS = ['between', 'not_between'];

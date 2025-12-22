@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Col, Row, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -55,6 +54,7 @@ import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/Activ
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import {
   GenericProvider,
@@ -62,6 +62,8 @@ import {
 } from '../../Customization/GenericProvider/GenericProvider';
 import { GenericTab } from '../../Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
 import { useGlossaryStore } from '../useGlossary.store';
@@ -93,6 +95,8 @@ const GlossaryTermsV1 = ({
     FEED_COUNT_INITIAL_DATA
   );
   const [assetCount, setAssetCount] = useState<number>(0);
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
   const { onAddGlossaryTerm } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { customizedPage, isLoading } = useCustomPages(PageType.GlossaryTerm);
@@ -175,6 +179,14 @@ const GlossaryTermsV1 = ({
     }
   };
 
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+      onAssetClick?.(asset);
+    },
+    [onAssetClick]
+  );
+
   const viewCustomPropertiesPermission = useMemo(
     () => getPrioritizedViewPermission(permissions, Operation.ViewCustomFields),
     [permissions]
@@ -228,15 +240,49 @@ const GlossaryTermsV1 = ({
               ),
               key: EntityTabs.ASSETS,
               children: (
-                <AssetsTabs
-                  assetCount={assetCount}
-                  entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
-                  isSummaryPanelOpen={isSummaryPanelOpen}
-                  permissions={assetPermissions}
-                  ref={assetTabRef}
-                  onAddAsset={() => setAssetModalVisible(true)}
-                  onAssetClick={onAssetClick}
-                  onRemoveAsset={handleAssetSave}
+                <ResizablePanels
+                  className="h-full glossary-term-resizable-panel"
+                  firstPanel={{
+                    className: 'glossary-term-resizable-panel-container',
+                    children: (
+                      <AssetsTabs
+                        assetCount={assetCount}
+                        entityFqn={glossaryTerm.fullyQualifiedName ?? ''}
+                        isSummaryPanelOpen={Boolean(previewAsset)}
+                        permissions={assetPermissions}
+                        ref={assetTabRef}
+                        onAddAsset={() => setAssetModalVisible(true)}
+                        onAssetClick={handleAssetClick}
+                        onRemoveAsset={handleAssetSave}
+                      />
+                    ),
+                    flex: 0.7,
+                    minWidth: 700,
+                    wrapInCard: false,
+                  }}
+                  hideSecondPanel={!previewAsset}
+                  pageTitle={t('label.glossary-term')}
+                  secondPanel={{
+                    children: previewAsset && (
+                      <EntitySummaryPanel
+                        entityDetails={previewAsset}
+                        handleClosePanel={() => setPreviewAsset(undefined)}
+                        highlights={{
+                          'tag.name': [glossaryTerm.fullyQualifiedName ?? ''],
+                        }}
+                        key={
+                          previewAsset.details.id ??
+                          previewAsset.details.fullyQualifiedName
+                        }
+                        panelPath="glossary-term-assets-tab"
+                      />
+                    ),
+                    className:
+                      'entity-summary-resizable-right-panel-container glossary-term-resizable-panel-container',
+                    flex: 0.3,
+                    minWidth: 400,
+                    wrapInCard: false,
+                  }}
                 />
               ),
             },
@@ -310,6 +356,8 @@ const GlossaryTermsV1 = ({
     isVersionView,
     assetPermissions,
     handleAssetSave,
+    previewAsset,
+    handleAssetClick,
     onExtensionUpdate,
   ]);
 
