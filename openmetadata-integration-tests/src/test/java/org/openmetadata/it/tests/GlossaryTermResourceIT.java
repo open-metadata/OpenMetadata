@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -123,8 +124,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     }
 
     assertTrue(
-        entity.getFullyQualifiedName().contains(entity.getName()),
-        "FQN should contain term name");
+        entity.getFullyQualifiedName().contains(entity.getName()), "FQN should contain term name");
   }
 
   @Override
@@ -193,10 +193,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Term with references")
             .withReferences(
                 List.of(
-                    new TermReference().withName("Wikipedia").withEndpoint("https://wikipedia.org"),
+                    new TermReference()
+                        .withName("Wikipedia")
+                        .withEndpoint(URI.create("https://wikipedia.org")),
                     new TermReference()
                         .withName("Documentation")
-                        .withEndpoint("https://docs.example.com")));
+                        .withEndpoint(URI.create("https://docs.example.com"))));
 
     GlossaryTerm term = createEntity(request, client);
     assertNotNull(term);

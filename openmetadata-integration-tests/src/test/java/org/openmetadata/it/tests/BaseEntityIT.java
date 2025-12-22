@@ -111,6 +111,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected boolean supportsOwners = true;
   protected boolean supportsTags = true;
   protected boolean supportsDomains = true;
+  protected boolean supportsPatchDomains = true; // Can domains be changed via PATCH after creation?
   protected boolean supportsDataProducts = true;
   protected boolean supportsSoftDelete = true;
   protected boolean supportsCustomExtension = true;
@@ -3010,7 +3011,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    */
   @Test
   void test_sdkEntityWithDomainAndDataProducts(TestNamespace ns) {
-    if (!supportsDomains || !supportsPatch) return;
+    if (!supportsDomains || !supportsPatch || !supportsPatchDomains) return;
 
     OpenMetadataClient client = SdkClients.adminClient();
 
