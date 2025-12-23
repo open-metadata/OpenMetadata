@@ -1081,6 +1081,27 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
+  const handleEntityUpdate = useCallback(
+    (updatedEntity: Partial<SourceType>) => {
+      setSelectedNode((prev) => ({ ...prev, ...updatedEntity }));
+
+      setNodes((prevNodes) =>
+        prevNodes.map((node) =>
+          node.id === selectedNode.id
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  node: { ...node.data.node, ...updatedEntity },
+                },
+              }
+            : node
+        )
+      );
+    },
+    [selectedNode, setNodes]
+  );
+
   const onNodeClick = useCallback(
     (node: Node) => {
       if (!node) {
@@ -2040,6 +2061,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               panelPath="lineage"
               pipelineViewMode={lineageConfig.pipelineViewMode}
               upstreamDepth={lineageConfig.upstreamDepth}
+              onEntityUpdate={handleEntityUpdate}
             />
           </Drawer>
         )}
