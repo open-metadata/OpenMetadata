@@ -355,7 +355,8 @@ describe('LineageTable', () => {
         id: 'col1',
         fromEntity: { fullyQualifiedName: 'test.table1', name: 'table1' },
         toEntity: { fullyQualifiedName: 'test.table2', name: 'table2' },
-        columns: { fromColumns: ['col1'], toColumn: ['col2'] },
+        fromColumn: 'col1',
+        toColumn: 'col2',
       },
     ];
 
