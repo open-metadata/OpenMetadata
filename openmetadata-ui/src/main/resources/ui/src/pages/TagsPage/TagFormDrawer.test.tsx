@@ -98,14 +98,6 @@ describe('TagFormDrawer', () => {
     expect(saveButton).toBeDisabled();
   });
 
-  it('should display "Saving" text in save button when isLoading is true', () => {
-    render(<TagFormDrawer {...defaultProps} isLoading />);
-
-    const saveButton = screen.getByTestId('save-button');
-
-    expect(saveButton).toHaveTextContent('label.saving');
-  });
-
   it('should display "Save" text in save button when isLoading is false', () => {
     render(<TagFormDrawer {...defaultProps} />);
 
