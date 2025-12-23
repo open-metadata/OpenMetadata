@@ -244,8 +244,8 @@ export const CommonTabsWithCustomColors = () => {
           onChange={(_, newValue) => setValue(newValue)}
           tabs={tabs}
           aria-label="Tabs with custom colors example"
-          activeTextColor="#10B981"
-          indicatorColor="#10B981"
+          activeTextColor={theme.palette.allShades.success[700]}
+          indicatorColor={theme.palette.allShades.success[700]}
         />
         {tabs.map((tab) => (
           <CommonTabPanel key={tab.value} value={value} index={tab.value}>
