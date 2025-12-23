@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
-import { MUIFormItem, MUITextField } from '@openmetadata/ui-core-components';
+import { MUITextField } from '@openmetadata/ui-core-components';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
@@ -164,23 +164,19 @@ export const getField = (field: FieldProp) => {
 
       return (
         <Form.Item {...formProps}>
-          <MUIFormItem
+          <MUITextField
             error={Boolean(error)}
             helperText={
               helperTextType === HelperTextType.ALERT ? helperText : undefined
             }
             id={id}
             label={muiLabel}
+            placeholder={placeholder}
             required={isRequired}
-          >
-            <MUITextField
-              error={Boolean(error)}
-              placeholder={placeholder}
-              value={value}
-              onChange={handleChange}
-              {...muiProps}
-            />
-          </MUIFormItem>
+            value={value}
+            onChange={handleChange}
+            {...muiProps}
+          />
         </Form.Item>
       );
     }
@@ -204,24 +200,20 @@ export const getField = (field: FieldProp) => {
 
       return (
         <Form.Item {...formProps}>
-          <MUIFormItem
+          <MUITextField
             error={Boolean(error)}
             helperText={
               helperTextType === HelperTextType.ALERT ? helperText : undefined
             }
             id={id}
             label={muiLabel}
+            placeholder={placeholder}
             required={isRequired}
-          >
-            <MUITextField
-              error={Boolean(error)}
-              placeholder={placeholder}
-              type="password"
-              value={value}
-              onChange={handleChange}
-              {...muiProps}
-            />
-          </MUIFormItem>
+            type="password"
+            value={value}
+            onChange={handleChange}
+            {...muiProps}
+          />
         </Form.Item>
       );
     }
