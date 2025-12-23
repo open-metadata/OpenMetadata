@@ -35,7 +35,6 @@ import {
 } from '@react-awesome-query-builder/antd';
 import 'antd/dist/antd.css';
 import { debounce, isEmpty, isUndefined } from 'lodash';
-import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -101,11 +100,13 @@ const QueryBuilderWidget: FC<
         config
       ).fixedTree;
 
-      const queryFilterString = !isEmpty(tree)
-        ? Qs.stringify({ queryFilter: JSON.stringify(tree) })
-        : '';
+      const queryFilterString: Record<string, unknown> = {
+        ...(!isEmpty(tree) && { queryFilter: JSON.stringify(tree) }),
+        ...(!isEmpty(qFilter) &&
+          qFilter.query && { quickFilter: JSON.stringify(qFilter) }),
+      };
 
-      setQueryURL(`${getExplorePath({})}${queryFilterString}`);
+      setQueryURL(getExplorePath({ extraParameters: queryFilterString }));
 
       try {
         setIsCountLoading(true);
