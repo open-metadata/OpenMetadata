@@ -20,9 +20,11 @@ import org.openmetadata.sdk.fluent.MessagingServices;
 import org.openmetadata.sdk.fluent.Metrics;
 import org.openmetadata.sdk.fluent.MlModelServices;
 import org.openmetadata.sdk.fluent.MlModels;
+import org.openmetadata.sdk.fluent.Personas;
 import org.openmetadata.sdk.fluent.PipelineServices;
 import org.openmetadata.sdk.fluent.Pipelines;
 import org.openmetadata.sdk.fluent.Queries;
+import org.openmetadata.sdk.fluent.Roles;
 import org.openmetadata.sdk.fluent.SearchIndexes;
 import org.openmetadata.sdk.fluent.StorageServices;
 import org.openmetadata.sdk.fluent.StoredProcedures;
@@ -124,6 +126,8 @@ public class SdkClients {
     StorageServices.setDefaultClient(client);
 
     // Teams & Users
+    Personas.setDefaultClient(client);
+    Roles.setDefaultClient(client);
     Teams.setDefaultClient(client);
     Users.setDefaultClient(client);
 
