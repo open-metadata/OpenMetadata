@@ -43,3 +43,8 @@ export interface CommonTabPanelPropsType {
 
 export type CustomTabsArgs = TabsProps;
 
+export type StorybookComponent<TArgs> = React.FC<TArgs> & {
+  args?: TArgs;
+  argTypes?: Record<string, unknown>;
+};
+

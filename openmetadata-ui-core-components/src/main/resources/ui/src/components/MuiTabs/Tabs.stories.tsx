@@ -20,6 +20,7 @@ import {
 import type {
   CommonTabPanelPropsType,
   CustomTabsArgs,
+  StorybookComponent,
   TabItem,
 } from "../../types/Tabs.types";
 import { createMuiTheme } from "../../theme/createMuiTheme";
@@ -41,34 +42,37 @@ function CommonTabPanel(props: CommonTabPanelPropsType) {
   );
 }
 
-export const CustomTabs = (args: CustomTabsArgs) => {
+const CustomTabsComponent: React.FC<CustomTabsArgs> = (args) => {
   const theme = createMuiTheme();
-  const [value, setValue] = useState<string>(args.value || args.tabs[0]?.value || "tab1");
+  const tabs = args.tabs || CUSTOM_TABS_DEFAULT_ARGS.tabs;
+  const [value, setValue] = useState<string>(
+    args.value || tabs[0]?.value || "tab1"
+  );
 
   useEffect(() => {
     if (args.value) {
       setValue(args.value);
-    } else if (args.tabs.length > 0) {
-      const currentTabExists = args.tabs.some((tab) => tab.value === value);
+    } else if (tabs.length > 0) {
+      const currentTabExists = tabs.some((tab) => tab.value === value);
       if (!currentTabExists) {
-        setValue(args.tabs[0]?.value || "tab1");
+        setValue(tabs[0]?.value || "tab1");
       }
     }
-
-  }, [args.value, args.tabs]);
+  }, [args.value, tabs, value]);
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ width: "100%", maxWidth: 800 }}>
         <Tabs
           {...args}
+          tabs={tabs}
           value={value}
           onChange={(_, newValue) => {
             setValue(newValue);
             args.onChange?.(_, newValue);
           }}
         />
-        {args.tabs.map((tab) => (
+        {tabs.map((tab) => (
           <CommonTabPanel key={tab.value} value={value} index={tab.value}>
             <Typography variant="h6" sx={{ mb: 2 }}>
               {tab.label}
@@ -81,6 +85,11 @@ export const CustomTabs = (args: CustomTabsArgs) => {
   );
 };
 
+export const CustomTabs: StorybookComponent<CustomTabsArgs> =
+  Object.assign(CustomTabsComponent, {
+    args: CUSTOM_TABS_DEFAULT_ARGS,
+    argTypes: CUSTOM_TABS_ARG_TYPES,
+  });
 
 // Basic Common Tabs Example
 export const CommonTabsBasic = () => {
