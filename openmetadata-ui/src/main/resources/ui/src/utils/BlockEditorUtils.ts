@@ -20,9 +20,9 @@ import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio
 import { ReactComponent as IconFormatImage } from '../assets/svg/ic-format-image.svg';
 import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video.svg';
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
+import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
 import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
 
 export const getSelectedText = (state: EditorState) => {
@@ -85,6 +85,10 @@ const _convertMarkdownFormatToHtmlString = (markdown: string) => {
 
 export type FormatContentFor = 'server' | 'client';
 
+// Unique marker prefix used to temporarily replace entity links during HTML serialization
+// This avoids HTML encoding of < and > characters in entity links
+const ENTITY_LINK_MARKER_PREFIX = '__ENTITY_LINK_MARKER_';
+
 export const formatContent = (
   htmlString: string,
   formatFor: FormatContentFor
@@ -104,15 +108,21 @@ export const formatContent = (
     'a[data-type="mention"], a[data-type="hashtag"]'
   );
 
+  // Store entity links with markers to avoid HTML encoding during serialization
+  const entityLinkMap = new Map<string, string>();
+
   if (formatFor === 'server') {
-    anchorTags.forEach((tag) => {
+    anchorTags.forEach((tag, index) => {
       const href = tag.getAttribute('href');
       const text = tag.textContent;
       const fqn = tag.getAttribute('data-fqn');
       const entityType = tag.getAttribute('data-entityType');
 
-      const entityLink = `<#E${FQN_SEPARATOR_CHAR}${entityType}${FQN_SEPARATOR_CHAR}${fqn}|[${text}](${href})>`;
-      tag.textContent = entityLink;
+      const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${entityType}${ENTITY_LINK_SEPARATOR}${fqn}|[${text}](${href})>`;
+      const marker = `${ENTITY_LINK_MARKER_PREFIX}${index}__`;
+
+      entityLinkMap.set(marker, entityLink);
+      tag.textContent = marker;
     });
   } else {
     anchorTags.forEach((tag) => {
@@ -123,6 +133,7 @@ export const formatContent = (
       tag.textContent = `${prefix}${label}`;
     });
   }
+
   let modifiedHtmlString = doc.body.innerHTML;
 
   // Apply additional transformations based on format
@@ -131,6 +142,11 @@ export const formatContent = (
       blockEditorExtensionsClassBase.serializeContentForBackend(
         modifiedHtmlString
       );
+
+    // Replace markers with actual entity links
+    entityLinkMap.forEach((entityLink, marker) => {
+      modifiedHtmlString = modifiedHtmlString.replace(marker, entityLink);
+    });
   }
 
   return modifiedHtmlString;
@@ -176,6 +192,9 @@ export const isHTMLString = (content: string) => {
     // If it has markdown syntax but also parsed as HTML, prefer markdown interpretation
     return hasHtmlElements && !hasMarkdownSyntax;
   } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Error parsing content to check HTML string:', e);
+
     return false;
   }
 };
@@ -278,8 +297,27 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
  * @returns Whether the content is empty or not
  */
 export const isDescriptionContentEmpty = (content: string) => {
-  // Check if the content is empty or has only empty paragraph tags
-  return isEmpty(content) || content === '<p></p>';
+  // Treat null/undefined/empty string as empty
+  if (isEmpty(content)) {
+    return true;
+  }
+
+  // Trim the content
+  const trimmedContent = content.trim();
+
+  // Check if it's an empty string after trimming
+  if (trimmedContent === '') {
+    return true;
+  }
+
+  // Match a single <p>...</p> where the inner content is only common whitespace
+  // (space, tab, newline, carriage return) and non-breaking space (\u00A0)
+  // Note: We intentionally do NOT match other unicode whitespace like em space (\u2003)
+  // or thin space (\u2009) as those are considered content
+  const emptyPRegex =
+    /^[ \t\r\n]*<p(?:\s[^>]*)?>[ \t\r\n\u00A0]*<\/p>[ \t\r\n]*$/i;
+
+  return emptyPRegex.test(trimmedContent);
 };
 
 /**

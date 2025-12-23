@@ -39,13 +39,6 @@ import {
 import { addOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
-const waitForAssetModalInitialLoad = async (page: Page) => {
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-    timeout: 10000,
-  });
-};
-
 const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
   // This ensures search debounce completed and results are stable
@@ -434,9 +427,9 @@ export const addAssetsToDomain = async (
   );
 
   await page.getByTestId('domain-details-add-button').click();
+  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
   await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
-
-  await waitForAssetModalInitialLoad(page);
+  await assetRes;
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
@@ -496,9 +489,10 @@ export const addServicesToDomain = async (
   await goToAssetsTab(page, domain);
 
   await page.getByTestId('domain-details-add-button').click();
-  await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
 
-  await waitForAssetModalInitialLoad(page);
+  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
+  await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
+  await assetRes;
 
   for (const asset of assets) {
     const name = get(asset, 'name');
@@ -537,9 +531,9 @@ export const addAssetsToDataProduct = async (
     "Looks like you haven't added any data assets yet."
   );
 
+  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all&*');
   await page.getByTestId('data-product-details-add-button').click();
-
-  await waitForAssetModalInitialLoad(page);
+  await assetRes;
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');

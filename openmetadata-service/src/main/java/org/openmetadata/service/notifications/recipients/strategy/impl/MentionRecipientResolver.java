@@ -110,6 +110,15 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
       }
     }
 
+    // Extract entity links from task suggestion
+    if (thread.getType() != null && thread.getType() == ThreadType.Task) {
+      if (thread.getTask() != null && thread.getTask().getSuggestion() != null) {
+        List<MessageParser.EntityLink> taskEntityLinks =
+            MessageParser.getEntityLinks(thread.getTask().getSuggestion());
+        recipients.addAll(resolveEntityLinks(taskEntityLinks, notificationType));
+      }
+    }
+
     // Extract entity links from thread message (<#E::{entityType}::{entityFQN}>)
     if (thread.getMessage() != null) {
       List<MessageParser.EntityLink> entityLinks =

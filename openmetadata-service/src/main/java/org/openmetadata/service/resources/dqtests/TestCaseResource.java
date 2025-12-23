@@ -186,9 +186,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String entityFQN,
       @Parameter(
               description = "Returns list of tests filtered by the testSuite id",
-              schema = @Schema(type = "string"))
+              schema = @Schema(type = "uuid"))
           @QueryParam("testSuiteId")
-          String testSuiteId,
+          UUID testSuiteId,
       @Parameter(
               description = "Include all the tests at the entity level",
               schema = @Schema(type = "boolean"))
@@ -225,31 +225,45 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String createdBy) {
     ListFilter filter =
         new ListFilter(include)
-            .addQueryParam("testSuiteId", testSuiteId)
+            .addQueryParam("testSuiteId", !nullOrEmpty(testSuiteId) ? testSuiteId.toString() : null)
             .addQueryParam("includeAllTests", includeAllTests.toString())
             .addQueryParam("testCaseStatus", status)
             .addQueryParam("testCaseType", type)
             .addQueryParam("entityFQN", entityFQN)
             .addQueryParam("createdBy", createdBy);
-    ResourceContextInterface resourceContext = getResourceContext(entityLink, filter);
+    List<AuthRequest> authRequests = new ArrayList<>();
+    ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().build();
+    OperationContext testCaseOperationContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_BASIC);
+    authRequests.add(new AuthRequest(testCaseOperationContext, testCaseRC));
 
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
-    // VIEW_TESTS
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    if (!nullOrEmpty(entityLink)) {
+      ResourceContextInterface tableRC = getResourceContext(entityLink, filter);
+      OperationContext tableOperationContext =
+          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+      authRequests.add(new AuthRequest(tableOperationContext, tableRC));
+    }
+    if (!nullOrEmpty(entityFQN)) {
+      // Hardcode to TABLE entity since tests are only defined on tables and columns for now
+      // TODO: Make this dynamic when tests can be defined on other entity types
+      ResourceContextInterface entityRC =
+          TestCaseResourceContext.builder().entityFQN(entityFQN).entityType(Entity.TABLE).build();
+      OperationContext operationContext =
+          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+      authRequests.add(new AuthRequest(operationContext, entityRC));
+    }
+    if (!nullOrEmpty(testSuiteId)) {
+      ResourceContextInterface testSuiteRC =
+          TestCaseResourceContext.builder().testSuiteId(testSuiteId).build();
+      OperationContext operationContext =
+          new OperationContext(Entity.TEST_SUITE, MetadataOperation.VIEW_BASIC);
+      authRequests.add(new AuthRequest(operationContext, testSuiteRC));
+    }
     Fields fields = getFields(fieldsParam);
 
     ResultList<TestCase> tests =
         super.listInternal(
-            uriInfo,
-            securityContext,
-            fields,
-            filter,
-            limitParam,
-            before,
-            after,
-            operationContext,
-            resourceContext);
+            uriInfo, securityContext, fields, filter, limitParam, before, after, authRequests);
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
   }
 
@@ -304,7 +318,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               description = "Returns list of tests filtered by a testSuite id",
               schema = @Schema(type = "string"))
           @QueryParam("testSuiteId")
-          String testSuiteId,
+          UUID testSuiteId,
       @Parameter(
               description = "Include all the tests at the entity level",
               schema = @Schema(type = "boolean"))
@@ -424,16 +438,14 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("followedBy")
           String followedBy)
       throws IOException {
-    // Validate parameters
     validateTimestamps(startTimestamp, endTimestamp);
 
-    // Build search filters
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
     SearchListFilter searchListFilter =
         buildSearchListFilter(
             include,
-            testSuiteId,
+            !nullOrEmpty(testSuiteId) ? testSuiteId.toString() : null,
             includeAllTests,
             status,
             type,
@@ -457,6 +469,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         securityContext,
         fieldsParam,
         entityLink,
+        testSuiteId,
         searchListFilter,
         searchSortFilter,
         limit,
@@ -708,7 +721,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                   new AuthRequest(tableOpContext, tableResourceContext),
                   new AuthRequest(operationContext, resourceContext)),
               AuthorizationLogic.ANY);
-          //          authorizer.authorize(securityContext, operationContext, resourceContext);
         });
 
     limits.enforceBulkSizeLimit(entityType, createTestCases.size());
@@ -1409,6 +1421,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       SecurityContext securityContext,
       String fieldsParam,
       String entityLink,
+      UUID testSuiteId,
       SearchListFilter searchListFilter,
       SearchSortFilter searchSortFilter,
       int limit,
@@ -1416,14 +1429,25 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       String q,
       String queryString)
       throws IOException {
+    List<AuthRequest> authRequests = new ArrayList<>();
+    ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().build();
+    OperationContext testCaseOpContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_BASIC);
+    authRequests.add(new AuthRequest(testCaseOpContext, testCaseRC));
+    if (testSuiteId != null) {
+      ResourceContextInterface testSuiteRC =
+          TestCaseResourceContext.builder().testSuiteId(testSuiteId).build();
+      OperationContext testSuiteOpContext =
+          new OperationContext(Entity.TEST_SUITE, MetadataOperation.VIEW_BASIC);
+      authRequests.add(new AuthRequest(testSuiteOpContext, testSuiteRC));
+    }
 
-    ResourceContextInterface resourceContextInterface =
-        getResourceContext(entityLink, searchListFilter);
-
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
-    // VIEW_TESTS
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    if (!nullOrEmpty(entityLink)) {
+      ResourceContextInterface tableRC = getResourceContext(entityLink, searchListFilter);
+      OperationContext tableOperationContext =
+          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+      authRequests.add(new AuthRequest(tableOperationContext, tableRC));
+    }
     Fields fields = getFields(fieldsParam);
 
     ResultList<TestCase> tests =
@@ -1437,8 +1461,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             searchSortFilter,
             q,
             queryString,
-            operationContext,
-            resourceContextInterface);
+            authRequests);
 
     return PIIMasker.getTestCases(tests, authorizer, securityContext);
   }
