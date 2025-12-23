@@ -614,10 +614,7 @@ const ContainerPage = () => {
   }
 
   return (
-    <PageLayoutV1
-      pageTitle={t('label.entity-detail-plural', {
-        entity: t('label.container'),
-      })}>
+    <PageLayoutV1 pageTitle={getEntityName(containerData)}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
           <DataAssetsHeader
