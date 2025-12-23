@@ -12,5 +12,5 @@
  */
 
 export { Tabs } from "./MuiTabs";
-export type { TabsProps, TabItem } from "./MuiTabs";
+export type { TabsProps, TabItem } from "../../types/Tabs.types";
 

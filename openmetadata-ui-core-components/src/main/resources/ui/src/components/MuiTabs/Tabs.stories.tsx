@@ -13,14 +13,17 @@
 import { Box, ThemeProvider, Typography } from "@mui/material";
 import type { Meta } from "@storybook/react";
 import React, { useEffect, useState } from "react";
+import {
+  CUSTOM_TABS_ARG_TYPES,
+  CUSTOM_TABS_DEFAULT_ARGS,
+} from "../../constants/Tabs.constants";
+import type {
+  CommonTabPanelPropsType,
+  CustomTabsArgs,
+  TabItem,
+} from "../../types/Tabs.types";
 import { createMuiTheme } from "../../theme/createMuiTheme";
-import { Tabs, type TabsProps, type TabItem } from "./MuiTabs";
-
-interface CommonTabPanelPropsType {
-  children?: React.ReactNode;
-  index: string;
-  value: string;
-}
+import { Tabs } from "./MuiTabs";
 
 function CommonTabPanel(props: CommonTabPanelPropsType) {
   const { children, value, index, ...other } = props;
@@ -38,8 +41,6 @@ function CommonTabPanel(props: CommonTabPanelPropsType) {
   );
 }
 
-type CustomTabsArgs = TabsProps;
-
 export const CustomTabs = (args: CustomTabsArgs) => {
   const theme = createMuiTheme();
   const [value, setValue] = useState<string>(args.value || args.tabs[0]?.value || "tab1");
@@ -53,7 +54,7 @@ export const CustomTabs = (args: CustomTabsArgs) => {
         setValue(args.tabs[0]?.value || "tab1");
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [args.value, args.tabs]);
 
   return (
@@ -80,97 +81,6 @@ export const CustomTabs = (args: CustomTabsArgs) => {
   );
 };
 
-CustomTabs.args = {
-  tabs: [
-    { label: "Tab One", value: "tab1" },
-    { label: "Tab Two", value: "tab2" },
-    { label: "Tab Three", value: "tab3" },
-  ],
-  value: "tab1",
-  variant: "standard",
-  marginTop: "13px",
-  "aria-label": "Custom tabs example",
-  activeTextColor: undefined,
-  indicatorColor: undefined,
-  fontSize: undefined,
-  fontWeight: undefined,
-  selectedFontWeight: undefined,
-  orientation: "horizontal",
-  scrollButtons: false,
-  allowScrollButtonsMobile: false,
-  centered: false,
-  selectionFollowsFocus: false,
-} as CustomTabsArgs;
-
-CustomTabs.argTypes = {
-  variant: {
-    control: "select",
-    options: ["standard", "scrollable", "fullWidth"],
-    description: "The variant to use",
-  },
-  marginTop: {
-    control: "text",
-    description: "Custom margin top value",
-  },
-  "aria-label": {
-    control: "text",
-    description: "Label for accessibility",
-  },
-  activeTextColor: {
-    control: "color",
-    description: "Color for active tab text",
-  },
-  indicatorColor: {
-    control: "color",
-    description: "Color for the tab indicator",
-  },
-  fontSize: {
-    control: "text",
-    description: "Font size for tab labels (e.g., '14px', '1rem', 14)",
-  },
-  fontWeight: {
-    control: "text",
-    description: "Font weight for tab labels (e.g., 400, 500, 'normal', 'bold')",
-  },
-  selectedFontWeight: {
-    control: "text",
-    description: "Font weight for selected tab label (e.g., 500, 600, 'normal', 'bold')",
-  },
-  orientation: {
-    control: "select",
-    options: ["horizontal", "vertical"],
-    description: "The orientation of the tabs",
-  },
-  scrollButtons: {
-    control: "select",
-    options: [false, true, "auto"],
-    description: "Determine behavior of scroll buttons when tabs are set to scroll",
-  },
-  allowScrollButtonsMobile: {
-    control: "boolean",
-    description: "If true, the scroll buttons will be present on mobile",
-  },
-  centered: {
-    control: "boolean",
-    description: "If true, the tabs will be centered",
-  },
-  selectionFollowsFocus: {
-    control: "boolean",
-    description: "If true, the selected tab changes on focus",
-  },
-  tabs: {
-    control: "object",
-    description: "Array of tab items to display",
-  },
-  value: {
-    control: "text",
-    description: "The value of the currently selected tab",
-  },
-  onChange: {
-    action: "changed",
-    description: "Callback fired when the value changes",
-  },
-};
 
 // Basic Common Tabs Example
 export const CommonTabsBasic = () => {
@@ -205,7 +115,6 @@ export const CommonTabsBasic = () => {
     </ThemeProvider>
   );
 };
-
 
 // Common Tabs with Many Tabs
 export const CommonTabsManyTabs = () => {

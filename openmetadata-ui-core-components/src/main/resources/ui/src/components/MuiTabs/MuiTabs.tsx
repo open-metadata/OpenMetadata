@@ -12,30 +12,8 @@
  */
 
 import { Tab, Tabs as MuiTabs, useTheme } from '@mui/material';
-import type { TabsProps as MuiTabsProps } from '@mui/material';
 import React from 'react';
-
-export interface TabItem {
-  label: string;
-  value: string;
-  disabled?: boolean;
-}
-
-export interface TabsProps
-  extends Omit<
-    MuiTabsProps,
-    'children' | 'value' | 'onChange' | 'indicatorColor' | 'textColor'
-  > {
-  value: string;
-  onChange?: (event: React.SyntheticEvent, newValue: string) => void;
-  tabs: TabItem[];
-  marginTop?: string;
-  activeTextColor?: string;
-  indicatorColor?: string;
-  fontSize?: string | number;
-  fontWeight?: number | string;
-  selectedFontWeight?: number | string;
-}
+import type { TabsProps } from '../../types/Tabs.types';
 
 export const Tabs: React.FC<TabsProps> = ({
   value,
