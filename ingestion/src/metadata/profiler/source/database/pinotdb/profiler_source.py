@@ -1,9 +1,9 @@
 """Extend the ProfilerSource class to add support for pinotdb"""
 
-from ingestion.build.lib.metadata.generated.schema.entity.services.connections.connectionBasicType import (
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     ConnectionArguments,
 )
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database import (
     pinotDBConnection,
 )
@@ -30,7 +30,11 @@ class PinotProfilerSource(ProfilerSource):
         service_config: pinotDBConnection.PinotDBConnection = (
             super()._copy_service_config(config, database)
         )
-        conn_args = service_config.connectionArguments or {}
-        conn_args["use_multistage_engine"] = True
-        service_config.connectionArguments = ConnectionArguments(**conn_args)
+        conn_args = service_config.connectionArguments
+        if isinstance(conn_args, ConnectionArguments):
+            args_dict = conn_args.root or {}
+        else:
+            args_dict = conn_args or {}
+        args_dict["use_multistage_engine"] = True
+        service_config.connectionArguments = ConnectionArguments(root=args_dict)
         return service_config
