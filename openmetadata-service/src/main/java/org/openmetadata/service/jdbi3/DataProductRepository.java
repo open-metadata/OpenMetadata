@@ -604,6 +604,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateName(updated);
+      // Track and update input/output port changes (stored as relationships)
+      updatePorts("inputPorts", Relationship.INPUT_PORT);
+      updatePorts("outputPorts", Relationship.OUTPUT_PORT);
     }
 
     private void updateName(DataProduct updated) {
@@ -644,13 +647,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       daoCollection
           .feedDAO()
           .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
-      // Assets cannot be updated via PUT/PATCH - use bulk APIs:
-      // PUT /v1/dataProducts/{name}/assets/add
-      // PUT /v1/dataProducts/{name}/assets/remove
-
-      // Track and update input/output port changes (stored as relationships)
-      updatePorts("inputPorts", Relationship.INPUT_PORT);
-      updatePorts("outputPorts", Relationship.OUTPUT_PORT);
     }
 
     private void updatePorts(String fieldName, Relationship relationship) {
