@@ -140,7 +140,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           roundness: 0.8,
         },
         chosen: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           edge: function (values: any) {
             values.width = 2.5;
             values.color = '#1890ff';
