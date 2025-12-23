@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,13 +11,20 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../utils/common';
+import { SidebarItem } from '../../../constant/sidebar';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+} from '../../../utils/common';
 import {
   confirmationDragAndDropGlossary,
   dragAndDropTerm,
-} from '../../utils/glossary';
+  selectActiveGlossary,
+} from '../../../utils/glossary';
+import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -149,7 +156,17 @@ test.describe('Large Glossary Performance Tests', () => {
     const expandAllButton = page.getByTestId('expand-collapse-all-button');
 
     await expect(expandAllButton).toBeVisible();
-    await expect(expandAllButton).toContainText('Expand All');
+
+    // Ensure tree starts in collapsed state - if already expanded, collapse first
+    const buttonText = await expandAllButton.textContent();
+    if (buttonText?.includes('Collapse All')) {
+      await expandAllButton.click();
+
+      // Wait for the button text to change to "Expand All"
+      await expect(expandAllButton).toContainText('Expand All', {
+        timeout: 30000,
+      });
+    }
 
     // Click to expand all
     await expandAllButton.click();
@@ -171,7 +188,6 @@ test.describe('Large Glossary Performance Tests', () => {
     // Click to collapse all
     await expandAllButton.click();
 
-    await page.waitForLoadState('networkidle');
     await page.waitForFunction(() => {
       return (
         document.querySelectorAll(
@@ -187,7 +203,7 @@ test.describe('Large Glossary Performance Tests', () => {
   test('should expand individual terms', async ({ page }) => {
     // Find a term with children (Term_5)
     const term5Row = page.locator('tr', { hasText: 'Term_1' }).first();
-    const expandIcon = term5Row.locator('[data-testid="expand-icon"]');
+    const expandIcon = term5Row.getByTestId('expand-icon');
 
     // Click to expand
     await expandIcon.click();
