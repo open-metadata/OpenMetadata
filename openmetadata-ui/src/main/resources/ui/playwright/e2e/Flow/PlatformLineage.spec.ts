@@ -19,7 +19,7 @@ import { test } from '../fixtures/pages';
 test('Verify Platform Lineage View', async ({ page }) => {
 
   // Need to add more time for AUT and not for PR checks
-  test.slow(process.env.PLAYWRIGHT_IS_OSS !== undefined)
+  test.slow(process.env.PLAYWRIGHT_IS_OSS !== undefined);
 
   await redirectToHomePage(page);
   const lineageRes = page.waitForResponse(
