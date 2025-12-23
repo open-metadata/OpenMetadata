@@ -69,12 +69,12 @@ export const Tabs: React.FC<TabsProps> = ({
         color: theme.palette.allShades.gray[900],
         '& .MuiTab-root': {
           textTransform: 'none',
-          fontSize: '14px',
-          fontWeight: 400,
+          fontSize: theme.typography.body2.fontSize,
+          fontWeight: theme.typography.body2.fontWeight,
           color: theme.palette.allShades.gray[900],
           '&.Mui-selected': {
             color: activeColor,
-            fontWeight: 500,
+            fontWeight: theme.typography.subtitle2.fontWeight,
           },
           '&.Mui-disabled': {
             color: theme.palette.allShades?.gray?.[600],
