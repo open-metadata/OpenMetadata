@@ -292,11 +292,12 @@ LDAP authentication enables users to log in with their LDAP directory credential
 - **Example:** ["preferred_username", "email", "sub"]
 - **Why it matters:** Determines which claim from JWT tokens identifies the LDAP user.
 - **Note:** Only applicable when LDAP authentication generates JWT tokens
+  - Order matters - first matching claim is used
 
 ## <span data-id="jwtPrincipalClaimsMapping">JWT Principal Claims Mapping</span>
 
-- **Definition:** Maps JWT claims to OpenMetadata user attributes for LDAP users.
-- **Example:** ["email:mail", "name:displayName", "firstName:givenName"]
+- **Definition:** Maps JWT claims to OpenMetadata user attributes for LDAP users. (Overrides JWT Principal Claims if set)
+- **Example:** ["email:email", "username:preferred_username"]
 - **Why it matters:** Controls how LDAP user information maps to OpenMetadata user profiles.
 - **Note:** Format: "openmetadata_field:ldap_attribute" or "openmetadata_field:jwt_claim"
 
