@@ -455,11 +455,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if isinstance(payload, dict):
             return cast(JsonDict, payload)
         if isinstance(payload, BaseModel):
-            json_result: Dict[
-                str, Any
-            ] = payload.model_dump(  # pyright: ignore[reportUnknownMemberType]
-                mode="json"
-            )
+            json_result: Dict[str, Any] = payload.model_dump(mode="json")
             return json_result
         raise TypeError("Expected mapping-compatible payload")
 
