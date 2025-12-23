@@ -70,10 +70,10 @@ const CustomizableDataProductPage = ({
       ({
         pageType: currentPageType,
       } as Page);
-    const editedPage = (currentPage ??
+    const editedPage = currentPage ??
       ({
         pageType: currentPageType,
-      } as Page)) as Page;
+      } as Page);
 
     const jsonPatch = compare(originalPage, editedPage);
 
