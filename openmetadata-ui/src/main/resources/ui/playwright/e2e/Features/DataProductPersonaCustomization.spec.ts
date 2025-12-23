@@ -101,19 +101,6 @@ test.beforeAll(
   }
 );
 
-test.afterAll(
-  'Cleanup Data Product Persona Customization tests',
-  async ({ browser }) => {
-    test.slow();
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-    await user.delete(apiContext);
-    await persona.delete(apiContext);
-    await afterAction();
-  }
-);
-
 test.describe('Data Product Persona customization', () => {
   test('Data Product - customization should work', async ({
     adminPage,
