@@ -48,6 +48,7 @@ import {
 import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
   addEntityTypeFilter,
+  buildExploreUrlParams,
   getEntityTypeAggregationFilter,
   getJsonTreeFromQueryFilter,
   migrateJsonLogic,
@@ -100,13 +101,9 @@ const QueryBuilderWidget: FC<
         config
       ).fixedTree;
 
-      const queryFilterString: Record<string, unknown> = {
-        ...(!isEmpty(tree) && { queryFilter: JSON.stringify(tree) }),
-        ...(!isEmpty(qFilter) &&
-          qFilter.query && { quickFilter: JSON.stringify(qFilter) }),
-      };
+      const extraParameters = buildExploreUrlParams(tree, qFilter);
 
-      setQueryURL(getExplorePath({ extraParameters: queryFilterString }));
+      setQueryURL(getExplorePath({ extraParameters }));
 
       try {
         setIsCountLoading(true);
