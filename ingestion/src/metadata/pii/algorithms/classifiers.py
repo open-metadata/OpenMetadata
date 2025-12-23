@@ -45,7 +45,7 @@ from metadata.pii.algorithms.presidio_patches import (
     url_patcher,
 )
 from metadata.pii.algorithms.presidio_utils import (
-    build_analyzer_engine,
+    get_cached_analyzer_engine,
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
@@ -96,7 +96,8 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
         extra_patchers: Optional[Sequence[PresidioRecognizerResultPatcher]] = None,
     ):
         set_presidio_logger_level()
-        self._presidio_analyzer: AnalyzerEngine = build_analyzer_engine()
+        # Use cached analyzer to avoid reloading spaCy model for each classifier instance
+        self._presidio_analyzer: AnalyzerEngine = get_cached_analyzer_engine()
         self._column_name_patterns = get_pii_column_name_patterns()
 
         self._column_name_contribution = column_name_contribution

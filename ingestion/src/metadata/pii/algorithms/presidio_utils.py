@@ -55,6 +55,9 @@ from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
 
+# Module-level cache for AnalyzerEngine to avoid reloading spaCy models
+_ANALYZER_ENGINE_CACHE: Dict[str, AnalyzerEngine] = {}
+
 
 def load_nlp_engine(
     model_name: str = SPACY_EN_MODEL,
@@ -90,6 +93,28 @@ def build_analyzer_engine(
     )
 
     return analyzer_engine
+
+
+def get_cached_analyzer_engine(
+    model_name: str = SPACY_EN_MODEL,
+) -> AnalyzerEngine:
+    """
+    Get a cached Presidio analyzer engine for the given model.
+
+    This function uses a module-level cache to avoid reloading the spaCy model
+    multiple times, which is expensive in terms of memory (~40MB per model)
+    and can cause resource leaks in Python 3.10's multiprocessing resource tracker.
+
+    Args:
+        model_name: The name of the spaCy model to use.
+
+    Returns:
+        A cached AnalyzerEngine instance.
+    """
+    if model_name not in _ANALYZER_ENGINE_CACHE:
+        logger.debug(f"Creating and caching AnalyzerEngine for model: {model_name}")
+        _ANALYZER_ENGINE_CACHE[model_name] = build_analyzer_engine(model_name)
+    return _ANALYZER_ENGINE_CACHE[model_name]
 
 
 def set_presidio_logger_level(log_level: Union[int, str] = logging.ERROR) -> None:
