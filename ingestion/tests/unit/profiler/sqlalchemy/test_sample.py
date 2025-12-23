@@ -266,7 +266,7 @@ class SampleTest(TestCase):
         res = profiler.compute_metrics()._column_results
 
         # As sampling can yield unique rows on small dataset validate we get a value
-        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name]
+        assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] is not None
 
     def test_sample_data(self, sampler_mock):
         """
