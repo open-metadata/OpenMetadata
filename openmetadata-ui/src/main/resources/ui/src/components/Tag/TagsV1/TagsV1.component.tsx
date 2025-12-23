@@ -203,7 +203,7 @@ const TagsV1 = ({
         />
       </Link>
     ),
-    [tagName, tag, redirectLink, theme, renderTagIcon]
+    [tagName, tag, redirectLink, theme]
   );
 
   const tagChip = useMemo(

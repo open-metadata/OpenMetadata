@@ -66,3 +66,8 @@ export const DECIMAL_ZERO_TO_ONE_REGEX = /^(0(\.\d+)?|1(\.0+)?)$/;
 // Validates integers between 0 and 100 (inclusive)
 // Matches: 0, 1, 9, 10, 50, 99, 100
 export const INTEGER_ZERO_TO_HUNDRED_REGEX = /^(100|[1-9]?\d)$/;
+
+// Validates locale/language codes (ISO 639-1 format)
+// Matches: en, fr, de, en-US, fr-CA, de-DE, etc.
+// Format: two lowercase letters optionally followed by hyphen and two uppercase letters
+export const LOCALE_CODE_REGEX = /^[a-z]{2}(-[A-Z]{2})?$/;

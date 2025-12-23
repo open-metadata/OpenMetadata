@@ -186,7 +186,7 @@ const TagsForm = ({
       ...field,
       label: t(field.label),
     };
-  }, [t, entityRules.canAddMultipleDomains]);
+  }, [entityRules.canAddMultipleDomains, t]);
 
   const formFields: FieldProp[] = useMemo(() => {
     const descriptionField = getDescriptionField({
@@ -252,9 +252,9 @@ const TagsForm = ({
         if (isEditing) {
           domainsData = domains;
         } else {
-          domainsData = domains.map(
-            (domain) => domain.fullyQualifiedName ?? domain.name
-          );
+          domainsData = domains
+            .map((domain) => domain.fullyQualifiedName ?? domain.name)
+            .filter(Boolean);
         }
       }
 
