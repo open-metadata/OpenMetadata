@@ -29,5 +29,4 @@ export interface ExploreQuickFiltersProps {
   defaultQueryFilter?: Record<string, unknown>;
   showSelectedCounts?: boolean; // flag to show counts instead of labels for selected filters
   optionPageSize?: number;
-  hideCounts?: boolean;
 }

@@ -71,7 +71,6 @@ export interface ColumnLevelLineageNode
   pipeline?: EntityReference;
   source?: string;
   sqlQuery?: string;
-  column?: ColumnLineage;
   description?: string;
   pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
   docId?: string;
