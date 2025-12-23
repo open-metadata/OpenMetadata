@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { Box, BoxProps } from '@mui/material';
-import { FC, FormEvent, ReactNode } from 'react';
+import { ComponentProps, FC, ReactNode } from 'react';
 
 interface MUIFormProps {
-  onSubmit?: (event: FormEvent<HTMLFormElement>) => void;
-  onReset?: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit?: ComponentProps<'form'>['onSubmit'];
+  onReset?: ComponentProps<'form'>['onReset'];
   children: ReactNode;
   className?: string;
   id?: string;
@@ -33,8 +33,8 @@ const MUIForm: FC<MUIFormProps> = ({
   return (
     <Box
       component="form"
-      onSubmit={onSubmit as any}
-      onReset={onReset as any}
+      onSubmit={onSubmit}
+      onReset={onReset}
       className={className}
       id={id}
       sx={sx}
