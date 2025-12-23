@@ -73,6 +73,44 @@ describe('formUtils', () => {
 
       expect(JSON.stringify(result)).not.toContain('form-item-alert');
     });
+
+    it('Should render TEXT_MUI field type with MUITextField from core components', async () => {
+      const result = getField({
+        name: 'testField',
+        label: 'Test Field',
+        type: FieldTypes.TEXT_MUI,
+        required: true,
+        helperText: 'This is a helper text',
+        helperTextType: HelperTextType.ALERT,
+        props: {
+          'data-testid': 'test-text-field',
+        },
+        id: 'root/testField',
+        formItemLayout: FormItemLayout.VERTICAL,
+      });
+
+      // Verify the result contains MUITextField
+      const resultString = JSON.stringify(result);
+      expect(resultString).toContain('testField');
+    });
+
+    it('Should render PASSWORD_MUI field type with type password', async () => {
+      const result = getField({
+        name: 'passwordField',
+        label: 'Password Field',
+        type: FieldTypes.PASSWORD_MUI,
+        required: true,
+        props: {
+          'data-testid': 'test-password-field',
+        },
+        id: 'root/passwordField',
+        formItemLayout: FormItemLayout.VERTICAL,
+      });
+
+      // Verify the result contains password type
+      const resultString = JSON.stringify(result);
+      expect(resultString).toContain('password');
+    });
   });
 
   describe('createScrollToErrorHandler', () => {
