@@ -345,6 +345,7 @@ class GrafanaSource(DashboardServiceSource):
 
             # Extract table references from the SQL
             parser = LineageParser(sql_query, dialect)
+            query_hash = parser.query_hash
             database_name_hint = getattr(datasource, "database", None)
 
             for table in parser.source_tables or []:
@@ -400,7 +401,8 @@ class GrafanaSource(DashboardServiceSource):
                         yield lineage_request
 
         except Exception as exc:
-            logger.debug(f"Error processing panel lineage: {exc}")
+            hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""
+            logger.debug(f"{hash_prefix}Error processing panel lineage: {exc}")
             logger.error(traceback.format_exc())
 
     def _extract_datasource_name(

@@ -25,6 +25,11 @@ import org.openmetadata.service.util.RdfTestUtils;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class RdfResourceTest extends OpenMetadataApplicationTest {
 
+  static {
+    // Enable RDF for these tests
+    runWithRdf = true;
+  }
+
   // RDF type for Table entities (from RdfUtils.java)
   private static final String TABLE_RDF_TYPE = "dcat:Dataset";
 
@@ -32,10 +37,6 @@ public class RdfResourceTest extends OpenMetadataApplicationTest {
 
   @BeforeAll
   public void setup(TestInfo test) throws URISyntaxException, IOException {
-    // Skip setup if RDF is not enabled
-    if (!"true".equals(System.getProperty("enableRdf"))) {
-      return;
-    }
     // Initialize the TableResourceTest helper for creating entities
     tableResourceTest = new TableResourceTest();
     tableResourceTest.setup(test);
@@ -43,10 +44,6 @@ public class RdfResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void testEntityStoredInRdf(TestInfo test) throws Exception {
-    if (!"true".equals(System.getProperty("enableRdf"))) {
-      return; // Skip if RDF is not enabled
-    }
-
     // Create a table
     CreateTable createTable =
         tableResourceTest.createRequest(test.getDisplayName() + "_rdf_storage");
@@ -58,10 +55,6 @@ public class RdfResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void testMultipleEntitiesStoredInRdf(TestInfo test) throws Exception {
-    if (!"true".equals(System.getProperty("enableRdf"))) {
-      return; // Skip if RDF is not enabled
-    }
-
     // Create multiple tables
     CreateTable createTable1 =
         tableResourceTest.createRequest(test.getDisplayName() + "_rdf_multi1");
@@ -78,10 +71,6 @@ public class RdfResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void testEntityDeleteFromRdf(TestInfo test) throws Exception {
-    if (!"true".equals(System.getProperty("enableRdf"))) {
-      return; // Skip if RDF is not enabled
-    }
-
     // Create a table
     CreateTable createTable =
         tableResourceTest.createRequest(test.getDisplayName() + "_rdf_delete");

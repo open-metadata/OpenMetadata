@@ -34,7 +34,6 @@ export const getApiCollectionDetailsPageTabs = ({
   getEntityFeedCount,
   handleFeedCount,
   editCustomAttributePermission,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   apiEndpointCount,
   labelMap,

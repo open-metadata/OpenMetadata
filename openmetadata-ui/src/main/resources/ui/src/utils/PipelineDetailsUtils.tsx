@@ -66,7 +66,6 @@ export const getPipelineDetailPageTabs = ({
   handleFeedCount,
   pipelineDetails,
   pipelineFQN,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   editLineagePermission,
   editCustomAttributePermission,
