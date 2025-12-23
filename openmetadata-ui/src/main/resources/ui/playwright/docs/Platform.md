@@ -2,7 +2,7 @@
 
 # Platform
 
-> **12 Components** | **68 Files** | **1238 Tests** | **1615 Scenarios** 🚀
+> **12 Components** | **69 Files** | **1246 Tests** | **1626 Scenarios** 🚀
 
 ## Table of Contents
 - [Other](#other)
@@ -123,6 +123,24 @@
 | 5 | **Collect end point should work properly** - Visit Insights page should trigger collect API | Visit Insights page should trigger collect API |
 | 6 | **Collect end point should work properly** - Visit Glossary page should trigger collect API | Visit Glossary page should trigger collect API |
 | 7 | **Collect end point should work properly** - Visit Tags page should trigger collect API | Visit Tags page should trigger collect API |
+
+</details>
+
+<details open>
+<summary>📄 <b>CertificationDropdown.spec.ts</b> (6 tests, 6 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/CertificationDropdown.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/CertificationDropdown.spec.ts)
+
+### Certification Dropdown
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Certification Dropdown** - should show enabled certification tag in dropdown | Show enabled certification tag in dropdown |
+| 2 | **Certification Dropdown** - should NOT show disabled certification tag in dropdown | NOT show disabled certification tag in dropdown |
+| 3 | **Certification Dropdown** - should NOT show certifications when classification is disabled | NOT show certifications when classification is disabled |
+| 4 | **Certification Dropdown** - should show certification after re-enabling disabled tag | Show certification after re-enabling disabled tag |
+| 5 | **Certification Dropdown** - should show certifications after re-enabling classification | Show certifications after re-enabling classification |
+| 6 | **Certification Dropdown** - should handle multiple disabled tags correctly | Handle multiple disabled tags correctly |
 
 </details>
 
@@ -1628,7 +1646,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (40 tests, 40 scenarios)</summary>
+<summary>📄 <b>RightEntityPanelFlow.spec.ts</b> (40 tests, 42 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/RightEntityPanelFlow.spec.ts)
 
@@ -1646,6 +1664,9 @@
 | 8 | **Right Entity Panel - Admin User Flow** - Admin - Schema Tab - View Schema | Admin - Schema Tab - View Schema |
 | 9 | **Right Entity Panel - Admin User Flow** - Lineage Tab - No Lineage | Lineage Tab - No Lineage |
 | 10 | **Right Entity Panel - Admin User Flow** - Lineage Tab - With Upstream and Downstream | Lineage Tab - With Upstream and Downstream |
+| | ↳ *Create lineage connections* | |
+| | ↳ *Verify overview tab lineage* | |
+| | ↳ *Verify lineage tab content* | |
 | 11 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - No Test Cases | Data Quality Tab - No Test Cases |
 | 12 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - Incidents Empty State | Data Quality Tab - Incidents Empty State |
 | 13 | **Right Entity Panel - Admin User Flow** - Data Quality Tab - With Test Cases | Data Quality Tab - With Test Cases |
@@ -2022,6 +2043,35 @@
 </details>
 
 <details open>
+<summary>📄 <b>BulkEditEntity.spec.ts</b> (6 tests, 11 scenarios)</summary>
+
+> Source: [`src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts)
+
+### Bulk Edit Entity
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Bulk Edit Entity** - Database service | Database service |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action* | |
+| 2 | **Bulk Edit Entity** - Database | Database |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action* | |
+| 3 | **Bulk Edit Entity** - Database Schema | Database Schema |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action* | |
+| 4 | **Bulk Edit Entity** - Table | Table |
+| | ↳ *Perform bulk edit action* | |
+| 5 | **Bulk Edit Entity** - Glossary | Glossary |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action* | |
+| 6 | **Bulk Edit Entity** - Glossary Term (Nested) | Glossary Term (Nested) |
+| | ↳ *create custom properties for extension edit* | |
+| | ↳ *Perform bulk edit action on nested glossary term* | |
+
+</details>
+
+<details open>
 <summary>📄 <b>BulkImport.spec.ts</b> (6 tests, 27 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkImport.spec.ts)
@@ -2063,31 +2113,6 @@
 | | ↳ *allow multiple cell selection using keyboard on rightDown and leftUp* | |
 | | ↳ *perform single cell copy-paste and undo-redo* | |
 | | ↳ *Select range, copy-paste and undo-redo* | |
-
-</details>
-
-<details open>
-<summary>📄 <b>BulkEditEntity.spec.ts</b> (5 tests, 8 scenarios)</summary>
-
-> Source: [`src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/BulkEditEntity.spec.ts)
-
-### Bulk Edit Entity
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Bulk Edit Entity** - Database service | Database service |
-| | ↳ *create custom properties for extension edit* | |
-| | ↳ *Perform bulk edit action* | |
-| 2 | **Bulk Edit Entity** - Database | Database |
-| | ↳ *create custom properties for extension edit* | |
-| | ↳ *Perform bulk edit action* | |
-| 3 | **Bulk Edit Entity** - Database Schema | Database Schema |
-| | ↳ *create custom properties for extension edit* | |
-| | ↳ *Perform bulk edit action* | |
-| 4 | **Bulk Edit Entity** - Table | Table |
-| | ↳ *Perform bulk edit action* | |
-| 5 | **Bulk Edit Entity** - Glossary | Glossary |
-| | ↳ *Perform bulk edit action* | |
 
 </details>
 
@@ -2588,7 +2613,7 @@
 ## Lineage (UI)
 
 <details open>
-<summary>📄 <b>Lineage.spec.ts</b> (20 tests, 73 scenarios)</summary>
+<summary>📄 <b>Lineage.spec.ts</b> (22 tests, 77 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Pages/Lineage.spec.ts)
 
@@ -2687,6 +2712,12 @@
 | 13 | Verify function data in edge drawer | Function data in edge drawer |
 | 14 | Verify table search with special characters as handled | Table search with special characters as handled |
 | 15 | Verify cycle lineage should be handled properly | Cycle lineage should be handled properly |
+| 16 | Verify column layer is applied on entering edit mode | Column layer is applied on entering edit mode |
+| | ↳ *Verify column layer is inactive initially* | |
+| | ↳ *Enter edit mode and verify column layer is active* | |
+| 17 | Verify there is no traced nodes and columns on exiting edit mode | There is no traced nodes and columns on exiting edit mode |
+| | ↳ *Verify node tracing is cleared on exiting edit mode* | |
+| | ↳ *Verify column tracing is cleared on exiting edit mode* | |
 
 </details>
 
@@ -2961,7 +2992,7 @@
 </details>
 
 <details open>
-<summary>📄 <b>PersonaDeletionUserProfile.spec.ts</b> (2 tests, 8 scenarios)</summary>
+<summary>📄 <b>PersonaDeletionUserProfile.spec.ts</b> (1 tests, 4 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts)
 
@@ -2974,11 +3005,6 @@
 | | ↳ *Verify persona appears on user profile* | |
 | | ↳ *Delete the persona* | |
 | | ↳ *Verify user profile still loads after persona deletion* | |
-| 2 | **User profile works after persona deletion** - User profile loads correctly after DEFAULT persona deletion | User profile loads correctly after DEFAULT persona deletion |
-| | ↳ *Create default persona with user* | |
-| | ↳ *Verify default persona appears on user profile* | |
-| | ↳ *Delete the default persona* | |
-| | ↳ *Verify user profile still loads after DEFAULT persona deletion* | |
 
 </details>
 

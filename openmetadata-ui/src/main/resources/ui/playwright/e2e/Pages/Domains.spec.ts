@@ -242,7 +242,7 @@ test.describe('Domains', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
-      await followEntity(page, EntityTypeEndpoint.DataProduct);
+      await followEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
 
       // Wait for the search query that will populate the following widget
       const followingSearchResponse = page.waitForResponse(
@@ -261,7 +261,7 @@ test.describe('Domains', () => {
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
-      await unFollowEntity(page, EntityTypeEndpoint.DataProduct);
+      await unFollowEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
       await redirectToHomePage(page);
 
       // Check that the data product is not shown in the following widget
@@ -753,11 +753,20 @@ test.describe('Domains', () => {
 
       const descriptionInputBox = '.om-block-editor[contenteditable="true"]';
 
+      // clear existing description to avoid flakiness
+      await userPage.fill(descriptionInputBox, '');
+
       await userPage.fill(descriptionInputBox, 'test description');
+
+      const saveResponse = userPage.waitForResponse(
+        (req) =>
+          req.request().method() === 'PATCH' &&
+          req.request().url().includes('/api/v1/domains/')
+      );
 
       await userPage.getByTestId('save').click();
 
-      await userPage.waitForTimeout(3000);
+      await saveResponse;
 
       const descriptionBox = '.om-block-editor[contenteditable="false"]';
 

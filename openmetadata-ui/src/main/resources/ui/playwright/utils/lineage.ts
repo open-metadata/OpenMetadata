@@ -97,6 +97,7 @@ export const activateColumnLayer = async (page: Page) => {
 
   if (isColumnLayerSelected) {
     await clickOutside(page);
+
     return;
   }
 

@@ -2,7 +2,7 @@
 
 # Integration
 
-> **1 Components** | **5 Files** | **56 Tests** | **59 Scenarios** 🚀
+> **1 Components** | **5 Files** | **52 Tests** | **55 Scenarios** 🚀
 
 ## Table of Contents
 - [Connectors](#connectors)
@@ -14,7 +14,7 @@
 ## Connectors
 
 <details open>
-<summary>📄 <b>ServiceIngestion.spec.ts</b> (49 tests, 49 scenarios)</summary>
+<summary>📄 <b>ServiceIngestion.spec.ts</b> (45 tests, 45 scenarios)</summary>
 
 > Source: [`src/main/resources/ui/playwright/e2e/nightly/ServiceIngestion.spec.ts`](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/playwright/e2e/nightly/ServiceIngestion.spec.ts)
 
@@ -72,15 +72,6 @@
 | 2 | **MlFlow Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
 | 3 | **MlFlow Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
 | 4 | **MlFlow Service** - Delete MlFlow Service service | Tests service deletion flow  Deletes the service and validates removal |
-
-### Snowflake Service
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Snowflake Service** - Create & Ingest Snowflake Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
-| 2 | **Snowflake Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
-| 3 | **Snowflake Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
-| 4 | **Snowflake Service** - Delete Snowflake Service service | Tests service deletion flow  Deletes the service and validates removal |
 
 ### Superset Service
 

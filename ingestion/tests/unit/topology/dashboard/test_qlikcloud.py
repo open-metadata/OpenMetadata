@@ -20,6 +20,9 @@ import pytest
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.qlikCloudConnection import (
     SpaceType,
 )
@@ -38,6 +41,7 @@ from metadata.ingestion.source.dashboard.qlikcloud.client import QlikCloudClient
 from metadata.ingestion.source.dashboard.qlikcloud.metadata import QlikcloudSource
 from metadata.ingestion.source.dashboard.qlikcloud.models import (
     QlikApp,
+    QlikDataFile,
     QlikSpace,
     QlikSpaceType,
 )
@@ -469,3 +473,165 @@ class QlikCloudUnitTest(TestCase):
             assert (
                 len(script_tables) == 0
             ), f"Expected 0 tables for empty script, but got {len(script_tables)}"
+
+    @pytest.mark.order(11)
+    def test_get_data_files(self):
+        """Test the get_data_files method that fetches data files from Qlik API"""
+        mock_data_files_response = {
+            "data": [
+                {
+                    "id": "ea55350b-2e40-4885-82df-375a80e76a21",
+                    "folder": False,
+                    "name": "Contract_QVD.qvd",
+                    "baseName": "Contract_QVD.qvd",
+                    "size": 49730733,
+                    "createdDate": "2024-11-19T09:05:53.278Z",
+                    "modifiedDate": "2025-10-28T09:08:10.586Z",
+                    "spaceId": "673c53ce0dbd9710862c4531",
+                    "ownerId": "66703f58e241761c631e637e",
+                },
+                {
+                    "id": "bf18470f-7877-4154-9cc3-2330923e1f26",
+                    "folder": False,
+                    "name": "Anagrafiche/g_dealer_information_v.qvd",
+                    "baseName": "g_dealer_information_v.qvd",
+                    "folderPath": "Anagrafiche",
+                    "folderId": "7c21d3d7-a699-4b42-ab5c-f34aa553719e",
+                    "size": 162297,
+                    "createdDate": "2025-08-14T09:24:10.567Z",
+                    "modifiedDate": "2025-09-29T10:31:39.036Z",
+                    "spaceId": "67d051949f4dc9eb3bf27b51",
+                    "ownerId": "66703f58e241761c631e637e",
+                },
+                {
+                    "id": "0fd6b610-dfe9-4067-b613-ba29dcde4d95",
+                    "folder": False,
+                    "name": "reload_analyzer_AuditReloadLineage_4.0.4.qvd",
+                    "baseName": "reload_analyzer_AuditReloadLineage_4.0.4.qvd",
+                    "size": 170896,
+                    "createdDate": "2024-10-24T13:35:48.182Z",
+                    "modifiedDate": "2025-11-06T07:06:49.061Z",
+                    "spaceId": "671a4c8696fe210fc35a50ac",
+                    "ownerId": "66703f58e241761c631e637e",
+                },
+            ],
+            "links": {
+                "next": {},
+                "self": {
+                    "href": "https://example.qlikcloud.com:443/api/v1/data-files?includeAllSpaces=true&limit=1000"
+                },
+                "prev": {},
+            },
+        }
+
+        with patch.object(
+            self.qlikcloud.client.client,
+            "get",
+            return_value=mock_data_files_response,
+        ):
+            data_files = self.qlikcloud.client.get_data_files()
+
+            assert data_files is not None, "Expected data_files to be returned"
+            assert (
+                len(data_files) == 3
+            ), f"Expected 3 data files, but got {len(data_files)}"
+
+            expected_file_names = [
+                "Contract_QVD.qvd",
+                "Anagrafiche/g_dealer_information_v.qvd",
+                "reload_analyzer_AuditReloadLineage_4.0.4.qvd",
+            ]
+            actual_file_names = [data_file.name for data_file in data_files]
+            for expected_name in expected_file_names:
+                assert (
+                    expected_name in actual_file_names
+                ), f"Expected data file '{expected_name}' not found in {actual_file_names}"
+
+            for data_file in data_files:
+                assert isinstance(
+                    data_file, QlikDataFile
+                ), f"Expected QlikDataFile instance, but got {type(data_file)}"
+                assert data_file.id is not None, "Expected data file to have an id"
+                assert data_file.name is not None, "Expected data file to have a name"
+                assert data_file.folder is False, "Expected folder to be False"
+
+            # Test yield_datamodel with QlikDataFile instances
+            mock_data_files = [
+                QlikDataFile(
+                    id="ea55350b-2e40-4885-82df-375a80e76a21",
+                    name="Contract_QVD.qvd",
+                    folder=False,
+                ),
+                QlikDataFile(
+                    id="bf18470f-7877-4154-9cc3-2330923e1f26",
+                    name="Anagrafiche/g_dealer_information_v.qvd",
+                    folder=False,
+                ),
+            ]
+
+            # Enable includeDataModels for this test
+            original_include_data_models = (
+                self.qlikcloud.source_config.includeDataModels
+            )
+            self.qlikcloud.source_config.includeDataModels = True
+
+            try:
+                with patch.object(
+                    self.qlikcloud.client,
+                    "get_dashboard_models",
+                    return_value=mock_data_files,
+                ):
+                    datamodel_results = list(
+                        self.qlikcloud.yield_datamodel(MOCK_DASHBOARD_DETAILS)
+                    )
+
+                    assert (
+                        len(datamodel_results) == 2
+                    ), f"Expected 2 datamodel results, got {len(datamodel_results)}"
+                    for i, result in enumerate(datamodel_results):
+                        assert isinstance(result, Either), "Expected Either instance"
+                        assert (
+                            result.right is not None
+                        ), "Expected right value (success)"
+
+                        data_model_request = result.right
+                        assert isinstance(
+                            data_model_request, CreateDashboardDataModelRequest
+                        ), f"Expected CreateDashboardDataModelRequest, got {type(data_model_request)}"
+
+                        assert data_model_request.name.root == mock_data_files[i].id
+                        assert data_model_request.displayName == mock_data_files[i].name
+                        assert data_model_request.columns == []
+            finally:
+                self.qlikcloud.source_config.includeDataModels = (
+                    original_include_data_models
+                )
+
+    @pytest.mark.order(12)
+    def test_get_data_files_empty(self):
+        """Test the get_data_files method with empty response"""
+        mock_empty_response = {"data": [], "links": {}}
+
+        with patch.object(
+            self.qlikcloud.client.client,
+            "get",
+            return_value=mock_empty_response,
+        ):
+            data_files = self.qlikcloud.client.get_data_files()
+
+            assert data_files is not None, "Expected data_files list to be returned"
+            assert (
+                len(data_files) == 0
+            ), f"Expected 0 data files, but got {len(data_files)}"
+
+    @pytest.mark.order(13)
+    def test_get_data_files_api_failure(self):
+        """Test the get_data_files method when API call fails"""
+        with patch.object(
+            self.qlikcloud.client.client,
+            "get",
+            side_effect=Exception("API connection failed"),
+        ):
+            data_files = self.qlikcloud.client.get_data_files()
+
+            assert data_files == [], "Expected empty list when API fails"

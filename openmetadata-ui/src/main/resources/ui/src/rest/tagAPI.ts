@@ -34,7 +34,7 @@ interface TagsRequestParams {
   after?: string;
   before?: string;
   limit?: number;
-  disabled?: boolean
+  disabled?: boolean;
 }
 
 export const getTags = async ({ limit = 10, ...params }: TagsRequestParams) => {
