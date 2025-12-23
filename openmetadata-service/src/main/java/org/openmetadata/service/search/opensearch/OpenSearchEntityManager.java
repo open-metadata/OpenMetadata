@@ -5,7 +5,9 @@ import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_REL
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
 import static org.openmetadata.service.search.SearchClient.DELETE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.FIELDS_TO_REMOVE_WHEN_NULL;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.UPDATE_COLUMN_LINEAGE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_DATA_PRODUCT_FQN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_FQN_PREFIX_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT;
 
@@ -896,6 +898,62 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     } catch (Exception e) {
       LOG.error("Error while updating glossary term FQN: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateDataProductReferences(String oldFqn, String newFqn) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update data product references.");
+      return;
+    }
+
+    try {
+      // Query for all documents that have this data product in their dataProducts array
+      // Note: dataProducts is not mapped as nested, so we use a simple term query
+      Query termQuery =
+          Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field("dataProducts.fullyQualifiedName").value(FieldValue.of(oldFqn))));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldFqn", JsonData.of(oldFqn),
+              "newFqn", JsonData.of(newFqn));
+
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                      .query(termQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless.jsonValue())
+                                          .source(UPDATE_DATA_PRODUCT_FQN_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated data product references from {} to {}, updated: {}",
+          oldFqn,
+          newFqn,
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update data product references: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating data product references: {}", e.getMessage(), e);
     }
   }
 

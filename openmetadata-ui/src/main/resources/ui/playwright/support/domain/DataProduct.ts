@@ -60,12 +60,20 @@ export class DataProduct extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
+    // Use responseData.fullyQualifiedName if available (after create), otherwise fall back to data.fullyQualifiedName
     this.data.domains = this.subDomains?.length
       ? this.subDomains.map(
-          (subDomain) => subDomain.data.fullyQualifiedName ?? ''
+          (subDomain) =>
+            subDomain.responseData?.fullyQualifiedName ??
+            subDomain.data.fullyQualifiedName ??
+            ''
         ) ?? []
-      : this.domains.map((domain) => domain.data.fullyQualifiedName ?? '') ??
-        [];
+      : this.domains.map(
+          (domain) =>
+            domain.responseData?.fullyQualifiedName ??
+            domain.data.fullyQualifiedName ??
+            ''
+        ) ?? [];
 
     const response = await apiContext.post('/api/v1/dataProducts', {
       data: this.data,

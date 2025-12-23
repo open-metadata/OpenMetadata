@@ -4004,6 +4004,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private ChangeSource changeSource;
     private final boolean useOptimisticLocking;
 
+    // Store the original FQN at construction time, before any modifications or revert.
+    // This is needed because during change consolidation, revert() reassigns 'original' to
+    // 'previous',
+    // which would cause original.getFullyQualifiedName() to return an outdated value.
+    @Getter private final String originalFqn;
+
     public EntityUpdater(T original, T updated, Operation operation) {
       this(original, updated, operation, null);
     }
@@ -4021,6 +4027,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
+      this.originalFqn = original.getFullyQualifiedName();
       User updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)

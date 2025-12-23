@@ -788,6 +788,11 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateDataProductReferences(String oldFqn, String newFqn) {
+    entityManager.updateDataProductReferences(oldFqn, newFqn);
+  }
+
+  @Override
   public void updateColumnsInUpstreamLineage(
       String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
     entityManager.updateColumnsInUpstreamLineage(indexName, originalUpdatedColumnFqnMap);

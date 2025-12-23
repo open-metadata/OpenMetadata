@@ -275,6 +275,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   public class ClassificationUpdater extends EntityUpdater {
+    private boolean renameProcessed = false;
+
     public ClassificationUpdater(
         Classification original, Classification updated, Operation operation) {
       super(original, updated, operation);
@@ -291,29 +293,38 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           original.getAutoClassificationConfig(),
           updated.getAutoClassificationConfig(),
           true);
-      updateName(original, updated);
+      updateName(updated);
     }
 
-    public void updateName(Classification original, Classification updated) {
-      if (!original.getName().equals(updated.getName())) {
-        if (ProviderType.SYSTEM.equals(original.getProvider())) {
-          throw new IllegalArgumentException(
-              CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
-        }
-        // on Classification name change - update tag's name under classification
-        setFullyQualifiedName(updated);
-        daoCollection
-            .tagDAO()
-            .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
-        daoCollection
-            .tagUsageDAO()
-            .updateTagPrefix(
-                TagSource.CLASSIFICATION.ordinal(),
-                original.getFullyQualifiedName(),
-                updated.getFullyQualifiedName());
-        recordChange("name", original.getName(), updated.getName());
-        invalidateClassification(original.getId());
+    public void updateName(Classification updated) {
+      // Use getOriginalFqn() which was captured at EntityUpdater construction time.
+      String oldFqn = getOriginalFqn();
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
+
+      if (oldFqn.equals(newFqn)) {
+        return;
       }
+
+      // Only process the rename once per update operation.
+      if (renameProcessed) {
+        return;
+      }
+      renameProcessed = true;
+
+      if (ProviderType.SYSTEM.equals(original.getProvider())) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
+      }
+
+      // on Classification name change - update tag's name under classification
+      LOG.info("Classification FQN changed from {} to {}", oldFqn, newFqn);
+      daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
+      daoCollection
+          .tagUsageDAO()
+          .updateTagPrefix(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
+      recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
+      invalidateClassification(updated.getId());
     }
 
     private void invalidateClassification(UUID classificationId) {

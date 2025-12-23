@@ -269,6 +269,16 @@ public interface EntityManagementClient {
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
 
   /**
+   * Updates data product references in search indexes when a data product is renamed.
+   * This method finds all assets that have the data product in their dataProducts array
+   * and updates the fullyQualifiedName to the new value.
+   *
+   * @param oldFqn the old fully qualified name of the data product
+   * @param newFqn the new fully qualified name of the data product
+   */
+  void updateDataProductReferences(String oldFqn, String newFqn);
+
+  /**
    * Reindexes multiple entities across indices.
    * This method takes a list of entity references, fetches the full entity data,
    * rebuilds the search index documents, and performs a bulk update.

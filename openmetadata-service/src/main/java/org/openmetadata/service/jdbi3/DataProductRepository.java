@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
@@ -78,6 +79,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -98,6 +100,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    renameAllowed = true;
 
     // Initialize inherited field search
     if (searchRepository != null) {
@@ -558,14 +561,30 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       try {
         closeApprovalTask(updated, "Closed due to data product going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
+      }
     }
+    // Note: Search index updates for renamed data products are handled in updateName()
+    // within entitySpecificUpdate() to ensure we capture the correct old FQN before
+    // change consolidation's revert() modifies the 'original' reference.
+  }
 
-    // Assets are not tracked via inline updates - they are managed through bulk APIs
-    // Search index updates for assets are triggered by the bulk APIs directly
+  private void updateAssetSearchIndexes(String oldFqn, String newFqn) {
+    if (searchRepository != null) {
+      try {
+        searchRepository.getSearchClient().updateDataProductReferences(oldFqn, newFqn);
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to update search indexes for data product rename from {} to {}: {}",
+            oldFqn,
+            newFqn,
+            e.getMessage());
+      }
+    }
   }
 
   public class DataProductUpdater extends EntityUpdater {
+    private boolean renameProcessed = false;
+
     public DataProductUpdater(DataProduct original, DataProduct updated, Operation operation) {
       super(original, updated, operation);
     }
@@ -584,13 +603,50 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      // Assets cannot be updated via PUT/PATCH - use bulk APIs:
-      // PUT /v1/dataProducts/{name}/assets/add
-      // PUT /v1/dataProducts/{name}/assets/remove
-
+      updateName(updated);
       // Track and update input/output port changes (stored as relationships)
       updatePorts("inputPorts", Relationship.INPUT_PORT);
       updatePorts("outputPorts", Relationship.OUTPUT_PORT);
+    }
+
+    private void updateName(DataProduct updated) {
+      // Use getOriginalFqn() which was captured at EntityUpdater construction time.
+      // This is reliable even after revert() reassigns 'original' to 'previous'.
+      String oldFqn = getOriginalFqn();
+      setFullyQualifiedName(updated);
+      String newFqn = updated.getFullyQualifiedName();
+
+      if (oldFqn.equals(newFqn)) {
+        return;
+      }
+
+      // Only process the rename once per update operation.
+      // entitySpecificUpdate is called multiple times during the update flow
+      // (incrementalChange, revert, final updateInternal).
+      if (renameProcessed) {
+        return;
+      }
+      renameProcessed = true;
+
+      DataProduct existing = findByNameOrNull(FullyQualifiedName.quoteName(updated.getName()), ALL);
+      if (existing != null && !existing.getId().equals(updated.getId())) {
+        throw new IllegalArgumentException(
+            entityNameAlreadyExists(DATA_PRODUCT, updated.getName()));
+      }
+
+      LOG.info("Data product FQN changed from {} to {}", oldFqn, newFqn);
+
+      recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
+      updateEntityLinks(oldFqn, newFqn);
+      updateAssetSearchIndexes(oldFqn, newFqn);
+    }
+
+    private void updateEntityLinks(String oldFqn, String newFqn) {
+      daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+      EntityLink newAbout = new EntityLink(DATA_PRODUCT, newFqn);
+      daoCollection
+          .feedDAO()
+          .updateByEntityId(newAbout.getLinkString(), updated.getId().toString());
     }
 
     private void updatePorts(String fieldName, Relationship relationship) {
