@@ -83,6 +83,7 @@ public class MigrationWorkflow {
     if (hasExistingFlywayHistory()) {
       migrateFlywayToServerChangeLogs();
       prePopulateFlywayMigrationSQLLogs();
+      dropFlywayTable();
     }
 
     // Sort Migration on the basis of version
@@ -475,6 +476,23 @@ public class MigrationWorkflow {
     }
   }
 
+  private void dropFlywayTable() {
+    // Drop the old DATABASE_CHANGE_LOG table after successful migration
+    try (Handle handle = jdbi.open()) {
+      String dropTableQuery =
+          connectionType == ConnectionType.MYSQL
+              ? "DROP TABLE IF EXISTS DATABASE_CHANGE_LOG"
+              : "DROP TABLE IF EXISTS \"DATABASE_CHANGE_LOG\"";
+
+      try {
+        handle.createUpdate(dropTableQuery).execute();
+        LOG.info("Dropped legacy DATABASE_CHANGE_LOG table");
+      } catch (Exception e) {
+        LOG.warn("Could not drop DATABASE_CHANGE_LOG table: {}", e.getMessage());
+      }
+    }
+  }
+
   private void migrateFlywayToServerChangeLogs() {
     LOG.info("Migrating Flyway history from DATABASE_CHANGE_LOG to SERVER_CHANGE_LOG");
 
@@ -562,20 +580,6 @@ public class MigrationWorkflow {
 
       int migratedCount = handle.createUpdate(insertQuery).execute();
       LOG.info("Migrated {} Flyway records to SERVER_CHANGE_LOG", migratedCount);
-
-      // Drop the old DATABASE_CHANGE_LOG table after successful migration
-      String dropTableQuery =
-          connectionType == ConnectionType.MYSQL
-              ? "DROP TABLE IF EXISTS DATABASE_CHANGE_LOG"
-              : "DROP TABLE IF EXISTS \"DATABASE_CHANGE_LOG\"";
-
-      try {
-        handle.createUpdate(dropTableQuery).execute();
-        LOG.info("Dropped legacy DATABASE_CHANGE_LOG table");
-      } catch (Exception e) {
-        LOG.warn("Could not drop DATABASE_CHANGE_LOG table: {}", e.getMessage());
-      }
-
     } catch (Exception e) {
       LOG.error("Error during Flyway history migration to SERVER_CHANGE_LOG", e);
     }
