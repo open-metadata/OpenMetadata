@@ -2462,6 +2462,7 @@
     "onboarding-stay-up-to-date-description": "Follow the datasets that you frequently use to stay informed about it.",
     "only-image-files-supported": "Only image files are supported",
     "only-reviewers-can-approve-or-reject": "Only Reviewers can Approve or Reject",
+    "only-show-columns-with-lineage": "Only show columns with Lineage",
     "optional-configuration-update-description-dbt": "Optional configuration to update the description from dbt or not",
     "owners-coverage-widget-description": "Owners coverage for all data assets in the service. <0>learn more.</0>",
     "page-is-not-available": "The page you are looking for is not available",

@@ -85,6 +85,7 @@ export const getAuthConfig = (
     provider,
     providerName,
     enableSelfSignup,
+    enableAutoRedirect,
     samlConfiguration,
     responseType = 'id_token',
     clientType = 'public',
@@ -103,6 +104,7 @@ export const getAuthConfig = (
           provider,
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         };
       }
 
@@ -119,6 +121,7 @@ export const getAuthConfig = (
           responseType,
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         };
       }
 
@@ -134,6 +137,7 @@ export const getAuthConfig = (
           responseType,
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         };
       }
 
@@ -145,6 +149,7 @@ export const getAuthConfig = (
           provider,
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         };
       }
 
@@ -160,6 +165,7 @@ export const getAuthConfig = (
           responseType: 'code',
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         };
       }
 
@@ -172,6 +178,7 @@ export const getAuthConfig = (
         provider,
         clientType,
         enableSelfSignup,
+        enableAutoRedirect,
       };
 
       break;
@@ -190,6 +197,7 @@ export const getAuthConfig = (
         },
         provider,
         enableSelfSignup,
+        enableAutoRedirect,
         clientType,
       };
 
@@ -210,6 +218,7 @@ export const getAuthConfig = (
           provider,
           clientType,
           enableSelfSignup,
+          enableAutoRedirect,
         } as Configuration;
       }
 

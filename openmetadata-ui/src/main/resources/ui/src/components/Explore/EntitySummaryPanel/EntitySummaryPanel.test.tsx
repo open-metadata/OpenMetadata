@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -333,6 +332,11 @@ describe('EntitySummaryPanel component tests', () => {
     });
 
     it('should initialize with loading state for permissions', async () => {
+      // Force permission fetch to remain pending so we can reliably assert the initial loader state.
+      (
+        usePermissionProvider().getEntityPermission as jest.Mock
+      ).mockImplementationOnce(() => new Promise(() => undefined));
+
       const { container } = await act(async () => {
         return render(
           <EntitySummaryPanel

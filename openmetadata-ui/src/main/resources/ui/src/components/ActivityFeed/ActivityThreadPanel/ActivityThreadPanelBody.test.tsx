@@ -47,7 +47,6 @@ jest.mock('./ActivityThreadList', () => {
 
 describe('Test ActivityThreadPanelBodyBody Component', () => {
   beforeAll(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ReactDOM.createPortal = jest.fn().mockImplementation((element, _node) => {
       return element;
     });

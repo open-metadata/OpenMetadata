@@ -17,15 +17,11 @@
   # Sync localization file
   - yarn i18n
 
-'*.{ts,tsx,js,jsx}':
+'src/**/*.{ts,tsx,js,jsx}':
   # Organize Imports
   - organize-imports-cli
-  # Run ESLint
-  - ./lint-staged-eslint.sh
+  # Run ESLint on specific files (lint-staged will pass files as arguments)
+  - bash -c 'NODE_OPTIONS="--max-old-space-size=8192" npx eslint --fix "$@"' --
 
 # Run Prettier
 'src/**': prettier --write
-
-# Auto-generate Playwright documentation
-'playwright/e2e/**/*.spec.ts':
-  - node playwright/doc-generator/generate.js
