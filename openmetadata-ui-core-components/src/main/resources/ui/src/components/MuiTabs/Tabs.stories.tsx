@@ -10,41 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Phone,
-  Favorite,
-  PersonPin,
-} from "@mui/icons-material";
-import type { TabsProps, TabProps } from "@mui/material";
-import {
-  Box,
-  ThemeProvider,
-  Typography,
-  Tabs,
-  Tab,
-} from "@mui/material";
+import { Box, ThemeProvider, Typography } from "@mui/material";
 import type { Meta } from "@storybook/react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createMuiTheme } from "../../theme/createMuiTheme";
+import { Tabs, type TabsProps, type TabItem } from "./MuiTabs";
 
-type TabVariants = "standard" | "scrollable" | "fullWidth";
-type TabOrientation = "horizontal" | "vertical";
-
-interface TabPanelProps {
+interface CommonTabPanelPropsType {
   children?: React.ReactNode;
-  index: number;
-  value: number;
+  index: string;
+  value: string;
 }
 
-function TabPanel(props: TabPanelProps) {
+function CommonTabPanel(props: CommonTabPanelPropsType) {
   const { children, value, index, ...other } = props;
 
   return (
     <div
       role="tabpanel"
       hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      aria-labelledby={`simple-tab-${index}`}
+      id={`common-tabpanel-${index}`}
+      aria-labelledby={`common-tab-${index}`}
       {...other}
     >
       {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
@@ -52,71 +38,42 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
-function a11yProps(index: number) {
-  return {
-    id: `simple-tab-${index}`,
-    "aria-controls": `simple-tabpanel-${index}`,
-  };
-}
-
-type CustomTabsArgs = TabsProps & {
-  tabCount?: number;
-  showIcons?: boolean;
-  showIconLabels?: boolean;
-  disabledTabIndex?: number;
-  wrappedLabels?: boolean;
-};
+type CustomTabsArgs = TabsProps;
 
 export const CustomTabs = (args: CustomTabsArgs) => {
   const theme = createMuiTheme();
-  const [value, setValue] = useState(0);
-  const {
-    tabCount = 3,
-    showIcons = false,
-    showIconLabels = false,
-    disabledTabIndex,
-    wrappedLabels = false,
-    ...tabsProps
-  } = args;
+  const [value, setValue] = useState<string>(args.value || args.tabs[0]?.value || "tab1");
 
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue);
-  };
-
-  const getTabLabel = (index: number) => {
-    if (wrappedLabels && index === 0) {
-      return "New Arrivals in the Longest Text of Nonfiction that should appear in the next line";
+  useEffect(() => {
+    if (args.value) {
+      setValue(args.value);
+    } else if (args.tabs.length > 0) {
+      const currentTabExists = args.tabs.some((tab) => tab.value === value);
+      if (!currentTabExists) {
+        setValue(args.tabs[0]?.value || "tab1");
+      }
     }
-    return `Item ${index + 1}`;
-  };
-
-  const getTabIcon = (index: number) => {
-    const icons = [<Phone key="phone" />, <Favorite key="favorite" />, <PersonPin key="person" />];
-    return icons[index % icons.length];
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [args.value, args.tabs]);
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ width: "100%", maxWidth: 600 }}>
-        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-          <Tabs value={value} onChange={handleChange} {...tabsProps}>
-            {Array.from({ length: tabCount }).map((_, index) => (
-              <Tab
-                key={index}
-                label={showIconLabels ? undefined : getTabLabel(index)}
-                icon={showIcons || showIconLabels ? getTabIcon(index) : undefined}
-                iconPosition={showIconLabels ? "top" : undefined}
-                disabled={disabledTabIndex === index}
-                wrapped={wrappedLabels && index === 0}
-                {...a11yProps(index)}
-              />
-            ))}
-          </Tabs>
-        </Box>
-        {Array.from({ length: tabCount }).map((_, index) => (
-          <TabPanel key={index} value={value} index={index}>
-            {getTabLabel(index)}
-          </TabPanel>
+      <Box sx={{ width: "100%", maxWidth: 800 }}>
+        <Tabs
+          {...args}
+          value={value}
+          onChange={(_, newValue) => {
+            setValue(newValue);
+            args.onChange?.(_, newValue);
+          }}
+        />
+        {args.tabs.map((tab) => (
+          <CommonTabPanel key={tab.value} value={value} index={tab.value}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              {tab.label}
+            </Typography>
+            <Typography>Content for {tab.label} tab</Typography>
+          </CommonTabPanel>
         ))}
       </Box>
     </ThemeProvider>
@@ -124,73 +81,252 @@ export const CustomTabs = (args: CustomTabsArgs) => {
 };
 
 CustomTabs.args = {
+  tabs: [
+    { label: "Tab One", value: "tab1" },
+    { label: "Tab Two", value: "tab2" },
+    { label: "Tab Three", value: "tab3" },
+  ],
+  value: "tab1",
   variant: "standard",
+  marginTop: "13px",
+  "aria-label": "Custom tabs example",
+  activeTextColor: undefined,
+  indicatorColor: undefined,
   orientation: "horizontal",
-  textColor: "primary",
-  indicatorColor: "primary",
-  centered: false,
-  scrollButtons: "auto",
+  scrollButtons: false,
   allowScrollButtonsMobile: false,
-  tabCount: 3,
-  showIcons: false,
-  showIconLabels: false,
-  wrappedLabels: false,
-};
+  centered: false,
+  selectionFollowsFocus: false,
+} as CustomTabsArgs;
 
 CustomTabs.argTypes = {
   variant: {
     control: "select",
     options: ["standard", "scrollable", "fullWidth"],
-    description: "The variant of the tabs",
+    description: "The variant to use",
+  },
+  marginTop: {
+    control: "text",
+    description: "Custom margin top value",
+  },
+  "aria-label": {
+    control: "text",
+    description: "Label for accessibility",
+  },
+  activeTextColor: {
+    control: "color",
+    description: "Color for active tab text",
+  },
+  indicatorColor: {
+    control: "color",
+    description: "Color for the tab indicator",
   },
   orientation: {
     control: "select",
     options: ["horizontal", "vertical"],
     description: "The orientation of the tabs",
   },
-  textColor: {
-    control: "select",
-    options: ["primary", "secondary", "inherit"],
-    description: "The color of the tab text",
-  },
-  indicatorColor: {
-    control: "select",
-    options: ["primary", "secondary"],
-    description: "The color of the tab indicator",
-  },
-  centered: {
-    control: "boolean",
-    description: "Whether tabs are centered",
-  },
   scrollButtons: {
     control: "select",
     options: [false, true, "auto"],
-    description: "Whether to show scroll buttons",
+    description: "Determine behavior of scroll buttons when tabs are set to scroll",
   },
   allowScrollButtonsMobile: {
     control: "boolean",
-    description: "Allow scroll buttons on mobile",
+    description: "If true, the scroll buttons will be present on mobile",
   },
-  tabCount: {
-    control: { type: "number", min: 1, max: 10 },
-    description: "Number of tabs to display",
-  },
-  showIcons: {
+  centered: {
     control: "boolean",
-    description: "Show icons on tabs",
+    description: "If true, the tabs will be centered",
   },
-  showIconLabels: {
+  selectionFollowsFocus: {
     control: "boolean",
-    description: "Show icons with labels",
+    description: "If true, the selected tab changes on focus",
   },
-  wrappedLabels: {
-    control: "boolean",
-    description: "Enable wrapped labels",
+  tabs: {
+    control: "object",
+    description: "Array of tab items to display",
   },
-  disabledTabIndex: {
-    control: { type: "number", min: 0, max: 9 },
-    description: "Index of disabled tab (leave empty for none)",
+  value: {
+    control: "text",
+    description: "The value of the currently selected tab",
   },
+  onChange: {
+    action: "changed",
+    description: "Callback fired when the value changes",
+  },
+};
+
+// Basic Common Tabs Example
+export const CommonTabsBasic = () => {
+  const theme = createMuiTheme();
+  const [value, setValue] = useState<string>("tab1");
+
+  const tabs: TabItem[] = [
+    { label: "Tab One", value: "tab1" },
+    { label: "Tab Two", value: "tab2" },
+    { label: "Tab Three", value: "tab3" },
+  ];
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Box sx={{ width: "100%", maxWidth: 800 }}>
+        <Tabs
+          value={value}
+          onChange={(_, newValue) => setValue(newValue)}
+          tabs={tabs}
+          aria-label="Basic common tabs example"
+        />
+        <CommonTabPanel value={value} index="tab1">
+          Content for Tab One
+        </CommonTabPanel>
+        <CommonTabPanel value={value} index="tab2">
+          Content for Tab Two
+        </CommonTabPanel>
+        <CommonTabPanel value={value} index="tab3">
+          Content for Tab Three
+        </CommonTabPanel>
+      </Box>
+    </ThemeProvider>
+  );
+};
+
+
+// Common Tabs with Many Tabs
+export const CommonTabsManyTabs = () => {
+  const theme = createMuiTheme();
+  const [value, setValue] = useState<string>("tab1");
+
+  const tabs: TabItem[] = [
+    { label: "Overview", value: "tab1" },
+    { label: "Details", value: "tab2" },
+    { label: "History", value: "tab3" },
+    { label: "Analytics", value: "tab4" },
+    { label: "Settings", value: "tab5" },
+  ];
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Box sx={{ width: "100%", maxWidth: 800 }}>
+        <Tabs
+          value={value}
+          onChange={(_, newValue) => setValue(newValue)}
+          tabs={tabs}
+          aria-label="Many tabs example"
+        />
+        {tabs.map((tab) => (
+          <CommonTabPanel key={tab.value} value={value} index={tab.value}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              {tab.label}
+            </Typography>
+            <Typography>Content for {tab.label} tab</Typography>
+          </CommonTabPanel>
+        ))}
+      </Box>
+    </ThemeProvider>
+  );
+};
+
+// Common Tabs with Custom Margin
+export const CommonTabsWithMargin = () => {
+  const theme = createMuiTheme();
+  const [value, setValue] = useState<string>("tab1");
+
+  const tabs: TabItem[] = [
+    { label: "First Tab", value: "tab1" },
+    { label: "Second Tab", value: "tab2" },
+  ];
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Box sx={{ width: "100%", maxWidth: 800 }}>
+        <Tabs
+          value={value}
+          onChange={(_, newValue) => setValue(newValue)}
+          tabs={tabs}
+          aria-label="Custom margin tabs example"
+          marginTop="24px"
+        />
+        <CommonTabPanel value={value} index="tab1">
+          Content for First Tab (with custom margin top)
+        </CommonTabPanel>
+        <CommonTabPanel value={value} index="tab2">
+          Content for Second Tab
+        </CommonTabPanel>
+      </Box>
+    </ThemeProvider>
+  );
+};
+
+// Tabs with Disabled Tab
+export const CommonTabsWithDisabled = () => {
+  const theme = createMuiTheme();
+  const [value, setValue] = useState<string>("tab1");
+
+  const tabs: TabItem[] = [
+    { label: "Active Tab", value: "tab1" },
+    { label: "Disabled Tab", value: "tab2", disabled: true },
+    { label: "Active Tab", value: "tab3" },
+  ];
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Box sx={{ width: "100%", maxWidth: 800 }}>
+        <Tabs
+          value={value}
+          onChange={(_, newValue) => setValue(newValue)}
+          tabs={tabs}
+          aria-label="Tabs with disabled tab example"
+        />
+        <CommonTabPanel value={value} index="tab1">
+          Content for Active Tab
+        </CommonTabPanel>
+        <CommonTabPanel value={value} index="tab2">
+          This content should not be visible (tab is disabled)
+        </CommonTabPanel>
+        <CommonTabPanel value={value} index="tab3">
+          Content for Active Tab
+        </CommonTabPanel>
+      </Box>
+    </ThemeProvider>
+  );
+};
+
+// Tabs with Custom Colors
+export const CommonTabsWithCustomColors = () => {
+  const theme = createMuiTheme();
+  const [value, setValue] = useState<string>("tab1");
+
+  const tabs: TabItem[] = [
+    { label: "Tab One", value: "tab1" },
+    { label: "Tab Two", value: "tab2" },
+    { label: "Tab Three", value: "tab3" },
+  ];
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Box sx={{ width: "100%", maxWidth: 800 }}>
+        <Tabs
+          value={value}
+          onChange={(_, newValue) => setValue(newValue)}
+          tabs={tabs}
+          aria-label="Tabs with custom colors example"
+          activeTextColor="#10B981"
+          indicatorColor="#10B981"
+        />
+        {tabs.map((tab) => (
+          <CommonTabPanel key={tab.value} value={value} index={tab.value}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              {tab.label}
+            </Typography>
+            <Typography>
+              This tab uses custom green color for active text and indicator.
+            </Typography>
+          </CommonTabPanel>
+        ))}
+      </Box>
+    </ThemeProvider>
+  );
 };
 
 const meta = {
@@ -203,453 +339,3 @@ const meta = {
 } satisfies Meta<typeof CustomTabs>;
 
 export default meta;
-
-// Basic Tabs Examples
-const BasicTabsExample = ({
-  variant,
-  title,
-}: {
-  variant: TabVariants;
-  title: string;
-}) => {
-  const [value, setValue] = useState(0);
-
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue);
-  };
-
-  return (
-    <Box sx={{ width: "100%", maxWidth: 600 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        {title}
-      </Typography>
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs value={value} onChange={handleChange} variant={variant}>
-          <Tab label="Item One" {...a11yProps(0)} />
-          <Tab label="Item Two" {...a11yProps(1)} />
-          <Tab label="Item Three" {...a11yProps(2)} />
-        </Tabs>
-      </Box>
-      <TabPanel value={value} index={0}>
-        Item One
-      </TabPanel>
-      <TabPanel value={value} index={1}>
-        Item Two
-      </TabPanel>
-      <TabPanel value={value} index={2}>
-        Item Three
-      </TabPanel>
-    </Box>
-  );
-};
-
-// Colored Tabs Examples
-const ColoredTabsExample = ({
-  textColor,
-  indicatorColor,
-  title,
-}: {
-  textColor: "primary" | "secondary";
-  indicatorColor: "primary" | "secondary";
-  title: string;
-}) => {
-  const [value, setValue] = useState(0);
-
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue);
-  };
-
-  return (
-    <Box sx={{ width: "100%", maxWidth: 600 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        {title}
-      </Typography>
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs
-          value={value}
-          onChange={handleChange}
-          textColor={textColor}
-          indicatorColor={indicatorColor}
-        >
-          <Tab label="Item One" {...a11yProps(0)} />
-          <Tab label="Item Two" {...a11yProps(1)} />
-          <Tab label="Item Three" {...a11yProps(2)} />
-        </Tabs>
-      </Box>
-      <TabPanel value={value} index={0}>
-        Item One
-      </TabPanel>
-      <TabPanel value={value} index={1}>
-        Item Two
-      </TabPanel>
-      <TabPanel value={value} index={2}>
-        Item Three
-      </TabPanel>
-    </Box>
-  );
-};
-
-// Icon Tabs Examples
-const IconTabsExample = ({ title }: { title: string }) => {
-  const [value, setValue] = useState(0);
-
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue);
-  };
-
-  return (
-    <Box sx={{ width: "100%", maxWidth: 600 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        {title}
-      </Typography>
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs value={value} onChange={handleChange}>
-          <Tab icon={<Phone />} aria-label="phone" {...a11yProps(0)} />
-          <Tab icon={<Favorite />} aria-label="favorite" {...a11yProps(1)} />
-          <Tab icon={<PersonPin />} aria-label="person" {...a11yProps(2)} />
-        </Tabs>
-      </Box>
-      <TabPanel value={value} index={0}>
-        Phone
-      </TabPanel>
-      <TabPanel value={value} index={1}>
-        Favorite
-      </TabPanel>
-      <TabPanel value={value} index={2}>
-        Person
-      </TabPanel>
-    </Box>
-  );
-};
-
-// Icon with Label Tabs Examples
-const IconLabelTabsExample = ({ title }: { title: string }) => {
-  const [value, setValue] = useState(0);
-
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue);
-  };
-
-  return (
-    <Box sx={{ width: "100%", maxWidth: 600 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        {title}
-      </Typography>
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs value={value} onChange={handleChange}>
-          <Tab icon={<Phone />} label="RECENTS" {...a11yProps(0)} />
-          <Tab icon={<Favorite />} label="FAVORITES" {...a11yProps(1)} />
-          <Tab icon={<PersonPin />} label="NEARBY" {...a11yProps(2)} />
-        </Tabs>
-      </Box>
-      <TabPanel value={value} index={0}>
-        RECENTS
-      </TabPanel>
-      <TabPanel value={value} index={1}>
-        FAVORITES
-      </TabPanel>
-      <TabPanel value={value} index={2}>
-        NEARBY
-      </TabPanel>
-    </Box>
-  );
-};
-
-// Disabled Tab Example
-const DisabledTabExample = () => {
-  const [value, setValue] = useState(0);
-
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue);
-  };
-
-  return (
-    <Box sx={{ width: "100%", maxWidth: 600 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Disabled Tab
-      </Typography>
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs value={value} onChange={handleChange}>
-          <Tab label="Active" {...a11yProps(0)} />
-          <Tab label="Disabled" disabled {...a11yProps(1)} />
-          <Tab label="Active" {...a11yProps(2)} />
-        </Tabs>
-      </Box>
-      <TabPanel value={value} index={0}>
-        Active Tab
-      </TabPanel>
-      <TabPanel value={value} index={1}>
-        Disabled Tab (should not be visible)
-      </TabPanel>
-      <TabPanel value={value} index={2}>
-        Active Tab
-      </TabPanel>
-    </Box>
-  );
-};
-
-// Scrollable Tabs Example
-const ScrollableTabsExample = ({
-  scrollButtons,
-  allowScrollButtonsMobile,
-  title,
-}: {
-  scrollButtons: boolean | "auto";
-  allowScrollButtonsMobile?: boolean;
-  title: string;
-}) => {
-  const [value, setValue] = useState(0);
-
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue);
-  };
-
-  return (
-    <Box sx={{ width: "100%", maxWidth: 600 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        {title}
-      </Typography>
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs
-          value={value}
-          onChange={handleChange}
-          variant="scrollable"
-          scrollButtons={scrollButtons}
-          allowScrollButtonsMobile={allowScrollButtonsMobile}
-        >
-          <Tab label="Item One" {...a11yProps(0)} />
-          <Tab label="Item Two" {...a11yProps(1)} />
-          <Tab label="Item Three" {...a11yProps(2)} />
-          <Tab label="Item Four" {...a11yProps(3)} />
-          <Tab label="Item Five" {...a11yProps(4)} />
-          <Tab label="Item Six" {...a11yProps(5)} />
-          <Tab label="Item Seven" {...a11yProps(6)} />
-        </Tabs>
-      </Box>
-      <TabPanel value={value} index={0}>
-        Item One
-      </TabPanel>
-      <TabPanel value={value} index={1}>
-        Item Two
-      </TabPanel>
-      <TabPanel value={value} index={2}>
-        Item Three
-      </TabPanel>
-      <TabPanel value={value} index={3}>
-        Item Four
-      </TabPanel>
-      <TabPanel value={value} index={4}>
-        Item Five
-      </TabPanel>
-      <TabPanel value={value} index={5}>
-        Item Six
-      </TabPanel>
-      <TabPanel value={value} index={6}>
-        Item Seven
-      </TabPanel>
-    </Box>
-  );
-};
-
-// Vertical Tabs Example
-const VerticalTabsExample = () => {
-  const [value, setValue] = useState(0);
-
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue);
-  };
-
-  return (
-    <Box sx={{ width: "100%", maxWidth: 600, display: "flex" }}>
-      <Typography variant="h6" sx={{ mb: 2, width: "100%" }}>
-        Vertical Tabs
-      </Typography>
-      <Tabs
-        orientation="vertical"
-        value={value}
-        onChange={handleChange}
-        sx={{ borderRight: 1, borderColor: "divider", minWidth: 200 }}
-      >
-        <Tab label="Item One" {...a11yProps(0)} />
-        <Tab label="Item Two" {...a11yProps(1)} />
-        <Tab label="Item Three" {...a11yProps(2)} />
-        <Tab label="Item Four" {...a11yProps(3)} />
-      </Tabs>
-      <TabPanel value={value} index={0}>
-        Item One
-      </TabPanel>
-      <TabPanel value={value} index={1}>
-        Item Two
-      </TabPanel>
-      <TabPanel value={value} index={2}>
-        Item Three
-      </TabPanel>
-      <TabPanel value={value} index={3}>
-        Item Four
-      </TabPanel>
-    </Box>
-  );
-};
-
-// Wrapped Labels Example
-const WrappedLabelsExample = () => {
-  const [value, setValue] = useState(0);
-
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue);
-  };
-
-  return (
-    <Box sx={{ width: "100%", maxWidth: 600 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Wrapped Labels
-      </Typography>
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs value={value} onChange={handleChange}>
-          <Tab
-            label="New Arrivals in the Longest Text of Nonfiction that should appear in the next line"
-            wrapped
-            {...a11yProps(0)}
-          />
-          <Tab label="Item Two" {...a11yProps(1)} />
-          <Tab label="Item Three" {...a11yProps(2)} />
-        </Tabs>
-      </Box>
-      <TabPanel value={value} index={0}>
-        Wrapped Label Tab
-      </TabPanel>
-      <TabPanel value={value} index={1}>
-        Item Two
-      </TabPanel>
-      <TabPanel value={value} index={2}>
-        Item Three
-      </TabPanel>
-    </Box>
-  );
-};
-
-// Export all stories
-export const AllBasicTabs = () => {
-  const theme = createMuiTheme();
-  return (
-    <ThemeProvider theme={theme}>
-      <Box
-        sx={{
-          display: "flex",
-          gap: 4,
-          flexWrap: "wrap",
-          flexDirection: "column",
-        }}
-      >
-        <BasicTabsExample variant="standard" title="Standard" />
-        <BasicTabsExample variant="fullWidth" title="Full Width" />
-        <BasicTabsExample variant="scrollable" title="Scrollable" />
-      </Box>
-    </ThemeProvider>
-  );
-};
-
-export const AllColoredTabs = () => {
-  const theme = createMuiTheme();
-  return (
-    <ThemeProvider theme={theme}>
-      <Box
-        sx={{
-          display: "flex",
-          gap: 4,
-          flexWrap: "wrap",
-          flexDirection: "column",
-        }}
-      >
-        <ColoredTabsExample
-          textColor="primary"
-          indicatorColor="primary"
-          title="Primary Color"
-        />
-        <ColoredTabsExample
-          textColor="secondary"
-          indicatorColor="secondary"
-          title="Secondary Color"
-        />
-      </Box>
-    </ThemeProvider>
-  );
-};
-
-export const AllIconTabs = () => {
-  const theme = createMuiTheme();
-  return (
-    <ThemeProvider theme={theme}>
-      <Box
-        sx={{
-          display: "flex",
-          gap: 4,
-          flexWrap: "wrap",
-          flexDirection: "column",
-        }}
-      >
-        <IconTabsExample title="Icons Only" />
-        <IconLabelTabsExample title="Icons with Labels" />
-      </Box>
-    </ThemeProvider>
-  );
-};
-
-export const AllScrollableTabs = () => {
-  const theme = createMuiTheme();
-  return (
-    <ThemeProvider theme={theme}>
-      <Box
-        sx={{
-          display: "flex",
-          gap: 4,
-          flexWrap: "wrap",
-          flexDirection: "column",
-        }}
-      >
-        <ScrollableTabsExample
-          scrollButtons="auto"
-          allowScrollButtonsMobile={false}
-          title="Auto Scroll Buttons"
-        />
-        <ScrollableTabsExample
-          scrollButtons={true}
-          allowScrollButtonsMobile={true}
-          title="Force Scroll Buttons"
-        />
-        <ScrollableTabsExample
-          scrollButtons={false}
-          title="No Scroll Buttons"
-        />
-      </Box>
-    </ThemeProvider>
-  );
-};
-
-export const DisabledTab = () => {
-  const theme = createMuiTheme();
-  return (
-    <ThemeProvider theme={theme}>
-      <DisabledTabExample />
-    </ThemeProvider>
-  );
-};
-
-export const VerticalTabs = () => {
-  const theme = createMuiTheme();
-  return (
-    <ThemeProvider theme={theme}>
-      <VerticalTabsExample />
-    </ThemeProvider>
-  );
-};
-
-export const WrappedLabels = () => {
-  const theme = createMuiTheme();
-  return (
-    <ThemeProvider theme={theme}>
-      <WrappedLabelsExample />
-    </ThemeProvider>
-  );
-};
-
