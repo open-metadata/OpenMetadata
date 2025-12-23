@@ -16,7 +16,6 @@ package org.openmetadata.service.secrets;
 import static org.openmetadata.schema.security.secrets.SecretsManagerProvider.MANAGED_AWS;
 
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -56,7 +55,7 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
         CreateSecretRequest.builder()
             .name(secretName)
             .description("This secret was created by OpenMetadata")
-            .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
+            .secretString(secretValue)
             .tags(
                 SecretsManager.getTags(getSecretsConfig()).entrySet().stream()
                     .map(entry -> Tag.builder().key(entry.getKey()).value(entry.getValue()).build())
@@ -71,13 +70,13 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
         UpdateSecretRequest.builder()
             .secretId(secretName)
             .description("This secret was created by OpenMetadata")
-            .secretString(cleanNullOrEmpty(secretValue))
+            .secretString(secretValue)
             .build();
     this.secretsClient.updateSecret(updateSecretRequest);
   }
 
   @Override
-  public String getSecret(String secretName) {
+  protected String getSecretInternal(String secretName) {
     GetSecretValueRequest getSecretValueRequest =
         GetSecretValueRequest.builder().secretId(secretName).build();
     return this.secretsClient.getSecretValue(getSecretValueRequest).secretString();
