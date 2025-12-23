@@ -89,7 +89,7 @@ class RunningStatistics:
             self.mean = other.mean
             self.min_val = other.min_val
             self.max_val = other.max_val
-            self._m2 = other._m2
+            self._m2 = other._m2  # pylint: disable=protected-access
             return
 
         # Parallel algorithm for merging means and M2
@@ -100,7 +100,7 @@ class RunningStatistics:
         ) / combined_count
         combined_m2 = (
             self._m2
-            + other._m2
+            + other._m2  # pylint: disable=protected-access
             + delta * delta * self.count * other.count / combined_count
         )
 
@@ -411,6 +411,56 @@ class OperationMetricsState(metaclass=Singleton):
                 result[f"{category}_total_ms"] = total_time
             return result
 
+    def _aggregate_by_entity_type(
+        self, result: Dict, result_key: str, source_category: str
+    ) -> None:
+        """Helper to aggregate metrics by entity type."""
+        if source_category not in self._global_metrics:
+            return
+
+        for _, entity_types in self._global_metrics[source_category].items():
+            for entity_type, stats in entity_types.items():
+                if stats.count > 0:
+                    result[result_key]["total_ms"] += stats.total
+                    result[result_key]["call_count"] += stats.count
+
+                    if entity_type not in result[result_key]["by_entity_type"]:
+                        result[result_key]["by_entity_type"][entity_type] = {
+                            "total_ms": 0.0,
+                            "call_count": 0,
+                        }
+                    result[result_key]["by_entity_type"][entity_type][
+                        "total_ms"
+                    ] += stats.total
+                    result[result_key]["by_entity_type"][entity_type][
+                        "call_count"
+                    ] += stats.count
+
+    def _aggregate_by_operation(
+        self, result: Dict, result_key: str, source_category: str
+    ) -> None:
+        """Helper to aggregate metrics by operation."""
+        if source_category not in self._global_metrics:
+            return
+
+        for operation, entity_types in self._global_metrics[source_category].items():
+            for _, stats in entity_types.items():
+                if stats.count > 0:
+                    result[result_key]["total_ms"] += stats.total
+                    result[result_key]["call_count"] += stats.count
+
+                    if operation not in result[result_key]["by_operation"]:
+                        result[result_key]["by_operation"][operation] = {
+                            "total_ms": 0.0,
+                            "call_count": 0,
+                        }
+                    result[result_key]["by_operation"][operation][
+                        "total_ms"
+                    ] += stats.total
+                    result[result_key]["by_operation"][operation][
+                        "call_count"
+                    ] += stats.count
+
     def get_workflow_timing(self) -> Dict[str, Dict]:
         """
         Get high-level workflow timing for source operations.
@@ -443,97 +493,13 @@ class OperationMetricsState(metaclass=Singleton):
                 "stage": {"total_ms": 0.0, "call_count": 0, "by_entity_type": {}},
             }
 
-            # Aggregate source_fetch category (topology producer time)
-            if "source_fetch" in self._global_metrics:
-                for operation, entity_types in self._global_metrics[
-                    "source_fetch"
-                ].items():
-                    for entity_type, stats in entity_types.items():
-                        if stats.count > 0:
-                            result["source"]["total_ms"] += stats.total
-                            result["source"]["call_count"] += stats.count
-
-                            if entity_type not in result["source"]["by_entity_type"]:
-                                result["source"]["by_entity_type"][entity_type] = {
-                                    "total_ms": 0.0,
-                                    "call_count": 0,
-                                }
-                            result["source"]["by_entity_type"][entity_type][
-                                "total_ms"
-                            ] += stats.total
-                            result["source"]["by_entity_type"][entity_type][
-                                "call_count"
-                            ] += stats.count
-
-            # Aggregate source_db_queries category (SQL queries to source)
-            if "source_db_queries" in self._global_metrics:
-                for operation, entity_types in self._global_metrics[
-                    "source_db_queries"
-                ].items():
-                    for entity_type, stats in entity_types.items():
-                        if stats.count > 0:
-                            result["source_db_queries"]["total_ms"] += stats.total
-                            result["source_db_queries"]["call_count"] += stats.count
-
-                            if (
-                                operation
-                                not in result["source_db_queries"]["by_operation"]
-                            ):
-                                result["source_db_queries"]["by_operation"][
-                                    operation
-                                ] = {"total_ms": 0.0, "call_count": 0}
-                            result["source_db_queries"]["by_operation"][operation][
-                                "total_ms"
-                            ] += stats.total
-                            result["source_db_queries"]["by_operation"][operation][
-                                "call_count"
-                            ] += stats.count
-
-            # Aggregate source_api_calls category (HTTP calls to source APIs)
-            if "source_api_calls" in self._global_metrics:
-                for operation, entity_types in self._global_metrics[
-                    "source_api_calls"
-                ].items():
-                    for entity_type, stats in entity_types.items():
-                        if stats.count > 0:
-                            result["source_api_calls"]["total_ms"] += stats.total
-                            result["source_api_calls"]["call_count"] += stats.count
-
-                            if (
-                                operation
-                                not in result["source_api_calls"]["by_operation"]
-                            ):
-                                result["source_api_calls"]["by_operation"][
-                                    operation
-                                ] = {"total_ms": 0.0, "call_count": 0}
-                            result["source_api_calls"]["by_operation"][operation][
-                                "total_ms"
-                            ] += stats.total
-                            result["source_api_calls"]["by_operation"][operation][
-                                "call_count"
-                            ] += stats.count
-
-            # Aggregate stage_process category
-            if "stage_process" in self._global_metrics:
-                for operation, entity_types in self._global_metrics[
-                    "stage_process"
-                ].items():
-                    for entity_type, stats in entity_types.items():
-                        if stats.count > 0:
-                            result["stage"]["total_ms"] += stats.total
-                            result["stage"]["call_count"] += stats.count
-
-                            if entity_type not in result["stage"]["by_entity_type"]:
-                                result["stage"]["by_entity_type"][entity_type] = {
-                                    "total_ms": 0.0,
-                                    "call_count": 0,
-                                }
-                            result["stage"]["by_entity_type"][entity_type][
-                                "total_ms"
-                            ] += stats.total
-                            result["stage"]["by_entity_type"][entity_type][
-                                "call_count"
-                            ] += stats.count
+            # Aggregate metrics using helper methods
+            self._aggregate_by_entity_type(result, "source", "source_fetch")
+            self._aggregate_by_operation(
+                result, "source_db_queries", "source_db_queries"
+            )
+            self._aggregate_by_operation(result, "source_api_calls", "source_api_calls")
+            self._aggregate_by_entity_type(result, "stage", "stage_process")
 
             return result
 
