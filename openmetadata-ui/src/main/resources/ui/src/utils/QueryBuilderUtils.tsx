@@ -19,7 +19,7 @@ import {
   RenderSettings,
 } from '@react-awesome-query-builder/antd';
 import { Button } from 'antd';
-import { isBoolean, isUndefined } from 'lodash';
+import { isBoolean, isEmpty, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -935,3 +935,12 @@ export const getFieldsByKeys = (
 
   return filteredFields;
 };
+
+export const buildExploreUrlParams = (
+  tree: unknown,
+  qFilter?: QueryFilterInterface
+): Record<string, string> => ({
+  ...(!isEmpty(tree) && { queryFilter: JSON.stringify(tree) }),
+  ...(!isEmpty(qFilter) &&
+    qFilter?.query && { quickFilter: JSON.stringify(qFilter) }),
+});
