@@ -103,13 +103,13 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     // Endpoints are relative to /mcp prefix since servlet is mounted there
     OAuthMetadata metadata = new OAuthMetadata();
     metadata.setIssuer(
-        URI.create("SET_ISSUER"));
+        URI.create(baseUrl + "/mcp"));
     metadata.setAuthorizationEndpoint(
         URI.create(
-            "AUTHORIZE_ENDPOINT"));
+            baseUrl + "/authorize"));
     metadata.setTokenEndpoint(
         URI.create(
-            "TOKEN_ENDPOINT"));
+            baseUrl + "/token"));
     metadata.setScopesSupported(
         List.of(
             "openid",

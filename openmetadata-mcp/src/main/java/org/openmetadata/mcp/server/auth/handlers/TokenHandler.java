@@ -39,16 +39,22 @@ public class TokenHandler {
    * @return A CompletableFuture that resolves to an OAuth token
    */
   public CompletableFuture<OAuthToken> handle(Map<String, String> params) {
+    // TODO: Update to use correct API to get OIDC client from authHandler
+    // This TokenHandler is deprecated in favor of ConnectorOAuthProvider
+    return CompletableFuture.failedFuture(
+        new TokenException("not_implemented", "TokenHandler is deprecated, use ConnectorOAuthProvider instead"));
+
+    /*
     AuthenticationCodeFlowHandler authHandler =
         AuthenticationCodeFlowHandler.getInstance(
             SecurityConfigurationManager.getCurrentAuthConfig(),
             SecurityConfigurationManager.getCurrentAuthzConfig());
-    OidcClient oidcClient = authHandler.getClient();
+    // OidcClient oidcClient = authHandler.getClient(); // Method doesn't exist
     String grantType = params.get("grant_type");
     String clientId = // params.get("client_id");
-        oidcClient.getConfiguration().getClientId();
+        null; // oidcClient.getConfiguration().getClientId();
     String clientSecret = // params.get("client_secret");
-        oidcClient.getConfiguration().getSecret();
+        null; // oidcClient.getConfiguration().getSecret();
 
     if (grantType == null || clientId == null) {
       return CompletableFuture.failedFuture(
@@ -80,6 +86,7 @@ public class TokenHandler {
                     new TokenException("unsupported_grant_type", "Unsupported grant type"));
               }
             });
+    */
   }
 
   /**

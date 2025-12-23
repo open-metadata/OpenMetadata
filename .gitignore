@@ -183,3 +183,10 @@ hive-mind-prompt-*.txt
 memory
 
 
+
+# Local test files for OAuth development  
+register-claude-client-local.sh
+test-local-google-oauth.sh
+conf/google-oauth-test.env
+ingestion/redshift_simple.yaml
+

@@ -5,9 +5,9 @@
 package org.openmetadata.mcp.server.transport;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.modelcontextprotocol.server.DefaultMcpTransportContext;
+import io.modelcontextprotocol.common.McpTransportContext;
+import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.server.McpStatelessServerHandler;
-import io.modelcontextprotocol.server.McpTransportContext;
 import io.modelcontextprotocol.server.McpTransportContextExtractor;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
@@ -52,6 +52,8 @@ public class HttpServletStatelessServerTransport extends HttpServlet
 
   private final ObjectMapper objectMapper;
 
+  private final McpJsonMapper jsonMapper;
+
   private final String mcpEndpoint;
 
   private McpStatelessServerHandler mcpHandler;
@@ -71,6 +73,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     Assert.notNull(contextExtractor, "contextExtractor must not be null");
 
     this.objectMapper = objectMapper;
+    this.jsonMapper = McpJsonMapper.getDefault();
     this.mcpEndpoint = mcpEndpoint;
     this.contextExtractor = contextExtractor;
   }
@@ -143,8 +146,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
       return; // Authentication failed, response already set
     }
 
-    McpTransportContext transportContext =
-        this.contextExtractor.extract(request, new DefaultMcpTransportContext());
+    McpTransportContext transportContext = this.contextExtractor.extract(request);
 
     String accept = request.getHeader(ACCEPT);
     if (accept == null
@@ -165,7 +167,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
       }
 
       McpSchema.JSONRPCMessage message =
-          McpSchema.deserializeJsonRpcMessage(objectMapper, body.toString());
+          McpSchema.deserializeJsonRpcMessage(jsonMapper, body.toString());
 
       if (message instanceof McpSchema.JSONRPCRequest jsonrpcRequest) {
         try {
@@ -179,7 +181,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
           response.setCharacterEncoding(UTF_8);
           response.setStatus(HttpServletResponse.SC_OK);
 
-          String jsonResponseText = objectMapper.writeValueAsString(jsonrpcResponse);
+          String jsonResponseText = jsonMapper.writeValueAsString(jsonrpcResponse);
           PrintWriter writer = response.getWriter();
           writer.write(jsonResponseText);
           writer.flush();
@@ -235,7 +237,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     response.setContentType(APPLICATION_JSON);
     response.setCharacterEncoding(UTF_8);
     response.setStatus(httpCode);
-    String jsonError = objectMapper.writeValueAsString(mcpError);
+    String jsonError = jsonMapper.writeValueAsString(mcpError);
     PrintWriter writer = response.getWriter();
     writer.write(jsonError);
     writer.flush();
@@ -273,7 +275,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     private String mcpEndpoint = "/mcp";
 
     private McpTransportContextExtractor<HttpServletRequest> contextExtractor =
-        (serverRequest, context) -> context;
+        serverRequest -> McpTransportContext.EMPTY;
 
     private Builder() {
       // used by a static method

@@ -99,7 +99,20 @@ public class AuthorizationHandler {
               try {
                 return provider
                     .authorize(client, authParams)
-                    .thenApply(url -> new AuthorizationResponse(url, true, null))
+                    .thenApply(
+                        authCode -> {
+                          // Construct callback URL with authorization code
+                          // (ConnectorOAuthProvider returns auth code directly, not a redirect URL)
+                          Map<String, String> queryParams = new java.util.HashMap<>();
+                          queryParams.put("code", authCode);
+                          if (authParams.getState() != null) {
+                            queryParams.put("state", authParams.getState());
+                          }
+                          String callbackUrl =
+                              UriUtils.constructRedirectUri(
+                                  authParams.getRedirectUri().toString(), queryParams);
+                          return new AuthorizationResponse(callbackUrl, true, null);
+                        })
                     .exceptionally(
                         ex -> {
                           if (ex.getCause() instanceof AuthorizeException) {
