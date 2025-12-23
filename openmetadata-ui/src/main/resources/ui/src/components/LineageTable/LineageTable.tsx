@@ -696,7 +696,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       },
       ...tableColumns.slice(1),
     ],
-    [t, tableColumns, lineageDirection]
+    [t, tableColumns, lineageDirection, columnNameRender, searchValue]
   );
 
   // Initialize quick filters on component mount
@@ -754,6 +754,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     lineageDirection,
     downstreamColumnLineageNodes,
     upstreamColumnLineageNodes,
+    currentPage,
+    pageSize,
   ]);
 
   // Memoized paging props to avoid unnecessary re-renders
