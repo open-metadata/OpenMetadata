@@ -17,8 +17,6 @@ import { Typography } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import { AxiosError } from 'axios';
 import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
-
 import {
   get,
   isEmpty,
@@ -45,6 +43,7 @@ import {
   ReactFlowInstance,
 } from 'reactflow';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-grey.svg';
@@ -67,6 +66,7 @@ import {
   LineageSourceType,
   NodeData,
 } from '../components/Lineage/Lineage.interface';
+import { LineagePagingInfo } from '../components/LineageTable/LineageTable.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import {
@@ -160,19 +160,18 @@ export const centerNodePosition = (
   );
 };
 
-/* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
   return;
 };
-/* eslint-disable-next-line */
+
 export const onNodeMouseMove = (_event: ReactMouseEvent, _node: Node) => {
   return;
 };
-/* eslint-disable-next-line */
+
 export const onNodeMouseLeave = (_event: ReactMouseEvent, _node: Node) => {
   return;
 };
-/* eslint-disable-next-line */
+
 export const onNodeContextMenu = (event: ReactMouseEvent, _node: Node) => {
   event.preventDefault();
 };
@@ -242,11 +241,12 @@ export const getLayoutedElements = (
 
 // Layout options for the elk graph https://eclipse.dev/elk/reference/algorithms/org-eclipse-elk-mrtree.html
 const layoutOptions = {
-  'elk.algorithm': 'mrtree',
+  'elk.algorithm': 'layered',
   'elk.direction': 'RIGHT',
-  'elk.layered.spacing.edgeNodeBetweenLayers': '50',
-  'elk.spacing.nodeNode': '100',
+  'elk.spacing.nodeNode': 100,
+  'elk.layered.spacing.nodeNodeBetweenLayers': 50,
   'elk.layered.nodePlacement.strategy': 'SIMPLE',
+  'elk.partitioning.activate': 'true',
 };
 
 const elk = new ELK();
@@ -265,6 +265,7 @@ export const getELKLayoutedElements = async (
       columnsHavingLineage
     );
     const nodeHeight = isExpanded ? childrenHeight + 220 : NODE_HEIGHT;
+    const nodeDepth = node.data?.nodeDepth;
 
     return {
       ...node,
@@ -272,6 +273,11 @@ export const getELKLayoutedElements = async (
       sourcePosition: 'right',
       width: NODE_WIDTH,
       height: nodeHeight,
+      ...(nodeDepth !== undefined && {
+        layoutOptions: {
+          'elk.partitioning.partition': String(nodeDepth),
+        },
+      }),
     };
   });
 
@@ -852,6 +858,7 @@ export const createNodes = (
       className: '',
       data: {
         node,
+        nodeDepth: node.nodeDepth,
         isRootNode: entityFqn === node.fullyQualifiedName,
         hasIncomers: incomingMap.has(node.id),
         hasOutgoers: outgoingMap.has(node.id),
@@ -1153,14 +1160,15 @@ export const getConnectedNodesEdges = (
               currentNodeID
             );
 
-      // Removing the Root Node from the Child Nodes here, which comes when a cycle lineage is formed
-      // So while collapsing the cycle lineage, we need to prevent the Root Node not to be removed.
-      const finalChildNodeRemovingRootNode = childNodes.filter(
-        (item) => !item.data.isRootNode
+      // avoid any loops from upstream to downstream and vice versa by checking nodeDepth
+      const finalNodes = childNodes.filter((node) =>
+        direction === LineageDirection.Downstream
+          ? node.data.nodeDepth > 0
+          : node.data.nodeDepth < 0
       );
 
-      stack.push(...finalChildNodeRemovingRootNode);
-      outgoers.push(...finalChildNodeRemovingRootNode);
+      stack.push(...finalNodes);
+      outgoers.push(...finalNodes);
       connectedEdges.push(...childEdges);
     }
   }
@@ -1448,6 +1456,7 @@ const processNodeArray = (
         entityUpstreamCount: node.paging?.entityUpstreamCount ?? 0,
         entityDownstreamCount: node.paging?.entityDownstreamCount ?? 0,
       },
+      nodeDepth: node.nodeDepth,
       upstreamExpandPerformed:
         (node.entity as LineageEntityReference).upstreamExpandPerformed !==
         undefined
@@ -2064,3 +2073,8 @@ export const getLineageTableConfig = (
 
   return { columns, dataSource };
 };
+
+export const getEntityCountAtDepth = (
+  depthInfo: LineagePagingInfo['upstreamDepthInfo'] | undefined,
+  depth: number
+) => depthInfo?.find((info) => info.depth === depth)?.entityCount ?? 0;

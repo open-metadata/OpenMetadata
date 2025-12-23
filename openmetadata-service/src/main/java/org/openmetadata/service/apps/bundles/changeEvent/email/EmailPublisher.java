@@ -14,9 +14,10 @@
 package org.openmetadata.service.apps.bundles.changeEvent.email;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
-import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForAlert;
 
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -30,16 +31,19 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
-import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
+import org.openmetadata.service.notifications.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.notifications.channels.NotificationMessage;
+import org.openmetadata.service.notifications.channels.email.EmailMessage;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 public class EmailPublisher implements Destination<ChangeEvent> {
-  private final MessageDecorator<EmailMessage> emailDecorator = new EmailMessageDecorator();
+  private final HandlebarsNotificationMessageEngine messageEngine;
   private final EmailAlertConfig emailAlertConfig;
-  private final CollectionDAO daoCollection;
 
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -51,7 +55,10 @@ public class EmailPublisher implements Destination<ChangeEvent> {
       this.subscriptionDestination = subscriptionDestination;
       this.emailAlertConfig =
           JsonUtils.convertValue(subscriptionDestination.getConfig(), EmailAlertConfig.class);
-      this.daoCollection = Entity.getCollectionDAO();
+      this.messageEngine =
+          new HandlebarsNotificationMessageEngine(
+              (NotificationTemplateRepository)
+                  Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE));
     } else {
       throw new IllegalArgumentException("Email Alert Invoked with Illegal Type and Settings.");
     }
@@ -60,12 +67,30 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
-      Set<String> receivers = getTargetsForAlert(emailAlertConfig, subscriptionDestination, event);
-      EmailMessage emailMessage =
-          emailDecorator.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
-      for (String email : receivers) {
-        EmailUtil.sendChangeEventMail(getDisplayNameOrFqn(eventSubscription), email, emailMessage);
+      // Generate message using new Handlebars pipeline
+      NotificationMessage message =
+          messageEngine.generateMessage(event, eventSubscription, subscriptionDestination);
+      EmailMessage emailMessage = (EmailMessage) message;
+
+      // Resolve recipients using new RecipientResolver framework
+      RecipientResolver recipientResolver = new RecipientResolver();
+      Set<Recipient> recipients =
+          recipientResolver.resolveRecipients(event, subscriptionDestination, emailAlertConfig);
+
+      // Convert type-agnostic Recipient objects to email addresses
+      Set<String> receivers =
+          recipients.stream()
+              .filter(r -> r instanceof EmailRecipient)
+              .map(r -> ((EmailRecipient) r).getEmail())
+              .filter(Objects::nonNull)
+              .collect(Collectors.toSet());
+
+      // Send email to each recipient
+      for (String receiver : receivers) {
+        EmailUtil.sendNotificationEmail(
+            receiver, emailMessage.getSubject(), emailMessage.getHtmlContent());
       }
+
       setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {
       setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());

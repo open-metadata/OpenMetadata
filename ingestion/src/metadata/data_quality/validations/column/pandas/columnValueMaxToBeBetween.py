@@ -120,7 +120,12 @@ class ColumnValueMaxToBeBetweenValidator(
                 max_value = agg[Metrics.MAX.name]
                 total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
 
-                if not max_value:
+                if max_value is None:
+                    logger.warning(
+                        "Skipping '%s=%s' dimension since 'max' is 'None'",
+                        dimension_col.name,
+                        dimension_value,
+                    )
                     continue
 
                 failed_count = (
@@ -150,7 +155,11 @@ class ColumnValueMaxToBeBetweenValidator(
                 results_df = aggregate_others_statistical_pandas(
                     results_df,
                     dimension_column=DIMENSION_VALUE_KEY,
-                    agg_functions={Metrics.MAX.name: "max"},
+                    agg_functions={
+                        Metrics.MAX.name: "max",
+                        DIMENSION_TOTAL_COUNT_KEY: "sum",
+                        DIMENSION_FAILED_COUNT_KEY: "sum",
+                    },
                     top_n=DEFAULT_TOP_DIMENSIONS,
                     violation_metrics=[Metrics.MAX.name],
                     violation_predicate=checker.violates_pandas,

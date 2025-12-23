@@ -17,9 +17,9 @@ import textwrap
 ORACLE_ALL_TABLE_COMMENTS = textwrap.dedent(
     """
 SELECT
-	comments table_comment,
-	LOWER(table_name) "table_name",
-	LOWER(owner) "schema" 	
+    comments table_comment,
+    LOWER(table_name) "table_name",
+    LOWER(owner) "schema"
 FROM DBA_TAB_COMMENTS
 where comments is not null and owner not in ('SYSTEM', 'SYS')
 """
@@ -58,12 +58,12 @@ SELECT mview_name FROM DBA_MVIEWS WHERE owner = :owner
 
 ORACLE_GET_TABLE_NAMES = textwrap.dedent(
     """
-SELECT table_name FROM DBA_TABLES WHERE 
+SELECT table_name FROM DBA_TABLES WHERE
 {tablespace}
-OWNER = :owner  
-AND IOT_NAME IS NULL 
+OWNER = :owner
+AND IOT_NAME IS NULL
 AND DURATION IS NULL
-AND TABLE_NAME NOT IN 
+AND TABLE_NAME NOT IN
 (SELECT mview_name FROM DBA_MVIEWS WHERE owner = :owner)
 """
 )
@@ -72,11 +72,11 @@ ORACLE_IDENTITY_TYPE = textwrap.dedent(
     """\
 col.default_on_null,
 (
-	SELECT id.generation_type || ',' || id.IDENTITY_OPTIONS
-	FROM DBA_TAB_IDENTITY_COLS{dblink} id
-	WHERE col.table_name = id.table_name
-	AND col.column_name = id.column_name
-	AND col.owner = id.owner
+    SELECT id.generation_type || ',' || id.IDENTITY_OPTIONS
+    FROM DBA_TAB_IDENTITY_COLS{dblink} id
+    WHERE col.table_name = id.table_name
+    AND col.column_name = id.column_name
+    AND col.owner = id.owner
 ) AS identity_options
 """
 )
@@ -155,34 +155,42 @@ WHERE ROWNUM = 1
 
 ORACLE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
-WITH SP_HISTORY AS (SELECT
-	sql_text AS query_text,
+WITH SP_HISTORY AS (
+  SELECT
+    sql_text AS query_text,
     TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') AS start_time,
-    TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time,
+    TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS')
+      + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time,
     PARSING_SCHEMA_NAME as user_name
   FROM gv$sql
-  WHERE UPPER(sql_text) LIKE '%%CALL%%' or UPPER(sql_text) LIKE '%%BEGIN%%'
-  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
- ),
- Q_HISTORY AS (SELECT
+  WHERE (UPPER(sql_text) LIKE '%%CALL%%' OR UPPER(sql_text) LIKE '%%BEGIN%%')
+  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS')
+    >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
+),
+Q_HISTORY AS (
+    SELECT
       sql_text AS query_text,
-      CASE 
-      	WHEN UPPER(SQL_TEXT) LIKE 'INSERT%' THEN 'INSERT'
-      	WHEN UPPER(SQL_TEXT) LIKE 'SELECT%' THEN 'SELECT'
-      	ELSE 'OTHER'
-    	END AS QUERY_TYPE,
+      sql_text AS full_text,
+      CASE
+          WHEN UPPER(SQL_TEXT) LIKE 'INSERT%%' THEN 'INSERT'
+          WHEN UPPER(SQL_TEXT) LIKE 'CREATE%%TABLE%%' THEN 'CREATE'
+          WHEN UPPER(SQL_TEXT) LIKE 'MERGE%%' THEN 'MERGE'
+          WHEN UPPER(SQL_TEXT) LIKE 'UPDATE%%' THEN 'UPDATE'
+          WHEN UPPER(SQL_TEXT) LIKE 'SELECT%%' THEN 'SELECT'
+          ELSE 'OTHER'
+      END AS QUERY_TYPE,
       TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') AS start_time,
-      TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') 
-      + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time,
+      TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS')
+        + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time,
       PARSING_SCHEMA_NAME AS user_name,
       PARSING_SCHEMA_NAME AS SCHEMA_NAME,
       NULL AS DATABASE_NAME
     FROM gv$sql
-    WHERE UPPER(sql_text) NOT LIKE '%%CALL%%' AND UPPER(sql_text) NOT LIKE '%%BEGIN%%'
+    WHERE (UPPER(sql_text) NOT LIKE '%%CALL%%' AND UPPER(sql_text) NOT LIKE '%%BEGIN%%')
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-      AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') 
-      >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
+      AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS')
+        >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
 )
 SELECT
   Q.QUERY_TYPE AS QUERY_TYPE,
@@ -257,24 +265,24 @@ ORACLE_ALL_CONSTRAINTS = textwrap.dedent(
 
 ORACLE_QUERY_HISTORY_STATEMENT = textwrap.dedent(
     """
-SELECT 
-  NULL AS user_name,
-  NULL AS database_name,
-  NULL AS schema_name,
-  NULL AS aborted,
-  SQL_FULLTEXT AS query_text,
-  TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') AS start_time,
-  ELAPSED_TIME / 1000 AS duration,
-  TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND') AS end_time
+SELECT
+    NULL AS user_name,
+    NULL AS database_name,
+    NULL AS schema_name,
+    NULL AS aborted,
+    SQL_FULLTEXT AS query_text,
+    TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') AS start_time,
+    ELAPSED_TIME / 1000 AS duration,
+    TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND') AS end_time
 FROM gv$sql
-WHERE OBJECT_STATUS = 'VALID' 
-  {filters}
-  AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
-  AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') >= TO_TIMESTAMP('{start_time}', 'yy-MM-dd HH24:MI:SS')
-  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND') 
-  < TO_TIMESTAMP('{end_time}', 'yy-MM-dd HH24:MI:SS')
-ORDER BY FIRST_LOAD_TIME DESC 
+WHERE OBJECT_STATUS = 'VALID'
+    {filters}
+    AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+    AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+    AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') >= TO_TIMESTAMP('{start_time}', 'yy-MM-dd HH24:MI:SS')
+    AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'yy-MM-dd/HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000000, 'SECOND')
+    < TO_TIMESTAMP('{end_time}', 'yy-MM-dd HH24:MI:SS')
+ORDER BY FIRST_LOAD_TIME DESC
 OFFSET 0 ROWS FETCH NEXT {result_limit} ROWS ONLY
 """
 )

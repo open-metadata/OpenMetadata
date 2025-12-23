@@ -10,45 +10,75 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Segmented, Table, Typography } from 'antd';
+import { Typography, useTheme } from '@mui/material';
+import {
+  Button,
+  Col,
+  Row,
+  Segmented,
+  Table,
+  Typography as AntTypography,
+} from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
 import { FieldCard } from '../components/common/FieldCard';
+import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
 import Loader from '../components/common/Loader/Loader';
+import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import { Container } from '../generated/entity/data/container';
+import { Dashboard } from '../generated/entity/data/dashboard';
+import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Pipeline } from '../generated/entity/data/pipeline';
+import { SearchIndex } from '../generated/entity/data/searchIndex';
 import { Column, Table as TableEntity } from '../generated/entity/data/table';
+import { Topic } from '../generated/entity/data/topic';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { Field } from '../generated/type/schema';
+import { TagLabel } from '../generated/type/tagLabel';
 import { getDataModelColumnsByFQN } from '../rest/dataModelsAPI';
-import { getTableColumnsByFQN, getTableList } from '../rest/tableAPI';
+import {
+  getTableColumnsByFQN,
+  getTableList,
+  searchTableColumnsByFQN,
+} from '../rest/tableAPI';
+import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 
-const { Text } = Typography;
+import { pruneEmptyChildren } from './TableUtils';
+const { Text } = AntTypography;
 
 export const getEntityChildDetailsV1 = (
   entityType: EntityType,
   entityInfo: SearchedDataProps['data'][number]['_source'],
   highlights?: SearchedDataProps['data'][number]['highlight'],
-  loading?: boolean
+  loading?: boolean,
+  searchText?: string
 ) => {
   // kept for potential future use; remove unused to satisfy linter
   switch (entityType) {
     case EntityType.TABLE:
+    case EntityType.DASHBOARD_DATA_MODEL:
       return (
         <SchemaFieldCardsV1
           entityInfo={entityInfo as TableEntity}
           entityType={entityType}
           highlights={highlights}
           loading={loading}
+          searchText={searchText}
         />
       );
 
     case EntityType.DATABASE_SCHEMA:
       return (
         <DatabaseSchemaTablesV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as DatabaseSchema}
           highlights={highlights}
           loading={loading}
         />
@@ -57,17 +87,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.DASHBOARD:
       return (
         <DashboardChartsV1
-          entityInfo={entityInfo as any}
-          highlights={highlights}
-          loading={loading}
-        />
-      );
-
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return (
-        <SchemaFieldCardsV1
-          entityInfo={entityInfo as any}
-          entityType={entityType}
+          entityInfo={entityInfo as Dashboard}
           highlights={highlights}
           loading={loading}
         />
@@ -76,7 +96,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.TOPIC:
       return (
         <TopicFieldCardsV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as Topic}
           highlights={highlights}
           loading={loading}
         />
@@ -85,7 +105,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.CONTAINER:
       return (
         <ContainerFieldCardsV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as Container}
           highlights={highlights}
           loading={loading}
         />
@@ -94,7 +114,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.SEARCH_INDEX:
       return (
         <SearchIndexFieldCardsV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as SearchIndex}
           highlights={highlights}
           loading={loading}
         />
@@ -103,7 +123,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.API_ENDPOINT:
       return (
         <APIEndpointSchemaV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as APIEndpoint}
           highlights={highlights}
           loading={loading}
         />
@@ -112,7 +132,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.DATABASE:
       return (
         <DatabaseSchemasV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo}
           highlights={highlights}
           loading={loading}
         />
@@ -121,7 +141,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.PIPELINE:
       return (
         <PipelineTasksV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as Pipeline}
           highlights={highlights}
           loading={loading}
         />
@@ -130,7 +150,7 @@ export const getEntityChildDetailsV1 = (
     case EntityType.API_COLLECTION:
       return (
         <APICollectionEndpointsV1
-          entityInfo={entityInfo as any}
+          entityInfo={entityInfo as APICollection}
           highlights={highlights}
           loading={loading}
         />
@@ -141,13 +161,91 @@ export const getEntityChildDetailsV1 = (
   }
 };
 
+// Recursive component to render nested columns
+const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
+  column,
+  highlights,
+  tableConstraints,
+  level = 0,
+  expandedRowKeys,
+  onToggleExpand,
+}) => {
+  const theme = useTheme();
+
+  const hasChildren = !isEmpty(column.children);
+  const isExpanded = expandedRowKeys.includes(column.fullyQualifiedName ?? '');
+  const isHighlighted = highlights?.column?.includes(column.name);
+
+  const childrenCount = column.children?.length ?? 0;
+
+  return (
+    <div>
+      <div
+        className="nested-field-card-wrapper"
+        key={column.fullyQualifiedName ?? column.name}
+        style={{
+          paddingLeft: `${level * 24}px`,
+          paddingBottom: hasChildren ? '8px' : '0',
+        }}>
+        <div className="field-card-no-border">
+          <FieldCard
+            columnConstraint={column.constraint}
+            dataType={column.dataType || 'Unknown'}
+            description={column.description}
+            fieldName={column.name}
+            isHighlighted={isHighlighted}
+            tableConstraints={tableConstraints}
+            tags={column.tags}
+          />
+        </div>
+        {hasChildren && (
+          <div className="d-flex align-items-center m-l-md gap-1">
+            {!isExpanded && (
+              <span className="d-flex">
+                <NestedIcon />
+              </span>
+            )}
+            <Button
+              className="d-flex p-0 h-auto m-b-xs"
+              size="small"
+              type="link"
+              onClick={() => onToggleExpand(column.fullyQualifiedName ?? '')}>
+              <Typography color={theme.palette.primary.main} variant="caption">
+                {isExpanded
+                  ? t('label.show-less')
+                  : `${t('label.show-nested')} (${childrenCount})`}
+              </Typography>
+            </Button>
+          </div>
+        )}
+      </div>
+      {hasChildren && isExpanded && (
+        <div>
+          {column.children?.map((child) => (
+            <NestedFieldCard
+              column={child}
+              expandedRowKeys={expandedRowKeys}
+              highlights={highlights}
+              key={child.fullyQualifiedName ?? child.name}
+              level={level + 1}
+              tableConstraints={tableConstraints}
+              onToggleExpand={onToggleExpand}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Component for Table and Dashboard Data Model schema fields
 const SchemaFieldCardsV1: React.FC<{
-  entityInfo: TableEntity | any;
+  entityInfo: TableEntity;
   entityType: EntityType;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, entityType, highlights, loading }) => {
+  searchText?: string;
+}> = ({ entityInfo, entityType, highlights, loading, searchText }) => {
   const [columnsPaging, setColumnsPaging] = useState<Paging>({
     offset: 0,
     total: 0,
@@ -157,28 +255,48 @@ const SchemaFieldCardsV1: React.FC<{
   const [columns, setColumns] = useState<Column[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasInitialized, setHasInitialized] = useState<boolean>(false);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const fqn = entityInfo.fullyQualifiedName ?? '';
 
   const fetchPaginatedColumns = useCallback(
-    async (page = 1) => {
+    async (page = 1, search?: string) => {
       setIsLoading(true);
       try {
-        const api =
-          entityType === EntityType.TABLE
-            ? getTableColumnsByFQN
-            : getDataModelColumnsByFQN;
         const offset = (page - 1) * (columnsPaging.limit ?? PAGE_SIZE_LARGE);
-        const { data, paging } = await api(fqn, {
+        const params = {
           offset,
           limit: columnsPaging.limit,
-          fields: 'tags,customMetrics,glossaryTerms,description',
-        });
+          fields: 'tags,customMetrics,description',
+          ...(search && { q: search }),
+        };
+
+        let data: Column[] = [];
+        let paging;
+
+        if (entityType === EntityType.TABLE) {
+          if (search) {
+            const response = await searchTableColumnsByFQN(fqn, params);
+            data = response.data;
+            paging = response.paging;
+          } else {
+            const response = await getTableColumnsByFQN(fqn, params);
+            data = response.data;
+            paging = response.paging;
+          }
+        } else {
+          const response = await getDataModelColumnsByFQN(fqn, params);
+          data = response.data;
+          paging = response.paging;
+        }
+
+        // Prune empty children from the data
+        const prunedData = pruneEmptyChildren(data);
 
         // For the first page, replace the columns. For subsequent pages, append.
         if (page === 1) {
-          setColumns(data);
+          setColumns(prunedData);
         } else {
-          setColumns((prev) => [...prev, ...data]);
+          setColumns((prev) => [...prev, ...prunedData]);
         }
         setColumnsPaging(paging);
         setHasInitialized(true);
@@ -202,14 +320,15 @@ const SchemaFieldCardsV1: React.FC<{
   const handleLoadMore = useCallback(() => {
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    fetchPaginatedColumns(nextPage);
-  }, [currentPage, fetchPaginatedColumns]);
+    fetchPaginatedColumns(nextPage, searchText);
+  }, [currentPage, fetchPaginatedColumns, searchText]);
 
   useEffect(() => {
     if (
       [EntityType.TABLE, EntityType.DASHBOARD_DATA_MODEL].includes(entityType)
     ) {
-      fetchPaginatedColumns();
+      setCurrentPage(1);
+      fetchPaginatedColumns(1, searchText);
     }
 
     return () => {
@@ -222,7 +341,13 @@ const SchemaFieldCardsV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
-  }, [entityType, fqn]);
+  }, [entityType, fqn, searchText]);
+
+  const handleToggleExpand = useCallback((key: string) => {
+    setExpandedRowKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  }, []);
 
   const loadMoreBtn = useMemo(() => {
     if (columns.length === columnsPaging.total) {
@@ -262,7 +387,6 @@ const SchemaFieldCardsV1: React.FC<{
     );
   }
 
-  // If not initialized yet, show loading
   if (!hasInitialized) {
     return (
       <div className="flex-center p-lg">
@@ -271,25 +395,33 @@ const SchemaFieldCardsV1: React.FC<{
     );
   }
 
+  if (isEmpty(columns) && searchText && hasInitialized) {
+    return (
+      <div className="no-data-container">
+        <Text className="no-data-text">
+          {t('message.no-entity-found-for-name', {
+            entity: t('label.column-plural'),
+            name: searchText,
+          })}
+        </Text>
+      </div>
+    );
+  }
+
   return (
     <div className="schema-field-cards-container">
       <Row>
-        {columns.map((column) => {
-          const isHighlighted = highlights?.column?.includes(column.name);
-
-          return (
-            <Col key={column.name} span={24}>
-              <FieldCard
-                dataType={column.dataType || 'Unknown'}
-                description={column.description}
-                fieldName={column.name}
-                isHighlighted={isHighlighted}
-                tableConstraints={entityInfo.tableConstraints}
-                tags={column.tags}
-              />
-            </Col>
-          );
-        })}
+        {columns.map((column) => (
+          <Col key={column.fullyQualifiedName ?? column.name} span={24}>
+            <NestedFieldCard
+              column={column}
+              expandedRowKeys={expandedRowKeys}
+              highlights={highlights}
+              tableConstraints={entityInfo.tableConstraints}
+              onToggleExpand={handleToggleExpand}
+            />
+          </Col>
+        ))}
       </Row>
       {loadMoreBtn}
     </div>
@@ -298,7 +430,7 @@ const SchemaFieldCardsV1: React.FC<{
 
 // Component for Topic schema fields
 const TopicFieldCardsV1: React.FC<{
-  entityInfo: any;
+  entityInfo: Topic;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
@@ -331,7 +463,7 @@ const TopicFieldCardsV1: React.FC<{
               <FieldCard
                 dataType={field.dataType || 'Unknown'}
                 description={field.description}
-                fieldName={field.name}
+                fieldName={getEntityName(field)}
                 glossaryTerms={field.glossaryTerms}
                 isHighlighted={isHighlighted}
                 tags={field.tags}
@@ -346,7 +478,7 @@ const TopicFieldCardsV1: React.FC<{
 
 // Component for Container schema fields
 const ContainerFieldCardsV1: React.FC<{
-  entityInfo: any;
+  entityInfo: Container;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
@@ -379,7 +511,7 @@ const ContainerFieldCardsV1: React.FC<{
               <FieldCard
                 dataType={column.dataType || 'Unknown'}
                 description={column.description}
-                fieldName={column.name}
+                fieldName={getEntityName(column)}
                 glossaryTerms={column.glossaryTerms}
                 isHighlighted={isHighlighted}
                 tags={column.tags}
@@ -394,7 +526,7 @@ const ContainerFieldCardsV1: React.FC<{
 
 // Component for Pipeline tasks
 const PipelineTasksV1: React.FC<{
-  entityInfo: any;
+  entityInfo: Pipeline;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
@@ -427,7 +559,7 @@ const PipelineTasksV1: React.FC<{
               <FieldCard
                 dataType={task.taskType || t('label.task')}
                 description={task.description}
-                fieldName={task.displayName || task.name}
+                fieldName={getEntityName(task)}
                 glossaryTerms={task.glossaryTerms}
                 isHighlighted={isHighlighted}
                 tags={task.tags}
@@ -442,11 +574,11 @@ const PipelineTasksV1: React.FC<{
 
 // Component for API Collection endpoints
 const APICollectionEndpointsV1: React.FC<{
-  entityInfo: any;
+  entityInfo: APICollection;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
-  const [endpoints, setEndpoints] = useState<any[]>([]);
+  const [endpoints, setEndpoints] = useState<APIEndpoint[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hasInitialized, setHasInitialized] = useState<boolean>(false);
   const fqn = entityInfo.fullyQualifiedName ?? '';
@@ -501,7 +633,7 @@ const APICollectionEndpointsV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
-  }, [fetchEndpoints]);
+  }, [fqn]);
 
   if (loading || (isLoading && !hasInitialized)) {
     return (
@@ -541,7 +673,7 @@ const APICollectionEndpointsV1: React.FC<{
               <FieldCard
                 dataType={endpoint.requestMethod || t('label.api-endpoint')}
                 description={endpoint.description}
-                fieldName={endpoint.displayName || endpoint.name}
+                fieldName={getEntityName(endpoint)}
                 isHighlighted={isHighlighted}
                 tags={endpoint.tags}
               />
@@ -555,7 +687,7 @@ const APICollectionEndpointsV1: React.FC<{
 
 // Component for Database Schema tables
 const DatabaseSchemaTablesV1: React.FC<{
-  entityInfo: any;
+  entityInfo: DatabaseSchema;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
@@ -594,7 +726,7 @@ const DatabaseSchemaTablesV1: React.FC<{
       setIsLoading(false);
       setHasInitialized(false);
     };
-  }, [fetchPaginatedTables]);
+  }, [fqn]);
 
   const loadMoreBtn = useMemo(() => {
     // For now, we fetch all tables at once, so no load more button needed
@@ -638,7 +770,7 @@ const DatabaseSchemaTablesV1: React.FC<{
               <FieldCard
                 dataType={table.tableType || 'Table'}
                 description={table.description}
-                fieldName={table.name}
+                fieldName={getEntityName(table)}
                 isHighlighted={isHighlighted}
                 tags={table.tags}
               />
@@ -653,7 +785,7 @@ const DatabaseSchemaTablesV1: React.FC<{
 
 // Component for Dashboard charts
 const DashboardChartsV1: React.FC<{
-  entityInfo: any;
+  entityInfo: Dashboard;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {
@@ -686,7 +818,7 @@ const DashboardChartsV1: React.FC<{
               <FieldCard
                 dataType="Chart"
                 description={chart.description}
-                fieldName={chart.displayName || chart.name}
+                fieldName={getEntityName(chart)}
                 isHighlighted={isHighlighted}
                 tags={chart.tags}
               />
@@ -700,10 +832,10 @@ const DashboardChartsV1: React.FC<{
 
 // Component for API Endpoint schema fields
 const APIEndpointSchemaV1: React.FC<{
-  entityInfo: any;
+  entityInfo: APIEndpoint;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+}> = ({ entityInfo, loading }) => {
   const [viewType, setViewType] = useState<
     'request-schema' | 'response-schema'
   >('request-schema');
@@ -730,15 +862,15 @@ const APIEndpointSchemaV1: React.FC<{
   }, [viewType, requestSchemaFields, responseSchemaFields]);
 
   // Get all row keys for expandable functionality
-  const getAllRowKeys = (fields: any[]): string[] => {
+  const getAllRowKeys = (fields: Field[]): string[] => {
     const keys: string[] = [];
-    const traverse = (fieldList: any[]) => {
-      fieldList.forEach((field) => {
+    const traverse = (fieldList: Field[]) => {
+      for (const field of fieldList) {
         keys.push(field.name);
         if (field.children && field.children.length > 0) {
           traverse(field.children);
         }
-      });
+      }
     };
     traverse(fields);
 
@@ -768,7 +900,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'name',
       key: 'name',
       width: 200,
-      render: (name: string, record: any) => (
+      render: (name: string, record: Record<string, any>) => (
         <div className="d-inline-flex w-max-90">
           <span className="break-word">{record.displayName || name}</span>
         </div>
@@ -779,10 +911,10 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'dataType',
       key: 'dataType',
       width: 150,
-      render: (dataType: string, record: any) => (
-        <Typography.Text>
+      render: (dataType: string, record: Record<string, any>) => (
+        <Typography variant="caption">
           {record.dataTypeDisplay || dataType || 'Unknown'}
-        </Typography.Text>
+        </Typography>
       ),
     },
     {
@@ -802,7 +934,7 @@ const APIEndpointSchemaV1: React.FC<{
       dataIndex: 'tags',
       key: 'tags',
       width: 200,
-      render: (tags: any[]) => (
+      render: (tags: TagLabel[]) => (
         <div className="d-flex flex-wrap gap-2">
           {tags?.map((tag) => (
             <span className="tag-container" key={tag.tagFQN}>
@@ -849,8 +981,11 @@ const APIEndpointSchemaV1: React.FC<{
         </Button>
       </div>
 
-      {/* Schema Fields Table */}
-      {!isEmpty(activeSchemaFields) ? (
+      {isEmpty(activeSchemaFields) ? (
+        <div className="no-data-container m-x-md">
+          <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        </div>
+      ) : (
         <div className="m-l-md">
           <Table
             columns={columns}
@@ -867,10 +1002,6 @@ const APIEndpointSchemaV1: React.FC<{
             size="small"
           />
         </div>
-      ) : (
-        <div className="no-data-container m-x-md">
-          <Text className="no-data-text">{t('message.no-data-available')}</Text>
-        </div>
       )}
     </div>
   );
@@ -881,7 +1012,7 @@ const DatabaseSchemasV1: React.FC<{
   entityInfo: any;
   highlights?: Record<string, string[]>;
   loading?: boolean;
-}> = ({ entityInfo, highlights, loading }) => {
+}> = ({ entityInfo, loading }) => {
   const databaseSchemas = entityInfo.databaseSchemas || [];
 
   if (loading) {
@@ -909,7 +1040,7 @@ const DatabaseSchemasV1: React.FC<{
               <FieldCard
                 dataType={schema.type || 'Database Schema'}
                 description={schema.description || ''}
-                fieldName={schema.displayName || schema.name}
+                fieldName={getEntityName(schema)}
                 tags={schema.tags || []}
               />
             </Col>
@@ -922,7 +1053,7 @@ const DatabaseSchemasV1: React.FC<{
 
 // Component for Search Index fields
 const SearchIndexFieldCardsV1: React.FC<{
-  entityInfo: any;
+  entityInfo: SearchIndex;
   highlights?: Record<string, string[]>;
   loading?: boolean;
 }> = ({ entityInfo, highlights, loading }) => {

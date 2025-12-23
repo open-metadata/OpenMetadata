@@ -9,7 +9,6 @@ import org.openmetadata.service.notifications.template.handlebars.helpers.CamelC
 import org.openmetadata.service.notifications.template.handlebars.helpers.EndsWithHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.EqHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.FilterHelper;
-import org.openmetadata.service.notifications.template.handlebars.helpers.FormatColumnValueHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.FormatDateHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.GroupEventChangesHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.GtHelper;
@@ -22,10 +21,12 @@ import org.openmetadata.service.notifications.template.handlebars.helpers.OrHelp
 import org.openmetadata.service.notifications.template.handlebars.helpers.ParseEntityLinkHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.PluckHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.ProcessMentionsHelper;
+import org.openmetadata.service.notifications.template.handlebars.helpers.RenderTableSampleHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.ResolveDomainHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.SplitHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.StartsWithHelper;
 import org.openmetadata.service.notifications.template.handlebars.helpers.TextDiffHelper;
+import org.openmetadata.service.notifications.template.handlebars.helpers.TruncateHelper;
 
 /**
  * Provider for Handlebars instances configured with all custom helpers for notification templates.
@@ -62,10 +63,10 @@ public class HandlebarsProvider {
         new AndHelper(),
         new NotHelper(),
         new TextDiffHelper(),
+        new TruncateHelper(),
         new CamelCaseToTitleHelper(),
         new ResolveDomainHelper(),
         new FormatDateHelper(),
-        new FormatColumnValueHelper(),
         new GroupEventChangesHelper(),
         new HasFieldInChangesHelper(),
         new SplitHelper(),
@@ -76,6 +77,17 @@ public class HandlebarsProvider {
         new LengthHelper(),
         new LimitHelper(),
         new MathHelper(),
-        new GtHelper());
+        new GtHelper(),
+        new RenderTableSampleHelper());
+  }
+
+  /**
+   * Get all helper instances for metadata extraction. Used by API endpoint to discover available
+   * helpers.
+   *
+   * @return List of all registered helpers
+   */
+  public static List<HandlebarsHelper> getAllHelperInstances() {
+    return getAllHelpers();
   }
 }

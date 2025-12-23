@@ -6,6 +6,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelperUsage;
 
 /**
  * Helper to filter arrays by property value.
@@ -70,5 +72,19 @@ public class FilterHelper implements HandlebarsHelper {
     }
 
     return true;
+  }
+
+  @Override
+  public HandlebarsHelperMetadata getMetadata() {
+    return new HandlebarsHelperMetadata()
+        .withName("filter")
+        .withDescription("Filter array by property values")
+        .withCursorOffset(9)
+        .withUsages(
+            List.of(
+                new HandlebarsHelperUsage()
+                    .withSyntax("{{filter }}")
+                    .withExample(
+                        "{{#with (filter testResults status=\"Failed\") as |failed|}}{{length failed}} failed{{/with}}")));
   }
 }

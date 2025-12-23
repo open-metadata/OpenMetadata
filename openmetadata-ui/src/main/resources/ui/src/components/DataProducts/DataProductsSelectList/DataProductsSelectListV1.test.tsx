@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { SelectableListProps } from '../../common/SelectableList/SelectableList.interface';
 import { DataProductsSelectListV1 } from './DataProductsSelectListV1';
 
 jest.mock('react-i18next', () => ({
@@ -31,9 +32,11 @@ const mockSelectableList = jest
       onUpdate,
       onCancel,
       selectedItems,
-      fetchOptions,
-      customTagRenderer,
-    }: any) => (
+    }: {
+      onUpdate?: (items: DataProduct[]) => void;
+      onCancel?: () => void;
+      selectedItems?: DataProduct[];
+    }) => (
       <div data-testid="selectable-list">
         <div data-testid="selected-count">{selectedItems?.length || 0}</div>
         <button
@@ -45,7 +48,7 @@ const mockSelectableList = jest
                 name: 'DataProduct1',
                 displayName: 'Data Product 1',
                 fullyQualifiedName: 'domain.DataProduct1',
-                type: 'dataProduct',
+                description: 'Test data product',
               },
             ])
           }>
@@ -61,14 +64,16 @@ const mockSelectableList = jest
 jest.mock(
   '../../../components/common/SelectableList/SelectableList.component',
   () => ({
-    SelectableList: (props: any) => mockSelectableList(props),
+    SelectableList: (props: SelectableListProps) => mockSelectableList(props),
   })
 );
 
 jest.mock(
   '../../../components/common/FocusTrap/FocusTrapWithContainer',
   () => ({
-    FocusTrapWithContainer: ({ children }: any) => <div>{children}</div>,
+    FocusTrapWithContainer: ({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
   })
 );
 

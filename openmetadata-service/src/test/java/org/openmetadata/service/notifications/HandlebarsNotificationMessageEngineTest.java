@@ -108,7 +108,8 @@ class HandlebarsNotificationMessageEngineTest extends OpenMetadataApplicationTes
    * @return EmailMessage with the complete envelope
    */
   private EmailMessage createExpectedEmailWithEnvelope(String subject, String content) {
-    // Build the complete HTML envelope that matches the new template
+    // Build the complete HTML envelope that matches the
+    // system-email-change-event-notification-envelope.json
     String envelopeHtml =
         "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\">"
             + "<html lang=\"en\" xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:v=\"urn:schemas-microsoft-com:vml\" xmlns:o=\"urn:schemas-microsoft-com:office:office\">"
@@ -124,17 +125,17 @@ class HandlebarsNotificationMessageEngineTest extends OpenMetadataApplicationTes
             + "* { -ms-text-size-adjust:100%; -webkit-text-size-adjust:100%; } "
             + "table, td { mso-table-lspace:0pt; mso-table-rspace:0pt; } "
             + "table { border-collapse:collapse!important; } "
-            + "img { -ms-interpolation-mode:bicubic; border:0; outline:none; text-decoration:none; display:block; } "
+            + "img { -ms-interpolation-mode:bicubic; border:0; outline:none; text-decoration:none; } "
+            + ".hero-img { display:block; } "
             + "a { text-decoration:none; } "
             + ".ExternalClass { width:100%; } "
             + ".ExternalClass, .ExternalClass * { line-height:100%; } "
             + "a[x-apple-data-detectors] { color:inherit!important; text-decoration:none!important; } "
-            + "u + #body .full-wrap { width:100%!important; width:100vw!important; } "
+            + "u + #body .full-wrap { width:100%!important; } "
             + ".preheader { display:none!important; visibility:hidden; opacity:0; color:transparent; height:0; width:0; overflow:hidden; mso-hide:all; } "
             + ".container { max-width:600px!important; table-layout:fixed!important; } "
             + ".content-card { word-break:break-word; overflow-wrap:anywhere; -ms-word-break:break-all; white-space:normal; max-width:100%!important; } "
-            + ".content-scroll { display:block; max-width:100%!important; overflow-x:auto; -webkit-overflow-scrolling:touch; } "
-            + "pre, code { white-space:pre-wrap!important; word-break:break-word!important; } "
+            + "pre, code { white-space:pre-wrap!important; word-break:break-all!important; word-wrap:break-word!important; overflow-wrap:anywhere!important; max-width:100%!important; display:block!important; } "
             + "blockquote { margin:10px 0!important; padding:12px 16px!important; background-color:#f8f9fa!important; border-left:3px solid #6b7280!important; border-radius:3px!important; font-style:italic!important; color:#1f2937!important; } "
             + "@media (max-width:600px){ .container { width:100%!important; } .p-sm { padding-left:16px!important; padding-right:16px!important; } }"
             + "</style>"
@@ -150,7 +151,7 @@ class HandlebarsNotificationMessageEngineTest extends OpenMetadataApplicationTes
             + "<tr><td style=\"padding:0; border-top-left-radius:14px; border-top-right-radius:14px;\">"
             + "<!--[if mso]><v:rect xmlns:v=\"urn:schemas-microsoft-com:vml\" fill=\"true\" stroke=\"false\" style=\"width:600px;height:96px;\"><v:fill type=\"frame\" src=\"https://i.imgur.com/7fn1VBe.png\" /><v:textbox inset=\"0,0,0,0\"></v:textbox></v:rect><![endif]-->"
             + "<!--[if !mso]><!-- -->"
-            + "<img src=\"https://i.imgur.com/7fn1VBe.png\" width=\"600\" alt=\"OpenMetadata · Change Event\" style=\"width:100%; height:auto; border-top-left-radius:14px; border-top-right-radius:14px;\">"
+            + "<img class=\"hero-img\" src=\"https://i.imgur.com/7fn1VBe.png\" width=\"600\" alt=\"OpenMetadata · Change Event\" style=\"width:100%; height:auto; border-top-left-radius:14px; border-top-right-radius:14px;\">"
             + "<!--<![endif]-->"
             + "</td></tr>"
             + "<tr><td class=\"p-sm\" style=\"padding:20px 24px 8px 24px;\">"
@@ -164,9 +165,9 @@ class HandlebarsNotificationMessageEngineTest extends OpenMetadataApplicationTes
             + "<td bgcolor=\"#ffffff\" style=\"background-color:#ffffff; padding:16px; border-top-right-radius:12px; border-bottom-right-radius:12px;\">"
             + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">"
             + "<tr><td align=\"left\" style=\"font-family:-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size:14px; line-height:22px; color:#1f2937;\">"
-            + "<div class=\"content-card\"><div class=\"content-scroll\">"
+            + "<div class=\"content-card\">"
             + content
-            + "</div></div>"
+            + "</div>"
             + "</td></tr></table></td></tr></table></td></tr>"
             + "<tr><td class=\"p-sm\" style=\"padding:0 24px 24px 24px;\">"
             + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">"

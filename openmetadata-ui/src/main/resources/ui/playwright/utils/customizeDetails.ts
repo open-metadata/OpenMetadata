@@ -30,45 +30,59 @@ import {
   TABLE_DEFAULT_TABS,
   TOPIC_DEFAULT_TABS,
 } from '../constant/customizeDetail';
-import { EntityDataClass } from '../support/entity/EntityDataClass';
+import { Domain } from '../support/domain/Domain';
+import { ApiCollectionClass } from '../support/entity/ApiCollectionClass';
+import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
+import { ContainerClass } from '../support/entity/ContainerClass';
+import { DashboardClass } from '../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../support/entity/DatabaseSchemaClass';
+import { MlModelClass } from '../support/entity/MlModelClass';
+import { PipelineClass } from '../support/entity/PipelineClass';
+import { SearchIndexClass } from '../support/entity/SearchIndexClass';
+import { StoredProcedureClass } from '../support/entity/StoredProcedureClass';
+import { TableClass } from '../support/entity/TableClass';
+import { TopicClass } from '../support/entity/TopicClass';
+import { Glossary } from '../support/glossary/Glossary';
+import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 
 export const getCustomizeDetailsEntity = (
   type: ECustomizedDataAssets | ECustomizedGovernance
 ) => {
   switch (type) {
     case ECustomizedDataAssets.TABLE:
-      return EntityDataClass.table1;
+      return new TableClass();
     case ECustomizedDataAssets.TOPIC:
-      return EntityDataClass.topic1;
+      return new TopicClass();
     case ECustomizedDataAssets.DASHBOARD:
-      return EntityDataClass.dashboard1;
+      return new DashboardClass();
     case ECustomizedDataAssets.ML_MODEL:
-      return EntityDataClass.mlModel1;
+      return new MlModelClass();
     case ECustomizedDataAssets.PIPELINE:
-      return EntityDataClass.pipeline1;
+      return new PipelineClass();
     case ECustomizedDataAssets.DASHBOARD_DATA_MODEL:
-      return EntityDataClass.dashboardDataModel1;
+      return new DashboardDataModelClass();
     case ECustomizedDataAssets.API_COLLECTION:
-      return EntityDataClass.apiCollection1;
+      return new ApiCollectionClass();
     case ECustomizedDataAssets.SEARCH_INDEX:
-      return EntityDataClass.searchIndex1;
+      return new SearchIndexClass();
     case ECustomizedDataAssets.CONTAINER:
-      return EntityDataClass.container1;
+      return new ContainerClass();
     case ECustomizedDataAssets.DATABASE:
-      return EntityDataClass.database;
+      return new DatabaseClass();
     case ECustomizedDataAssets.DATABASE_SCHEMA:
-      return EntityDataClass.databaseSchema;
+      return new DatabaseSchemaClass();
     case ECustomizedDataAssets.STORED_PROCEDURE:
-      return EntityDataClass.storedProcedure1;
+      return new StoredProcedureClass();
     case ECustomizedDataAssets.API_ENDPOINT:
-      return EntityDataClass.apiEndpoint1;
+      return new ApiEndpointClass();
     case ECustomizedGovernance.DOMAIN:
-      return EntityDataClass.domain1;
+      return new Domain();
     case ECustomizedGovernance.GLOSSARY:
-      return EntityDataClass.glossary1;
+      return new Glossary();
     case ECustomizedGovernance.GLOSSARY_TERM:
-      return EntityDataClass.glossaryTerm1;
-
+      return new GlossaryTerm();
     default:
       throw new Error(`Invalid entity type: ${type}`);
   }

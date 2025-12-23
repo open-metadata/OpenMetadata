@@ -296,16 +296,8 @@ def aggregate_others_statistical_pandas(
         others_label,
     )
 
-    # Aggregate by dimension_group using custom functions or default to sum
-    numeric_cols = df.select_dtypes(include=[np.number]).columns
-    agg_dict = {
-        col: agg_functions.get(col, "sum")
-        for col in numeric_cols
-        if col not in [impact_column, "calculated_failed_count"]
-    }
-
     # Aggregate by dimension_group
-    df_aggregated = df.groupby("dimension_group", as_index=False).agg(agg_dict)
+    df_aggregated = df.groupby("dimension_group", as_index=False).agg(agg_functions)
 
     # For top dimensions, preserve their original metric values
     # NOTE: While top dimensions are single-row groups (aggregation doesn't change them),

@@ -65,7 +65,7 @@
           "$ref": "../../type/entityReference.json"
         }
       },
-      "required": ["name", "portType"],
+      "required": ["name", "portType", "dataAsset"],
       "additionalProperties": false
     },
     "slaDefinition": {
@@ -169,20 +169,14 @@
       "$comment": "@deprecated Use GET /v1/dataProducts/{id}/assets API endpoint for paginated access to data product assets"
     },
     "inputPorts": {
-      "description": "Input ports for consuming data into this data product",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/dataProductPort"
-      },
-      "default": []
+      "description": "Input ports - data assets consumed by this data product",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "outputPorts": {
-      "description": "Output ports for exposing data from this data product",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/dataProductPort"
-      },
-      "default": []
+      "description": "Output ports - data assets produced/exposed by this data product",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "lifecycleStage": {
       "description": "Current lifecycle stage of the data product",
@@ -228,8 +222,7 @@
     },
     "entityStatus": {
       "description": "Status of the Data Product.",
-      "$ref": "../../type/status.json",
-      "default": "Approved"
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "description"],

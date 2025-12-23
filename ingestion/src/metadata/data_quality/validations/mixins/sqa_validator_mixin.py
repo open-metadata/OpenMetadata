@@ -13,16 +13,18 @@
 Validator Mixin for SQA tests cases
 """
 
+from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, cast
 
-from sqlalchemy import Column, Table, case, func, inspect, select, text
+from sqlalchemy import Column, String, Table, case, func, inspect, literal, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.sql.elements import ColumnElement
-from sqlalchemy.sql.expression import ClauseElement
+from sqlalchemy.sql.expression import ClauseElement, FromClause
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_IMPACT_SCORE_KEY,
+    DIMENSION_NULL_LABEL,
     DIMENSION_OTHERS_LABEL,
     DIMENSION_TOTAL_COUNT_KEY,
     DIMENSION_VALUE_KEY,
@@ -57,6 +59,11 @@ CTE_DIMENSION_WITH_IMPACT = (
 CTE_FINAL_METRICS = "final_metrics"  # For final aggregated metrics
 
 DIMENSION_GROUP_LABEL = "dimension_group"
+
+
+class DataQualityQueryType(Enum):
+    DIMENSIONAL = auto()
+    OTHERS = auto()
 
 
 class SQAValidatorMixin:
@@ -182,373 +189,214 @@ class SQAValidatorMixin:
         """
         return self.run_query_results(runner, Metrics.ROW_COUNT, column, **kwargs)
 
-    def _execute_with_others_aggregation(
-        self,
-        dimension_col: Column,
-        metric_expressions: Dict[str, ClauseElement],
-        top_dimensions_count: int = DEFAULT_TOP_DIMENSIONS,
-    ) -> List[Dict[str, Any]]:
-        """Execute dimensional query with CTE-based Others aggregation and impact scoring.
+    def _get_normalized_dimension_expression(
+        self, dimension_col: Column
+    ) -> ColumnElement:
+        """Build normalized dimension expression for dimensional validation.
 
-        This shared method is used by all dimensional validators to:
-        1. Calculate dimension stats with impact scores
-        2. Select top N dimensions by impact score
-        3. Aggregate remaining dimensions as "Others"
-
-        NOTE: The metric_expressions dict MUST contain:
-        - DIMENSION_TOTAL_COUNT_KEY: Expression for total count
-        - DIMENSION_FAILED_COUNT_KEY: Expression for failed count
-        These are used for impact score calculation.
+        Handles NULL values and type casting for compatibility with string literals
+        ('NULL', 'Others'). This prevents type mismatch errors when mixing numeric
+        dimension columns with string labels.
 
         Args:
-            dimension_col: The column to group by
-            metric_expressions: Dict mapping metric names to SQLAlchemy expressions
-                                Must include 'total_count' and 'failed_count' keys
-            top_dimensions_count: Number of top dimensions to keep before aggregating
+            dimension_col: The dimension column to normalize
 
         Returns:
-            List of dicts with dimension results ordered by impact score
+            ColumnElement: Normalized dimension expression (CASE statement)
         """
-        # Validate required metrics are present
+        dimension_col_as_string = func.cast(dimension_col, String)
+
+        normalized_dimension = case(
+            [
+                (dimension_col.is_(None), literal(DIMENSION_NULL_LABEL)),
+                (
+                    func.upper(dimension_col_as_string) == "NULL",
+                    literal(DIMENSION_NULL_LABEL),
+                ),
+            ],
+            else_=dimension_col_as_string,
+        )
+
+        return normalized_dimension
+
+    @staticmethod
+    def _get_metrics_query(
+        source: Any,
+        dimension_expr: ColumnElement,
+        metric_expressions: Dict[str, ClauseElement],
+        query_type: DataQualityQueryType,
+        filter_clause: Optional[ColumnElement] = None,
+        failed_count_builder: Optional[Callable] = None,
+    ):
         if DIMENSION_TOTAL_COUNT_KEY not in metric_expressions:
             raise ValueError(
-                f"metric_expressions must contain '{DIMENSION_TOTAL_COUNT_KEY}' key"
+                f"metric_expressions must contain 'DIMENSION_TOTAL_COUNT_KEY' key"
             )
-        if DIMENSION_FAILED_COUNT_KEY not in metric_expressions:
+        if (
+            DIMENSION_FAILED_COUNT_KEY not in metric_expressions
+            and failed_count_builder is None
+        ):
             raise ValueError(
-                f"metric_expressions must contain '{DIMENSION_FAILED_COUNT_KEY}' key"
+                f"metric_expressions must contain 'DIMENSION_FAILED_COUNT_KEY' key"
             )
 
-        # Build expressions using dictionary iteration
-        select_expressions = {
-            DIMENSION_VALUE_KEY: dimension_col,
-        }
+        # === Level 1: Basic Metrics CTE ===
+        # Compute all metrics from metric_expressions
+        basic_metrics_columns = []
 
-        # Add all metric expressions from the dictionary
-        select_expressions.update(metric_expressions)
+        for metric_name, metric_expr in metric_expressions.items():
+            basic_metrics_columns.append(metric_expr.label(metric_name))
 
-        # Add impact scoring expression
-        select_expressions[DIMENSION_IMPACT_SCORE_KEY] = get_impact_score_expression(
-            metric_expressions[DIMENSION_FAILED_COUNT_KEY],
-            metric_expressions[DIMENSION_TOTAL_COUNT_KEY],
-        )
+        match query_type:
+            case DataQualityQueryType.DIMENSIONAL:
+                basic_metrics_columns.append(dimension_expr.label(DIMENSION_VALUE_KEY))
+            case DataQualityQueryType.OTHERS:
+                basic_metrics_columns.append(
+                    literal(DIMENSION_OTHERS_LABEL).label(DIMENSION_VALUE_KEY)
+                )
 
-        # CTE 1: Calculate all dimension stats
-        dimension_stats_columns = [
-            expr.label(name) for name, expr in select_expressions.items()
-        ]
+        query = select(basic_metrics_columns).select_from(source)
 
-        dimension_stats = (
-            select(dimension_stats_columns)
-            .select_from(self.runner.dataset)
-            .group_by(dimension_col)
-            .cte(CTE_DIMENSION_STATS)
-        )
+        if filter_clause is not None:
+            query = query.where(filter_clause)
 
-        # CTE 2: Get top N dimensions by impact score
-        top_dimensions = (
-            select([dimension_stats.c.dimension_value])
-            .order_by(dimension_stats.c.impact_score.desc())
-            .limit(top_dimensions_count)
-            .cte(CTE_TOP_DIMENSIONS)
-        )
+        if query_type == DataQualityQueryType.DIMENSIONAL:
+            query = query.group_by(dimension_expr)
 
-        # CTE 3: Categorize as top N or "Others"
-        categorized_columns = [
-            case(
-                [
-                    (
-                        dimension_stats.c.dimension_value.in_(
-                            select([top_dimensions.c.dimension_value])
-                        ),
-                        dimension_stats.c.dimension_value,
+        basic_metrics_cte = query.cte("basic_metrics")
+
+        # === Level 2: Final Metrics CTE ===
+        # Compute derived metrics
+        final_metrics_columns = []
+
+        match query_type:
+            case DataQualityQueryType.DIMENSIONAL:
+                final_metrics_columns.append(
+                    getattr(basic_metrics_cte.c, DIMENSION_VALUE_KEY).label(
+                        DIMENSION_VALUE_KEY
                     )
-                ],
-                else_=DIMENSION_OTHERS_LABEL,
-            ).label(DIMENSION_GROUP_LABEL)
-        ]
-
-        # Add all metric columns from dimension_stats
-        for name in select_expressions.keys():
-            if name != DIMENSION_VALUE_KEY:
-                categorized_columns.append(getattr(dimension_stats.c, name))
-
-        categorized = (
-            select(categorized_columns)
-            .select_from(dimension_stats)
-            .cte(CTE_CATEGORIZED)
-        )
-
-        # Final query: Aggregate by dimension_group
-        final_columns = [
-            getattr(categorized.c, DIMENSION_GROUP_LABEL).label(DIMENSION_VALUE_KEY)
-        ]
-
-        # Aggregate numeric columns
-        for name in select_expressions.keys():
-            if name == DIMENSION_VALUE_KEY:
-                continue
-            elif name == DIMENSION_IMPACT_SCORE_KEY:
-                # Recalculate impact score for aggregated "Others"
-                final_columns.append(
-                    case(
-                        [
-                            (
-                                getattr(categorized.c, DIMENSION_GROUP_LABEL)
-                                != DIMENSION_OTHERS_LABEL,
-                                func.max(getattr(categorized.c, name)),
-                            )
-                        ],
-                        else_=get_impact_score_expression(
-                            func.sum(
-                                getattr(categorized.c, DIMENSION_FAILED_COUNT_KEY)
-                            ),
-                            func.sum(getattr(categorized.c, DIMENSION_TOTAL_COUNT_KEY)),
-                        ),
-                    ).label(name)
                 )
-            else:
-                # Sum all other metrics
-                final_columns.append(func.sum(getattr(categorized.c, name)).label(name))
-
-        final_query = (
-            select(final_columns)
-            .select_from(categorized)
-            .group_by(getattr(categorized.c, DIMENSION_GROUP_LABEL))
-            .order_by(text(f"{DIMENSION_IMPACT_SCORE_KEY} DESC"))
-        )
-
-        # Execute and return as list of dicts
-        results = self.runner.session.execute(final_query)
-        return [
-            {col.name: value for col, value in zip(final_query.selected_columns, row)}
-            for row in results
-        ]
-
-    def _execute_with_others_aggregation_statistical(
-        self,
-        dimension_col: Column,
-        metric_expressions: Dict[str, ClauseElement],
-        failed_count_builder: FailedCountBuilderSQA,
-        final_metric_builders: Optional[Dict[str, Any]] = None,
-        exclude_from_results: Optional[List[str]] = None,
-        top_dimensions_count: int = DEFAULT_TOP_DIMENSIONS,
-    ) -> List[Dict[str, Any]]:
-        """Execute dimensional query for statistical validators with flexible aggregation
-
-        This specialized method supports both row-by-row and statistical validators by
-        allowing custom aggregation strategies for metrics in the final SELECT.
-
-        Key features:
-        1. Impact score computed in separate CTE after raw aggregates
-        2. Failed count determined via custom builder function
-        3. Final aggregation: default to SUM, override for non-summable metrics
-        4. "Others" uses recomputed/weighted values where specified
-
-        TODO: Once proven stable, consider merging with _execute_with_others_aggregation
-        to provide unified interface for all validators.
-
-        Args:
-            dimension_col: The column to group by
-            metric_expressions: Dict of SQLAlchemy expressions for CTE1 raw aggregates.
-                Keys become CTE column names (use constants!).
-                Must include DIMENSION_TOTAL_COUNT_KEY.
-            failed_count_expr_builder: Callable(cte1) -> ClauseElement that returns
-                expression for failed_count. References CTE1 columns via
-                getattr(cte1.c, KEY_CONSTANT).
-            final_metric_builders: Optional dict of custom aggregation builders for
-                specific metrics. If not provided, metrics default to func.sum().
-                Format: {metric_name: Callable(categorized_cte) -> ClauseElement}
-            exclude_from_results: Optional list of metric names to exclude from final SELECT.
-                Useful for intermediate metrics (e.g., sum_value used only for calculations).
-            top_dimensions_count: Number of top dimensions before Others aggregation
-
-        Returns:
-            List of dicts with dimension results ordered by impact score
-
-        Example - Statistical validator (Mean):
-            metric_expressions = {
-                DIMENSION_SUM_VALUE_KEY: func.sum(column),
-                DIMENSION_TOTAL_COUNT_KEY: func.count(),
-                "mean": func.avg(column),
-            }
-
-            def build_failed_count(cte1):
-                mean_col = getattr(cte1.c, "mean")
-                count_col = getattr(cte1.c, DIMENSION_TOTAL_COUNT_KEY)
-                return func.case(
-                    ((mean_col < min_bound) | (mean_col > max_bound), count_col),
-                    else_=func.literal(0)
+            case DataQualityQueryType.OTHERS:
+                final_metrics_columns.append(
+                    literal(DIMENSION_OTHERS_LABEL).label(DIMENSION_VALUE_KEY)
                 )
 
-            def build_mean_final(cte):
-                return func.case(
-                    [(getattr(cte.c, DIMENSION_GROUP_LABEL) != DIMENSION_OTHERS_LABEL,
-                      func.max(getattr(cte.c, "mean")))],
-                    else_=(func.sum(getattr(cte.c, DIMENSION_SUM_VALUE_KEY)) /
-                           func.sum(getattr(cte.c, DIMENSION_TOTAL_COUNT_KEY)))
+        for metric_name in metric_expressions.keys():
+            if metric_name != DIMENSION_FAILED_COUNT_KEY:
+                final_metrics_columns.append(
+                    getattr(basic_metrics_cte.c, metric_name).label(metric_name)
                 )
 
-            results = self._execute_with_others_aggregation_statistical(
-                dimension_col,
-                metric_expressions,
-                build_failed_count,
-                final_metric_builders={"mean": build_mean_final},
-                exclude_from_results=[DIMENSION_SUM_VALUE_KEY],  # Don't output sum_value
-            )
-
-        Example - Row-by-row validator (defaults to SUM):
-            metric_expressions = {
-                DIMENSION_TOTAL_COUNT_KEY: func.count(),
-                "count_in_set": Metrics.COUNT_IN_SET(...).fn(),
-            }
-            # No final_metric_builders needed - everything gets summed
-        """
-        if DIMENSION_TOTAL_COUNT_KEY not in metric_expressions:
-            raise ValueError(
-                f"metric_expressions must contain '{DIMENSION_TOTAL_COUNT_KEY}'"
-            )
-
-        final_metric_builders = final_metric_builders or {}
-        exclude_from_results = exclude_from_results or []
-
-        # ---- CTE 1: Raw aggregates per dimension
-        raw_agg_columns = [dimension_col.label(DIMENSION_VALUE_KEY)]
-        for name, expr in metric_expressions.items():
-            raw_agg_columns.append(expr.label(name))
-
-        raw_aggregates = (
-            select(raw_agg_columns)
-            .select_from(self.runner.dataset)
-            .group_by(dimension_col)
-            .cte(CTE_DIMENSION_RAW_METRICS)
+        total_count_col = getattr(basic_metrics_cte.c, DIMENSION_TOTAL_COUNT_KEY)
+        failed_count_expr = (
+            failed_count_builder(basic_metrics_cte, total_count_col)
+            if failed_count_builder
+            else getattr(basic_metrics_cte.c, DIMENSION_FAILED_COUNT_KEY)
         )
-
-        # ---- CTE 2: Add failed_count and impact_score
-        total_count_col = getattr(raw_aggregates.c, DIMENSION_TOTAL_COUNT_KEY)
-        failed_count_expr = failed_count_builder(raw_aggregates)
 
         impact_score_expr = get_impact_score_expression(
             failed_count_expr, total_count_col
         )
 
-        stats_with_impact_columns = [col for col in raw_aggregates.c]
-        stats_with_impact_columns.append(
+        final_metrics_columns.append(
             failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY)
         )
-        stats_with_impact_columns.append(
+        final_metrics_columns.append(
             impact_score_expr.label(DIMENSION_IMPACT_SCORE_KEY)
         )
 
-        stats_with_impact = (
-            select(
-                *[col for col in raw_aggregates.c],
-                failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY),
-                impact_score_expr.label(DIMENSION_IMPACT_SCORE_KEY),
-            )
-            .select_from(raw_aggregates)
-            .cte(CTE_DIMENSION_WITH_IMPACT)
+        final_metrics_cte = select(final_metrics_columns).cte("final_metrics")
+
+        final_query = select([final_metrics_cte])
+
+        if query_type == DataQualityQueryType.DIMENSIONAL:
+            final_query = final_query.order_by(
+                getattr(final_metrics_cte.c, DIMENSION_IMPACT_SCORE_KEY).desc(),
+                getattr(final_metrics_cte.c, DIMENSION_VALUE_KEY).asc(),
+            ).limit(DEFAULT_TOP_DIMENSIONS + 1)
+
+        return final_query
+
+    def _run_dimensional_validation_query(
+        self: HasValidatorContext,
+        source: FromClause,
+        dimension_expr: ColumnElement,
+        metric_expressions: Dict[str, ClauseElement],
+        failed_count_builder: Optional[Callable] = None,
+        others_source_builder: Optional[Callable[[List[str]], FromClause]] = None,
+        others_metric_expressions_builder: Optional[
+            Callable[[FromClause], Dict[str, ClauseElement]]
+        ] = None,
+    ) -> List[Dict[str, Any]]:
+        """Execute two-pass dimensional validation with metrics.
+
+        Pass 1: Get top N+1 dimensions with full metrics
+        Pass 2: If N+1 exists, compute "Others" by rerunning aggregation with optional customization
+
+        This pattern works for all validator types:
+        - Simple validators: source = runner.dataset
+        - Statistical validators: source = runner.dataset
+        - Median validator: source = normalized_dimension_cte, custom Others metrics (no add_props)
+        - Unique validator: source = value_counts_cte, custom Others source + metrics (re-grouped)
+
+        Args:
+            source: CTE or table to aggregate from for DIMENSIONAL query
+            dimension_expr: Normalized dimension expression
+            metric_expressions: Dict of {metric_name: SQLAlchemy expression} for DIMENSIONAL query
+            others_source_builder: Optional callable(top_values) -> FromClause for custom Others source
+                                   When provided, source is pre-filtered and no additional filter applied
+            others_metric_expressions_builder: Optional callable(others_source) -> Dict for custom Others metrics
+                                               Useful when metrics need different expressions for Others aggregation
+
+        Returns:
+            List[Dict]: Top N dimensions + "Others" (if exists), ordered by impact score
+        """
+        top_n_plus_one_query = SQAValidatorMixin._get_metrics_query(
+            source=source,
+            dimension_expr=dimension_expr,
+            metric_expressions=metric_expressions,
+            query_type=DataQualityQueryType.DIMENSIONAL,
+            failed_count_builder=failed_count_builder,
         )
 
-        # CTE 3: Top N dimensions by impact score
-        top_dimensions = (
-            select([getattr(stats_with_impact.c, DIMENSION_VALUE_KEY)])
-            .order_by(getattr(stats_with_impact.c, DIMENSION_IMPACT_SCORE_KEY).desc())
-            .limit(top_dimensions_count)
-            .cte(CTE_TOP_DIMENSIONS)
-        )
+        top_n_plus_one_results = self.runner.session.execute(
+            top_n_plus_one_query
+        ).fetchall()
 
-        # CTE 4: Categorize as top N or "Others"
-        is_dimension_top_n = getattr(stats_with_impact.c, DIMENSION_VALUE_KEY).in_(
-            select([getattr(top_dimensions.c, DIMENSION_VALUE_KEY)])
-        )
-
-        categorized_columns = [
-            case(
-                (is_dimension_top_n, getattr(stats_with_impact.c, DIMENSION_VALUE_KEY)),
-                else_=DIMENSION_OTHERS_LABEL,
-            ).label(DIMENSION_GROUP_LABEL)
+        result_dicts = [
+            dict(row._mapping)
+            for row in top_n_plus_one_results[:DEFAULT_TOP_DIMENSIONS]
         ]
 
-        for col in stats_with_impact.c:
-            if col.name != DIMENSION_VALUE_KEY:
-                categorized_columns.append(col)
+        if len(top_n_plus_one_results) > DEFAULT_TOP_DIMENSIONS:
+            top_n_values = [row[DIMENSION_VALUE_KEY] for row in result_dicts]
 
-        categorized = (
-            select(categorized_columns)
-            .select_from(stats_with_impact)
-            .cte(CTE_CATEGORIZED)
-        )
+            # Build custom source and metrics if builders provided
+            if others_source_builder:
+                others_source_cte = others_source_builder(top_n_values)
+                # Custom source should already be pre-filtered
+                others_filter = None
+            else:
+                others_source_cte = source
+                others_filter = dimension_expr.notin_(top_n_values)
 
-        # CTE 5: Aggregate Metrics for 'Others'
-        final_columns = [
-            getattr(categorized.c, DIMENSION_GROUP_LABEL).label(DIMENSION_VALUE_KEY),
-            func.max(getattr(categorized.c, DIMENSION_IMPACT_SCORE_KEY)).label(
-                DIMENSION_IMPACT_SCORE_KEY
-            ),
-        ]
+            if others_metric_expressions_builder:
+                others_metrics = others_metric_expressions_builder(others_source_cte)
+            else:
+                others_metrics = metric_expressions
 
-        def build_final_metric(metric_name: str) -> ColumnElement:
-            if metric_name in final_metric_builders:
-                return final_metric_builders[metric_name](categorized)
-            return func.sum(getattr(categorized.c, metric_name))
-
-        for metric_name in metric_expressions.keys():
-            final_columns.append(build_final_metric(metric_name).label(metric_name))
-
-        final_failed_count = func.sum(
-            getattr(categorized.c, DIMENSION_FAILED_COUNT_KEY)
-        ).label(DIMENSION_FAILED_COUNT_KEY)
-        final_columns.append(final_failed_count)
-
-        final_cte = (
-            select(final_columns)
-            .select_from(categorized)
-            .group_by(getattr(categorized.c, DIMENSION_GROUP_LABEL))
-            .cte(CTE_FINAL_METRICS)
-        )
-
-        # --- Results Query
-        result_columns = []
-        for col in final_cte.c:
-            if (
-                col.name not in (DIMENSION_FAILED_COUNT_KEY, DIMENSION_IMPACT_SCORE_KEY)
-                and col.name not in exclude_from_results
-            ):
-                result_columns.append(col)
-
-        failed_count_expr = failed_count_builder(final_cte)
-
-        result_failed_count = case(
-            (
-                getattr(final_cte.c, DIMENSION_VALUE_KEY) != DIMENSION_OTHERS_LABEL,
-                getattr(final_cte.c, DIMENSION_FAILED_COUNT_KEY),
-            ),
-            else_=failed_count_expr,
-        ).label(DIMENSION_FAILED_COUNT_KEY)
-        result_columns.append(result_failed_count)
-
-        # Impact score: preserve for top N, recompute for "Others" automatically
-        result_impact = case(
-            (
-                getattr(final_cte.c, DIMENSION_VALUE_KEY) != DIMENSION_OTHERS_LABEL,
-                getattr(final_cte.c, DIMENSION_IMPACT_SCORE_KEY),
-            ),
-            else_=get_impact_score_expression(
-                failed_count_expr,
-                getattr(final_cte.c, DIMENSION_TOTAL_COUNT_KEY),
-            ),
-        ).label(DIMENSION_IMPACT_SCORE_KEY)
-        result_columns.append(result_impact)
-
-        results_query = (
-            select(result_columns)
-            .select_from(final_cte)
-            .order_by(
-                result_impact.desc(), getattr(final_cte.c, DIMENSION_VALUE_KEY).asc()
+            others_query = SQAValidatorMixin._get_metrics_query(
+                source=others_source_cte,
+                dimension_expr=dimension_expr,  # Only used for grouping, not SELECT
+                metric_expressions=others_metrics,
+                query_type=DataQualityQueryType.OTHERS,
+                failed_count_builder=failed_count_builder,
+                filter_clause=others_filter,
             )
-        )
 
-        # Execute and return
-        results = self.runner.session.execute(results_query)
-        return results.mappings().all()
+            others_result = self.runner.session.execute(others_query).fetchone()
+
+            if others_result:
+                result_dicts.append(dict(others_result._mapping))
+
+        return result_dicts

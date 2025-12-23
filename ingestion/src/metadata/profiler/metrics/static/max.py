@@ -111,7 +111,7 @@ class Max(StaticMetric):
                 accumulator = computation.update_accumulator(accumulator, df)
             except Exception as err:
                 logger.debug(
-                    f"Error while computing min for column {self.col.name}: {err}"
+                    f"Error while computing max for column {self.col.name}: {err}"
                 )
                 return None
         return computation.aggregate_accumulator(accumulator)

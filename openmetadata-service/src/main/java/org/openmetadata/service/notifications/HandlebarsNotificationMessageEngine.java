@@ -23,8 +23,10 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.notifications.channels.ChannelRenderer;
 import org.openmetadata.service.notifications.channels.NotificationMessage;
@@ -71,6 +73,16 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
 
     // Resolve the template for this event
     NotificationTemplate template = resolveTemplate(event, subscription);
+
+    return generateMessageWithTemplate(event, subscription, destination, template);
+  }
+
+  @Override
+  public NotificationMessage generateMessageWithTemplate(
+      ChangeEvent event,
+      EventSubscription subscription,
+      SubscriptionDestination destination,
+      NotificationTemplate template) {
 
     // Create deep copy of event to avoid modifying the original
     ChangeEvent eventCopy = JsonUtils.deepCopy(event, ChangeEvent.class);
@@ -124,17 +136,35 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
   }
 
   private NotificationTemplate resolveTemplate(ChangeEvent event, EventSubscription subscription) {
-    // TODO: Custom template from EventSubscription
-    // if (subscription.getNotificationTemplate() != null) {
-    //   return subscription.getNotificationTemplate();
-    // }
+    // 1. Check if subscription has custom template assigned
+    EntityReference templateRef = subscription.getNotificationTemplate();
+    if (templateRef != null) {
+      try {
+        NotificationTemplate customTemplate =
+            Entity.getEntity(Entity.NOTIFICATION_TEMPLATE, templateRef.getId(), "", Include.ALL);
+        if (customTemplate != null) {
+          LOG.debug(
+              "Using custom template {} for subscription {}",
+              customTemplate.getName(),
+              subscription.getName());
+          return customTemplate;
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to load custom template {} for subscription {}, falling back to system template: {}",
+            templateRef.getId(),
+            subscription.getName(),
+            e.getMessage());
+      }
+    }
 
+    // 2. Fall back to system template resolution (existing logic)
     // Convert EventType to kebab-case for template naming
     // This handles multi-part camelCase: logicalTestCaseAdded -> logical-test-case-added
     String eventTypeKebab =
         event.getEventType().value().replaceAll("([a-z])([A-Z]+)", "$1-$2").toLowerCase();
 
-    // 1. Try entity-specific template: system-notification-{entityType}-{eventType}
+    // Try entity-specific template: system-notification-{entityType}-{eventType}
     String entitySpecificTemplateName =
         String.format(
             "system-notification-%s-%s", event.getEntityType().toLowerCase(), eventTypeKebab);
@@ -144,7 +174,7 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
       return entitySpecificTemplate;
     }
 
-    // 2. Try generic event template: system-notification-{eventType}
+    // Try generic event template: system-notification-{eventType}
     String genericTemplateName = String.format("system-notification-%s", eventTypeKebab);
     NotificationTemplate genericTemplate =
         templateRepository.findByNameOrNull(genericTemplateName, Include.ALL);
@@ -152,7 +182,7 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
       return genericTemplate;
     }
 
-    // 3. Guaranteed fallback to default template
+    // Guaranteed fallback to default template
     NotificationTemplate defaultTemplate =
         templateRepository.findByNameOrNull("system-notification-entity-default", Include.ALL);
 

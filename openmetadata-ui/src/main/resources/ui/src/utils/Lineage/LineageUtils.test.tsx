@@ -11,11 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  EImpactLevel,
-  LineageNodeData,
-} from '../../components/LineageTable/LineageTable.interface';
-import { EntityType } from '../../enums/entity.enum';
+import { NodeData } from '../../components/Lineage/Lineage.interface';
+import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { TagSource } from '../../generated/type/tagLabel';
 import {
@@ -28,13 +25,13 @@ import {
 } from './LineageUtils';
 
 describe('LineageUtils', () => {
-  const mockNodes = {
+  const mockNodes: Record<string, NodeData> = {
     'test.table1': {
       entity: {
         id: 'entity1',
         fullyQualifiedName: 'test.table1',
         name: 'table1',
-        entityType: EntityType.TABLE,
+        type: 'table',
         owners: [
           {
             id: 'owner1',
@@ -72,21 +69,29 @@ describe('LineageUtils', () => {
         description: 'Test table description',
       },
       nodeDepth: 1,
+      paging: {
+        entityDownstreamCount: 0,
+        entityUpstreamCount: 0,
+      },
     },
     'test.table2': {
       entity: {
         id: 'entity2',
         fullyQualifiedName: 'test.table2',
         name: 'table2',
-        entityType: EntityType.TABLE,
+        type: 'table',
         owners: [],
         tags: [],
         domains: [],
         description: 'Another test table',
       },
       nodeDepth: 2,
+      paging: {
+        entityDownstreamCount: 0,
+        entityUpstreamCount: 0,
+      },
     },
-  } as Record<string, LineageNodeData>;
+  };
 
   const mockEdges = [
     {
@@ -105,7 +110,7 @@ describe('LineageUtils', () => {
       columns: [
         {
           fromColumns: ['customer_id', 'customer_name'],
-          toColumn: 'customer_id',
+          toColumn: 'customer_id1',
         },
         {
           fromColumns: ['order_date'],
@@ -193,20 +198,30 @@ describe('LineageUtils', () => {
         LineageDirection.Downstream
       );
 
-      expect(result).toHaveLength(3); // 2 columns from first edge, 1 from second
+      // Only 3 nodes from first edge (2+1 fromColumns), second edge skipped due to missing entity
+      expect(result).toHaveLength(3);
 
-      // Check first column node
+      // Check first column node - should be flattened to single fromColumn
       const firstNode = result[0];
 
       expect(firstNode.fromEntity).toEqual(mockEdges[0].fromEntity);
       expect(firstNode.toEntity).toEqual(mockEdges[0].toEntity);
-      expect(firstNode.column).toEqual(mockEdges[0].columns[0]);
+      expect(firstNode.column?.toColumn).toBe('customer_id1');
+      expect(firstNode.column?.fromColumns).toEqual(['customer_id']); // Flattened to single item
+      expect(firstNode.docId).toBe('customer_id->customer_id1');
       expect(firstNode.nodeDepth).toBe(2); // nodeDepth from toEntity (test.table2)
       expect(firstNode.owners).toEqual([]);
       expect(firstNode.description).toBe('Another test table');
 
       // Verify columns property is omitted
       expect(firstNode).not.toHaveProperty('columns');
+
+      // Check second column node - second fromColumn from same column mapping
+      const secondNode = result[1];
+
+      expect(secondNode.column.toColumn).toBe('customer_id1');
+      expect(secondNode.column.fromColumns).toEqual(['customer_name']); // Second flattened fromColumn
+      expect(secondNode.docId).toBe('customer_name->customer_id1');
     });
 
     it('should prepare column nodes for upstream direction', () => {
@@ -216,14 +231,17 @@ describe('LineageUtils', () => {
         LineageDirection.Upstream
       );
 
-      expect(result).toHaveLength(3);
+      // Only 3 nodes from first edge, second edge skipped (fromEntity is table2 which exists, but it's edge 2)
+      expect(result).toHaveLength(4);
 
-      // Check first column node for upstream
+      // Check first column node for upstream - should be flattened
       const firstNode = result[0];
 
       expect(firstNode.fromEntity).toEqual(mockEdges[0].fromEntity);
       expect(firstNode.toEntity).toEqual(mockEdges[0].toEntity);
-      expect(firstNode.column).toEqual(mockEdges[0].columns[0]);
+      expect(firstNode.column.toColumn).toBe('customer_id1');
+      expect(firstNode.column.fromColumns).toEqual(['customer_id']); // Flattened
+      expect(firstNode.docId).toBe('customer_id->customer_id1');
       expect(firstNode.nodeDepth).toBe(1); // nodeDepth from fromEntity (test.table1)
       expect(firstNode.owners).toEqual(mockNodes['test.table1'].entity.owners);
       expect(firstNode.tier).toEqual(mockNodes['test.table1'].entity.tier);
@@ -232,6 +250,13 @@ describe('LineageUtils', () => {
         mockNodes['test.table1'].entity.domains
       );
       expect(firstNode.description).toBe('Test table description');
+
+      // Fourth node should be from second edge (fromEntity is test.table2, which exists)
+      const fourthNode = result[3];
+
+      expect(fourthNode.fromEntity).toEqual(mockEdges[1].fromEntity);
+      expect(fourthNode.column?.fromColumns).toEqual(['status']);
+      expect(fourthNode.nodeDepth).toBe(2); // nodeDepth from test.table2
     });
 
     it('should handle edges without columns', () => {
@@ -268,7 +293,7 @@ describe('LineageUtils', () => {
       expect(result).toHaveLength(0);
     });
 
-    it('should handle missing entity data in nodes', () => {
+    it('should skip nodes when entity data is missing', () => {
       const edgesWithMissingEntity = [
         {
           fromEntity: {
@@ -298,10 +323,8 @@ describe('LineageUtils', () => {
         LineageDirection.Downstream
       );
 
-      expect(result).toHaveLength(1);
-      expect(result[0].nodeDepth).toBe(0); // Default value when entity not found
-      expect(result[0].owners).toBeUndefined();
-      expect(result[0].tier).toBeUndefined();
+      // Should skip the node entirely when entityData is missing
+      expect(result).toHaveLength(0);
     });
 
     it('should preserve lineage details and other edge properties', () => {
@@ -313,7 +336,8 @@ describe('LineageUtils', () => {
 
       const firstNode = result[0];
 
-      expect(firstNode.docId).toEqual(mockEdges[0].docId);
+      // docId is now generated from fromColumn->toColumn, not from the original edge docId
+      expect(firstNode.docId).toBe('customer_id->customer_id1');
       expect(firstNode.fromEntity).toEqual(mockEdges[0].fromEntity);
       expect(firstNode.toEntity).toEqual(mockEdges[0].toEntity);
     });
@@ -326,6 +350,7 @@ describe('LineageUtils', () => {
         mockNodes
       );
 
+      // Only 3 nodes from first edge, second edge skipped due to missing entity
       expect(result).toHaveLength(3);
 
       // Verify it's using downstream direction (toEntity data)
@@ -343,7 +368,7 @@ describe('LineageUtils', () => {
         mockNodes
       );
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4); // 3 fromColumns from first edge, 1 from second
 
       // Verify it's using upstream direction (fromEntity data)
       const firstNode = result[0];
@@ -495,22 +520,18 @@ describe('LineageUtils', () => {
       expect(result).toEqual([]);
     });
 
-    it('should handle null or undefined nodes gracefully', () => {
+    it('should skip nodes when nodes map is empty', () => {
       const result = prepareColumnLevelNodesFromEdges(
         mockEdges,
         {},
         LineageDirection.Downstream
       );
 
-      expect(result).toHaveLength(3);
-
-      result.forEach((node) => {
-        expect(node.nodeDepth).toBe(0);
-        expect(node.owners).toBeUndefined();
-      });
+      // Should skip all nodes when entity data is not found
+      expect(result).toHaveLength(0);
     });
 
-    it('should handle edges with missing entity references', () => {
+    it('should skip edges with missing entity references', () => {
       const edgesWithMissingEntityRefs = [
         {
           fromEntity: {
@@ -540,8 +561,8 @@ describe('LineageUtils', () => {
         LineageDirection.Downstream
       );
 
-      expect(result).toHaveLength(1);
-      expect(result[0].nodeDepth).toBe(0);
+      // Should skip nodes when FQN is missing or empty
+      expect(result).toHaveLength(0);
     });
   });
 
@@ -579,9 +600,126 @@ describe('LineageUtils', () => {
 
       expect(firstNode.fromEntity).toEqual(mockEdges[0].fromEntity);
       expect(firstNode.toEntity).toEqual(mockEdges[0].toEntity);
-      expect(firstNode.docId).toEqual(mockEdges[0].docId);
+      expect(firstNode.docId).toBe('customer_id->customer_id1'); // Custom docId based on fromColumn and toColumn
       expect(firstNode).not.toHaveProperty('columns');
-      expect(firstNode.column).toEqual(mockEdges[0].columns[0]);
+      expect(firstNode.column?.toColumn).toBe('customer_id1');
+      expect(firstNode.column?.fromColumns).toEqual(['customer_id']); // Flattened
+    });
+  });
+
+  describe('Flattening fromColumns', () => {
+    it('should create separate nodes for each fromColumn', () => {
+      const edgeWithMultipleFromColumns = [
+        {
+          fromEntity: {
+            id: 'entity1',
+            fullyQualifiedName: 'test.table1',
+            name: 'table1',
+            type: 'table',
+          },
+          toEntity: {
+            id: 'entity2',
+            fullyQualifiedName: 'test.table2',
+            name: 'table2',
+            type: 'table',
+          },
+          columns: [
+            {
+              fromColumns: ['col1', 'col2', 'col3'],
+              toColumn: 'result',
+            },
+          ],
+        },
+      ];
+
+      const result = prepareColumnLevelNodesFromEdges(
+        edgeWithMultipleFromColumns,
+        mockNodes,
+        LineageDirection.Downstream
+      );
+
+      // Should create 3 separate nodes, one for each fromColumn
+      expect(result).toHaveLength(3);
+
+      expect(result[0].column?.fromColumns).toEqual(['col1']);
+      expect(result[0].column?.toColumn).toBe('result');
+      expect(result[0].docId).toBe('col1->result');
+
+      expect(result[1].column?.fromColumns).toEqual(['col2']);
+      expect(result[1].column?.toColumn).toBe('result');
+      expect(result[1].docId).toBe('col2->result');
+
+      expect(result[2].column?.fromColumns).toEqual(['col3']);
+      expect(result[2].column?.toColumn).toBe('result');
+      expect(result[2].docId).toBe('col3->result');
+    });
+
+    it('should handle empty fromColumns array', () => {
+      const edgeWithEmptyFromColumns = [
+        {
+          fromEntity: {
+            id: 'entity1',
+            fullyQualifiedName: 'test.table1',
+            name: 'table1',
+            type: 'table',
+          },
+          toEntity: {
+            id: 'entity2',
+            fullyQualifiedName: 'test.table2',
+            name: 'table2',
+            type: 'table',
+          },
+          columns: [
+            {
+              fromColumns: [],
+              toColumn: 'result',
+            },
+          ],
+        },
+      ];
+
+      const result = prepareColumnLevelNodesFromEdges(
+        edgeWithEmptyFromColumns,
+        mockNodes,
+        LineageDirection.Downstream
+      );
+
+      // Should not create any nodes when fromColumns is empty
+      expect(result).toHaveLength(0);
+    });
+
+    it('should handle undefined fromColumns', () => {
+      const edgeWithUndefinedFromColumns = [
+        {
+          fromEntity: {
+            id: 'entity1',
+            fullyQualifiedName: 'test.table1',
+            name: 'table1',
+            type: 'table',
+          },
+          toEntity: {
+            id: 'entity2',
+            fullyQualifiedName: 'test.table2',
+            name: 'table2',
+            type: 'table',
+          },
+          columns: [
+            {
+              fromColumns: undefined,
+              toColumn: 'result',
+            },
+          ],
+        },
+      ];
+
+      const result = prepareColumnLevelNodesFromEdges(
+        edgeWithUndefinedFromColumns,
+        mockNodes,
+        LineageDirection.Downstream
+      );
+
+      // Should not create any nodes when fromColumns is undefined
+      expect(result).toHaveLength(0);
     });
   });
 });

@@ -8,9 +8,11 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -21,6 +23,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBIDashboard,
     PowerBiTable,
     PowerBITableSource,
+    ReportPage,
     UpstreaDataflow,
 )
 from metadata.utils import fqn
@@ -350,7 +353,8 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_NATIVE_INVALID_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL
         )
-        self.assertIsNone(result)
+        # sqlglot parses this sql and returns empty source list vs sqlfluff raising the error, hence adjusting test
+        self.assertEqual(result, [])
 
         result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_NATIVE_INVALID_EXP, MOCK_DASHBOARD_DATA_MODEL
@@ -671,3 +675,155 @@ class PowerBIUnitTest(TestCase):
 
             # Should return None when exception occurs
             self.assertIsNone(result)
+
+    @pytest.mark.order(12)
+    def test_create_dataset_upstream_dataset_column_lineage(self):
+        """
+        Test column lineage creation between dataset and upstream dataset
+        """
+        upstream_entity = DashboardDataModel(
+            name="upstream_dataset",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataModel.value,
+            columns=[
+                Column(
+                    name="orders",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="order_id",
+                            dataType=DataType.INT,
+                            fullyQualifiedName="service.upstream_dataset.orders.order_id",
+                        ),
+                        Column(
+                            name="amount",
+                            dataType=DataType.FLOAT,
+                            fullyQualifiedName="service.upstream_dataset.orders.amount",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        downstream_entity = DashboardDataModel(
+            name="downstream_dataset",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDataModel.value,
+            columns=[
+                Column(
+                    name="orders",
+                    dataType=DataType.STRUCT,
+                    children=[
+                        Column(
+                            name="order_id",
+                            dataType=DataType.INT,
+                            fullyQualifiedName="service.downstream_dataset.orders.order_id",
+                        ),
+                        Column(
+                            name="amount",
+                            dataType=DataType.FLOAT,
+                            fullyQualifiedName="service.downstream_dataset.orders.amount",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        result = self.powerbi._create_dataset_upstream_dataset_column_lineage(
+            datamodel_entity=downstream_entity,
+            upstream_dataset_entity=upstream_entity,
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(len(result), 2)
+        self.assertIsInstance(result[0], ColumnLineage)
+        self.assertEqual(
+            result[0].fromColumns[0].root, "service.upstream_dataset.orders.order_id"
+        )
+        self.assertEqual(
+            result[0].toColumn.root, "service.downstream_dataset.orders.order_id"
+        )
+
+    @pytest.mark.order(13)
+    def test_get_report_url(self):
+        """
+        Test report URL generation with different page scenarios
+        """
+        from unittest.mock import MagicMock
+
+        workspace_id = "test-workspace-123"
+        dashboard_id = "test-dashboard-456"
+
+        # Create a mock client with api_client
+        mock_api_client = MagicMock()
+        self.powerbi.client = MagicMock()
+        self.powerbi.client.api_client = mock_api_client
+
+        # Test with multiple pages - should use first page name
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
+        ) as mock_clean_uri:
+            mock_clean_uri.return_value = "https://app.powerbi.com"
+            mock_api_client.fetch_report_pages.return_value = [
+                ReportPage(name="page1", displayName="Page 1"),
+                ReportPage(name="page2", displayName="Page 2"),
+                ReportPage(name="page3", displayName="Page 3"),
+            ]
+
+            result = self.powerbi._get_report_url(workspace_id, dashboard_id)
+
+            mock_api_client.fetch_report_pages.assert_called_once_with(
+                workspace_id, dashboard_id
+            )
+            self.assertEqual(
+                result,
+                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}/page1?experience=power-bi",
+            )
+
+        # Test with single page - should use that page name
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
+        ) as mock_clean_uri:
+            mock_clean_uri.return_value = "https://app.powerbi.com"
+            mock_api_client.fetch_report_pages.reset_mock()
+            mock_api_client.fetch_report_pages.return_value = [
+                ReportPage(name="single-page", displayName="Single Page")
+            ]
+
+            result = self.powerbi._get_report_url(workspace_id, dashboard_id)
+
+            self.assertEqual(
+                result,
+                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}/single-page?experience=power-bi",
+            )
+
+        # Test with no pages - should not add page_id
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
+        ) as mock_clean_uri:
+            mock_clean_uri.return_value = "https://app.powerbi.com"
+            mock_api_client.fetch_report_pages.reset_mock()
+            mock_api_client.fetch_report_pages.return_value = []
+
+            result = self.powerbi._get_report_url(workspace_id, dashboard_id)
+
+            self.assertEqual(
+                result,
+                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}?experience=power-bi",
+            )
+
+        # Test with exception during fetch_report_pages - should handle gracefully
+        with patch(
+            "metadata.ingestion.source.dashboard.powerbi.metadata.clean_uri"
+        ) as mock_clean_uri:
+            mock_clean_uri.return_value = "https://app.powerbi.com"
+            mock_api_client.fetch_report_pages.reset_mock()
+            mock_api_client.fetch_report_pages.side_effect = Exception("API Error")
+
+            result = self.powerbi._get_report_url(workspace_id, dashboard_id)
+
+            # Should build URL without page_id when exception occurs
+            self.assertEqual(
+                result,
+                f"https://app.powerbi.com/groups/{workspace_id}/reports/{dashboard_id}?experience=power-bi",
+            )

@@ -11,122 +11,29 @@
  *  limitations under the License.
  */
 @import (reference) '../../../styles/variables.less';
-.edit-icon {
-  cursor: pointer;
-  height: 20px;
-
-  // Button reset styles for accessibility
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  text-align: inherit;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
 .description-section {
   margin-top: 12px;
   padding-left: 14px;
   padding-right: 14px;
   border-bottom: 0.6px solid @grey-15;
   padding-bottom: 16px;
+  .block-editor-wrapper .tiptap.ProseMirror {
+    font-size: 12px;
+    font-weight: 400;
+  }
   .description-header {
     display: flex;
-    gap: 4px;
-    margin-bottom: 10px;
+    gap: 8px;
+    margin-bottom: 12px;
 
     .description-title {
       font-weight: 600;
       font-size: 13px;
       color: @grey-900;
     }
-
-    .edit-button {
-      color: #1890ff;
-      font-size: 12px;
-      padding: 0;
-      height: auto;
-      border: none;
-      background: none;
-
-      &:hover {
-        color: #40a9ff;
-        background: none;
-      }
-    }
   }
-  .edit-actions {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-  }
+
   .description-content {
-    .inline-edit-container {
-      .description-textarea {
-        width: 100%;
-        min-height: 80px;
-        padding: 8px 12px;
-        border: 1px solid #d9d9d9;
-        border-radius: 6px;
-        font-size: 12px;
-        line-height: 1.4;
-        color: #242932;
-        background-color: #fff;
-        resize: vertical;
-        transition: border-color 0.2s ease;
-
-        &:focus {
-          outline: none;
-          border-color: #1890ff;
-          box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-        }
-
-        &::placeholder {
-          color: #bfbfbf;
-        }
-      }
-
-      .edit-actions {
-        display: flex;
-        gap: 16px;
-        margin-top: 8px;
-
-        .cancel-button {
-          color: #8c8c8c;
-          border: none;
-          background: none;
-          padding: 4px 8px;
-          height: auto;
-          font-size: 14px;
-
-          &:hover {
-            color: #595959;
-            background: #f5f5f5;
-          }
-        }
-
-        .save-button {
-          background-color: #1890ff;
-          border-color: #1890ff;
-          color: #fff;
-          padding: 4px 16px;
-          height: auto;
-          font-size: 14px;
-          border-radius: 4px;
-
-          &:hover {
-            background-color: #40a9ff;
-            border-color: #40a9ff;
-          }
-        }
-      }
-    }
-
     .description-display {
       .description-text {
         &.expanded {
@@ -163,20 +70,20 @@
         transition: color 0.2s ease;
 
         &:hover {
-          color: #40a9ff;
+          color: @primary-6;
           text-decoration: underline;
         }
 
         &:focus {
           outline: none;
-          color: #40a9ff;
+          color: @primary-6;
         }
       }
     }
 
     .no-data-placeholder {
-      color: @grey-700;
-      font-size: 13px;
+      color: @grey-500;
+      font-size: 12px;
     }
   }
 }

@@ -11,12 +11,8 @@
  *  limitations under the License.
  */
 
-import i18n from '../utils/i18next/LocalUtil';
+export const NO_PERMISSION_FOR_ACTION = 'message.no-permission-for-action';
 
-export const NO_PERMISSION_FOR_ACTION = i18n.t(
-  'message.no-permission-for-action'
-);
+export const NO_PERMISSION_TO_VIEW = 'message.no-permission-to-view';
 
-export const NO_PERMISSION_TO_VIEW = i18n.t('message.no-permission-to-view');
-
-export const ADMIN_ONLY_ACTION = i18n.t('message.admin-only-action');
+export const ADMIN_ONLY_ACTION = 'message.admin-only-action';

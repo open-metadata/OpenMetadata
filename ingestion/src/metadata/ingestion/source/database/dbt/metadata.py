@@ -61,6 +61,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
@@ -346,6 +347,9 @@ class DbtSource(DbtServiceSource):
                         )
                     )
             try:
+                # Deduplicate tags before building FQNs
+                dbt_tags_list = list(set(dbt_tags_list)) if dbt_tags_list else []
+
                 # Create all the tags added
                 dbt_tag_labels = [
                     fqn.build(
@@ -443,6 +447,10 @@ class DbtSource(DbtServiceSource):
                 ),
                 fetch_multiple_entities=True,
             )
+
+            if not table_entities:
+                return None
+
             logger.debug(
                 f"Found table entities from {fqn_search_string}: {len(table_entities)} entities"
             )
@@ -487,7 +495,9 @@ class DbtSource(DbtServiceSource):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get table entity from OpenMetadata: {exc}")
+            logger.warning(
+                f"Failed to get table entity '{table_fqn}' from OpenMetadata: {exc}"
+            )
 
         return None
 
@@ -863,28 +873,42 @@ class DbtSource(DbtServiceSource):
                     table_fqn=upstream_node
                 )
                 if from_entity and to_entity:
-                    yield Either(
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=Uuid(from_entity.id.root),
-                                    type="table",
-                                ),
-                                toEntity=EntityReference(
-                                    id=Uuid(to_entity.id.root),
-                                    type="table",
-                                ),
-                                lineageDetails=LineageDetails(
-                                    source=LineageSource.DbtLineage,
-                                    sqlQuery=SqlQuery(
-                                        data_model_link.datamodel.sql.root
-                                    )
-                                    if data_model_link.datamodel.sql
-                                    else None,
-                                ),
-                            )
+                    lineage_request = AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=Uuid(from_entity.id.root),
+                                type="table",
+                            ),
+                            toEntity=EntityReference(
+                                id=Uuid(to_entity.id.root),
+                                type="table",
+                            ),
+                            lineageDetails=LineageDetails(
+                                source=LineageSource.DbtLineage,
+                                sqlQuery=SqlQuery(data_model_link.datamodel.sql.root)
+                                if data_model_link.datamodel.sql
+                                else None,
+                            ),
                         )
                     )
+                    if lineage_request is not None:
+                        yield Either(
+                            right=OMetaLineageRequest(
+                                lineage_request=lineage_request,
+                                override_lineage=self.source_config.overrideLineage,
+                            )
+                        )
+                    else:
+                        yield Either(
+                            left=StackTraceError(
+                                name="DBT Lineage upstream nodes",
+                                error=(
+                                    "Error to create DBT lineage from upstream nodes ",
+                                    f"{str(data_model_link.datamodel.upstream)}",
+                                ),
+                                stackTrace=traceback.format_exc(),
+                            )
+                        )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -910,6 +934,7 @@ class DbtSource(DbtServiceSource):
                 query_fqn = fqn._build(  # pylint: disable=protected-access
                     *source_elements[-3:]
                 )
+                query_fqn = ".".join([f'"{i}"' for i in query_fqn.split(".")])
                 query = (
                     f"create table {query_fqn} as {data_model_link.datamodel.sql.root}"
                 )
@@ -927,7 +952,16 @@ class DbtSource(DbtServiceSource):
                     timeout_seconds=self.source_config.parsingTimeoutLimit,
                     lineage_source=LineageSource.DbtLineage,
                 )
-                yield from lineages or []
+                for lineage in lineages or []:
+                    if lineage.right is not None:
+                        yield Either(
+                            right=OMetaLineageRequest(
+                                lineage_request=lineage.right,
+                                override_lineage=self.source_config.overrideLineage,
+                            )
+                        )
+                    else:
+                        yield lineage
 
             except Exception as exc:  # pylint: disable=broad-except
                 yield Either(
@@ -944,6 +978,9 @@ class DbtSource(DbtServiceSource):
     def create_dbt_exposures_lineage(
         self, exposure_spec: dict
     ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Method to process dbt exposure lineage
+        """
         to_entity = exposure_spec[DbtCommonEnum.EXPOSURE]
         upstream = exposure_spec[DbtCommonEnum.UPSTREAM]
         manifest_node = exposure_spec[DbtCommonEnum.MANIFEST_NODE]
@@ -960,25 +997,41 @@ class DbtSource(DbtServiceSource):
                     entity_list=from_es_result, fetch_multiple_entities=False
                 )
                 if from_entity and to_entity:
-                    yield Either(
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=Uuid(from_entity.id.root),
-                                    type="table",
-                                ),
-                                toEntity=EntityReference(
-                                    id=Uuid(to_entity.id.root),
-                                    type=ExposureTypeMap[manifest_node.type.value][
-                                        "entity_type_name"
-                                    ],
-                                ),
-                                lineageDetails=LineageDetails(
-                                    source=LineageSource.DbtLineage
-                                ),
-                            )
+                    lineage_request = AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=Uuid(from_entity.id.root),
+                                type="table",
+                            ),
+                            toEntity=EntityReference(
+                                id=Uuid(to_entity.id.root),
+                                type=ExposureTypeMap[manifest_node.type.value][
+                                    "entity_type_name"
+                                ],
+                            ),
+                            lineageDetails=LineageDetails(
+                                source=LineageSource.DbtLineage
+                            ),
                         )
                     )
+                    if lineage_request is not None:
+                        yield Either(
+                            right=OMetaLineageRequest(
+                                lineage_request=lineage_request,
+                                override_lineage=self.source_config.overrideLineage,
+                            )
+                        )
+                    else:
+                        yield Either(
+                            left=StackTraceError(
+                                name="DBT Exposure lineage",
+                                error=(
+                                    "Error to create DBT Exposure lineage",
+                                    f"{str(exposure_spec)[:20]}...",
+                                ),
+                                stackTrace=traceback.format_exc(),
+                            )
+                        )
 
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
@@ -1015,6 +1068,23 @@ class DbtSource(DbtServiceSource):
                     )
                     or []
                 )
+
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
+                for tag_fqn in dbt_meta_info.openmetadata.tags:
+                    # Parse classification.tag format
+                    tag_parts = tag_fqn.split(fqn.FQN_SEPARATOR)
+                    if len(tag_parts) >= 2:
+                        classification_name = tag_parts[0]
+                        tag_name = fqn.FQN_SEPARATOR.join(tag_parts[1:])
+                        dbt_table_tags_list.extend(
+                            get_tag_labels(
+                                metadata=self.metadata,
+                                tags=[tag_name],
+                                classification_name=classification_name,
+                                include_tags=True,
+                            )
+                            or []
+                        )
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -1315,7 +1385,7 @@ class DbtSource(DbtServiceSource):
                         )
                     except APIError as err:
                         if err.code != 409:
-                            raise APIError(err) from err
+                            raise err
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

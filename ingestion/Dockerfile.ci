@@ -1,9 +1,10 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:2.10.5-python3.10
+FROM apache/airflow:3.1.5-python3.10
 USER root
-RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
+
 # Install Dependencies (listed in alphabetical order)
 RUN dpkg --configure -a \
     && apt-get -qq update \
@@ -74,7 +75,7 @@ COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airf
 # Required for Airflow DAGs of Sample Data
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 COPY --chown=airflow:0 ingestion/examples/airflow/test_dags /opt/airflow/dags
-COPY --chown=airflow:0 ingestion/airflow-constraints-2.10.5.txt /home/airflow/airflow-constraints-2.10.5.txt
+COPY --chown=airflow:0 ingestion/airflow-constraints-3.1.5.txt /home/airflow/airflow-constraints-3.1.5.txt
 
 USER airflow
 
@@ -86,8 +87,12 @@ ENV PIP_QUIET=1
 
 RUN pip install --upgrade pip
 
+# Install FAB provider for Airflow 3.x Flask Blueprint compatibility
+RUN pip install "apache-airflow-providers-fab>=1.0.0" --constraint "/home/airflow/airflow-constraints-3.1.5.txt" || true
+
+
 WORKDIR /home/airflow/openmetadata-airflow-apis
-RUN pip install "." --constraint "/home/airflow/airflow-constraints-2.10.5.txt"
+RUN pip install "." --constraint "/home/airflow/airflow-constraints-3.1.5.txt"
 
 WORKDIR /home/airflow/ingestion
 
@@ -103,8 +108,8 @@ RUN [ $(uname -m) = "x86_64" ] \
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
 
-# remove all airflow providers except for docker and cncf kubernetes
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common" | xargs pip uninstall -y
+# remove all airflow providers except for docker, cncf kubernetes, and standard (required in Airflow 3.x)
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 

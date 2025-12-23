@@ -11,18 +11,19 @@
 
 clusterName: ${OPENMETADATA_CLUSTER_NAME:-openmetadata}
 
+
 swagger:
   resourcePackage: org.openmetadata.service.resources
 
 assets:
   resourcePath: /assets/
-  uriPath: ${BASE_PATH:-/}
+  uriPath: /
 
 basePath: ${BASE_PATH:-/}
 
 server:
   applicationContextPath: ${BASE_PATH:-/}
-  rootPath: ${BASE_PATH:-/}api/*
+  rootPath: /api/*
   applicationConnectors:
     - type: http
       bindHost: ${SERVER_HOST:-0.0.0.0}
@@ -225,11 +226,11 @@ database:
     preparedStatementCacheSizeMiB: ${DB_PG_PREP_STMT_CACHE_SIZE_MB:-10}  # Larger cache
     reWriteBatchedInserts: ${DB_PG_REWRITE_BATCHED_INSERTS:-true}  # Critical for batch performance
     defaultRowFetchSize: ${DB_PG_DEFAULT_ROW_FETCH_SIZE:-1000}  # Fetch more rows at once
-    socketTimeout: ${DB_PG_SOCKET_TIMEOUT:-30000}
-    connectTimeout: ${DB_PG_CONNECT_TIMEOUT:-30000}
     assumeMinServerVersion: ${DB_PG_ASSUME_MIN_SERVER_VERSION:-12}  # Skip version checks
     ApplicationName: ${DB_PG_APPLICATION_NAME:-OpenMetadata}
     loginTimeout: ${DB_PG_LOGIN_TIMEOUT:-300}  # Login timeout in seconds
+    postgresqlConnectTimeout: ${DB_POSTGRESQL_CONNECT_TIMEOUT:-60}  # Connection timeout in seconds
+    postgresqlSocketTimeout: ${DB_POSTGRESQL_SOCKET_TIMEOUT:-30000}  # Socket timeout in seconds (0 = infinite)
 
     # Aurora PostgreSQL specific optimizations
     loadBalanceHosts: ${DB_PG_LOAD_BALANCE_HOSTS:-false}  # Set to true for Aurora reader endpoints
@@ -250,6 +251,8 @@ database:
     cacheServerConfiguration: ${DB_MYSQL_CACHE_SERVER_CONFIG:-true}
     tcpKeepAlive: ${DB_MYSQL_TCP_KEEP_ALIVE:-true}
     tcpNoDelay: ${DB_MYSQL_TCP_NO_DELAY:-true}
+    mysqlConnectTimeout: ${DB_MYSQL_CONNECT_TIMEOUT:-60000}  # Connection timeout in milliseconds
+    mysqlSocketTimeout: ${DB_MYSQL_SOCKET_TIMEOUT:-30000000}  # Socket timeout in milliseconds (0 = infinite)
 
 objectStorage:
   enabled: false
@@ -288,6 +291,11 @@ authenticationConfiguration:
   jwtPrincipalClaims: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS:-[email,preferred_username,sub]}
   jwtPrincipalClaimsMapping: ${AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING:-[]}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-true}
+  enableAutoRedirect: ${AUTHENTICATION_ENABLE_AUTO_REDIRECT:-false}
+  # Force secure flag on session cookies even when not using HTTPS directly.
+  # Enable this when running behind a proxy/load balancer that handles SSL termination.
+  # Default: false (secure flag only set when HTTPS is detected)
+  forceSecureSessionCookie: ${FORCE_SECURE_SESSION_COOKIE:-false}
   oidcConfiguration:
     id: ${OIDC_CLIENT_ID:-""}
     type: ${OIDC_TYPE:-""} # google, azure etc.

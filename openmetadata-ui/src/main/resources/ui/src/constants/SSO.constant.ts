@@ -126,6 +126,7 @@ export const COMMON_UI_FIELDS = {
 // Common hidden fields for all providers
 export const COMMON_HIDDEN_FIELDS = {
   responseType: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  forceSecureSessionCookie: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
 // Authorizer hidden fields
@@ -482,6 +483,7 @@ export const COMMON_FIELD_TITLES = {
       'Enter username:claim_name (e.g. username:preferred_username,email:email) and press ENTER.',
   },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
   clientType: {
     'ui:title': 'Client Type',
     'ui:widget': 'radio',
@@ -601,6 +603,12 @@ export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
   ],
 };
 
+// Common fields to always remove from authentication configuration
+export const COMMON_AUTH_FIELDS_TO_REMOVE = [
+  'responseType',
+  'forceSecureSessionCookie',
+];
+
 // Hardcoded authorizer values
 export const DEFAULT_AUTHORIZER_CLASS_NAME =
   'org.openmetadata.service.security.DefaultAuthorizer';
@@ -687,6 +695,7 @@ export interface AuthenticationConfiguration {
   jwtPrincipalClaims: string[];
   jwtPrincipalClaimsMapping: string[];
   enableSelfSignup: boolean;
+  enableAutoRedirect?: boolean;
   clientType?: ClientType;
   secret?: string;
   ldapConfiguration?: Record<string, unknown>;

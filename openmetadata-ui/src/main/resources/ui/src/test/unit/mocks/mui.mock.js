@@ -122,6 +122,10 @@ jest.mock('@mui/material', () => ({
         gray: {
           300: '#d1d1d1',
           400: '#bdbdbd',
+          700: '#616161',
+        },
+        brand: {
+          700: '#d1d1d1',
         },
       },
     },

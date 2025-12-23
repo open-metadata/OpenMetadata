@@ -34,13 +34,7 @@ jest.mock('../../../assets/svg/glossary.svg', () => ({
 const mockSelectableList = jest
   .fn()
   .mockImplementation(
-    ({
-      onUpdate,
-      onCancel,
-      selectedItems,
-      fetchOptions,
-      customTagRenderer,
-    }: SelectableListProps) => (
+    ({ onUpdate, onCancel, selectedItems }: SelectableListProps) => (
       <div data-testid="selectable-list">
         <div data-testid="selected-count">{selectedItems?.length || 0}</div>
         <button

@@ -37,7 +37,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await table1.create(apiContext);
 
-    for (let i = 0; i < 17; i++) {
+    for (let i = 0; i < 30; i++) {
       await table1.createTestCase(apiContext);
     }
 
@@ -71,6 +71,11 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.getByText('Name', { exact: true }).click();
 
     await page.getByTestId('next').click();
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     expect(await page.locator('.ant-table-row').count()).toBe(15);
   });

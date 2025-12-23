@@ -32703,6 +32703,507 @@
         "date": "2021-12-01"
       },
       "followers": []
+    },
+    {
+      "name": "fact_orders",
+      "description": "Fact table containing aggregated order data from Presto warehouse",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "order_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "bigint",
+          "description": "Unique identifier for the order",
+          "ordinalPosition": 1,
+          "tags": []
+        },
+        {
+          "name": "customer_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "bigint",
+          "description": "Reference to the customer",
+          "ordinalPosition": 2,
+          "tags": []
+        },
+        {
+          "name": "order_date",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "Date when the order was placed",
+          "ordinalPosition": 3,
+          "tags": []
+        },
+        {
+          "name": "total_amount",
+          "dataType": "DECIMAL",
+          "dataTypeDisplay": "decimal(10,2)",
+          "description": "Total order amount",
+          "ordinalPosition": 4,
+          "tags": []
+        },
+        {
+          "name": "status",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Order status",
+          "ordinalPosition": 5,
+          "tags": []
+        },
+        {
+          "name": "created_at",
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "timestamp",
+          "description": "Record creation timestamp",
+          "ordinalPosition": 6,
+          "tags": []
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "order_id"
+          ]
+        }
+      ],
+      "database": {
+        "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+      },
+      "tags": [],
+      "databaseSchema": {
+        "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+        "type": "databaseSchema",
+        "name": "sample_data.ecommerce_db.shopify",
+        "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+      }
+    },
+    {
+      "name": "fact_orders",
+      "description": "Fact table containing aggregated order data from Snowflake warehouse",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "order_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "bigint",
+          "description": "Unique identifier for the order",
+          "ordinalPosition": 1,
+          "tags": []
+        },
+        {
+          "name": "customer_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "bigint",
+          "description": "Reference to the customer",
+          "ordinalPosition": 2,
+          "tags": []
+        },
+        {
+          "name": "order_date",
+          "dataType": "DATE",
+          "dataTypeDisplay": "date",
+          "description": "Date when the order was placed",
+          "ordinalPosition": 3,
+          "tags": []
+        },
+        {
+          "name": "total_amount",
+          "dataType": "DECIMAL",
+          "dataTypeDisplay": "decimal(10,2)",
+          "description": "Total order amount",
+          "ordinalPosition": 4,
+          "tags": []
+        },
+        {
+          "name": "product_count",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": "Number of products in order",
+          "ordinalPosition": 5,
+          "tags": []
+        },
+        {
+          "name": "discount_amount",
+          "dataType": "DECIMAL",
+          "dataTypeDisplay": "decimal(10,2)",
+          "description": "Total discount applied",
+          "ordinalPosition": 6,
+          "tags": []
+        },
+        {
+          "name": "status",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Order status",
+          "ordinalPosition": 7,
+          "tags": []
+        },
+        {
+          "name": "updated_at",
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "timestamp",
+          "description": "Last update timestamp",
+          "ordinalPosition": 8,
+          "tags": []
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "order_id"
+          ]
+        }
+      ],
+      "database": {
+        "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+      },
+      "tags": [],
+      "databaseSchema": {
+        "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+        "type": "databaseSchema",
+        "name": "sample_data.ecommerce_db.shopify",
+        "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+      }
+    },
+    {
+      "name": "fact_transactions",
+      "description": "Transaction fact table from Hive warehouse",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "transaction_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "bigint",
+          "description": "Unique transaction identifier",
+          "ordinalPosition": 1,
+          "tags": []
+        },
+        {
+          "name": "order_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "bigint",
+          "description": "Reference to order",
+          "ordinalPosition": 2,
+          "tags": []
+        },
+        {
+          "name": "transaction_type",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Type of transaction (payment, refund, etc.)",
+          "ordinalPosition": 3,
+          "tags": []
+        },
+        {
+          "name": "amount",
+          "dataType": "DECIMAL",
+          "dataTypeDisplay": "decimal(10,2)",
+          "description": "Transaction amount",
+          "ordinalPosition": 4,
+          "tags": []
+        },
+        {
+          "name": "currency",
+          "dataType": "VARCHAR",
+          "dataLength": 3,
+          "dataTypeDisplay": "varchar",
+          "description": "Currency code",
+          "ordinalPosition": 5,
+          "tags": []
+        },
+        {
+          "name": "transaction_date",
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "timestamp",
+          "description": "Transaction timestamp",
+          "ordinalPosition": 6,
+          "tags": []
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "transaction_id"
+          ]
+        }
+      ],
+      "database": {
+        "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+      },
+      "tags": [],
+      "databaseSchema": {
+        "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+        "type": "databaseSchema",
+        "name": "sample_data.ecommerce_db.shopify",
+        "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+      }
+    },
+    {
+      "name": "fact_events",
+      "description": "Event fact table from Trino warehouse for real-time analytics",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "event_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "bigint",
+          "description": "Unique event identifier",
+          "ordinalPosition": 1,
+          "tags": []
+        },
+        {
+          "name": "user_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "bigint",
+          "description": "User who triggered the event",
+          "ordinalPosition": 2,
+          "tags": []
+        },
+        {
+          "name": "event_type",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Type of event",
+          "ordinalPosition": 3,
+          "tags": []
+        },
+        {
+          "name": "event_data",
+          "dataType": "JSON",
+          "dataTypeDisplay": "json",
+          "description": "Event payload in JSON format",
+          "ordinalPosition": 4,
+          "tags": []
+        },
+        {
+          "name": "event_timestamp",
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "timestamp",
+          "description": "When the event occurred",
+          "ordinalPosition": 5,
+          "tags": []
+        },
+        {
+          "name": "session_id",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Session identifier",
+          "ordinalPosition": 6,
+          "tags": []
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "event_id"
+          ]
+        }
+      ],
+      "database": {
+        "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+      },
+      "tags": [],
+      "databaseSchema": {
+        "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+        "type": "databaseSchema",
+        "name": "sample_data.ecommerce_db.shopify",
+        "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+      }
+    },
+    {
+      "name": "metrics_aggregated",
+      "description": "Real-time aggregated metrics from Trino",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "metric_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "bigint",
+          "description": "Unique metric identifier",
+          "ordinalPosition": 1,
+          "tags": []
+        },
+        {
+          "name": "metric_name",
+          "dataType": "VARCHAR",
+          "dataLength": 200,
+          "dataTypeDisplay": "varchar",
+          "description": "Name of the metric",
+          "ordinalPosition": 2,
+          "tags": []
+        },
+        {
+          "name": "metric_value",
+          "dataType": "DOUBLE",
+          "dataTypeDisplay": "double",
+          "description": "Aggregated metric value",
+          "ordinalPosition": 3,
+          "tags": []
+        },
+        {
+          "name": "aggregation_window",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Time window for aggregation (15min, 1hour, etc.)",
+          "ordinalPosition": 4,
+          "tags": []
+        },
+        {
+          "name": "timestamp",
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "timestamp",
+          "description": "Metric timestamp",
+          "ordinalPosition": 5,
+          "tags": []
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "metric_id"
+          ]
+        }
+      ],
+      "database": {
+        "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+      },
+      "tags": [],
+      "databaseSchema": {
+        "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+        "type": "databaseSchema",
+        "name": "sample_data.ecommerce_db.shopify",
+        "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+      }
+    },
+    {
+      "name": "customer_features",
+      "description": "ML feature store for customer analytics",
+      "tableType": "Regular",
+      "columns": [
+        {
+          "name": "customer_id",
+          "dataType": "BIGINT",
+          "dataTypeDisplay": "bigint",
+          "description": "Unique customer identifier",
+          "ordinalPosition": 1,
+          "tags": []
+        },
+        {
+          "name": "total_orders",
+          "dataType": "INT",
+          "dataTypeDisplay": "int",
+          "description": "Total number of orders placed",
+          "ordinalPosition": 2,
+          "tags": []
+        },
+        {
+          "name": "total_spend",
+          "dataType": "DECIMAL",
+          "dataTypeDisplay": "decimal(10,2)",
+          "description": "Total amount spent",
+          "ordinalPosition": 3,
+          "tags": []
+        },
+        {
+          "name": "avg_order_value",
+          "dataType": "DECIMAL",
+          "dataTypeDisplay": "decimal(10,2)",
+          "description": "Average order value",
+          "ordinalPosition": 4,
+          "tags": []
+        },
+        {
+          "name": "customer_lifetime_value",
+          "dataType": "DECIMAL",
+          "dataTypeDisplay": "decimal(10,2)",
+          "description": "Predicted customer lifetime value",
+          "ordinalPosition": 5,
+          "tags": []
+        },
+        {
+          "name": "churn_probability",
+          "dataType": "DOUBLE",
+          "dataTypeDisplay": "double",
+          "description": "Probability of customer churn (0-1)",
+          "ordinalPosition": 6,
+          "tags": []
+        },
+        {
+          "name": "preferred_category",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Customer's preferred product category",
+          "ordinalPosition": 7,
+          "tags": []
+        },
+        {
+          "name": "feature_updated_at",
+          "dataType": "TIMESTAMP",
+          "dataTypeDisplay": "timestamp",
+          "description": "When features were last updated",
+          "ordinalPosition": 8,
+          "tags": []
+        }
+      ],
+      "tableConstraints": [
+        {
+          "constraintType": "PRIMARY_KEY",
+          "columns": [
+            "customer_id"
+          ]
+        }
+      ],
+      "database": {
+        "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+        "type": "database",
+        "name": "sample_data.ecommerce_db",
+        "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+      },
+      "tags": [],
+      "databaseSchema": {
+        "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+        "type": "databaseSchema",
+        "name": "sample_data.ecommerce_db.shopify",
+        "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+        "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+      }
     }
   ]
 }

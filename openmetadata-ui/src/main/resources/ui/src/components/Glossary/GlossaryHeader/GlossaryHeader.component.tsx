@@ -212,7 +212,7 @@ const GlossaryHeader = ({
   }, [fqn]);
 
   const handleGlossaryImport = () =>
-    navigate(getEntityImportPath(EntityType.GLOSSARY_TERM, fqn));
+    navigate(getEntityImportPath(EntityType.GLOSSARY, fqn));
 
   const handleVersionClick = async () => {
     let path: string;
@@ -365,7 +365,7 @@ const GlossaryHeader = ({
                   entity: t('label.glossary-term'),
                 })}
                 icon={StyleIcon}
-                id="rename-button"
+                id="edit-style-button"
                 name={t('label.style')}
               />
             ),
@@ -442,7 +442,7 @@ const GlossaryHeader = ({
     if (permissions.Create || createGlossaryTermPermission) {
       return isGlossary ? (
         <Button
-          className="m-l-xs h-10"
+          className="m-l-xs"
           data-testid="add-new-tag-button-header"
           size="middle"
           type="primary"
@@ -453,7 +453,7 @@ const GlossaryHeader = ({
         <>
           {glossaryTermStatus && glossaryTermStatus === EntityStatus.Approved && (
             <Dropdown
-              className="m-l-xs h-10"
+              className="m-l-xs"
               menu={{
                 items: addButtonContent,
               }}

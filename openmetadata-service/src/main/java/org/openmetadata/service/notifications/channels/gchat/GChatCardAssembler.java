@@ -3,9 +3,16 @@ package org.openmetadata.service.notifications.channels.gchat;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.text.StringEscapeUtils;
+import org.commonmark.ext.gfm.tables.TableBlock;
+import org.commonmark.ext.gfm.tables.TableBody;
+import org.commonmark.ext.gfm.tables.TableCell;
+import org.commonmark.ext.gfm.tables.TableHead;
+import org.commonmark.ext.gfm.tables.TableRow;
 import org.commonmark.node.AbstractVisitor;
 import org.commonmark.node.BlockQuote;
 import org.commonmark.node.BulletList;
+import org.commonmark.node.CustomBlock;
+import org.commonmark.node.CustomNode;
 import org.commonmark.node.Document;
 import org.commonmark.node.FencedCodeBlock;
 import org.commonmark.node.Heading;
@@ -15,14 +22,27 @@ import org.commonmark.node.ListItem;
 import org.commonmark.node.Node;
 import org.commonmark.node.OrderedList;
 import org.commonmark.node.Paragraph;
+import org.commonmark.node.Text;
 import org.commonmark.node.ThematicBreak;
 
 final class GChatCardAssembler extends AbstractVisitor {
-  private static final int GCHAT_MAX_TEXT_LENGTH = 4096;
-
   List<GChatMessageV2.Section> sections = new ArrayList<>();
   List<GChatMessageV2.Widget> currentWidgets = new ArrayList<>();
   private final GChatMarkdownFormatter inline = new GChatMarkdownFormatter();
+
+  @Override
+  public void visit(CustomNode node) {
+    super.visit(node);
+  }
+
+  @Override
+  public void visit(CustomBlock block) {
+    if (block instanceof TableBlock) {
+      visitTable((TableBlock) block);
+    } else {
+      super.visit(block);
+    }
+  }
 
   @Override
   public void visit(Document document) {
@@ -150,6 +170,102 @@ final class GChatCardAssembler extends AbstractVisitor {
     renderImageWidget(image);
   }
 
+  private void visitTable(TableBlock table) {
+    flushCurrentSection();
+
+    List<String> headers = new ArrayList<>();
+    List<List<String>> bodyRows = new ArrayList<>();
+
+    for (Node child = table.getFirstChild(); child != null; child = child.getNext()) {
+      if (child instanceof TableHead) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            headers = extractTableRowCells((TableRow) row);
+            break;
+          }
+        }
+      } else if (child instanceof TableBody) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            bodyRows.add(extractTableRowCells((TableRow) row));
+          }
+        }
+      }
+    }
+
+    if (headers.isEmpty() && bodyRows.isEmpty()) return;
+
+    int colCount = headers.size();
+    for (List<String> row : bodyRows) colCount = Math.max(colCount, row.size());
+
+    if (colCount == 0) return;
+
+    if (headers.isEmpty()) {
+      headers = new ArrayList<>();
+      for (int i = 0; i < colCount; i++) {
+        headers.add("Column " + (i + 1));
+      }
+    }
+
+    String tableHtml = formatTableAsHtml(headers, bodyRows, colCount, 0);
+    if (!tableHtml.isEmpty()) {
+      currentWidgets.add(GChatMessageV2.Widget.text(tableHtml));
+    }
+
+    flushCurrentSection();
+  }
+
+  private String formatTableAsHtml(
+      List<String> headers, List<List<String>> rows, int colCount, int indentLevel) {
+    StringBuilder html = new StringBuilder();
+
+    if (indentLevel > 0) {
+      html.append("<br>");
+    }
+
+    // Create a table-like structure for better readability
+    for (int rowIdx = 0; rowIdx < rows.size(); rowIdx++) {
+      List<String> row = rows.get(rowIdx);
+
+      // Record header with visual separator
+      html.append("<b>📋 Record ").append(rowIdx + 1).append("</b><br>");
+      html.append("─".repeat(40)).append("<br>");
+
+      // Calculate max key length for alignment
+      int maxKeyLength = headers.stream().mapToInt(String::length).max().orElse(0);
+
+      // Key-value pairs with fixed-width columns for alignment
+      for (int i = 0; i < colCount; i++) {
+        String key = i < headers.size() ? headers.get(i) : "Column " + (i + 1);
+        String value = i < row.size() && row.get(i) != null ? row.get(i) : "";
+
+        // Format with monospace for alignment
+        html.append("<code>")
+            .append(
+                String.format("%-" + maxKeyLength + "s : %s", escapeHtml(key), escapeHtml(value)))
+            .append("</code><br>");
+      }
+
+      // Separator between records
+      if (rowIdx < rows.size() - 1) {
+        html.append("<br>");
+      }
+    }
+
+    return html.toString();
+  }
+
+  private List<String> extractTableRowCells(TableRow row) {
+    List<String> cells = new ArrayList<>();
+    for (Node cell = row.getFirstChild(); cell != null; cell = cell.getNext()) {
+      if (cell instanceof TableCell) {
+        String text = inline.renderInlineChildren(cell).trim();
+        cells.add(text.replace("\n", " "));
+      }
+    }
+    return cells;
+  }
+
   void addParagraph(String raw) {
     String text = safeText(raw == null ? "" : raw.trim());
     if (!text.isEmpty()) {
@@ -190,6 +306,10 @@ final class GChatCardAssembler extends AbstractVisitor {
       } else if (c instanceof IndentedCodeBlock) {
         String code = ((IndentedCodeBlock) c).getLiteral();
         part = formatCodeBlock(code);
+      } else if (c instanceof BlockQuote) {
+        part = formatBlockQuoteForList((BlockQuote) c);
+      } else if (c instanceof TableBlock) {
+        part = formatTableForList((TableBlock) c);
       } else {
         GChatCardAssembler tempVisitor = new GChatCardAssembler();
         part = tempVisitor.inline.renderInlineChildren(c).trim();
@@ -201,7 +321,8 @@ final class GChatCardAssembler extends AbstractVisitor {
         if (c instanceof Paragraph
             || c instanceof FencedCodeBlock
             || c instanceof IndentedCodeBlock
-            || c instanceof BlockQuote) {
+            || c instanceof BlockQuote
+            || c instanceof TableBlock) {
           sb.append("\n");
         } else {
           sb.append(" ");
@@ -211,6 +332,45 @@ final class GChatCardAssembler extends AbstractVisitor {
       first = false;
     }
     return sb.toString();
+  }
+
+  private String formatTableForList(TableBlock table) {
+    List<String> headers = new ArrayList<>();
+    List<List<String>> bodyRows = new ArrayList<>();
+
+    for (Node child = table.getFirstChild(); child != null; child = child.getNext()) {
+      if (child instanceof TableHead) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            headers = extractTableRowCells((TableRow) row);
+            break;
+          }
+        }
+      } else if (child instanceof TableBody) {
+        for (Node row = child.getFirstChild(); row != null; row = row.getNext()) {
+          if (row instanceof TableRow) {
+            bodyRows.add(extractTableRowCells((TableRow) row));
+          }
+        }
+      }
+    }
+
+    if (headers.isEmpty() && bodyRows.isEmpty()) return "";
+
+    int colCount = headers.size();
+    for (List<String> row : bodyRows) colCount = Math.max(colCount, row.size());
+
+    if (colCount == 0) return "";
+
+    if (headers.isEmpty()) {
+      headers = new ArrayList<>();
+      for (int i = 0; i < colCount; i++) {
+        headers.add("Column " + (i + 1));
+      }
+    }
+
+    // Use nested format with extra indentation when inside a list
+    return formatTableAsHtml(headers, bodyRows, colCount, 1);
   }
 
   private void appendList(StringBuilder sb, Node list, int indent, Integer start) {
@@ -253,14 +413,43 @@ final class GChatCardAssembler extends AbstractVisitor {
   }
 
   private String formatCodeBlock(String code) {
-    String truncated = truncateContent(code == null ? "" : code);
-    return "```\n" + escapeHtml(truncated) + "\n```";
+    String body = code == null ? "" : code;
+    return "```\n" + escapeHtml(body) + "\n```";
+  }
+
+  private String formatBlockQuoteForList(BlockQuote blockQuote) {
+    StringBuilder quotedContent = new StringBuilder();
+
+    // Process each child of the blockquote
+    // GChat doesn't support blockquote formatting, so just render as plain text
+    for (Node child = blockQuote.getFirstChild(); child != null; child = child.getNext()) {
+      switch (child) {
+        case Paragraph paragraph -> {
+          String text = inline.renderInlineChildren(child).trim();
+          if (!text.isEmpty()) {
+            quotedContent.append(text).append("\n");
+          }
+        }
+        case BulletList bulletList -> {
+          StringBuilder listText = new StringBuilder();
+          appendList(listText, child, 0, null);
+          quotedContent.append(listText);
+        }
+        case OrderedList orderedList -> {
+          StringBuilder listText = new StringBuilder();
+          appendList(listText, child, 0, orderedList.getMarkerStartNumber());
+          quotedContent.append(listText);
+        }
+        default -> {}
+      }
+    }
+
+    return quotedContent.toString().trim();
   }
 
   private String safeText(String s) {
     if (s == null) return "";
-    if (s.length() <= GCHAT_MAX_TEXT_LENGTH) return s;
-    return s.substring(0, GCHAT_MAX_TEXT_LENGTH - 1) + "…";
+    return s;
   }
 
   private static Image getSingleImageOrNull(Paragraph p) {
@@ -271,13 +460,6 @@ final class GChatCardAssembler extends AbstractVisitor {
     return null;
   }
 
-  private String truncateContent(String content) {
-    if (content.length() <= GChatCardAssembler.GCHAT_MAX_TEXT_LENGTH) {
-      return content;
-    }
-    return content.substring(0, GChatCardAssembler.GCHAT_MAX_TEXT_LENGTH - 3) + "…";
-  }
-
   private static String extractPlainText(Node node) {
     StringBuilder sb = new StringBuilder();
     extractPlainTextRecursive(node, sb);
@@ -285,8 +467,8 @@ final class GChatCardAssembler extends AbstractVisitor {
   }
 
   private static void extractPlainTextRecursive(Node node, StringBuilder sb) {
-    if (node instanceof org.commonmark.node.Text) {
-      sb.append(((org.commonmark.node.Text) node).getLiteral());
+    if (node instanceof Text) {
+      sb.append(((Text) node).getLiteral());
     }
     for (Node child = node.getFirstChild(); child != null; child = child.getNext()) {
       extractPlainTextRecursive(child, sb);

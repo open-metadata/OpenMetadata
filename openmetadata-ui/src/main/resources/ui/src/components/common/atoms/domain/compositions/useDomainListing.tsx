@@ -38,12 +38,14 @@ interface UseDomainListingConfig {
   customColumns?: ColumnConfig<Domain>[];
   customRenderers?: CellRenderer<Domain>;
   isSubDomain?: boolean;
+  searchKey?: string;
 }
 
 export const useDomainListing = (
   config: UseDomainListingConfig = {}
 ): ListingData<Domain> => {
   const {
+    searchKey = 'q',
     baseFilter = '',
     nameLabelKey = 'label.domain',
     pageSize = TABLE_CARD_PAGE_SIZE,
@@ -111,6 +113,7 @@ export const useDomainListing = (
     columns,
     renderers,
     basePath,
+    searchKey,
   });
 
   return listingData;

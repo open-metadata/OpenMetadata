@@ -27,6 +27,7 @@ import {
   EntityReference,
   Spreadsheet,
 } from '../../../../generated/entity/data/spreadsheet';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDriveAssetByFqn } from '../../../../rest/driveAPI';
@@ -37,13 +38,14 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
+import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import Loader from '../../../common/Loader/Loader';
-import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../common/Table/Table';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../Customization/GenericProvider/GenericProvider';
@@ -145,20 +147,17 @@ const SpreadsheetVersion = ({
           <Typography.Text>{getEntityName(record)}</Typography.Text>
         ),
       },
-      {
-        title: t('label.description'),
-        dataIndex: 'description',
-        key: 'description',
-        render: (text) =>
-          text ? (
-            <RichTextEditorPreviewerNew markdown={text} />
-          ) : (
-            <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
-      },
+      ...descriptionTableObject(),
     ],
     []
   );
+
+  const viewCustomPropertiesPermission = useMemo(() => {
+    return getPrioritizedViewPermission(
+      entityPermissions,
+      Operation.ViewCustomFields
+    );
+  }, [entityPermissions]);
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -228,7 +227,7 @@ const SpreadsheetVersion = ({
             isVersionView
             entityType={EntityType.SPREADSHEET}
             hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
+            hasPermission={viewCustomPropertiesPermission}
           />
         ),
       },
@@ -237,7 +236,7 @@ const SpreadsheetVersion = ({
       description,
       entityFqn,
       currentVersionData,
-      entityPermissions,
+      viewCustomPropertiesPermission,
       addedColumnConstraintDiffs,
       deletedColumnConstraintDiffs,
       spreadsheetDetails,
