@@ -43,7 +43,6 @@ export const getMlModelDetailsPageTabs = ({
   activeTab,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   fetchMlModel,
   handleFeedCount,

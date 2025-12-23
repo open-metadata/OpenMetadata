@@ -483,6 +483,7 @@ export const COMMON_FIELD_TITLES = {
       'Enter username:claim_name (e.g. username:preferred_username,email:email) and press ENTER.',
   },
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
   clientType: {
     'ui:title': 'Client Type',
     'ui:widget': 'radio',
@@ -694,6 +695,7 @@ export interface AuthenticationConfiguration {
   jwtPrincipalClaims: string[];
   jwtPrincipalClaimsMapping: string[];
   enableSelfSignup: boolean;
+  enableAutoRedirect?: boolean;
   clientType?: ClientType;
   secret?: string;
   ldapConfiguration?: Record<string, unknown>;

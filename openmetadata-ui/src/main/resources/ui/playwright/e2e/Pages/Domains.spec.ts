@@ -242,7 +242,7 @@ test.describe('Domains', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
-      await followEntity(page, EntityTypeEndpoint.DataProduct);
+      await followEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
 
       // Wait for the search query that will populate the following widget
       const followingSearchResponse = page.waitForResponse(
@@ -261,7 +261,7 @@ test.describe('Domains', () => {
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
-      await unFollowEntity(page, EntityTypeEndpoint.DataProduct);
+      await unFollowEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
       await redirectToHomePage(page);
 
       // Check that the data product is not shown in the following widget
