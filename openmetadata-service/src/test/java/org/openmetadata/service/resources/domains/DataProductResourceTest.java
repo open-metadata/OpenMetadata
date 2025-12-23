@@ -383,12 +383,23 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
 
   @Override
   public void validateCreatedEntity(
-      DataProduct createdEntity, CreateDataProduct request, Map<String, String> authHeaders) {
+      DataProduct createdEntity, CreateDataProduct request, Map<String, String> authHeaders)
+      throws HttpResponseException {
     // Entity specific validation
     assertEquals(
         request.getDomains().get(0), createdEntity.getDomains().get(0).getFullyQualifiedName());
     assertEntityReferenceNames(request.getExperts(), createdEntity.getExperts());
     assertStyle(request.getStyle(), createdEntity.getStyle());
+
+    // Validate ports - need to fetch with fields since ports are stored as relationships
+    if (request.getInputPorts() != null && !request.getInputPorts().isEmpty()) {
+      DataProduct fetched = getEntity(createdEntity.getId(), "inputPorts", authHeaders);
+      assertEquals(request.getInputPorts().size(), fetched.getInputPorts().size());
+    }
+    if (request.getOutputPorts() != null && !request.getOutputPorts().isEmpty()) {
+      DataProduct fetched = getEntity(createdEntity.getId(), "outputPorts", authHeaders);
+      assertEquals(request.getOutputPorts().size(), fetched.getOutputPorts().size());
+    }
   }
 
   @Override
@@ -426,7 +437,9 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     if (expected == actual) {
       return;
     }
-    if (fieldName.startsWith("assets")) {
+    if (fieldName.startsWith("assets")
+        || fieldName.equals("inputPorts")
+        || fieldName.equals("outputPorts")) {
       assertEntityReferencesFieldChange(expected, actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
@@ -739,6 +752,453 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + dataProductName + "/assets/remove");
     TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testDataProductInputOutputPorts(TestInfo test) throws IOException {
+    // Ports are stored as relationships to data assets (EntityReference lists)
+    // Create tables to use as input/output port assets
+    TableResourceTest tableTest = new TableResourceTest();
+    Table inputTable1 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_input1"), ADMIN_AUTH_HEADERS);
+    Table inputTable2 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_input2"), ADMIN_AUTH_HEADERS);
+    Table outputTable1 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_output1"), ADMIN_AUTH_HEADERS);
+    Table outputTable2 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_output2"), ADMIN_AUTH_HEADERS);
+
+    // Create data product with input and output ports (EntityReference lists)
+    CreateDataProduct create =
+        createRequest(getEntityName(test))
+            .withInputPorts(
+                List.of(inputTable1.getEntityReference(), inputTable2.getEntityReference()))
+            .withOutputPorts(
+                List.of(outputTable1.getEntityReference(), outputTable2.getEntityReference()));
+
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify ports were created - need to GET with fields since ports are relationship-based
+    DataProduct fetchedProduct =
+        getEntity(product.getId(), "inputPorts,outputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(2, fetchedProduct.getInputPorts().size());
+    assertEquals(2, fetchedProduct.getOutputPorts().size());
+
+    // Verify input ports contain the expected assets
+    assertTrue(
+        fetchedProduct.getInputPorts().stream()
+            .anyMatch(p -> p.getId().equals(inputTable1.getId())));
+    assertTrue(
+        fetchedProduct.getInputPorts().stream()
+            .anyMatch(p -> p.getId().equals(inputTable2.getId())));
+
+    // Verify output ports contain the expected assets
+    assertTrue(
+        fetchedProduct.getOutputPorts().stream()
+            .anyMatch(p -> p.getId().equals(outputTable1.getId())));
+    assertTrue(
+        fetchedProduct.getOutputPorts().stream()
+            .anyMatch(p -> p.getId().equals(outputTable2.getId())));
+  }
+
+  @Test
+  void testDataProductPortsUpdate(TestInfo test) throws IOException {
+    // Create tables to use as input port assets
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table1 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_t1"), ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_t2"), ADMIN_AUTH_HEADERS);
+
+    // Create initial data product with one input port
+    EntityReference inputPort1 = table1.getEntityReference();
+    CreateDataProduct create =
+        createRequest(getEntityName(test)).withInputPorts(List.of(inputPort1));
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Fetch with fields to get ports from relationships
+    DataProduct fetchedProduct = getEntity(product.getId(), "inputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(1, fetchedProduct.getInputPorts().size());
+
+    // Add a new input port using PUT
+    EntityReference inputPort2 = table2.getEntityReference();
+    create.withInputPorts(List.of(inputPort1, inputPort2));
+    ChangeDescription change = getChangeDescription(product, MINOR_UPDATE);
+    fieldAdded(change, "inputPorts", List.of(inputPort2));
+    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    fetchedProduct = getEntity(product.getId(), "inputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(2, fetchedProduct.getInputPorts().size());
+
+    // Remove a port using PUT
+    create.withInputPorts(List.of(inputPort1));
+    change = getChangeDescription(product, MINOR_UPDATE);
+    fieldDeleted(change, "inputPorts", List.of(inputPort2));
+    product = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    fetchedProduct = getEntity(product.getId(), "inputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(1, fetchedProduct.getInputPorts().size());
+  }
+
+  @Test
+  void testDataProductPortsPatch(TestInfo test) throws IOException {
+    // Create tables to use as port assets
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table1 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_t1"), ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_t2"), ADMIN_AUTH_HEADERS);
+
+    // Create data product without ports
+    CreateDataProduct create = createRequest(getEntityName(test));
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Fetch with fields - ports should be empty
+    DataProduct fetchedProduct =
+        getEntity(product.getId(), "inputPorts,outputPorts", ADMIN_AUTH_HEADERS);
+    assertTrue(fetchedProduct.getInputPorts() == null || fetchedProduct.getInputPorts().isEmpty());
+    assertTrue(
+        fetchedProduct.getOutputPorts() == null || fetchedProduct.getOutputPorts().isEmpty());
+
+    // Add output port using PATCH
+    String json = JsonUtils.pojoToJson(product);
+    EntityReference outputPort1 = table1.getEntityReference();
+    product.withOutputPorts(List.of(outputPort1));
+    ChangeDescription change = getChangeDescription(product, MINOR_UPDATE);
+    fieldAdded(change, "outputPorts", List.of(outputPort1));
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    fetchedProduct = getEntity(product.getId(), "outputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(1, fetchedProduct.getOutputPorts().size());
+    assertEquals(table1.getId(), fetchedProduct.getOutputPorts().get(0).getId());
+
+    // Replace port using PATCH (remove old, add new asset)
+    json = JsonUtils.pojoToJson(product);
+    EntityReference outputPort2 = table2.getEntityReference();
+    product.withOutputPorts(List.of(outputPort2));
+    change = getChangeDescription(product, MINOR_UPDATE);
+    fieldAdded(change, "outputPorts", List.of(outputPort2));
+    fieldDeleted(change, "outputPorts", List.of(outputPort1));
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    fetchedProduct = getEntity(product.getId(), "outputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(1, fetchedProduct.getOutputPorts().size());
+    assertEquals(table2.getId(), fetchedProduct.getOutputPorts().get(0).getId());
+
+    // Remove port using PATCH
+    json = JsonUtils.pojoToJson(product);
+    List<EntityReference> currentPorts = fetchedProduct.getOutputPorts();
+    product.withOutputPorts(List.of());
+    change = getChangeDescription(product, MINOR_UPDATE);
+    fieldDeleted(change, "outputPorts", currentPorts);
+    product = patchEntityAndCheck(product, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    fetchedProduct = getEntity(product.getId(), "outputPorts", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        fetchedProduct.getOutputPorts() == null || fetchedProduct.getOutputPorts().isEmpty());
+  }
+
+  @Test
+  void testDataProductPortsGetWithFields(TestInfo test) throws IOException {
+    // Create tables to use as port assets
+    TableResourceTest tableTest = new TableResourceTest();
+    Table inputTable =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_input"), ADMIN_AUTH_HEADERS);
+    Table outputTable =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_output"), ADMIN_AUTH_HEADERS);
+
+    // Create data product with input and output ports
+    CreateDataProduct create =
+        createRequest(getEntityName(test))
+            .withInputPorts(List.of(inputTable.getEntityReference()))
+            .withOutputPorts(List.of(outputTable.getEntityReference()));
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Test GET without fields - ports should not be returned (null or empty)
+    DataProduct getProduct = getEntity(product.getId(), null, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        getProduct.getInputPorts() == null || getProduct.getInputPorts().isEmpty(),
+        "Ports should not be returned without specifying fields");
+
+    // Test GET with inputPorts field
+    getProduct = getEntity(product.getId(), "inputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(1, getProduct.getInputPorts().size());
+    assertEquals(inputTable.getId(), getProduct.getInputPorts().get(0).getId());
+
+    // Test GET with outputPorts field
+    getProduct = getEntity(product.getId(), "outputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(1, getProduct.getOutputPorts().size());
+    assertEquals(outputTable.getId(), getProduct.getOutputPorts().get(0).getId());
+
+    // Test GET with both port fields
+    getProduct = getEntity(product.getId(), "inputPorts,outputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(1, getProduct.getInputPorts().size());
+    assertEquals(1, getProduct.getOutputPorts().size());
+
+    // Test GET by name with port fields
+    getProduct =
+        getEntityByName(
+            product.getFullyQualifiedName(), "inputPorts,outputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(1, getProduct.getInputPorts().size());
+    assertEquals(1, getProduct.getOutputPorts().size());
+  }
+
+  @Test
+  void testDataProductWithMultiplePorts(TestInfo test) throws IOException {
+    // Create multiple tables to use as port assets
+    TableResourceTest tableTest = new TableResourceTest();
+    Table table1 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_t1"), ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_t2"), ADMIN_AUTH_HEADERS);
+    Table table3 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_t3"), ADMIN_AUTH_HEADERS);
+    Table table4 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_t4"), ADMIN_AUTH_HEADERS);
+    Table table5 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_t5"), ADMIN_AUTH_HEADERS);
+
+    // Create data product with multiple input and output ports
+    List<EntityReference> inputPorts =
+        List.of(
+            table1.getEntityReference(), table2.getEntityReference(), table3.getEntityReference());
+
+    List<EntityReference> outputPorts =
+        List.of(table4.getEntityReference(), table5.getEntityReference());
+
+    CreateDataProduct create =
+        createRequest(getEntityName(test)).withInputPorts(inputPorts).withOutputPorts(outputPorts);
+
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Fetch with fields to get relationship-based ports
+    DataProduct fetchedProduct =
+        getEntity(product.getId(), "inputPorts,outputPorts", ADMIN_AUTH_HEADERS);
+
+    assertEquals(3, fetchedProduct.getInputPorts().size());
+    assertEquals(2, fetchedProduct.getOutputPorts().size());
+
+    // Verify all input ports are present
+    assertTrue(
+        fetchedProduct.getInputPorts().stream().anyMatch(p -> p.getId().equals(table1.getId())));
+    assertTrue(
+        fetchedProduct.getInputPorts().stream().anyMatch(p -> p.getId().equals(table2.getId())));
+    assertTrue(
+        fetchedProduct.getInputPorts().stream().anyMatch(p -> p.getId().equals(table3.getId())));
+
+    // Verify all output ports are present
+    assertTrue(
+        fetchedProduct.getOutputPorts().stream().anyMatch(p -> p.getId().equals(table4.getId())));
+    assertTrue(
+        fetchedProduct.getOutputPorts().stream().anyMatch(p -> p.getId().equals(table5.getId())));
+  }
+
+  @Test
+  void testDataProductBulkInputPorts(TestInfo test) throws IOException {
+    // Create tables to use as input port assets
+    TableResourceTest tableTest = new TableResourceTest();
+    Table inputTable1 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_bulk_input1"), ADMIN_AUTH_HEADERS);
+    Table inputTable2 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_bulk_input2"), ADMIN_AUTH_HEADERS);
+
+    // Create data product without ports
+    CreateDataProduct create = createRequest(getEntityName(test));
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Verify no input ports initially
+    DataProduct fetchedProduct = getEntity(product.getId(), "inputPorts", ADMIN_AUTH_HEADERS);
+    assertTrue(fetchedProduct.getInputPorts() == null || fetchedProduct.getInputPorts().isEmpty());
+
+    // Bulk add input ports
+    DataProductRepository repository =
+        (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
+    BulkAssets bulkAssets =
+        new BulkAssets()
+            .withAssets(
+                List.of(inputTable1.getEntityReference(), inputTable2.getEntityReference()));
+    BulkOperationResult result =
+        repository.bulkAddInputPorts(product.getFullyQualifiedName(), bulkAssets);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(2, result.getNumberOfRowsPassed());
+
+    // Verify input ports were added
+    fetchedProduct = getEntity(product.getId(), "inputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(2, fetchedProduct.getInputPorts().size());
+    assertTrue(
+        fetchedProduct.getInputPorts().stream()
+            .anyMatch(p -> p.getId().equals(inputTable1.getId())));
+    assertTrue(
+        fetchedProduct.getInputPorts().stream()
+            .anyMatch(p -> p.getId().equals(inputTable2.getId())));
+
+    // Bulk remove one input port
+    BulkAssets removeAssets =
+        new BulkAssets().withAssets(List.of(inputTable1.getEntityReference()));
+    result = repository.bulkRemoveInputPorts(product.getFullyQualifiedName(), removeAssets);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsProcessed());
+
+    // Verify only one input port remains
+    fetchedProduct = getEntity(product.getId(), "inputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(1, fetchedProduct.getInputPorts().size());
+    assertEquals(inputTable2.getId(), fetchedProduct.getInputPorts().get(0).getId());
+  }
+
+  @Test
+  void testDataProductBulkOutputPorts(TestInfo test) throws IOException {
+    // Create tables to use as output port assets
+    TableResourceTest tableTest = new TableResourceTest();
+    Table outputTable1 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_bulk_output1"), ADMIN_AUTH_HEADERS);
+    Table outputTable2 =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_bulk_output2"), ADMIN_AUTH_HEADERS);
+
+    // Create data product without ports
+    CreateDataProduct create = createRequest(getEntityName(test));
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Bulk add output ports
+    DataProductRepository repository =
+        (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
+    BulkAssets bulkAssets =
+        new BulkAssets()
+            .withAssets(
+                List.of(outputTable1.getEntityReference(), outputTable2.getEntityReference()));
+    BulkOperationResult result =
+        repository.bulkAddOutputPorts(product.getFullyQualifiedName(), bulkAssets);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(2, result.getNumberOfRowsProcessed());
+    assertEquals(2, result.getNumberOfRowsPassed());
+
+    // Verify output ports were added
+    DataProduct fetchedProduct = getEntity(product.getId(), "outputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(2, fetchedProduct.getOutputPorts().size());
+
+    // Bulk remove all output ports
+    result = repository.bulkRemoveOutputPorts(product.getFullyQualifiedName(), bulkAssets);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Verify no output ports remain
+    fetchedProduct = getEntity(product.getId(), "outputPorts", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        fetchedProduct.getOutputPorts() == null || fetchedProduct.getOutputPorts().isEmpty());
+  }
+
+  @Test
+  void testDataProductBulkPortsViaApi(TestInfo test) throws IOException, InterruptedException {
+    // Create tables to use as port assets
+    TableResourceTest tableTest = new TableResourceTest();
+    Table inputTable =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_api_input"), ADMIN_AUTH_HEADERS);
+    Table outputTable =
+        tableTest.createEntity(
+            tableTest.createRequest(getEntityName(test) + "_api_output"), ADMIN_AUTH_HEADERS);
+
+    // Create data product without ports
+    CreateDataProduct create = createRequest(getEntityName(test));
+    DataProduct product = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add input port via REST API
+    WebTarget bulkAddInputTarget =
+        getResource("dataProducts/" + product.getFullyQualifiedName() + "/inputPorts/add");
+    BulkAssets inputAssets = new BulkAssets().withAssets(List.of(inputTable.getEntityReference()));
+    BulkOperationResult inputResult =
+        TestUtils.put(
+            bulkAddInputTarget,
+            inputAssets,
+            BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, inputResult.getStatus());
+    assertEquals(1, inputResult.getNumberOfRowsPassed());
+
+    // Add output port via REST API
+    WebTarget bulkAddOutputTarget =
+        getResource("dataProducts/" + product.getFullyQualifiedName() + "/outputPorts/add");
+    BulkAssets outputAssets =
+        new BulkAssets().withAssets(List.of(outputTable.getEntityReference()));
+    BulkOperationResult outputResult =
+        TestUtils.put(
+            bulkAddOutputTarget,
+            outputAssets,
+            BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, outputResult.getStatus());
+    assertEquals(1, outputResult.getNumberOfRowsPassed());
+
+    // Verify ports were added
+    DataProduct fetchedProduct =
+        getEntity(product.getId(), "inputPorts,outputPorts", ADMIN_AUTH_HEADERS);
+    assertEquals(1, fetchedProduct.getInputPorts().size());
+    assertEquals(inputTable.getId(), fetchedProduct.getInputPorts().get(0).getId());
+    assertEquals(1, fetchedProduct.getOutputPorts().size());
+    assertEquals(outputTable.getId(), fetchedProduct.getOutputPorts().get(0).getId());
+
+    // Remove input port via REST API
+    WebTarget bulkRemoveInputTarget =
+        getResource("dataProducts/" + product.getFullyQualifiedName() + "/inputPorts/remove");
+    BulkOperationResult removeResult =
+        TestUtils.put(
+            bulkRemoveInputTarget,
+            inputAssets,
+            BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, removeResult.getStatus());
+
+    // Verify input port was removed
+    fetchedProduct = getEntity(product.getId(), "inputPorts,outputPorts", ADMIN_AUTH_HEADERS);
+    assertTrue(fetchedProduct.getInputPorts() == null || fetchedProduct.getInputPorts().isEmpty());
+    assertEquals(1, fetchedProduct.getOutputPorts().size());
+
+    // Remove output port via REST API
+    WebTarget bulkRemoveOutputTarget =
+        getResource("dataProducts/" + product.getFullyQualifiedName() + "/outputPorts/remove");
+    removeResult =
+        TestUtils.put(
+            bulkRemoveOutputTarget,
+            outputAssets,
+            BulkOperationResult.class,
+            Status.OK,
+            ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, removeResult.getStatus());
+
+    // Verify all ports were removed
+    fetchedProduct = getEntity(product.getId(), "inputPorts,outputPorts", ADMIN_AUTH_HEADERS);
+    assertTrue(fetchedProduct.getInputPorts() == null || fetchedProduct.getInputPorts().isEmpty());
+    assertTrue(
+        fetchedProduct.getOutputPorts() == null || fetchedProduct.getOutputPorts().isEmpty());
   }
 
   @Test

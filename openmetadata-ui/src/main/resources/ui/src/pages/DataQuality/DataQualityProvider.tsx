@@ -56,7 +56,11 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Extract only filter-related parameters, excluding pagination
   const filterParams = useMemo(() => {
-    const { currentPage, pageSize, ...filters } = params;
+    const {
+      currentPage: _currentPage,
+      pageSize: _pageSize,
+      ...filters
+    } = params;
 
     return filters;
   }, [params]);

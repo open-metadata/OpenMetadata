@@ -37,7 +37,7 @@ export interface ChartFilter {
   startTs: number;
   endTs: number;
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
   cardStyles?: React.CSSProperties;
   customValueKey?: string;
