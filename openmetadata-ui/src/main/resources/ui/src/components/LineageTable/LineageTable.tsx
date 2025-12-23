@@ -739,7 +739,10 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ? downstreamColumnLineageNodes
           : upstreamColumnLineageNodes;
 
-      const source = nodes.slice(currentPage - 1, currentPage - 1 + pageSize);
+      const source = nodes.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
+      );
 
       return {
         columns: columnImpactColumns,
