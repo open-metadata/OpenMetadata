@@ -1020,7 +1020,8 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
     List<TagLabel> expectedTags = List.of(USER_ADDRESS_TAG_LABEL);
     assertTrue(
-        updated.getTags().containsAll(expectedTags), "Tags should be preserved from bot creation");
+        TestUtils.isTagsSuperSet(updated.getTags(), expectedTags),
+        "Tags should be preserved from bot creation");
   }
 
   @Test

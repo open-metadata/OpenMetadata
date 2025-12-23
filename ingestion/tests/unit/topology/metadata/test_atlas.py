@@ -16,6 +16,7 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+from dirty_equals import HasAttributes, IsInstance
 from pydantic import AnyUrl
 
 from metadata.generated.schema.api.classification.createClassification import (
@@ -473,7 +474,18 @@ class AtlasUnitTest(TestCase):
 
         assert updated_table.description == EXPTECTED_TABLE.description
 
-        assert updated_table.tags == EXPTECTED_TABLE.tags
+        assert updated_table.tags == [
+            IsInstance(TagLabel)
+            & HasAttributes(
+                tagFQN=tag.tagFQN,
+                name=tag.name,
+                description=tag.description,
+                source=tag.source,
+                labelType=tag.labelType,
+                state=tag.state,
+            )
+            for tag in EXPTECTED_TABLE.tags
+        ]
 
         self.metadata.delete(
             entity=DatabaseService,

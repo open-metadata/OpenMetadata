@@ -630,7 +630,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
               dashboardFqn,
               org.openmetadata.schema.type.TagLabel.LabelType.MANUAL.ordinal(),
               org.openmetadata.schema.type.TagLabel.State.CONFIRMED.ordinal(),
-              null);
+              null,
+              "test");
     } catch (Exception e) {
       LOG.warn("Failed to insert invalid tag usage for test setup: {}", e.getMessage());
     }

@@ -39,12 +39,13 @@ from metadata.pii.algorithms.feature_extraction import (
 )
 from metadata.pii.algorithms.preprocessing import preprocess_values
 from metadata.pii.algorithms.presidio_patches import (
+    PresidioRecognizerResultPatcher,
     combine_patchers,
     date_time_patcher,
     url_patcher,
 )
 from metadata.pii.algorithms.presidio_utils import (
-    build_analyzer_engine,
+    get_cached_analyzer_engine,
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
@@ -84,20 +85,25 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
     Heuristic PII Column Classifier
     """
 
+    _extra_patchers: Sequence[PresidioRecognizerResultPatcher]
+
     def __init__(
         self,
         *,
         column_name_contribution: float = 0.5,
         score_cutoff: float = 0.1,
         relative_cardinality_cutoff: float = 0.01,
+        extra_patchers: Optional[Sequence[PresidioRecognizerResultPatcher]] = None,
     ):
         set_presidio_logger_level()
-        self._presidio_analyzer: AnalyzerEngine = build_analyzer_engine()
+        # Use cached analyzer to avoid reloading spaCy model for each classifier instance
+        self._presidio_analyzer: AnalyzerEngine = get_cached_analyzer_engine()
         self._column_name_patterns = get_pii_column_name_patterns()
 
         self._column_name_contribution = column_name_contribution
         self._score_cutoff = score_cutoff
         self._relative_cardinality_cutoff = relative_cardinality_cutoff
+        self._extra_patchers = extra_patchers or []
 
     def predict_scores(
         self,
@@ -124,7 +130,11 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
             self._presidio_analyzer,
             str_values,
             context=context,
-            recognizer_result_patcher=combine_patchers(date_time_patcher, url_patcher),
+            recognizer_result_patcher=combine_patchers(
+                date_time_patcher,
+                url_patcher,
+                *self._extra_patchers,
+            ),
         )
 
         column_name_matches: Set[PIITag] = set()

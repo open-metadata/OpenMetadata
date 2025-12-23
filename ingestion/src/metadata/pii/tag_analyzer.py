@@ -1,4 +1,4 @@
-from typing import Sequence, final
+from typing import Optional, Sequence, final
 
 from presidio_analyzer import (
     AnalyzerEngine,
@@ -7,6 +7,7 @@ from presidio_analyzer import (
     RecognizerResult,
 )
 from presidio_analyzer.nlp_engine import NlpEngine
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.table import Column, Table
@@ -15,11 +16,18 @@ from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_recognizer_factory import (
     PresidioRecognizerFactory,
 )
+from metadata.pii.algorithms.presidio_utils import explain_recognition_results
 from metadata.pii.constants import SUPPORTED_LANG
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
 )
 from metadata.utils.fqn import FQN_SEPARATOR
+
+
+class TagAnalysis(BaseModel):
+    tag: Tag
+    score: float
+    explanation: Optional[str]
 
 
 @final
@@ -91,11 +99,11 @@ class TagAnalyzer:
             supported_languages=[SUPPORTED_LANG],
         )
 
-    def analyze_content(self, values: Sequence[str]) -> float:
+    def analyze_content(self, values: Sequence[str]) -> TagAnalysis:
         recognizers = self.content_recognizers
 
         if not recognizers:
-            return 0.0
+            return self._build_tag_analysis([], 1)
 
         context = split_column_name(self._column_name)
         analyzer = self.build_analyzer_with(recognizers)
@@ -103,27 +111,37 @@ class TagAnalyzer:
         results: list[RecognizerResult] = []
         for value in values:
             results.extend(
-                analyzer.analyze(value, language=SUPPORTED_LANG, context=context)
+                analyzer.analyze(
+                    value,
+                    language=SUPPORTED_LANG,
+                    context=context,
+                    return_decision_process=True,
+                )
             )
 
-        if not results:
-            return 0.0
+        return self._build_tag_analysis(results, len(values))
 
-        return sum(r.score for r in results) / len(values)
-
-    def analyze_column(self) -> float:
+    def analyze_column(self) -> TagAnalysis:
         recognizers = self.column_recognizers
 
         if not recognizers:
-            return 0.0
+            return self._build_tag_analysis([], 1)
 
         analyzer = self.build_analyzer_with(recognizers)
-        results = analyzer.analyze(self._column_name, language=SUPPORTED_LANG)
+        results = analyzer.analyze(
+            self._column_name, language=SUPPORTED_LANG, return_decision_process=True
+        )
 
-        if not results:
-            return 0.0
+        return self._build_tag_analysis(results, 1)
 
-        return sum(r.score for r in results) / len(results)
+    def _build_tag_analysis(
+        self, results: list[RecognizerResult], analysis_count: int
+    ) -> TagAnalysis:
+        return TagAnalysis(
+            tag=self.tag,
+            score=sum(r.score for r in results) / analysis_count,
+            explanation=explain_recognition_results(results) if results else None,
+        )
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} tag={self.tag.fullyQualifiedName}>"

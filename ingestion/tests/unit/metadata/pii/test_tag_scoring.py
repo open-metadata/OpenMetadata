@@ -14,7 +14,7 @@ Unit tests for PII classifiers
 from unittest.mock import Mock
 
 import pytest
-from dirty_equals import HasAttributes, IsInstance, IsNumeric
+from dirty_equals import HasAttributes, IsFloat, IsInstance, IsNumeric
 from presidio_analyzer.nlp_engine import NlpEngine
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
@@ -35,7 +35,7 @@ from metadata.generated.schema.type.piiEntity import PIIEntity
 from metadata.generated.schema.type.recognizer import RecognizerException, Target
 from metadata.pii.algorithms.tag_scoring import TagScorer
 from metadata.pii.models import ScoredTag
-from metadata.pii.tag_analyzer import TagAnalyzer
+from metadata.pii.tag_analyzer import TagAnalysis, TagAnalyzer
 
 
 class TestTagScorer:
@@ -326,17 +326,29 @@ class TestTagAnalyzer:
         """Create a TagAnalyzer instance"""
         return TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
 
-    def test_analyze_content_with_emails(self, tag_analyzer):
+    def test_analyze_content_with_emails(self, tag_analyzer, email_tag: Tag):
         """Test content analysis with email data"""
         values = ["john@example.com", "jane@test.org", "bob@company.co.uk"]
-        score = tag_analyzer.analyze_content(values)
-        assert score > 0.8
+        analysis = tag_analyzer.analyze_content(values)
+        assert analysis == IsInstance(TagAnalysis) & HasAttributes(
+            score=IsFloat(gt=0.8),
+            tag=email_tag,
+            explanation=(
+                "Detected by `EmailRecognizer` 3 times with an average score of 0.90.\n"
+                + "Patterns matched:\n"
+                + "\t- `[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}` (scored: 0.90)\n\n"
+            ),
+        )
 
-    def test_analyze_content_no_match(self, tag_analyzer):
+    def test_analyze_content_no_match(self, tag_analyzer, email_tag: Tag):
         """Test content analysis with non-matching data"""
         values = ["random text", "no patterns here", "just words"]
-        score = tag_analyzer.analyze_content(values)
-        assert score == 0.0
+        analysis = tag_analyzer.analyze_content(values)
+        assert analysis == IsInstance(TagAnalysis) & HasAttributes(
+            score=0.0,
+            tag=email_tag,
+            explanation=None,
+        )
 
     def test_analyze_column_name(self, email_tag, nlp_engine):
         """Test column name analysis"""
@@ -372,8 +384,16 @@ class TestTagAnalyzer:
         email_tag.recognizers.append(column_name_recognizer)
 
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
-        score = analyzer.analyze_column()
-        assert score > 0.5
+        analysis = analyzer.analyze_column()
+        assert analysis == IsInstance(TagAnalysis) & HasAttributes(
+            score=IsFloat(gt=0.5),
+            tag=email_tag,
+            explanation=(
+                "Detected by `EmailColumnRecognizer` 1 time with an average score of 0.80.\n"
+                + "Patterns matched:\n"
+                + "\t- `.*email.*` (scored: 0.80)\n\n"
+            ),
+        )
 
     def test_get_recognizers_by_target(self, tag_analyzer, email_tag):
         """Test getting recognizers by target"""
