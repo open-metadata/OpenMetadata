@@ -129,7 +129,6 @@ export const getContainerDetailPageTabs = ({
   decodedContainerName,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   feedCount,
   getEntityFeedCount,

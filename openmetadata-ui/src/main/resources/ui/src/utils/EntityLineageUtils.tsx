@@ -160,19 +160,18 @@ export const centerNodePosition = (
   );
 };
 
-/* eslint-disable-next-line */
 export const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node) => {
   return;
 };
-/* eslint-disable-next-line */
+
 export const onNodeMouseMove = (_event: ReactMouseEvent, _node: Node) => {
   return;
 };
-/* eslint-disable-next-line */
+
 export const onNodeMouseLeave = (_event: ReactMouseEvent, _node: Node) => {
   return;
 };
-/* eslint-disable-next-line */
+
 export const onNodeContextMenu = (event: ReactMouseEvent, _node: Node) => {
   event.preventDefault();
 };

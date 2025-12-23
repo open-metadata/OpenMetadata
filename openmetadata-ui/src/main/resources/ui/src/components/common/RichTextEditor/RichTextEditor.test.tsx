@@ -156,7 +156,7 @@ describe('RichTextEditor', () => {
   it('should apply custom styles', () => {
     const customStyle = { backgroundColor: 'red', padding: '10px' };
     render(
-      <RichTextEditor onTextChange={onTextChangeMock} style={customStyle} />
+      <RichTextEditor style={customStyle} onTextChange={onTextChangeMock} />
     );
 
     const editorElement = screen.getByTestId('editor');
@@ -252,8 +252,8 @@ describe('RichTextEditor', () => {
 
     render(
       <RichTextEditor
-        ref={editorRef}
         initialValue="Something"
+        ref={editorRef}
         onTextChange={onTextChangeMock}
       />
     );

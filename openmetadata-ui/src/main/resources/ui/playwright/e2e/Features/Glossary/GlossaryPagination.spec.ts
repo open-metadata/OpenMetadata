@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { Glossary } from '../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
-import { createNewPage } from '../../utils/common';
+import { Glossary } from '../../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { createNewPage } from '../../../utils/common';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -130,17 +130,14 @@ test.describe('Glossary tests', () => {
     await page.waitForResponse('api/v1/glossaryTerms?*');
 
     // Verify terms are visible again
-    await expect(
-      page.locator('[data-testid="glossary-terms-table"]')
-    ).toBeVisible();
+    await expect(page.getByTestId('glossary-terms-table')).toBeVisible();
   });
 
   test('should check for nested glossary term search', async ({ page }) => {
     test.slow(true);
 
     // Navigate to glossary
-
-    glossary.visitEntityPage(page);
+    await glossary.visitEntityPage(page);
 
     // Wait for terms to load
     await page.waitForSelector('[data-testid="glossary-terms-table"]');
@@ -189,5 +186,162 @@ test.describe('Glossary tests', () => {
     // Clear search
     await searchInput.clear();
     await page.waitForResponse('api/v1/glossaryTerms?*');
+  });
+
+  // S-S03: Search is case-insensitive
+  test('should perform case-insensitive search', async ({ page }) => {
+    await glossary.visitEntityPage(page);
+
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+
+    const searchInput = page.getByPlaceholder(/search.*term/i);
+
+    // Search with lowercase
+    await searchInput.fill('searchtestterm5');
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+
+    // Should find the term despite case difference
+    await expect(
+      page.getByText('SearchTestTerm5', { exact: true })
+    ).toBeVisible();
+
+    // Clear and search with uppercase
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
+
+    await searchInput.fill('SEARCHTESTTERM5');
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+
+    // Should still find the term
+    await expect(
+      page.getByText('SearchTestTerm5', { exact: true })
+    ).toBeVisible();
+
+    // Clear and search with mixed case
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
+
+    await searchInput.fill('SeArChTeStTeRm5');
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+
+    // Should still find the term
+    await expect(
+      page.getByText('SearchTestTerm5', { exact: true })
+    ).toBeVisible();
+
+    // Clear search
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
+  });
+
+  // S-S07: Search no results - empty state
+  test('should show empty state when search returns no results', async ({
+    page,
+  }) => {
+    await glossary.visitEntityPage(page);
+
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+
+    const searchInput = page.getByPlaceholder(/search.*term/i);
+
+    // Search for a term that doesn't exist
+    await searchInput.fill('NonExistentTermXYZ12345');
+    await page.waitForResponse('api/v1/glossaryTerms/search?*');
+
+    // Verify no results are shown
+    const rowCount = await page.locator('tbody .ant-table-row').count();
+
+    expect(rowCount).toBe(0);
+
+    // Verify empty state message is shown (uses ErrorPlaceHolder component)
+    await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+
+    // Clear search and verify terms return
+    await searchInput.clear();
+    await page.waitForResponse('api/v1/glossaryTerms?*');
+
+    // Verify terms are visible again
+    const restoredRowCount = await page.locator('tbody .ant-table-row').count();
+
+    expect(restoredRowCount).toBeGreaterThan(0);
+  });
+
+  // S-F03: Filter by InReview status
+  test('should filter by InReview status', async ({ page }) => {
+    await glossary.visitEntityPage(page);
+
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+
+    // Open status filter dropdown
+    const dropdownButton = page.getByTestId('glossary-status-dropdown');
+    await dropdownButton.click();
+
+    // Select InReview status
+    const inReviewCheckbox = page.locator('.glossary-dropdown-label', {
+      hasText: 'In Review',
+    });
+    await inReviewCheckbox.click();
+
+    const saveButton = page.locator('.ant-btn-primary', {
+      hasText: 'Save',
+    });
+    await saveButton.click();
+
+    // Verify filter is applied (may show no results if no InReview terms exist)
+    await page.waitForLoadState('networkidle');
+
+    // The filter should be applied - either showing InReview terms or empty state
+    const table = page.getByTestId('glossary-terms-table');
+
+    await expect(table).toBeVisible();
+
+    // Clear the filter
+    await dropdownButton.click();
+    await inReviewCheckbox.click();
+    await saveButton.click();
+  });
+
+  // S-F04: Filter by multiple statuses
+  test('should filter by multiple statuses', async ({ page }) => {
+    await glossary.visitEntityPage(page);
+
+    // Wait for terms to load
+    await page.waitForSelector('[data-testid="glossary-terms-table"]');
+
+    // Open status filter dropdown
+    const dropdownButton = page.getByTestId('glossary-status-dropdown');
+    await dropdownButton.click();
+
+    // Select both Approved and Draft statuses
+    const approvedCheckbox = page.locator('.glossary-dropdown-label', {
+      hasText: 'Approved',
+    });
+    const draftCheckbox = page.locator('.glossary-dropdown-label', {
+      hasText: 'Draft',
+    });
+    await approvedCheckbox.click();
+    await draftCheckbox.click();
+
+    const saveButton = page.locator('.ant-btn-primary', {
+      hasText: 'Save',
+    });
+    await saveButton.click();
+
+    // Wait for filter to apply
+    await page.waitForLoadState('networkidle');
+
+    // Verify filtered results
+    const table = page.getByTestId('glossary-terms-table');
+
+    await expect(table).toBeVisible();
+
+    // Clear filters
+    await dropdownButton.click();
+    await approvedCheckbox.click();
+    await draftCheckbox.click();
+    await saveButton.click();
   });
 });

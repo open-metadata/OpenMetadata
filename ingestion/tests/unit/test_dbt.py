@@ -4,6 +4,7 @@ Test dbt
 
 import json
 import uuid
+from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, PropertyMock, patch
@@ -1373,6 +1374,28 @@ class DbtUnitTest(TestCase):
 
         expected_keywords = ["none", "null"]
         self.assertEqual(NONE_KEYWORDS_LIST, expected_keywords)
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.test_connection")
+    def test_override_lineage_config_captured(self, test_connection):
+        """Test that overrideLineage config is properly captured"""
+        test_connection.return_value = False
+
+        # Test with overrideLineage set to True
+        config_with_override = deepcopy(mock_dbt_config)
+        config_with_override["source"]["sourceConfig"]["config"][
+            "overrideLineage"
+        ] = True
+
+        config = OpenMetadataWorkflowConfig.model_validate(config_with_override)
+        dbt_source = DbtSource.create(
+            config_with_override["source"],
+            OpenMetadata(config.workflowConfig.openMetadataServerConfig),
+        )
+
+        self.assertTrue(dbt_source.source_config.overrideLineage)
+
+        # Test default (when not set) is False
+        self.assertFalse(self.dbt_source_obj.source_config.overrideLineage)
 
     def test_constants_exposure_type_map(self):
         """Test ExposureTypeMap constant"""

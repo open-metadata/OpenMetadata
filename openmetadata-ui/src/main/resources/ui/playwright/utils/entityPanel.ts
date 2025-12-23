@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { redirectToExplorePage } from './common';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -350,3 +351,22 @@ export const navigateToIncidentsTab = async (page: Page) => {
     });
   }
 };
+
+export async function navigateToExploreAndSelectTable(
+  page: Page,
+  entityName: string
+) {
+  await redirectToExplorePage(page);
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  const permissionsResponse = page.waitForResponse((response) =>
+    response.url().includes('/permissions')
+  );
+
+  await openEntitySummaryPanel(page, entityName);
+
+  await permissionsResponse;
+}

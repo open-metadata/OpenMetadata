@@ -603,7 +603,6 @@ describe('TableUtils', () => {
         {
           name: 'column1',
           dataType: DataType.String,
-          children: null as any,
         } as Column,
       ];
 

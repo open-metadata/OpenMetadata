@@ -91,3 +91,23 @@ export const importGlossaryInCSVFormat = async ({
 
   return response.data;
 };
+
+export const importGlossaryTermInCSVFormat = async ({
+  name,
+  data,
+  dryRun = true,
+}: importEntityInCSVFormatRequestParams) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<CSVImportAsyncResponse>
+  >(
+    `/glossaryTerms/name/${getEncodedFqn(name)}/importAsync?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
+};
