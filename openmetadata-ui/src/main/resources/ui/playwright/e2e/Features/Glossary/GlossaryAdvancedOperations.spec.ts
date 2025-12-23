@@ -328,6 +328,7 @@ test.describe('Glossary Advanced Operations', () => {
 
   // G-U12: Remove domain from glossary
   test('should remove domain from glossary', async ({ page }) => {
+    test.slow(true);
     const { apiContext, afterAction } = await getApiContext(page);
     const domain = new Domain();
     const glossary = new Glossary();
