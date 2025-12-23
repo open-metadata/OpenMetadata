@@ -717,7 +717,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         ...(originalFilterItem || selectedFilterItem),
         // preserve original values if exists else set to empty array
         value: originalFilterItem?.value || [],
-        hideCounts: impactLevel === EImpactLevel.ColumnLevel ? true : false,
+        hideCounts: impactLevel === EImpactLevel.ColumnLevel,
       };
     });
 
