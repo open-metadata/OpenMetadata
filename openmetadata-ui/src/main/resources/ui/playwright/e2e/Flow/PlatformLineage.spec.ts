@@ -17,6 +17,9 @@ import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 test('Verify Platform Lineage View', async ({ page }) => {
+
+  test.slow(process.env.PLAYWRIGHT_IS_OSS === false)
+
   await redirectToHomePage(page);
   const lineageRes = page.waitForResponse(
     '/api/v1/lineage/getPlatformLineage?view=service*'
