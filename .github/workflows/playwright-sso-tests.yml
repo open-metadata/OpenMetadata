@@ -10,6 +10,20 @@
 #  limitations under the License.
 
 # This workflow executes SSO-specific end-to-end (e2e) tests using Playwright with MySQL as the database.
+# 
+# Purpose:
+#   - Run SSO configuration tests for various authentication providers (Google, Azure AD, Okta, SAML, LDAP, etc.)
+#   - Validate SSO provider selection, field visibility, and configuration workflows
+#   - Tests are tagged with @sso and run in isolation from other Playwright tests
+#
+# Triggers:
+#   - Manual trigger via workflow_dispatch
+#   - Pull requests with "safe to test" label
+#   - Excludes draft PRs
+#
+# Test Location:
+#   - openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts
+#
 # For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
 
 name: Playwright SSO Tests
