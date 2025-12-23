@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined } from '@ant-design/icons';
-import { Chip } from '@mui/material';
+import { CloseOutlined, RightOutlined } from '@ant-design/icons';
+import { Box, Chip } from '@mui/material';
 import { Button, Card, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -29,6 +29,7 @@ import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQu
 import { getEntityName } from '../../../utils/EntityUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
+  buildColumnBreadcrumbPath,
   findOriginalColumnIndex,
   flattenColumns,
   generateEntityLink,
@@ -55,6 +56,7 @@ import {
 } from './ColumnDetailPanel.interface';
 import './ColumnDetailPanel.less';
 import { KeyProfileMetrics } from './KeyProfileMetrics';
+import { NestedColumnsSection } from './NestedColumnsSection';
 
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
@@ -142,6 +144,45 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       (col) => col.fullyQualifiedName === column.fullyQualifiedName
     );
   }, [column, flattenedColumns]);
+
+  const breadcrumbPath = useMemo(() => {
+    if (!isColumn(column)) {
+      return [];
+    }
+
+    return buildColumnBreadcrumbPath(column, allColumns as Column[]);
+  }, [column, allColumns]);
+
+  const nestedColumns = useMemo(() => {
+    if (!isColumn(column)) {
+      return [];
+    }
+
+    return column.children || [];
+  }, [column]);
+
+  const handleNestedColumnClick = useCallback(
+    (nestedColumn: Column) => {
+      if (!onNavigate) {
+        return;
+      }
+
+      const targetIndex = flattenedColumns.findIndex(
+        (col) => col.fullyQualifiedName === nestedColumn.fullyQualifiedName
+      );
+
+      const originalIndex = findOriginalColumnIndex(
+        nestedColumn as T,
+        allColumns ?? []
+      );
+
+      onNavigate(
+        nestedColumn as T,
+        originalIndex >= 0 ? originalIndex : targetIndex
+      );
+    },
+    [flattenedColumns, allColumns, onNavigate]
+  );
 
   const handleDescriptionUpdate = useCallback(
     async (newDescription: string) => {
@@ -372,6 +413,13 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           />
         )}
 
+        {isColumn(column) && (
+          <NestedColumnsSection
+            columns={nestedColumns}
+            onColumnClick={handleNestedColumnClick}
+          />
+        )}
+
         {isTestCaseLoading ? (
           <Loader size="small" />
         ) : (
@@ -466,6 +514,30 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const columnTitle = column ? (
     <div className="title-section">
       <div className="title-container items-start">
+        {breadcrumbPath.length > 1 && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              flexWrap: 'wrap',
+              marginBottom: 1,
+            }}>
+            {breadcrumbPath.map((breadcrumb, index) => (
+              <Box
+                key={breadcrumb.fullyQualifiedName}
+                sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                <Typography.Text
+                  style={{ fontSize: 12, color: '#6B7280', fontWeight: 400 }}>
+                  {getEntityName(breadcrumb)}
+                </Typography.Text>
+                {index < breadcrumbPath.length - 1 && (
+                  <RightOutlined style={{ fontSize: 10, color: '#9CA3AF' }} />
+                )}
+              </Box>
+            ))}
+          </Box>
+        )}
         <Tooltip
           mouseEnterDelay={0.5}
           placement="topLeft"
@@ -553,7 +625,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
   return (
     <Drawer
-      bordered={false}
       className="column-detail-panel"
       closable={false}
       footer={

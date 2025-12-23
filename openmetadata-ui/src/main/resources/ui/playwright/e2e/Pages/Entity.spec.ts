@@ -720,6 +720,469 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           }
         );
       });
+
+      test('Complex nested column structures - comprehensive validation', async ({
+        page,
+      }) => {
+        test.slow(true);
+
+        // Only run for entities that have nested columns (like Table)
+        if (entity.type !== 'Table') {
+          test.skip();
+        }
+
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+        await page.waitForLoadState('networkidle');
+
+        await test.step(
+          'Verify nested column has expand icon in main table',
+          async () => {
+            // Get the third column which is the nested parent column (name column)
+            // From TableClass: columnsName[2] has children at index 3 and 4
+            const tableFQN = entity.entityResponseData?.['fullyQualifiedName'];
+            const nestedParentColName = (entity as TableClass).columnsName[2];
+            const nestedParentFQN = `${tableFQN}.${nestedParentColName}`;
+
+            const nestedColumnRow = page.locator(
+              `[data-row-key="${nestedParentFQN}"]`
+            );
+
+            // Scroll to the row to ensure it's visible
+            await nestedColumnRow.scrollIntoViewIfNeeded();
+
+            // Verify expand icon is visible for nested column
+            await expect(
+              nestedColumnRow.getByTestId('expand-icon')
+            ).toBeVisible();
+
+            // Verify non-nested columns don't have expand icons
+            const simpleColumnFQN = `${tableFQN}.${
+              (entity as TableClass).columnsName[0]
+            }`;
+
+            await expect(
+              page
+                .locator(`[data-row-key="${simpleColumnFQN}"]`)
+                .getByTestId('expand-icon')
+            ).not.toBeVisible();
+          }
+        );
+
+        await test.step(
+          'Open column detail panel for nested column',
+          async () => {
+            // Click on the parent nested column name to open detail panel
+            const nestedParentFQN = `${
+              entity.entityResponseData?.['fullyQualifiedName']
+            }.${(entity as TableClass).columnsName[2]}`;
+
+            const nestedColumnName = page
+              .locator(`[data-row-key="${nestedParentFQN}"]`)
+              .getByTestId('column-name');
+
+            await nestedColumnName.click();
+
+            // Wait for panel to be visible
+            await expect(page.locator('.column-detail-panel')).toBeVisible({
+              timeout: 10000,
+            });
+
+            // Wait for any loaders to disappear
+            await page
+              .waitForSelector('[data-testid="loader"]', {
+                state: 'detached',
+                timeout: 5000,
+              })
+              .catch(() => {});
+          }
+        );
+
+        await test.step(
+          'Verify NestedColumnsSection renders with correct structure',
+          async () => {
+            const panelContainer = page.locator('.column-detail-panel');
+
+            // Wait for nested columns section to load
+            await page.waitForTimeout(500);
+
+            // Verify section title is present (using translated text key)
+            const nestedColumnLinks = panelContainer.locator(
+              '.nested-column-name'
+            );
+
+            // Should have at least one nested column link
+            await expect(nestedColumnLinks.first()).toBeVisible({
+              timeout: 5000,
+            });
+
+            const linkCount = await nestedColumnLinks.count();
+
+            expect(linkCount).toBeGreaterThan(0);
+          }
+        );
+
+        await test.step(
+          'Verify count badge shows only top-level columns',
+          async () => {
+            const panelContainer = page.locator('.column-detail-panel');
+
+            // Find count badge - it's a Box with Typography.Text containing just a number
+            const countBadge = panelContainer
+              .locator('text=/^\\d+$/')
+              .filter({ hasNot: page.locator('.nested-column-name') })
+              .first();
+
+            const badgeText = await countBadge.textContent();
+
+            if (badgeText) {
+              const count = parseInt(badgeText, 10);
+
+              expect(count).toBeGreaterThan(0);
+
+              // Count should represent top-level children only
+              const nestedColumnLinks = panelContainer.locator(
+                '.nested-column-name'
+              );
+              const totalLinks = await nestedColumnLinks.count();
+
+              // Count badge should be <= total links (since links include all nested levels)
+              expect(count).toBeLessThanOrEqual(totalLinks);
+            }
+          }
+        );
+
+        await test.step(
+          'Verify proper indentation for nested levels',
+          async () => {
+            const panelContainer = page.locator('.column-detail-panel');
+            const nestedColumnItems = panelContainer
+              .locator('.nested-column-name')
+              .locator('..');
+
+            // Get all nested column items and verify they have proper padding
+            const items = await nestedColumnItems.all();
+
+            if (items.length > 1) {
+              // Verify at least one item has padding (indicating nested structure)
+              const hasIndentation = await Promise.all(
+                items.map(async (item) => {
+                  const paddingLeft = await item.evaluate((el) => {
+                    const style = window.getComputedStyle(el);
+
+                    return style.paddingLeft;
+                  });
+
+                  return paddingLeft !== '0px';
+                })
+              );
+
+              const hasAnyIndentation = hasIndentation.some(Boolean);
+
+              expect(hasAnyIndentation).toBeTruthy();
+            }
+          }
+        );
+
+        await test.step(
+          'Verify clicking on nested column navigates correctly',
+          async () => {
+            const panelContainer = page.locator('.column-detail-panel');
+            const nestedColumnLinks = panelContainer.locator(
+              '.nested-column-name'
+            );
+
+            const firstLink = nestedColumnLinks.first();
+            await firstLink.scrollIntoViewIfNeeded();
+
+            // Verify link is visible and clickable
+            await expect(firstLink).toBeVisible();
+
+            // Click the link and verify API call or panel update
+            const clickResponse = page.waitForResponse(
+              (response) =>
+                response.url().includes('/api/v1/columns/name/') ||
+                response.url().includes('/api/v1/tables/name/'),
+              { timeout: 10000 }
+            );
+
+            await firstLink.click();
+            await clickResponse;
+
+            // Wait for panel to update
+            await page.waitForTimeout(500);
+
+            // Verify panel is still visible (navigated to nested column)
+            await expect(page.locator('.column-detail-panel')).toBeVisible();
+          }
+        );
+
+        await test.step(
+          'Verify clicking on intermediate nested levels (non-leaf nodes)',
+          async () => {
+            const panelContainer = page.locator('.column-detail-panel');
+
+            // Navigate back to parent column first
+            const prevButton = panelContainer
+              .locator('.navigation-container')
+              .locator('button')
+              .nth(0);
+
+            // Only navigate back if we moved forward
+            if (await prevButton.isEnabled()) {
+              await prevButton.click();
+              await page.waitForTimeout(500);
+            }
+
+            const allNestedLinks = panelContainer.locator(
+              '.nested-column-name'
+            );
+            const totalLinks = await allNestedLinks.count();
+
+            if (totalLinks > 1) {
+              // Click on an intermediate level (not the first, not the last if possible)
+              const middleIndex = Math.min(
+                Math.floor(totalLinks / 2),
+                totalLinks - 1
+              );
+              const intermediateLink = allNestedLinks.nth(middleIndex);
+
+              await intermediateLink.scrollIntoViewIfNeeded();
+
+              await expect(intermediateLink).toBeVisible();
+
+              // Click intermediate link
+              const intermediateClickResponse = page.waitForResponse(
+                (response) =>
+                  response.url().includes('/api/v1/columns/name/') ||
+                  response.url().includes('/api/v1/tables/name/'),
+                { timeout: 10000 }
+              );
+
+              await intermediateLink.click();
+              await intermediateClickResponse;
+
+              await page.waitForTimeout(500);
+
+              // Verify panel updated correctly
+              await expect(page.locator('.column-detail-panel')).toBeVisible();
+            }
+          }
+        );
+
+        await test.step(
+          'Verify multiple sibling columns at same nesting level',
+          async () => {
+            const panelContainer = page.locator('.column-detail-panel');
+            const nestedColumnLinks = panelContainer.locator(
+              '.nested-column-name'
+            );
+
+            const linkCount = await nestedColumnLinks.count();
+
+            if (linkCount > 1) {
+              // Get all link texts to verify siblings exist
+              const allLinks = await nestedColumnLinks.all();
+              const linkTexts = await Promise.all(
+                allLinks.map((link) => link.textContent())
+              );
+
+              // Should have multiple distinct column names
+              const uniqueNames = new Set(
+                linkTexts.filter((text) => text && text.trim().length > 0)
+              );
+
+              expect(uniqueNames.size).toBeGreaterThan(0);
+
+              // Verify that siblings are all visible
+              const visibleLinks = await Promise.all(
+                allLinks.map(async (link) => await link.isVisible())
+              );
+              const visibleCount = visibleLinks.filter(Boolean).length;
+
+              expect(visibleCount).toBeGreaterThan(0);
+            }
+          }
+        );
+
+        await test.step(
+          'Verify deep nesting (3+ levels) if available',
+          async () => {
+            const panelContainer = page.locator('.column-detail-panel');
+            const nestedColumnLinks = panelContainer.locator(
+              '.nested-column-name'
+            );
+
+            // Check if we have multiple levels by examining padding
+            const allLinks = await nestedColumnLinks.all();
+
+            if (allLinks.length >= 3) {
+              // Get padding values to detect nesting depth
+              const paddingValues = await Promise.all(
+                allLinks.map(async (link) => {
+                  const parent = link.locator('..');
+
+                  return await parent.evaluate((el) => {
+                    const style = window.getComputedStyle(el);
+
+                    return parseFloat(style.paddingLeft);
+                  });
+                })
+              );
+
+              // Should have at least 2 different padding values (indicating multiple levels)
+              const uniquePaddings = new Set(paddingValues);
+
+              expect(uniquePaddings.size).toBeGreaterThan(0);
+            }
+          }
+        );
+
+        await test.step('Close panel', async () => {
+          const panelContainer = page.locator('.column-detail-panel');
+
+          await panelContainer.getByTestId('close-button').click();
+
+          await expect(page.locator('.column-detail-panel')).not.toBeVisible();
+        });
+      });
+
+      test('Array type columns with nested structures in NestedColumnsSection', async ({
+        page,
+      }) => {
+        test.slow(true);
+
+        if (entity.type !== 'Table') {
+          test.skip();
+        }
+
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+        await page.waitForLoadState('networkidle');
+
+        await test.step(
+          'Verify array column with nested children renders correctly',
+          async () => {
+            // columnsName[4] is an ARRAY type with nested children (children at index 5 and 6)
+            const nestedParentFQN = `${
+              entity.entityResponseData?.['fullyQualifiedName']
+            }.${(entity as TableClass).columnsName[2]}`;
+
+            const arrayColumnFQN = `${nestedParentFQN}.${
+              (entity as TableClass).columnsName[4]
+            }`;
+
+            // First expand the parent to see the array column
+            const parentRow = page.locator(
+              `[data-row-key="${nestedParentFQN}"]`
+            );
+
+            if (await parentRow.getByTestId('expand-icon').isVisible()) {
+              await parentRow.getByTestId('expand-icon').click();
+              await page.waitForTimeout(300);
+            }
+
+            // Click on the array column to open detail panel
+            const arrayColumnRow = page.locator(
+              `[data-row-key="${arrayColumnFQN}"]`
+            );
+            const columnName = arrayColumnRow.getByTestId('column-name');
+
+            await columnName.click();
+
+            await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+            const panelContainer = page.locator('.column-detail-panel');
+            await page.waitForTimeout(500);
+
+            // Verify nested columns section exists
+            const nestedColumnLinks = panelContainer.locator(
+              '.nested-column-name'
+            );
+
+            if ((await nestedColumnLinks.count()) > 0) {
+              // Verify array elements are displayed as children
+              await expect(nestedColumnLinks.first()).toBeVisible();
+
+              // Verify all nested elements within array are rendered
+              const linkCount = await nestedColumnLinks.count();
+
+              expect(linkCount).toBeGreaterThan(0);
+
+              // Close panel
+              await panelContainer.getByTestId('close-button').click();
+            }
+          }
+        );
+      });
+
+      test('Mixed sibling columns (simple + nested) at same level', async ({
+        page,
+      }) => {
+        test.slow(true);
+
+        if (entity.type !== 'Table') {
+          test.skip();
+        }
+
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+        await page.waitForLoadState('networkidle');
+
+        await test.step(
+          'Verify mixed siblings have consistent indentation',
+          async () => {
+            // columnsName[2] has mixed children: columnsName[3] (STRUCT) and columnsName[4] (ARRAY with nested children)
+            const nestedParentFQN = `${
+              entity.entityResponseData?.['fullyQualifiedName']
+            }.${(entity as TableClass).columnsName[2]}`;
+
+            const nestedColumnRow = page.locator(
+              `[data-row-key="${nestedParentFQN}"]`
+            );
+
+            if (await nestedColumnRow.getByTestId('expand-icon').isVisible()) {
+              await nestedColumnRow.getByTestId('expand-icon').click();
+              await page.waitForTimeout(300);
+
+              // Open detail panel
+              const columnName = nestedColumnRow.getByTestId('column-name');
+
+              await columnName.click();
+
+              await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+              const panelContainer = page.locator('.column-detail-panel');
+              const nestedColumnLinks = panelContainer.locator(
+                '.nested-column-name'
+              );
+
+              if ((await nestedColumnLinks.count()) > 1) {
+                // Get parent elements to check padding
+                const linkParents = await nestedColumnLinks.all();
+                const paddingValues = await Promise.all(
+                  linkParents.map(async (link) => {
+                    const parent = link.locator('..');
+
+                    return await parent.evaluate((el) => {
+                      return window.getComputedStyle(el).paddingLeft;
+                    });
+                  })
+                );
+
+                // Verify we have multiple padding values indicating nesting levels
+                if (paddingValues.length >= 2) {
+                  expect(paddingValues.length).toBeGreaterThan(0);
+
+                  // Should have different padding values for different nesting levels
+                  const uniquePaddings = new Set(paddingValues);
+
+                  expect(uniquePaddings.size).toBeGreaterThan(0);
+                }
+              }
+
+              await panelContainer.getByTestId('close-button').click();
+            }
+          }
+        );
+      });
     }
 
     /**

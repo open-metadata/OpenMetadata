@@ -12,7 +12,6 @@
  */
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
-import { EntityTags } from 'Models';
 import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
@@ -27,7 +26,8 @@ import {
   uniqueId,
   upperCase,
 } from 'lodash';
-import { CSSProperties, Fragment, Suspense, lazy } from 'react';
+import { EntityTags } from 'Models';
+import { CSSProperties, Fragment, lazy, Suspense } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
@@ -125,16 +125,6 @@ import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
-import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
-import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
-import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
-import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
-import TableQueries from '../components/Database/TableQueries/TableQueries';
-import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
@@ -142,13 +132,23 @@ import { ManageButtonItemLabel } from '../components/common/ManageButtonContentI
 import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
+import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
+import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
+import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
+import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
+import TableQueries from '../components/Database/TableQueries/TableQueries';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
+import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
+import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
-import { ExportTypes } from '../constants/Export.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { ExportTypes } from '../constants/Export.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
@@ -186,12 +186,12 @@ import {
 } from './CommonUtils';
 import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
+import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
-import { t } from './i18next/LocalUtil';
 
 const EntityLineageTab = lazy(() =>
   import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
@@ -789,7 +789,6 @@ export const getTableDetailPageBaseTabs = ({
   feedCount,
   getEntityFeedCount,
   handleFeedCount,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   editCustomAttributePermission,
   viewSampleDataPermission,
@@ -1586,4 +1585,68 @@ export const findOriginalColumnIndex = <
   return allColumns.findIndex(
     (col) => col.fullyQualifiedName === column.fullyQualifiedName
   );
+};
+
+/**
+ * Finds the parent column of a target column in a nested structure
+ * @param targetColumn The column to find the parent for
+ * @param columns Array of columns to search through
+ * @param parent Current parent column (used internally for recursion)
+ * @returns The parent column, null if no parent found, or undefined if column not found
+ */
+export const findParentColumn = <
+  T extends { fullyQualifiedName?: string; children?: T[] }
+>(
+  targetColumn: T,
+  columns: T[],
+  parent?: T | null
+): T | null | undefined => {
+  for (const col of columns) {
+    if (col.fullyQualifiedName === targetColumn.fullyQualifiedName) {
+      return parent ?? null;
+    }
+    if (col.children && col.children.length > 0) {
+      const found = findParentColumn(targetColumn, col.children, col);
+      if (found !== undefined) {
+        return found;
+      }
+    }
+  }
+
+  return undefined;
+};
+
+/**
+ * Builds a breadcrumb path from a column to its root parent
+ * Returns an array of columns representing the path from root to the target column
+ * @param column The column to build the breadcrumb path for
+ * @param allColumns Array of all columns to search through
+ * @returns Array of columns from root to target column
+ */
+export const buildColumnBreadcrumbPath = <
+  T extends { fullyQualifiedName?: string; children?: T[] }
+>(
+  column: T | null,
+  allColumns: T[]
+): T[] => {
+  if (!column?.fullyQualifiedName) {
+    return [];
+  }
+
+  const breadcrumbs: T[] = [column];
+  let currentColumn: T | null = column;
+
+  while (currentColumn) {
+    const parent: T | null | undefined = findParentColumn(
+      currentColumn,
+      allColumns
+    );
+    if (parent === undefined || parent === null) {
+      break;
+    }
+    breadcrumbs.unshift(parent);
+    currentColumn = parent;
+  }
+
+  return breadcrumbs;
 };

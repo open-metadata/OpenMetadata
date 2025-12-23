@@ -428,6 +428,15 @@ jest.mock('../../../utils/TableUtils', () => ({
         (col: Column) => col.fullyQualifiedName === column.fullyQualifiedName
       );
     }),
+  buildColumnBreadcrumbPath: jest
+    .fn()
+    .mockImplementation((column: Column | null) => {
+      if (!column?.fullyQualifiedName) {
+        return [];
+      }
+
+      return [column];
+    }),
 }));
 
 describe('ColumnDetailPanel', () => {
