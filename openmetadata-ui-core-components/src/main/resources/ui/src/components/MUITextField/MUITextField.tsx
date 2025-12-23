@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { TextField, TextFieldProps } from '@mui/material';
-import { ChangeEvent, FC, memo, useCallback } from 'react';
-import { getSanitizeContent } from '../../../utils/sanitize.utils';
+import { FC, memo } from 'react';
 
 interface MUITextFieldProps extends Omit<TextFieldProps, 'variant' | 'size'> {
   variant?: 'outlined' | 'filled' | 'standard';
@@ -20,29 +19,13 @@ interface MUITextFieldProps extends Omit<TextFieldProps, 'variant' | 'size'> {
 }
 
 const MUITextField: FC<MUITextFieldProps> = ({
-  value,
-  onChange,
-  variant,
   size = 'small',
   ...props
 }) => {
-  const handleChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const sanitizedValue = getSanitizeContent(e.target.value);
-      if (onChange) {
-        onChange({ ...e, target: { ...e.target, value: sanitizedValue } });
-      }
-    },
-    [onChange]
-  );
-
   return (
     <TextField
       fullWidth
       size={size}
-      value={value}
-      variant={variant}
-      onChange={handleChange}
       {...props}
     />
   );

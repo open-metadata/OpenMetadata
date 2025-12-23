@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
+import { MUITextField } from '@openmetadata/ui-core-components';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
@@ -30,7 +31,7 @@ import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compact, startCase, toString } from 'lodash';
-import { Fragment, ReactNode } from 'react';
+import { ChangeEvent, Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -50,7 +51,6 @@ import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUISelect from '../components/common/MUISelect/MUISelect';
 import MUITagSuggestion from '../components/common/MUITagSuggestion/MUITagSuggestion';
-import MUITextField from '../components/common/MUITextField/MUITextField';
 import MUIUserTeamSelect, {
   MUIUserTeamSelectProps,
 } from '../components/common/MUIUserTeamSelect/MUIUserTeamSelect';
@@ -75,6 +75,7 @@ import TagSuggestion, {
   TagSuggestionProps,
 } from '../pages/TasksPage/shared/TagSuggestion';
 import { t } from './i18next/LocalUtil';
+import { getSanitizeContent } from './sanitize.utils';
 import { getErrorText } from './StringsUtils';
 
 export const getField = (field: FieldProp) => {
@@ -145,10 +146,21 @@ export const getField = (field: FieldProp) => {
       break;
 
     case FieldTypes.TEXT_MUI: {
-      const { error, ...muiProps } = props;
+      const { error, onChange, value, ...muiProps } = props;
       const isRequired = fieldRules.some(
         (rule) => (rule as RuleObject).required
       );
+
+      // Handle sanitization on change
+      const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const sanitizedValue = getSanitizeContent(e.target.value);
+        if (onChange) {
+          (onChange as (e: ChangeEvent<HTMLInputElement>) => void)({
+            ...e,
+            target: { ...e.target, value: sanitizedValue },
+          });
+        }
+      };
 
       return (
         <Form.Item {...formProps}>
@@ -161,6 +173,8 @@ export const getField = (field: FieldProp) => {
             label={muiLabel}
             placeholder={placeholder}
             required={isRequired}
+            value={value}
+            onChange={handleChange}
             {...muiProps}
           />
         </Form.Item>
@@ -168,10 +182,21 @@ export const getField = (field: FieldProp) => {
     }
 
     case FieldTypes.PASSWORD_MUI: {
-      const { error, ...muiProps } = props;
+      const { error, onChange, value, ...muiProps } = props;
       const isRequired = fieldRules.some(
         (rule) => (rule as RuleObject).required
       );
+
+      // Handle sanitization on change
+      const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+        const sanitizedValue = getSanitizeContent(e.target.value);
+        if (onChange) {
+          (onChange as (e: ChangeEvent<HTMLInputElement>) => void)({
+            ...e,
+            target: { ...e.target, value: sanitizedValue },
+          });
+        }
+      };
 
       return (
         <Form.Item {...formProps}>
@@ -185,6 +210,8 @@ export const getField = (field: FieldProp) => {
             placeholder={placeholder}
             required={isRequired}
             type="password"
+            value={value}
+            onChange={handleChange}
             {...muiProps}
           />
         </Form.Item>
