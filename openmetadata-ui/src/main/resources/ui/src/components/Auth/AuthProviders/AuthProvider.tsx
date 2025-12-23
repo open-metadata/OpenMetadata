@@ -266,7 +266,6 @@ export const AuthProvider = ({
   const resetUserDetails = (forceLogout = false) => {
     setCurrentUser({} as User);
     clearOidcToken();
-    setRefreshToken('');
     setIsAuthenticated(false);
     setApplicationLoading(false);
     clearTimeout(timeoutId);
