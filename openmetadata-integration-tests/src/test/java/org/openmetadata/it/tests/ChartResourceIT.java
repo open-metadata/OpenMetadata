@@ -38,8 +38,8 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   // ===================================================================
 
   @Override
-  protected CreateChart createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+  protected CreateChart createMinimalRequest(TestNamespace ns) {
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     CreateChart request = new CreateChart();
     request.setName(ns.prefix("chart"));
@@ -51,8 +51,8 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   }
 
   @Override
-  protected CreateChart createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+  protected CreateChart createRequest(String name, TestNamespace ns) {
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     CreateChart request = new CreateChart();
     request.setName(name);
@@ -63,40 +63,40 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   }
 
   @Override
-  protected Chart createEntity(CreateChart createRequest, OpenMetadataClient client) {
-    return client.charts().create(createRequest);
+  protected Chart createEntity(CreateChart createRequest) {
+    return SdkClients.adminClient().charts().create(createRequest);
   }
 
   @Override
-  protected Chart getEntity(String id, OpenMetadataClient client) {
-    return client.charts().get(id);
+  protected Chart getEntity(String id) {
+    return SdkClients.adminClient().charts().get(id);
   }
 
   @Override
-  protected Chart getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.charts().getByName(fqn);
+  protected Chart getEntityByName(String fqn) {
+    return SdkClients.adminClient().charts().getByName(fqn);
   }
 
   @Override
-  protected Chart patchEntity(String id, Chart entity, OpenMetadataClient client) {
-    return client.charts().update(id, entity);
+  protected Chart patchEntity(String id, Chart entity) {
+    return SdkClients.adminClient().charts().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.charts().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().charts().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.charts().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().charts().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.charts().delete(id, params);
+    SdkClients.adminClient().charts().delete(id, params);
   }
 
   @Override
@@ -119,33 +119,33 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   }
 
   @Override
-  protected ListResponse<Chart> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.charts().list(params);
+  protected ListResponse<Chart> listEntities(ListParams params) {
+    return SdkClients.adminClient().charts().list(params);
   }
 
   @Override
-  protected Chart getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.charts().get(id, fields);
+  protected Chart getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().charts().get(id, fields);
   }
 
   @Override
-  protected Chart getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.charts().getByName(fqn, fields);
+  protected Chart getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().charts().getByName(fqn, fields);
   }
 
   @Override
-  protected Chart getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.charts().get(id, null, "deleted");
+  protected Chart getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().charts().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.charts().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().charts().getVersionList(id);
   }
 
   @Override
-  protected Chart getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.charts().getVersion(id.toString(), version);
+  protected Chart getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().charts().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -162,15 +162,13 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     request.setChartType(ChartType.Bar);
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(request, client),
-        "Creating chart without service should fail");
+        Exception.class, () -> createEntity(request), "Creating chart without service should fail");
   }
 
   @Test
   void post_chartWithDifferentTypes_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     ChartType[] chartTypes = {
       ChartType.Bar,
@@ -188,7 +186,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
       request.setService(service.getFullyQualifiedName());
       request.setChartType(chartType);
 
-      Chart chart = createEntity(request, client);
+      Chart chart = createEntity(request);
       assertNotNull(chart);
       assertEquals(chartType, chart.getChartType());
     }
@@ -197,7 +195,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   @Test
   void post_chartWithSourceUrl_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     CreateChart request = new CreateChart();
     request.setName(ns.prefix("chart_with_url"));
@@ -205,7 +203,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     request.setChartType(ChartType.Bar);
     request.setSourceUrl("http://localhost:3000/charts/1");
 
-    Chart chart = createEntity(request, client);
+    Chart chart = createEntity(request);
     assertNotNull(chart);
     assertEquals("http://localhost:3000/charts/1", chart.getSourceUrl());
   }
@@ -213,7 +211,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   @Test
   void put_chartAttributes_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     // Create chart with initial values
     CreateChart request = new CreateChart();
@@ -221,7 +219,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     request.setService(service.getFullyQualifiedName());
     request.setChartType(ChartType.Bar);
 
-    Chart chart = createEntity(request, client);
+    Chart chart = createEntity(request);
     assertNotNull(chart);
 
     // Update attributes
@@ -229,7 +227,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     chart.setSourceUrl("http://localhost:3000/charts/updated");
     chart.setDescription("Updated description");
 
-    Chart updated = patchEntity(chart.getId().toString(), chart, client);
+    Chart updated = patchEntity(chart.getId().toString(), chart);
     assertNotNull(updated);
     assertEquals(ChartType.Line, updated.getChartType());
     assertEquals("http://localhost:3000/charts/updated", updated.getSourceUrl());
@@ -239,19 +237,19 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   @Test
   void patch_chartType_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     CreateChart request = new CreateChart();
     request.setName(ns.prefix("chart_patch_type"));
     request.setService(service.getFullyQualifiedName());
     request.setChartType(ChartType.Bar);
 
-    Chart chart = createEntity(request, client);
+    Chart chart = createEntity(request);
     assertEquals(ChartType.Bar, chart.getChartType());
 
     // Patch to change chart type
     chart.setChartType(ChartType.Pie);
-    Chart patched = patchEntity(chart.getId().toString(), chart, client);
+    Chart patched = patchEntity(chart.getId().toString(), chart);
     assertEquals(ChartType.Pie, patched.getChartType());
   }
 
@@ -260,7 +258,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a dashboard service
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     // Create a chart under the service
     CreateChart request = new CreateChart();
@@ -268,7 +266,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     request.setService(service.getFullyQualifiedName());
     request.setChartType(ChartType.Bar);
 
-    Chart chart = createEntity(request, client);
+    Chart chart = createEntity(request);
     assertNotNull(chart);
     assertNotNull(chart.getService());
     assertEquals(service.getFullyQualifiedName(), chart.getService().getFullyQualifiedName());
@@ -279,15 +277,15 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create charts with different dashboard services
-    DashboardService metabaseService = DashboardServiceTestFactory.createMetabase(client, ns);
-    DashboardService lookerService = DashboardServiceTestFactory.createLooker(client, ns);
+    DashboardService metabaseService = DashboardServiceTestFactory.createMetabase(ns);
+    DashboardService lookerService = DashboardServiceTestFactory.createLooker(ns);
 
     // Create chart for Metabase
     CreateChart metabaseChart = new CreateChart();
     metabaseChart.setName(ns.prefix("chart_metabase"));
     metabaseChart.setService(metabaseService.getFullyQualifiedName());
     metabaseChart.setChartType(ChartType.Bar);
-    Chart chart1 = createEntity(metabaseChart, client);
+    Chart chart1 = createEntity(metabaseChart);
     assertNotNull(chart1);
     assertEquals(
         metabaseService.getFullyQualifiedName(), chart1.getService().getFullyQualifiedName());
@@ -297,7 +295,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     lookerChart.setName(ns.prefix("chart_looker"));
     lookerChart.setService(lookerService.getFullyQualifiedName());
     lookerChart.setChartType(ChartType.Line);
-    Chart chart2 = createEntity(lookerChart, client);
+    Chart chart2 = createEntity(lookerChart);
     assertNotNull(chart2);
     assertEquals(
         lookerService.getFullyQualifiedName(), chart2.getService().getFullyQualifiedName());
@@ -306,7 +304,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     ListParams params1 = new ListParams();
     params1.setLimit(100);
     params1.addFilter("service", metabaseService.getFullyQualifiedName());
-    ListResponse<Chart> metabaseCharts = listEntities(params1, client);
+    ListResponse<Chart> metabaseCharts = listEntities(params1);
     assertTrue(
         metabaseCharts.getData().stream()
             .allMatch(
@@ -319,7 +317,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   @Test
   void list_chartsByService(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     // Create multiple charts under the same service
     for (int i = 0; i < 3; i++) {
@@ -327,14 +325,14 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
       request.setName(ns.prefix("list_chart_" + i));
       request.setService(service.getFullyQualifiedName());
       request.setChartType(ChartType.Bar);
-      createEntity(request, client);
+      createEntity(request);
     }
 
     // List charts by service
     ListParams params = new ListParams();
     params.setLimit(100);
     params.addFilter("service", service.getFullyQualifiedName());
-    ListResponse<Chart> charts = listEntities(params, client);
+    ListResponse<Chart> charts = listEntities(params);
 
     assertTrue(charts.getData().size() >= 3);
     for (Chart chart : charts.getData()) {
@@ -345,91 +343,91 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   @Test
   void test_chartVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     // Create chart
     CreateChart request = new CreateChart();
     request.setName(ns.prefix("chart_version_history"));
     request.setService(service.getFullyQualifiedName());
     request.setChartType(ChartType.Bar);
-    Chart chart = createEntity(request, client);
+    Chart chart = createEntity(request);
 
     // Get version history - should have initial version
-    EntityHistory history = getVersionHistory(chart.getId(), client);
+    EntityHistory history = getVersionHistory(chart.getId());
     assertNotNull(history);
     assertTrue(history.getVersions().size() >= 1);
 
     // Update chart to create new version
     chart.setDescription("Updated description for version history test");
     chart.setChartType(ChartType.Line);
-    Chart updated = patchEntity(chart.getId().toString(), chart, client);
+    Chart updated = patchEntity(chart.getId().toString(), chart);
     assertTrue(updated.getVersion() > chart.getVersion());
 
     // Get version history again
-    EntityHistory updatedHistory = getVersionHistory(chart.getId(), client);
+    EntityHistory updatedHistory = getVersionHistory(chart.getId());
     assertTrue(updatedHistory.getVersions().size() >= 2);
 
     // Get specific version
-    Chart version1 = getVersion(chart.getId(), chart.getVersion(), client);
+    Chart version1 = getVersion(chart.getId(), chart.getVersion());
     assertNotNull(version1);
   }
 
   @Test
   void test_chartSoftDeleteAndRestore(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     // Create chart
     CreateChart request = new CreateChart();
     request.setName(ns.prefix("chart_soft_delete"));
     request.setService(service.getFullyQualifiedName());
     request.setChartType(ChartType.Bar);
-    Chart chart = createEntity(request, client);
+    Chart chart = createEntity(request);
     assertNotNull(chart.getId());
 
     // Soft delete
-    deleteEntity(chart.getId().toString(), client);
+    deleteEntity(chart.getId().toString());
 
     // Verify deleted
-    Chart deleted = getEntityIncludeDeleted(chart.getId().toString(), client);
+    Chart deleted = getEntityIncludeDeleted(chart.getId().toString());
     assertNotNull(deleted.getDeleted());
     assertTrue(deleted.getDeleted());
 
     // Restore
-    restoreEntity(chart.getId().toString(), client);
+    restoreEntity(chart.getId().toString());
 
     // Verify restored
-    Chart restored = getEntity(chart.getId().toString(), client);
+    Chart restored = getEntity(chart.getId().toString());
     assertFalse(restored.getDeleted() != null && restored.getDeleted());
   }
 
   @Test
   void test_chartHardDelete(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     // Create chart
     CreateChart request = new CreateChart();
     request.setName(ns.prefix("chart_hard_delete"));
     request.setService(service.getFullyQualifiedName());
     request.setChartType(ChartType.Bar);
-    Chart chart = createEntity(request, client);
+    Chart chart = createEntity(request);
     String chartId = chart.getId().toString();
 
     // Hard delete
-    hardDeleteEntity(chartId, client);
+    hardDeleteEntity(chartId);
 
     // Verify chart is completely gone
     assertThrows(
         Exception.class,
-        () -> getEntityIncludeDeleted(chartId, client),
+        () -> getEntityIncludeDeleted(chartId),
         "Hard deleted chart should not be retrievable");
   }
 
   @Test
   void test_chartWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     // Create chart with owner
     CreateChart request = new CreateChart();
@@ -438,7 +436,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     request.setChartType(ChartType.Bar);
     request.setOwners(List.of(testUser1().getEntityReference()));
 
-    Chart chart = createEntity(request, client);
+    Chart chart = createEntity(request);
     assertNotNull(chart.getOwners());
     assertFalse(chart.getOwners().isEmpty());
     assertEquals(testUser1().getId(), chart.getOwners().get(0).getId());
@@ -447,7 +445,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   @Test
   void testChartWithDashboards(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     // Create dashboards first
     CreateDashboard dashboardRequest1 = new CreateDashboard();
@@ -468,7 +466,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     chartRequest.setDashboards(
         List.of(dashboard1.getFullyQualifiedName(), dashboard2.getFullyQualifiedName()));
 
-    Chart chart = createEntity(chartRequest, client);
+    Chart chart = createEntity(chartRequest);
     assertNotNull(chart);
 
     // Verify chart has dashboards
@@ -488,7 +486,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
   @Test
   void patch_chartDashboards_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createMetabase(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
 
     // Create initial dashboard
     CreateDashboard dashboardRequest1 = new CreateDashboard();
@@ -502,7 +500,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     chartRequest.setService(service.getFullyQualifiedName());
     chartRequest.setChartType(ChartType.Bar);
     chartRequest.setDashboards(List.of(dashboard1.getFullyQualifiedName()));
-    Chart chart = createEntity(chartRequest, client);
+    Chart chart = createEntity(chartRequest);
 
     // Create new dashboard
     CreateDashboard dashboardRequest2 = new CreateDashboard();
@@ -513,7 +511,7 @@ public class ChartResourceIT extends BaseEntityIT<Chart, CreateChart> {
     // Patch chart to change dashboard
     Chart chartWithDashboards = client.charts().get(chart.getId().toString(), "dashboards");
     chartWithDashboards.setDashboards(List.of(dashboard2.getEntityReference()));
-    Chart patched = patchEntity(chart.getId().toString(), chartWithDashboards, client);
+    Chart patched = patchEntity(chart.getId().toString(), chartWithDashboards);
 
     // Verify dashboard changed
     Chart verifyChart = client.charts().get(patched.getId().toString(), "dashboards");

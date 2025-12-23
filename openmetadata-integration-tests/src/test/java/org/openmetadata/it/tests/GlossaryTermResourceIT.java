@@ -41,8 +41,8 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // ===================================================================
 
   @Override
-  protected CreateGlossaryTerm createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    Glossary glossary = getOrCreateGlossary(ns, client);
+  protected CreateGlossaryTerm createMinimalRequest(TestNamespace ns) {
+    Glossary glossary = getOrCreateGlossary(ns);
 
     return new CreateGlossaryTerm()
         .withName(ns.prefix("term"))
@@ -51,9 +51,8 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Override
-  protected CreateGlossaryTerm createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
-    Glossary glossary = getOrCreateGlossary(ns, client);
+  protected CreateGlossaryTerm createRequest(String name, TestNamespace ns) {
+    Glossary glossary = getOrCreateGlossary(ns);
 
     return new CreateGlossaryTerm()
         .withName(name)
@@ -61,52 +60,52 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         .withDescription("Test glossary term");
   }
 
-  private Glossary getOrCreateGlossary(TestNamespace ns, OpenMetadataClient client) {
+  private Glossary getOrCreateGlossary(TestNamespace ns) {
     String glossaryName = ns.prefix("glossary");
     try {
-      return client.glossaries().getByName(glossaryName);
+      return SdkClients.adminClient().glossaries().getByName(glossaryName);
     } catch (Exception e) {
       CreateGlossary createGlossary =
           new CreateGlossary().withName(glossaryName).withDescription("Test glossary for terms");
-      return client.glossaries().create(createGlossary);
+      return SdkClients.adminClient().glossaries().create(createGlossary);
     }
   }
 
   @Override
-  protected GlossaryTerm createEntity(CreateGlossaryTerm createRequest, OpenMetadataClient client) {
-    return client.glossaryTerms().create(createRequest);
+  protected GlossaryTerm createEntity(CreateGlossaryTerm createRequest) {
+    return SdkClients.adminClient().glossaryTerms().create(createRequest);
   }
 
   @Override
-  protected GlossaryTerm getEntity(String id, OpenMetadataClient client) {
-    return client.glossaryTerms().get(id);
+  protected GlossaryTerm getEntity(String id) {
+    return SdkClients.adminClient().glossaryTerms().get(id);
   }
 
   @Override
-  protected GlossaryTerm getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.glossaryTerms().getByName(fqn);
+  protected GlossaryTerm getEntityByName(String fqn) {
+    return SdkClients.adminClient().glossaryTerms().getByName(fqn);
   }
 
   @Override
-  protected GlossaryTerm patchEntity(String id, GlossaryTerm entity, OpenMetadataClient client) {
-    return client.glossaryTerms().update(id, entity);
+  protected GlossaryTerm patchEntity(String id, GlossaryTerm entity) {
+    return SdkClients.adminClient().glossaryTerms().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.glossaryTerms().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().glossaryTerms().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.glossaryTerms().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().glossaryTerms().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.glossaryTerms().delete(id, params);
+    SdkClients.adminClient().glossaryTerms().delete(id, params);
   }
 
   @Override
@@ -128,34 +127,33 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Override
-  protected ListResponse<GlossaryTerm> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.glossaryTerms().list(params);
+  protected ListResponse<GlossaryTerm> listEntities(ListParams params) {
+    return SdkClients.adminClient().glossaryTerms().list(params);
   }
 
   @Override
-  protected GlossaryTerm getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.glossaryTerms().get(id, fields);
+  protected GlossaryTerm getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().glossaryTerms().get(id, fields);
   }
 
   @Override
-  protected GlossaryTerm getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.glossaryTerms().getByName(fqn, fields);
+  protected GlossaryTerm getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().glossaryTerms().getByName(fqn, fields);
   }
 
   @Override
-  protected GlossaryTerm getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.glossaryTerms().get(id, null, "deleted");
+  protected GlossaryTerm getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().glossaryTerms().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.glossaryTerms().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().glossaryTerms().getVersionList(id);
   }
 
   @Override
-  protected GlossaryTerm getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.glossaryTerms().getVersion(id.toString(), version);
+  protected GlossaryTerm getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().glossaryTerms().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -165,7 +163,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void post_glossaryTermWithSynonyms_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -174,7 +172,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Term with synonyms")
             .withSynonyms(List.of("alias1", "alias2", "alias3"));
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term);
     assertNotNull(term.getSynonyms());
     assertEquals(3, term.getSynonyms().size());
@@ -184,7 +182,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void post_glossaryTermWithReferences_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -200,7 +198,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                         .withName("Documentation")
                         .withEndpoint(URI.create("https://docs.example.com"))));
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term);
     assertNotNull(term.getReferences());
     assertEquals(2, term.getReferences().size());
@@ -209,7 +207,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void post_childGlossaryTerm_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create parent term
     CreateGlossaryTerm parentRequest =
@@ -218,7 +216,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Parent term");
 
-    GlossaryTerm parentTerm = createEntity(parentRequest, client);
+    GlossaryTerm parentTerm = createEntity(parentRequest);
     assertNotNull(parentTerm);
 
     // Create child term under parent
@@ -229,7 +227,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withParent(parentTerm.getFullyQualifiedName())
             .withDescription("Child term");
 
-    GlossaryTerm childTerm = createEntity(childRequest, client);
+    GlossaryTerm childTerm = createEntity(childRequest);
     assertNotNull(childTerm);
     assertNotNull(childTerm.getParent());
     assertEquals(parentTerm.getId(), childTerm.getParent().getId());
@@ -238,7 +236,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void put_glossaryTermDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -246,19 +244,19 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Initial description");
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertEquals("Initial description", term.getDescription());
 
     // Update description
     term.setDescription("Updated description");
-    GlossaryTerm updated = patchEntity(term.getId().toString(), term, client);
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
     assertEquals("Updated description", updated.getDescription());
   }
 
   @Test
   void test_glossaryTermNameUniquenessWithinGlossary(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create first term
     String termName = ns.prefix("unique_term");
@@ -268,7 +266,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("First term");
 
-    GlossaryTerm term1 = createEntity(request1, client);
+    GlossaryTerm term1 = createEntity(request1);
     assertNotNull(term1);
 
     // Attempt to create duplicate within same glossary
@@ -280,7 +278,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request2, client),
+        () -> createEntity(request2),
         "Creating duplicate term in same glossary should fail");
   }
 
@@ -291,7 +289,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void post_glossaryTermWithRelatedTerms_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create first term
     CreateGlossaryTerm request1 =
@@ -299,7 +297,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.prefix("term_related_1"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("First related term");
-    GlossaryTerm term1 = createEntity(request1, client);
+    GlossaryTerm term1 = createEntity(request1);
 
     // Create second term with related term reference
     CreateGlossaryTerm request2 =
@@ -308,11 +306,11 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Second related term")
             .withRelatedTerms(List.of(term1.getFullyQualifiedName()));
-    GlossaryTerm term2 = createEntity(request2, client);
+    GlossaryTerm term2 = createEntity(request2);
 
     assertNotNull(term2);
     GlossaryTerm fetchedTerm2 =
-        client.glossaryTerms().get(term2.getId().toString(), "relatedTerms");
+        SdkClients.adminClient().glossaryTerms().get(term2.getId().toString(), "relatedTerms");
     assertNotNull(fetchedTerm2.getRelatedTerms());
     assertTrue(fetchedTerm2.getRelatedTerms().size() >= 1);
   }
@@ -320,7 +318,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_buildGlossaryTermNestedHierarchy(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create parent term
     CreateGlossaryTerm parentRequest =
@@ -328,7 +326,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.prefix("nested_parent"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Parent term");
-    GlossaryTerm parent = createEntity(parentRequest, client);
+    GlossaryTerm parent = createEntity(parentRequest);
 
     // Create child term
     CreateGlossaryTerm childRequest =
@@ -337,7 +335,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withParent(parent.getFullyQualifiedName())
             .withDescription("Child term");
-    GlossaryTerm child = createEntity(childRequest, client);
+    GlossaryTerm child = createEntity(childRequest);
 
     // Create grandchild term
     CreateGlossaryTerm grandchildRequest =
@@ -346,7 +344,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withParent(child.getFullyQualifiedName())
             .withDescription("Grandchild term");
-    GlossaryTerm grandchild = createEntity(grandchildRequest, client);
+    GlossaryTerm grandchild = createEntity(grandchildRequest);
 
     assertNotNull(grandchild);
     assertEquals(child.getId(), grandchild.getParent().getId());
@@ -357,87 +355,87 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
             .withName(ns.prefix("term_version"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Initial description");
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     Double initialVersion = term.getVersion();
 
     // Update to create new version
     term.setDescription("Updated description v2");
-    GlossaryTerm updated = patchEntity(term.getId().toString(), term, client);
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
     assertTrue(updated.getVersion() >= initialVersion);
 
     // Get version history
-    EntityHistory history = getVersionHistory(term.getId(), client);
+    EntityHistory history = getVersionHistory(term.getId());
     assertNotNull(history);
     assertNotNull(history.getVersions());
     assertTrue(history.getVersions().size() >= 1);
 
     // Get specific version
-    GlossaryTerm version = getVersion(term.getId(), initialVersion, client);
+    GlossaryTerm version = getVersion(term.getId(), initialVersion);
     assertNotNull(version);
   }
 
   @Test
   void test_glossaryTermSoftDeleteAndRestore(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
             .withName(ns.prefix("term_soft_delete"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term for soft delete test");
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     String termId = term.getId().toString();
 
     // Soft delete
-    deleteEntity(termId, client);
+    deleteEntity(termId);
 
     // Verify deleted
-    GlossaryTerm deleted = getEntityIncludeDeleted(termId, client);
+    GlossaryTerm deleted = getEntityIncludeDeleted(termId);
     assertTrue(deleted.getDeleted());
 
     // Restore
-    restoreEntity(termId, client);
+    restoreEntity(termId);
 
     // Verify restored
-    GlossaryTerm restored = getEntity(termId, client);
+    GlossaryTerm restored = getEntity(termId);
     assertFalse(restored.getDeleted() != null && restored.getDeleted());
   }
 
   @Test
   void test_glossaryTermHardDelete(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
             .withName(ns.prefix("term_hard_delete"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term for hard delete test");
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     String termId = term.getId().toString();
 
     // Hard delete
-    hardDeleteEntity(termId, client);
+    hardDeleteEntity(termId);
 
     // Verify completely gone
     assertThrows(
         Exception.class,
-        () -> getEntityIncludeDeleted(termId, client),
+        () -> getEntityIncludeDeleted(termId),
         "Hard deleted term should not be retrievable");
   }
 
   @Test
   void test_listGlossaryTermsWithPagination(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create multiple terms
     for (int i = 0; i < 5; i++) {
@@ -446,13 +444,13 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
               .withName(ns.prefix("paginated_term_" + i))
               .withGlossary(glossary.getFullyQualifiedName())
               .withDescription("Paginated term " + i);
-      createEntity(request, client);
+      createEntity(request);
     }
 
     // List with pagination
     ListParams params = new ListParams();
     params.setLimit(2);
-    ListResponse<GlossaryTerm> page1 = listEntities(params, client);
+    ListResponse<GlossaryTerm> page1 = listEntities(params);
 
     assertNotNull(page1);
     assertNotNull(page1.getData());
@@ -477,13 +475,13 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
               .withName(ns.prefix("filter_term_" + i))
               .withGlossary(glossary.getFullyQualifiedName())
               .withDescription("Term for filter test " + i);
-      createEntity(request, client);
+      createEntity(request);
     }
 
     // List all terms - basic verification
     ListParams params = new ListParams();
     params.setLimit(100);
-    ListResponse<GlossaryTerm> terms = listEntities(params, client);
+    ListResponse<GlossaryTerm> terms = listEntities(params);
 
     assertNotNull(terms);
     assertNotNull(terms.getData());
@@ -493,7 +491,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -502,7 +500,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Term with owner")
             .withOwners(List.of(testUser1().getEntityReference()));
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term.getOwners());
     assertFalse(term.getOwners().isEmpty());
     assertEquals(testUser1().getId(), term.getOwners().get(0).getId());
@@ -511,7 +509,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermWithReviewers(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -520,7 +518,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Term with reviewers")
             .withReviewers(List.of(testUser1().getEntityReference()));
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term);
 
     // Fetch with reviewers field
@@ -531,7 +529,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void patch_glossaryTermAddSynonyms(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -539,12 +537,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term to add synonyms");
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertTrue(term.getSynonyms() == null || term.getSynonyms().isEmpty());
 
     // Add synonyms
     term.setSynonyms(List.of("synonym1", "synonym2"));
-    GlossaryTerm updated = patchEntity(term.getId().toString(), term, client);
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
     assertNotNull(updated.getSynonyms());
     assertEquals(2, updated.getSynonyms().size());
   }
@@ -552,7 +550,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void patch_glossaryTermAddReferences(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -560,7 +558,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term to add references");
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertTrue(term.getReferences() == null || term.getReferences().isEmpty());
 
     // Add references
@@ -570,7 +568,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             new TermReference()
                 .withName("Ref2")
                 .withEndpoint(URI.create("https://example.com/2"))));
-    GlossaryTerm updated = patchEntity(term.getId().toString(), term, client);
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
     assertNotNull(updated.getReferences());
     assertEquals(2, updated.getReferences().size());
   }
@@ -578,7 +576,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermWithExtension(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -586,7 +584,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term with extension data");
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term);
     assertNotNull(term.getGlossary());
   }
@@ -594,7 +592,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -603,19 +601,19 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term with display name");
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertEquals("My Custom Display Name", term.getDisplayName());
 
     // Update display name
     term.setDisplayName("Updated Display Name");
-    GlossaryTerm updated = patchEntity(term.getId().toString(), term, client);
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
     assertEquals("Updated Display Name", updated.getDisplayName());
   }
 
   @Test
   void test_glossaryTermByName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -623,11 +621,11 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term for get by name test");
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     String fqn = term.getFullyQualifiedName();
 
     // Get by FQN
-    GlossaryTerm fetched = getEntityByName(fqn, client);
+    GlossaryTerm fetched = getEntityByName(fqn);
     assertEquals(term.getId(), fetched.getId());
     assertEquals(term.getName(), fetched.getName());
   }
@@ -657,14 +655,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(termName)
             .withGlossary(glossary1.getFullyQualifiedName())
             .withDescription("Term in first glossary");
-    GlossaryTerm term1 = createEntity(request1, client);
+    GlossaryTerm term1 = createEntity(request1);
 
     CreateGlossaryTerm request2 =
         new CreateGlossaryTerm()
             .withName(termName)
             .withGlossary(glossary2.getFullyQualifiedName())
             .withDescription("Term in second glossary");
-    GlossaryTerm term2 = createEntity(request2, client);
+    GlossaryTerm term2 = createEntity(request2);
 
     assertNotNull(term1);
     assertNotNull(term2);
@@ -676,7 +674,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_getImmediateChildrenGlossaryTermsWithParentFQN(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create parent term
     CreateGlossaryTerm parentRequest =
@@ -684,7 +682,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.prefix("parent_children"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Parent term");
-    GlossaryTerm parent = createEntity(parentRequest, client);
+    GlossaryTerm parent = createEntity(parentRequest);
 
     // Create children
     for (int i = 0; i < 3; i++) {
@@ -694,7 +692,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
               .withGlossary(glossary.getFullyQualifiedName())
               .withParent(parent.getFullyQualifiedName())
               .withDescription("Child term " + i);
-      createEntity(childRequest, client);
+      createEntity(childRequest);
     }
 
     // Fetch parent with children field to verify children were created
@@ -707,7 +705,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermWithTags(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -715,7 +713,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term with tags");
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term);
 
     // Fetch with tags field
@@ -726,7 +724,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermFullyQualifiedName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -734,7 +732,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term for FQN test");
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term);
     assertNotNull(term.getFullyQualifiedName());
     assertTrue(term.getFullyQualifiedName().contains(glossary.getName()));
@@ -743,7 +741,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermFQNFormat(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -751,7 +749,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term for FQN format test");
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term.getFullyQualifiedName());
     assertTrue(term.getFullyQualifiedName().startsWith(glossary.getName()));
     assertTrue(term.getFullyQualifiedName().contains(term.getName()));
@@ -760,7 +758,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermWithMultipleSynonyms(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -769,7 +767,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Term with multiple synonyms")
             .withSynonyms(List.of("syn1", "syn2", "syn3", "syn4", "syn5"));
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term.getSynonyms());
     assertEquals(5, term.getSynonyms().size());
     assertTrue(term.getSynonyms().containsAll(List.of("syn1", "syn2", "syn3", "syn4", "syn5")));
@@ -778,7 +776,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void patch_glossaryTermDescription(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -786,12 +784,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Original description");
 
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertEquals("Original description", term.getDescription());
 
     // Patch description
     term.setDescription("Patched description");
-    GlossaryTerm patched = patchEntity(term.getId().toString(), term, client);
+    GlossaryTerm patched = patchEntity(term.getId().toString(), term);
     assertEquals("Patched description", patched.getDescription());
     assertTrue(patched.getVersion() > term.getVersion());
   }
@@ -799,7 +797,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermChildCount(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create parent
     CreateGlossaryTerm parentRequest =
@@ -807,7 +805,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.prefix("parent_count"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Parent for child count test");
-    GlossaryTerm parent = createEntity(parentRequest, client);
+    GlossaryTerm parent = createEntity(parentRequest);
 
     // Create children
     for (int i = 0; i < 4; i++) {
@@ -817,12 +815,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
               .withGlossary(glossary.getFullyQualifiedName())
               .withParent(parent.getFullyQualifiedName())
               .withDescription("Child " + i);
-      createEntity(childRequest, client);
+      createEntity(childRequest);
     }
 
     // Fetch parent with children field
     GlossaryTerm fetchedParent =
-        client.glossaryTerms().get(parent.getId().toString(), "childrenCount");
+        SdkClients.adminClient().glossaryTerms().get(parent.getId().toString(), "childrenCount");
     assertNotNull(fetchedParent);
     // childrenCount might be available depending on the fields requested
   }
@@ -830,7 +828,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void patch_addDeleteReviewers(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create term without reviewers
     CreateGlossaryTerm request =
@@ -838,25 +836,25 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.prefix("term_reviewers"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term for reviewer patch test");
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertTrue(term.getReviewers() == null || term.getReviewers().isEmpty());
 
     // Add reviewer
     term.setReviewers(List.of(testUser1().getEntityReference()));
-    GlossaryTerm updated = patchEntity(term.getId().toString(), term, client);
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
     assertNotNull(updated.getReviewers());
     assertEquals(1, updated.getReviewers().size());
 
     // Add another reviewer
     updated.setReviewers(
         List.of(testUser1().getEntityReference(), testUser2().getEntityReference()));
-    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated, client);
+    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated);
     assertNotNull(updated2.getReviewers());
     assertTrue(updated2.getReviewers().size() >= 2);
 
     // Remove a reviewer
     updated2.setReviewers(List.of(testUser2().getEntityReference()));
-    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2, client);
+    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
     assertNotNull(updated3.getReviewers());
     assertEquals(1, updated3.getReviewers().size());
   }
@@ -864,7 +862,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void patch_addDeleteReferences(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create term without references
     CreateGlossaryTerm request =
@@ -872,7 +870,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.prefix("term_references"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term for reference patch test");
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
 
     // Add reference
     org.openmetadata.schema.api.data.TermReference ref1 =
@@ -880,7 +878,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName("reference1")
             .withEndpoint(java.net.URI.create("http://reference1.example.com"));
     term.setReferences(List.of(ref1));
-    GlossaryTerm updated = patchEntity(term.getId().toString(), term, client);
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
     assertNotNull(updated.getReferences());
     assertEquals(1, updated.getReferences().size());
 
@@ -890,13 +888,13 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName("reference2")
             .withEndpoint(java.net.URI.create("http://reference2.example.com"));
     updated.setReferences(List.of(ref1, ref2));
-    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated, client);
+    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated);
     assertNotNull(updated2.getReferences());
     assertEquals(2, updated2.getReferences().size());
 
     // Remove a reference
     updated2.setReferences(List.of(ref2));
-    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2, client);
+    GlossaryTerm updated3 = patchEntity(updated2.getId().toString(), updated2);
     assertNotNull(updated3.getReferences());
     assertEquals(1, updated3.getReferences().size());
   }
@@ -919,7 +917,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.prefix("term_inherit_owner"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term to inherit owner");
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term);
     // The term inherits owner from glossary
   }
@@ -927,7 +925,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_deleteRecursive(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create parent term
     CreateGlossaryTerm parentRequest =
@@ -935,7 +933,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.prefix("parent_recursive"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Parent for recursive delete test");
-    GlossaryTerm parent = createEntity(parentRequest, client);
+    GlossaryTerm parent = createEntity(parentRequest);
 
     // Create child terms
     for (int i = 0; i < 3; i++) {
@@ -945,14 +943,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
               .withGlossary(glossary.getFullyQualifiedName())
               .withParent(parent.getFullyQualifiedName())
               .withDescription("Child " + i);
-      createEntity(childRequest, client);
+      createEntity(childRequest);
     }
 
     // Delete parent with recursive flag
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("recursive", "true");
     params.put("hardDelete", "true");
-    client.glossaryTerms().delete(parent.getId().toString(), params);
+    SdkClients.adminClient().glossaryTerms().delete(parent.getId().toString(), params);
 
     // Verify parent is deleted
     assertThrows(Exception.class, () -> client.glossaryTerms().get(parent.getId().toString()));
@@ -961,7 +959,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermStyle(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create term
     CreateGlossaryTerm request =
@@ -969,7 +967,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.prefix("term_style"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term for style test");
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
 
     // Add style
     org.openmetadata.schema.entity.type.Style style =
@@ -977,7 +975,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withColor("#FF0000")
             .withIconURL("http://example.com/icon.png");
     term.setStyle(style);
-    GlossaryTerm updated = patchEntity(term.getId().toString(), term, client);
+    GlossaryTerm updated = patchEntity(term.getId().toString(), term);
     assertNotNull(updated.getStyle());
     assertEquals("#FF0000", updated.getStyle().getColor());
   }
@@ -1000,14 +998,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.prefix("term_mutex"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term in mutually exclusive glossary");
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term);
   }
 
   @Test
   void test_glossaryTermWithMultipleRelatedTerms(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create multiple terms
     List<GlossaryTerm> relatedTerms = new java.util.ArrayList<>();
@@ -1017,7 +1015,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
               .withName(ns.prefix("related_multi_" + i))
               .withGlossary(glossary.getFullyQualifiedName())
               .withDescription("Related term " + i);
-      relatedTerms.add(createEntity(relatedRequest, client));
+      relatedTerms.add(createEntity(relatedRequest));
     }
 
     // Create term with multiple related terms
@@ -1030,7 +1028,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                 relatedTerms.stream()
                     .map(t -> t.getFullyQualifiedName())
                     .collect(java.util.stream.Collectors.toList()));
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term.getRelatedTerms());
     assertEquals(3, term.getRelatedTerms().size());
   }
@@ -1038,7 +1036,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermAbbreviation(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create term with abbreviation
     CreateGlossaryTerm request =
@@ -1046,14 +1044,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withName(ns.prefix("term_abbrev"))
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("Term with abbreviation");
-    GlossaryTerm term = createEntity(request, client);
+    GlossaryTerm term = createEntity(request);
     assertNotNull(term);
   }
 
   @Test
   void test_deeplyNestedGlossaryTerms(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns, client);
+    Glossary glossary = getOrCreateGlossary(ns);
 
     // Create deeply nested hierarchy (4 levels)
     GlossaryTerm parent = null;
@@ -1066,7 +1064,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
       if (parent != null) {
         request.setParent(parent.getFullyQualifiedName());
       }
-      parent = createEntity(request, client);
+      parent = createEntity(request);
       assertNotNull(parent);
 
       // Verify FQN grows with each level

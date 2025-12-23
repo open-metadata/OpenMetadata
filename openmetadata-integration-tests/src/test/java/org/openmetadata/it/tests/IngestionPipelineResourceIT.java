@@ -70,8 +70,7 @@ public class IngestionPipelineResourceIT
   // ===================================================================
 
   @Override
-  protected CreateIngestionPipeline createMinimalRequest(
-      TestNamespace ns, OpenMetadataClient client) {
+  protected CreateIngestionPipeline createMinimalRequest(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     DatabaseServiceMetadataPipeline metadataPipeline =
@@ -89,8 +88,7 @@ public class IngestionPipelineResourceIT
   }
 
   @Override
-  protected CreateIngestionPipeline createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateIngestionPipeline createRequest(String name, TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
     DatabaseServiceMetadataPipeline metadataPipeline =
@@ -108,42 +106,40 @@ public class IngestionPipelineResourceIT
   }
 
   @Override
-  protected IngestionPipeline createEntity(
-      CreateIngestionPipeline createRequest, OpenMetadataClient client) {
-    return client.ingestionPipelines().create(createRequest);
+  protected IngestionPipeline createEntity(CreateIngestionPipeline createRequest) {
+    return SdkClients.adminClient().ingestionPipelines().create(createRequest);
   }
 
   @Override
-  protected IngestionPipeline getEntity(String id, OpenMetadataClient client) {
-    return client.ingestionPipelines().get(id);
+  protected IngestionPipeline getEntity(String id) {
+    return SdkClients.adminClient().ingestionPipelines().get(id);
   }
 
   @Override
-  protected IngestionPipeline getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.ingestionPipelines().getByName(fqn);
+  protected IngestionPipeline getEntityByName(String fqn) {
+    return SdkClients.adminClient().ingestionPipelines().getByName(fqn);
   }
 
   @Override
-  protected IngestionPipeline patchEntity(
-      String id, IngestionPipeline entity, OpenMetadataClient client) {
-    return client.ingestionPipelines().update(id, entity);
+  protected IngestionPipeline patchEntity(String id, IngestionPipeline entity) {
+    return SdkClients.adminClient().ingestionPipelines().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.ingestionPipelines().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().ingestionPipelines().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.ingestionPipelines().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().ingestionPipelines().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.ingestionPipelines().delete(id, params);
+    SdkClients.adminClient().ingestionPipelines().delete(id, params);
   }
 
   @Override
@@ -167,37 +163,34 @@ public class IngestionPipelineResourceIT
   }
 
   @Override
-  protected ListResponse<IngestionPipeline> listEntities(
-      ListParams params, OpenMetadataClient client) {
-    return client.ingestionPipelines().list(params);
+  protected ListResponse<IngestionPipeline> listEntities(ListParams params) {
+    return SdkClients.adminClient().ingestionPipelines().list(params);
   }
 
   @Override
-  protected IngestionPipeline getEntityWithFields(
-      String id, String fields, OpenMetadataClient client) {
-    return client.ingestionPipelines().get(id, fields);
+  protected IngestionPipeline getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().ingestionPipelines().get(id, fields);
   }
 
   @Override
-  protected IngestionPipeline getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.ingestionPipelines().getByName(fqn, fields);
+  protected IngestionPipeline getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().ingestionPipelines().getByName(fqn, fields);
   }
 
   @Override
-  protected IngestionPipeline getEntityIncludeDeleted(String id, OpenMetadataClient client) {
+  protected IngestionPipeline getEntityIncludeDeleted(String id) {
     // IngestionPipeline only supports owners,followers fields
-    return client.ingestionPipelines().get(id, "owners,followers", "deleted");
+    return SdkClients.adminClient().ingestionPipelines().get(id, "owners,followers", "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.ingestionPipelines().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().ingestionPipelines().getVersionList(id);
   }
 
   @Override
-  protected IngestionPipeline getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.ingestionPipelines().getVersion(id.toString(), version);
+  protected IngestionPipeline getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().ingestionPipelines().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -221,7 +214,7 @@ public class IngestionPipelineResourceIT
             .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
             .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
 
-    IngestionPipeline pipeline = createEntity(request, client);
+    IngestionPipeline pipeline = createEntity(request);
     assertNotNull(pipeline);
     assertEquals(PipelineType.METADATA, pipeline.getPipelineType());
   }
@@ -249,7 +242,7 @@ public class IngestionPipelineResourceIT
             .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
             .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
 
-    IngestionPipeline pipeline = createEntity(request, client);
+    IngestionPipeline pipeline = createEntity(request);
     assertNotNull(pipeline);
     assertNotNull(pipeline.getSourceConfig());
   }
@@ -271,12 +264,12 @@ public class IngestionPipelineResourceIT
             .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
             .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
 
-    IngestionPipeline pipeline = createEntity(request, client);
+    IngestionPipeline pipeline = createEntity(request);
     assertEquals("Initial description", pipeline.getDescription());
 
     // Update description
     pipeline.setDescription("Updated description");
-    IngestionPipeline updated = patchEntity(pipeline.getId().toString(), pipeline, client);
+    IngestionPipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
     assertEquals("Updated description", updated.getDescription());
   }
 
@@ -298,7 +291,7 @@ public class IngestionPipelineResourceIT
             .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
             .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
 
-    IngestionPipeline pipeline1 = createEntity(request1, client);
+    IngestionPipeline pipeline1 = createEntity(request1);
     assertNotNull(pipeline1);
 
     // Attempt to create duplicate within same service
@@ -313,7 +306,7 @@ public class IngestionPipelineResourceIT
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request2, client),
+        () -> createEntity(request2),
         "Creating duplicate ingestion pipeline in same service should fail");
   }
 }

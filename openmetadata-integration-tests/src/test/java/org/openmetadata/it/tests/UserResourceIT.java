@@ -21,7 +21,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -32,7 +31,8 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Profile;
-import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.Personas;
+import org.openmetadata.sdk.fluent.Users;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -90,7 +90,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Override
-  protected CreateUser createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateUser createMinimalRequest(TestNamespace ns) {
     String name = ns.prefix("user");
     return new CreateUser()
         .withName(name)
@@ -99,7 +99,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Override
-  protected CreateUser createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateUser createRequest(String name, TestNamespace ns) {
     return new CreateUser()
         .withName(name)
         .withEmail(toValidEmail(name))
@@ -107,38 +107,38 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Override
-  protected User createEntity(CreateUser createRequest, OpenMetadataClient client) {
-    return client.users().create(createRequest);
+  protected User createEntity(CreateUser createRequest) {
+    return Users.create(createRequest);
   }
 
   @Override
-  protected User getEntity(String id, OpenMetadataClient client) {
-    return client.users().get(id);
+  protected User getEntity(String id) {
+    return Users.get(id);
   }
 
   @Override
-  protected User getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.users().getByName(fqn);
+  protected User getEntityByName(String fqn) {
+    return Users.getByName(fqn);
   }
 
   @Override
-  protected User patchEntity(String id, User entity, OpenMetadataClient client) {
-    return client.users().update(id, entity);
+  protected User patchEntity(String id, User entity) {
+    return Users.update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.users().delete(id);
+  protected void deleteEntity(String id) {
+    Users.delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.users().restore(id);
+  protected void restoreEntity(String id) {
+    Users.restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
-    client.users().delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
+  protected void hardDeleteEntity(String id) {
+    Users.delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
   }
 
   @Override
@@ -156,23 +156,23 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Override
-  protected User getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.users().get(id, fields);
+  protected User getEntityWithFields(String id, String fields) {
+    return Users.get(id, fields);
   }
 
   @Override
-  protected User getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.users().getByName(fqn, fields);
+  protected User getEntityByNameWithFields(String fqn, String fields) {
+    return Users.getByName(fqn, fields);
   }
 
   @Override
-  protected User getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.users().get(id, null, "deleted");
+  protected User getEntityIncludeDeleted(String id) {
+    return Users.get(id, null, "deleted");
   }
 
   @Override
-  protected ListResponse<User> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.users().list(params);
+  protected ListResponse<User> listEntities(ListParams params) {
+    return Users.list(params);
   }
 
   // ===================================================================
@@ -182,9 +182,8 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   @Override
   @Test
   public void post_entityCreate_200_OK(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    CreateUser createRequest = createMinimalRequest(ns, client);
-    User entity = createEntity(createRequest, client);
+    CreateUser createRequest = createMinimalRequest(ns);
+    User entity = createEntity(createRequest);
 
     assertNotNull(entity.getId());
     assertNotNull(entity.getFullyQualifiedName());
@@ -195,9 +194,8 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   @Override
   @Test
   public void put_entityCreate_200(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    CreateUser createRequest = createMinimalRequest(ns, client);
-    User entity = createEntity(createRequest, client);
+    CreateUser createRequest = createMinimalRequest(ns);
+    User entity = createEntity(createRequest);
 
     assertNotNull(entity.getId());
     assertEquals(createRequest.getName().toLowerCase(), entity.getName().toLowerCase());
@@ -206,10 +204,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   @Override
   @Test
   public void post_entityWithDots_200(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     String nameWithDots = ns.prefix("foo.bar");
-    CreateUser createRequest = createRequest(nameWithDots, ns, client);
-    User created = createEntity(createRequest, client);
+    CreateUser createRequest = createRequest(nameWithDots, ns);
+    User created = createEntity(createRequest);
 
     assertNotNull(created.getId());
     assertEquals(nameWithDots.toLowerCase(), created.getName().toLowerCase());
@@ -221,7 +218,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_createUserWithProfile(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name = ns.prefix("userWithProfile");
     CreateUser createRequest =
@@ -231,7 +227,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withProfile(PROFILE)
             .withDescription("User with profile");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getId());
     assertNotNull(user.getProfile());
     assertNotNull(user.getProfile().getImages());
@@ -239,7 +235,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_createUserWithDisplayName(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name = ns.prefix("userDisplayName");
     CreateUser createRequest =
@@ -249,13 +244,12 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withDisplayName("John Doe")
             .withDescription("User with display name");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertEquals("John Doe", user.getDisplayName());
   }
 
   @Test
   void test_createUserWithTeams(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Use shared team from SharedEntities
     EntityReference teamRef = testTeam1().getEntityReference();
@@ -267,18 +261,17 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(name))
             .withTeams(List.of(teamRef.getId()));
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getId());
 
     // Fetch with teams field to verify
-    User fetched = client.users().get(user.getId().toString(), "teams");
+    User fetched = Users.get(user.getId().toString(), "teams");
     assertNotNull(fetched.getTeams());
     assertTrue(fetched.getTeams().size() >= 1);
   }
 
   @Test
   void test_createUserWithRoles(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Use shared role from SharedEntities
     UUID roleId = dataStewardRole().getId();
@@ -287,18 +280,17 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     CreateUser createRequest =
         new CreateUser().withName(name).withEmail(toValidEmail(name)).withRoles(List.of(roleId));
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getId());
 
     // Fetch with roles field to verify
-    User fetched = client.users().get(user.getId().toString(), "roles");
+    User fetched = Users.get(user.getId().toString(), "roles");
     assertNotNull(fetched.getRoles());
     assertTrue(fetched.getRoles().size() >= 1);
   }
 
   @Test
   void test_createUserAsBot(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name = ns.prefix("botUser");
 
@@ -316,13 +308,12 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withAuthenticationMechanism(authMechanism)
             .withDescription("Bot user for testing");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertTrue(user.getIsBot());
   }
 
   @Test
   void test_createUserAsAdmin(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name = ns.prefix("adminUser");
     CreateUser createRequest =
@@ -332,66 +323,62 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withIsAdmin(true)
             .withDescription("Admin user for testing");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertTrue(user.getIsAdmin());
   }
 
   @Test
   void test_updateUserDisplayName(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user
-    CreateUser createRequest = createMinimalRequest(ns, client);
-    User user = createEntity(createRequest, client);
+    CreateUser createRequest = createMinimalRequest(ns);
+    User user = createEntity(createRequest);
 
     // Update display name
     user.setDisplayName("Updated Display Name");
-    User updated = patchEntity(user.getId().toString(), user, client);
+    User updated = patchEntity(user.getId().toString(), user);
 
     assertEquals("Updated Display Name", updated.getDisplayName());
   }
 
   @Test
   void test_updateUserProfile(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user without profile
-    CreateUser createRequest = createMinimalRequest(ns, client);
-    User user = createEntity(createRequest, client);
+    CreateUser createRequest = createMinimalRequest(ns);
+    User user = createEntity(createRequest);
 
     // Update with profile
     user.setProfile(PROFILE);
-    User updated = patchEntity(user.getId().toString(), user, client);
+    User updated = patchEntity(user.getId().toString(), user);
 
     assertNotNull(updated.getProfile());
   }
 
   @Test
   void test_updateUserTeams(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user without teams
-    CreateUser createRequest = createMinimalRequest(ns, client);
-    User user = createEntity(createRequest, client);
+    CreateUser createRequest = createMinimalRequest(ns);
+    User user = createEntity(createRequest);
 
     // Get user with teams field
-    User fetched = client.users().get(user.getId().toString(), "teams");
+    User fetched = Users.get(user.getId().toString(), "teams");
 
     // Add to shared team
     EntityReference teamRef = testTeam1().getEntityReference();
     fetched.setTeams(List.of(teamRef));
 
-    User updated = patchEntity(fetched.getId().toString(), fetched, client);
+    User updated = patchEntity(fetched.getId().toString(), fetched);
 
     // Verify teams updated
-    User verifyFetch = client.users().get(updated.getId().toString(), "teams");
+    User verifyFetch = Users.get(updated.getId().toString(), "teams");
     assertNotNull(verifyFetch.getTeams());
     assertTrue(verifyFetch.getTeams().size() >= 1);
   }
 
   @Test
   void test_createUserWithInvalidEmail(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name = ns.prefix("invalidEmailUser");
     CreateUser createRequest =
@@ -402,20 +389,19 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(createRequest, client),
+        () -> createEntity(createRequest),
         "Creating user with invalid email should fail");
   }
 
   @Test
   void test_createUserWithDuplicateEmail(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name1 = ns.prefix("user1");
     String email1 = toValidEmail(name1);
     CreateUser createRequest1 =
         new CreateUser().withName(name1).withEmail(email1).withDescription("First user");
 
-    User user1 = createEntity(createRequest1, client);
+    User user1 = createEntity(createRequest1);
     assertNotNull(user1.getId());
 
     // Try to create another user with same email
@@ -428,13 +414,12 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(createRequest2, client),
+        () -> createEntity(createRequest2),
         "Creating user with duplicate email should fail");
   }
 
   @Test
   void test_getUserByEmail(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user
     String name = ns.prefix("userByEmail");
@@ -442,11 +427,11 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     CreateUser createRequest =
         new CreateUser().withName(name).withEmail(email).withDescription("Test user");
 
-    User created = createEntity(createRequest, client);
+    User created = createEntity(createRequest);
 
     // Get by name (users are indexed by name, not email)
     // Note: user names are lowercased
-    User fetched = getEntityByName(name.toLowerCase(), client);
+    User fetched = getEntityByName(name.toLowerCase());
     assertEquals(created.getId(), fetched.getId());
     // Email is also lowercased
     assertEquals(email.toLowerCase(), fetched.getEmail().toLowerCase());
@@ -454,7 +439,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_listUsers(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a few users
     for (int i = 0; i < 3; i++) {
@@ -464,13 +448,13 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
               .withName(name)
               .withEmail(toValidEmail(name))
               .withDescription("User for list test");
-      createEntity(createRequest, client);
+      createEntity(createRequest);
     }
 
     // List users
     ListParams params = new ListParams();
     params.setLimit(100);
-    ListResponse<User> response = listEntities(params, client);
+    ListResponse<User> response = listEntities(params);
 
     assertNotNull(response);
     assertNotNull(response.getData());
@@ -479,53 +463,51 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_softDeleteAndRestoreUser(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user
-    CreateUser createRequest = createMinimalRequest(ns, client);
-    User user = createEntity(createRequest, client);
+    CreateUser createRequest = createMinimalRequest(ns);
+    User user = createEntity(createRequest);
     String userId = user.getId().toString();
 
     // Soft delete
-    deleteEntity(userId, client);
+    deleteEntity(userId);
 
     // Verify deleted
     assertThrows(
-        Exception.class, () -> getEntity(userId, client), "Deleted user should not be retrievable");
+        Exception.class, () -> getEntity(userId), "Deleted user should not be retrievable");
 
     // Get with include=deleted
-    User deleted = getEntityIncludeDeleted(userId, client);
+    User deleted = getEntityIncludeDeleted(userId);
     assertTrue(deleted.getDeleted());
 
     // Restore
-    restoreEntity(userId, client);
+    restoreEntity(userId);
 
     // Verify restored
-    User restored = getEntity(userId, client);
+    User restored = getEntity(userId);
     assertFalse(restored.getDeleted());
   }
 
   @Test
   void test_userVersionHistory(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user
-    CreateUser createRequest = createMinimalRequest(ns, client);
-    User user = createEntity(createRequest, client);
+    CreateUser createRequest = createMinimalRequest(ns);
+    User user = createEntity(createRequest);
     assertEquals(0.1, user.getVersion(), 0.001);
 
     // Update description
     user.setDescription("Updated description v1");
-    User v2 = patchEntity(user.getId().toString(), user, client);
+    User v2 = patchEntity(user.getId().toString(), user);
     assertEquals(0.2, v2.getVersion(), 0.001);
 
     // Update again
     v2.setDescription("Updated description v2");
-    User v3 = patchEntity(v2.getId().toString(), v2, client);
+    User v3 = patchEntity(v2.getId().toString(), v2);
     assertTrue(v3.getVersion() >= 0.2);
 
     // Get version history
-    var history = client.users().getVersionList(user.getId());
+    var history = Users.getVersionList(user.getId());
     assertNotNull(history);
     assertNotNull(history.getVersions());
     assertTrue(history.getVersions().size() >= 2);
@@ -533,7 +515,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_userWithDomain(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Use shared domain
     String domainFqn = testDomain().getFullyQualifiedName();
@@ -546,11 +527,11 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withDomains(List.of(domainFqn))
             .withDescription("User with domain");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getId());
 
     // Verify domains are set
-    User fetched = client.users().get(user.getId().toString(), "domains");
+    User fetched = Users.get(user.getId().toString(), "domains");
     assertNotNull(fetched.getDomains());
     assertFalse(fetched.getDomains().isEmpty());
     assertTrue(
@@ -559,7 +540,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_listUsersWithAdminFilter(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create admin user
     String adminName = ns.prefix("adminFilterUser");
@@ -569,7 +549,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(adminName))
             .withIsAdmin(true)
             .withDescription("Admin user for filter test");
-    User adminUser = createEntity(adminRequest, client);
+    User adminUser = createEntity(adminRequest);
     assertTrue(adminUser.getIsAdmin());
 
     // Create non-admin user
@@ -580,14 +560,14 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(nonAdminName))
             .withIsAdmin(false)
             .withDescription("Non-admin user for filter test");
-    User nonAdminUser = createEntity(nonAdminRequest, client);
+    User nonAdminUser = createEntity(nonAdminRequest);
     assertFalse(nonAdminUser.getIsAdmin());
 
     // List with isAdmin=true filter
     ListParams adminParams = new ListParams();
     adminParams.setLimit(100);
     adminParams.addFilter("isAdmin", "true");
-    ListResponse<User> adminUsers = listEntities(adminParams, client);
+    ListResponse<User> adminUsers = listEntities(adminParams);
 
     assertNotNull(adminUsers.getData());
     assertTrue(
@@ -598,7 +578,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     ListParams nonAdminParams = new ListParams();
     nonAdminParams.setLimit(100);
     nonAdminParams.addFilter("isAdmin", "false");
-    ListResponse<User> nonAdminUsers = listEntities(nonAdminParams, client);
+    ListResponse<User> nonAdminUsers = listEntities(nonAdminParams);
 
     assertNotNull(nonAdminUsers.getData());
     assertTrue(
@@ -608,7 +588,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_listUsersWithBotFilter(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create bot user
     String botName = ns.prefix("botFilterUser");
@@ -624,7 +603,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withIsBot(true)
             .withAuthenticationMechanism(authMechanism)
             .withDescription("Bot user for filter test");
-    User botUser = createEntity(botRequest, client);
+    User botUser = createEntity(botRequest);
     assertTrue(botUser.getIsBot());
 
     // Create regular user
@@ -635,13 +614,13 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(regularName))
             .withIsBot(false)
             .withDescription("Regular user for filter test");
-    User regularUser = createEntity(regularRequest, client);
+    User regularUser = createEntity(regularRequest);
 
     // List with isBot=true filter
     ListParams botParams = new ListParams();
     botParams.setLimit(100);
     botParams.addFilter("isBot", "true");
-    ListResponse<User> botUsers = listEntities(botParams, client);
+    ListResponse<User> botUsers = listEntities(botParams);
 
     assertNotNull(botUsers.getData());
     assertTrue(
@@ -652,7 +631,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     ListParams nonBotParams = new ListParams();
     nonBotParams.setLimit(100);
     nonBotParams.addFilter("isBot", "false");
-    ListResponse<User> nonBotUsers = listEntities(nonBotParams, client);
+    ListResponse<User> nonBotUsers = listEntities(nonBotParams);
 
     assertNotNull(nonBotUsers.getData());
     assertTrue(
@@ -662,7 +641,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_listUsersWithTeamFilter(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Use shared team
     EntityReference teamRef = testTeam1().getEntityReference();
@@ -675,7 +653,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(userName1))
             .withTeams(List.of(teamRef.getId()))
             .withDescription("User in team for filter test");
-    User user1 = createEntity(request1, client);
+    User user1 = createEntity(request1);
 
     // Create user NOT in team
     String userName2 = ns.prefix("teamFilterUser2");
@@ -684,13 +662,13 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withName(userName2)
             .withEmail(toValidEmail(userName2))
             .withDescription("User not in team for filter test");
-    User user2 = createEntity(request2, client);
+    User user2 = createEntity(request2);
 
     // List with team filter
     ListParams teamParams = new ListParams();
     teamParams.setLimit(100);
     teamParams.addFilter("team", testTeam1().getName());
-    ListResponse<User> teamUsers = listEntities(teamParams, client);
+    ListResponse<User> teamUsers = listEntities(teamParams);
 
     assertNotNull(teamUsers.getData());
     assertTrue(
@@ -700,7 +678,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_userNameCaseInsensitive(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user with mixed case name
     String mixedCaseName = ns.prefix("MixedCaseUser");
@@ -710,45 +687,43 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(mixedCaseName))
             .withDescription("User with mixed case name");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
 
     // User names are stored lowercase
     assertEquals(mixedCaseName.toLowerCase(), user.getName());
 
     // Should be able to fetch by lowercase name
-    User fetched = getEntityByName(mixedCaseName.toLowerCase(), client);
+    User fetched = getEntityByName(mixedCaseName.toLowerCase());
     assertEquals(user.getId(), fetched.getId());
   }
 
   @Test
   void test_hardDeleteUser(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user
-    CreateUser createRequest = createMinimalRequest(ns, client);
-    User user = createEntity(createRequest, client);
+    CreateUser createRequest = createMinimalRequest(ns);
+    User user = createEntity(createRequest);
     String userId = user.getId().toString();
 
     // Hard delete
-    hardDeleteEntity(userId, client);
+    hardDeleteEntity(userId);
 
     // Verify completely gone (even with include=deleted)
     assertThrows(
         Exception.class,
-        () -> getEntityIncludeDeleted(userId, client),
+        () -> getEntityIncludeDeleted(userId),
         "Hard deleted user should not be retrievable");
   }
 
   @Test
   void test_updateUserRoles(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user without roles
-    CreateUser createRequest = createMinimalRequest(ns, client);
-    User user = createEntity(createRequest, client);
+    CreateUser createRequest = createMinimalRequest(ns);
+    User user = createEntity(createRequest);
 
     // Fetch user with roles
-    User fetched = client.users().get(user.getId().toString(), "roles");
+    User fetched = Users.get(user.getId().toString(), "roles");
 
     // Add role
     EntityReference roleRef =
@@ -758,10 +733,10 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withName(dataStewardRole().getName());
     fetched.setRoles(List.of(roleRef));
 
-    User updated = patchEntity(fetched.getId().toString(), fetched, client);
+    User updated = patchEntity(fetched.getId().toString(), fetched);
 
     // Verify role added
-    User verify = client.users().get(updated.getId().toString(), "roles");
+    User verify = Users.get(updated.getId().toString(), "roles");
     assertNotNull(verify.getRoles());
     assertTrue(verify.getRoles().size() >= 1);
     assertTrue(
@@ -770,7 +745,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_userWithMultipleTeams(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Use shared teams
     EntityReference team1Ref = testTeam1().getEntityReference();
@@ -784,18 +758,17 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withTeams(List.of(team1Ref.getId(), team2Ref.getId()))
             .withDescription("User with multiple teams");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getId());
 
     // Verify teams
-    User fetched = client.users().get(user.getId().toString(), "teams");
+    User fetched = Users.get(user.getId().toString(), "teams");
     assertNotNull(fetched.getTeams());
     assertTrue(fetched.getTeams().size() >= 2);
   }
 
   @Test
   void test_userWithMultipleRoles(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Use shared roles
     UUID role1 = dataStewardRole().getId();
@@ -809,18 +782,17 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withRoles(List.of(role1, role2))
             .withDescription("User with multiple roles");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getId());
 
     // Verify roles
-    User fetched = client.users().get(user.getId().toString(), "roles");
+    User fetched = Users.get(user.getId().toString(), "roles");
     assertNotNull(fetched.getRoles());
     assertTrue(fetched.getRoles().size() >= 2);
   }
 
   @Test
   void test_createUserWithPersona(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a persona for this test
     org.openmetadata.schema.api.teams.CreatePersona personaRequest =
@@ -828,7 +800,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withName(ns.prefix("testPersona"))
             .withDescription("Test persona for user");
 
-    org.openmetadata.schema.entity.teams.Persona persona = client.personas().create(personaRequest);
+    org.openmetadata.schema.entity.teams.Persona persona = Personas.create(personaRequest);
 
     String name = ns.prefix("userWithPersona");
     CreateUser createRequest =
@@ -838,18 +810,17 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withPersonas(List.of(persona.getEntityReference()))
             .withDescription("User with persona");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getId());
 
     // Verify persona
-    User fetched = client.users().get(user.getId().toString(), "personas");
+    User fetched = Users.get(user.getId().toString(), "personas");
     assertNotNull(fetched.getPersonas());
     assertFalse(fetched.getPersonas().isEmpty());
   }
 
   @Test
   void test_usersWithTeamPagination(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Use shared team
     EntityReference teamRef = testTeam1().getEntityReference();
@@ -863,14 +834,14 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
               .withEmail(toValidEmail(name))
               .withTeams(List.of(teamRef.getId()))
               .withDescription("User for pagination test");
-      createEntity(createRequest, client);
+      createEntity(createRequest);
     }
 
     // List with pagination
     ListParams params = new ListParams();
     params.setLimit(5);
     params.addFilter("team", testTeam1().getName());
-    ListResponse<User> page1 = listEntities(params, client);
+    ListResponse<User> page1 = listEntities(params);
 
     assertNotNull(page1.getData());
     assertEquals(5, page1.getData().size());
@@ -879,7 +850,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     // If there are more pages, verify pagination works
     if (page1.getPaging().getAfter() != null) {
       params.setAfter(page1.getPaging().getAfter());
-      ListResponse<User> page2 = listEntities(params, client);
+      ListResponse<User> page2 = listEntities(params);
       assertNotNull(page2.getData());
       assertTrue(page2.getData().size() > 0);
 
@@ -894,17 +865,16 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_updateUserDescription(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user
-    CreateUser createRequest = createMinimalRequest(ns, client);
-    User user = createEntity(createRequest, client);
+    CreateUser createRequest = createMinimalRequest(ns);
+    User user = createEntity(createRequest);
     String originalDesc = user.getDescription();
 
     // Update description
     String newDescription = "Updated description for user";
     user.setDescription(newDescription);
-    User updated = patchEntity(user.getId().toString(), user, client);
+    User updated = patchEntity(user.getId().toString(), user);
 
     assertEquals(newDescription, updated.getDescription());
     assertNotEquals(originalDesc, updated.getDescription());
@@ -912,7 +882,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_userInheritedRoles(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user with a role assigned to team
     EntityReference teamRef = testTeam1().getEntityReference();
@@ -925,11 +894,11 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withTeams(List.of(teamRef.getId()))
             .withDescription("User to test inherited roles");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getId());
 
     // Fetch with inheritedRoles field
-    User fetched = client.users().get(user.getId().toString(), "roles,teams,inheritedRoles");
+    User fetched = Users.get(user.getId().toString(), "roles,teams,inheritedRoles");
     assertNotNull(fetched.getTeams());
     // inheritedRoles may be present depending on team configuration
   }
@@ -940,7 +909,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_userProfileTimezone(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name = ns.prefix("userTimezone");
     CreateUser createRequest =
@@ -950,18 +918,17 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withDescription("User with timezone")
             .withTimezone("America/Los_Angeles");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertEquals("America/Los_Angeles", user.getTimezone());
 
     // Update timezone
     user.setTimezone("Europe/London");
-    User updated = patchEntity(user.getId().toString(), user, client);
+    User updated = patchEntity(user.getId().toString(), user);
     assertEquals("Europe/London", updated.getTimezone());
   }
 
   @Test
   void patch_teamAddition_200_ok(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user with testTeam1
     String name = ns.prefix("userAddTeam");
@@ -972,10 +939,10 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withTeams(List.of(testTeam1().getId()))
             .withDescription("User for team addition test");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
 
     // Fetch user with teams
-    User fetched = client.users().get(user.getId().toString(), "teams");
+    User fetched = Users.get(user.getId().toString(), "teams");
     assertNotNull(fetched.getTeams());
     assertTrue(fetched.getTeams().stream().anyMatch(t -> t.getId().equals(testTeam1().getId())));
 
@@ -983,10 +950,10 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     List<EntityReference> newTeams = new java.util.ArrayList<>(fetched.getTeams());
     newTeams.add(testTeam2().getEntityReference());
     fetched.setTeams(newTeams);
-    User updated = patchEntity(fetched.getId().toString(), fetched, client);
+    User updated = patchEntity(fetched.getId().toString(), fetched);
 
     // Verify both teams present
-    User verify = client.users().get(updated.getId().toString(), "teams");
+    User verify = Users.get(updated.getId().toString(), "teams");
     assertNotNull(verify.getTeams());
     assertTrue(verify.getTeams().size() >= 2);
     assertTrue(verify.getTeams().stream().anyMatch(t -> t.getId().equals(testTeam1().getId())));
@@ -995,7 +962,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void patch_roleRemoval_200_ok(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user with role
     String name = ns.prefix("userRemoveRole");
@@ -1006,25 +972,24 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withRoles(List.of(dataStewardRole().getId()))
             .withDescription("User for role removal test");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
 
     // Verify role exists
-    User fetched = client.users().get(user.getId().toString(), "roles");
+    User fetched = Users.get(user.getId().toString(), "roles");
     assertNotNull(fetched.getRoles());
     assertTrue(fetched.getRoles().size() >= 1);
 
     // Remove role via patch
     fetched.setRoles(List.of());
-    User updated = patchEntity(fetched.getId().toString(), fetched, client);
+    User updated = patchEntity(fetched.getId().toString(), fetched);
 
     // Verify role removed
-    User verify = client.users().get(updated.getId().toString(), "roles");
+    User verify = Users.get(updated.getId().toString(), "roles");
     assertTrue(verify.getRoles() == null || verify.getRoles().isEmpty());
   }
 
   @Test
   void test_botUserWithAdmin(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a bot user with admin flag
     String name = ns.prefix("botAdmin");
@@ -1042,7 +1007,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withAuthenticationMechanism(authMechanism)
             .withDescription("Bot user with admin flag");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user);
     assertTrue(user.getIsBot());
     // Just verify creation succeeds - bot can have admin flag in current implementation
@@ -1050,7 +1015,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_updateBotAuthMechanism(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name = ns.prefix("botUpdateAuth");
     AuthenticationMechanism authMechanism =
@@ -1066,14 +1030,13 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withAuthenticationMechanism(authMechanism)
             .withDescription("Bot user for auth update test");
 
-    User bot = createEntity(createRequest, client);
+    User bot = createEntity(createRequest);
     assertTrue(bot.getIsBot());
     assertNotNull(bot.getAuthenticationMechanism());
   }
 
   @Test
   void test_userFQNContainsName(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name = ns.prefix("fqnUser");
     CreateUser createRequest =
@@ -1082,14 +1045,13 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(name))
             .withDescription("User for FQN test");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getFullyQualifiedName());
     assertTrue(user.getFullyQualifiedName().contains(user.getName()));
   }
 
   @Test
   void test_listUsersPagination(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create multiple users
     for (int i = 0; i < 5; i++) {
@@ -1099,13 +1061,13 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
               .withName(name)
               .withEmail(toValidEmail(name))
               .withDescription("User for pagination test " + i);
-      createEntity(createRequest, client);
+      createEntity(createRequest);
     }
 
     // First page
     ListParams params = new ListParams();
     params.setLimit(2);
-    ListResponse<User> page1 = listEntities(params, client);
+    ListResponse<User> page1 = listEntities(params);
 
     assertNotNull(page1);
     assertNotNull(page1.getData());
@@ -1115,7 +1077,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_userWithFullyQualifiedName(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name = ns.prefix("userFqn");
     CreateUser createRequest =
@@ -1124,7 +1085,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(name))
             .withDescription("User for FQN verification");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getId());
     assertNotNull(user.getFullyQualifiedName());
     assertEquals(user.getName(), user.getFullyQualifiedName());
@@ -1132,7 +1093,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_createUserWithAllFields(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name = ns.prefix("fullUser");
     CreateUser createRequest =
@@ -1146,7 +1106,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withTeams(List.of(testTeam1().getId()))
             .withRoles(List.of(dataStewardRole().getId()));
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getId());
     assertEquals("Full User Display Name", user.getDisplayName());
     assertEquals("User with all fields", user.getDescription());
@@ -1156,7 +1116,6 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
 
   @Test
   void test_switchUserTeams(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user with one team
     String name = ns.prefix("switchTeamsUser");
@@ -1167,22 +1126,21 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withTeams(List.of(testTeam1().getId()))
             .withDescription("User for team switch test");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
 
     // Update to different team
-    User fetched = client.users().get(user.getId().toString(), "teams");
+    User fetched = Users.get(user.getId().toString(), "teams");
     fetched.setTeams(List.of(testTeam2().getEntityReference()));
-    User updated = patchEntity(fetched.getId().toString(), fetched, client);
+    User updated = patchEntity(fetched.getId().toString(), fetched);
 
     // Verify team changed
-    User verify = client.users().get(updated.getId().toString(), "teams");
+    User verify = Users.get(updated.getId().toString(), "teams");
     assertNotNull(verify.getTeams());
     assertTrue(verify.getTeams().stream().anyMatch(t -> t.getId().equals(testTeam2().getId())));
   }
 
   @Test
   void test_userDeletion_removesFromTeam(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user in team
     String name = ns.prefix("deleteFromTeamUser");
@@ -1193,19 +1151,18 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withTeams(List.of(testTeam1().getId()))
             .withDescription("User to delete from team");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
 
     // Delete user
-    deleteEntity(user.getId().toString(), client);
+    deleteEntity(user.getId().toString());
 
     // Verify user is deleted
-    User deleted = getEntityIncludeDeleted(user.getId().toString(), client);
+    User deleted = getEntityIncludeDeleted(user.getId().toString());
     assertTrue(deleted.getDeleted());
   }
 
   @Test
   void test_userRestoreAfterDelete(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user
     String name = ns.prefix("restoreUser");
@@ -1215,26 +1172,25 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(name))
             .withDescription("User to restore");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
 
     // Soft delete
-    deleteEntity(user.getId().toString(), client);
+    deleteEntity(user.getId().toString());
 
     // Verify deleted
-    User deleted = getEntityIncludeDeleted(user.getId().toString(), client);
+    User deleted = getEntityIncludeDeleted(user.getId().toString());
     assertTrue(deleted.getDeleted());
 
     // Restore
-    restoreEntity(user.getId().toString(), client);
+    restoreEntity(user.getId().toString());
 
     // Verify restored
-    User restored = getEntity(user.getId().toString(), client);
+    User restored = getEntity(user.getId().toString());
     assertFalse(restored.getDeleted() != null && restored.getDeleted());
   }
 
   @Test
   void test_userHref(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
 
     String name = ns.prefix("hrefUser");
     CreateUser createRequest =
@@ -1243,7 +1199,7 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
             .withEmail(toValidEmail(name))
             .withDescription("User for href test");
 
-    User user = createEntity(createRequest, client);
+    User user = createEntity(createRequest);
     assertNotNull(user.getHref());
   }
 
@@ -1252,12 +1208,12 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   // ===================================================================
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.users().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return Users.getVersionList(id);
   }
 
   @Override
-  protected User getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.users().getVersion(id.toString(), version);
+  protected User getVersion(UUID id, Double version) {
+    return Users.getVersion(id.toString(), version);
   }
 }

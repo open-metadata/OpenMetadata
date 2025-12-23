@@ -38,8 +38,7 @@ public class StoredProcedureResourceIT
   // ===================================================================
 
   @Override
-  protected CreateStoredProcedure createMinimalRequest(
-      TestNamespace ns, OpenMetadataClient client) {
+  protected CreateStoredProcedure createMinimalRequest(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
@@ -59,8 +58,7 @@ public class StoredProcedureResourceIT
   }
 
   @Override
-  protected CreateStoredProcedure createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateStoredProcedure createRequest(String name, TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
@@ -81,42 +79,40 @@ public class StoredProcedureResourceIT
   }
 
   @Override
-  protected StoredProcedure createEntity(
-      CreateStoredProcedure createRequest, OpenMetadataClient client) {
-    return client.storedProcedures().create(createRequest);
+  protected StoredProcedure createEntity(CreateStoredProcedure createRequest) {
+    return SdkClients.adminClient().storedProcedures().create(createRequest);
   }
 
   @Override
-  protected StoredProcedure getEntity(String id, OpenMetadataClient client) {
-    return client.storedProcedures().get(id);
+  protected StoredProcedure getEntity(String id) {
+    return SdkClients.adminClient().storedProcedures().get(id);
   }
 
   @Override
-  protected StoredProcedure getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.storedProcedures().getByName(fqn);
+  protected StoredProcedure getEntityByName(String fqn) {
+    return SdkClients.adminClient().storedProcedures().getByName(fqn);
   }
 
   @Override
-  protected StoredProcedure patchEntity(
-      String id, StoredProcedure entity, OpenMetadataClient client) {
-    return client.storedProcedures().update(id, entity);
+  protected StoredProcedure patchEntity(String id, StoredProcedure entity) {
+    return SdkClients.adminClient().storedProcedures().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.storedProcedures().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().storedProcedures().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.storedProcedures().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().storedProcedures().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.storedProcedures().delete(id, params);
+    SdkClients.adminClient().storedProcedures().delete(id, params);
   }
 
   @Override
@@ -140,36 +136,33 @@ public class StoredProcedureResourceIT
   }
 
   @Override
-  protected ListResponse<StoredProcedure> listEntities(
-      ListParams params, OpenMetadataClient client) {
-    return client.storedProcedures().list(params);
+  protected ListResponse<StoredProcedure> listEntities(ListParams params) {
+    return SdkClients.adminClient().storedProcedures().list(params);
   }
 
   @Override
-  protected StoredProcedure getEntityWithFields(
-      String id, String fields, OpenMetadataClient client) {
-    return client.storedProcedures().get(id, fields);
+  protected StoredProcedure getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().storedProcedures().get(id, fields);
   }
 
   @Override
-  protected StoredProcedure getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.storedProcedures().getByName(fqn, fields);
+  protected StoredProcedure getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().storedProcedures().getByName(fqn, fields);
   }
 
   @Override
-  protected StoredProcedure getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.storedProcedures().get(id, null, "deleted");
+  protected StoredProcedure getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().storedProcedures().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.storedProcedures().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().storedProcedures().getVersionList(id);
   }
 
   @Override
-  protected StoredProcedure getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.storedProcedures().getVersion(id.toString(), version);
+  protected StoredProcedure getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().storedProcedures().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -186,7 +179,7 @@ public class StoredProcedureResourceIT
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating stored procedure without schema should fail");
   }
 
@@ -207,7 +200,7 @@ public class StoredProcedureResourceIT
     request.setDatabaseSchema(schema.getFullyQualifiedName());
     request.setStoredProcedureCode(code);
 
-    StoredProcedure proc = createEntity(request, client);
+    StoredProcedure proc = createEntity(request);
     assertNotNull(proc);
     assertNotNull(proc.getStoredProcedureCode());
     assertEquals(StoredProcedureLanguage.SQL, proc.getStoredProcedureCode().getLanguage());
@@ -231,7 +224,7 @@ public class StoredProcedureResourceIT
     request.setSourceUrl("http://localhost:5432/mydb/myschema/myproc");
     request.setStoredProcedureCode(code);
 
-    StoredProcedure proc = createEntity(request, client);
+    StoredProcedure proc = createEntity(request);
     assertNotNull(proc);
     assertEquals("http://localhost:5432/mydb/myschema/myproc", proc.getSourceUrl());
   }
@@ -253,7 +246,7 @@ public class StoredProcedureResourceIT
     request.setDatabaseSchema(schema.getFullyQualifiedName());
     request.setStoredProcedureCode(initialCode);
 
-    StoredProcedure proc = createEntity(request, client);
+    StoredProcedure proc = createEntity(request);
     assertNotNull(proc);
 
     // Update code via patch
@@ -263,7 +256,7 @@ public class StoredProcedureResourceIT
             .withLanguage(StoredProcedureLanguage.SQL);
 
     proc.setStoredProcedureCode(updatedCode);
-    StoredProcedure updated = patchEntity(proc.getId().toString(), proc, client);
+    StoredProcedure updated = patchEntity(proc.getId().toString(), proc);
     assertNotNull(updated);
     assertNotNull(updated.getStoredProcedureCode());
   }
@@ -288,7 +281,7 @@ public class StoredProcedureResourceIT
     request.setDatabaseSchema(schema.getFullyQualifiedName());
     request.setStoredProcedureCode(code);
 
-    StoredProcedure proc = createEntity(request, client);
+    StoredProcedure proc = createEntity(request);
     assertNotNull(proc);
     assertNotNull(proc.getDatabaseSchema());
     assertEquals(schema.getFullyQualifiedName(), proc.getDatabaseSchema().getFullyQualifiedName());

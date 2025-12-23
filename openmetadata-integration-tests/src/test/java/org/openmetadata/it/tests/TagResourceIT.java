@@ -39,9 +39,9 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   // ===================================================================
 
   @Override
-  protected CreateTag createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateTag createMinimalRequest(TestNamespace ns) {
     // Create classification first
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
     request.setName(ns.prefix("tag"));
@@ -52,9 +52,9 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Override
-  protected CreateTag createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateTag createRequest(String name, TestNamespace ns) {
     // Create classification first
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
     request.setName(name);
@@ -64,50 +64,50 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     return request;
   }
 
-  private Classification createClassification(OpenMetadataClient client, TestNamespace ns) {
+  private Classification createClassification(TestNamespace ns) {
     // Add unique suffix to avoid collisions when multiple tests create classifications
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
     CreateClassification classificationRequest = new CreateClassification();
     classificationRequest.setName(ns.prefix("classification") + "_" + uniqueSuffix);
     classificationRequest.setDescription("Test classification for tags");
-    return client.classifications().create(classificationRequest);
+    return SdkClients.adminClient().classifications().create(classificationRequest);
   }
 
   @Override
-  protected Tag createEntity(CreateTag createRequest, OpenMetadataClient client) {
-    return client.tags().create(createRequest);
+  protected Tag createEntity(CreateTag createRequest) {
+    return SdkClients.adminClient().tags().create(createRequest);
   }
 
   @Override
-  protected Tag getEntity(String id, OpenMetadataClient client) {
-    return client.tags().get(id);
+  protected Tag getEntity(String id) {
+    return SdkClients.adminClient().tags().get(id);
   }
 
   @Override
-  protected Tag getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.tags().getByName(fqn);
+  protected Tag getEntityByName(String fqn) {
+    return SdkClients.adminClient().tags().getByName(fqn);
   }
 
   @Override
-  protected Tag patchEntity(String id, Tag entity, OpenMetadataClient client) {
-    return client.tags().update(id, entity);
+  protected Tag patchEntity(String id, Tag entity) {
+    return SdkClients.adminClient().tags().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.tags().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().tags().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.tags().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().tags().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.tags().delete(id, params);
+    SdkClients.adminClient().tags().delete(id, params);
   }
 
   @Override
@@ -129,33 +129,33 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Override
-  protected ListResponse<Tag> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.tags().list(params);
+  protected ListResponse<Tag> listEntities(ListParams params) {
+    return SdkClients.adminClient().tags().list(params);
   }
 
   @Override
-  protected Tag getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.tags().get(id, fields);
+  protected Tag getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().tags().get(id, fields);
   }
 
   @Override
-  protected Tag getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.tags().getByName(fqn, fields);
+  protected Tag getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().tags().getByName(fqn, fields);
   }
 
   @Override
-  protected Tag getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.tags().get(id, null, "deleted");
+  protected Tag getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().tags().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.tags().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().tags().getVersionList(id);
   }
 
   @Override
-  protected Tag getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.tags().getVersion(id.toString(), version);
+  protected Tag getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().tags().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -172,28 +172,28 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating tag without classification should fail");
   }
 
   @Test
   void post_tagWithStyle_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
     request.setName(ns.prefix("tag_with_style"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag with style");
 
-    Tag tag = createEntity(request, client);
+    Tag tag = createEntity(request);
     assertNotNull(tag);
   }
 
   @Test
   void post_nestedTag_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     // Create parent tag
     CreateTag parentRequest = new CreateTag();
@@ -201,7 +201,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     parentRequest.setClassification(classification.getFullyQualifiedName());
     parentRequest.setDescription("Parent tag");
 
-    Tag parentTag = createEntity(parentRequest, client);
+    Tag parentTag = createEntity(parentRequest);
     assertNotNull(parentTag);
 
     // Create child tag
@@ -211,7 +211,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     childRequest.setParent(parentTag.getFullyQualifiedName());
     childRequest.setDescription("Child tag");
 
-    Tag childTag = createEntity(childRequest, client);
+    Tag childTag = createEntity(childRequest);
     assertNotNull(childTag);
     assertNotNull(childTag.getParent());
     assertEquals(parentTag.getId(), childTag.getParent().getId());
@@ -220,26 +220,26 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   @Test
   void put_tagDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
     request.setName(ns.prefix("tag_update_desc"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Initial description");
 
-    Tag tag = createEntity(request, client);
+    Tag tag = createEntity(request);
     assertEquals("Initial description", tag.getDescription());
 
     // Update description
     tag.setDescription("Updated description");
-    Tag updated = patchEntity(tag.getId().toString(), tag, client);
+    Tag updated = patchEntity(tag.getId().toString(), tag);
     assertEquals("Updated description", updated.getDescription());
   }
 
   @Test
   void test_tagNameUniquenessWithinClassification(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     // Create first tag
     String tagName = ns.prefix("unique_tag");
@@ -248,7 +248,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     request1.setClassification(classification.getFullyQualifiedName());
     request1.setDescription("First tag");
 
-    Tag tag1 = createEntity(request1, client);
+    Tag tag1 = createEntity(request1);
     assertNotNull(tag1);
 
     // Attempt to create duplicate within same classification
@@ -259,14 +259,14 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request2, client),
+        () -> createEntity(request2),
         "Creating duplicate tag in same classification should fail");
   }
 
   @Test
   void post_newTagsOnNonExistentParents_4xx(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     // Attempt to create tag with non-existent parent
     CreateTag request = new CreateTag();
@@ -276,30 +276,30 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating tag with non-existent parent should fail");
   }
 
   @Test
   void test_tagVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
     request.setName(ns.prefix("tag_version"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Initial description");
 
-    Tag tag = createEntity(request, client);
+    Tag tag = createEntity(request);
     Double initialVersion = tag.getVersion();
 
     // Update to create new version
     tag.setDescription("Updated description");
-    Tag updated = patchEntity(tag.getId().toString(), tag, client);
+    Tag updated = patchEntity(tag.getId().toString(), tag);
     assertTrue(updated.getVersion() >= initialVersion);
 
     // Get version history
-    EntityHistory history = getVersionHistory(tag.getId(), client);
+    EntityHistory history = getVersionHistory(tag.getId());
     assertNotNull(history);
     assertTrue(history.getVersions().size() >= 1);
   }
@@ -307,27 +307,27 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   @Test
   void test_tagSoftDeleteAndRestore(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
     request.setName(ns.prefix("tag_delete"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag for soft delete test");
 
-    Tag tag = createEntity(request, client);
+    Tag tag = createEntity(request);
     assertNotNull(tag.getId());
 
     // Soft delete
-    deleteEntity(tag.getId().toString(), client);
+    deleteEntity(tag.getId().toString());
 
     // Should be able to get with include deleted
-    Tag deleted = getEntityIncludeDeleted(tag.getId().toString(), client);
+    Tag deleted = getEntityIncludeDeleted(tag.getId().toString());
     assertNotNull(deleted);
     assertTrue(deleted.getDeleted());
 
     // Restore
-    restoreEntity(tag.getId().toString(), client);
-    Tag restored = getEntity(tag.getId().toString(), client);
+    restoreEntity(tag.getId().toString());
+    Tag restored = getEntity(tag.getId().toString());
     assertNotNull(restored);
     assertFalse(restored.getDeleted());
   }
@@ -335,38 +335,38 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   @Test
   void test_tagHardDelete(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
     request.setName(ns.prefix("tag_hard_delete"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag for hard delete test");
 
-    Tag tag = createEntity(request, client);
+    Tag tag = createEntity(request);
     assertNotNull(tag.getId());
 
     // Hard delete
-    hardDeleteEntity(tag.getId().toString(), client);
+    hardDeleteEntity(tag.getId().toString());
 
     // Should not be retrievable
-    assertThrows(Exception.class, () -> getEntity(tag.getId().toString(), client));
-    assertThrows(Exception.class, () -> getEntityIncludeDeleted(tag.getId().toString(), client));
+    assertThrows(Exception.class, () -> getEntity(tag.getId().toString()));
+    assertThrows(Exception.class, () -> getEntityIncludeDeleted(tag.getId().toString()));
   }
 
   @Test
   void test_tagGetByName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
     request.setName(ns.prefix("tag_by_name"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag for getByName test");
 
-    Tag tag = createEntity(request, client);
+    Tag tag = createEntity(request);
 
     // Get by FQN
-    Tag fetched = getEntityByName(tag.getFullyQualifiedName(), client);
+    Tag fetched = getEntityByName(tag.getFullyQualifiedName());
     assertNotNull(fetched);
     assertEquals(tag.getId(), fetched.getId());
     assertEquals(tag.getName(), fetched.getName());
@@ -375,7 +375,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   @Test
   void test_tagDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
     request.setName(ns.prefix("tag_display"));
@@ -383,19 +383,19 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     request.setDisplayName("My Display Tag");
     request.setDescription("Tag for display name test");
 
-    Tag tag = createEntity(request, client);
+    Tag tag = createEntity(request);
     assertEquals("My Display Tag", tag.getDisplayName());
 
     // Update display name
     tag.setDisplayName("Updated Display Name");
-    Tag updated = patchEntity(tag.getId().toString(), tag, client);
+    Tag updated = patchEntity(tag.getId().toString(), tag);
     assertEquals("Updated Display Name", updated.getDisplayName());
   }
 
   @Test
   void test_tagFQNFormat(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
     String tagName = ns.prefix("tag_fqn");
@@ -403,7 +403,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag for FQN format test");
 
-    Tag tag = createEntity(request, client);
+    Tag tag = createEntity(request);
 
     // Verify FQN format: classification.tag
     String expectedFQN = classification.getFullyQualifiedName() + "." + tagName;
@@ -413,7 +413,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   @Test
   void test_listTagsPagination(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     // Create multiple tags
     for (int i = 0; i < 5; i++) {
@@ -421,13 +421,13 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
       request.setName(ns.prefix("pagination_tag_" + i));
       request.setClassification(classification.getFullyQualifiedName());
       request.setDescription("Pagination tag " + i);
-      createEntity(request, client);
+      createEntity(request);
     }
 
     // List with limit
     ListParams params = new ListParams();
     params.setLimit(2);
-    ListResponse<Tag> response = listEntities(params, client);
+    ListResponse<Tag> response = listEntities(params);
     assertNotNull(response);
     assertTrue(response.getData().size() <= 2);
   }
@@ -435,14 +435,14 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   @Test
   void test_nestedTagFQN(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     // Create parent tag
     CreateTag parentRequest = new CreateTag();
     parentRequest.setName(ns.prefix("parent_fqn"));
     parentRequest.setClassification(classification.getFullyQualifiedName());
     parentRequest.setDescription("Parent tag for FQN test");
-    Tag parentTag = createEntity(parentRequest, client);
+    Tag parentTag = createEntity(parentRequest);
 
     // Create child tag
     CreateTag childRequest = new CreateTag();
@@ -451,7 +451,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     childRequest.setClassification(classification.getFullyQualifiedName());
     childRequest.setParent(parentTag.getFullyQualifiedName());
     childRequest.setDescription("Child tag for FQN test");
-    Tag childTag = createEntity(childRequest, client);
+    Tag childTag = createEntity(childRequest);
 
     // Verify nested FQN format: classification.parent.child
     String expectedFQN = parentTag.getFullyQualifiedName() + "." + childName;
@@ -476,7 +476,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag in mutually exclusive classification");
 
-    Tag tag = createEntity(request, client);
+    Tag tag = createEntity(request);
     assertNotNull(tag);
     // The tag inherits mutually exclusive from classification
   }
@@ -484,19 +484,19 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   @Test
   void test_tagWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Classification classification = createClassification(client, ns);
+    Classification classification = createClassification(ns);
 
     CreateTag request = new CreateTag();
     request.setName(ns.prefix("tag_with_owner"));
     request.setClassification(classification.getFullyQualifiedName());
     request.setDescription("Tag for owner test");
 
-    Tag tag = createEntity(request, client);
+    Tag tag = createEntity(request);
     assertNotNull(tag);
 
     // Update with owner
     tag.setOwners(java.util.List.of(testUser1().getEntityReference()));
-    Tag updated = patchEntity(tag.getId().toString(), tag, client);
+    Tag updated = patchEntity(tag.getId().toString(), tag);
 
     // Verify owner
     Tag fetched = client.tags().get(updated.getId().toString(), "owners");

@@ -34,9 +34,9 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   // ===================================================================
 
   @Override
-  protected CreateDatabaseSchema createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateDatabaseSchema createMinimalRequest(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    Database database = createDatabase(client, ns, service);
+    Database database = createDatabase(ns, service);
 
     CreateDatabaseSchema request = new CreateDatabaseSchema();
     request.setName(ns.prefix("schema"));
@@ -47,10 +47,9 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   }
 
   @Override
-  protected CreateDatabaseSchema createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateDatabaseSchema createRequest(String name, TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    Database database = createDatabase(client, ns, service);
+    Database database = createDatabase(ns, service);
 
     CreateDatabaseSchema request = new CreateDatabaseSchema();
     request.setName(name);
@@ -59,51 +58,48 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     return request;
   }
 
-  private Database createDatabase(
-      OpenMetadataClient client, TestNamespace ns, DatabaseService service) {
+  private Database createDatabase(TestNamespace ns, DatabaseService service) {
     CreateDatabase dbRequest = new CreateDatabase();
     dbRequest.setName(ns.prefix("database"));
     dbRequest.setService(service.getFullyQualifiedName());
-    return client.databases().create(dbRequest);
+    return SdkClients.adminClient().databases().create(dbRequest);
   }
 
   @Override
-  protected DatabaseSchema createEntity(
-      CreateDatabaseSchema createRequest, OpenMetadataClient client) {
-    return client.databaseSchemas().create(createRequest);
+  protected DatabaseSchema createEntity(CreateDatabaseSchema createRequest) {
+    return SdkClients.adminClient().databaseSchemas().create(createRequest);
   }
 
   @Override
-  protected DatabaseSchema getEntity(String id, OpenMetadataClient client) {
-    return client.databaseSchemas().get(id);
+  protected DatabaseSchema getEntity(String id) {
+    return SdkClients.adminClient().databaseSchemas().get(id);
   }
 
   @Override
-  protected DatabaseSchema getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.databaseSchemas().getByName(fqn);
+  protected DatabaseSchema getEntityByName(String fqn) {
+    return SdkClients.adminClient().databaseSchemas().getByName(fqn);
   }
 
   @Override
-  protected DatabaseSchema patchEntity(
-      String id, DatabaseSchema entity, OpenMetadataClient client) {
-    return client.databaseSchemas().update(id, entity);
+  protected DatabaseSchema patchEntity(String id, DatabaseSchema entity) {
+    return SdkClients.adminClient().databaseSchemas().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.databaseSchemas().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().databaseSchemas().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.databaseSchemas().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().databaseSchemas().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.databaseSchemas().delete(id, params);
+    SdkClients.adminClient().databaseSchemas().delete(id, params);
   }
 
   @Override
@@ -126,36 +122,33 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   }
 
   @Override
-  protected ListResponse<DatabaseSchema> listEntities(
-      ListParams params, OpenMetadataClient client) {
-    return client.databaseSchemas().list(params);
+  protected ListResponse<DatabaseSchema> listEntities(ListParams params) {
+    return SdkClients.adminClient().databaseSchemas().list(params);
   }
 
   @Override
-  protected DatabaseSchema getEntityWithFields(
-      String id, String fields, OpenMetadataClient client) {
-    return client.databaseSchemas().get(id, fields);
+  protected DatabaseSchema getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().databaseSchemas().get(id, fields);
   }
 
   @Override
-  protected DatabaseSchema getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.databaseSchemas().getByName(fqn, fields);
+  protected DatabaseSchema getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().databaseSchemas().getByName(fqn, fields);
   }
 
   @Override
-  protected DatabaseSchema getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.databaseSchemas().get(id, null, "deleted");
+  protected DatabaseSchema getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().databaseSchemas().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.databaseSchemas().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().databaseSchemas().getVersionList(id);
   }
 
   @Override
-  protected DatabaseSchema getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.databaseSchemas().getVersion(id.toString(), version);
+  protected DatabaseSchema getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().databaseSchemas().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -172,7 +165,7 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating schema without database should fail");
   }
 
@@ -180,14 +173,14 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   void post_schemaWithSourceUrl_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    Database database = createDatabase(client, ns, service);
+    Database database = createDatabase(ns, service);
 
     CreateDatabaseSchema request = new CreateDatabaseSchema();
     request.setName(ns.prefix("schema_with_url"));
     request.setDatabase(database.getFullyQualifiedName());
     request.setSourceUrl("http://localhost:5432/mydb/myschema");
 
-    DatabaseSchema schema = createEntity(request, client);
+    DatabaseSchema schema = createEntity(request);
     assertNotNull(schema);
     assertEquals("http://localhost:5432/mydb/myschema", schema.getSourceUrl());
   }
@@ -196,19 +189,19 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   void put_schemaDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    Database database = createDatabase(client, ns, service);
+    Database database = createDatabase(ns, service);
 
     CreateDatabaseSchema request = new CreateDatabaseSchema();
     request.setName(ns.prefix("schema_update_desc"));
     request.setDatabase(database.getFullyQualifiedName());
     request.setDescription("Initial description");
 
-    DatabaseSchema schema = createEntity(request, client);
+    DatabaseSchema schema = createEntity(request);
     assertEquals("Initial description", schema.getDescription());
 
     // Update description
     schema.setDescription("Updated description");
-    DatabaseSchema updated = patchEntity(schema.getId().toString(), schema, client);
+    DatabaseSchema updated = patchEntity(schema.getId().toString(), schema);
     assertEquals("Updated description", updated.getDescription());
   }
 
@@ -218,14 +211,14 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
 
     // Create database service and database
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    Database database = createDatabase(client, ns, service);
+    Database database = createDatabase(ns, service);
 
     // Create schema under the database
     CreateDatabaseSchema request = new CreateDatabaseSchema();
     request.setName(ns.prefix("schema_inherit_domain"));
     request.setDatabase(database.getFullyQualifiedName());
 
-    DatabaseSchema schema = createEntity(request, client);
+    DatabaseSchema schema = createEntity(request);
     assertNotNull(schema);
     assertNotNull(schema.getDatabase());
     assertEquals(database.getFullyQualifiedName(), schema.getDatabase().getFullyQualifiedName());

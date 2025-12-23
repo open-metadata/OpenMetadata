@@ -53,4 +53,18 @@ public class UserTestFactory {
       }
     }
   }
+
+  /**
+   * Get the DataConsumer user (predefined in the system).
+   */
+  public static User getDataConsumer(TestNamespace ns) {
+    return getOrCreateUser("data-consumer@open-metadata.org");
+  }
+
+  /**
+   * Get the DataSteward user (predefined in the system).
+   */
+  public static User getDataSteward(TestNamespace ns) {
+    return getOrCreateUser("data-steward@open-metadata.org");
+  }
 }

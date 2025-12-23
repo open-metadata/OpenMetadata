@@ -52,7 +52,7 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   }
 
   @Override
-  protected CreateRole createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateRole createMinimalRequest(TestNamespace ns) {
     List<String> policyFqns =
         dataStewardRole().getPolicies().stream()
             .map(EntityReference::getFullyQualifiedName)
@@ -65,7 +65,7 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   }
 
   @Override
-  protected CreateRole createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateRole createRequest(String name, TestNamespace ns) {
     List<String> policyFqns =
         dataStewardRole().getPolicies().stream()
             .map(EntityReference::getFullyQualifiedName)
@@ -75,38 +75,40 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   }
 
   @Override
-  protected Role createEntity(CreateRole createRequest, OpenMetadataClient client) {
-    return client.roles().create(createRequest);
+  protected Role createEntity(CreateRole createRequest) {
+    return SdkClients.adminClient().roles().create(createRequest);
   }
 
   @Override
-  protected Role getEntity(String id, OpenMetadataClient client) {
-    return client.roles().get(id);
+  protected Role getEntity(String id) {
+    return SdkClients.adminClient().roles().get(id);
   }
 
   @Override
-  protected Role getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.roles().getByName(fqn);
+  protected Role getEntityByName(String fqn) {
+    return SdkClients.adminClient().roles().getByName(fqn);
   }
 
   @Override
-  protected Role patchEntity(String id, Role entity, OpenMetadataClient client) {
-    return client.roles().update(id, entity);
+  protected Role patchEntity(String id, Role entity) {
+    return SdkClients.adminClient().roles().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.roles().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().roles().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.roles().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().roles().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
-    client.roles().delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
+  protected void hardDeleteEntity(String id) {
+    SdkClients.adminClient()
+        .roles()
+        .delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
   }
 
   @Override
@@ -125,23 +127,23 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   }
 
   @Override
-  protected Role getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.roles().get(id, fields);
+  protected Role getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().roles().get(id, fields);
   }
 
   @Override
-  protected Role getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.roles().getByName(fqn, fields);
+  protected Role getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().roles().getByName(fqn, fields);
   }
 
   @Override
-  protected Role getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.roles().get(id, null, "deleted");
+  protected Role getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().roles().get(id, null, "deleted");
   }
 
   @Override
-  protected ListResponse<Role> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.roles().list(params);
+  protected ListResponse<Role> listEntities(ListParams params) {
+    return SdkClients.adminClient().roles().list(params);
   }
 
   // ===================================================================
@@ -164,7 +166,7 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
             .withDisplayName("My Custom Role")
             .withDescription("Role with display name");
 
-    Role role = createEntity(create, client);
+    Role role = createEntity(create);
     assertEquals("My Custom Role", role.getDisplayName());
     assertNotNull(role.getPolicies());
   }
@@ -182,7 +184,7 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
             .withPolicies(policyFqns)
             .withDescription("Role with multiple policies");
 
-    Role role = createEntity(create, client);
+    Role role = createEntity(create);
     assertNotNull(role.getPolicies());
     assertEquals(2, role.getPolicies().size());
   }
@@ -196,12 +198,12 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
 
     assertThrows(
         Exception.class,
-        () -> deleteEntity(dataSteward.getId().toString(), client),
+        () -> deleteEntity(dataSteward.getId().toString()),
         "Deleting system role DataSteward should not be allowed");
 
     assertThrows(
         Exception.class,
-        () -> deleteEntity(dataConsumer.getId().toString(), client),
+        () -> deleteEntity(dataConsumer.getId().toString()),
         "Deleting system role DataConsumer should not be allowed");
   }
 
@@ -209,11 +211,11 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   void test_updateRoleDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateRole create = createMinimalRequest(ns, client);
-    Role role = createEntity(create, client);
+    CreateRole create = createMinimalRequest(ns);
+    Role role = createEntity(create);
 
     role.setDisplayName("Updated Role Display Name");
-    Role updated = patchEntity(role.getId().toString(), role, client);
+    Role updated = patchEntity(role.getId().toString(), role);
 
     assertEquals("Updated Role Display Name", updated.getDisplayName());
   }
@@ -222,11 +224,11 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   void test_updateRoleDescription(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateRole create = createMinimalRequest(ns, client);
-    Role role = createEntity(create, client);
+    CreateRole create = createMinimalRequest(ns);
+    Role role = createEntity(create);
 
     role.setDescription("Updated description for role");
-    Role updated = patchEntity(role.getId().toString(), role, client);
+    Role updated = patchEntity(role.getId().toString(), role);
 
     assertEquals("Updated description for role", updated.getDescription());
   }
@@ -235,8 +237,8 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   void test_getRoleWithPolicies(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateRole create = createMinimalRequest(ns, client);
-    Role role = createEntity(create, client);
+    CreateRole create = createMinimalRequest(ns);
+    Role role = createEntity(create);
 
     Role fetched = client.roles().get(role.getId().toString(), "policies");
     assertNotNull(fetched.getPolicies());
@@ -253,8 +255,8 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   void test_getRoleWithUsersAndTeams(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateRole create = createMinimalRequest(ns, client);
-    Role role = createEntity(create, client);
+    CreateRole create = createMinimalRequest(ns);
+    Role role = createEntity(create);
 
     Role fetched = client.roles().get(role.getId().toString(), "users,teams");
     assertNotNull(fetched);
@@ -264,21 +266,21 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   void test_softDeleteAndRestoreRole(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateRole create = createMinimalRequest(ns, client);
-    Role role = createEntity(create, client);
+    CreateRole create = createMinimalRequest(ns);
+    Role role = createEntity(create);
     String roleId = role.getId().toString();
 
-    deleteEntity(roleId, client);
+    deleteEntity(roleId);
 
     assertThrows(
-        Exception.class, () -> getEntity(roleId, client), "Deleted role should not be retrievable");
+        Exception.class, () -> getEntity(roleId), "Deleted role should not be retrievable");
 
-    Role deleted = getEntityIncludeDeleted(roleId, client);
+    Role deleted = getEntityIncludeDeleted(roleId);
     assertTrue(deleted.getDeleted());
 
-    restoreEntity(roleId, client);
+    restoreEntity(roleId);
 
-    Role restored = getEntity(roleId, client);
+    Role restored = getEntity(roleId);
     assertFalse(restored.getDeleted());
   }
 
@@ -286,12 +288,12 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   void test_roleVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateRole create = createMinimalRequest(ns, client);
-    Role role = createEntity(create, client);
+    CreateRole create = createMinimalRequest(ns);
+    Role role = createEntity(create);
     assertEquals(0.1, role.getVersion(), 0.001);
 
     role.setDescription("Updated description v1");
-    Role v2 = patchEntity(role.getId().toString(), role, client);
+    Role v2 = patchEntity(role.getId().toString(), role);
     assertEquals(0.2, v2.getVersion(), 0.001);
 
     var history = client.roles().getVersionList(role.getId());
@@ -315,12 +317,12 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
               .withName(ns.prefix("listRole" + i))
               .withPolicies(policyFqns)
               .withDescription("Role for list test");
-      createEntity(create, client);
+      createEntity(create);
     }
 
     ListParams params = new ListParams();
     params.setLimit(100);
-    ListResponse<Role> response = listEntities(params, client);
+    ListResponse<Role> response = listEntities(params);
 
     assertNotNull(response);
     assertNotNull(response.getData());
@@ -342,13 +344,13 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
               .withName(ns.prefix("bulkRole" + i))
               .withPolicies(policyFqns)
               .withDescription("Role for bulk fetch test");
-      createEntity(create, client);
+      createEntity(create);
     }
 
     ListParams params = new ListParams();
     params.setLimit(100);
     params.setFields("policies");
-    ListResponse<Role> response = listEntities(params, client);
+    ListResponse<Role> response = listEntities(params);
 
     assertNotNull(response);
     assertNotNull(response.getData());
@@ -367,12 +369,12 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
   // ===================================================================
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.roles().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().roles().getVersionList(id);
   }
 
   @Override
-  protected Role getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.roles().getVersion(id.toString(), version);
+  protected Role getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().roles().getVersion(id.toString(), version);
   }
 }

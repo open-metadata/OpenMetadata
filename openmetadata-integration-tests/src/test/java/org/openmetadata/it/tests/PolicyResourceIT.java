@@ -64,7 +64,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   }
 
   @Override
-  protected CreatePolicy createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreatePolicy createMinimalRequest(TestNamespace ns) {
     return new CreatePolicy()
         .withName(ns.prefix("policy"))
         .withRules(List.of(createBasicRule("rule1")))
@@ -72,7 +72,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   }
 
   @Override
-  protected CreatePolicy createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreatePolicy createRequest(String name, TestNamespace ns) {
     return new CreatePolicy()
         .withName(name)
         .withRules(List.of(createBasicRule("rule1")))
@@ -80,38 +80,40 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   }
 
   @Override
-  protected Policy createEntity(CreatePolicy createRequest, OpenMetadataClient client) {
-    return client.policies().create(createRequest);
+  protected Policy createEntity(CreatePolicy createRequest) {
+    return SdkClients.adminClient().policies().create(createRequest);
   }
 
   @Override
-  protected Policy getEntity(String id, OpenMetadataClient client) {
-    return client.policies().get(id);
+  protected Policy getEntity(String id) {
+    return SdkClients.adminClient().policies().get(id);
   }
 
   @Override
-  protected Policy getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.policies().getByName(fqn);
+  protected Policy getEntityByName(String fqn) {
+    return SdkClients.adminClient().policies().getByName(fqn);
   }
 
   @Override
-  protected Policy patchEntity(String id, Policy entity, OpenMetadataClient client) {
-    return client.policies().update(id, entity);
+  protected Policy patchEntity(String id, Policy entity) {
+    return SdkClients.adminClient().policies().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.policies().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().policies().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.policies().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().policies().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
-    client.policies().delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
+  protected void hardDeleteEntity(String id) {
+    SdkClients.adminClient()
+        .policies()
+        .delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
   }
 
   @Override
@@ -130,23 +132,23 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   }
 
   @Override
-  protected Policy getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.policies().get(id, fields);
+  protected Policy getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().policies().get(id, fields);
   }
 
   @Override
-  protected Policy getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.policies().getByName(fqn, fields);
+  protected Policy getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().policies().getByName(fqn, fields);
   }
 
   @Override
-  protected Policy getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.policies().get(id, null, "deleted");
+  protected Policy getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().policies().get(id, null, "deleted");
   }
 
   @Override
-  protected ListResponse<Policy> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.policies().list(params);
+  protected ListResponse<Policy> listEntities(ListParams params) {
+    return SdkClients.adminClient().policies().list(params);
   }
 
   // ===================================================================
@@ -177,7 +179,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
             .withRules(List.of(rule1, rule2))
             .withDescription("Policy with multiple rules");
 
-    Policy policy = createEntity(create, client);
+    Policy policy = createEntity(create);
     assertNotNull(policy.getRules());
     assertEquals(2, policy.getRules().size());
   }
@@ -200,7 +202,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
             .withRules(List.of(rule))
             .withDescription("Policy with condition");
 
-    Policy policy = createEntity(create, client);
+    Policy policy = createEntity(create);
     assertNotNull(policy.getRules());
     assertEquals(1, policy.getRules().size());
     assertEquals("isOwner()", policy.getRules().get(0).getCondition());
@@ -223,7 +225,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
             .withRules(List.of(denyRule))
             .withDescription("Policy with deny effect");
 
-    Policy policy = createEntity(create, client);
+    Policy policy = createEntity(create);
     assertNotNull(policy.getRules());
     assertEquals(Effect.DENY, policy.getRules().get(0).getEffect());
   }
@@ -243,11 +245,11 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   void test_updatePolicyDescription(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreatePolicy create = createMinimalRequest(ns, client);
-    Policy policy = createEntity(create, client);
+    CreatePolicy create = createMinimalRequest(ns);
+    Policy policy = createEntity(create);
 
     policy.setDescription("Updated policy description");
-    Policy updated = patchEntity(policy.getId().toString(), policy, client);
+    Policy updated = patchEntity(policy.getId().toString(), policy);
 
     assertEquals("Updated policy description", updated.getDescription());
   }
@@ -256,11 +258,11 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   void test_updatePolicyDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreatePolicy create = createMinimalRequest(ns, client);
-    Policy policy = createEntity(create, client);
+    CreatePolicy create = createMinimalRequest(ns);
+    Policy policy = createEntity(create);
 
     policy.setDisplayName("My Updated Policy");
-    Policy updated = patchEntity(policy.getId().toString(), policy, client);
+    Policy updated = patchEntity(policy.getId().toString(), policy);
 
     assertEquals("My Updated Policy", updated.getDisplayName());
   }
@@ -269,8 +271,8 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   void test_getPolicyWithRolesAndTeams(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreatePolicy create = createMinimalRequest(ns, client);
-    Policy policy = createEntity(create, client);
+    CreatePolicy create = createMinimalRequest(ns);
+    Policy policy = createEntity(create);
 
     Policy fetched = client.policies().get(policy.getId().toString(), "roles,teams");
     assertNotNull(fetched);
@@ -280,23 +282,21 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   void test_softDeleteAndRestorePolicy(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreatePolicy create = createMinimalRequest(ns, client);
-    Policy policy = createEntity(create, client);
+    CreatePolicy create = createMinimalRequest(ns);
+    Policy policy = createEntity(create);
     String policyId = policy.getId().toString();
 
-    deleteEntity(policyId, client);
+    deleteEntity(policyId);
 
     assertThrows(
-        Exception.class,
-        () -> getEntity(policyId, client),
-        "Deleted policy should not be retrievable");
+        Exception.class, () -> getEntity(policyId), "Deleted policy should not be retrievable");
 
-    Policy deleted = getEntityIncludeDeleted(policyId, client);
+    Policy deleted = getEntityIncludeDeleted(policyId);
     assertTrue(deleted.getDeleted());
 
-    restoreEntity(policyId, client);
+    restoreEntity(policyId);
 
-    Policy restored = getEntity(policyId, client);
+    Policy restored = getEntity(policyId);
     assertFalse(restored.getDeleted());
   }
 
@@ -304,12 +304,12 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   void test_policyVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreatePolicy create = createMinimalRequest(ns, client);
-    Policy policy = createEntity(create, client);
+    CreatePolicy create = createMinimalRequest(ns);
+    Policy policy = createEntity(create);
     assertEquals(0.1, policy.getVersion(), 0.001);
 
     policy.setDescription("Updated description v1");
-    Policy v2 = patchEntity(policy.getId().toString(), policy, client);
+    Policy v2 = patchEntity(policy.getId().toString(), policy);
     assertEquals(0.2, v2.getVersion(), 0.001);
 
     var history = client.policies().getVersionList(policy.getId());
@@ -328,12 +328,12 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
               .withName(ns.prefix("listPolicy" + i))
               .withRules(List.of(createBasicRule("rule1")))
               .withDescription("Policy for list test");
-      createEntity(create, client);
+      createEntity(create);
     }
 
     ListParams params = new ListParams();
     params.setLimit(100);
-    ListResponse<Policy> response = listEntities(params, client);
+    ListResponse<Policy> response = listEntities(params);
 
     assertNotNull(response);
     assertNotNull(response.getData());
@@ -358,7 +358,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
             .withRules(List.of(tableRule))
             .withDescription("Policy for table resources only");
 
-    Policy policy = createEntity(create, client);
+    Policy policy = createEntity(create);
     assertNotNull(policy.getRules());
     assertEquals("table", policy.getRules().get(0).getResources().get(0));
   }
@@ -384,7 +384,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
             .withRules(List.of(multiOpRule))
             .withDescription("Policy with multiple operations");
 
-    Policy policy = createEntity(create, client);
+    Policy policy = createEntity(create);
     assertNotNull(policy.getRules());
     assertTrue(policy.getRules().get(0).getOperations().size() >= 3);
   }
@@ -400,7 +400,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
             .withOwners(List.of(testUser1().getEntityReference()))
             .withDescription("Policy with owner");
 
-    Policy policy = createEntity(create, client);
+    Policy policy = createEntity(create);
 
     Policy fetched = client.policies().get(policy.getId().toString(), "owners");
     assertNotNull(fetched.getOwners());
@@ -412,12 +412,12 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   // ===================================================================
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.policies().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().policies().getVersionList(id);
   }
 
   @Override
-  protected Policy getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.policies().getVersion(id.toString(), version);
+  protected Policy getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().policies().getVersion(id.toString(), version);
   }
 }

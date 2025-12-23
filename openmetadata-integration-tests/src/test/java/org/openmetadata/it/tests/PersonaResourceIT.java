@@ -44,52 +44,52 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
   // ===================================================================
 
   @Override
-  protected CreatePersona createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreatePersona createMinimalRequest(TestNamespace ns) {
     return new CreatePersona()
         .withName(ns.prefix("persona"))
         .withDescription("Test persona created by integration test");
   }
 
   @Override
-  protected CreatePersona createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreatePersona createRequest(String name, TestNamespace ns) {
     return new CreatePersona().withName(name).withDescription("Test persona");
   }
 
   @Override
-  protected Persona createEntity(CreatePersona createRequest, OpenMetadataClient client) {
-    return client.personas().create(createRequest);
+  protected Persona createEntity(CreatePersona createRequest) {
+    return SdkClients.adminClient().personas().create(createRequest);
   }
 
   @Override
-  protected Persona getEntity(String id, OpenMetadataClient client) {
-    return client.personas().get(id);
+  protected Persona getEntity(String id) {
+    return SdkClients.adminClient().personas().get(id);
   }
 
   @Override
-  protected Persona getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.personas().getByName(fqn);
+  protected Persona getEntityByName(String fqn) {
+    return SdkClients.adminClient().personas().getByName(fqn);
   }
 
   @Override
-  protected Persona patchEntity(String id, Persona entity, OpenMetadataClient client) {
-    return client.personas().update(id, entity);
+  protected Persona patchEntity(String id, Persona entity) {
+    return SdkClients.adminClient().personas().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.personas().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().personas().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.personas().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().personas().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.personas().delete(id, params);
+    SdkClients.adminClient().personas().delete(id, params);
   }
 
   @Override
@@ -107,34 +107,33 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
   }
 
   @Override
-  protected ListResponse<Persona> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.personas().list(params);
+  protected ListResponse<Persona> listEntities(ListParams params) {
+    return SdkClients.adminClient().personas().list(params);
   }
 
   @Override
-  protected Persona getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.personas().get(id, fields);
+  protected Persona getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().personas().get(id, fields);
   }
 
   @Override
-  protected Persona getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.personas().getByName(fqn, fields);
+  protected Persona getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().personas().getByName(fqn, fields);
   }
 
   @Override
-  protected Persona getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.personas().get(id, "users", "deleted");
+  protected Persona getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().personas().get(id, "users", "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.personas().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().personas().getVersionList(id);
   }
 
   @Override
-  protected Persona getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.personas().getVersion(id.toString(), version);
+  protected Persona getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().personas().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -151,7 +150,7 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
             .withDescription("Valid persona")
             .withDisplayName("Test Persona Display");
 
-    Persona persona = createEntity(request, client);
+    Persona persona = createEntity(request);
     assertNotNull(persona);
     assertEquals("Test Persona Display", persona.getDisplayName());
   }
@@ -183,11 +182,11 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
             .withDescription("Persona with users")
             .withUsers(Arrays.asList(user1.getId(), user2.getId()));
 
-    Persona persona = createEntity(request, client);
+    Persona persona = createEntity(request);
     assertNotNull(persona);
 
     // Get persona with users field
-    Persona fetched = getEntityWithFields(persona.getId().toString(), "users", client);
+    Persona fetched = getEntityWithFields(persona.getId().toString(), "users");
     assertNotNull(fetched.getUsers());
     assertEquals(2, fetched.getUsers().size());
   }
@@ -201,12 +200,12 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
             .withName(ns.prefix("persona_update_desc"))
             .withDescription("Initial description");
 
-    Persona persona = createEntity(request, client);
+    Persona persona = createEntity(request);
     assertEquals("Initial description", persona.getDescription());
 
     // Update description
     persona.setDescription("Updated description");
-    Persona updated = patchEntity(persona.getId().toString(), persona, client);
+    Persona updated = patchEntity(persona.getId().toString(), persona);
     assertEquals("Updated description", updated.getDescription());
   }
 
@@ -221,7 +220,7 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
             .withDescription("First default persona")
             .withDefault(true);
 
-    Persona persona1 = createEntity(request1, client);
+    Persona persona1 = createEntity(request1);
     assertNotNull(persona1);
     assertTrue(persona1.getDefault());
 
@@ -232,12 +231,12 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
             .withDescription("Second default persona")
             .withDefault(true);
 
-    Persona persona2 = createEntity(request2, client);
+    Persona persona2 = createEntity(request2);
     assertNotNull(persona2);
     assertTrue(persona2.getDefault());
 
     // Verify first persona is no longer default
-    Persona refreshed1 = getEntity(persona1.getId().toString(), client);
+    Persona refreshed1 = getEntity(persona1.getId().toString());
     assertFalse(refreshed1.getDefault());
   }
 
@@ -249,7 +248,7 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
     CreatePersona request1 =
         new CreatePersona().withName(personaName).withDescription("First persona");
 
-    Persona persona1 = createEntity(request1, client);
+    Persona persona1 = createEntity(request1);
     assertNotNull(persona1);
 
     // Attempt to create duplicate
@@ -257,8 +256,6 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
         new CreatePersona().withName(personaName).withDescription("Duplicate persona");
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(request2, client),
-        "Creating duplicate persona should fail");
+        Exception.class, () -> createEntity(request2), "Creating duplicate persona should fail");
   }
 }

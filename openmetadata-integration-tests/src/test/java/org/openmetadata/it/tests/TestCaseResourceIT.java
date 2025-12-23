@@ -49,10 +49,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   // ===================================================================
 
   @Override
-  protected CreateTestCase createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    Table table = createTable(client, ns);
+  protected CreateTestCase createMinimalRequest(TestNamespace ns) {
+    Table table = createTable(ns);
 
-    return TestCaseBuilder.create(client)
+    return TestCaseBuilder.create(SdkClients.adminClient())
         .name(ns.prefix("testcase"))
         .description("Test case created by integration test")
         .forTable(table)
@@ -62,8 +62,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Override
-  protected CreateTestCase createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
-    Table table = createTable(client, ns);
+  protected CreateTestCase createRequest(String name, TestNamespace ns) {
+    Table table = createTable(ns);
 
     // For invalid name tests, bypass builder validation to test server-side validation
     if (name == null || name.isEmpty() || name.contains("\n")) {
@@ -77,7 +77,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
       return request;
     }
 
-    return TestCaseBuilder.create(client)
+    return TestCaseBuilder.create(SdkClients.adminClient())
         .name(name)
         .description("Test case")
         .forTable(table)
@@ -86,7 +86,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .build();
   }
 
-  private Table createTable(OpenMetadataClient client, TestNamespace ns) {
+  private Table createTable(TestNamespace ns) {
     // Use short names to avoid FQN length limit (256 chars)
     String shortId = ns.shortPrefix();
 
@@ -109,14 +109,15 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         new org.openmetadata.schema.api.data.CreateDatabase();
     dbReq.setName("db_" + shortId);
     dbReq.setService(service.getFullyQualifiedName());
-    org.openmetadata.schema.entity.data.Database database = client.databases().create(dbReq);
+    org.openmetadata.schema.entity.data.Database database =
+        SdkClients.adminClient().databases().create(dbReq);
 
     // Create schema with short name
     org.openmetadata.schema.api.data.CreateDatabaseSchema schemaReq =
         new org.openmetadata.schema.api.data.CreateDatabaseSchema();
     schemaReq.setName("s_" + shortId);
     schemaReq.setDatabase(database.getFullyQualifiedName());
-    DatabaseSchema schema = client.databaseSchemas().create(schemaReq);
+    DatabaseSchema schema = SdkClients.adminClient().databaseSchemas().create(schemaReq);
 
     CreateTable tableRequest = new CreateTable();
     tableRequest.setName("t_" + shortId);
@@ -129,44 +130,44 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 .withDataType(ColumnDataType.VARCHAR)
                 .withDataLength(255)));
 
-    return client.tables().create(tableRequest);
+    return SdkClients.adminClient().tables().create(tableRequest);
   }
 
   @Override
-  protected TestCase createEntity(CreateTestCase createRequest, OpenMetadataClient client) {
-    return client.testCases().create(createRequest);
+  protected TestCase createEntity(CreateTestCase createRequest) {
+    return SdkClients.adminClient().testCases().create(createRequest);
   }
 
   @Override
-  protected TestCase getEntity(String id, OpenMetadataClient client) {
-    return client.testCases().get(id);
+  protected TestCase getEntity(String id) {
+    return SdkClients.adminClient().testCases().get(id);
   }
 
   @Override
-  protected TestCase getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.testCases().getByName(fqn);
+  protected TestCase getEntityByName(String fqn) {
+    return SdkClients.adminClient().testCases().getByName(fqn);
   }
 
   @Override
-  protected TestCase patchEntity(String id, TestCase entity, OpenMetadataClient client) {
-    return client.testCases().update(id, entity);
+  protected TestCase patchEntity(String id, TestCase entity) {
+    return SdkClients.adminClient().testCases().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.testCases().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().testCases().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.testCases().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().testCases().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.testCases().delete(id, params);
+    SdkClients.adminClient().testCases().delete(id, params);
   }
 
   @Override
@@ -190,34 +191,33 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Override
-  protected ListResponse<TestCase> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.testCases().list(params);
+  protected ListResponse<TestCase> listEntities(ListParams params) {
+    return SdkClients.adminClient().testCases().list(params);
   }
 
   @Override
-  protected TestCase getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.testCases().get(id, fields);
+  protected TestCase getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().testCases().get(id, fields);
   }
 
   @Override
-  protected TestCase getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.testCases().getByName(fqn, fields);
+  protected TestCase getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().testCases().getByName(fqn, fields);
   }
 
   @Override
-  protected TestCase getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.testCases().get(id, null, "deleted");
+  protected TestCase getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().testCases().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.testCases().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().testCases().getVersionList(id);
   }
 
   @Override
-  protected TestCase getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.testCases().getVersion(id.toString(), version);
+  protected TestCase getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().testCases().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -234,7 +234,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void testListFluentAPI(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Create a few test cases for this specific table
     for (int i = 0; i < 3; i++) {
@@ -251,7 +251,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     ListParams params = new ListParams();
     params.setLimit(10);
     params.addFilter("entityLink", entityLink);
-    ListResponse<TestCase> response = listEntities(params, client);
+    ListResponse<TestCase> response = listEntities(params);
 
     assertNotNull(response, "List response should not be null");
     assertNotNull(response.getData(), "Data should not be null");
@@ -268,7 +268,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void testAutoPaginationFluentAPI(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Create multiple test cases for this specific table
     int count = 5;
@@ -294,7 +294,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     do {
       params.setAfter(afterCursor);
-      ListResponse<TestCase> page = listEntities(params, client);
+      ListResponse<TestCase> page = listEntities(params);
 
       assertNotNull(page, "Page should not be null");
       for (TestCase entity : page.getData()) {
@@ -325,14 +325,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating test case without entity link should fail");
   }
 
   @Test
   void post_testCaseWithParameters_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Using fluent builder API
     TestCase testCase =
@@ -351,7 +351,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void put_testCaseDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -366,14 +366,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     // Update description
     testCase.setDescription("Updated description");
-    TestCase updated = patchEntity(testCase.getId().toString(), testCase, client);
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
     assertEquals("Updated description", updated.getDescription());
   }
 
   @Test
   void test_testCaseLinksToTable(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -405,7 +405,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating test case with invalid entity link should fail");
   }
 
@@ -423,14 +423,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating test case with non-existent table should fail");
   }
 
   @Test
   void post_testWithInvalidTestDefinition_4xx(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     CreateTestCase request = new CreateTestCase();
     request.setName(ns.prefix("testcase_invalid_def"));
@@ -439,14 +439,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating test case with non-existent test definition should fail");
   }
 
   @Test
   void post_columnLevelTest_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Using fluent builder API with forColumn()
     TestCase testCase =
@@ -466,7 +466,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void post_testWithInvalidColumnName_4xx(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Invalid column name
     String invalidColumnLink =
@@ -483,14 +483,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating test case with invalid column name should fail");
   }
 
   @Test
   void test_createMultipleTestsOnSameTable_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Create first test using fluent API
     TestCase testCase1 =
@@ -519,7 +519,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_updateTestCaseParameterValues_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -534,7 +534,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // Update parameter values
     testCase.setParameterValues(
         List.of(new TestCaseParameterValue().withName("value").withValue("200")));
-    TestCase updated = patchEntity(testCase.getId().toString(), testCase, client);
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
 
     // Note: The test definition may not allow changing params via patch
     assertNotNull(updated);
@@ -543,7 +543,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_testCaseVersionHistory_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -558,24 +558,24 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     // Update to create new version
     testCase.setDescription("Updated description");
-    TestCase updated = patchEntity(testCase.getId().toString(), testCase, client);
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
     assertTrue(updated.getVersion() >= initialVersion);
 
     // Get version history
-    EntityHistory history = getVersionHistory(testCase.getId(), client);
+    EntityHistory history = getVersionHistory(testCase.getId());
     assertNotNull(history);
     assertNotNull(history.getVersions());
     assertTrue(history.getVersions().size() >= 1);
 
     // Get specific version
-    TestCase version = getVersion(testCase.getId(), initialVersion, client);
+    TestCase version = getVersion(testCase.getId(), initialVersion);
     assertNotNull(version);
   }
 
   @Test
   void test_testCaseSoftDeleteAndRestore_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -588,24 +588,24 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     String testCaseId = testCase.getId().toString();
 
     // Soft delete
-    deleteEntity(testCaseId, client);
+    deleteEntity(testCaseId);
 
     // Verify deleted
-    TestCase deleted = getEntityIncludeDeleted(testCaseId, client);
+    TestCase deleted = getEntityIncludeDeleted(testCaseId);
     assertTrue(deleted.getDeleted());
 
     // Restore
-    restoreEntity(testCaseId, client);
+    restoreEntity(testCaseId);
 
     // Verify restored
-    TestCase restored = getEntity(testCaseId, client);
+    TestCase restored = getEntity(testCaseId);
     assertFalse(restored.getDeleted() != null && restored.getDeleted());
   }
 
   @Test
   void test_testCaseHardDelete_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -618,19 +618,19 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     String testCaseId = testCase.getId().toString();
 
     // Hard delete
-    hardDeleteEntity(testCaseId, client);
+    hardDeleteEntity(testCaseId);
 
     // Verify completely gone
     assertThrows(
         Exception.class,
-        () -> getEntityIncludeDeleted(testCaseId, client),
+        () -> getEntityIncludeDeleted(testCaseId),
         "Hard deleted test case should not be retrievable");
   }
 
   @Test
   void test_listTestCases_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Create multiple test cases using fluent API
     for (int i = 0; i < 3; i++) {
@@ -647,7 +647,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     ListParams params = new ListParams();
     params.setLimit(100);
     params.addFilter("entityLink", entityLink);
-    ListResponse<TestCase> response = listEntities(params, client);
+    ListResponse<TestCase> response = listEntities(params);
 
     assertNotNull(response);
     assertNotNull(response.getData());
@@ -664,7 +664,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_testCaseWithDifferentTestDefinitions(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Test with tableRowCountToEqual using fluent API
     TestCase testCase1 =
@@ -695,7 +695,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void post_testWithMissingRequiredParameter_4xx(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // tableRowCountToEqual requires 'value' parameter
     CreateTestCase request = new CreateTestCase();
@@ -706,14 +706,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating test case without required parameter should fail");
   }
 
   @Test
   void post_testWithInvalidParameterValue_4xx(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     CreateTestCase request = new CreateTestCase();
     request.setName(ns.prefix("testcase_invalid_param"));
@@ -724,14 +724,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating test case with wrong parameter name should fail");
   }
 
   @Test
   void test_testCaseWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -750,7 +750,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_testCaseDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -767,7 +767,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_getTestCaseByName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -780,7 +780,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertNotNull(testCase.getFullyQualifiedName());
 
     // Get by FQN
-    TestCase fetched = getEntityByName(testCase.getFullyQualifiedName(), client);
+    TestCase fetched = getEntityByName(testCase.getFullyQualifiedName());
     assertEquals(testCase.getId(), fetched.getId());
     assertEquals(testCase.getName(), fetched.getName());
   }
@@ -788,7 +788,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_testCaseComputePassedFailedRowCount(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -805,7 +805,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_patchTestCaseComputePassedFailedRowCount(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -820,14 +820,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     // Update via patch
     testCase.setComputePassedFailedRowCount(true);
-    TestCase updated = patchEntity(testCase.getId().toString(), testCase, client);
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
     assertTrue(updated.getComputePassedFailedRowCount());
   }
 
   @Test
   void test_createTestCaseWithUseDynamicAssertion(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -844,7 +844,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_updateTestCaseDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -859,14 +859,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     // Update display name
     testCase.setDisplayName("Updated Display Name");
-    TestCase updated = patchEntity(testCase.getId().toString(), testCase, client);
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
     assertEquals("Updated Display Name", updated.getDisplayName());
   }
 
   @Test
   void test_testCaseEntityFQN(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -883,7 +883,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_testCaseHasTestSuite(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -900,7 +900,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_listTestCasesWithPagination(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Create 5 test cases using fluent API
     for (int i = 0; i < 5; i++) {
@@ -915,7 +915,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // First page
     ListParams params = new ListParams();
     params.setLimit(2);
-    ListResponse<TestCase> page1 = listEntities(params, client);
+    ListResponse<TestCase> page1 = listEntities(params);
     assertNotNull(page1);
     assertNotNull(page1.getData());
 
@@ -926,7 +926,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_addTestCasesToLogicalTestSuite(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Create a logical test suite
     org.openmetadata.schema.api.tests.CreateTestSuite suiteRequest =
@@ -960,7 +960,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_listTestCasesByEntityLink(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Create test cases for this table using fluent API
     for (int i = 0; i < 3; i++) {
@@ -977,7 +977,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     params.setLimit(100);
     String tableLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
     params.addFilter("entityLink", tableLink);
-    ListResponse<TestCase> response = listEntities(params, client);
+    ListResponse<TestCase> response = listEntities(params);
 
     assertNotNull(response);
     assertNotNull(response.getData());
@@ -987,7 +987,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_testCaseUniqueNamePerTable(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     String testName = ns.prefix("unique_test");
 
@@ -1018,7 +1018,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_columnNotNullTest(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Using fluent builder API for column-level test
     TestCase testCase =
@@ -1036,7 +1036,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_columnUniqueTest(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Using fluent builder API for column-level test
     TestCase testCase =
@@ -1054,7 +1054,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_tableColumnCountTest(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -1072,7 +1072,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_testCaseFQNFormat(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     String testName = ns.prefix("fqn_test");
     TestCase testCase =
@@ -1092,7 +1092,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_testCaseTestSuiteIsExecutable(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -1107,7 +1107,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     // Note: "basic" is the internal term, "executable" is the API term
     // Fetch the test suite to verify basic flag
     org.openmetadata.schema.tests.TestSuite testSuite =
-        client.testSuites().get(testCase.getTestSuite().getId().toString());
+        SdkClients.adminClient().testSuites().get(testCase.getTestSuite().getId().toString());
     // Use Boolean.TRUE.equals to handle null values safely
     assertTrue(
         Boolean.TRUE.equals(testSuite.getBasic()),
@@ -1117,7 +1117,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_updateTestCaseOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -1131,7 +1131,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     // Add owner via patch
     testCase.setOwners(List.of(testUser1().getEntityReference()));
-    TestCase updated = patchEntity(testCase.getId().toString(), testCase, client);
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
 
     assertNotNull(updated.getOwners());
     assertFalse(updated.getOwners().isEmpty());
@@ -1141,7 +1141,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_testCaseGetById(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -1152,7 +1152,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .create();
 
     // Get by ID
-    TestCase fetched = getEntity(testCase.getId().toString(), client);
+    TestCase fetched = getEntity(testCase.getId().toString());
     assertEquals(testCase.getId(), fetched.getId());
     assertEquals(testCase.getName(), fetched.getName());
     assertEquals(testCase.getFullyQualifiedName(), fetched.getFullyQualifiedName());
@@ -1161,7 +1161,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_testCaseWithDomains(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)
@@ -1175,10 +1175,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     // Update with domains
     testCase.setDomains(List.of(testDomain().getEntityReference()));
-    TestCase updated = patchEntity(testCase.getId().toString(), testCase, client);
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
 
     // Fetch with domains field
-    TestCase fetched = getEntityWithFields(updated.getId().toString(), "domains", client);
+    TestCase fetched = getEntityWithFields(updated.getId().toString(), "domains");
     assertNotNull(fetched.getDomains());
     assertFalse(fetched.getDomains().isEmpty());
     assertEquals(testDomain().getId(), fetched.getDomains().get(0).getId());
@@ -1187,7 +1187,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void test_deleteTableDeletesTestCases(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     // Create test case using fluent API
     TestCase testCase =
@@ -1204,19 +1204,19 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     Map<String, String> params = new HashMap<>();
     params.put("hardDelete", "true");
     params.put("recursive", "true");
-    client.tables().delete(table.getId().toString(), params);
+    SdkClients.adminClient().tables().delete(table.getId().toString(), params);
 
     // The test case should be deleted when the table is deleted
     assertThrows(
         Exception.class,
-        () -> getEntity(testCaseId, client),
+        () -> getEntity(testCaseId),
         "Test case should be deleted when table is deleted");
   }
 
   @Test
   void test_testCaseInheritsFromTestDefinition(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTable(client, ns);
+    Table table = createTable(ns);
 
     TestCase testCase =
         TestCaseBuilder.create(client)

@@ -38,8 +38,8 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   // ===================================================================
 
   @Override
-  protected CreateMlModel createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+  protected CreateMlModel createMinimalRequest(TestNamespace ns) {
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel"));
@@ -51,8 +51,8 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   }
 
   @Override
-  protected CreateMlModel createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+  protected CreateMlModel createRequest(String name, TestNamespace ns) {
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(name);
@@ -63,40 +63,40 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   }
 
   @Override
-  protected MlModel createEntity(CreateMlModel createRequest, OpenMetadataClient client) {
-    return client.mlModels().create(createRequest);
+  protected MlModel createEntity(CreateMlModel createRequest) {
+    return SdkClients.adminClient().mlModels().create(createRequest);
   }
 
   @Override
-  protected MlModel getEntity(String id, OpenMetadataClient client) {
-    return client.mlModels().get(id);
+  protected MlModel getEntity(String id) {
+    return SdkClients.adminClient().mlModels().get(id);
   }
 
   @Override
-  protected MlModel getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.mlModels().getByName(fqn);
+  protected MlModel getEntityByName(String fqn) {
+    return SdkClients.adminClient().mlModels().getByName(fqn);
   }
 
   @Override
-  protected MlModel patchEntity(String id, MlModel entity, OpenMetadataClient client) {
-    return client.mlModels().update(id, entity);
+  protected MlModel patchEntity(String id, MlModel entity) {
+    return SdkClients.adminClient().mlModels().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.mlModels().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().mlModels().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.mlModels().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().mlModels().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.mlModels().delete(id, params);
+    SdkClients.adminClient().mlModels().delete(id, params);
   }
 
   @Override
@@ -120,34 +120,33 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   }
 
   @Override
-  protected ListResponse<MlModel> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.mlModels().list(params);
+  protected ListResponse<MlModel> listEntities(ListParams params) {
+    return SdkClients.adminClient().mlModels().list(params);
   }
 
   @Override
-  protected MlModel getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.mlModels().get(id, fields);
+  protected MlModel getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().mlModels().get(id, fields);
   }
 
   @Override
-  protected MlModel getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.mlModels().getByName(fqn, fields);
+  protected MlModel getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().mlModels().getByName(fqn, fields);
   }
 
   @Override
-  protected MlModel getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.mlModels().get(id, null, "deleted");
+  protected MlModel getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().mlModels().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.mlModels().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().mlModels().getVersionList(id);
   }
 
   @Override
-  protected MlModel getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.mlModels().getVersion(id.toString(), version);
+  protected MlModel getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().mlModels().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -165,14 +164,14 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating ML model without service should fail");
   }
 
   @Test
   void post_mlModelWithFeatures_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     List<MlFeature> features =
         Arrays.asList(
@@ -191,7 +190,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     request.setAlgorithm("Gradient Boosting");
     request.setMlFeatures(features);
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     assertNotNull(mlModel);
     assertNotNull(mlModel.getMlFeatures());
     assertEquals(2, mlModel.getMlFeatures().size());
@@ -200,7 +199,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void post_mlModelWithHyperParameters_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     List<MlHyperParameter> hyperParams =
         Arrays.asList(
@@ -219,7 +218,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     request.setAlgorithm("XGBoost");
     request.setMlHyperParameters(hyperParams);
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     assertNotNull(mlModel);
     assertNotNull(mlModel.getMlHyperParameters());
     assertEquals(2, mlModel.getMlHyperParameters().size());
@@ -228,7 +227,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void post_mlModelWithSourceUrl_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel_with_url"));
@@ -236,7 +235,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     request.setAlgorithm("Neural Network");
     request.setSourceUrl("http://localhost:5000/models/my_model");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     assertNotNull(mlModel);
     assertEquals("http://localhost:5000/models/my_model", mlModel.getSourceUrl());
   }
@@ -244,7 +243,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void put_mlModelWithFeatures_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     // Create ML model without features
     CreateMlModel request = new CreateMlModel();
@@ -252,7 +251,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     request.setService(service.getFullyQualifiedName());
     request.setAlgorithm("Linear Regression");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     assertNotNull(mlModel);
 
     // Add features via update
@@ -262,7 +261,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
             new MlFeature().withName("added_feature2").withDataType(MlFeatureDataType.Categorical));
 
     mlModel.setMlFeatures(features);
-    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel, client);
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
     assertNotNull(updated);
     assertNotNull(updated.getMlFeatures());
     assertEquals(2, updated.getMlFeatures().size());
@@ -271,19 +270,19 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void patch_mlModelAlgorithm_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel_patch_algo"));
     request.setService(service.getFullyQualifiedName());
     request.setAlgorithm("Random Forest");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     assertEquals("Random Forest", mlModel.getAlgorithm());
 
     // Patch algorithm
     mlModel.setAlgorithm("Gradient Boosting");
-    MlModel patched = patchEntity(mlModel.getId().toString(), mlModel, client);
+    MlModel patched = patchEntity(mlModel.getId().toString(), mlModel);
     assertEquals("Gradient Boosting", patched.getAlgorithm());
   }
 
@@ -292,7 +291,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create an ML model service
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     // Create an ML model under the service
     CreateMlModel request = new CreateMlModel();
@@ -300,7 +299,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     request.setService(service.getFullyQualifiedName());
     request.setAlgorithm("Logistic Regression");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     assertNotNull(mlModel);
     assertNotNull(mlModel.getService());
     assertEquals(service.getFullyQualifiedName(), mlModel.getService().getFullyQualifiedName());
@@ -313,7 +312,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void test_mlModelVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel_version"));
@@ -321,16 +320,16 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     request.setAlgorithm("Neural Network");
     request.setDescription("Initial description");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     Double initialVersion = mlModel.getVersion();
 
     // Update to create new version
     mlModel.setDescription("Updated description");
-    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel, client);
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
     assertTrue(updated.getVersion() >= initialVersion);
 
     // Get version history
-    EntityHistory history = getVersionHistory(mlModel.getId(), client);
+    EntityHistory history = getVersionHistory(mlModel.getId());
     assertNotNull(history);
     assertNotNull(history.getVersions());
     assertTrue(history.getVersions().size() >= 1);
@@ -339,58 +338,58 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void test_mlModelSoftDeleteAndRestore(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel_soft_delete"));
     request.setService(service.getFullyQualifiedName());
     request.setAlgorithm("SVM");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     String mlModelId = mlModel.getId().toString();
 
     // Soft delete
-    deleteEntity(mlModelId, client);
+    deleteEntity(mlModelId);
 
     // Verify deleted
-    MlModel deleted = getEntityIncludeDeleted(mlModelId, client);
+    MlModel deleted = getEntityIncludeDeleted(mlModelId);
     assertTrue(deleted.getDeleted());
 
     // Restore
-    restoreEntity(mlModelId, client);
+    restoreEntity(mlModelId);
 
     // Verify restored
-    MlModel restored = getEntity(mlModelId, client);
+    MlModel restored = getEntity(mlModelId);
     assertFalse(restored.getDeleted() != null && restored.getDeleted());
   }
 
   @Test
   void test_mlModelHardDelete(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel_hard_delete"));
     request.setService(service.getFullyQualifiedName());
     request.setAlgorithm("Decision Tree");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     String mlModelId = mlModel.getId().toString();
 
     // Hard delete
-    hardDeleteEntity(mlModelId, client);
+    hardDeleteEntity(mlModelId);
 
     // Verify completely gone
     assertThrows(
         Exception.class,
-        () -> getEntityIncludeDeleted(mlModelId, client),
+        () -> getEntityIncludeDeleted(mlModelId),
         "Hard deleted model should not be retrievable");
   }
 
   @Test
   void test_listMlModelsByService(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     // Create multiple models
     for (int i = 0; i < 3; i++) {
@@ -398,13 +397,13 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
       request.setName(ns.prefix("list_mlmodel_" + i));
       request.setService(service.getFullyQualifiedName());
       request.setAlgorithm("Algorithm " + i);
-      createEntity(request, client);
+      createEntity(request);
     }
 
     // List models
     ListParams params = new ListParams();
     params.setLimit(100);
-    ListResponse<MlModel> models = listEntities(params, client);
+    ListResponse<MlModel> models = listEntities(params);
 
     assertNotNull(models);
     assertTrue(models.getData().size() >= 3);
@@ -413,7 +412,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void test_mlModelWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel_with_owner"));
@@ -421,7 +420,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     request.setAlgorithm("KNN");
     request.setOwners(List.of(testUser1().getEntityReference()));
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     assertNotNull(mlModel.getOwners());
     assertFalse(mlModel.getOwners().isEmpty());
     assertEquals(testUser1().getId(), mlModel.getOwners().get(0).getId());
@@ -430,32 +429,32 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void patch_mlModelTarget_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel_patch_target"));
     request.setService(service.getFullyQualifiedName());
     request.setAlgorithm("Linear Regression");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
 
     // Update target
     mlModel.setTarget("sales_forecast");
-    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel, client);
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
     assertEquals("sales_forecast", updated.getTarget());
   }
 
   @Test
   void patch_mlModelHyperParameters_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel_patch_params"));
     request.setService(service.getFullyQualifiedName());
     request.setAlgorithm("Random Forest");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
 
     // Add hyperparameters
     List<MlHyperParameter> params =
@@ -464,7 +463,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
             new MlHyperParameter().withName("max_depth").withValue("5"));
 
     mlModel.setMlHyperParameters(params);
-    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel, client);
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
     assertNotNull(updated.getMlHyperParameters());
     assertEquals(2, updated.getMlHyperParameters().size());
   }
@@ -472,7 +471,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void test_mlModelDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel_display"));
@@ -480,30 +479,30 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     request.setService(service.getFullyQualifiedName());
     request.setAlgorithm("Random Forest");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     assertEquals("My Custom ML Model", mlModel.getDisplayName());
 
     // Update display name
     mlModel.setDisplayName("Updated ML Model Name");
-    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel, client);
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
     assertEquals("Updated ML Model Name", updated.getDisplayName());
   }
 
   @Test
   void test_mlModelByName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel_by_name"));
     request.setService(service.getFullyQualifiedName());
     request.setAlgorithm("Logistic Regression");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     String fqn = mlModel.getFullyQualifiedName();
 
     // Get by FQN
-    MlModel fetched = getEntityByName(fqn, client);
+    MlModel fetched = getEntityByName(fqn);
     assertEquals(mlModel.getId(), fetched.getId());
     assertEquals(mlModel.getName(), fetched.getName());
   }
@@ -511,7 +510,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void test_mlModelWithMultipleFeatures(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     List<MlFeature> features =
         Arrays.asList(
@@ -527,7 +526,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     request.setAlgorithm("Deep Learning");
     request.setMlFeatures(features);
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     assertNotNull(mlModel.getMlFeatures());
     assertEquals(5, mlModel.getMlFeatures().size());
   }
@@ -535,14 +534,14 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void test_mlModelFQNFormat(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     CreateMlModel request = new CreateMlModel();
     request.setName(ns.prefix("mlmodel_fqn_test"));
     request.setService(service.getFullyQualifiedName());
     request.setAlgorithm("Naive Bayes");
 
-    MlModel mlModel = createEntity(request, client);
+    MlModel mlModel = createEntity(request);
     assertNotNull(mlModel.getFullyQualifiedName());
     assertTrue(mlModel.getFullyQualifiedName().contains(service.getName()));
     assertTrue(mlModel.getFullyQualifiedName().contains(mlModel.getName()));
@@ -551,7 +550,7 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
   @Test
   void test_mlModelListWithPagination(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MlModelService service = MlModelServiceTestFactory.createMlflow(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
 
     // Create multiple models
     for (int i = 0; i < 5; i++) {
@@ -559,13 +558,13 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
       request.setName(ns.prefix("paginated_model_" + i));
       request.setService(service.getFullyQualifiedName());
       request.setAlgorithm("Algorithm " + i);
-      createEntity(request, client);
+      createEntity(request);
     }
 
     // First page
     ListParams params = new ListParams();
     params.setLimit(2);
-    ListResponse<MlModel> page1 = listEntities(params, client);
+    ListResponse<MlModel> page1 = listEntities(params);
 
     assertNotNull(page1);
     assertNotNull(page1.getData());

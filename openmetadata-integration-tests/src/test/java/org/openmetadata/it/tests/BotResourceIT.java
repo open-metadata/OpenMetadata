@@ -45,8 +45,8 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
   // ===================================================================
 
   @Override
-  protected CreateBot createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    User botUser = createBotUser(ns, client);
+  protected CreateBot createMinimalRequest(TestNamespace ns) {
+    User botUser = createBotUser(ns);
 
     return new CreateBot()
         .withName(ns.prefix("bot"))
@@ -55,8 +55,8 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
   }
 
   @Override
-  protected CreateBot createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
-    User botUser = createBotUser(ns, client);
+  protected CreateBot createRequest(String name, TestNamespace ns) {
+    User botUser = createBotUser(ns);
 
     return new CreateBot()
         .withName(name)
@@ -64,7 +64,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
         .withBotUser(botUser.getName());
   }
 
-  private User createBotUser(TestNamespace ns, OpenMetadataClient client) {
+  private User createBotUser(TestNamespace ns) {
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     String userName = ns.prefix("botuser_" + uniqueId);
     // Email must be well-formed - use simple alphanumeric format
@@ -84,44 +84,44 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
             .withIsBot(true)
             .withAuthenticationMechanism(authMechanism);
 
-    return client.users().create(userRequest);
+    return SdkClients.adminClient().users().create(userRequest);
   }
 
   @Override
-  protected Bot createEntity(CreateBot createRequest, OpenMetadataClient client) {
-    return client.bots().create(createRequest);
+  protected Bot createEntity(CreateBot createRequest) {
+    return SdkClients.adminClient().bots().create(createRequest);
   }
 
   @Override
-  protected Bot getEntity(String id, OpenMetadataClient client) {
-    return client.bots().get(id);
+  protected Bot getEntity(String id) {
+    return SdkClients.adminClient().bots().get(id);
   }
 
   @Override
-  protected Bot getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.bots().getByName(fqn);
+  protected Bot getEntityByName(String fqn) {
+    return SdkClients.adminClient().bots().getByName(fqn);
   }
 
   @Override
-  protected Bot patchEntity(String id, Bot entity, OpenMetadataClient client) {
-    return client.bots().update(id, entity);
+  protected Bot patchEntity(String id, Bot entity) {
+    return SdkClients.adminClient().bots().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.bots().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().bots().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.bots().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().bots().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.bots().delete(id, params);
+    SdkClients.adminClient().bots().delete(id, params);
   }
 
   @Override
@@ -140,33 +140,33 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
   }
 
   @Override
-  protected ListResponse<Bot> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.bots().list(params);
+  protected ListResponse<Bot> listEntities(ListParams params) {
+    return SdkClients.adminClient().bots().list(params);
   }
 
   @Override
-  protected Bot getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.bots().get(id, fields);
+  protected Bot getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().bots().get(id, fields);
   }
 
   @Override
-  protected Bot getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.bots().getByName(fqn, fields);
+  protected Bot getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().bots().getByName(fqn, fields);
   }
 
   @Override
-  protected Bot getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.bots().get(id, "botUser", "deleted");
+  protected Bot getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().bots().get(id, "botUser", "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.bots().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().bots().getVersionList(id);
   }
 
   @Override
-  protected Bot getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.bots().getVersion(id.toString(), version);
+  protected Bot getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().bots().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -176,7 +176,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
   @Test
   void post_botWithBotUser_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    User botUser = createBotUser(ns, client);
+    User botUser = createBotUser(ns);
 
     CreateBot request =
         new CreateBot()
@@ -184,7 +184,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
             .withDescription("Bot with bot user")
             .withBotUser(botUser.getName());
 
-    Bot bot = createEntity(request, client);
+    Bot bot = createEntity(request);
     assertNotNull(bot);
     assertNotNull(bot.getBotUser());
     assertEquals(botUser.getName().toLowerCase(), bot.getBotUser().getName().toLowerCase());
@@ -193,7 +193,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
   @Test
   void put_botDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    User botUser = createBotUser(ns, client);
+    User botUser = createBotUser(ns);
 
     CreateBot request =
         new CreateBot()
@@ -201,12 +201,12 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
             .withDescription("Initial description")
             .withBotUser(botUser.getName());
 
-    Bot bot = createEntity(request, client);
+    Bot bot = createEntity(request);
     assertEquals("Initial description", bot.getDescription());
 
     // Update description
     bot.setDescription("Updated description");
-    Bot updated = patchEntity(bot.getId().toString(), bot, client);
+    Bot updated = patchEntity(bot.getId().toString(), bot);
     assertEquals("Updated description", updated.getDescription());
   }
 
@@ -237,15 +237,13 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
             .withBotUser(nonBotUser.getName());
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(request, client),
-        "Creating bot with non-bot user should fail");
+        Exception.class, () -> createEntity(request), "Creating bot with non-bot user should fail");
   }
 
   @Test
   void test_botUserCannotBeShared(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    User botUser = createBotUser(ns, client);
+    User botUser = createBotUser(ns);
 
     // Create first bot
     CreateBot request1 =
@@ -254,7 +252,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
             .withDescription("First bot")
             .withBotUser(botUser.getName());
 
-    Bot bot1 = createEntity(request1, client);
+    Bot bot1 = createEntity(request1);
     assertNotNull(bot1);
 
     // Try to create second bot with same bot user
@@ -266,7 +264,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request2, client),
+        () -> createEntity(request2),
         "Creating bot with already-used bot user should fail");
   }
 
@@ -275,8 +273,8 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     String botName = ns.prefix("unique_bot");
-    User botUser1 = createBotUser(ns, client);
-    User botUser2 = createBotUser(ns, client);
+    User botUser1 = createBotUser(ns);
+    User botUser2 = createBotUser(ns);
 
     CreateBot request1 =
         new CreateBot()
@@ -284,7 +282,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
             .withDescription("First bot")
             .withBotUser(botUser1.getName());
 
-    Bot bot1 = createEntity(request1, client);
+    Bot bot1 = createEntity(request1);
     assertNotNull(bot1);
 
     // Try to create bot with same name
@@ -295,8 +293,6 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
             .withBotUser(botUser2.getName());
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(request2, client),
-        "Creating duplicate bot should fail");
+        Exception.class, () -> createEntity(request2), "Creating duplicate bot should fail");
   }
 }

@@ -45,8 +45,8 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   // ===================================================================
 
   @Override
-  protected CreateDataProduct createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    Domain domain = getOrCreateDomain(ns, client);
+  protected CreateDataProduct createMinimalRequest(TestNamespace ns) {
+    Domain domain = getOrCreateDomain(ns);
 
     return new CreateDataProduct()
         .withName(ns.prefix("dataproduct"))
@@ -55,9 +55,8 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Override
-  protected CreateDataProduct createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
-    Domain domain = getOrCreateDomain(ns, client);
+  protected CreateDataProduct createRequest(String name, TestNamespace ns) {
+    Domain domain = getOrCreateDomain(ns);
 
     return new CreateDataProduct()
         .withName(name)
@@ -65,55 +64,55 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         .withDomains(List.of(domain.getFullyQualifiedName()));
   }
 
-  private Domain getOrCreateDomain(TestNamespace ns, OpenMetadataClient client) {
+  private Domain getOrCreateDomain(TestNamespace ns) {
     String domainName = ns.prefix("domain");
     try {
-      return client.domains().getByName(domainName);
+      return SdkClients.adminClient().domains().getByName(domainName);
     } catch (Exception e) {
       CreateDomain createDomain =
           new CreateDomain()
               .withName(domainName)
               .withDescription("Test domain for data products")
               .withDomainType(DomainType.AGGREGATE);
-      return client.domains().create(createDomain);
+      return SdkClients.adminClient().domains().create(createDomain);
     }
   }
 
   @Override
-  protected DataProduct createEntity(CreateDataProduct createRequest, OpenMetadataClient client) {
-    return client.dataProducts().create(createRequest);
+  protected DataProduct createEntity(CreateDataProduct createRequest) {
+    return SdkClients.adminClient().dataProducts().create(createRequest);
   }
 
   @Override
-  protected DataProduct getEntity(String id, OpenMetadataClient client) {
-    return client.dataProducts().get(id);
+  protected DataProduct getEntity(String id) {
+    return SdkClients.adminClient().dataProducts().get(id);
   }
 
   @Override
-  protected DataProduct getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.dataProducts().getByName(fqn);
+  protected DataProduct getEntityByName(String fqn) {
+    return SdkClients.adminClient().dataProducts().getByName(fqn);
   }
 
   @Override
-  protected DataProduct patchEntity(String id, DataProduct entity, OpenMetadataClient client) {
-    return client.dataProducts().update(id, entity);
+  protected DataProduct patchEntity(String id, DataProduct entity) {
+    return SdkClients.adminClient().dataProducts().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.dataProducts().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().dataProducts().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.dataProducts().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().dataProducts().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.dataProducts().delete(id, params);
+    SdkClients.adminClient().dataProducts().delete(id, params);
   }
 
   @Override
@@ -137,34 +136,35 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Override
-  protected ListResponse<DataProduct> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.dataProducts().list(params);
+  protected ListResponse<DataProduct> listEntities(ListParams params) {
+    return SdkClients.adminClient().dataProducts().list(params);
   }
 
   @Override
-  protected DataProduct getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.dataProducts().get(id, fields);
+  protected DataProduct getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().dataProducts().get(id, fields);
   }
 
   @Override
-  protected DataProduct getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.dataProducts().getByName(fqn, fields);
+  protected DataProduct getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().dataProducts().getByName(fqn, fields);
   }
 
   @Override
-  protected DataProduct getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.dataProducts().get(id, "domains,owners,experts,assets,tags,followers", "deleted");
+  protected DataProduct getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient()
+        .dataProducts()
+        .get(id, "domains,owners,experts,assets,tags,followers", "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.dataProducts().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().dataProducts().getVersionList(id);
   }
 
   @Override
-  protected DataProduct getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.dataProducts().getVersion(id.toString(), version);
+  protected DataProduct getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().dataProducts().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -174,7 +174,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   @Test
   void post_dataProductWithStyle_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Domain domain = getOrCreateDomain(ns, client);
+    Domain domain = getOrCreateDomain(ns);
 
     CreateDataProduct request =
         new CreateDataProduct()
@@ -183,7 +183,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
             .withDomains(List.of(domain.getFullyQualifiedName()))
             .withStyle(new Style().withColor("#40E0D0").withIconURL("https://icon.example.com"));
 
-    DataProduct dataProduct = createEntity(request, client);
+    DataProduct dataProduct = createEntity(request);
     assertNotNull(dataProduct);
     assertNotNull(dataProduct.getStyle());
     assertEquals("#40E0D0", dataProduct.getStyle().getColor());
@@ -192,7 +192,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   @Test
   void put_dataProductDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Domain domain = getOrCreateDomain(ns, client);
+    Domain domain = getOrCreateDomain(ns);
 
     CreateDataProduct request =
         new CreateDataProduct()
@@ -200,19 +200,19 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
             .withDescription("Initial description")
             .withDomains(List.of(domain.getFullyQualifiedName()));
 
-    DataProduct dataProduct = createEntity(request, client);
+    DataProduct dataProduct = createEntity(request);
     assertEquals("Initial description", dataProduct.getDescription());
 
     // Update description
     dataProduct.setDescription("Updated description");
-    DataProduct updated = patchEntity(dataProduct.getId().toString(), dataProduct, client);
+    DataProduct updated = patchEntity(dataProduct.getId().toString(), dataProduct);
     assertEquals("Updated description", updated.getDescription());
   }
 
   @Test
   void test_dataProductNameUniquenessWithinDomain(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Domain domain = getOrCreateDomain(ns, client);
+    Domain domain = getOrCreateDomain(ns);
 
     // Create first data product
     String dpName = ns.prefix("unique_dp");
@@ -222,7 +222,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
             .withDescription("First data product")
             .withDomains(List.of(domain.getFullyQualifiedName()));
 
-    DataProduct dp1 = createEntity(request1, client);
+    DataProduct dp1 = createEntity(request1);
     assertNotNull(dp1);
 
     // Attempt to create duplicate within same domain
@@ -234,7 +234,7 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request2, client),
+        () -> createEntity(request2),
         "Creating duplicate data product in same domain should fail");
   }
 }

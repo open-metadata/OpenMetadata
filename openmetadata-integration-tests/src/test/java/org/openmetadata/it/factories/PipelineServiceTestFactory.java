@@ -2,13 +2,13 @@ package org.openmetadata.it.factories;
 
 import java.net.URI;
 import java.util.UUID;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.type.PipelineConnection;
-import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
  * Factory for creating PipelineService entities in integration tests.
@@ -21,7 +21,7 @@ public class PipelineServiceTestFactory {
    * Create an Airflow pipeline service with default settings. Each call creates a unique service to
    * avoid conflicts in parallel test execution.
    */
-  public static PipelineService createAirflow(OpenMetadataClient client, TestNamespace ns) {
+  public static PipelineService createAirflow(TestNamespace ns) {
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     String name = ns.prefix("airflowService_" + uniqueId);
 
@@ -37,11 +37,11 @@ public class PipelineServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test Airflow service");
 
-    return client.pipelineServices().create(request);
+    return SdkClients.adminClient().pipelineServices().create(request);
   }
 
   /** Get pipeline service by ID. */
-  public static PipelineService getById(OpenMetadataClient client, String id) {
-    return client.pipelineServices().get(id);
+  public static PipelineService getById(String id) {
+    return SdkClients.adminClient().pipelineServices().get(id);
   }
 }

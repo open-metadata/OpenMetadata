@@ -37,8 +37,8 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   // ===================================================================
 
   @Override
-  protected CreateSearchIndex createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    SearchService service = SearchServiceTestFactory.createElasticSearch(client, ns);
+  protected CreateSearchIndex createMinimalRequest(TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
 
     // Create default search index fields
     List<SearchIndexField> fields = createDefaultFields();
@@ -53,9 +53,8 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   }
 
   @Override
-  protected CreateSearchIndex createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
-    SearchService service = SearchServiceTestFactory.createElasticSearch(client, ns);
+  protected CreateSearchIndex createRequest(String name, TestNamespace ns) {
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
 
     // Create default search index fields
     List<SearchIndexField> fields = createDefaultFields();
@@ -83,40 +82,40 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   }
 
   @Override
-  protected SearchIndex createEntity(CreateSearchIndex createRequest, OpenMetadataClient client) {
-    return client.searchIndexes().create(createRequest);
+  protected SearchIndex createEntity(CreateSearchIndex createRequest) {
+    return SdkClients.adminClient().searchIndexes().create(createRequest);
   }
 
   @Override
-  protected SearchIndex getEntity(String id, OpenMetadataClient client) {
-    return client.searchIndexes().get(id);
+  protected SearchIndex getEntity(String id) {
+    return SdkClients.adminClient().searchIndexes().get(id);
   }
 
   @Override
-  protected SearchIndex getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.searchIndexes().getByName(fqn);
+  protected SearchIndex getEntityByName(String fqn) {
+    return SdkClients.adminClient().searchIndexes().getByName(fqn);
   }
 
   @Override
-  protected SearchIndex patchEntity(String id, SearchIndex entity, OpenMetadataClient client) {
-    return client.searchIndexes().update(id, entity);
+  protected SearchIndex patchEntity(String id, SearchIndex entity) {
+    return SdkClients.adminClient().searchIndexes().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.searchIndexes().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().searchIndexes().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.searchIndexes().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().searchIndexes().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.searchIndexes().delete(id, params);
+    SdkClients.adminClient().searchIndexes().delete(id, params);
   }
 
   @Override
@@ -139,34 +138,33 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   }
 
   @Override
-  protected ListResponse<SearchIndex> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.searchIndexes().list(params);
+  protected ListResponse<SearchIndex> listEntities(ListParams params) {
+    return SdkClients.adminClient().searchIndexes().list(params);
   }
 
   @Override
-  protected SearchIndex getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.searchIndexes().get(id, fields);
+  protected SearchIndex getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().searchIndexes().get(id, fields);
   }
 
   @Override
-  protected SearchIndex getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.searchIndexes().getByName(fqn, fields);
+  protected SearchIndex getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().searchIndexes().getByName(fqn, fields);
   }
 
   @Override
-  protected SearchIndex getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.searchIndexes().get(id, null, "deleted");
+  protected SearchIndex getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().searchIndexes().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.searchIndexes().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().searchIndexes().getVersionList(id);
   }
 
   @Override
-  protected SearchIndex getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.searchIndexes().getVersion(id.toString(), version);
+  protected SearchIndex getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().searchIndexes().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -183,14 +181,14 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating search index without service should fail");
   }
 
   @Test
   void post_searchIndexWithFields_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    SearchService service = SearchServiceTestFactory.createElasticSearch(client, ns);
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
 
     List<SearchIndexField> fields =
         Arrays.asList(
@@ -208,7 +206,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     request.setService(service.getFullyQualifiedName());
     request.setFields(fields);
 
-    SearchIndex searchIndex = createEntity(request, client);
+    SearchIndex searchIndex = createEntity(request);
     assertNotNull(searchIndex);
     assertNotNull(searchIndex.getFields());
     assertEquals(2, searchIndex.getFields().size());
@@ -217,7 +215,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   @Test
   void put_searchIndexFields_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    SearchService service = SearchServiceTestFactory.createElasticSearch(client, ns);
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
 
     // Create search index with initial fields
     List<SearchIndexField> initialFields = createDefaultFields();
@@ -226,7 +224,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     request.setService(service.getFullyQualifiedName());
     request.setFields(initialFields);
 
-    SearchIndex searchIndex = createEntity(request, client);
+    SearchIndex searchIndex = createEntity(request);
     assertNotNull(searchIndex);
 
     // Update fields via patch
@@ -238,7 +236,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
                 .withDescription("Added field"));
 
     searchIndex.setFields(newFields);
-    SearchIndex updated = patchEntity(searchIndex.getId().toString(), searchIndex, client);
+    SearchIndex updated = patchEntity(searchIndex.getId().toString(), searchIndex);
     assertNotNull(updated);
     assertNotNull(updated.getFields());
   }
@@ -248,7 +246,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a search service
-    SearchService service = SearchServiceTestFactory.createElasticSearch(client, ns);
+    SearchService service = SearchServiceTestFactory.createElasticSearch(ns);
 
     // Create a search index under the service with required fields
     List<SearchIndexField> fields = createDefaultFields();
@@ -257,7 +255,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     request.setService(service.getFullyQualifiedName());
     request.setFields(fields);
 
-    SearchIndex searchIndex = createEntity(request, client);
+    SearchIndex searchIndex = createEntity(request);
     assertNotNull(searchIndex);
     assertNotNull(searchIndex.getService());
     assertEquals(service.getFullyQualifiedName(), searchIndex.getService().getFullyQualifiedName());

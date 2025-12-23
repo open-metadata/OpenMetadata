@@ -42,7 +42,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
   // ===================================================================
 
   @Override
-  protected CreateTestDefinition createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateTestDefinition createMinimalRequest(TestNamespace ns) {
     CreateTestDefinition request = new CreateTestDefinition();
     request.setName(ns.prefix("testdefinition"));
     request.setDescription("Test definition created by integration test");
@@ -53,8 +53,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
   }
 
   @Override
-  protected CreateTestDefinition createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateTestDefinition createRequest(String name, TestNamespace ns) {
     CreateTestDefinition request = new CreateTestDefinition();
     request.setName(name);
     request.setDescription("Test definition");
@@ -65,42 +64,40 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
   }
 
   @Override
-  protected TestDefinition createEntity(
-      CreateTestDefinition createRequest, OpenMetadataClient client) {
-    return client.testDefinitions().create(createRequest);
+  protected TestDefinition createEntity(CreateTestDefinition createRequest) {
+    return SdkClients.adminClient().testDefinitions().create(createRequest);
   }
 
   @Override
-  protected TestDefinition getEntity(String id, OpenMetadataClient client) {
-    return client.testDefinitions().get(id);
+  protected TestDefinition getEntity(String id) {
+    return SdkClients.adminClient().testDefinitions().get(id);
   }
 
   @Override
-  protected TestDefinition getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.testDefinitions().getByName(fqn);
+  protected TestDefinition getEntityByName(String fqn) {
+    return SdkClients.adminClient().testDefinitions().getByName(fqn);
   }
 
   @Override
-  protected TestDefinition patchEntity(
-      String id, TestDefinition entity, OpenMetadataClient client) {
-    return client.testDefinitions().update(id, entity);
+  protected TestDefinition patchEntity(String id, TestDefinition entity) {
+    return SdkClients.adminClient().testDefinitions().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.testDefinitions().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().testDefinitions().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.testDefinitions().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().testDefinitions().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.testDefinitions().delete(id, params);
+    SdkClients.adminClient().testDefinitions().delete(id, params);
   }
 
   @Override
@@ -123,36 +120,33 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
   }
 
   @Override
-  protected ListResponse<TestDefinition> listEntities(
-      ListParams params, OpenMetadataClient client) {
-    return client.testDefinitions().list(params);
+  protected ListResponse<TestDefinition> listEntities(ListParams params) {
+    return SdkClients.adminClient().testDefinitions().list(params);
   }
 
   @Override
-  protected TestDefinition getEntityWithFields(
-      String id, String fields, OpenMetadataClient client) {
-    return client.testDefinitions().get(id, fields);
+  protected TestDefinition getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().testDefinitions().get(id, fields);
   }
 
   @Override
-  protected TestDefinition getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.testDefinitions().getByName(fqn, fields);
+  protected TestDefinition getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().testDefinitions().getByName(fqn, fields);
   }
 
   @Override
-  protected TestDefinition getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.testDefinitions().get(id, null, "deleted");
+  protected TestDefinition getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().testDefinitions().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.testDefinitions().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().testDefinitions().getVersionList(id);
   }
 
   @Override
-  protected TestDefinition getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.testDefinitions().getVersion(id.toString(), version);
+  protected TestDefinition getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().testDefinitions().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -169,7 +163,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     request.setEntityType(TestDefinitionEntityType.TABLE);
     request.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
 
-    TestDefinition testDefinition = createEntity(request, client);
+    TestDefinition testDefinition = createEntity(request);
     assertNotNull(testDefinition);
     assertEquals(TestDefinitionEntityType.TABLE, testDefinition.getEntityType());
   }
@@ -184,7 +178,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     request.setEntityType(TestDefinitionEntityType.COLUMN);
     request.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
 
-    TestDefinition testDefinition = createEntity(request, client);
+    TestDefinition testDefinition = createEntity(request);
     assertNotNull(testDefinition);
     assertEquals(TestDefinitionEntityType.COLUMN, testDefinition.getEntityType());
   }
@@ -199,7 +193,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     request.setEntityType(TestDefinitionEntityType.TABLE);
     request.setTestPlatforms(Arrays.asList(TestPlatform.OPEN_METADATA, TestPlatform.DBT));
 
-    TestDefinition testDefinition = createEntity(request, client);
+    TestDefinition testDefinition = createEntity(request);
     assertNotNull(testDefinition);
     assertEquals(2, testDefinition.getTestPlatforms().size());
   }
@@ -214,12 +208,12 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     request.setEntityType(TestDefinitionEntityType.TABLE);
     request.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
 
-    TestDefinition testDefinition = createEntity(request, client);
+    TestDefinition testDefinition = createEntity(request);
     assertEquals("Initial description", testDefinition.getDescription());
 
     // Update description
     testDefinition.setDescription("Updated description");
-    TestDefinition updated = patchEntity(testDefinition.getId().toString(), testDefinition, client);
+    TestDefinition updated = patchEntity(testDefinition.getId().toString(), testDefinition);
     assertEquals("Updated description", updated.getDescription());
   }
 
@@ -235,7 +229,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
     request1.setEntityType(TestDefinitionEntityType.TABLE);
     request1.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
 
-    TestDefinition testDefinition1 = createEntity(request1, client);
+    TestDefinition testDefinition1 = createEntity(request1);
     assertNotNull(testDefinition1);
 
     // Attempt to create duplicate
@@ -247,7 +241,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request2, client),
+        () -> createEntity(request2),
         "Creating duplicate test definition should fail");
   }
 }

@@ -47,8 +47,7 @@ public class EventSubscriptionResourceIT
   // ===================================================================
 
   @Override
-  protected CreateEventSubscription createMinimalRequest(
-      TestNamespace ns, OpenMetadataClient client) {
+  protected CreateEventSubscription createMinimalRequest(TestNamespace ns) {
     return new CreateEventSubscription()
         .withName(ns.prefix("eventsub"))
         .withDescription("Test event subscription created by integration test")
@@ -59,8 +58,7 @@ public class EventSubscriptionResourceIT
   }
 
   @Override
-  protected CreateEventSubscription createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateEventSubscription createRequest(String name, TestNamespace ns) {
     return new CreateEventSubscription()
         .withName(name)
         .withDescription("Test event subscription")
@@ -84,42 +82,40 @@ public class EventSubscriptionResourceIT
   }
 
   @Override
-  protected EventSubscription createEntity(
-      CreateEventSubscription createRequest, OpenMetadataClient client) {
-    return client.eventSubscriptions().create(createRequest);
+  protected EventSubscription createEntity(CreateEventSubscription createRequest) {
+    return SdkClients.adminClient().eventSubscriptions().create(createRequest);
   }
 
   @Override
-  protected EventSubscription getEntity(String id, OpenMetadataClient client) {
-    return client.eventSubscriptions().get(id);
+  protected EventSubscription getEntity(String id) {
+    return SdkClients.adminClient().eventSubscriptions().get(id);
   }
 
   @Override
-  protected EventSubscription getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.eventSubscriptions().getByName(fqn);
+  protected EventSubscription getEntityByName(String fqn) {
+    return SdkClients.adminClient().eventSubscriptions().getByName(fqn);
   }
 
   @Override
-  protected EventSubscription patchEntity(
-      String id, EventSubscription entity, OpenMetadataClient client) {
-    return client.eventSubscriptions().update(id, entity);
+  protected EventSubscription patchEntity(String id, EventSubscription entity) {
+    return SdkClients.adminClient().eventSubscriptions().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.eventSubscriptions().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().eventSubscriptions().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.eventSubscriptions().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().eventSubscriptions().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.eventSubscriptions().delete(id, params);
+    SdkClients.adminClient().eventSubscriptions().delete(id, params);
   }
 
   @Override
@@ -140,36 +136,33 @@ public class EventSubscriptionResourceIT
   }
 
   @Override
-  protected ListResponse<EventSubscription> listEntities(
-      ListParams params, OpenMetadataClient client) {
-    return client.eventSubscriptions().list(params);
+  protected ListResponse<EventSubscription> listEntities(ListParams params) {
+    return SdkClients.adminClient().eventSubscriptions().list(params);
   }
 
   @Override
-  protected EventSubscription getEntityWithFields(
-      String id, String fields, OpenMetadataClient client) {
-    return client.eventSubscriptions().get(id, fields);
+  protected EventSubscription getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().eventSubscriptions().get(id, fields);
   }
 
   @Override
-  protected EventSubscription getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.eventSubscriptions().getByName(fqn, fields);
+  protected EventSubscription getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().eventSubscriptions().getByName(fqn, fields);
   }
 
   @Override
-  protected EventSubscription getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.eventSubscriptions().get(id, null, "deleted");
+  protected EventSubscription getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().eventSubscriptions().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.eventSubscriptions().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().eventSubscriptions().getVersionList(id);
   }
 
   @Override
-  protected EventSubscription getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.eventSubscriptions().getVersion(id.toString(), version);
+  protected EventSubscription getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().eventSubscriptions().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -189,7 +182,7 @@ public class EventSubscriptionResourceIT
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
 
-    EventSubscription subscription = createEntity(request, client);
+    EventSubscription subscription = createEntity(request);
     assertNotNull(subscription);
     assertFalse(subscription.getEnabled());
   }
@@ -207,12 +200,12 @@ public class EventSubscriptionResourceIT
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
 
-    EventSubscription subscription = createEntity(request, client);
+    EventSubscription subscription = createEntity(request);
     assertEquals("Initial description", subscription.getDescription());
 
     // Update description
     subscription.setDescription("Updated description");
-    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription, client);
+    EventSubscription updated = patchEntity(subscription.getId().toString(), subscription);
     assertEquals("Updated description", updated.getDescription());
   }
 
@@ -230,7 +223,7 @@ public class EventSubscriptionResourceIT
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
 
-    EventSubscription sub1 = createEntity(request1, client);
+    EventSubscription sub1 = createEntity(request1);
     assertNotNull(sub1);
 
     // Attempt to create duplicate
@@ -245,7 +238,7 @@ public class EventSubscriptionResourceIT
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request2, client),
+        () -> createEntity(request2),
         "Creating duplicate event subscription should fail");
   }
 
@@ -263,7 +256,7 @@ public class EventSubscriptionResourceIT
             .withEnabled(false)
             .withDestinations(getWebhookDestination(ns));
 
-    EventSubscription subscription = createEntity(request, client);
+    EventSubscription subscription = createEntity(request);
     assertNotNull(subscription);
     // Resources are part of the subscription's filtering configuration
     assertNotNull(subscription.getFilteringRules());

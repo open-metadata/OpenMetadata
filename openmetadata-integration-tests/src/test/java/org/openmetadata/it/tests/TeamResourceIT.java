@@ -61,7 +61,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Override
-  protected CreateTeam createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateTeam createMinimalRequest(TestNamespace ns) {
     return new CreateTeam()
         .withName(ns.prefix("team"))
         .withTeamType(TeamType.GROUP)
@@ -70,7 +70,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Override
-  protected CreateTeam createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateTeam createRequest(String name, TestNamespace ns) {
     return new CreateTeam()
         .withName(name)
         .withTeamType(TeamType.GROUP)
@@ -79,40 +79,42 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Override
-  protected Team createEntity(CreateTeam createRequest, OpenMetadataClient client) {
-    return client.teams().create(createRequest);
+  protected Team createEntity(CreateTeam createRequest) {
+    return SdkClients.adminClient().teams().create(createRequest);
   }
 
   @Override
-  protected Team getEntity(String id, OpenMetadataClient client) {
-    return client.teams().get(id);
+  protected Team getEntity(String id) {
+    return SdkClients.adminClient().teams().get(id);
   }
 
   @Override
-  protected Team getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.teams().getByName(fqn);
+  protected Team getEntityByName(String fqn) {
+    return SdkClients.adminClient().teams().getByName(fqn);
   }
 
   @Override
-  protected Team patchEntity(String id, Team entity, OpenMetadataClient client) {
+  protected Team patchEntity(String id, Team entity) {
     entity.setChildrenCount(null);
     entity.setUserCount(null);
-    return client.teams().update(id, entity);
+    return SdkClients.adminClient().teams().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.teams().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().teams().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.teams().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().teams().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
-    client.teams().delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
+  protected void hardDeleteEntity(String id) {
+    SdkClients.adminClient()
+        .teams()
+        .delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
   }
 
   @Override
@@ -130,23 +132,23 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Override
-  protected Team getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.teams().get(id, fields);
+  protected Team getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().teams().get(id, fields);
   }
 
   @Override
-  protected Team getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.teams().getByName(fqn, fields);
+  protected Team getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().teams().getByName(fqn, fields);
   }
 
   @Override
-  protected Team getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.teams().get(id, null, "deleted");
+  protected Team getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().teams().get(id, null, "deleted");
   }
 
   @Override
-  protected ListResponse<Team> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.teams().list(params);
+  protected ListResponse<Team> listEntities(ListParams params) {
+    return SdkClients.adminClient().teams().list(params);
   }
 
   // ===================================================================
@@ -168,7 +170,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
               .withTeamType(type)
               .withDescription("Team of type " + type.value());
 
-      Team team = createEntity(create, client);
+      Team team = createEntity(create);
       assertEquals(type, team.getTeamType());
     }
   }
@@ -185,7 +187,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(create, client),
+        () -> createEntity(create),
         "Creating an Organization team should not be allowed");
   }
 
@@ -198,7 +200,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
     assertThrows(
         Exception.class,
-        () -> deleteEntity(org.getId().toString(), client),
+        () -> deleteEntity(org.getId().toString()),
         "Deleting the Organization team should not be allowed");
   }
 
@@ -206,8 +208,8 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   void test_createTeamWithUsers(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    User user1 = createTestUser(ns, "teamUser1", client);
-    User user2 = createTestUser(ns, "teamUser2", client);
+    User user1 = createTestUser(ns, "teamUser1");
+    User user2 = createTestUser(ns, "teamUser2");
 
     CreateTeam create =
         new CreateTeam()
@@ -216,7 +218,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withUsers(List.of(user1.getId(), user2.getId()))
             .withDescription("Team with users");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
     assertNotNull(team.getId());
 
     Team fetched = client.teams().get(team.getId().toString(), "users");
@@ -237,7 +239,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withDefaultRoles(List.of(roleId))
             .withDescription("Team with default roles");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
     assertNotNull(team.getId());
 
     Team fetched = client.teams().get(team.getId().toString(), "defaultRoles");
@@ -260,7 +262,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withPolicies(List.of(policy1Id, policy2Id))
             .withDescription("Team with policies");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
     assertNotNull(team.getId());
 
     Team fetched = client.teams().get(team.getId().toString(), "policies");
@@ -279,7 +281,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withProfile(PROFILE)
             .withDescription("Team with profile");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
     assertNotNull(team.getProfile());
     assertNotNull(team.getProfile().getImages());
   }
@@ -296,7 +298,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withEmail(email)
             .withDescription("Team with email");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
     assertEquals(email, team.getEmail());
   }
 
@@ -323,7 +325,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withIsJoinable(true)
             .withDescription("Joinable team");
 
-    Team joinableTeam = createEntity(createJoinable, client);
+    Team joinableTeam = createEntity(createJoinable);
     assertTrue(joinableTeam.getIsJoinable());
 
     CreateTeam createNotJoinable =
@@ -333,7 +335,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withIsJoinable(false)
             .withDescription("Not joinable team");
 
-    Team notJoinableTeam = createEntity(createNotJoinable, client);
+    Team notJoinableTeam = createEntity(createNotJoinable);
     assertFalse(notJoinableTeam.getIsJoinable());
   }
 
@@ -350,7 +352,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withParents(List.of(orgTeam.getId()))
             .withDescription("Business unit");
 
-    Team bu = createEntity(createBu, client);
+    Team bu = createEntity(createBu);
     assertNotNull(bu.getId());
 
     CreateTeam createDiv =
@@ -360,7 +362,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withParents(List.of(bu.getId()))
             .withDescription("Division under BU");
 
-    Team div = createEntity(createDiv, client);
+    Team div = createEntity(createDiv);
 
     CreateTeam createDept =
         new CreateTeam()
@@ -369,7 +371,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withParents(List.of(div.getId()))
             .withDescription("Department under division");
 
-    Team dept = createEntity(createDept, client);
+    Team dept = createEntity(createDept);
 
     Team fetchedBu = client.teams().get(bu.getId().toString(), "children");
     assertNotNull(fetchedBu.getChildren());
@@ -392,7 +394,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.GROUP)
             .withDescription("Group team");
 
-    Team group = createEntity(createGroup, client);
+    Team group = createEntity(createGroup);
 
     CreateTeam createChild =
         new CreateTeam()
@@ -402,9 +404,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withDescription("Child of group");
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(createChild, client),
-        "Groups cannot have team children");
+        Exception.class, () -> createEntity(createChild), "Groups cannot have team children");
   }
 
   @Test
@@ -417,7 +417,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.DEPARTMENT)
             .withDescription("Department team");
 
-    Team dept = createEntity(createDept, client);
+    Team dept = createEntity(createDept);
 
     CreateTeam createDiv =
         new CreateTeam()
@@ -427,20 +427,18 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withDescription("Division under department");
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(createDiv, client),
-        "Department cannot be parent of Division");
+        Exception.class, () -> createEntity(createDiv), "Department cannot be parent of Division");
   }
 
   @Test
   void test_updateTeamDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTeam create = createMinimalRequest(ns, client);
-    Team team = createEntity(create, client);
+    CreateTeam create = createMinimalRequest(ns);
+    Team team = createEntity(create);
 
     team.setDisplayName("Updated Team Name");
-    Team updated = patchEntity(team.getId().toString(), team, client);
+    Team updated = patchEntity(team.getId().toString(), team);
 
     assertEquals("Updated Team Name", updated.getDisplayName());
   }
@@ -449,11 +447,11 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   void test_updateTeamDescription(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTeam create = createMinimalRequest(ns, client);
-    Team team = createEntity(create, client);
+    CreateTeam create = createMinimalRequest(ns);
+    Team team = createEntity(create);
 
     team.setDescription("Updated description");
-    Team updated = patchEntity(team.getId().toString(), team, client);
+    Team updated = patchEntity(team.getId().toString(), team);
 
     assertEquals("Updated description", updated.getDescription());
   }
@@ -469,11 +467,11 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withIsJoinable(false)
             .withDescription("Initially not joinable");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
     assertFalse(team.getIsJoinable());
 
     team.setIsJoinable(true);
-    Team updated = patchEntity(team.getId().toString(), team, client);
+    Team updated = patchEntity(team.getId().toString(), team);
 
     assertTrue(updated.getIsJoinable());
   }
@@ -488,13 +486,13 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.GROUP)
             .withDescription("Team to add user");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
 
-    User user = createTestUser(ns, "addedUser", client);
+    User user = createTestUser(ns, "addedUser");
 
     Team fetched = client.teams().get(team.getId().toString(), "users");
     fetched.setUsers(List.of(user.getEntityReference()));
-    Team updated = patchEntity(fetched.getId().toString(), fetched, client);
+    Team updated = patchEntity(fetched.getId().toString(), fetched);
 
     Team verifyFetch = client.teams().get(updated.getId().toString(), "users");
     assertNotNull(verifyFetch.getUsers());
@@ -511,13 +509,13 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.GROUP)
             .withDescription("Team to add role");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
 
     EntityReference roleRef = dataStewardRole().getEntityReference();
 
     Team fetched = client.teams().get(team.getId().toString(), "defaultRoles");
     fetched.setDefaultRoles(List.of(roleRef));
-    Team updated = patchEntity(fetched.getId().toString(), fetched, client);
+    Team updated = patchEntity(fetched.getId().toString(), fetched);
 
     Team verifyFetch = client.teams().get(updated.getId().toString(), "defaultRoles");
     assertNotNull(verifyFetch.getDefaultRoles());
@@ -535,13 +533,13 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.GROUP)
             .withDescription("Team to add policy");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
 
     EntityReference policyRef = shared().POLICY1.getEntityReference();
 
     Team fetched = client.teams().get(team.getId().toString(), "policies");
     fetched.setPolicies(List.of(policyRef));
-    Team updated = patchEntity(fetched.getId().toString(), fetched, client);
+    Team updated = patchEntity(fetched.getId().toString(), fetched);
 
     Team verifyFetch = client.teams().get(updated.getId().toString(), "policies");
     assertNotNull(verifyFetch.getPolicies());
@@ -559,12 +557,12 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.GROUP)
             .withDescription("Team for email update");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
     assertNull(team.getEmail());
 
     String newEmail = toValidEmail("updated_" + ns.prefix("team"));
     team.setEmail(newEmail);
-    Team updated = patchEntity(team.getId().toString(), team, client);
+    Team updated = patchEntity(team.getId().toString(), team);
 
     assertEquals(newEmail, updated.getEmail());
   }
@@ -582,7 +580,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withParents(List.of(orgTeam.getId()))
             .withDescription("BU for delete test");
 
-    Team bu = createEntity(createBu, client);
+    Team bu = createEntity(createBu);
 
     CreateTeam createDiv =
         new CreateTeam()
@@ -591,37 +589,36 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withParents(List.of(bu.getId()))
             .withDescription("Division for delete test");
 
-    Team div = createEntity(createDiv, client);
+    Team div = createEntity(createDiv);
 
-    hardDeleteEntity(bu.getId().toString(), client);
+    hardDeleteEntity(bu.getId().toString());
 
     String buId = bu.getId().toString();
-    assertThrows(Exception.class, () -> getEntity(buId, client), "Parent team should be deleted");
+    assertThrows(Exception.class, () -> getEntity(buId), "Parent team should be deleted");
 
     String divId = div.getId().toString();
-    assertThrows(
-        Exception.class, () -> getEntity(divId, client), "Child team should be cascade deleted");
+    assertThrows(Exception.class, () -> getEntity(divId), "Child team should be cascade deleted");
   }
 
   @Test
   void test_softDeleteAndRestoreTeam(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTeam create = createMinimalRequest(ns, client);
-    Team team = createEntity(create, client);
+    CreateTeam create = createMinimalRequest(ns);
+    Team team = createEntity(create);
     String teamId = team.getId().toString();
 
-    deleteEntity(teamId, client);
+    deleteEntity(teamId);
 
     assertThrows(
-        Exception.class, () -> getEntity(teamId, client), "Deleted team should not be retrievable");
+        Exception.class, () -> getEntity(teamId), "Deleted team should not be retrievable");
 
-    Team deleted = getEntityIncludeDeleted(teamId, client);
+    Team deleted = getEntityIncludeDeleted(teamId);
     assertTrue(deleted.getDeleted());
 
-    restoreEntity(teamId, client);
+    restoreEntity(teamId);
 
-    Team restored = getEntity(teamId, client);
+    Team restored = getEntity(teamId);
     assertFalse(restored.getDeleted());
   }
 
@@ -629,16 +626,16 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   void test_teamVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTeam create = createMinimalRequest(ns, client);
-    Team team = createEntity(create, client);
+    CreateTeam create = createMinimalRequest(ns);
+    Team team = createEntity(create);
     assertEquals(0.1, team.getVersion(), 0.001);
 
     team.setDescription("Updated description v1");
-    Team v2 = patchEntity(team.getId().toString(), team, client);
+    Team v2 = patchEntity(team.getId().toString(), team);
     assertEquals(0.2, v2.getVersion(), 0.001);
 
     v2.setDescription("Updated description v2");
-    Team v3 = patchEntity(v2.getId().toString(), v2, client);
+    Team v3 = patchEntity(v2.getId().toString(), v2);
     assertTrue(v3.getVersion() >= 0.2);
 
     var history = client.teams().getVersionList(team.getId());
@@ -660,7 +657,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withDomains(List.of(domainFqn))
             .withDescription("Team with domain");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
     assertNotNull(team.getId());
 
     Team fetched = client.teams().get(team.getId().toString(), "domains");
@@ -682,7 +679,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.DEPARTMENT)
             .withDescription("Department to check role inheritance");
 
-    Team dept = createEntity(createDept, client);
+    Team dept = createEntity(createDept);
 
     Team fetchedDept = client.teams().get(dept.getId().toString(), "defaultRoles");
     assertNotNull(fetchedDept.getInheritedRoles());
@@ -699,7 +696,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.DEPARTMENT)
             .withDescription("Team without explicit parent");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
 
     Team fetched = client.teams().get(team.getId().toString(), "parents");
     assertNotNull(fetched.getParents());
@@ -716,12 +713,12 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
               .withName(ns.prefix("listTeam" + i))
               .withTeamType(TeamType.GROUP)
               .withDescription("Team for list test");
-      createEntity(create, client);
+      createEntity(create);
     }
 
     ListParams params = new ListParams();
     params.setLimit(100);
-    ListResponse<Team> response = listEntities(params, client);
+    ListResponse<Team> response = listEntities(params);
 
     assertNotNull(response);
     assertNotNull(response.getData());
@@ -738,7 +735,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withName(ns.prefix("parentForList"))
             .withTeamType(TeamType.DEPARTMENT)
             .withDescription("Parent team for filter test");
-    Team parent = createEntity(createParent, client);
+    Team parent = createEntity(createParent);
 
     // Create child teams
     CreateTeam createChild1 =
@@ -747,7 +744,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.GROUP)
             .withParents(List.of(parent.getId()))
             .withDescription("Child 1");
-    Team child1 = createEntity(createChild1, client);
+    Team child1 = createEntity(createChild1);
 
     CreateTeam createChild2 =
         new CreateTeam()
@@ -755,13 +752,13 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.GROUP)
             .withParents(List.of(parent.getId()))
             .withDescription("Child 2");
-    Team child2 = createEntity(createChild2, client);
+    Team child2 = createEntity(createChild2);
 
     // List teams with parent filter
     ListParams params = new ListParams();
     params.setLimit(100);
     params.addFilter("parentTeam", parent.getName());
-    ListResponse<Team> response = listEntities(params, client);
+    ListResponse<Team> response = listEntities(params);
 
     assertNotNull(response.getData());
     assertEquals(2, response.getData().size());
@@ -781,7 +778,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.DEPARTMENT)
             .withDomains(List.of(domainFqn))
             .withDescription("Parent with domain");
-    Team parent = createEntity(createParent, client);
+    Team parent = createEntity(createParent);
 
     // Create child team without domain - should inherit from parent
     CreateTeam createChild =
@@ -790,7 +787,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.GROUP)
             .withParents(List.of(parent.getId()))
             .withDescription("Child without explicit domain");
-    Team child = createEntity(createChild, client);
+    Team child = createEntity(createChild);
 
     // Fetch child with domains field
     Team fetchedChild = client.teams().get(child.getId().toString(), "domains");
@@ -814,7 +811,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.BUSINESS_UNIT)
             .withParents(List.of(orgTeam.getId()))
             .withDescription("BU 1");
-    Team bu1 = createEntity(createBu1, client);
+    Team bu1 = createEntity(createBu1);
 
     CreateTeam createBu2 =
         new CreateTeam()
@@ -822,7 +819,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.BUSINESS_UNIT)
             .withParents(List.of(orgTeam.getId()))
             .withDescription("BU 2");
-    Team bu2 = createEntity(createBu2, client);
+    Team bu2 = createEntity(createBu2);
 
     // Create division under bu1
     CreateTeam createDiv =
@@ -831,7 +828,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.DIVISION)
             .withParents(List.of(bu1.getId()))
             .withDescription("Division under BU1");
-    Team div = createEntity(createDiv, client);
+    Team div = createEntity(createDiv);
 
     // Verify initial parent
     Team fetchedDiv = client.teams().get(div.getId().toString(), "parents");
@@ -839,7 +836,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
     // Update division parent from bu1 to bu2
     fetchedDiv.setParents(List.of(bu2.getEntityReference()));
-    Team updated = patchEntity(fetchedDiv.getId().toString(), fetchedDiv, client);
+    Team updated = patchEntity(fetchedDiv.getId().toString(), fetchedDiv);
 
     // Verify parent changed
     Team verifyDiv = client.teams().get(updated.getId().toString(), "parents");
@@ -858,7 +855,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withOwners(List.of(testUser1().getEntityReference()))
             .withDescription("Team with owner");
 
-    Team team = createEntity(create, client);
+    Team team = createEntity(create);
     assertNotNull(team.getId());
 
     // Fetch with owners field
@@ -881,7 +878,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.DIVISION)
             .withParents(List.of(orgTeam.getId()))
             .withDescription("Division 1");
-    Team div1 = createEntity(createDiv1, client);
+    Team div1 = createEntity(createDiv1);
 
     CreateTeam createDiv2 =
         new CreateTeam()
@@ -889,7 +886,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.DIVISION)
             .withParents(List.of(orgTeam.getId()))
             .withDescription("Division 2");
-    Team div2 = createEntity(createDiv2, client);
+    Team div2 = createEntity(createDiv2);
 
     // Create department with multiple parents
     CreateTeam createDept =
@@ -898,7 +895,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.DEPARTMENT)
             .withParents(List.of(div1.getId(), div2.getId()))
             .withDescription("Department with multiple parents");
-    Team dept = createEntity(createDept, client);
+    Team dept = createEntity(createDept);
 
     // Verify department has both parents
     Team fetched = client.teams().get(dept.getId().toString(), "parents");
@@ -921,7 +918,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withTeamType(TeamType.BUSINESS_UNIT)
             .withParents(List.of(orgTeam.getId()))
             .withDescription("BU 1");
-    Team bu1 = createEntity(createBu1, client);
+    Team bu1 = createEntity(createBu1);
 
     // Try to create BU with multiple parents - should fail
     CreateTeam createBu2 =
@@ -932,12 +929,10 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withDescription("BU with multiple parents - invalid");
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(createBu2, client),
-        "Business Unit can only have one parent");
+        Exception.class, () -> createEntity(createBu2), "Business Unit can only have one parent");
   }
 
-  private User createTestUser(TestNamespace ns, String suffix, OpenMetadataClient client) {
+  private User createTestUser(TestNamespace ns, String suffix) {
     String name = ns.prefix(suffix);
     String sanitized = name.replaceAll("[^a-zA-Z0-9._-]", "");
     if (sanitized.length() > 60) {
@@ -951,7 +946,7 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
             .withEmail(email)
             .withDescription("Test user for team tests");
 
-    return client.users().create(createUser);
+    return SdkClients.adminClient().users().create(createUser);
   }
 
   // ===================================================================
@@ -959,12 +954,12 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   // ===================================================================
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.teams().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().teams().getVersionList(id);
   }
 
   @Override
-  protected Team getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.teams().getVersion(id.toString(), version);
+  protected Team getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().teams().getVersion(id.toString(), version);
   }
 }

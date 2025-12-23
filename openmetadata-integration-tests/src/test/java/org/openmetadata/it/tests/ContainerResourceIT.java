@@ -40,8 +40,8 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   // ===================================================================
 
   @Override
-  protected CreateContainer createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+  protected CreateContainer createMinimalRequest(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("container"));
@@ -52,9 +52,8 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Override
-  protected CreateContainer createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+  protected CreateContainer createRequest(String name, TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     CreateContainer request = new CreateContainer();
     request.setName(name);
@@ -64,40 +63,40 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Override
-  protected Container createEntity(CreateContainer createRequest, OpenMetadataClient client) {
-    return client.containers().create(createRequest);
+  protected Container createEntity(CreateContainer createRequest) {
+    return SdkClients.adminClient().containers().create(createRequest);
   }
 
   @Override
-  protected Container getEntity(String id, OpenMetadataClient client) {
-    return client.containers().get(id);
+  protected Container getEntity(String id) {
+    return SdkClients.adminClient().containers().get(id);
   }
 
   @Override
-  protected Container getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.containers().getByName(fqn);
+  protected Container getEntityByName(String fqn) {
+    return SdkClients.adminClient().containers().getByName(fqn);
   }
 
   @Override
-  protected Container patchEntity(String id, Container entity, OpenMetadataClient client) {
-    return client.containers().update(id, entity);
+  protected Container patchEntity(String id, Container entity) {
+    return SdkClients.adminClient().containers().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.containers().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().containers().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.containers().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().containers().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.containers().delete(id, params);
+    SdkClients.adminClient().containers().delete(id, params);
   }
 
   @Override
@@ -120,34 +119,33 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Override
-  protected ListResponse<Container> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.containers().list(params);
+  protected ListResponse<Container> listEntities(ListParams params) {
+    return SdkClients.adminClient().containers().list(params);
   }
 
   @Override
-  protected Container getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.containers().get(id, fields);
+  protected Container getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().containers().get(id, fields);
   }
 
   @Override
-  protected Container getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.containers().getByName(fqn, fields);
+  protected Container getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().containers().getByName(fqn, fields);
   }
 
   @Override
-  protected Container getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.containers().get(id, null, "deleted");
+  protected Container getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().containers().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.containers().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().containers().getVersionList(id);
   }
 
   @Override
-  protected Container getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.containers().getVersion(id.toString(), version);
+  protected Container getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().containers().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -164,14 +162,14 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating container without service should fail");
   }
 
   @Test
   void post_containerWithDataModel_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     List<Column> columns =
         Arrays.asList(
@@ -186,7 +184,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     request.setService(service.getFullyQualifiedName());
     request.setDataModel(dataModel);
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
     assertNotNull(container);
     assertNotNull(container.getDataModel());
     assertNotNull(container.getDataModel().getColumns());
@@ -196,14 +194,14 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Test
   void post_containerWithFileFormats_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("container_with_formats"));
     request.setService(service.getFullyQualifiedName());
     request.setFileFormats(List.of(ContainerFileFormat.Parquet, ContainerFileFormat.Csv));
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
     assertNotNull(container);
     assertNotNull(container.getFileFormats());
     assertEquals(2, container.getFileFormats().size());
@@ -214,14 +212,14 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Test
   void post_containerWithPrefix_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("container_with_prefix"));
     request.setService(service.getFullyQualifiedName());
     request.setPrefix("/data/raw/");
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
     assertNotNull(container);
     assertEquals("/data/raw/", container.getPrefix());
   }
@@ -229,14 +227,14 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Test
   void post_containerWithParent_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     // Create parent container
     CreateContainer parentRequest = new CreateContainer();
     parentRequest.setName(ns.prefix("parent_container"));
     parentRequest.setService(service.getFullyQualifiedName());
 
-    Container parentContainer = createEntity(parentRequest, client);
+    Container parentContainer = createEntity(parentRequest);
     assertNotNull(parentContainer);
 
     // Create child container with parent
@@ -249,7 +247,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
             .withType("container")
             .withFullyQualifiedName(parentContainer.getFullyQualifiedName()));
 
-    Container childContainer = createEntity(childRequest, client);
+    Container childContainer = createEntity(childRequest);
     assertNotNull(childContainer);
     assertNotNull(childContainer.getParent());
     assertEquals(parentContainer.getId(), childContainer.getParent().getId());
@@ -258,14 +256,14 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Test
   void put_containerDataModel_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     // Create container without data model
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("container_add_model"));
     request.setService(service.getFullyQualifiedName());
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
     assertNotNull(container);
 
     // Add data model via update
@@ -278,7 +276,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
         new ContainerDataModel().withIsPartitioned(true).withColumns(columns);
 
     container.setDataModel(dataModel);
-    Container updated = patchEntity(container.getId().toString(), container, client);
+    Container updated = patchEntity(container.getId().toString(), container);
     assertNotNull(updated);
     assertNotNull(updated.getDataModel());
     assertEquals(2, updated.getDataModel().getColumns().size());
@@ -289,14 +287,14 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a storage service
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     // Create a container under the service
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("container_inherit_domain"));
     request.setService(service.getFullyQualifiedName());
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
     assertNotNull(container);
     assertNotNull(container.getService());
     assertEquals(service.getFullyQualifiedName(), container.getService().getFullyQualifiedName());
@@ -313,14 +311,14 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating container with non-existent service should fail");
   }
 
   @Test
   void post_containerWithInvalidParentContainerReference_404(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     UUID nonExistentContainerId = UUID.randomUUID();
     EntityReference invalidParent =
@@ -333,25 +331,25 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating container with non-existent parent should fail");
   }
 
   @Test
   void put_containerNoChange_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("container_idempotent"));
     request.setService(service.getFullyQualifiedName());
     request.setDescription("Initial description");
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
     Double initialVersion = container.getVersion();
 
     // Update with no actual changes
-    Container updated = patchEntity(container.getId().toString(), container, client);
+    Container updated = patchEntity(container.getId().toString(), container);
 
     // Version should not change if no changes were made
     assertEquals(initialVersion, updated.getVersion());
@@ -360,14 +358,14 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Test
   void patch_containerFields_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     // Create container without optional fields
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("container_patch_fields"));
     request.setService(service.getFullyQualifiedName());
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
     assertNull(container.getPrefix());
     assertNull(container.getFileFormats());
 
@@ -375,33 +373,33 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     container.setPrefix("/data/patched/");
     container.setFileFormats(List.of(ContainerFileFormat.Parquet));
 
-    Container updated = patchEntity(container.getId().toString(), container, client);
+    Container updated = patchEntity(container.getId().toString(), container);
     assertEquals("/data/patched/", updated.getPrefix());
     assertNotNull(updated.getFileFormats());
     assertTrue(updated.getFileFormats().contains(ContainerFileFormat.Parquet));
 
     // Update prefix
     updated.setPrefix("/data/patched/v2/");
-    Container updated2 = patchEntity(updated.getId().toString(), updated, client);
+    Container updated2 = patchEntity(updated.getId().toString(), updated);
     assertEquals("/data/patched/v2/", updated2.getPrefix());
   }
 
   @Test
   void put_containerSizeAndObjects_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("container_size"));
     request.setService(service.getFullyQualifiedName());
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
 
     // Update size and numberOfObjects
     container.setSize(1000.0);
     container.setNumberOfObjects(50.0);
 
-    Container updated = patchEntity(container.getId().toString(), container, client);
+    Container updated = patchEntity(container.getId().toString(), container);
     assertEquals(1000.0, updated.getSize());
     assertEquals(50.0, updated.getNumberOfObjects());
 
@@ -409,7 +407,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     updated.setSize(2000.0);
     updated.setNumberOfObjects(100.0);
 
-    Container updated2 = patchEntity(updated.getId().toString(), updated, client);
+    Container updated2 = patchEntity(updated.getId().toString(), updated);
     assertEquals(2000.0, updated2.getSize());
     assertEquals(100.0, updated2.getNumberOfObjects());
   }
@@ -417,7 +415,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Test
   void test_containerWithFullDataModel(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     // Create data model with complex column types
     List<Column> columns =
@@ -440,7 +438,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     request.setSize(5000.0);
     request.setNumberOfObjects(100.0);
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
     assertNotNull(container);
     assertNotNull(container.getDataModel());
     assertEquals(5, container.getDataModel().getColumns().size());
@@ -454,14 +452,14 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Test
   void list_containersByService(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     // Create multiple containers under the same service
     for (int i = 0; i < 5; i++) {
       CreateContainer request = new CreateContainer();
       request.setName(ns.prefix("container_list_" + i));
       request.setService(service.getFullyQualifiedName());
-      createEntity(request, client);
+      createEntity(request);
     }
 
     // List containers by service
@@ -469,7 +467,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     params.setLimit(100);
     params.setService(service.getFullyQualifiedName());
 
-    ListResponse<Container> response = listEntities(params, client);
+    ListResponse<Container> response = listEntities(params);
     assertNotNull(response.getData());
     assertTrue(response.getData().size() >= 5);
 
@@ -482,7 +480,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Test
   void test_containerUpdateDataModel(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     // Create container with initial data model
     List<Column> initialColumns =
@@ -496,7 +494,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     request.setService(service.getFullyQualifiedName());
     request.setDataModel(initialModel);
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
     assertEquals(1, container.getDataModel().getColumns().size());
     assertFalse(container.getDataModel().getIsPartitioned());
 
@@ -511,7 +509,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
         new ContainerDataModel().withIsPartitioned(true).withColumns(updatedColumns);
 
     container.setDataModel(updatedModel);
-    Container updated = patchEntity(container.getId().toString(), container, client);
+    Container updated = patchEntity(container.getId().toString(), container);
 
     assertEquals(3, updated.getDataModel().getColumns().size());
     assertTrue(updated.getDataModel().getIsPartitioned());
@@ -520,13 +518,13 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Test
   void test_containerWithNestedParent(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     // Create root container
     CreateContainer rootRequest = new CreateContainer();
     rootRequest.setName(ns.prefix("root_container"));
     rootRequest.setService(service.getFullyQualifiedName());
-    Container rootContainer = createEntity(rootRequest, client);
+    Container rootContainer = createEntity(rootRequest);
 
     // Create level 1 child
     CreateContainer level1Request = new CreateContainer();
@@ -537,7 +535,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
             .withId(rootContainer.getId())
             .withType("container")
             .withFullyQualifiedName(rootContainer.getFullyQualifiedName()));
-    Container level1Container = createEntity(level1Request, client);
+    Container level1Container = createEntity(level1Request);
 
     // Create level 2 child
     CreateContainer level2Request = new CreateContainer();
@@ -548,7 +546,7 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
             .withId(level1Container.getId())
             .withType("container")
             .withFullyQualifiedName(level1Container.getFullyQualifiedName()));
-    Container level2Container = createEntity(level2Request, client);
+    Container level2Container = createEntity(level2Request);
 
     // Verify hierarchy
     assertNotNull(level1Container.getParent());
@@ -561,14 +559,14 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Test
   void test_containerWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("container_with_owner"));
     request.setService(service.getFullyQualifiedName());
     request.setOwners(List.of(testUser1().getEntityReference()));
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
     assertNotNull(container);
 
     // Verify owner
@@ -581,19 +579,19 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   @Test
   void test_containerVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    StorageService service = StorageServiceTestFactory.createS3(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
 
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("container_versions"));
     request.setService(service.getFullyQualifiedName());
     request.setDescription("Version 1");
 
-    Container container = createEntity(request, client);
+    Container container = createEntity(request);
     Double v1 = container.getVersion();
 
     // Update description
     container.setDescription("Version 2");
-    Container v2Container = patchEntity(container.getId().toString(), container, client);
+    Container v2Container = patchEntity(container.getId().toString(), container);
     assertTrue(v2Container.getVersion() > v1);
 
     // Get version history

@@ -39,9 +39,8 @@ public class DashboardDataModelResourceIT
   // ===================================================================
 
   @Override
-  protected CreateDashboardDataModel createMinimalRequest(
-      TestNamespace ns, OpenMetadataClient client) {
-    DashboardService service = DashboardServiceTestFactory.createLooker(client, ns);
+  protected CreateDashboardDataModel createMinimalRequest(TestNamespace ns) {
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
 
     List<Column> columns =
         Arrays.asList(
@@ -57,9 +56,8 @@ public class DashboardDataModelResourceIT
   }
 
   @Override
-  protected CreateDashboardDataModel createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
-    DashboardService service = DashboardServiceTestFactory.createLooker(client, ns);
+  protected CreateDashboardDataModel createRequest(String name, TestNamespace ns) {
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
 
     List<Column> columns =
         Arrays.asList(
@@ -78,42 +76,40 @@ public class DashboardDataModelResourceIT
   }
 
   @Override
-  protected DashboardDataModel createEntity(
-      CreateDashboardDataModel createRequest, OpenMetadataClient client) {
-    return client.dashboardDataModels().create(createRequest);
+  protected DashboardDataModel createEntity(CreateDashboardDataModel createRequest) {
+    return SdkClients.adminClient().dashboardDataModels().create(createRequest);
   }
 
   @Override
-  protected DashboardDataModel getEntity(String id, OpenMetadataClient client) {
-    return client.dashboardDataModels().get(id);
+  protected DashboardDataModel getEntity(String id) {
+    return SdkClients.adminClient().dashboardDataModels().get(id);
   }
 
   @Override
-  protected DashboardDataModel getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.dashboardDataModels().getByName(fqn);
+  protected DashboardDataModel getEntityByName(String fqn) {
+    return SdkClients.adminClient().dashboardDataModels().getByName(fqn);
   }
 
   @Override
-  protected DashboardDataModel patchEntity(
-      String id, DashboardDataModel entity, OpenMetadataClient client) {
-    return client.dashboardDataModels().update(id, entity);
+  protected DashboardDataModel patchEntity(String id, DashboardDataModel entity) {
+    return SdkClients.adminClient().dashboardDataModels().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.dashboardDataModels().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().dashboardDataModels().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.dashboardDataModels().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().dashboardDataModels().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.dashboardDataModels().delete(id, params);
+    SdkClients.adminClient().dashboardDataModels().delete(id, params);
   }
 
   @Override
@@ -137,37 +133,36 @@ public class DashboardDataModelResourceIT
   }
 
   @Override
-  protected ListResponse<DashboardDataModel> listEntities(
-      ListParams params, OpenMetadataClient client) {
-    return client.dashboardDataModels().list(params);
+  protected ListResponse<DashboardDataModel> listEntities(ListParams params) {
+    return SdkClients.adminClient().dashboardDataModels().list(params);
   }
 
   @Override
-  protected DashboardDataModel getEntityWithFields(
-      String id, String fields, OpenMetadataClient client) {
-    return client.dashboardDataModels().get(id, fields);
+  protected DashboardDataModel getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().dashboardDataModels().get(id, fields);
   }
 
   @Override
-  protected DashboardDataModel getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.dashboardDataModels().getByName(fqn, fields);
+  protected DashboardDataModel getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().dashboardDataModels().getByName(fqn, fields);
   }
 
   @Override
-  protected DashboardDataModel getEntityIncludeDeleted(String id, OpenMetadataClient client) {
+  protected DashboardDataModel getEntityIncludeDeleted(String id) {
     // Use 'domains' (plural) as per DashboardDataModelResource.FIELDS
-    return client.dashboardDataModels().get(id, "owners,followers,tags,columns,domains", "deleted");
+    return SdkClients.adminClient()
+        .dashboardDataModels()
+        .get(id, "owners,followers,tags,columns,domains", "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.dashboardDataModels().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().dashboardDataModels().getVersionList(id);
   }
 
   @Override
-  protected DashboardDataModel getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.dashboardDataModels().getVersion(id.toString(), version);
+  protected DashboardDataModel getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().dashboardDataModels().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -177,7 +172,7 @@ public class DashboardDataModelResourceIT
   @Test
   void post_dataModelWithColumns_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createLooker(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
 
     List<Column> columns =
         Arrays.asList(
@@ -200,7 +195,7 @@ public class DashboardDataModelResourceIT
             .withDataModelType(DataModelType.LookMlView)
             .withColumns(columns);
 
-    DashboardDataModel dataModel = createEntity(request, client);
+    DashboardDataModel dataModel = createEntity(request);
     assertNotNull(dataModel);
     assertNotNull(dataModel.getColumns());
     assertEquals(4, dataModel.getColumns().size());
@@ -209,7 +204,7 @@ public class DashboardDataModelResourceIT
   @Test
   void post_dataModelWithNestedColumns_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createLooker(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
 
     Column nestedColumn =
         new Column()
@@ -241,7 +236,7 @@ public class DashboardDataModelResourceIT
             .withDataModelType(DataModelType.LookMlView)
             .withColumns(columns);
 
-    DashboardDataModel dataModel = createEntity(request, client);
+    DashboardDataModel dataModel = createEntity(request);
     assertNotNull(dataModel);
     assertNotNull(dataModel.getColumns());
     assertEquals(2, dataModel.getColumns().size());
@@ -259,7 +254,7 @@ public class DashboardDataModelResourceIT
   @Test
   void put_dataModelDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createLooker(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
 
     List<Column> columns =
         Arrays.asList(new Column().withName("id").withDataType(ColumnDataType.INT));
@@ -272,19 +267,19 @@ public class DashboardDataModelResourceIT
             .withDataModelType(DataModelType.LookMlView)
             .withColumns(columns);
 
-    DashboardDataModel dataModel = createEntity(request, client);
+    DashboardDataModel dataModel = createEntity(request);
     assertEquals("Initial description", dataModel.getDescription());
 
     // Update description
     dataModel.setDescription("Updated description");
-    DashboardDataModel updated = patchEntity(dataModel.getId().toString(), dataModel, client);
+    DashboardDataModel updated = patchEntity(dataModel.getId().toString(), dataModel);
     assertEquals("Updated description", updated.getDescription());
   }
 
   @Test
   void test_dataModelWithDifferentTypes_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createLooker(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
 
     List<Column> columns =
         Arrays.asList(new Column().withName("id").withDataType(ColumnDataType.INT));
@@ -298,7 +293,7 @@ public class DashboardDataModelResourceIT
             .withDataModelType(DataModelType.LookMlView)
             .withColumns(columns);
 
-    DashboardDataModel dm1 = createEntity(request1, client);
+    DashboardDataModel dm1 = createEntity(request1);
     assertEquals(DataModelType.LookMlView, dm1.getDataModelType());
 
     // Test LookMlExplore
@@ -310,14 +305,14 @@ public class DashboardDataModelResourceIT
             .withDataModelType(DataModelType.LookMlExplore)
             .withColumns(columns);
 
-    DashboardDataModel dm2 = createEntity(request2, client);
+    DashboardDataModel dm2 = createEntity(request2);
     assertEquals(DataModelType.LookMlExplore, dm2.getDataModelType());
   }
 
   @Test
   void test_dataModelNameUniquenessWithinService(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DashboardService service = DashboardServiceTestFactory.createLooker(client, ns);
+    DashboardService service = DashboardServiceTestFactory.createLooker(ns);
 
     String dataModelName = ns.prefix("unique_dm");
     List<Column> columns =
@@ -331,7 +326,7 @@ public class DashboardDataModelResourceIT
             .withDataModelType(DataModelType.LookMlView)
             .withColumns(columns);
 
-    DashboardDataModel dm1 = createEntity(request1, client);
+    DashboardDataModel dm1 = createEntity(request1);
     assertNotNull(dm1);
 
     // Attempt to create duplicate within same service
@@ -345,7 +340,7 @@ public class DashboardDataModelResourceIT
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request2, client),
+        () -> createEntity(request2),
         "Creating duplicate data model in same service should fail");
   }
 }

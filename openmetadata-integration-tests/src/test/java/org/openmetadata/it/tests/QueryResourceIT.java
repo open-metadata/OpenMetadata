@@ -49,9 +49,9 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   // ===================================================================
 
   @Override
-  protected CreateQuery createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+  protected CreateQuery createMinimalRequest(TestNamespace ns) {
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     return new CreateQuery()
         .withName(ns.prefix("query"))
@@ -64,9 +64,9 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   }
 
   @Override
-  protected CreateQuery createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+  protected CreateQuery createRequest(String name, TestNamespace ns) {
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     return new CreateQuery()
         .withName(name)
@@ -78,7 +78,7 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
         .withQueryDate(System.currentTimeMillis());
   }
 
-  private Table getOrCreateTable(TestNamespace ns, OpenMetadataClient client) {
+  private Table getOrCreateTable(TestNamespace ns) {
     String shortId = ns.shortPrefix();
 
     // Create service
@@ -100,14 +100,15 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
         new org.openmetadata.schema.api.data.CreateDatabase();
     dbReq.setName("db_q_" + shortId);
     dbReq.setService(service.getFullyQualifiedName());
-    org.openmetadata.schema.entity.data.Database database = client.databases().create(dbReq);
+    org.openmetadata.schema.entity.data.Database database =
+        SdkClients.adminClient().databases().create(dbReq);
 
     // Create schema
     org.openmetadata.schema.api.data.CreateDatabaseSchema schemaReq =
         new org.openmetadata.schema.api.data.CreateDatabaseSchema();
     schemaReq.setName("s_q_" + shortId);
     schemaReq.setDatabase(database.getFullyQualifiedName());
-    DatabaseSchema schema = client.databaseSchemas().create(schemaReq);
+    DatabaseSchema schema = SdkClients.adminClient().databaseSchemas().create(schemaReq);
 
     // Create table
     CreateTable tableRequest = new CreateTable();
@@ -121,15 +122,15 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
                 .withDataType(ColumnDataType.VARCHAR)
                 .withDataLength(255)));
 
-    return client.tables().create(tableRequest);
+    return SdkClients.adminClient().tables().create(tableRequest);
   }
 
-  private DatabaseService getOrCreateDatabaseService(TestNamespace ns, OpenMetadataClient client) {
+  private DatabaseService getOrCreateDatabaseService(TestNamespace ns) {
     String shortId = ns.shortPrefix();
     String serviceName = "pg_q_" + shortId;
 
     try {
-      return client.databaseServices().getByName(serviceName);
+      return SdkClients.adminClient().databaseServices().getByName(serviceName);
     } catch (Exception e) {
       org.openmetadata.schema.services.connections.database.PostgresConnection conn =
           org.openmetadata.sdk.fluent.DatabaseServices.postgresConnection()
@@ -146,40 +147,40 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   }
 
   @Override
-  protected Query createEntity(CreateQuery createRequest, OpenMetadataClient client) {
-    return client.queries().create(createRequest);
+  protected Query createEntity(CreateQuery createRequest) {
+    return SdkClients.adminClient().queries().create(createRequest);
   }
 
   @Override
-  protected Query getEntity(String id, OpenMetadataClient client) {
-    return client.queries().get(id);
+  protected Query getEntity(String id) {
+    return SdkClients.adminClient().queries().get(id);
   }
 
   @Override
-  protected Query getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.queries().getByName(fqn);
+  protected Query getEntityByName(String fqn) {
+    return SdkClients.adminClient().queries().getByName(fqn);
   }
 
   @Override
-  protected Query patchEntity(String id, Query entity, OpenMetadataClient client) {
-    return client.queries().update(id, entity);
+  protected Query patchEntity(String id, Query entity) {
+    return SdkClients.adminClient().queries().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.queries().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().queries().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.queries().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().queries().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.queries().delete(id, params);
+    SdkClients.adminClient().queries().delete(id, params);
   }
 
   @Override
@@ -202,33 +203,35 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   }
 
   @Override
-  protected ListResponse<Query> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.queries().list(params);
+  protected ListResponse<Query> listEntities(ListParams params) {
+    return SdkClients.adminClient().queries().list(params);
   }
 
   @Override
-  protected Query getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.queries().get(id, fields);
+  protected Query getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().queries().get(id, fields);
   }
 
   @Override
-  protected Query getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.queries().getByName(fqn, fields);
+  protected Query getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().queries().getByName(fqn, fields);
   }
 
   @Override
-  protected Query getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.queries().get(id, "owners,followers,users,votes,tags,queryUsedIn", "deleted");
+  protected Query getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient()
+        .queries()
+        .get(id, "owners,followers,users,votes,tags,queryUsedIn", "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.queries().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().queries().getVersionList(id);
   }
 
   @Override
-  protected Query getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.queries().getVersion(id.toString(), version);
+  protected Query getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().queries().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -238,8 +241,8 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   @Test
   void post_validQuery_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     CreateQuery request =
         new CreateQuery()
@@ -250,7 +253,7 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
             .withDuration(1.5)
             .withQueryDate(System.currentTimeMillis());
 
-    Query query = createEntity(request, client);
+    Query query = createEntity(request);
     assertNotNull(query);
     assertEquals("SELECT * FROM users WHERE active = true", query.getQuery());
     assertNotNull(query.getChecksum());
@@ -259,7 +262,7 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   @Test
   void post_queryWithoutQuery_400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     // Query text is required
     CreateQuery request =
@@ -271,15 +274,15 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating query without query text should fail");
   }
 
   @Test
   void put_queryDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     CreateQuery request =
         new CreateQuery()
@@ -291,20 +294,20 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
             .withDuration(0.0)
             .withQueryDate(System.currentTimeMillis());
 
-    Query query = createEntity(request, client);
+    Query query = createEntity(request);
     assertEquals("Initial description", query.getDescription());
 
     // Update description
     query.setDescription("Updated description");
-    Query updated = patchEntity(query.getId().toString(), query, client);
+    Query updated = patchEntity(query.getId().toString(), query);
     assertEquals("Updated description", updated.getDescription());
   }
 
   @Test
   void post_duplicateQuery_409(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     String queryName = ns.prefix("dup_query");
     CreateQuery request1 =
@@ -316,7 +319,7 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
             .withDuration(0.0)
             .withQueryDate(System.currentTimeMillis());
 
-    Query query = createEntity(request1, client);
+    Query query = createEntity(request1);
     assertNotNull(query);
 
     // Attempt to create duplicate
@@ -330,16 +333,14 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
             .withQueryDate(System.currentTimeMillis());
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(request2, client),
-        "Creating duplicate query should fail");
+        Exception.class, () -> createEntity(request2), "Creating duplicate query should fail");
   }
 
   @Test
   void test_queryWithQueryUsedIn(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     CreateQuery request =
         new CreateQuery()
@@ -350,11 +351,11 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
             .withDuration(2.5)
             .withQueryDate(System.currentTimeMillis());
 
-    Query query = createEntity(request, client);
+    Query query = createEntity(request);
     assertNotNull(query);
 
     // Get with fields to verify queryUsedIn
-    Query fetched = getEntityWithFields(query.getId().toString(), "queryUsedIn", client);
+    Query fetched = getEntityWithFields(query.getId().toString(), "queryUsedIn");
     assertNotNull(fetched.getQueryUsedIn());
     assertFalse(fetched.getQueryUsedIn().isEmpty());
 
@@ -368,8 +369,8 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   @Test
   void test_queryChecksumUpdatesWithQueryText(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     CreateQuery request =
         new CreateQuery()
@@ -380,13 +381,13 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
             .withDuration(0.0)
             .withQueryDate(System.currentTimeMillis());
 
-    Query query = createEntity(request, client);
+    Query query = createEntity(request);
     String originalChecksum = query.getChecksum();
     assertNotNull(originalChecksum);
 
     // Update query text - checksum should change
     query.setQuery("SELECT updated FROM test");
-    Query updated = patchEntity(query.getId().toString(), query, client);
+    Query updated = patchEntity(query.getId().toString(), query);
 
     assertNotNull(updated.getChecksum());
     assertNotEquals(
@@ -396,8 +397,8 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   @Test
   void patch_queryAttributes_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     CreateQuery request =
         new CreateQuery()
@@ -408,24 +409,24 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
             .withDuration(1.0)
             .withQueryDate(System.currentTimeMillis());
 
-    Query query = createEntity(request, client);
+    Query query = createEntity(request);
 
     // Patch duration
     query.setDuration(5.0);
-    Query patched = patchEntity(query.getId().toString(), query, client);
+    Query patched = patchEntity(query.getId().toString(), query);
     assertEquals(5.0, patched.getDuration());
 
     // Patch description
     patched.setDescription("Patched description");
-    Query patched2 = patchEntity(patched.getId().toString(), patched, client);
+    Query patched2 = patchEntity(patched.getId().toString(), patched);
     assertEquals("Patched description", patched2.getDescription());
   }
 
   @Test
   void test_queryVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     CreateQuery request =
         new CreateQuery()
@@ -437,12 +438,12 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
             .withDuration(0.0)
             .withQueryDate(System.currentTimeMillis());
 
-    Query query = createEntity(request, client);
+    Query query = createEntity(request);
     Double v1 = query.getVersion();
 
     // Update description
     query.setDescription("Version 2");
-    Query v2Query = patchEntity(query.getId().toString(), query, client);
+    Query v2Query = patchEntity(query.getId().toString(), query);
     assertTrue(v2Query.getVersion() > v1);
 
     // Get version history
@@ -455,8 +456,8 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   @Test
   void test_queryWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     CreateQuery request =
         new CreateQuery()
@@ -468,7 +469,7 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
             .withDuration(0.0)
             .withQueryDate(System.currentTimeMillis());
 
-    Query query = createEntity(request, client);
+    Query query = createEntity(request);
     assertNotNull(query);
 
     // Verify owner
@@ -481,8 +482,8 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   @Test
   void test_queryHardDelete(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     CreateQuery request =
         new CreateQuery()
@@ -493,24 +494,22 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
             .withDuration(0.0)
             .withQueryDate(System.currentTimeMillis());
 
-    Query query = createEntity(request, client);
+    Query query = createEntity(request);
     String queryId = query.getId().toString();
 
     // Hard delete
-    hardDeleteEntity(queryId, client);
+    hardDeleteEntity(queryId);
 
     // Verify completely gone
     assertThrows(
-        Exception.class,
-        () -> getEntity(queryId, client),
-        "Hard deleted query should not be retrievable");
+        Exception.class, () -> getEntity(queryId), "Hard deleted query should not be retrievable");
   }
 
   @Test
   void list_queries(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     // Create multiple queries
     for (int i = 0; i < 3; i++) {
@@ -522,13 +521,13 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
               .withService(service.getFullyQualifiedName())
               .withDuration(0.0)
               .withQueryDate(System.currentTimeMillis());
-      createEntity(request, client);
+      createEntity(request);
     }
 
     // List queries
     ListParams params = new ListParams();
     params.setLimit(100);
-    ListResponse<Query> response = listEntities(params, client);
+    ListResponse<Query> response = listEntities(params);
 
     assertNotNull(response.getData());
     assertTrue(response.getData().size() >= 3);
@@ -537,8 +536,8 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
   @Test
   void test_queryWithDuration(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Table table = getOrCreateTable(ns, client);
-    DatabaseService service = getOrCreateDatabaseService(ns, client);
+    Table table = getOrCreateTable(ns);
+    DatabaseService service = getOrCreateDatabaseService(ns);
 
     CreateQuery request =
         new CreateQuery()
@@ -549,12 +548,12 @@ public class QueryResourceIT extends BaseEntityIT<Query, CreateQuery> {
             .withDuration(15.75)
             .withQueryDate(System.currentTimeMillis());
 
-    Query query = createEntity(request, client);
+    Query query = createEntity(request);
     assertEquals(15.75, query.getDuration());
 
     // Update duration
     query.setDuration(25.5);
-    Query updated = patchEntity(query.getId().toString(), query, client);
+    Query updated = patchEntity(query.getId().toString(), query);
     assertEquals(25.5, updated.getDuration());
   }
 }

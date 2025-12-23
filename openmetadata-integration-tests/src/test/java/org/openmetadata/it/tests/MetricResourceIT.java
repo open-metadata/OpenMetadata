@@ -37,52 +37,52 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   // ===================================================================
 
   @Override
-  protected CreateMetric createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateMetric createMinimalRequest(TestNamespace ns) {
     return new CreateMetric()
         .withName(ns.prefix("metric"))
         .withDescription("Test metric created by integration test");
   }
 
   @Override
-  protected CreateMetric createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateMetric createRequest(String name, TestNamespace ns) {
     return new CreateMetric().withName(name).withDescription("Test metric");
   }
 
   @Override
-  protected Metric createEntity(CreateMetric createRequest, OpenMetadataClient client) {
-    return client.metrics().create(createRequest);
+  protected Metric createEntity(CreateMetric createRequest) {
+    return SdkClients.adminClient().metrics().create(createRequest);
   }
 
   @Override
-  protected Metric getEntity(String id, OpenMetadataClient client) {
-    return client.metrics().get(id);
+  protected Metric getEntity(String id) {
+    return SdkClients.adminClient().metrics().get(id);
   }
 
   @Override
-  protected Metric getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.metrics().getByName(fqn);
+  protected Metric getEntityByName(String fqn) {
+    return SdkClients.adminClient().metrics().getByName(fqn);
   }
 
   @Override
-  protected Metric patchEntity(String id, Metric entity, OpenMetadataClient client) {
-    return client.metrics().update(id, entity);
+  protected Metric patchEntity(String id, Metric entity) {
+    return SdkClients.adminClient().metrics().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.metrics().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().metrics().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.metrics().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().metrics().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.metrics().delete(id, params);
+    SdkClients.adminClient().metrics().delete(id, params);
   }
 
   @Override
@@ -104,33 +104,33 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Override
-  protected ListResponse<Metric> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.metrics().list(params);
+  protected ListResponse<Metric> listEntities(ListParams params) {
+    return SdkClients.adminClient().metrics().list(params);
   }
 
   @Override
-  protected Metric getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.metrics().get(id, fields);
+  protected Metric getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().metrics().get(id, fields);
   }
 
   @Override
-  protected Metric getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.metrics().getByName(fqn, fields);
+  protected Metric getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().metrics().getByName(fqn, fields);
   }
 
   @Override
-  protected Metric getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.metrics().get(id, null, "deleted");
+  protected Metric getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().metrics().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.metrics().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().metrics().getVersionList(id);
   }
 
   @Override
-  protected Metric getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.metrics().getVersion(id.toString(), version);
+  protected Metric getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().metrics().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -150,7 +150,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                     .withCode("sum(revenue)")
                     .withLanguage(MetricExpressionLanguage.SQL));
 
-    Metric metric = createEntity(request, client);
+    Metric metric = createEntity(request);
     assertNotNull(metric);
     assertNotNull(metric.getMetricExpression());
     assertEquals("sum(revenue)", metric.getMetricExpression().getCode());
@@ -168,7 +168,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             .withGranularity(MetricGranularity.DAY)
             .withMetricType(MetricType.COUNT);
 
-    Metric metric = createEntity(request, client);
+    Metric metric = createEntity(request);
     assertNotNull(metric);
     assertEquals(MetricGranularity.DAY, metric.getGranularity());
     assertEquals(MetricType.COUNT, metric.getMetricType());
@@ -185,7 +185,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             .withUnitOfMeasurement(MetricUnitOfMeasurement.DOLLARS)
             .withMetricType(MetricType.SUM);
 
-    Metric metric = createEntity(request, client);
+    Metric metric = createEntity(request);
     assertNotNull(metric);
     assertEquals(MetricUnitOfMeasurement.DOLLARS, metric.getUnitOfMeasurement());
   }
@@ -202,7 +202,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
             .withCustomUnitOfMeasurement("EURO");
 
-    Metric metric = createEntity(request, client);
+    Metric metric = createEntity(request);
     assertNotNull(metric);
     assertEquals(MetricUnitOfMeasurement.OTHER, metric.getUnitOfMeasurement());
     assertEquals("EURO", metric.getCustomUnitOfMeasurement());
@@ -222,7 +222,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating metric with OTHER unit but no custom unit should fail");
   }
 
@@ -235,12 +235,12 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             .withName(ns.prefix("metric_update_desc"))
             .withDescription("Initial description");
 
-    Metric metric = createEntity(request, client);
+    Metric metric = createEntity(request);
     assertEquals("Initial description", metric.getDescription());
 
     // Update description
     metric.setDescription("Updated description");
-    Metric updated = patchEntity(metric.getId().toString(), metric, client);
+    Metric updated = patchEntity(metric.getId().toString(), metric);
     assertEquals("Updated description", updated.getDescription());
   }
 
@@ -254,12 +254,12 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             .withDescription("Metric for type patching")
             .withMetricType(MetricType.COUNT);
 
-    Metric metric = createEntity(request, client);
+    Metric metric = createEntity(request);
     assertEquals(MetricType.COUNT, metric.getMetricType());
 
     // Update metric type
     metric.setMetricType(MetricType.SUM);
-    Metric updated = patchEntity(metric.getId().toString(), metric, client);
+    Metric updated = patchEntity(metric.getId().toString(), metric);
     assertEquals(MetricType.SUM, updated.getMetricType());
   }
 
@@ -273,7 +273,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             .withName(ns.prefix("metric_related_1"))
             .withDescription("First related metric");
 
-    Metric metric1 = createEntity(request1, client);
+    Metric metric1 = createEntity(request1);
     assertNotNull(metric1);
 
     // Create second metric
@@ -282,15 +282,15 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             .withName(ns.prefix("metric_related_2"))
             .withDescription("Second related metric");
 
-    Metric metric2 = createEntity(request2, client);
+    Metric metric2 = createEntity(request2);
     assertNotNull(metric2);
 
     // Update metric2 to have metric1 as related metric
     metric2.setRelatedMetrics(List.of(metric1.getEntityReference()));
-    Metric updated = patchEntity(metric2.getId().toString(), metric2, client);
+    Metric updated = patchEntity(metric2.getId().toString(), metric2);
 
     // Verify relationship
-    Metric fetched = getEntityWithFields(updated.getId().toString(), "relatedMetrics", client);
+    Metric fetched = getEntityWithFields(updated.getId().toString(), "relatedMetrics");
     assertNotNull(fetched.getRelatedMetrics());
     assertEquals(1, fetched.getRelatedMetrics().size());
     assertEquals(metric1.getId(), fetched.getRelatedMetrics().get(0).getId());
@@ -305,7 +305,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
             .withName(ns.prefix("metric_self_ref"))
             .withDescription("Self-referencing metric test");
 
-    Metric metric = createEntity(request, client);
+    Metric metric = createEntity(request);
     assertNotNull(metric);
 
     // Try to set the metric as its own related metric
@@ -313,7 +313,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
 
     assertThrows(
         Exception.class,
-        () -> patchEntity(metric.getId().toString(), metric, client),
+        () -> patchEntity(metric.getId().toString(), metric),
         "Metric should not be able to reference itself as related");
   }
 
@@ -325,7 +325,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     String metricName = ns.prefix("unique_metric");
     CreateMetric request1 = new CreateMetric().withName(metricName).withDescription("First metric");
 
-    Metric metric1 = createEntity(request1, client);
+    Metric metric1 = createEntity(request1);
     assertNotNull(metric1);
 
     // Attempt to create duplicate
@@ -333,9 +333,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
         new CreateMetric().withName(metricName).withDescription("Duplicate metric");
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(request2, client),
-        "Creating duplicate metric should fail");
+        Exception.class, () -> createEntity(request2), "Creating duplicate metric should fail");
   }
 
   @Test
@@ -354,7 +352,7 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
                     .withCode("AVG(response_time)")
                     .withLanguage(MetricExpressionLanguage.SQL));
 
-    Metric metric = createEntity(request, client);
+    Metric metric = createEntity(request);
     assertNotNull(metric);
     assertEquals(MetricType.AVERAGE, metric.getMetricType());
     assertEquals(MetricGranularity.HOUR, metric.getGranularity());

@@ -41,46 +41,127 @@ public class SdkClients {
       System.getProperty(
           "IT_BASE_URL", System.getenv().getOrDefault("IT_BASE_URL", "http://localhost:8585"));
 
+  // Cached clients to avoid creating new HTTP connections for each test
+  private static volatile OpenMetadataClient ADMIN_CLIENT;
+  private static volatile OpenMetadataClient TEST_USER_CLIENT;
+  private static volatile OpenMetadataClient BOT_CLIENT;
+  private static volatile OpenMetadataClient DATA_STEWARD_CLIENT;
+  private static volatile OpenMetadataClient DATA_CONSUMER_CLIENT;
+  private static volatile OpenMetadataClient USER1_CLIENT;
+  private static volatile OpenMetadataClient USER2_CLIENT;
+  private static volatile OpenMetadataClient USER3_CLIENT;
+
   public static OpenMetadataClient adminClient() {
-    return createClient(
-        "admin@open-metadata.org", "admin@open-metadata.org", new String[] {"admin"});
+    if (ADMIN_CLIENT == null) {
+      synchronized (SdkClients.class) {
+        if (ADMIN_CLIENT == null) {
+          ADMIN_CLIENT =
+              createClient(
+                  "admin@open-metadata.org", "admin@open-metadata.org", new String[] {"admin"});
+        }
+      }
+    }
+    return ADMIN_CLIENT;
   }
 
   public static OpenMetadataClient testUserClient() {
-    return createClient("test@open-metadata.org", "test@open-metadata.org", new String[] {});
+    if (TEST_USER_CLIENT == null) {
+      synchronized (SdkClients.class) {
+        if (TEST_USER_CLIENT == null) {
+          TEST_USER_CLIENT =
+              createClient("test@open-metadata.org", "test@open-metadata.org", new String[] {});
+        }
+      }
+    }
+    return TEST_USER_CLIENT;
   }
 
   public static OpenMetadataClient botClient() {
-    return createClient(
-        "ingestion-bot@open-metadata.org", "ingestion-bot@open-metadata.org", new String[] {"bot"});
+    if (BOT_CLIENT == null) {
+      synchronized (SdkClients.class) {
+        if (BOT_CLIENT == null) {
+          BOT_CLIENT =
+              createClient(
+                  "ingestion-bot@open-metadata.org",
+                  "ingestion-bot@open-metadata.org",
+                  new String[] {"bot"});
+        }
+      }
+    }
+    return BOT_CLIENT;
   }
 
   public static OpenMetadataClient dataStewardClient() {
-    return createClient(
-        "data-steward@open-metadata.org",
-        "data-steward@open-metadata.org",
-        new String[] {"DataSteward"});
+    if (DATA_STEWARD_CLIENT == null) {
+      synchronized (SdkClients.class) {
+        if (DATA_STEWARD_CLIENT == null) {
+          DATA_STEWARD_CLIENT =
+              createClient(
+                  "data-steward@open-metadata.org",
+                  "data-steward@open-metadata.org",
+                  new String[] {"DataSteward"});
+        }
+      }
+    }
+    return DATA_STEWARD_CLIENT;
   }
 
   public static OpenMetadataClient dataConsumerClient() {
-    return createClient(
-        "data-consumer@open-metadata.org",
-        "data-consumer@open-metadata.org",
-        new String[] {"DataConsumer"});
+    if (DATA_CONSUMER_CLIENT == null) {
+      synchronized (SdkClients.class) {
+        if (DATA_CONSUMER_CLIENT == null) {
+          DATA_CONSUMER_CLIENT =
+              createClient(
+                  "data-consumer@open-metadata.org",
+                  "data-consumer@open-metadata.org",
+                  new String[] {"DataConsumer"});
+        }
+      }
+    }
+    return DATA_CONSUMER_CLIENT;
   }
 
   public static OpenMetadataClient user1Client() {
-    return createClient("user1@open-metadata.org", "user1@open-metadata.org", new String[] {});
+    if (USER1_CLIENT == null) {
+      synchronized (SdkClients.class) {
+        if (USER1_CLIENT == null) {
+          USER1_CLIENT =
+              createClient("user1@open-metadata.org", "user1@open-metadata.org", new String[] {});
+        }
+      }
+    }
+    return USER1_CLIENT;
   }
 
   public static OpenMetadataClient user2Client() {
-    return createClient("user2@open-metadata.org", "user2@open-metadata.org", new String[] {});
+    if (USER2_CLIENT == null) {
+      synchronized (SdkClients.class) {
+        if (USER2_CLIENT == null) {
+          USER2_CLIENT =
+              createClient("user2@open-metadata.org", "user2@open-metadata.org", new String[] {});
+        }
+      }
+    }
+    return USER2_CLIENT;
   }
 
   public static OpenMetadataClient user3Client() {
-    return createClient("user3@open-metadata.org", "user3@open-metadata.org", new String[] {});
+    if (USER3_CLIENT == null) {
+      synchronized (SdkClients.class) {
+        if (USER3_CLIENT == null) {
+          USER3_CLIENT =
+              createClient("user3@open-metadata.org", "user3@open-metadata.org", new String[] {});
+        }
+      }
+    }
+    return USER3_CLIENT;
   }
 
+  /**
+   * Create a new client for a specific user. Note: For standard users (admin, test, bot, etc.),
+   * prefer using the cached methods like adminClient(), testUserClient(), etc. to avoid
+   * creating too many HTTP connections during parallel test execution.
+   */
   public static OpenMetadataClient createClient(String subject, String email, String[] roles) {
     String token = JwtAuthProvider.tokenFor(subject, email, roles, 3600);
     OpenMetadataConfig cfg =

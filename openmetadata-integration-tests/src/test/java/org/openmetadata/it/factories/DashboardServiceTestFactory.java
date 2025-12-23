@@ -2,6 +2,7 @@ package org.openmetadata.it.factories;
 
 import java.net.URI;
 import java.util.UUID;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
 import org.openmetadata.schema.api.services.CreateDashboardService;
@@ -9,7 +10,6 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.type.DashboardConnection;
-import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
  * Factory for creating DashboardService entities in integration tests.
@@ -22,7 +22,7 @@ public class DashboardServiceTestFactory {
    * Create a Metabase dashboard service with default settings. Each call creates a unique service
    * to avoid conflicts in parallel test execution.
    */
-  public static DashboardService createMetabase(OpenMetadataClient client, TestNamespace ns) {
+  public static DashboardService createMetabase(TestNamespace ns) {
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     String name = ns.prefix("metabaseService_" + uniqueId);
 
@@ -40,14 +40,14 @@ public class DashboardServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test Metabase service");
 
-    return client.dashboardServices().create(request);
+    return SdkClients.adminClient().dashboardServices().create(request);
   }
 
   /**
    * Create a Looker dashboard service with default settings. Each call creates a unique service to
    * avoid conflicts in parallel test execution.
    */
-  public static DashboardService createLooker(OpenMetadataClient client, TestNamespace ns) {
+  public static DashboardService createLooker(TestNamespace ns) {
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     String name = ns.prefix("lookerService_" + uniqueId);
 
@@ -65,11 +65,11 @@ public class DashboardServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test Looker service");
 
-    return client.dashboardServices().create(request);
+    return SdkClients.adminClient().dashboardServices().create(request);
   }
 
   /** Get dashboard service by ID. */
-  public static DashboardService getById(OpenMetadataClient client, String id) {
-    return client.dashboardServices().get(id);
+  public static DashboardService getById(String id) {
+    return SdkClients.adminClient().dashboardServices().get(id);
   }
 }

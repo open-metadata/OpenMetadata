@@ -37,7 +37,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   // ===================================================================
 
   @Override
-  protected CreateClassification createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateClassification createMinimalRequest(TestNamespace ns) {
     CreateClassification request = new CreateClassification();
     request.setName(ns.prefix("classification"));
     request.setDescription("Test classification created by integration test");
@@ -46,8 +46,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   }
 
   @Override
-  protected CreateClassification createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateClassification createRequest(String name, TestNamespace ns) {
     CreateClassification request = new CreateClassification();
     request.setName(name);
     request.setDescription("Test classification");
@@ -56,42 +55,40 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   }
 
   @Override
-  protected Classification createEntity(
-      CreateClassification createRequest, OpenMetadataClient client) {
-    return client.classifications().create(createRequest);
+  protected Classification createEntity(CreateClassification createRequest) {
+    return SdkClients.adminClient().classifications().create(createRequest);
   }
 
   @Override
-  protected Classification getEntity(String id, OpenMetadataClient client) {
-    return client.classifications().get(id);
+  protected Classification getEntity(String id) {
+    return SdkClients.adminClient().classifications().get(id);
   }
 
   @Override
-  protected Classification getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.classifications().getByName(fqn);
+  protected Classification getEntityByName(String fqn) {
+    return SdkClients.adminClient().classifications().getByName(fqn);
   }
 
   @Override
-  protected Classification patchEntity(
-      String id, Classification entity, OpenMetadataClient client) {
-    return client.classifications().update(id, entity);
+  protected Classification patchEntity(String id, Classification entity) {
+    return SdkClients.adminClient().classifications().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.classifications().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().classifications().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.classifications().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().classifications().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.classifications().delete(id, params);
+    SdkClients.adminClient().classifications().delete(id, params);
   }
 
   @Override
@@ -113,36 +110,33 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
   }
 
   @Override
-  protected ListResponse<Classification> listEntities(
-      ListParams params, OpenMetadataClient client) {
-    return client.classifications().list(params);
+  protected ListResponse<Classification> listEntities(ListParams params) {
+    return SdkClients.adminClient().classifications().list(params);
   }
 
   @Override
-  protected Classification getEntityWithFields(
-      String id, String fields, OpenMetadataClient client) {
-    return client.classifications().get(id, fields);
+  protected Classification getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().classifications().get(id, fields);
   }
 
   @Override
-  protected Classification getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.classifications().getByName(fqn, fields);
+  protected Classification getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().classifications().getByName(fqn, fields);
   }
 
   @Override
-  protected Classification getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.classifications().get(id, null, "deleted");
+  protected Classification getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().classifications().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.classifications().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().classifications().getVersionList(id);
   }
 
   @Override
-  protected Classification getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.classifications().getVersion(id.toString(), version);
+  protected Classification getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().classifications().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -158,7 +152,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     request.setDescription("Mutually exclusive classification");
     request.setMutuallyExclusive(true);
 
-    Classification classification = createEntity(request, client);
+    Classification classification = createEntity(request);
     assertNotNull(classification);
     assertTrue(classification.getMutuallyExclusive());
   }
@@ -171,7 +165,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     request.setName(ns.prefix("classification_provider"));
     request.setDescription("Classification with provider");
 
-    Classification classification = createEntity(request, client);
+    Classification classification = createEntity(request);
     assertNotNull(classification);
   }
 
@@ -183,12 +177,12 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     request.setName(ns.prefix("classification_update_desc"));
     request.setDescription("Initial description");
 
-    Classification classification = createEntity(request, client);
+    Classification classification = createEntity(request);
     assertEquals("Initial description", classification.getDescription());
 
     // Update description
     classification.setDescription("Updated description");
-    Classification updated = patchEntity(classification.getId().toString(), classification, client);
+    Classification updated = patchEntity(classification.getId().toString(), classification);
     assertEquals("Updated description", updated.getDescription());
   }
 
@@ -206,7 +200,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
     request1.setName(name);
     request1.setDescription("First classification");
 
-    Classification classification1 = createEntity(request1, client);
+    Classification classification1 = createEntity(request1);
     assertNotNull(classification1);
 
     // Attempt to create duplicate
@@ -216,7 +210,7 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request2, client),
+        () -> createEntity(request2),
         "Creating duplicate classification should fail");
   }
 }

@@ -42,8 +42,8 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
   // ===================================================================
 
   @Override
-  protected CreateAPIEndpoint createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    APICollection collection = getOrCreateAPICollection(ns, client);
+  protected CreateAPIEndpoint createMinimalRequest(TestNamespace ns) {
+    APICollection collection = getOrCreateAPICollection(ns);
 
     return new CreateAPIEndpoint()
         .withName(ns.prefix("apiendpoint"))
@@ -54,9 +54,8 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
   }
 
   @Override
-  protected CreateAPIEndpoint createRequest(
-      String name, TestNamespace ns, OpenMetadataClient client) {
-    APICollection collection = getOrCreateAPICollection(ns, client);
+  protected CreateAPIEndpoint createRequest(String name, TestNamespace ns) {
+    APICollection collection = getOrCreateAPICollection(ns);
 
     // Use a safe URL - don't embed the name in the URL as it may contain invalid characters
     String safeId = java.util.UUID.randomUUID().toString().substring(0, 8);
@@ -68,12 +67,12 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
         .withRequestMethod(APIRequestMethod.GET);
   }
 
-  private APICollection getOrCreateAPICollection(TestNamespace ns, OpenMetadataClient client) {
+  private APICollection getOrCreateAPICollection(TestNamespace ns) {
     String shortId = ns.shortPrefix();
     String collectionName = "apicol_" + shortId;
 
     // Always create a new API service and collection for isolation
-    ApiService service = APIServiceTestFactory.createRest(client, ns);
+    ApiService service = APIServiceTestFactory.createRest(ns);
 
     CreateAPICollection collectionRequest =
         new CreateAPICollection()
@@ -82,44 +81,44 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
             .withService(service.getFullyQualifiedName())
             .withEndpointURL(URI.create("https://localhost:8585/api/v1"));
 
-    return client.apiCollections().create(collectionRequest);
+    return SdkClients.adminClient().apiCollections().create(collectionRequest);
   }
 
   @Override
-  protected APIEndpoint createEntity(CreateAPIEndpoint createRequest, OpenMetadataClient client) {
-    return client.apiEndpoints().create(createRequest);
+  protected APIEndpoint createEntity(CreateAPIEndpoint createRequest) {
+    return SdkClients.adminClient().apiEndpoints().create(createRequest);
   }
 
   @Override
-  protected APIEndpoint getEntity(String id, OpenMetadataClient client) {
-    return client.apiEndpoints().get(id);
+  protected APIEndpoint getEntity(String id) {
+    return SdkClients.adminClient().apiEndpoints().get(id);
   }
 
   @Override
-  protected APIEndpoint getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.apiEndpoints().getByName(fqn);
+  protected APIEndpoint getEntityByName(String fqn) {
+    return SdkClients.adminClient().apiEndpoints().getByName(fqn);
   }
 
   @Override
-  protected APIEndpoint patchEntity(String id, APIEndpoint entity, OpenMetadataClient client) {
-    return client.apiEndpoints().update(id, entity);
+  protected APIEndpoint patchEntity(String id, APIEndpoint entity) {
+    return SdkClients.adminClient().apiEndpoints().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.apiEndpoints().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().apiEndpoints().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.apiEndpoints().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().apiEndpoints().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.apiEndpoints().delete(id, params);
+    SdkClients.adminClient().apiEndpoints().delete(id, params);
   }
 
   @Override
@@ -142,35 +141,36 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
   }
 
   @Override
-  protected ListResponse<APIEndpoint> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.apiEndpoints().list(params);
+  protected ListResponse<APIEndpoint> listEntities(ListParams params) {
+    return SdkClients.adminClient().apiEndpoints().list(params);
   }
 
   @Override
-  protected APIEndpoint getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.apiEndpoints().get(id, fields);
+  protected APIEndpoint getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().apiEndpoints().get(id, fields);
   }
 
   @Override
-  protected APIEndpoint getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.apiEndpoints().getByName(fqn, fields);
+  protected APIEndpoint getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().apiEndpoints().getByName(fqn, fields);
   }
 
   @Override
-  protected APIEndpoint getEntityIncludeDeleted(String id, OpenMetadataClient client) {
+  protected APIEndpoint getEntityIncludeDeleted(String id) {
     // APIEndpoint supports: owners,followers,tags,extension,domains,dataProducts,sourceHash
-    return client.apiEndpoints().get(id, "owners,followers,tags,domains", "deleted");
+    return SdkClients.adminClient()
+        .apiEndpoints()
+        .get(id, "owners,followers,tags,domains", "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.apiEndpoints().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().apiEndpoints().getVersionList(id);
   }
 
   @Override
-  protected APIEndpoint getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.apiEndpoints().getVersion(id.toString(), version);
+  protected APIEndpoint getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().apiEndpoints().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -180,7 +180,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
   @Test
   void post_apiEndpointWithRequestMethod_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    APICollection collection = getOrCreateAPICollection(ns, client);
+    APICollection collection = getOrCreateAPICollection(ns);
 
     CreateAPIEndpoint request =
         new CreateAPIEndpoint()
@@ -190,7 +190,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
             .withEndpointURL(URI.create("https://localhost:8585/api/v1/users"))
             .withRequestMethod(APIRequestMethod.GET);
 
-    APIEndpoint endpoint = createEntity(request, client);
+    APIEndpoint endpoint = createEntity(request);
     assertNotNull(endpoint);
     assertEquals(APIRequestMethod.GET, endpoint.getRequestMethod());
   }
@@ -198,7 +198,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
   @Test
   void post_apiEndpointWithResponseSchema_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    APICollection collection = getOrCreateAPICollection(ns, client);
+    APICollection collection = getOrCreateAPICollection(ns);
 
     List<Field> responseFields =
         Arrays.asList(
@@ -217,7 +217,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
             .withRequestMethod(APIRequestMethod.GET)
             .withResponseSchema(responseSchema);
 
-    APIEndpoint endpoint = createEntity(request, client);
+    APIEndpoint endpoint = createEntity(request);
     assertNotNull(endpoint);
     assertNotNull(endpoint.getResponseSchema());
     assertEquals(3, endpoint.getResponseSchema().getSchemaFields().size());
@@ -226,7 +226,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
   @Test
   void put_apiEndpointDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    APICollection collection = getOrCreateAPICollection(ns, client);
+    APICollection collection = getOrCreateAPICollection(ns);
 
     CreateAPIEndpoint request =
         new CreateAPIEndpoint()
@@ -236,19 +236,19 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
             .withEndpointURL(URI.create("https://localhost:8585/api/v1/test"))
             .withRequestMethod(APIRequestMethod.POST);
 
-    APIEndpoint endpoint = createEntity(request, client);
+    APIEndpoint endpoint = createEntity(request);
     assertEquals("Initial description", endpoint.getDescription());
 
     // Update description
     endpoint.setDescription("Updated description");
-    APIEndpoint updated = patchEntity(endpoint.getId().toString(), endpoint, client);
+    APIEndpoint updated = patchEntity(endpoint.getId().toString(), endpoint);
     assertEquals("Updated description", updated.getDescription());
   }
 
   @Test
   void patch_apiEndpointRequestMethod_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    APICollection collection = getOrCreateAPICollection(ns, client);
+    APICollection collection = getOrCreateAPICollection(ns);
 
     CreateAPIEndpoint request =
         new CreateAPIEndpoint()
@@ -258,19 +258,19 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
             .withEndpointURL(URI.create("https://localhost:8585/api/v1/resources"))
             .withRequestMethod(APIRequestMethod.GET);
 
-    APIEndpoint endpoint = createEntity(request, client);
+    APIEndpoint endpoint = createEntity(request);
     assertEquals(APIRequestMethod.GET, endpoint.getRequestMethod());
 
     // Update request method
     endpoint.setRequestMethod(APIRequestMethod.POST);
-    APIEndpoint updated = patchEntity(endpoint.getId().toString(), endpoint, client);
+    APIEndpoint updated = patchEntity(endpoint.getId().toString(), endpoint);
     assertEquals(APIRequestMethod.POST, updated.getRequestMethod());
   }
 
   @Test
   void test_apiEndpointNameUniquenessWithinCollection(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    APICollection collection = getOrCreateAPICollection(ns, client);
+    APICollection collection = getOrCreateAPICollection(ns);
 
     String endpointName = ns.prefix("unique_endpoint");
     CreateAPIEndpoint request1 =
@@ -281,7 +281,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
             .withEndpointURL(URI.create("https://localhost:8585/api/v1/first"))
             .withRequestMethod(APIRequestMethod.GET);
 
-    APIEndpoint endpoint1 = createEntity(request1, client);
+    APIEndpoint endpoint1 = createEntity(request1);
     assertNotNull(endpoint1);
 
     // Attempt to create duplicate within same collection
@@ -295,7 +295,7 @@ public class APIEndpointResourceIT extends BaseEntityIT<APIEndpoint, CreateAPIEn
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request2, client),
+        () -> createEntity(request2),
         "Creating duplicate API endpoint in same collection should fail");
   }
 }

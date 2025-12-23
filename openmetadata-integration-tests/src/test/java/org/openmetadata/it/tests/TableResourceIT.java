@@ -112,7 +112,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     createRequest.setColumns(
         List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
 
-    Table table = createEntity(createRequest, client);
+    Table table = createEntity(createRequest);
     assertNotNull(table.getId());
 
     // Attempt to create duplicate table in SAME schema
@@ -124,7 +124,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(duplicateRequest, client),
+        () -> createEntity(duplicateRequest),
         "Creating duplicate table in same schema should fail");
   }
 
@@ -133,7 +133,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // ===================================================================
 
   @Override
-  protected CreateTable createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateTable createMinimalRequest(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
@@ -152,7 +152,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Override
-  protected CreateTable createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateTable createRequest(String name, TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
@@ -170,40 +170,40 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Override
-  protected Table createEntity(CreateTable createRequest, OpenMetadataClient client) {
-    return client.tables().create(createRequest);
+  protected Table createEntity(CreateTable createRequest) {
+    return SdkClients.adminClient().tables().create(createRequest);
   }
 
   @Override
-  protected Table getEntity(String id, OpenMetadataClient client) {
-    return client.tables().get(id);
+  protected Table getEntity(String id) {
+    return SdkClients.adminClient().tables().get(id);
   }
 
   @Override
-  protected Table getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.tables().getByName(fqn);
+  protected Table getEntityByName(String fqn) {
+    return SdkClients.adminClient().tables().getByName(fqn);
   }
 
   @Override
-  protected Table patchEntity(String id, Table entity, OpenMetadataClient client) {
-    return client.tables().update(id, entity);
+  protected Table patchEntity(String id, Table entity) {
+    return SdkClients.adminClient().tables().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.tables().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().tables().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.tables().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().tables().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.tables().delete(id, params);
+    SdkClients.adminClient().tables().delete(id, params);
   }
 
   @Override
@@ -253,7 +253,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
       assertThrows(
           Exception.class,
-          () -> createEntity(createRequest, client),
+          () -> createEntity(createRequest),
           "Creating " + dataType + " column without dataLength should fail");
     }
   }
@@ -278,7 +278,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(createRequest1, client),
+        () -> createEntity(createRequest1),
         "Creating DECIMAL column with scale but no precision should fail");
 
     // Test 2: Scale greater than precision
@@ -296,7 +296,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(createRequest2, client),
+        () -> createEntity(createRequest2),
         "Creating DECIMAL column with scale > precision should fail");
   }
 
@@ -319,7 +319,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(createRequest, client),
+        () -> createEntity(createRequest),
         "Creating ARRAY column without arrayDataType should fail");
   }
 
@@ -346,7 +346,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(createRequest, client),
+        () -> createEntity(createRequest),
         "Creating table with duplicate column names should fail");
   }
 
@@ -370,7 +370,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
             ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
 
-    Table createdTable = createEntity(create, client);
+    Table createdTable = createEntity(create);
     assertNotNull(createdTable);
     assertEquals("description", createdTable.getDescription());
 
@@ -383,7 +383,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build(),
             ColumnBuilder.of("name", "VARCHAR").dataLength(255).build()));
 
-    Table createdView = createEntity(create2, client);
+    Table createdView = createEntity(create2);
     assertNotNull(createdView);
     assertEquals(TableType.View, createdView.getTableType());
   }
@@ -409,7 +409,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     create.setColumns(List.of(column));
     create.setTableConstraints(List.of(constraint));
 
-    Table created = createEntity(create, client);
+    Table created = createEntity(create);
     Column resultColumn = created.getColumns().get(0);
     assertEquals("col.umn", resultColumn.getName());
     assertTrue(resultColumn.getFullyQualifiedName().contains("col.umn"));
@@ -445,7 +445,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     create.setColumns(List.of(col1, col2));
     create.setTablePartition(partition);
 
-    Table created = createEntity(create, client);
+    Table created = createEntity(create);
     assertNotNull(created.getTablePartition());
     assertEquals(1, created.getTablePartition().getColumns().size());
     assertEquals("date", created.getTablePartition().getColumns().get(0).getColumnName());
@@ -462,7 +462,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(create, client),
+        () -> createEntity(create),
         "Creating table with non-existent schema should fail");
   }
 
@@ -514,7 +514,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     create.setDatabaseSchema(schema.getFullyQualifiedName());
     create.setColumns(Arrays.asList(c1, c2));
 
-    Table table = createEntity(create, client);
+    Table table = createEntity(create);
     assertNotNull(table);
     assertEquals(2, table.getColumns().size());
     assertEquals(ColumnDataType.ARRAY, table.getColumns().get(0).getDataType());
@@ -530,17 +530,17 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_tableTableConstraintUpdate_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable request = createMinimalRequest(ns, client);
+    CreateTable request = createMinimalRequest(ns);
     request.setTableConstraints(null);
 
-    Table table = createEntity(request, client);
+    Table table = createEntity(request);
 
     TableConstraint constraint = new TableConstraint();
     constraint.setConstraintType(TableConstraint.ConstraintType.UNIQUE);
     constraint.setColumns(List.of("id"));
 
     table.setTableConstraints(List.of(constraint));
-    Table updated = patchEntity(table.getId().toString(), table, client);
+    Table updated = patchEntity(table.getId().toString(), table);
 
     assertNotNull(updated.getTableConstraints());
     assertEquals(1, updated.getTableConstraints().size());
@@ -571,12 +571,12 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     request.setDatabaseSchema(schema.getFullyQualifiedName());
     request.setColumns(List.of(col1, col2));
 
-    Table table = createEntity(request, client);
+    Table table = createEntity(request);
 
     table.getColumns().get(0).setConstraint(ColumnConstraint.NOT_NULL);
     table.getColumns().get(1).setConstraint(ColumnConstraint.PRIMARY_KEY);
 
-    Table updated = patchEntity(table.getId().toString(), table, client);
+    Table updated = patchEntity(table.getId().toString(), table);
 
     assertEquals(ColumnConstraint.NOT_NULL, updated.getColumns().get(0).getConstraint());
     assertEquals(ColumnConstraint.PRIMARY_KEY, updated.getColumns().get(1).getConstraint());
@@ -586,10 +586,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_tableTableConstraintDuplicate_400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable request = createMinimalRequest(ns, client);
+    CreateTable request = createMinimalRequest(ns);
     request.setTableConstraints(null);
 
-    Table table = createEntity(request, client);
+    Table table = createEntity(request);
 
     TableConstraint constraint = new TableConstraint();
     constraint.setConstraintType(TableConstraint.ConstraintType.UNIQUE);
@@ -599,7 +599,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertThrows(
         Exception.class,
-        () -> patchEntity(table.getId().toString(), table, client),
+        () -> patchEntity(table.getId().toString(), table),
         "Duplicate constraints should fail");
   }
 
@@ -607,10 +607,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_tableTableConstraintInvalidColumn_400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable request = createMinimalRequest(ns, client);
+    CreateTable request = createMinimalRequest(ns);
     request.setTableConstraints(null);
 
-    Table table = createEntity(request, client);
+    Table table = createEntity(request);
 
     TableConstraint constraint = new TableConstraint();
     constraint.setConstraintType(TableConstraint.ConstraintType.UNIQUE);
@@ -620,7 +620,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     assertThrows(
         Exception.class,
-        () -> patchEntity(table.getId().toString(), table, client),
+        () -> patchEntity(table.getId().toString(), table),
         "Invalid column in constraint should fail");
   }
 
@@ -632,8 +632,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void patch_tableAddColumn_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createMinimalRequest(ns, client);
-    Table created = createEntity(createRequest, client);
+    CreateTable createRequest = createMinimalRequest(ns);
+    Table created = createEntity(createRequest);
 
     assertEquals(2, created.getColumns().size(), "Should have 2 initial columns");
 
@@ -644,7 +644,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             ColumnBuilder.of("email", "VARCHAR").dataLength(255).build());
 
     created.setColumns(updatedColumns);
-    Table updated = patchEntity(created.getId().toString(), created, client);
+    Table updated = patchEntity(created.getId().toString(), created);
 
     assertNotNull(updated.getColumns());
     assertEquals(3, updated.getColumns().size(), "Should have 3 columns after update");
@@ -670,7 +670,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     request.setDatabaseSchema(schema.getFullyQualifiedName());
     request.setColumns(List.of(c1));
 
-    Table table = createEntity(request, client);
+    Table table = createEntity(request);
     assertEquals(1, table.getColumns().size());
 
     Column c2 = new Column();
@@ -684,7 +684,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     updatedColumns.add(c2);
 
     table.setColumns(updatedColumns);
-    Table updated = patchEntity(table.getId().toString(), table, client);
+    Table updated = patchEntity(table.getId().toString(), table);
 
     assertEquals(2, updated.getColumns().size());
   }
@@ -714,7 +714,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     request.setDatabaseSchema(schema.getFullyQualifiedName());
     request.setColumns(List.of(col1, col2, col3));
 
-    Table table = createEntity(request, client);
+    Table table = createEntity(request);
 
     col1.setDescription("new0");
     col2.setDescription("new1");
@@ -722,7 +722,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     col3.setScale(3);
 
     table.setColumns(List.of(col1, col2, col3));
-    Table updated = patchEntity(table.getId().toString(), table, client);
+    Table updated = patchEntity(table.getId().toString(), table);
 
     assertEquals("new0", updated.getColumns().get(0).getDescription());
     assertEquals("new1", updated.getColumns().get(1).getDescription());
@@ -747,13 +747,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     request.setDatabaseSchema(schema.getFullyQualifiedName());
     request.setColumns(List.of(c1));
 
-    Table table = createEntity(request, client);
+    Table table = createEntity(request);
 
     c1.setDataType(ColumnDataType.CHAR);
     c1.setDataLength(200);
     table.setColumns(List.of(c1));
 
-    Table updated = patchEntity(table.getId().toString(), table, client);
+    Table updated = patchEntity(table.getId().toString(), table);
     assertEquals("c1VarcharDescription", updated.getColumns().get(0).getDescription());
     assertEquals(ColumnDataType.CHAR, updated.getColumns().get(0).getDataType());
     assertEquals(200, updated.getColumns().get(0).getDataLength());
@@ -782,7 +782,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             ColumnBuilder.of("id", "INT").build(),
             ColumnBuilder.of("name", "VARCHAR").dataLength(100).build()));
 
-    Table table = createEntity(createRequest, client);
+    Table table = createEntity(createRequest);
 
     RdfTestUtils.verifyEntityInRdf(table, "table");
     RdfTestUtils.verifyContainsRelationshipInRdf(
@@ -800,20 +800,20 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
-    CreateTable createRequest = createMinimalRequest(ns, client);
+    CreateTable createRequest = createMinimalRequest(ns);
     createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
 
-    Table table = createEntity(createRequest, client);
+    Table table = createEntity(createRequest);
 
     RdfTestUtils.verifyEntityInRdf(table, "table");
 
-    deleteEntity(table.getId().toString(), client);
+    deleteEntity(table.getId().toString());
 
     RdfTestUtils.verifyEntityInRdf(table, "table");
 
-    restoreEntity(table.getId().toString(), client);
+    restoreEntity(table.getId().toString());
 
-    Table restored = getEntity(table.getId().toString(), client);
+    Table restored = getEntity(table.getId().toString());
     RdfTestUtils.verifyEntityInRdf(restored, "table");
   }
 
@@ -828,14 +828,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
-    CreateTable createRequest = createMinimalRequest(ns, client);
+    CreateTable createRequest = createMinimalRequest(ns);
     createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
 
-    Table table = createEntity(createRequest, client);
+    Table table = createEntity(createRequest);
 
     RdfTestUtils.verifyEntityInRdf(table, "dcat:Dataset");
 
-    hardDeleteEntity(table.getId().toString(), client);
+    hardDeleteEntity(table.getId().toString());
 
     RdfTestUtils.verifyEntityNotInRdf(table.getFullyQualifiedName());
   }
@@ -895,12 +895,12 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     create.setTableConstraints(List.of(constraint));
     create.setTablePartition(partition);
 
-    Table table = createEntity(create, client);
+    Table table = createEntity(create);
     assertNotNull(table);
     assertEquals(2, table.getColumns().size());
 
     table.getColumns().add(column3);
-    Table updated = patchEntity(table.getId().toString(), table, client);
+    Table updated = patchEntity(table.getId().toString(), table);
     assertEquals(3, updated.getColumns().size());
   }
 
@@ -908,10 +908,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void patch_tableAttributes_200_ok(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable request = createMinimalRequest(ns, client);
+    CreateTable request = createMinimalRequest(ns);
     request.setTableConstraints(null);
 
-    Table table = createEntity(request, client);
+    Table table = createEntity(request);
 
     List<TableConstraint> tableConstraints =
         List.of(
@@ -922,7 +922,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     table.setTableType(TableType.Regular);
     table.setTableConstraints(tableConstraints);
 
-    Table updated = patchEntity(table.getId().toString(), table, client);
+    Table updated = patchEntity(table.getId().toString(), table);
     assertEquals(TableType.Regular, updated.getTableType());
     assertEquals(1, updated.getTableConstraints().size());
   }
@@ -999,9 +999,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       columns.add(ColumnBuilder.of("column" + i, "STRING").ordinalPosition(i).build());
     }
 
-    CreateTable createRequest = createRequest(ns.prefix("table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("table"), ns);
     createRequest.setColumns(columns);
-    Table table = createEntity(createRequest, client);
+    Table table = createEntity(createRequest);
 
     // Test default pagination (returns all columns by default)
     TableColumnList response = client.tables().getColumns(table.getId());
@@ -1033,8 +1033,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create table with single column (minimum required)
-    CreateTable createRequest = createRequest(ns.prefix("empty_table"), ns, client);
-    Table table = createEntity(createRequest, client);
+    CreateTable createRequest = createRequest(ns.prefix("empty_table"), ns);
+    Table table = createEntity(createRequest);
 
     // Get columns - should return at least the id column
     TableColumnList response = client.tables().getColumns(table.getId());
@@ -1063,9 +1063,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Column col1 = ColumnBuilder.of("col1", "STRING").description("First column").build();
     Column col2 = ColumnBuilder.of("col2", "INT").description("Second column").build();
 
-    CreateTable createRequest = createRequest(ns.prefix("table_with_fields"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("table_with_fields"), ns);
     createRequest.setColumns(List.of(col1, col2));
-    Table table = createEntity(createRequest, client);
+    Table table = createEntity(createRequest);
 
     // Get columns with specific fields
     TableColumnList response = client.tables().getColumns(table.getId(), "tags,customMetrics");
@@ -1082,8 +1082,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create table using default request (has columns: id, name)
-    CreateTable createRequest = createRequest(ns.prefix("sample_table"), ns, client);
-    Table table = createEntity(createRequest, client);
+    CreateTable createRequest = createRequest(ns.prefix("sample_table"), ns);
+    Table table = createEntity(createRequest);
 
     // Create sample data matching the table's default columns (id, name)
     List<String> columns = Arrays.asList("id", "name");
@@ -1102,8 +1102,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_tableInvalidSampleData_4xx(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("invalid_sample"), ns, client);
-    Table table = createEntity(createRequest, client);
+    CreateTable createRequest = createRequest(ns.prefix("invalid_sample"), ns);
+    Table table = createEntity(createRequest);
 
     // Try to add sample data with mismatched columns and rows
     List<String> columns = Arrays.asList("c1", "c2");
@@ -1127,9 +1127,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create 3 tables with default columns (id, name)
-    Table table1 = createEntity(createRequest(ns.prefix("table1"), ns, client), client);
-    Table table2 = createEntity(createRequest(ns.prefix("table2"), ns, client), client);
-    Table table3 = createEntity(createRequest(ns.prefix("table3"), ns, client), client);
+    Table table1 = createEntity(createRequest(ns.prefix("table1"), ns));
+    Table table2 = createEntity(createRequest(ns.prefix("table2"), ns));
+    Table table3 = createEntity(createRequest(ns.prefix("table3"), ns));
 
     // Build fully qualified column names using the default columns
     String t2id = table2.getFullyQualifiedName() + ".id";
@@ -1167,7 +1167,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_tableJoinsInvalidColumnName_4xx(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    Table table = createEntity(createRequest(ns.prefix("join_table"), ns, client), client);
+    Table table = createEntity(createRequest(ns.prefix("join_table"), ns));
 
     // Try to create join with non-existent column
     List<ColumnJoin> invalidJoins =
@@ -1200,8 +1200,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_tableProfile_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("profile_table"), ns, client);
-    Table table = createEntity(createRequest, client);
+    CreateTable createRequest = createRequest(ns.prefix("profile_table"), ns);
+    Table table = createEntity(createRequest);
 
     // Create table profile
     TableProfile tableProfile =
@@ -1222,8 +1222,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_profileConfig_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("profiler_config_table"), ns, client);
-    Table table = createEntity(createRequest, client);
+    CreateTable createRequest = createRequest(ns.prefix("profiler_config_table"), ns);
+    Table table = createEntity(createRequest);
 
     // Create profiler config
     TableProfilerConfig config =
@@ -1245,8 +1245,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_tableInvalidTableProfileData_4xx(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("invalid_profile_table"), ns, client);
-    Table table = createEntity(createRequest, client);
+    CreateTable createRequest = createRequest(ns.prefix("invalid_profile_table"), ns);
+    Table table = createEntity(createRequest);
 
     Long timestamp = System.currentTimeMillis();
 
@@ -1289,8 +1289,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a table
-    CreateTable createTableRequest = createRequest(ns.prefix("query_table"), ns, client);
-    Table table = createEntity(createTableRequest, client);
+    CreateTable createTableRequest = createRequest(ns.prefix("query_table"), ns);
+    Table table = createEntity(createTableRequest);
 
     // Get the service FQN from the table
     String serviceFqn = table.getService().getFullyQualifiedName();
@@ -1332,8 +1332,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_tableDataModel_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("datamodel_table"), ns, client);
-    Table table = createEntity(createRequest, client);
+    CreateTable createRequest = createRequest(ns.prefix("datamodel_table"), ns);
+    Table table = createEntity(createRequest);
 
     // Create data model
     DataModel dataModel =
@@ -1356,8 +1356,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void test_getTableColumnsValidation_400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("validation_table"), ns, client);
-    Table table = createEntity(createRequest, client);
+    CreateTable createRequest = createRequest(ns.prefix("validation_table"), ns);
+    Table table = createEntity(createRequest);
 
     // Test invalid limit - too small (0)
     assertThrows(
@@ -1391,9 +1391,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               .build());
     }
 
-    CreateTable createRequest = createRequest(ns.prefix("large_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("large_table"), ns);
     createRequest.setColumns(columns);
-    Table table = createEntity(createRequest, client);
+    Table table = createEntity(createRequest);
 
     // Test first page with limit 25
     TableColumnList firstPage = client.tables().getColumns(table.getId(), 25, 0, null, null);
@@ -1425,9 +1425,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       columns.add(ColumnBuilder.of("col" + i, "STRING").ordinalPosition(i).build());
     }
 
-    CreateTable createRequest = createRequest(ns.prefix("soft_delete_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("soft_delete_table"), ns);
     createRequest.setColumns(columns);
-    Table table = createEntity(createRequest, client);
+    Table table = createEntity(createRequest);
 
     // Verify columns can be retrieved for active table
     TableColumnList response = client.tables().getColumns(table.getId(), null, null, null, "all");
@@ -1435,11 +1435,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals(5, response.getPaging().getTotal());
 
     // Soft delete the table (default is soft delete)
-    client.tables().delete(table.getId());
+    SdkClients.adminClient().tables().delete(table.getId());
 
     // Verify columns can still be retrieved for soft-deleted table using include=all
     TableColumnList softDeletedResponse =
-        client.tables().getColumns(table.getId(), null, null, null, "all");
+        SdkClients.adminClient().tables().getColumns(table.getId(), null, null, null, "all");
     assertEquals(5, softDeletedResponse.getData().size());
     assertEquals(5, softDeletedResponse.getPaging().getTotal());
   }
@@ -1453,13 +1453,15 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     columns.add(ColumnBuilder.of("metric_col1", "STRING").ordinalPosition(1).build());
     columns.add(ColumnBuilder.of("metric_col2", "INT").ordinalPosition(2).build());
 
-    CreateTable createRequest = createRequest(ns.prefix("custom_metrics_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("custom_metrics_table"), ns);
     createRequest.setColumns(columns);
-    Table table = createEntity(createRequest, client);
+    Table table = createEntity(createRequest);
 
     // Request columns with customMetrics field
     TableColumnList response =
-        client.tables().getColumns(table.getId(), 10, null, "customMetrics", null);
+        SdkClients.adminClient()
+            .tables()
+            .getColumns(table.getId(), 10, null, "customMetrics", null);
 
     assertEquals(2, response.getData().size());
     assertEquals(2, response.getPaging().getTotal());
@@ -1475,8 +1477,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void create_profilerWrongTimestamp(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("profiler_timestamp_table"), ns, client);
-    Table table = createEntity(createRequest, client);
+    CreateTable createRequest = createRequest(ns.prefix("profiler_timestamp_table"), ns);
+    Table table = createEntity(createRequest);
 
     Long correctTimestamp = 1725525388000L; // milliseconds
     Long wrongTimestamp = 1725525388L; // seconds (wrong)
@@ -1534,11 +1536,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         with no schema binding;
         """;
 
-    CreateTable createRequest = createRequest(ns.prefix("view_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("view_table"), ns);
     createRequest.setTableType(org.openmetadata.schema.type.TableType.View);
     createRequest.setSchemaDefinition(query);
 
-    Table table = createEntity(createRequest, client);
+    Table table = createEntity(createRequest);
     assertNotNull(table);
     assertEquals(org.openmetadata.schema.type.TableType.View, table.getTableType());
 
@@ -1555,8 +1557,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void createUpdateDelete_tableCustomMetrics_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("metrics_table"), ns, client);
-    Table table = createEntity(createRequest, client);
+    CreateTable createRequest = createRequest(ns.prefix("metrics_table"), ns);
+    Table table = createEntity(createRequest);
 
     // Get first column name
     String columnName = table.getColumns().get(0).getName();
@@ -1592,7 +1594,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertNotNull(updated);
 
     // Delete custom metric - should succeed without error
-    client.tables().deleteCustomMetric(table.getId(), "custom_metric1");
+    SdkClients.adminClient().tables().deleteCustomMetric(table.getId(), "custom_metric1");
   }
 
   // ===================================================================
@@ -1631,9 +1633,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Create table - should inherit retention period from schema/database
     CreateTable createTable =
-        createRequest(ns.prefix("retention_table"), ns, client)
+        createRequest(ns.prefix("retention_table"), ns)
             .withDatabaseSchema(schema.getFullyQualifiedName());
-    Table table = createEntity(createTable, client);
+    Table table = createEntity(createTable);
     assertEquals("P30D", table.getRetentionPeriod()); // Inherited from database
 
     // Fetch table again to verify retention period persists
@@ -1706,8 +1708,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void test_updateColumn_adminCanUpdateAnyColumn(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("update_column_table"), ns, client);
-    Table table = createEntity(createRequest, client);
+    CreateTable createRequest = createRequest(ns.prefix("update_column_table"), ns);
+    Table table = createEntity(createRequest);
 
     // Get the column FQN (table has default "id" and "name" columns)
     String columnFQN = table.getFullyQualifiedName() + ".id";
@@ -1762,15 +1764,15 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Verify schema inherited owner
     DatabaseSchema fetchedSchema =
-        client.databaseSchemas().get(schema.getId().toString(), "owners");
+        SdkClients.adminClient().databaseSchemas().get(schema.getId().toString(), "owners");
     assertNotNull(fetchedSchema.getOwners());
     assertTrue(fetchedSchema.getOwners().size() > 0);
 
     // Create table - should inherit owner from schema
     CreateTable createTable =
-        createRequest(ns.prefix("ownership_table"), ns, client)
+        createRequest(ns.prefix("ownership_table"), ns)
             .withDatabaseSchema(schema.getFullyQualifiedName());
-    Table table = createEntity(createTable, client);
+    Table table = createEntity(createTable);
 
     // Verify table inherited owner
     Table fetchedTable = client.tables().get(table.getId().toString(), "owners");
@@ -1786,7 +1788,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     User owner = UserTestFactory.createUser(ns, "table_owner");
 
     // Create table owned by the test user
-    CreateTable createRequest = createRequest(ns.prefix("owner_update_table"), ns, adminClient);
+    CreateTable createRequest = createRequest(ns.prefix("owner_update_table"), ns);
     createRequest.setOwners(
         java.util.List.of(
             new EntityReference()
@@ -1821,7 +1823,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     User user2 = UserTestFactory.createUser(ns, "other_user");
 
     // Create table owned by user1
-    CreateTable createRequest = createRequest(ns.prefix("other_user_table"), ns, adminClient);
+    CreateTable createRequest = createRequest(ns.prefix("other_user_table"), ns);
     createRequest.setOwners(
         java.util.List.of(
             new EntityReference()
@@ -1850,7 +1852,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void test_updateColumn_noAuthHeadersReturnsUnauthorized(TestNamespace ns) {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("auth_required_table"), ns, adminClient);
+    CreateTable createRequest = createRequest(ns.prefix("auth_required_table"), ns);
     Table table = adminClient.tables().create(createRequest);
 
     String columnFQN = table.getFullyQualifiedName() + ".id";
@@ -1875,7 +1877,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Create a regular user
     User regularUser = UserTestFactory.createUser(ns, "regular_user");
 
-    CreateTable createRequest = createRequest(ns.prefix("desc_table"), ns, adminClient);
+    CreateTable createRequest = createRequest(ns.prefix("desc_table"), ns);
     Table table = adminClient.tables().create(createRequest);
 
     String columnFQN = table.getFullyQualifiedName() + ".id";
@@ -1900,7 +1902,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     User owner = UserTestFactory.createUser(ns, "display_owner");
     User nonOwner = UserTestFactory.createUser(ns, "display_nonowner");
 
-    CreateTable createRequest = createRequest(ns.prefix("display_name_table"), ns, adminClient);
+    CreateTable createRequest = createRequest(ns.prefix("display_name_table"), ns);
     createRequest.setOwners(
         java.util.List.of(
             new EntityReference()
@@ -1934,7 +1936,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create table without tableType
-    CreateTable createRequest = createRequest(ns.prefix("patch_fqn_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("patch_fqn_table"), ns);
     createRequest.setTableType(null);
     Table table = client.tables().create(createRequest);
 
@@ -1960,7 +1962,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void patch_usingFqn_tableColumns_200_ok(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("patch_columns_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("patch_columns_table"), ns);
     Table table = client.tables().create(createRequest);
 
     // Patch to update column description
@@ -1983,7 +1985,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void patch_withChangeSource(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("change_source_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("change_source_table"), ns);
     Table table = client.tables().create(createRequest);
 
     // Patch with manual change source
@@ -2025,7 +2027,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     CreateTable createRequest =
-        createRequest(ns.prefix("domain_table"), ns, client)
+        createRequest(ns.prefix("domain_table"), ns)
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDomains(java.util.List.of(domain.getFullyQualifiedName()));
 
@@ -2099,7 +2101,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Tag tag = client.tags().create(createTag);
 
     // Create table
-    CreateTable createRequest = createRequest(ns.prefix("tagged_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("tagged_table"), ns);
     Table table = client.tables().create(createRequest);
 
     // Add tag to column
@@ -2128,7 +2130,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void test_columnWithInvalidTag(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("invalid_tag_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("invalid_tag_table"), ns);
     Table table = client.tables().create(createRequest);
 
     // Try to add non-existent tag
@@ -2173,7 +2175,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Tag tag2 = client.tags().create(createTag2);
 
     // Create table
-    CreateTable createRequest = createRequest(ns.prefix("multi_tag_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("multi_tag_table"), ns);
     Table table = client.tables().create(createRequest);
 
     // Add multiple tags to column
@@ -2208,7 +2210,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void test_tableWithTestSuite(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable createRequest = createRequest(ns.prefix("test_suite_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("test_suite_table"), ns);
     Table table = client.tables().create(createRequest);
 
     // Create test suite
@@ -2288,7 +2290,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Create 5 tables
     List<Table> tables = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      CreateTable req = createRequest(ns.prefix("page_table_" + i), ns, client);
+      CreateTable req = createRequest(ns.prefix("page_table_" + i), ns);
       tables.add(client.tables().create(req));
     }
 
@@ -2310,14 +2312,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Create 3 tables with owner
     for (int i = 0; i < 3; i++) {
-      CreateTable req = createRequest(ns.prefix("bulk_table_" + i), ns, client);
+      CreateTable req = createRequest(ns.prefix("bulk_table_" + i), ns);
       req.setOwners(
           List.of(
               new EntityReference()
                   .withId(owner.getId())
                   .withType("user")
                   .withName(owner.getName())));
-      client.tables().create(req);
+      SdkClients.adminClient().tables().create(req);
     }
 
     // List with owners field
@@ -2337,10 +2339,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create upstream and downstream tables
-    CreateTable upstreamReq = createRequest(ns.prefix("upstream_table"), ns, client);
+    CreateTable upstreamReq = createRequest(ns.prefix("upstream_table"), ns);
     Table upstreamTable = client.tables().create(upstreamReq);
 
-    CreateTable downstreamReq = createRequest(ns.prefix("downstream_table"), ns, client);
+    CreateTable downstreamReq = createRequest(ns.prefix("downstream_table"), ns);
     Table downstreamTable = client.tables().create(downstreamReq);
 
     // Add lineage edge
@@ -2366,7 +2368,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Get lineage for upstream table
     String lineageJson =
-        client.lineage().getEntityLineage("table", upstreamTable.getId().toString(), "1", "1");
+        SdkClients.adminClient()
+            .lineage()
+            .getEntityLineage("table", upstreamTable.getId().toString(), "1", "1");
 
     assertNotNull(lineageJson);
     assertTrue(lineageJson.contains(downstreamTable.getId().toString()));
@@ -2377,11 +2381,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create source table
-    CreateTable sourceReq = createRequest(ns.prefix("source_table"), ns, client);
+    CreateTable sourceReq = createRequest(ns.prefix("source_table"), ns);
     Table sourceTable = client.tables().create(sourceReq);
 
     // Create target table
-    CreateTable targetReq = createRequest(ns.prefix("target_table"), ns, client);
+    CreateTable targetReq = createRequest(ns.prefix("target_table"), ns);
     Table targetTable = client.tables().create(targetReq);
 
     // Add column-level lineage
@@ -2421,7 +2425,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Get lineage to verify
     String lineageJson =
-        client.lineage().getEntityLineage("table", sourceTable.getId().toString(), "1", "1");
+        SdkClients.adminClient()
+            .lineage()
+            .getEntityLineage("table", sourceTable.getId().toString(), "1", "1");
 
     assertNotNull(lineageJson);
     assertTrue(lineageJson.contains("columnsLineage"));
@@ -2436,7 +2442,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create table
-    CreateTable req = createRequest(ns.prefix("sample_data_table"), ns, client);
+    CreateTable req = createRequest(ns.prefix("sample_data_table"), ns);
     Table table = client.tables().create(req);
 
     // Add sample data
@@ -2476,7 +2482,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Tag tag = client.tags().create(createTag);
 
     // Create table
-    CreateTable req = createRequest(ns.prefix("tag_test_table"), ns, client);
+    CreateTable req = createRequest(ns.prefix("tag_test_table"), ns);
     Table table = client.tables().create(req);
 
     // Add tag to column via patch
@@ -2516,7 +2522,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Tag tag = client.tags().create(createTag);
 
     // Create table
-    CreateTable req = createRequest(ns.prefix("fqn_tag_table"), ns, client);
+    CreateTable req = createRequest(ns.prefix("fqn_tag_table"), ns);
     Table table = client.tables().create(req);
 
     // Update using FQN (get by name, then update by ID)
@@ -2544,7 +2550,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void test_getTableColumnsByFQN_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable req = createRequest(ns.prefix("fqn_column_table"), ns, client);
+    CreateTable req = createRequest(ns.prefix("fqn_column_table"), ns);
     Table table = client.tables().create(req);
 
     // Get columns by table FQN
@@ -2585,7 +2591,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Tag tag = adminClient.tags().create(createTag);
 
     // Create table
-    CreateTable req = createRequest(ns.prefix("steward_table"), ns, adminClient);
+    CreateTable req = createRequest(ns.prefix("steward_table"), ns);
     Table table = adminClient.tables().create(req);
 
     String columnFQN = table.getFullyQualifiedName() + ".id";
@@ -2618,7 +2624,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     User dataConsumer = UserTestFactory.createUser(ns, "data_consumer");
 
     // Create table
-    CreateTable req = createRequest(ns.prefix("consumer_table"), ns, adminClient);
+    CreateTable req = createRequest(ns.prefix("consumer_table"), ns);
     Table table = adminClient.tables().create(req);
 
     String columnFQN = table.getFullyQualifiedName() + ".id";
@@ -2653,7 +2659,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     User nonOwner = UserTestFactory.createUser(ns, "non_owner");
 
     // Create table with owner
-    CreateTable req = createRequest(ns.prefix("constraint_table"), ns, adminClient);
+    CreateTable req = createRequest(ns.prefix("constraint_table"), ns);
     req.setOwners(
         List.of(
             new EntityReference()
@@ -2705,7 +2711,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             .withTagFQN(tag.getFullyQualifiedName())
             .withSource(TagLabel.TagSource.CLASSIFICATION);
 
-    CreateTable req = createRequest(ns.prefix("sdk_tag_table"), ns, client);
+    CreateTable req = createRequest(ns.prefix("sdk_tag_table"), ns);
     List<Column> columns = new ArrayList<>(req.getColumns());
     columns.get(0).setTags(List.of(tagLabel));
     req.setColumns(columns);
@@ -2741,8 +2747,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Create multiple tables
     for (int i = 0; i < 3; i++) {
-      CreateTable req = createRequest(ns.prefix("inherit_table_" + i), ns, client);
-      client.tables().create(req);
+      CreateTable req = createRequest(ns.prefix("inherit_table_" + i), ns);
+      SdkClients.adminClient().tables().create(req);
     }
 
     // List tables with pagination
@@ -2811,7 +2817,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create table
-    CreateTable req = createRequest(ns.prefix("concurrent_table"), ns, client);
+    CreateTable req = createRequest(ns.prefix("concurrent_table"), ns);
     Table table = client.tables().create(req);
 
     // Get base state
@@ -2834,7 +2840,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                 Column col = tableA.getColumns().get(0);
                 col.setDescription("Description A");
                 tableA.setColumns(List.of(col, tableA.getColumns().get(1)));
-                client.tables().update(tableA.getId().toString(), tableA);
+                SdkClients.adminClient().tables().update(tableA.getId().toString(), tableA);
               } catch (Exception e) {
                 errorRef.set(e);
               } finally {
@@ -2853,7 +2859,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                 Column col = tableB.getColumns().get(0);
                 col.setDisplayName("Display Name B");
                 tableB.setColumns(List.of(col, tableB.getColumns().get(1)));
-                client.tables().update(tableB.getId().toString(), tableB);
+                SdkClients.adminClient().tables().update(tableB.getId().toString(), tableB);
               } catch (Exception e) {
                 errorRef.set(e);
               } finally {
@@ -2951,7 +2957,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             .withTagFQN(tag.getFullyQualifiedName())
             .withSource(TagLabel.TagSource.CLASSIFICATION);
 
-    CreateTable req = createRequest(ns.prefix("field_table"), ns, client);
+    CreateTable req = createRequest(ns.prefix("field_table"), ns);
     req.setOwners(
         List.of(
             new EntityReference()
@@ -2960,7 +2966,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                 .withName(owner.getName())));
     req.setTags(List.of(tableTag));
 
-    client.tables().create(req);
+    SdkClients.adminClient().tables().create(req);
 
     // List with different fields
     ListParams paramsWithOwners = new ListParams().setLimit(10).setFields("owners");
@@ -3014,7 +3020,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                 List.of(
                     new TestCaseParameterValue().withName("minValue").withValue("1"),
                     new TestCaseParameterValue().withName("maxValue").withValue("100")));
-    client.testCases().create(createTestCase);
+    SdkClients.adminClient().testCases().create(createTestCase);
 
     // List tables (test cases linked via entity link)
     ListParams params = new ListParams().setLimit(10);
@@ -3028,14 +3034,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Create multiple tables with test suites
     for (int i = 0; i < 2; i++) {
-      CreateTable req = createRequest(ns.prefix("suite_table_" + i), ns, client);
+      CreateTable req = createRequest(ns.prefix("suite_table_" + i), ns);
       Table table = client.tables().create(req);
 
       CreateTestSuite createTestSuite =
           new CreateTestSuite()
               .withName(ns.prefix("suite_" + i))
               .withExecutableEntityReference(table.getFullyQualifiedName());
-      client.testSuites().create(createTestSuite);
+      SdkClients.adminClient().testSuites().create(createTestSuite);
     }
 
     // List tables
@@ -3081,7 +3087,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Tag t2 = client.tags().create(tag2);
 
     // Create table
-    CreateTable req = createRequest(ns.prefix("multi_tag_table"), ns, client);
+    CreateTable req = createRequest(ns.prefix("multi_tag_table"), ns);
     Table table = client.tables().create(req);
 
     // Add multiple tags to column
@@ -3132,7 +3138,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Tag t2 = client.tags().create(tag2);
 
     // Create table
-    CreateTable req = createRequest(ns.prefix("exclusive_table"), ns, client);
+    CreateTable req = createRequest(ns.prefix("exclusive_table"), ns);
     Table table = client.tables().create(req);
 
     // Add first tag
@@ -3155,7 +3161,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               .withSource(TagLabel.TagSource.CLASSIFICATION);
       col.setTags(List.of(tagLabel1, tagLabel2)); // Both tags
       fetched.setColumns(Arrays.asList(col, fetched.getColumns().get(1)));
-      client.tables().update(fetched.getId().toString(), fetched);
+      SdkClients.adminClient().tables().update(fetched.getId().toString(), fetched);
       // If it succeeds, mutually exclusive constraint not enforced or tags replaced
     } catch (Exception e) {
       // Expected if mutually exclusive is enforced
@@ -3172,7 +3178,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_tableDataModel(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateTable req = createRequest(ns.prefix("datamodel_table"), ns, client);
+    CreateTable req = createRequest(ns.prefix("datamodel_table"), ns);
     Table table = client.tables().create(req);
 
     // Add data model
@@ -3195,21 +3201,21 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create tables with and without descriptions
-    CreateTable withNullDesc = createRequest(ns.prefix("null_desc_table"), ns, client);
+    CreateTable withNullDesc = createRequest(ns.prefix("null_desc_table"), ns);
     withNullDesc.setDescription(null);
     List<Column> cols1 = new ArrayList<>(withNullDesc.getColumns());
     cols1.get(0).setDescription(null);
     withNullDesc.setColumns(cols1);
     Table tableNullDesc = client.tables().create(withNullDesc);
 
-    CreateTable withEmptyDesc = createRequest(ns.prefix("empty_desc_table"), ns, client);
+    CreateTable withEmptyDesc = createRequest(ns.prefix("empty_desc_table"), ns);
     withEmptyDesc.setDescription("");
     List<Column> cols2 = new ArrayList<>(withEmptyDesc.getColumns());
     cols2.get(0).setDescription("");
     withEmptyDesc.setColumns(cols2);
     Table tableEmptyDesc = client.tables().create(withEmptyDesc);
 
-    CreateTable withDesc = createRequest(ns.prefix("with_desc_table"), ns, client);
+    CreateTable withDesc = createRequest(ns.prefix("with_desc_table"), ns);
     withDesc.setDescription("FooBar description");
     List<Column> cols3 = new ArrayList<>(withDesc.getColumns());
     cols3.get(0).setDescription("Column description");
@@ -3266,7 +3272,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create table with searchable column names and descriptions
-    CreateTable req = createRequest(ns.prefix("searchable_table"), ns, client);
+    CreateTable req = createRequest(ns.prefix("searchable_table"), ns);
 
     List<Column> columns = new ArrayList<>();
     columns.add(
@@ -3378,7 +3384,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
       // Verify service has both domains
       DatabaseService fetchedService =
-          client.databaseServices().get(service.getId().toString(), "domains");
+          SdkClients.adminClient().databaseServices().get(service.getId().toString(), "domains");
       assertNotNull(fetchedService.getDomains());
       assertEquals(2, fetchedService.getDomains().size());
 
@@ -3410,7 +3416,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
       // Verify schema inherited both domains
       DatabaseSchema fetchedSchema =
-          client.databaseSchemas().get(schema.getId().toString(), "domains");
+          SdkClients.adminClient().databaseSchemas().get(schema.getId().toString(), "domains");
       assertNotNull(fetchedSchema.getDomains());
       assertEquals(
           2, fetchedSchema.getDomains().size(), "Schema should inherit 2 domains from database");
@@ -3499,7 +3505,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create table with simple column
-    CreateTable createRequest = createRequest(ns.prefix("csv_invalid_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("csv_invalid_table"), ns);
     List<Column> columns = new ArrayList<>();
     columns.add(ColumnBuilder.of("c1", "INT").build());
     createRequest.setColumns(columns);
@@ -3562,7 +3568,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Column c2 = ColumnBuilder.of("c2", "INT").build();
     Column c3 = ColumnBuilder.of("c3", "BIGINT").build();
 
-    CreateTable createRequest = createRequest(ns.prefix("csv_export_table"), ns, client);
+    CreateTable createRequest = createRequest(ns.prefix("csv_export_table"), ns);
     createRequest.setColumns(List.of(c1, c2, c3));
     createRequest.setTableConstraints(null);
 
@@ -3656,7 +3662,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Tag sensitive = adminClient.tags().create(sensitiveTag);
 
     // Create table with owner and column tagged with PII.Sensitive
-    CreateTable createRequest = createRequest(ns.prefix("pii_sample_table"), ns, adminClient);
+    CreateTable createRequest = createRequest(ns.prefix("pii_sample_table"), ns);
     createRequest.setOwners(
         List.of(
             new EntityReference()
@@ -3735,7 +3741,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Tag sensitive = adminClient.tags().create(sensitiveTag);
 
     // Create table with PII-tagged column
-    CreateTable createRequest = createRequest(ns.prefix("pii_profile_table"), ns, adminClient);
+    CreateTable createRequest = createRequest(ns.prefix("pii_profile_table"), ns);
     createRequest.setOwners(
         List.of(
             new EntityReference()
@@ -3814,7 +3820,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Tag sensitive = adminClient.tags().create(sensitiveTag);
 
     // Create table with PII-tagged column
-    CreateTable createRequest = createRequest(ns.prefix("pii_get_columns_table"), ns, adminClient);
+    CreateTable createRequest = createRequest(ns.prefix("pii_get_columns_table"), ns);
     createRequest.setOwners(
         List.of(
             new EntityReference()
@@ -3877,23 +3883,23 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // ===================================================================
 
   @Override
-  protected ListResponse<Table> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.tables().list(params);
+  protected ListResponse<Table> listEntities(ListParams params) {
+    return SdkClients.adminClient().tables().list(params);
   }
 
   @Override
-  protected Table getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.tables().get(id, fields);
+  protected Table getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().tables().get(id, fields);
   }
 
   @Override
-  protected Table getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.tables().getByName(fqn, fields);
+  protected Table getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().tables().getByName(fqn, fields);
   }
 
   @Override
-  protected Table getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.tables().get(id, "owners,tags,columns", "deleted");
+  protected Table getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().tables().get(id, "owners,tags,columns", "deleted");
   }
 
   // ===================================================================
@@ -3966,12 +3972,12 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // ===================================================================
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.tables().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().tables().getVersionList(id);
   }
 
   @Override
-  protected Table getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.tables().getVersion(id.toString(), version);
+  protected Table getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().tables().getVersion(id.toString(), version);
   }
 }

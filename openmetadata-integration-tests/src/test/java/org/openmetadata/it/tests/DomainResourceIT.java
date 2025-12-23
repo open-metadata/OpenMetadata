@@ -53,7 +53,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   }
 
   @Override
-  protected CreateDomain createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateDomain createMinimalRequest(TestNamespace ns) {
     return new CreateDomain()
         .withName(ns.prefix("domain"))
         .withDomainType(DomainType.AGGREGATE)
@@ -61,7 +61,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   }
 
   @Override
-  protected CreateDomain createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateDomain createRequest(String name, TestNamespace ns) {
     return new CreateDomain()
         .withName(name)
         .withDomainType(DomainType.AGGREGATE)
@@ -69,38 +69,40 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   }
 
   @Override
-  protected Domain createEntity(CreateDomain createRequest, OpenMetadataClient client) {
-    return client.domains().create(createRequest);
+  protected Domain createEntity(CreateDomain createRequest) {
+    return SdkClients.adminClient().domains().create(createRequest);
   }
 
   @Override
-  protected Domain getEntity(String id, OpenMetadataClient client) {
-    return client.domains().get(id);
+  protected Domain getEntity(String id) {
+    return SdkClients.adminClient().domains().get(id);
   }
 
   @Override
-  protected Domain getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.domains().getByName(fqn);
+  protected Domain getEntityByName(String fqn) {
+    return SdkClients.adminClient().domains().getByName(fqn);
   }
 
   @Override
-  protected Domain patchEntity(String id, Domain entity, OpenMetadataClient client) {
-    return client.domains().update(id, entity);
+  protected Domain patchEntity(String id, Domain entity) {
+    return SdkClients.adminClient().domains().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.domains().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().domains().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.domains().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().domains().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
-    client.domains().delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
+  protected void hardDeleteEntity(String id) {
+    SdkClients.adminClient()
+        .domains()
+        .delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
   }
 
   @Override
@@ -118,23 +120,23 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   }
 
   @Override
-  protected Domain getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.domains().get(id, fields);
+  protected Domain getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().domains().get(id, fields);
   }
 
   @Override
-  protected Domain getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.domains().getByName(fqn, fields);
+  protected Domain getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().domains().getByName(fqn, fields);
   }
 
   @Override
-  protected Domain getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.domains().get(id, null, "deleted");
+  protected Domain getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().domains().get(id, null, "deleted");
   }
 
   @Override
-  protected ListResponse<Domain> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.domains().list(params);
+  protected ListResponse<Domain> listEntities(ListParams params) {
+    return SdkClients.adminClient().domains().list(params);
   }
 
   // ===================================================================
@@ -156,7 +158,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
               .withDomainType(type)
               .withDescription("Domain of type " + type.value());
 
-      Domain domain = createEntity(create, client);
+      Domain domain = createEntity(create);
       assertEquals(type, domain.getDomainType());
     }
   }
@@ -171,7 +173,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .withDomainType(DomainType.AGGREGATE)
             .withDescription("Parent domain");
 
-    Domain parent = createEntity(createParent, client);
+    Domain parent = createEntity(createParent);
 
     CreateDomain createChild =
         new CreateDomain()
@@ -180,7 +182,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .withParent(parent.getFullyQualifiedName())
             .withDescription("Sub domain");
 
-    Domain child = createEntity(createChild, client);
+    Domain child = createEntity(createChild);
     assertNotNull(child.getParent());
     assertEquals(parent.getId(), child.getParent().getId());
   }
@@ -198,7 +200,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .withExperts(List.of(expertFqn))
             .withDescription("Domain with experts");
 
-    Domain domain = createEntity(create, client);
+    Domain domain = createEntity(create);
 
     Domain fetched = client.domains().get(domain.getId().toString(), "experts");
     assertNotNull(fetched.getExperts());
@@ -218,7 +220,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .withOwners(List.of(ownerRef))
             .withDescription("Domain with owner");
 
-    Domain domain = createEntity(create, client);
+    Domain domain = createEntity(create);
 
     Domain fetched = client.domains().get(domain.getId().toString(), "owners");
     assertNotNull(fetched.getOwners());
@@ -235,11 +237,11 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .withDomainType(DomainType.AGGREGATE)
             .withDescription("Domain for type update");
 
-    Domain domain = createEntity(create, client);
+    Domain domain = createEntity(create);
     assertEquals(DomainType.AGGREGATE, domain.getDomainType());
 
     domain.setDomainType(DomainType.SOURCE_ALIGNED);
-    Domain updated = patchEntity(domain.getId().toString(), domain, client);
+    Domain updated = patchEntity(domain.getId().toString(), domain);
 
     assertEquals(DomainType.SOURCE_ALIGNED, updated.getDomainType());
   }
@@ -248,11 +250,11 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   void test_updateDomainDescription(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateDomain create = createMinimalRequest(ns, client);
-    Domain domain = createEntity(create, client);
+    CreateDomain create = createMinimalRequest(ns);
+    Domain domain = createEntity(create);
 
     domain.setDescription("Updated domain description");
-    Domain updated = patchEntity(domain.getId().toString(), domain, client);
+    Domain updated = patchEntity(domain.getId().toString(), domain);
 
     assertEquals("Updated domain description", updated.getDescription());
   }
@@ -261,11 +263,11 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   void test_updateDomainDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateDomain create = createMinimalRequest(ns, client);
-    Domain domain = createEntity(create, client);
+    CreateDomain create = createMinimalRequest(ns);
+    Domain domain = createEntity(create);
 
     domain.setDisplayName("My Updated Domain");
-    Domain updated = patchEntity(domain.getId().toString(), domain, client);
+    Domain updated = patchEntity(domain.getId().toString(), domain);
 
     assertEquals("My Updated Domain", updated.getDisplayName());
   }
@@ -274,14 +276,14 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   void test_addExpertsToDomain(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateDomain create = createMinimalRequest(ns, client);
-    Domain domain = createEntity(create, client);
+    CreateDomain create = createMinimalRequest(ns);
+    Domain domain = createEntity(create);
 
     Domain fetched = client.domains().get(domain.getId().toString(), "experts");
     EntityReference expertRef = testUser1().getEntityReference();
     fetched.setExperts(List.of(expertRef));
 
-    Domain updated = patchEntity(fetched.getId().toString(), fetched, client);
+    Domain updated = patchEntity(fetched.getId().toString(), fetched);
 
     Domain verify = client.domains().get(updated.getId().toString(), "experts");
     assertNotNull(verify.getExperts());
@@ -292,28 +294,26 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   void test_hardDeleteDomain(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateDomain create = createMinimalRequest(ns, client);
-    Domain domain = createEntity(create, client);
+    CreateDomain create = createMinimalRequest(ns);
+    Domain domain = createEntity(create);
     String domainId = domain.getId().toString();
 
-    hardDeleteEntity(domainId, client);
+    hardDeleteEntity(domainId);
 
     assertThrows(
-        Exception.class,
-        () -> getEntity(domainId, client),
-        "Deleted domain should not be retrievable");
+        Exception.class, () -> getEntity(domainId), "Deleted domain should not be retrievable");
   }
 
   @Test
   void test_domainVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateDomain create = createMinimalRequest(ns, client);
-    Domain domain = createEntity(create, client);
+    CreateDomain create = createMinimalRequest(ns);
+    Domain domain = createEntity(create);
     assertEquals(0.1, domain.getVersion(), 0.001);
 
     domain.setDescription("Updated description v1");
-    Domain v2 = patchEntity(domain.getId().toString(), domain, client);
+    Domain v2 = patchEntity(domain.getId().toString(), domain);
     assertEquals(0.2, v2.getVersion(), 0.001);
 
     var history = client.domains().getVersionList(domain.getId());
@@ -332,12 +332,12 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
               .withName(ns.prefix("listDomain" + i))
               .withDomainType(DomainType.AGGREGATE)
               .withDescription("Domain for list test");
-      createEntity(create, client);
+      createEntity(create);
     }
 
     ListParams params = new ListParams();
     params.setLimit(100);
-    ListResponse<Domain> response = listEntities(params, client);
+    ListResponse<Domain> response = listEntities(params);
 
     assertNotNull(response);
     assertNotNull(response.getData());
@@ -354,7 +354,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .withDomainType(DomainType.AGGREGATE)
             .withDescription("Parent domain");
 
-    Domain parent = createEntity(createParent, client);
+    Domain parent = createEntity(createParent);
 
     CreateDomain createChild1 =
         new CreateDomain()
@@ -363,7 +363,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .withParent(parent.getFullyQualifiedName())
             .withDescription("Child domain 1");
 
-    Domain child1 = createEntity(createChild1, client);
+    Domain child1 = createEntity(createChild1);
 
     CreateDomain createChild2 =
         new CreateDomain()
@@ -372,7 +372,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .withParent(parent.getFullyQualifiedName())
             .withDescription("Child domain 2");
 
-    Domain child2 = createEntity(createChild2, client);
+    Domain child2 = createEntity(createChild2);
 
     Domain fetchedParent = client.domains().get(parent.getId().toString(), "children");
     assertNotNull(fetchedParent.getChildren());
@@ -389,7 +389,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .withDomainType(DomainType.AGGREGATE)
             .withDescription("Parent domain to delete");
 
-    Domain parent = createEntity(createParent, client);
+    Domain parent = createEntity(createParent);
 
     CreateDomain createChild =
         new CreateDomain()
@@ -398,19 +398,16 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
             .withParent(parent.getFullyQualifiedName())
             .withDescription("Child domain to delete");
 
-    Domain child = createEntity(createChild, client);
+    Domain child = createEntity(createChild);
 
-    hardDeleteEntity(parent.getId().toString(), client);
+    hardDeleteEntity(parent.getId().toString());
 
     String parentId = parent.getId().toString();
-    assertThrows(
-        Exception.class, () -> getEntity(parentId, client), "Parent domain should be deleted");
+    assertThrows(Exception.class, () -> getEntity(parentId), "Parent domain should be deleted");
 
     String childId = child.getId().toString();
     assertThrows(
-        Exception.class,
-        () -> getEntity(childId, client),
-        "Child domain should be cascade deleted");
+        Exception.class, () -> getEntity(childId), "Child domain should be cascade deleted");
   }
 
   // ===================================================================
@@ -418,12 +415,12 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
   // ===================================================================
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.domains().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().domains().getVersionList(id);
   }
 
   @Override
-  protected Domain getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.domains().getVersion(id.toString(), version);
+  protected Domain getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().domains().getVersion(id.toString(), version);
   }
 }

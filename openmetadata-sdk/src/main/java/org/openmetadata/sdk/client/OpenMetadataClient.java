@@ -10,6 +10,7 @@ import org.openmetadata.sdk.network.OpenMetadataHttpClient;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.apiservice.APICollectionService;
 import org.openmetadata.sdk.services.apiservice.APIEndpointService;
+import org.openmetadata.sdk.services.automations.WorkflowService;
 import org.openmetadata.sdk.services.bots.BotService;
 import org.openmetadata.sdk.services.bulk.BulkAPI;
 import org.openmetadata.sdk.services.classification.ClassificationService;
@@ -28,6 +29,7 @@ import org.openmetadata.sdk.services.dataassets.TopicService;
 import org.openmetadata.sdk.services.databases.DatabaseSchemaService;
 import org.openmetadata.sdk.services.databases.DatabaseService;
 import org.openmetadata.sdk.services.databases.StoredProcedureService;
+import org.openmetadata.sdk.services.datacontracts.DataContractService;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
 import org.openmetadata.sdk.services.events.ChangeEventService;
@@ -124,6 +126,9 @@ public class OpenMetadataClient {
   private final TestSuiteService testSuites;
   private final TestDefinitionService testDefinitions;
 
+  // Data Contracts
+  private final DataContractService dataContracts;
+
   // API Services
   private final APICollectionService apiCollections;
   private final APIEndpointService apiEndpoints;
@@ -141,6 +146,9 @@ public class OpenMetadataClient {
 
   // Ingestion
   private final IngestionPipelineService ingestionPipelines;
+
+  // Automations
+  private final WorkflowService workflows;
 
   public OpenMetadataClient(OpenMetadataConfig config) {
     this.config = config;
@@ -208,6 +216,9 @@ public class OpenMetadataClient {
     this.testSuites = new TestSuiteService(httpClient);
     this.testDefinitions = new TestDefinitionService(httpClient);
 
+    // Initialize data contract services
+    this.dataContracts = new DataContractService(httpClient);
+
     // Initialize API services
     this.apiCollections = new APICollectionService(httpClient);
     this.apiEndpoints = new APIEndpointService(httpClient);
@@ -225,6 +236,9 @@ public class OpenMetadataClient {
 
     // Initialize ingestion services
     this.ingestionPipelines = new IngestionPipelineService(httpClient);
+
+    // Initialize automation services
+    this.workflows = new WorkflowService(httpClient);
   }
 
   public OpenMetadataConfig getConfig() {
@@ -391,6 +405,11 @@ public class OpenMetadataClient {
     return testDefinitions;
   }
 
+  // Data Contract Service Getters
+  public DataContractService dataContracts() {
+    return dataContracts;
+  }
+
   // API Service Getters
   public APICollectionService apiCollections() {
     return apiCollections;
@@ -440,6 +459,10 @@ public class OpenMetadataClient {
   // Ingestion Service Getters
   public IngestionPipelineService ingestionPipelines() {
     return ingestionPipelines;
+  }
+
+  public WorkflowService workflows() {
+    return workflows;
   }
 
   /**

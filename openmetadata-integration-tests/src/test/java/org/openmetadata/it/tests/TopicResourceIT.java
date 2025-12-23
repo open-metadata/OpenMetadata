@@ -41,8 +41,8 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   // ===================================================================
 
   @Override
-  protected CreateTopic createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+  protected CreateTopic createMinimalRequest(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     request.setName(ns.prefix("topic"));
@@ -54,8 +54,8 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   }
 
   @Override
-  protected CreateTopic createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+  protected CreateTopic createRequest(String name, TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     request.setName(name);
@@ -66,40 +66,40 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   }
 
   @Override
-  protected Topic createEntity(CreateTopic createRequest, OpenMetadataClient client) {
-    return client.topics().create(createRequest);
+  protected Topic createEntity(CreateTopic createRequest) {
+    return SdkClients.adminClient().topics().create(createRequest);
   }
 
   @Override
-  protected Topic getEntity(String id, OpenMetadataClient client) {
-    return client.topics().get(id);
+  protected Topic getEntity(String id) {
+    return SdkClients.adminClient().topics().get(id);
   }
 
   @Override
-  protected Topic getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.topics().getByName(fqn);
+  protected Topic getEntityByName(String fqn) {
+    return SdkClients.adminClient().topics().getByName(fqn);
   }
 
   @Override
-  protected Topic patchEntity(String id, Topic entity, OpenMetadataClient client) {
-    return client.topics().update(id, entity);
+  protected Topic patchEntity(String id, Topic entity) {
+    return SdkClients.adminClient().topics().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.topics().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().topics().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.topics().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().topics().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     java.util.Map<String, String> params = new java.util.HashMap<>();
     params.put("hardDelete", "true");
-    client.topics().delete(id, params);
+    SdkClients.adminClient().topics().delete(id, params);
   }
 
   @Override
@@ -122,33 +122,33 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   }
 
   @Override
-  protected ListResponse<Topic> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.topics().list(params);
+  protected ListResponse<Topic> listEntities(ListParams params) {
+    return SdkClients.adminClient().topics().list(params);
   }
 
   @Override
-  protected Topic getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.topics().get(id, fields);
+  protected Topic getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().topics().get(id, fields);
   }
 
   @Override
-  protected Topic getEntityByNameWithFields(String fqn, String fields, OpenMetadataClient client) {
-    return client.topics().getByName(fqn, fields);
+  protected Topic getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().topics().getByName(fqn, fields);
   }
 
   @Override
-  protected Topic getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.topics().get(id, null, "deleted");
+  protected Topic getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().topics().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.topics().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().topics().getVersionList(id);
   }
 
   @Override
-  protected Topic getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.topics().getVersion(id.toString(), version);
+  protected Topic getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().topics().getVersion(id.toString(), version);
   }
 
   // ===================================================================
@@ -158,7 +158,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Test
   void post_topicWithoutRequiredFields_4xx(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     // Service is required field - test without service
     CreateTopic request1 = new CreateTopic();
@@ -167,7 +167,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request1, client),
+        () -> createEntity(request1),
         "Creating topic without service should fail");
 
     // Partitions is required field
@@ -177,14 +177,14 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request2, client),
+        () -> createEntity(request2),
         "Creating topic without partitions should fail");
   }
 
   @Test
   void post_topicWithValidPartitions_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     request.setName(ns.prefix("topic_with_partitions"));
@@ -193,7 +193,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setReplicationFactor(3);
     request.setRetentionTime(86400.0);
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
     assertNotNull(topic);
     assertEquals(10, topic.getPartitions());
     assertEquals(3, topic.getReplicationFactor());
@@ -203,7 +203,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Test
   void post_topicWithMessageSchema_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     String schemaText =
         "{\"namespace\":\"org.test\",\"name\":\"TestRecord\",\"type\":\"record\","
@@ -226,7 +226,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setPartitions(1);
     request.setMessageSchema(schema);
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
     assertNotNull(topic);
     assertNotNull(topic.getMessageSchema());
     assertEquals(SchemaType.Avro, topic.getMessageSchema().getSchemaType());
@@ -236,7 +236,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Test
   void post_topicWithCleanupPolicies_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     request.setName(ns.prefix("topic_with_cleanup"));
@@ -244,7 +244,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setPartitions(1);
     request.setCleanupPolicies(List.of(CleanupPolicy.COMPACT, CleanupPolicy.DELETE));
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
     assertNotNull(topic);
     assertNotNull(topic.getCleanupPolicies());
     assertEquals(2, topic.getCleanupPolicies().size());
@@ -255,7 +255,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Test
   void put_topicAttributes_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     // Create topic with initial values
     CreateTopic request = new CreateTopic();
@@ -266,7 +266,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setRetentionTime(3600.0);
     request.setMaximumMessageSize(1048576);
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
     assertNotNull(topic);
 
     // Update attributes
@@ -275,7 +275,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     topic.setRetentionTime(86400.0);
     topic.setMaximumMessageSize(2097152);
 
-    Topic updated = patchEntity(topic.getId().toString(), topic, client);
+    Topic updated = patchEntity(topic.getId().toString(), topic);
     assertNotNull(updated);
     assertEquals(4, updated.getPartitions());
     assertEquals(3, updated.getReplicationFactor());
@@ -286,14 +286,14 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Test
   void put_topicSampleData_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     request.setName(ns.prefix("topic_sample_data"));
     request.setService(service.getFullyQualifiedName());
     request.setPartitions(1);
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
     assertNotNull(topic);
 
     // Add sample data
@@ -305,7 +305,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     TopicSampleData sampleData = new TopicSampleData().withMessages(messages);
 
     topic.setSampleData(sampleData);
-    Topic updated = patchEntity(topic.getId().toString(), topic, client);
+    Topic updated = patchEntity(topic.getId().toString(), topic);
 
     // Verify sample data was set (may need to fetch with fields)
     assertNotNull(updated);
@@ -316,7 +316,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a messaging service
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     // Create a topic under the service
     CreateTopic request = new CreateTopic();
@@ -324,7 +324,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setService(service.getFullyQualifiedName());
     request.setPartitions(1);
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
     assertNotNull(topic);
     assertNotNull(topic.getService());
     assertEquals(service.getFullyQualifiedName(), topic.getService().getFullyQualifiedName());
@@ -342,14 +342,14 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
     assertThrows(
         Exception.class,
-        () -> createEntity(request, client),
+        () -> createEntity(request),
         "Creating topic with non-existent service should fail");
   }
 
   @Test
   void list_topicsByService(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     // Create multiple topics under the same service
     for (int i = 0; i < 5; i++) {
@@ -357,7 +357,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
       request.setName(ns.prefix("topic_list_" + i));
       request.setService(service.getFullyQualifiedName());
       request.setPartitions(1);
-      createEntity(request, client);
+      createEntity(request);
     }
 
     // List topics by service
@@ -365,7 +365,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     params.setLimit(100);
     params.setService(service.getFullyQualifiedName());
 
-    ListResponse<Topic> response = listEntities(params, client);
+    ListResponse<Topic> response = listEntities(params);
     assertNotNull(response.getData());
     assertTrue(response.getData().size() >= 5);
 
@@ -378,7 +378,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Test
   void test_topicVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     request.setName(ns.prefix("topic_versions"));
@@ -386,12 +386,12 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setPartitions(1);
     request.setDescription("Version 1");
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
     Double v1 = topic.getVersion();
 
     // Update description
     topic.setDescription("Version 2");
-    Topic v2Topic = patchEntity(topic.getId().toString(), topic, client);
+    Topic v2Topic = patchEntity(topic.getId().toString(), topic);
     assertTrue(v2Topic.getVersion() > v1);
 
     // Get version history
@@ -404,7 +404,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Test
   void test_topicWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     request.setName(ns.prefix("topic_with_owner"));
@@ -412,7 +412,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setPartitions(1);
     request.setOwners(List.of(testUser1().getEntityReference()));
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
     assertNotNull(topic);
 
     // Verify owner
@@ -425,64 +425,62 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Test
   void test_topicSoftDeleteAndRestore(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     request.setName(ns.prefix("topic_delete_restore"));
     request.setService(service.getFullyQualifiedName());
     request.setPartitions(1);
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
     String topicId = topic.getId().toString();
 
     // Soft delete
-    deleteEntity(topicId, client);
+    deleteEntity(topicId);
 
     // Verify deleted
     assertThrows(
-        Exception.class,
-        () -> getEntity(topicId, client),
-        "Deleted topic should not be retrievable");
+        Exception.class, () -> getEntity(topicId), "Deleted topic should not be retrievable");
 
     // Get with include=deleted
-    Topic deleted = getEntityIncludeDeleted(topicId, client);
+    Topic deleted = getEntityIncludeDeleted(topicId);
     assertTrue(deleted.getDeleted());
 
     // Restore
-    restoreEntity(topicId, client);
+    restoreEntity(topicId);
 
     // Verify restored
-    Topic restored = getEntity(topicId, client);
+    Topic restored = getEntity(topicId);
     assertFalse(restored.getDeleted());
   }
 
   @Test
   void test_topicHardDelete(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     request.setName(ns.prefix("topic_hard_delete"));
     request.setService(service.getFullyQualifiedName());
     request.setPartitions(1);
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
     String topicId = topic.getId().toString();
 
     // Hard delete
-    hardDeleteEntity(topicId, client);
+    hardDeleteEntity(topicId);
 
     // Verify completely gone
     assertThrows(
         Exception.class,
-        () -> getEntityIncludeDeleted(topicId, client),
+        () -> getEntityIncludeDeleted(topicId),
         "Hard deleted topic should not be retrievable");
   }
 
   @Test
   void patch_topicAttributes_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     // Create topic with minimal attributes
     CreateTopic request = new CreateTopic();
@@ -490,23 +488,23 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setService(service.getFullyQualifiedName());
     request.setPartitions(1);
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
 
     // Patch to add retention time
     topic.setRetentionTime(172800.0);
-    Topic patched = patchEntity(topic.getId().toString(), topic, client);
+    Topic patched = patchEntity(topic.getId().toString(), topic);
     assertEquals(172800.0, patched.getRetentionTime());
 
     // Patch to update description
     patched.setDescription("Updated description");
-    Topic patched2 = patchEntity(patched.getId().toString(), patched, client);
+    Topic patched2 = patchEntity(patched.getId().toString(), patched);
     assertEquals("Updated description", patched2.getDescription());
   }
 
   @Test
   void test_listTopicsByService(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     // Create multiple topics
     for (int i = 0; i < 3; i++) {
@@ -514,13 +512,13 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
       request.setName(ns.prefix("topic_list_" + i));
       request.setService(service.getFullyQualifiedName());
       request.setPartitions(1);
-      createEntity(request, client);
+      createEntity(request);
     }
 
     // List topics
     ListParams params = new ListParams();
     params.setLimit(100);
-    ListResponse<Topic> response = listEntities(params, client);
+    ListResponse<Topic> response = listEntities(params);
     assertNotNull(response);
 
     // Verify we have at least our 3 topics
@@ -535,7 +533,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Test
   void test_topicGetByName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     request.setName(ns.prefix("topic_by_name"));
@@ -543,10 +541,10 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setPartitions(1);
     request.setDescription("Topic for getByName test");
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
 
     // Get by FQN
-    Topic fetched = getEntityByName(topic.getFullyQualifiedName(), client);
+    Topic fetched = getEntityByName(topic.getFullyQualifiedName());
     assertNotNull(fetched);
     assertEquals(topic.getId(), fetched.getId());
     assertEquals(topic.getName(), fetched.getName());
@@ -555,7 +553,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Test
   void test_topicFQNFormat(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     String topicName = ns.prefix("topic_fqn");
@@ -563,7 +561,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setService(service.getFullyQualifiedName());
     request.setPartitions(1);
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
 
     // Verify FQN format: service.topic
     String expectedFQN = service.getFullyQualifiedName() + "." + topicName;
@@ -573,7 +571,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   @Test
   void test_topicDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     CreateTopic request = new CreateTopic();
     request.setName(ns.prefix("topic_display"));
@@ -581,19 +579,19 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     request.setPartitions(1);
     request.setDisplayName("My Display Topic");
 
-    Topic topic = createEntity(request, client);
+    Topic topic = createEntity(request);
     assertEquals("My Display Topic", topic.getDisplayName());
 
     // Update display name
     topic.setDisplayName("Updated Display Name");
-    Topic updated = patchEntity(topic.getId().toString(), topic, client);
+    Topic updated = patchEntity(topic.getId().toString(), topic);
     assertEquals("Updated Display Name", updated.getDisplayName());
   }
 
   @Test
   void test_topicPagination(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    MessagingService service = MessagingServiceTestFactory.createKafka(client, ns);
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
 
     // Create multiple topics
     for (int i = 0; i < 5; i++) {
@@ -601,13 +599,13 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
       request.setName(ns.prefix("pagination_" + i));
       request.setService(service.getFullyQualifiedName());
       request.setPartitions(1);
-      createEntity(request, client);
+      createEntity(request);
     }
 
     // List with limit
     ListParams params = new ListParams();
     params.setLimit(2);
-    ListResponse<Topic> response = listEntities(params, client);
+    ListResponse<Topic> response = listEntities(params);
     assertNotNull(response);
     assertTrue(response.getData().size() <= 2);
   }

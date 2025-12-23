@@ -44,7 +44,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
   // ===================================================================
 
   @Override
-  protected CreateDatabase createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateDatabase createMinimalRequest(TestNamespace ns) {
     // Database requires a database service as parent
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
 
@@ -56,7 +56,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
   }
 
   @Override
-  protected CreateDatabase createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateDatabase createRequest(String name, TestNamespace ns) {
     // Note: This creates a new service each time, which means duplicate detection
     // only applies within the same service. For cross-service duplicates,
     // the test would need to be customized.
@@ -79,41 +79,41 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
   }
 
   @Override
-  protected Database createEntity(CreateDatabase createRequest, OpenMetadataClient client) {
-    return client.databases().create(createRequest);
+  protected Database createEntity(CreateDatabase createRequest) {
+    return SdkClients.adminClient().databases().create(createRequest);
   }
 
   @Override
-  protected Database getEntity(String id, OpenMetadataClient client) {
-    return client.databases().get(id);
+  protected Database getEntity(String id) {
+    return SdkClients.adminClient().databases().get(id);
   }
 
   @Override
-  protected Database getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.databases().getByName(fqn);
+  protected Database getEntityByName(String fqn) {
+    return SdkClients.adminClient().databases().getByName(fqn);
   }
 
   @Override
-  protected Database patchEntity(String id, Database entity, OpenMetadataClient client) {
-    return client.databases().update(id, entity);
+  protected Database patchEntity(String id, Database entity) {
+    return SdkClients.adminClient().databases().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.databases().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().databases().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.databases().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().databases().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
+  protected void hardDeleteEntity(String id) {
     // Hard delete requires hardDelete=true query parameter
     Map<String, String> params = new HashMap<>();
     params.put("hardDelete", "true");
-    client.databases().delete(id, params);
+    SdkClients.adminClient().databases().delete(id, params);
   }
 
   @Override
@@ -155,7 +155,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     // Create first database
     CreateDatabase createRequest =
         createRequestWithService(ns.prefix("db"), service.getFullyQualifiedName());
-    Database entity = createEntity(createRequest, client);
+    Database entity = createEntity(createRequest);
     assertNotNull(entity.getId());
 
     // Attempt to create duplicate database in the SAME service
@@ -163,7 +163,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
         createRequestWithService(entity.getName(), service.getFullyQualifiedName());
     assertThrows(
         Exception.class,
-        () -> createEntity(duplicateRequest, client),
+        () -> createEntity(duplicateRequest),
         "Creating duplicate database in same service should fail");
   }
 
@@ -191,14 +191,14 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     createRequest.setName(ns.prefix("db"));
     createRequest.setService(service.getFullyQualifiedName());
 
-    Database db = createEntity(createRequest, client);
+    Database db = createEntity(createRequest);
 
     // Verify FQN format
     String expectedFQN = service.getFullyQualifiedName() + "." + db.getName();
     assertEquals(expectedFQN, db.getFullyQualifiedName());
 
     // Verify retrieval
-    Database fetched = getEntity(db.getId().toString(), client);
+    Database fetched = getEntity(db.getId().toString());
     assertEquals(db.getFullyQualifiedName(), fetched.getFullyQualifiedName());
   }
 
@@ -218,7 +218,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     // Missing: createRequest.setService(...)
 
     InvalidRequestException exception =
-        assertThrows(InvalidRequestException.class, () -> createEntity(createRequest, client));
+        assertThrows(InvalidRequestException.class, () -> createEntity(createRequest));
 
     assertEquals(400, exception.getStatusCode());
   }
@@ -242,14 +242,14 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     CreateDatabase postgresDbRequest = new CreateDatabase();
     postgresDbRequest.setName(ns.prefix("db_postgres"));
     postgresDbRequest.setService(postgresService.getFullyQualifiedName());
-    Database postgresDb = createEntity(postgresDbRequest, client);
+    Database postgresDb = createEntity(postgresDbRequest);
     assertNotNull(postgresDb.getId());
     assertEquals(postgresService.getName(), postgresDb.getService().getName());
 
     CreateDatabase snowflakeDbRequest = new CreateDatabase();
     snowflakeDbRequest.setName(ns.prefix("db_snowflake"));
     snowflakeDbRequest.setService(snowflakeService.getFullyQualifiedName());
-    Database snowflakeDb = createEntity(snowflakeDbRequest, client);
+    Database snowflakeDb = createEntity(snowflakeDbRequest);
     assertNotNull(snowflakeDb.getId());
     assertEquals(snowflakeService.getName(), snowflakeDb.getService().getName());
 
@@ -260,7 +260,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     postgresParams.setLimit(100);
 
     org.openmetadata.sdk.models.ListResponse<Database> postgresList =
-        client.databases().list(postgresParams);
+        SdkClients.adminClient().databases().list(postgresParams);
     assertNotNull(postgresList.getData());
     assertTrue(postgresList.getData().size() > 0, "Should have at least one postgres database");
 
@@ -284,7 +284,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     snowflakeParams.setLimit(100);
 
     org.openmetadata.sdk.models.ListResponse<Database> snowflakeList =
-        client.databases().list(snowflakeParams);
+        SdkClients.adminClient().databases().list(snowflakeParams);
     assertNotNull(snowflakeList.getData());
     assertTrue(snowflakeList.getData().size() > 0, "Should have at least one snowflake database");
 
@@ -350,8 +350,8 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create database
-    CreateDatabase createRequest = createMinimalRequest(ns, client);
-    Database created = createEntity(createRequest, client);
+    CreateDatabase createRequest = createMinimalRequest(ns);
+    Database created = createEntity(createRequest);
     assertEquals(0.1, created.getVersion(), 0.001, "Initial version should be 0.1");
 
     // Update: Change description
@@ -365,8 +365,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
             EntityValidation.fieldUpdated(
                 "description", createRequest.getDescription(), newDescription));
 
-    Database updated =
-        patchEntityAndCheck(created, client, UpdateType.MINOR_UPDATE, expectedChange);
+    Database updated = patchEntityAndCheck(created, UpdateType.MINOR_UPDATE, expectedChange);
     assertEquals(0.2, updated.getVersion(), 0.001, "Version should be 0.2 after update");
 
     // Test getVersionList - should return history with all versions
@@ -411,12 +410,10 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
     Database db1 =
         createEntity(
-            createRequestWithService(ns.prefix("db1"), postgresService.getFullyQualifiedName()),
-            client);
+            createRequestWithService(ns.prefix("db1"), postgresService.getFullyQualifiedName()));
     Database db2 =
         createEntity(
-            createRequestWithService(ns.prefix("db2"), snowflakeService.getFullyQualifiedName()),
-            client);
+            createRequestWithService(ns.prefix("db2"), snowflakeService.getFullyQualifiedName()));
 
     // Fetch our created databases individually with service field
     Database fetchedDb1 = client.databases().get(db1.getId().toString(), "service");
@@ -439,25 +436,24 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
   // ===================================================================
 
   @Override
-  protected Database getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.databases().get(id, fields);
+  protected Database getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().databases().get(id, fields);
   }
 
   @Override
-  protected Database getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.databases().getByName(fqn, fields);
+  protected Database getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().databases().getByName(fqn, fields);
   }
 
   @Override
-  protected Database getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.databases().get(id, "owners,tags,databaseSchemas", "deleted");
+  protected Database getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().databases().get(id, "owners,tags,databaseSchemas", "deleted");
   }
 
   @Override
   protected org.openmetadata.sdk.models.ListResponse<Database> listEntities(
-      org.openmetadata.sdk.models.ListParams params, OpenMetadataClient client) {
-    return client.databases().list(params);
+      org.openmetadata.sdk.models.ListParams params) {
+    return SdkClients.adminClient().databases().list(params);
   }
 
   // ===================================================================
@@ -524,7 +520,9 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
     // Get user reference for owner
     org.openmetadata.schema.entity.teams.User user =
-        client.users().getByName("ingestion-bot"); // Use ingestion-bot (auto-created)
+        SdkClients.adminClient()
+            .users()
+            .getByName("ingestion-bot"); // Use ingestion-bot (auto-created)
     org.openmetadata.schema.type.EntityReference userRef =
         new org.openmetadata.schema.type.EntityReference()
             .withId(user.getId())
@@ -546,7 +544,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     createRequest.setOwners(List.of(userRef));
     createRequest.setTags(List.of(tier1Tag));
 
-    Database database = createEntity(createRequest, client);
+    Database database = createEntity(createRequest);
 
     // Verify database exists in RDF
     org.openmetadata.service.util.RdfTestUtils.verifyEntityInRdf(
@@ -586,14 +584,14 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     CreateDatabase createRequest = new CreateDatabase();
     createRequest.setName(ns.prefix("rdf_soft_delete_db"));
     createRequest.setService(service.getFullyQualifiedName());
-    Database database = createEntity(createRequest, client);
+    Database database = createEntity(createRequest);
 
     // Verify database exists in RDF
     org.openmetadata.service.util.RdfTestUtils.verifyEntityInRdf(
         database, org.openmetadata.service.rdf.RdfUtils.getRdfType("database"));
 
     // Soft delete the database
-    deleteEntity(database.getId().toString(), client);
+    deleteEntity(database.getId().toString());
 
     // Verify database STILL exists in RDF after soft delete (soft delete doesn't remove from RDF)
     org.openmetadata.service.util.RdfTestUtils.verifyEntityInRdf(
@@ -602,10 +600,10 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
         service.getEntityReference(), database.getEntityReference());
 
     // Restore the database
-    restoreEntity(database.getId().toString(), client);
+    restoreEntity(database.getId().toString());
 
     // Verify database still exists in RDF after restore
-    Database restored = getEntity(database.getId().toString(), client);
+    Database restored = getEntity(database.getId().toString());
     org.openmetadata.service.util.RdfTestUtils.verifyEntityInRdf(
         restored, org.openmetadata.service.rdf.RdfUtils.getRdfType("database"));
     org.openmetadata.service.util.RdfTestUtils.verifyContainsRelationshipInRdf(
@@ -631,7 +629,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
     CreateDatabase createRequest = new CreateDatabase();
     createRequest.setName(ns.prefix("rdf_hard_delete_db"));
     createRequest.setService(service.getFullyQualifiedName());
-    Database database = createEntity(createRequest, client);
+    Database database = createEntity(createRequest);
 
     String databaseFqn = database.getFullyQualifiedName();
 
@@ -640,7 +638,7 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
         database, org.openmetadata.service.rdf.RdfUtils.getRdfType("database"));
 
     // Hard delete the database (set hardDelete=true)
-    hardDeleteEntity(database.getId().toString(), client);
+    hardDeleteEntity(database.getId().toString());
 
     // Verify database is completely removed from RDF
     org.openmetadata.service.util.RdfTestUtils.verifyEntityNotInRdf(databaseFqn);
@@ -651,12 +649,12 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
   // ===================================================================
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.databases().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().databases().getVersionList(id);
   }
 
   @Override
-  protected Database getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.databases().getVersion(id.toString(), version);
+  protected Database getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().databases().getVersion(id.toString(), version);
   }
 }

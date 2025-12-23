@@ -52,52 +52,54 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   }
 
   @Override
-  protected CreateGlossary createMinimalRequest(TestNamespace ns, OpenMetadataClient client) {
+  protected CreateGlossary createMinimalRequest(TestNamespace ns) {
     return new CreateGlossary()
         .withName(ns.prefix("glossary"))
         .withDescription("Test glossary created by integration test");
   }
 
   @Override
-  protected CreateGlossary createRequest(String name, TestNamespace ns, OpenMetadataClient client) {
+  protected CreateGlossary createRequest(String name, TestNamespace ns) {
     return new CreateGlossary().withName(name).withDescription("Test glossary");
   }
 
   @Override
-  protected Glossary createEntity(CreateGlossary createRequest, OpenMetadataClient client) {
-    return client.glossaries().create(createRequest);
+  protected Glossary createEntity(CreateGlossary createRequest) {
+    return SdkClients.adminClient().glossaries().create(createRequest);
   }
 
   @Override
-  protected Glossary getEntity(String id, OpenMetadataClient client) {
-    return client.glossaries().get(id);
+  protected Glossary getEntity(String id) {
+    return SdkClients.adminClient().glossaries().get(id);
   }
 
   @Override
-  protected Glossary getEntityByName(String fqn, OpenMetadataClient client) {
-    return client.glossaries().getByName(fqn);
+  protected Glossary getEntityByName(String fqn) {
+    return SdkClients.adminClient().glossaries().getByName(fqn);
   }
 
   @Override
-  protected Glossary patchEntity(String id, Glossary entity, OpenMetadataClient client) {
+  protected Glossary patchEntity(String id, Glossary entity) {
     entity.setTermCount(null);
     entity.setUsageCount(null);
-    return client.glossaries().update(id, entity);
+    return SdkClients.adminClient().glossaries().update(id, entity);
   }
 
   @Override
-  protected void deleteEntity(String id, OpenMetadataClient client) {
-    client.glossaries().delete(id);
+  protected void deleteEntity(String id) {
+    SdkClients.adminClient().glossaries().delete(id);
   }
 
   @Override
-  protected void restoreEntity(String id, OpenMetadataClient client) {
-    client.glossaries().restore(id);
+  protected void restoreEntity(String id) {
+    SdkClients.adminClient().glossaries().restore(id);
   }
 
   @Override
-  protected void hardDeleteEntity(String id, OpenMetadataClient client) {
-    client.glossaries().delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
+  protected void hardDeleteEntity(String id) {
+    SdkClients.adminClient()
+        .glossaries()
+        .delete(id, java.util.Map.of("hardDelete", "true", "recursive", "true"));
   }
 
   @Override
@@ -117,24 +119,23 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   }
 
   @Override
-  protected Glossary getEntityWithFields(String id, String fields, OpenMetadataClient client) {
-    return client.glossaries().get(id, fields);
+  protected Glossary getEntityWithFields(String id, String fields) {
+    return SdkClients.adminClient().glossaries().get(id, fields);
   }
 
   @Override
-  protected Glossary getEntityByNameWithFields(
-      String fqn, String fields, OpenMetadataClient client) {
-    return client.glossaries().getByName(fqn, fields);
+  protected Glossary getEntityByNameWithFields(String fqn, String fields) {
+    return SdkClients.adminClient().glossaries().getByName(fqn, fields);
   }
 
   @Override
-  protected Glossary getEntityIncludeDeleted(String id, OpenMetadataClient client) {
-    return client.glossaries().get(id, null, "deleted");
+  protected Glossary getEntityIncludeDeleted(String id) {
+    return SdkClients.adminClient().glossaries().get(id, null, "deleted");
   }
 
   @Override
-  protected ListResponse<Glossary> listEntities(ListParams params, OpenMetadataClient client) {
-    return client.glossaries().list(params);
+  protected ListResponse<Glossary> listEntities(ListParams params) {
+    return SdkClients.adminClient().glossaries().list(params);
   }
 
   // ===================================================================
@@ -151,7 +152,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             .withDisplayName("My Custom Glossary")
             .withDescription("Glossary with display name");
 
-    Glossary glossary = createEntity(create, client);
+    Glossary glossary = createEntity(create);
     assertEquals("My Custom Glossary", glossary.getDisplayName());
   }
 
@@ -165,7 +166,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             .withMutuallyExclusive(true)
             .withDescription("Mutually exclusive glossary");
 
-    Glossary glossary = createEntity(create, client);
+    Glossary glossary = createEntity(create);
     assertTrue(glossary.getMutuallyExclusive());
   }
 
@@ -181,7 +182,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             .withOwners(List.of(ownerRef))
             .withDescription("Glossary with owner");
 
-    Glossary glossary = createEntity(create, client);
+    Glossary glossary = createEntity(create);
 
     Glossary fetched = client.glossaries().get(glossary.getId().toString(), "owners");
     assertNotNull(fetched.getOwners());
@@ -200,7 +201,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             .withReviewers(List.of(reviewerRef))
             .withDescription("Glossary with reviewers");
 
-    Glossary glossary = createEntity(create, client);
+    Glossary glossary = createEntity(create);
 
     Glossary fetched = client.glossaries().get(glossary.getId().toString(), "reviewers");
     assertNotNull(fetched.getReviewers());
@@ -211,11 +212,11 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   void test_updateGlossaryDescription(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateGlossary create = createMinimalRequest(ns, client);
-    Glossary glossary = createEntity(create, client);
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
 
     glossary.setDescription("Updated glossary description");
-    Glossary updated = patchEntity(glossary.getId().toString(), glossary, client);
+    Glossary updated = patchEntity(glossary.getId().toString(), glossary);
 
     assertEquals("Updated glossary description", updated.getDescription());
   }
@@ -224,11 +225,11 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   void test_updateGlossaryDisplayName(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateGlossary create = createMinimalRequest(ns, client);
-    Glossary glossary = createEntity(create, client);
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
 
     glossary.setDisplayName("My Updated Glossary");
-    Glossary updated = patchEntity(glossary.getId().toString(), glossary, client);
+    Glossary updated = patchEntity(glossary.getId().toString(), glossary);
 
     assertEquals("My Updated Glossary", updated.getDisplayName());
   }
@@ -243,11 +244,11 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             .withMutuallyExclusive(false)
             .withDescription("Glossary with immutable mutuallyExclusive");
 
-    Glossary glossary = createEntity(create, client);
+    Glossary glossary = createEntity(create);
     assertFalse(glossary.getMutuallyExclusive());
 
     glossary.setMutuallyExclusive(true);
-    Glossary updated = patchEntity(glossary.getId().toString(), glossary, client);
+    Glossary updated = patchEntity(glossary.getId().toString(), glossary);
 
     assertFalse(updated.getMutuallyExclusive());
   }
@@ -256,14 +257,14 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   void test_addReviewersToGlossary(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateGlossary create = createMinimalRequest(ns, client);
-    Glossary glossary = createEntity(create, client);
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
 
     Glossary fetched = client.glossaries().get(glossary.getId().toString(), "reviewers");
     EntityReference reviewerRef = testUser1().getEntityReference();
     fetched.setReviewers(List.of(reviewerRef));
 
-    Glossary updated = patchEntity(fetched.getId().toString(), fetched, client);
+    Glossary updated = patchEntity(fetched.getId().toString(), fetched);
 
     Glossary verify = client.glossaries().get(updated.getId().toString(), "reviewers");
     assertNotNull(verify.getReviewers());
@@ -274,23 +275,21 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   void test_softDeleteAndRestoreGlossary(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateGlossary create = createMinimalRequest(ns, client);
-    Glossary glossary = createEntity(create, client);
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
     String glossaryId = glossary.getId().toString();
 
-    deleteEntity(glossaryId, client);
+    deleteEntity(glossaryId);
 
     assertThrows(
-        Exception.class,
-        () -> getEntity(glossaryId, client),
-        "Deleted glossary should not be retrievable");
+        Exception.class, () -> getEntity(glossaryId), "Deleted glossary should not be retrievable");
 
-    Glossary deleted = getEntityIncludeDeleted(glossaryId, client);
+    Glossary deleted = getEntityIncludeDeleted(glossaryId);
     assertTrue(deleted.getDeleted());
 
-    restoreEntity(glossaryId, client);
+    restoreEntity(glossaryId);
 
-    Glossary restored = getEntity(glossaryId, client);
+    Glossary restored = getEntity(glossaryId);
     assertFalse(restored.getDeleted());
   }
 
@@ -298,15 +297,15 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   void test_hardDeleteGlossary(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateGlossary create = createMinimalRequest(ns, client);
-    Glossary glossary = createEntity(create, client);
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
     String glossaryId = glossary.getId().toString();
 
-    hardDeleteEntity(glossaryId, client);
+    hardDeleteEntity(glossaryId);
 
     assertThrows(
         Exception.class,
-        () -> getEntity(glossaryId, client),
+        () -> getEntity(glossaryId),
         "Hard deleted glossary should not be retrievable");
   }
 
@@ -314,12 +313,12 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   void test_glossaryVersionHistory(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateGlossary create = createMinimalRequest(ns, client);
-    Glossary glossary = createEntity(create, client);
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
     assertEquals(0.1, glossary.getVersion(), 0.001);
 
     glossary.setDescription("Updated description v1");
-    Glossary v2 = patchEntity(glossary.getId().toString(), glossary, client);
+    Glossary v2 = patchEntity(glossary.getId().toString(), glossary);
     assertEquals(0.2, v2.getVersion(), 0.001);
 
     var history = client.glossaries().getVersionList(glossary.getId());
@@ -337,12 +336,12 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
           new CreateGlossary()
               .withName(ns.prefix("listGlossary" + i))
               .withDescription("Glossary for list test");
-      createEntity(create, client);
+      createEntity(create);
     }
 
     ListParams params = new ListParams();
     params.setLimit(100);
-    ListResponse<Glossary> response = listEntities(params, client);
+    ListResponse<Glossary> response = listEntities(params);
 
     assertNotNull(response);
     assertNotNull(response.getData());
@@ -361,7 +360,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             .withReviewers(List.of(reviewerRef))
             .withDescription("Glossary to test reviewers field");
 
-    Glossary glossary = createEntity(create, client);
+    Glossary glossary = createEntity(create);
 
     Glossary fetched = client.glossaries().get(glossary.getId().toString(), "reviewers");
     assertNotNull(fetched.getReviewers());
@@ -386,7 +385,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             .withOwners(List.of(ownerRef))
             .withDescription("Glossary to test owners field");
 
-    Glossary glossary = createEntity(create, client);
+    Glossary glossary = createEntity(create);
 
     Glossary fetched = client.glossaries().get(glossary.getId().toString(), "owners");
     assertNotNull(fetched.getOwners());
@@ -409,7 +408,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             .withMutuallyExclusive(false)
             .withDescription("Not mutually exclusive glossary");
 
-    Glossary glossary = createEntity(create, client);
+    Glossary glossary = createEntity(create);
     assertFalse(glossary.getMutuallyExclusive());
   }
 
@@ -417,8 +416,8 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   void test_addMultipleReviewers(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    CreateGlossary create = createMinimalRequest(ns, client);
-    Glossary glossary = createEntity(create, client);
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
 
     Glossary fetched = client.glossaries().get(glossary.getId().toString(), "reviewers");
 
@@ -426,7 +425,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     EntityReference reviewer2 = testUser2().getEntityReference();
     fetched.setReviewers(List.of(reviewer1, reviewer2));
 
-    Glossary updated = patchEntity(fetched.getId().toString(), fetched, client);
+    Glossary updated = patchEntity(fetched.getId().toString(), fetched);
 
     Glossary verify = client.glossaries().get(updated.getId().toString(), "reviewers");
     assertNotNull(verify.getReviewers());
@@ -438,12 +437,12 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
   // ===================================================================
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id, OpenMetadataClient client) {
-    return client.glossaries().getVersionList(id);
+  protected EntityHistory getVersionHistory(UUID id) {
+    return SdkClients.adminClient().glossaries().getVersionList(id);
   }
 
   @Override
-  protected Glossary getVersion(UUID id, Double version, OpenMetadataClient client) {
-    return client.glossaries().getVersion(id.toString(), version);
+  protected Glossary getVersion(UUID id, Double version) {
+    return SdkClients.adminClient().glossaries().getVersion(id.toString(), version);
   }
 }
