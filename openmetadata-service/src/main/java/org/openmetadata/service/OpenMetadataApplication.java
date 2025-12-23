@@ -110,7 +110,6 @@ import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ContainerRequestFilterManager;
-import org.openmetadata.service.security.DelegatingContainerRequestFilter;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
@@ -184,7 +183,20 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     this.environment = environment;
 
     // Initialize Dagger dependency injection component first
+    // This creates the Authorizer and AuthenticatorHandler via their providers
     daggerComponent = initializeDaggerComponent(catalogConfig);
+
+    // Get security components from Dagger
+    authorizer = daggerComponent.authorizer();
+    authenticatorHandler = daggerComponent.authenticatorHandler();
+
+    // Initialize security configuration manager and components
+    SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticatorHandler);
+    authorizer.init(catalogConfig);
+    authenticatorHandler.init(catalogConfig);
+    registerLimits(catalogConfig);
+    LOG.debug("Security configuration manager initialized");
 
     // 1. Configuration initialization via DI
     daggerComponent.configurationInitializer().initialize(catalogConfig);
@@ -221,11 +233,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     validateMigrations(jdbi, catalogConfig);
 
-    // Register Authorizer, Authenticator, Limits
-    registerAuthorizer(catalogConfig, environment);
-    registerAuthenticator(SecurityConfigurationManager.getInstance());
-    registerLimits(catalogConfig);
-
     // 5. Jersey configuration via DI
     daggerComponent.jerseyRegistrars().forEach(r -> r.register(environment, catalogConfig));
 
@@ -253,8 +260,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Event publishers and post-initialization
     registerEventPublisher(catalogConfig);
-    authorizer.init(catalogConfig);
-    authenticatorHandler.init(catalogConfig);
 
     registerMicrometerFilter(environment, catalogConfig.getEventMonitorConfiguration());
     registerSamlServlets(catalogConfig, environment);
@@ -534,9 +539,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
               config.getJwtTokenConfiguration());
 
-      // Re-register authenticator with new config
-      registerAuthenticator(SecurityConfigurationManager.getInstance());
-      reRegisterAuthorizer(config, environment);
+      // Re-register authenticator and authorizer with new config
+      reRegisterAuthenticator();
+      reRegisterAuthorizer();
       config.setAuthenticationConfiguration(SecurityConfigurationManager.getCurrentAuthConfig());
       authenticatorHandler.init(config);
 
@@ -568,90 +573,64 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  private void registerAuthorizer(
-      OpenMetadataApplicationConfig catalogConfig, Environment environment)
-      throws NoSuchMethodException,
-          ClassNotFoundException,
-          IllegalAccessException,
-          InvocationTargetException,
-          InstantiationException {
+  private void reRegisterAuthorizer() {
     AuthorizerConfiguration authorizerConf = SecurityConfigurationManager.getCurrentAuthzConfig();
     AuthenticationConfiguration authenticationConfiguration =
         SecurityConfigurationManager.getCurrentAuthConfig();
-    DelegatingContainerRequestFilter delegatingFilter = new DelegatingContainerRequestFilter();
-    environment.jersey().register(delegatingFilter);
-    // to authenticate request while opening websocket connections
-    if (authorizerConf != null) {
-      authorizer =
-          Class.forName(authorizerConf.getClassName())
-              .asSubclass(Authorizer.class)
-              .getConstructor()
-              .newInstance();
-      String filterClazzName = authorizerConf.getContainerRequestFilter();
-      ContainerRequestFilter filter;
-      if (!StringUtils.isEmpty(filterClazzName)) {
-        filter =
-            Class.forName(filterClazzName)
-                .asSubclass(ContainerRequestFilter.class)
-                .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
-                .newInstance(authenticationConfiguration, authorizerConf);
-        LOG.info("Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
+
+    try {
+      if (authorizerConf != null) {
+        authorizer =
+            Class.forName(authorizerConf.getClassName())
+                .asSubclass(Authorizer.class)
+                .getConstructor()
+                .newInstance();
+        String filterClazzName = authorizerConf.getContainerRequestFilter();
+        if (!StringUtils.isEmpty(filterClazzName)) {
+          ContainerRequestFilter filter =
+              Class.forName(filterClazzName)
+                  .asSubclass(ContainerRequestFilter.class)
+                  .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
+                  .newInstance(authenticationConfiguration, authorizerConf);
+          LOG.info(
+              "Re-registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
+          ContainerRequestFilterManager.getInstance().registerFilter(filter);
+        }
+      } else {
+        LOG.info("Authorizer config not set, setting noop authorizer");
+        authorizer = new NoopAuthorizer();
+        ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
         ContainerRequestFilterManager.getInstance().registerFilter(filter);
       }
-    } else {
-      LOG.info("Authorizer config not set, setting noop authorizer");
-      authorizer = new NoopAuthorizer();
-      ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
-      ContainerRequestFilterManager.getInstance().registerFilter(filter);
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException e) {
+      throw new RuntimeException("Failed to re-register authorizer", e);
     }
   }
 
-  private void reRegisterAuthorizer(
-      OpenMetadataApplicationConfig catalogConfig, Environment environment)
-      throws NoSuchMethodException,
-          ClassNotFoundException,
-          IllegalAccessException,
-          InvocationTargetException,
-          InstantiationException {
-    AuthorizerConfiguration authorizerConf = SecurityConfigurationManager.getCurrentAuthzConfig();
-    AuthenticationConfiguration authenticationConfiguration =
-        SecurityConfigurationManager.getCurrentAuthConfig();
-    // to authenticate request while opening websocket connections
-    if (authorizerConf != null) {
-      authorizer =
-          Class.forName(authorizerConf.getClassName())
-              .asSubclass(Authorizer.class)
-              .getConstructor()
-              .newInstance();
-      String filterClazzName = authorizerConf.getContainerRequestFilter();
-      ContainerRequestFilter filter;
-      if (!StringUtils.isEmpty(filterClazzName)) {
-        filter =
-            Class.forName(filterClazzName)
-                .asSubclass(ContainerRequestFilter.class)
-                .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
-                .newInstance(authenticationConfiguration, authorizerConf);
-        LOG.info("Re Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
-        ContainerRequestFilterManager.getInstance().registerFilter(filter);
-      }
-    } else {
-      LOG.info("Authorizer config not set, setting noop authorizer");
-      authorizer = new NoopAuthorizer();
-      ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
-      ContainerRequestFilterManager.getInstance().registerFilter(filter);
-    }
-  }
+  private void reRegisterAuthenticator() {
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
 
-  private void registerAuthenticator(SecurityConfigurationManager catalogConfig) {
-    AuthenticationConfiguration authenticationConfiguration =
-        SecurityConfigurationManager.getCurrentAuthConfig();
-    switch (authenticationConfiguration.getProvider()) {
-      case BASIC -> authenticatorHandler = new BasicAuthenticator();
-      case LDAP -> authenticatorHandler = new LdapAuthenticator();
-      default ->
-      // For all other types, google, okta etc. auth is handled externally
-      authenticatorHandler = new NoopAuthenticator();
-    }
+    authenticatorHandler =
+        switch (authConfig.getProvider()) {
+          case BASIC -> {
+            LOG.info("Re-creating BasicAuthenticator for BASIC auth provider");
+            yield new BasicAuthenticator();
+          }
+          case LDAP -> {
+            LOG.info("Re-creating LdapAuthenticator for LDAP auth provider");
+            yield new LdapAuthenticator();
+          }
+          default -> {
+            LOG.info(
+                "Re-creating NoopAuthenticator for {} auth provider", authConfig.getProvider());
+            yield new NoopAuthenticator();
+          }
+        };
+
     SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticatorHandler);
   }
 
@@ -830,15 +809,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     LOG.info("Initializing Dagger dependency injection component with modular architecture");
 
     // Build Dagger component with all modules
-    // CoreModule provides: Environment, Config, Authorizer, PipelineServiceClient
+    // CoreModule provides: Environment, Config, PipelineServiceClient
     // DatabaseModule provides: JDBI, CollectionDAO, JobDAO (via CollectionDAOProvider)
     // SearchModule provides: SearchRepository (via SearchRepositoryProvider)
+    // SecurityModule provides: Authorizer (via AuthorizerProvider)
     // ComponentsModule provides: Initializers and registrars for modular initialization
     // OpenMetadataModule provides: Default implementations of providers
     // RepositoryModule, MapperModule, ServiceModule provide entity infrastructure
+    // SecurityModule is auto-instantiated by Dagger (no constructor parameters)
     org.openmetadata.service.di.ApplicationComponent component =
         org.openmetadata.service.di.DaggerApplicationComponent.builder()
-            .coreModule(new org.openmetadata.service.di.CoreModule(environment, config, authorizer))
+            .coreModule(new org.openmetadata.service.di.CoreModule(environment, config))
             .databaseModule(new org.openmetadata.service.di.DatabaseModule())
             .searchModule(new org.openmetadata.service.di.SearchModule())
             .componentsModule(new org.openmetadata.service.di.ComponentsModule())

@@ -20,7 +20,6 @@ import javax.inject.Singleton;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
-import org.openmetadata.service.security.Authorizer;
 
 /**
  * Dagger module providing core application components.
@@ -30,16 +29,15 @@ import org.openmetadata.service.security.Authorizer;
  * <ul>
  *   <li>Environment - Dropwizard environment for lifecycle management
  *   <li>OpenMetadataApplicationConfig - Application configuration
- *   <li>Authorizer - Access control and authorization
  *   <li>PipelineServiceClientInterface - Pipeline service client
  * </ul>
  *
- * <p>Other infrastructure components (JDBI, CollectionDAO, SearchRepository) are provided by
- * specialized modules:
+ * <p>Other infrastructure components are provided by specialized modules:
  *
  * <ul>
  *   <li>DatabaseModule - provides JDBI, CollectionDAO, JobDAO
  *   <li>SearchModule - provides SearchRepository
+ *   <li>SecurityModule - provides Authorizer (via AuthorizerProvider)
  * </ul>
  *
  * <p>These components are passed to CoreModule during application initialization and made available
@@ -49,20 +47,16 @@ import org.openmetadata.service.security.Authorizer;
 public class CoreModule {
   private final Environment environment;
   private final OpenMetadataApplicationConfig config;
-  private final Authorizer authorizer;
 
   /**
    * Constructor for CoreModule.
    *
    * @param environment Dropwizard environment for lifecycle management
    * @param config OpenMetadataApplicationConfig for application configuration
-   * @param authorizer Authorizer for access control
    */
-  public CoreModule(
-      Environment environment, OpenMetadataApplicationConfig config, Authorizer authorizer) {
+  public CoreModule(Environment environment, OpenMetadataApplicationConfig config) {
     this.environment = environment;
     this.config = config;
-    this.authorizer = authorizer;
   }
 
   @Provides
@@ -75,12 +69,6 @@ public class CoreModule {
   @Singleton
   public OpenMetadataApplicationConfig provideConfig() {
     return config;
-  }
-
-  @Provides
-  @Singleton
-  public Authorizer provideAuthorizer() {
-    return authorizer;
   }
 
   @Provides

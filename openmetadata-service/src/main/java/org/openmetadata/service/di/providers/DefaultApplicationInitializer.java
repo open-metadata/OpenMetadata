@@ -15,13 +15,11 @@ package org.openmetadata.service.di.providers;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.events.EventPubSub;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
@@ -45,12 +43,6 @@ public class DefaultApplicationInitializer implements ApplicationInitializer {
 
     ApplicationHandler.initialize(config);
     LOG.debug("Application handler initialized");
-
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(
-            new ConnectionAwareAnnotationSqlLocator(
-                config.getDataSourceFactory().getDriverClass()));
-    LOG.debug("SQL locator configured");
 
     LOG.info("Application components initialized successfully");
   }

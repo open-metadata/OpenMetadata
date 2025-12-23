@@ -80,6 +80,7 @@ import org.openmetadata.service.services.teams.UserService;
  *   <li>CoreModule - provides Environment, Config
  *   <li>DatabaseModule - provides JDBI, CollectionDAO, JobDAO
  *   <li>SearchModule - provides SearchRepository
+ *   <li>SecurityModule - provides Authorizer (via AuthorizerProvider)
  *   <li>RepositoryModule - provides entity repositories
  *   <li>MapperModule - provides entity mappers
  *   <li>ServiceModule - provides entity services
@@ -112,6 +113,7 @@ import org.openmetadata.service.services.teams.UserService;
       CoreModule.class,
       DatabaseModule.class,
       SearchModule.class,
+      SecurityModule.class,
       RepositoryModule.class,
       MapperModule.class,
       ServiceModule.class,
@@ -152,6 +154,25 @@ public interface ApplicationComponent {
    * @return JobDAO singleton
    */
   org.openmetadata.service.jobs.JobDAO jobDAO();
+
+  /**
+   * Provides Authorizer instance for access control.
+   *
+   * <p>The Authorizer is created via AuthorizerProvider which can be customized by Collate.
+   *
+   * @return Authorizer singleton
+   */
+  org.openmetadata.service.security.Authorizer authorizer();
+
+  /**
+   * Provides AuthenticatorHandler instance for authentication.
+   *
+   * <p>The AuthenticatorHandler is created via AuthenticatorProvider which can be customized by
+   * Collate.
+   *
+   * @return AuthenticatorHandler singleton
+   */
+  org.openmetadata.service.security.auth.AuthenticatorHandler authenticatorHandler();
 
   /**
    * Provides ServiceRegistry instance with all services registered.

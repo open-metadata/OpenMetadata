@@ -17,7 +17,11 @@ import dagger.Module;
 import dagger.Provides;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.service.di.providers.AuthenticatorProvider;
+import org.openmetadata.service.di.providers.AuthorizerProvider;
 import org.openmetadata.service.di.providers.CollectionDAOProvider;
+import org.openmetadata.service.di.providers.DefaultAuthenticatorProvider;
+import org.openmetadata.service.di.providers.DefaultAuthorizerProvider;
 import org.openmetadata.service.di.providers.DefaultCollectionDAOProvider;
 import org.openmetadata.service.di.providers.DefaultSearchRepositoryProvider;
 import org.openmetadata.service.di.providers.SearchRepositoryProvider;
@@ -34,6 +38,8 @@ import org.openmetadata.service.di.providers.SearchRepositoryProvider;
  * <ul>
  *   <li>CollectionDAOProvider → DefaultCollectionDAOProvider (returns CollectionDAO)
  *   <li>SearchRepositoryProvider → DefaultSearchRepositoryProvider (returns SearchRepository)
+ *   <li>AuthorizerProvider → DefaultAuthorizerProvider (returns Authorizer)
+ *   <li>AuthenticatorProvider → DefaultAuthenticatorProvider (returns AuthenticatorHandler)
  * </ul>
  */
 @Slf4j
@@ -68,5 +74,35 @@ public class OpenMetadataModule {
   public SearchRepositoryProvider provideSearchRepositoryProvider() {
     LOG.debug("Providing DefaultSearchRepositoryProvider for OpenMetadata");
     return new DefaultSearchRepositoryProvider();
+  }
+
+  /**
+   * Provides default AuthorizerProvider implementation.
+   *
+   * <p>This provider returns the standard Authorizer based on configuration. Collate can override
+   * this to provide custom authorization implementations.
+   *
+   * @return DefaultAuthorizerProvider singleton
+   */
+  @Provides
+  @Singleton
+  public AuthorizerProvider provideAuthorizerProvider() {
+    LOG.debug("Providing DefaultAuthorizerProvider for OpenMetadata");
+    return new DefaultAuthorizerProvider();
+  }
+
+  /**
+   * Provides default AuthenticatorProvider implementation.
+   *
+   * <p>This provider returns the appropriate AuthenticatorHandler based on the authentication
+   * provider type. Collate can override this to provide custom authentication implementations.
+   *
+   * @return DefaultAuthenticatorProvider singleton
+   */
+  @Provides
+  @Singleton
+  public AuthenticatorProvider provideAuthenticatorProvider() {
+    LOG.debug("Providing DefaultAuthenticatorProvider for OpenMetadata");
+    return new DefaultAuthenticatorProvider();
   }
 }
