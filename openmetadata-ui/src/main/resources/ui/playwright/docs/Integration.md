@@ -73,15 +73,6 @@
 | 3 | **MlFlow Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
 | 4 | **MlFlow Service** - Delete MlFlow Service service | Tests service deletion flow  Deletes the service and validates removal |
 
-### Snowflake Service
-
-| # | Test Case | Description |
-|---|-----------|-------------|
-| 1 | **Snowflake Service** - Create & Ingest Snowflake Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
-| 2 | **Snowflake Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
-| 3 | **Snowflake Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
-| 4 | **Snowflake Service** - Delete Snowflake Service service | Tests service deletion flow  Deletes the service and validates removal |
-
 ### Superset Service
 
 | # | Test Case | Description |
@@ -110,6 +101,15 @@
 | 3 | **Redshift Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
 | 4 | **Redshift Service** - Service specific tests | Tests database-specific ingestion behaviors  Runs additional checks for Postgres, Redshift, and MySQL services |
 | 5 | **Redshift Service** - Delete Redshift Service service | Tests service deletion flow  Deletes the service and validates removal |
+
+### Airflow Service
+
+| # | Test Case | Description |
+|---|-----------|-------------|
+| 1 | **Airflow Service** - Create & Ingest Airflow Service service | Tests service creation and first ingestion run  Creates the service and triggers ingestion |
+| 2 | **Airflow Service** - Update description and verify description after re-run | Tests description update persistence across reruns  Updates service description and verifies it after rerun |
+| 3 | **Airflow Service** - Update schedule options and verify | Tests schedule option updates  Updates ingestion schedule options and verifies they persist |
+| 4 | **Airflow Service** - Delete Airflow Service service | Tests service deletion flow  Deletes the service and validates removal |
 
 ### Service form
 
