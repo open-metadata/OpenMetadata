@@ -359,7 +359,7 @@ export const getQuickFilterObjectForEntities = (
 };
 
 export const getAggregationOptions = async (
-  index: string,
+  index: SearchIndex | SearchIndex[],
   key: string,
   value: string,
   filter: string,
@@ -369,20 +369,13 @@ export const getAggregationOptions = async (
 ) => {
   return isIndependent
     ? postAggregateFieldOptions({
-        index,
+        index: Array.isArray(index) ? index.join(',') : index,
         fieldName: key,
         fieldValue: value,
         query: filter,
         size,
       })
-    : getAggregateFieldOptions(
-        index as SearchIndex,
-        key,
-        value,
-        filter,
-        undefined,
-        deleted
-      );
+    : getAggregateFieldOptions(index, key, value, filter, undefined, deleted);
 };
 
 export const updateTreeDataWithCounts = (
