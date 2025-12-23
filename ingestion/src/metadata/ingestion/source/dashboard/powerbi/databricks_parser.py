@@ -21,7 +21,7 @@ logger = ingestion_logger()
 
 def parse_databricks_native_query_source(
     source_expression: str,
-    parser_type: Optional[QueryParserType] = QueryParserType.Auto,
+    parser_type: QueryParserType = QueryParserType.Auto,
 ) -> Optional[List[dict]]:
 
     groups = NATIVE_QUERY_PARSER_EXPRESSION.search(source_expression)

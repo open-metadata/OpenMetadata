@@ -119,16 +119,16 @@ def _yield_procedure_lineage(
     procedure: StoredProcedure,
     procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],
     enableTempTableLineage: bool,
-    parser_type: Optional[QueryParserType],
+    parser_type: QueryParserType,
 ) -> Iterable[Either[AddLineageRequest]]:
     """Add procedure lineage from its query"""
     graph = None
     if enableTempTableLineage:
         if not procedure_graph_map.get(procedure.fullyQualifiedName.root):
             # Map to store the directed graph for each procedure with its FQN as key
-            procedure_graph_map[
-                procedure.fullyQualifiedName.root
-            ] = ProcedureAndProcedureGraph(procedure=procedure, graph=nx.DiGraph())
+            procedure_graph_map[procedure.fullyQualifiedName.root] = (
+                ProcedureAndProcedureGraph(procedure=procedure, graph=nx.DiGraph())
+            )
 
         graph = procedure_graph_map.get(procedure.fullyQualifiedName.root).graph
 
@@ -173,7 +173,7 @@ def procedure_lineage_processor(
     parsingTimeoutLimit: int,
     procedure_graph_map: Dict[str, ProcedureAndProcedureGraph],
     enableTempTableLineage: bool,
-    parser_type: Optional[QueryParserType],
+    parser_type: QueryParserType,
 ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
     """
     Process the procedure and its queries to add lineage
@@ -297,7 +297,7 @@ def query_lineage_processor(
     crossDatabaseServiceNames: List[str],
     parsingTimeoutLimit: int,
     serviceName: str,
-    parser_type: Optional[QueryParserType],
+    parser_type: QueryParserType,
 ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
     """
     Generate lineage for a list of table queries
@@ -350,7 +350,7 @@ def view_lineage_processor(
     crossDatabaseServiceNames: List[str],
     parsingTimeoutLimit: int,
     overrideViewLineage: bool,
-    parser_type: Optional[QueryParserType],
+    parser_type: QueryParserType,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     Generate lineage for a list of views

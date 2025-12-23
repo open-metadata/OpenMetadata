@@ -79,7 +79,7 @@ class LineageParser:
         query: str,
         dialect: Dialect = Dialect.ANSI,
         timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
-        parser_type: Optional[QueryParserType] = QueryParserType.Auto,
+        parser_type: QueryParserType = QueryParserType.Auto,
     ):
         self.query = query
         self.query_hash = self.get_query_hash(query)

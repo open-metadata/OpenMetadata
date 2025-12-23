@@ -855,7 +855,7 @@ def get_lineage_by_query(
     lineage_parser: Optional[LineageParser] = None,
     schema_fallback: bool = False,
     service_name: Optional[str] = None,  # backward compatibility for python sdk
-    parser_type: Optional[QueryParserType] = None,
+    parser_type: QueryParserType = QueryParserType.Auto,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
@@ -977,7 +977,7 @@ def get_lineage_via_table_entity(
     graph: Optional[DiGraph] = None,
     lineage_parser: Optional[LineageParser] = None,
     schema_fallback: bool = False,
-    parser_type: Optional[QueryParserType] = None,
+    parser_type: QueryParserType = QueryParserType.Auto,
 ) -> Iterable[Either[AddLineageRequest]]:
     """Get lineage from table entity"""
     column_lineage = {}

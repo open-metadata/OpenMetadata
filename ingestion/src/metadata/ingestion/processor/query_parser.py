@@ -37,7 +37,7 @@ logger = ingestion_logger()
 def parse_sql_statement(
     record: TableQuery,
     dialect: Dialect,
-    parser_type: Optional[QueryParserType] = None,
+    parser_type: QueryParserType = QueryParserType.Auto,
 ) -> Optional[ParsedData]:
     """
     Use the lineage parser and work with the tokens

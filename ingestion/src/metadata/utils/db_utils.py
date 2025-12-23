@@ -59,7 +59,7 @@ def get_view_lineage(
     service_names: Union[str, List[str]],
     connection_type: str,
     timeout_seconds: int,
-    parser_type: Optional[QueryParserType],
+    parser_type: QueryParserType,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     Method to generate view lineage
