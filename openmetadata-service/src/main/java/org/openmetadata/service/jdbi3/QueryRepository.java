@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import javax.inject.Inject;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -41,15 +42,21 @@ public class QueryRepository extends EntityRepository<Query> {
   private static final String QUERY_PATCH_FIELDS = "users,query,queryUsedIn,processedLineage";
   private static final String QUERY_UPDATE_FIELDS = "users,queryUsedIn,processedLineage";
 
-  public QueryRepository() {
+  @Inject
+  public QueryRepository(CollectionDAO collectionDAO) {
     super(
         QueryResource.COLLECTION_PATH,
         Entity.QUERY,
         Query.class,
-        Entity.getCollectionDAO().queryDAO(),
+        collectionDAO.queryDAO(),
         QUERY_PATCH_FIELDS,
         QUERY_UPDATE_FIELDS);
     supportsSearch = true;
+  }
+
+  @Deprecated
+  public QueryRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

@@ -15,7 +15,6 @@ import org.flywaydb.core.internal.parser.ParsingContext;
 import org.flywaydb.core.internal.resource.filesystem.FileSystemResource;
 import org.flywaydb.core.internal.sqlscript.SqlStatementIterator;
 import org.flywaydb.database.mysql.MySQLParser;
-import org.jetbrains.annotations.Nullable;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -130,7 +129,7 @@ public class FlywayMigrationFile extends MigrationFile {
     return flywayMigrations;
   }
 
-  private static File @Nullable [] getFiles(ConnectionType connectionType, File flywayDir) {
+  private static File[] getFiles(ConnectionType connectionType, File flywayDir) {
     String dbSubDir =
         connectionType == ConnectionType.MYSQL
             ? "com.mysql.cj.jdbc.Driver"

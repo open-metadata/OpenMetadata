@@ -118,12 +118,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
   private final ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
 
-  public TestCaseRepository() {
+  @javax.inject.Inject
+  public TestCaseRepository(CollectionDAO collectionDAO) {
     super(
         COLLECTION_PATH,
         TEST_CASE,
         TestCase.class,
-        Entity.getCollectionDAO().testCaseDAO(),
+        collectionDAO.testCaseDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
@@ -131,6 +132,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // As test case result` does not have its own repository
     EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(
         Entity.TEST_CASE_RESULT.toLowerCase(Locale.ROOT), Entity.TEST_CASE_RESULT);
+  }
+
+  @Deprecated
+  public TestCaseRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

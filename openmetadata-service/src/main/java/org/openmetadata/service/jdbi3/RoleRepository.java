@@ -43,14 +43,20 @@ public class RoleRepository extends EntityRepository<Role> {
   public static final String DOMAIN_ONLY_ACCESS_ROLE = "DomainOnlyAccessRole";
   public static final String DEFAULT_BOT_ROLE = "DefaultBotRole";
 
-  public RoleRepository() {
+  @javax.inject.Inject
+  public RoleRepository(CollectionDAO collectionDAO) {
     super(
         RoleResource.COLLECTION_PATH,
         Entity.ROLE,
         Role.class,
-        Entity.getCollectionDAO().roleDAO(),
+        collectionDAO.roleDAO(),
         POLICIES,
         POLICIES);
+  }
+
+  @Deprecated
+  public RoleRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

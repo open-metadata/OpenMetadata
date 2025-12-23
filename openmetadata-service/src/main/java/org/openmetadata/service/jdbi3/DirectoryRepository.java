@@ -53,15 +53,22 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DirectoryRepository extends EntityRepository<Directory> {
-  public DirectoryRepository() {
+
+  @javax.inject.Inject
+  public DirectoryRepository(CollectionDAO collectionDAO) {
     super(
         DirectoryResource.COLLECTION_PATH,
         Entity.DIRECTORY,
         Directory.class,
-        Entity.getCollectionDAO().directoryDAO(),
+        collectionDAO.directoryDAO(),
         "",
         "");
     supportsSearch = true;
+  }
+
+  @Deprecated
+  public DirectoryRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

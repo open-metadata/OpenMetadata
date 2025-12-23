@@ -48,12 +48,13 @@ public class ContainerRepository extends EntityRepository<Container> {
   private static final String CONTAINER_UPDATE_FIELDS = "dataModel";
   private static final String CONTAINER_PATCH_FIELDS = "dataModel";
 
-  public ContainerRepository() {
+  @javax.inject.Inject
+  public ContainerRepository(CollectionDAO collectionDAO) {
     super(
         ContainerResource.COLLECTION_PATH,
         Entity.CONTAINER,
         Container.class,
-        Entity.getCollectionDAO().containerDAO(),
+        collectionDAO.containerDAO(),
         CONTAINER_PATCH_FIELDS,
         CONTAINER_UPDATE_FIELDS);
     supportsSearch = true;
@@ -62,6 +63,11 @@ public class ContainerRepository extends EntityRepository<Container> {
     fieldFetchers.put(FIELD_PARENT, this::fetchAndSetParents);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetDataModelColumnTags);
     fieldFetchers.put("children", this::fetchAndSetChildren);
+  }
+
+  @Deprecated
+  public ContainerRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

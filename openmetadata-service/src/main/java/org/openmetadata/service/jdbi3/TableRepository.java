@@ -55,6 +55,7 @@ import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -149,12 +150,21 @@ public class TableRepository extends EntityRepository<Table> {
   private static final Set<String> CHANGE_SUMMARY_FIELDS =
       Set.of("description", "owners", "columns.description");
 
-  public TableRepository() {
+  /**
+   * Constructor for TableRepository with dependency injection.
+   *
+   * <p>This constructor is used by Dagger for dependency injection. Dependencies are automatically
+   * provided by Dagger at runtime.
+   *
+   * @param collectionDAO CollectionDAO for accessing entity data
+   */
+  @Inject
+  public TableRepository(CollectionDAO collectionDAO) {
     super(
         TableResource.COLLECTION_PATH,
         TABLE,
         Table.class,
-        Entity.getCollectionDAO().tableDAO(),
+        collectionDAO.tableDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
@@ -168,6 +178,18 @@ public class TableRepository extends EntityRepository<Table> {
     fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
     fieldFetchers.put("pipelineObservability", this::fetchAndSetPipelineObservability);
+  }
+
+  /**
+   * No-argument constructor for backward compatibility.
+   *
+   * <p>This constructor delegates to the @Inject constructor using Entity.getCollectionDAO().
+   *
+   * @deprecated Use {@link #TableRepository(CollectionDAO)} with dependency injection instead.
+   */
+  @Deprecated
+  public TableRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   @Override

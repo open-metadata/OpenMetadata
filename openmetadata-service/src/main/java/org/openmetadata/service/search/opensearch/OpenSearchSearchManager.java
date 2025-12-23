@@ -106,7 +106,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
           "field_suggest");
 
   // RBAC cache for new Java API
-  private static final LoadingCache<@NotNull String, @NotNull Query> RBAC_CACHE_V2 =
+  private static final LoadingCache<String, Query> RBAC_CACHE_V2 =
       CacheBuilder.newBuilder()
           .maximumSize(10000)
           .expireAfterWrite(5, TimeUnit.MINUTES)

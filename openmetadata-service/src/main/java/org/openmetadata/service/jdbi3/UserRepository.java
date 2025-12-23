@@ -110,12 +110,13 @@ public class UserRepository extends EntityRepository<User> {
   private volatile EntityReference organization;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
-  public UserRepository() {
+  @javax.inject.Inject
+  public UserRepository(CollectionDAO collectionDAO) {
     super(
         UserResource.COLLECTION_PATH,
         USER,
         User.class,
-        Entity.getCollectionDAO().userDAO(),
+        collectionDAO.userDAO(),
         USER_PATCH_FIELDS,
         USER_UPDATE_FIELDS);
     this.quoteFqn = true;
@@ -133,6 +134,11 @@ public class UserRepository extends EntityRepository<User> {
     if (searchRepository != null) {
       inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
     }
+  }
+
+  @Deprecated
+  public UserRepository() {
+    this(Entity.getCollectionDAO());
   }
 
   private EntityReference getOrganization() {
