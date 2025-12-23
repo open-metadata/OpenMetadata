@@ -102,6 +102,7 @@ components/
 - Use Jest + React Testing Library
 - Test files live next to the code they test
 - Cover components, hooks, utils, and API logic
+- Follow [this](./playwright/PLAYWRIGHT_DEVELOPER_HANDBOOK.md) guide for e2e testing.
 
 ## 10. Routing
 

@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -268,7 +268,7 @@ const GlossaryPage = () => {
           ) || glossaries[0]
         );
 
-        if (isNil(glossaryFqn) && glossaries[0].fullyQualifiedName) {
+        if (isEmpty(glossaryFqn) && glossaries[0].fullyQualifiedName) {
           navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
             replace: true,
           });

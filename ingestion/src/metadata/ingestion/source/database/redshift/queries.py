@@ -238,7 +238,10 @@ SELECT
 """
 
 
-REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"
+REDSHIFT_TEST_PARTITION_DETAILS = """
+SELECT
+    has_table_privilege('SVV_TABLE_INFO', 'SELECT') as can_access_svv_table_info
+"""
 
 REDSHIFT_GET_ALL_CONSTRAINTS = """
 select 
