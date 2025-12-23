@@ -55,7 +55,6 @@ export const makeData = (
 
 export const getSearchIndexDetailsTabs = ({
   searchIndexDetails,
-  viewAllPermission,
   viewCustomPropertiesPermission,
   feedCount,
   activeTab,

@@ -18,6 +18,7 @@ import {
   EntityReference,
 } from '../../../../generated/entity/data/directory';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
 import DirectoryChildrenTable from './DirectoryChildrenTable';
 
@@ -122,7 +123,8 @@ describe('DirectoryChildrenTable', () => {
     renderDirectoryChildrenTable();
 
     expect(screen.getByTestId('table')).toBeInTheDocument();
-    expect(screen.getByTestId('table-columns')).toHaveTextContent('3');
+    expect(screen.getByTestId('table-columns')).toHaveTextContent('2');
+    expect(descriptionTableObject).toHaveBeenCalledWith();
     expect(screen.getByTestId('table-data')).toHaveTextContent('2');
     expect(screen.getByTestId('table-row-0')).toHaveTextContent(
       'subdirectory - directory'
@@ -152,7 +154,8 @@ describe('DirectoryChildrenTable', () => {
 
     renderDirectoryChildrenTable();
 
-    expect(screen.getByTestId('table-columns')).toHaveTextContent('3');
+    expect(screen.getByTestId('table-columns')).toHaveTextContent('2');
+    expect(descriptionTableObject).toHaveBeenCalledWith();
   });
 
   it('should handle children with descriptions', () => {

@@ -81,6 +81,7 @@ export default defineConfig({
         '**/nightly/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
+        '**/SystemCertificationTags.spec.ts',
       ],
     },
     {
@@ -112,6 +113,15 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['DataAssetRulesEnabled'],
       fullyParallel: true,
+    },
+    // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
+    // They must run in isolation after the main chromium project to avoid flakiness
+    {
+      name: 'SystemCertificationTags',
+      testMatch: '**/SystemCertificationTags.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
     },
   ],
 
