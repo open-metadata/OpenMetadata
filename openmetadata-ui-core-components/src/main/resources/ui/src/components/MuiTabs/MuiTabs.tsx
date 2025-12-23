@@ -32,6 +32,9 @@ export interface TabsProps
   marginTop?: string;
   activeTextColor?: string;
   indicatorColor?: string;
+  fontSize?: string | number;
+  fontWeight?: number | string;
+  selectedFontWeight?: number | string;
 }
 
 export const Tabs: React.FC<TabsProps> = ({
@@ -43,12 +46,12 @@ export const Tabs: React.FC<TabsProps> = ({
   variant = 'standard',
   activeTextColor,
   indicatorColor,
+  fontSize,
+  fontWeight,
+  selectedFontWeight,
   ...muiTabsProps
 }) => {
   const theme = useTheme();
-  const defaultColor = theme.palette.allShades.blue[700];
-  const activeColor = activeTextColor ?? defaultColor;
-  const indicatorColorValue = indicatorColor ?? defaultColor;
 
   return (
     <MuiTabs
@@ -69,12 +72,12 @@ export const Tabs: React.FC<TabsProps> = ({
         color: theme.palette.allShades.gray[900],
         '& .MuiTab-root': {
           textTransform: 'none',
-          fontSize: theme.typography.body2.fontSize,
-          fontWeight: theme.typography.body2.fontWeight,
+          fontSize: fontSize ?? theme.typography.body2.fontSize,
+          fontWeight: fontWeight ?? theme.typography.body2.fontWeight,
           color: theme.palette.allShades.gray[900],
           '&.Mui-selected': {
-            color: activeColor,
-            fontWeight: theme.typography.subtitle2.fontWeight,
+            color: activeTextColor ?? theme.palette.allShades.blue[700],
+            fontWeight: selectedFontWeight ?? theme.typography.subtitle2.fontWeight,
           },
           '&.Mui-disabled': {
             color: theme.palette.allShades?.gray?.[600],
@@ -83,7 +86,7 @@ export const Tabs: React.FC<TabsProps> = ({
         },
         '& .MuiTabs-indicator': {
           height: '2px',
-          backgroundColor: indicatorColorValue,
+          backgroundColor: indicatorColor ?? theme.palette.allShades.blue[700],
         },
         ...muiTabsProps.sx,
       }}

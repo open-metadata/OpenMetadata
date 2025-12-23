@@ -92,6 +92,9 @@ CustomTabs.args = {
   "aria-label": "Custom tabs example",
   activeTextColor: undefined,
   indicatorColor: undefined,
+  fontSize: undefined,
+  fontWeight: undefined,
+  selectedFontWeight: undefined,
   orientation: "horizontal",
   scrollButtons: false,
   allowScrollButtonsMobile: false,
@@ -120,6 +123,18 @@ CustomTabs.argTypes = {
   indicatorColor: {
     control: "color",
     description: "Color for the tab indicator",
+  },
+  fontSize: {
+    control: "text",
+    description: "Font size for tab labels (e.g., '14px', '1rem', 14)",
+  },
+  fontWeight: {
+    control: "text",
+    description: "Font weight for tab labels (e.g., 400, 500, 'normal', 'bold')",
+  },
+  selectedFontWeight: {
+    control: "text",
+    description: "Font weight for selected tab label (e.g., 500, 600, 'normal', 'bold')",
   },
   orientation: {
     control: "select",
