@@ -19,6 +19,7 @@ export enum ServiceConnectionFilterPatternFields {
   TABLE_FILTER_PATTERN = 'tableFilterPattern',
   STORED_PROCEDURE_FILTER_PATTERN = 'storedProcedureFilterPattern',
   API_COLLECTION_FILTER_PATTERN = 'apiCollectionFilterPattern',
+  API_ENDPOINT_FILTER_PATTERN = 'apiEndpointFilterPattern',
   DASHBOARD_FILTER_PATTERN = 'dashboardFilterPattern',
   CONTAINER_FILTER_PATTERN = 'containerFilterPattern',
   ML_MODEL_FILTER_PATTERN = 'mlModelFilterPattern',
