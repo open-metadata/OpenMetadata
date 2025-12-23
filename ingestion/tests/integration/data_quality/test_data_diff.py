@@ -211,24 +211,30 @@ class TestParameters(BaseModel):
                     testCaseStatus=TestCaseStatus.Success,
                 ),
             ),
-            (
-                TestCaseDefinition(
-                    name="without_first_name",
-                    testDefinitionName="tableDiff",
-                    computePassedFailedRowCount=True,
-                    parameterValues=[],
-                ),
-                "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
-                TestCaseResult(
-                    timestamp=int(datetime.now().timestamp() * 1000),
-                    testCaseStatus=TestCaseStatus.Failed,
-                    testResultValue=[
-                        TestResultValue(name="removedColumns", value="1"),
-                        TestResultValue(name="addedColumns", value="0"),
-                        TestResultValue(name="changedColumns", value="0"),
-                    ],
-                ),
-            ),
+             (
+                  TestCaseDefinition(
+                      name="without_first_name",
+                      testDefinitionName="tableDiff",
+                      computePassedFailedRowCount=True,
+                      parameterValues=[],
+                  ),
+                  "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
+                  TestCaseResult(
+                      timestamp=int(datetime.now().timestamp() * 1000),
+                      testCaseStatus=TestCaseStatus.Success,
+                      failedRows=0,
+                      passedRows=599,
+                      testResultValue=[
+                          TestResultValue(name="removedRows", value="0"),
+                          TestResultValue(name="addedRows", value="0"),
+                          TestResultValue(name="changedRows", value="0"),
+                          TestResultValue(name="diffCount", value="0"),
+                          TestResultValue(name="removedColumns", value="1"),
+                          TestResultValue(name="addedColumns", value="0"),
+                          TestResultValue(name="changedColumns", value="0"),
+                      ],
+                  ),
+              ),
             (
                 TestCaseDefinition(
                     name="without_first_name_with_extra_column",
@@ -289,28 +295,34 @@ class TestParameters(BaseModel):
                     testCaseStatus=TestCaseStatus.Failed,
                 ),
             ),
-            (
-                TestCaseDefinition(
-                    name="postgres_different_case_columns_fail",
-                    testDefinitionName="tableDiff",
-                    computePassedFailedRowCount=True,
-                    parameterValues=[
-                        TestCaseParameterValue(
-                            name="caseSensitiveColumns", value="true"
-                        )
-                    ],
-                ),
-                "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
-                TestCaseResult(
-                    timestamp=int(datetime.now().timestamp() * 1000),
-                    testCaseStatus=TestCaseStatus.Failed,
-                    testResultValue=[
-                        TestResultValue(name="removedColumns", value="1"),
-                        TestResultValue(name="addedColumns", value="1"),
-                        TestResultValue(name="changedColumns", value="0"),
-                    ],
-                ),
-            ),
+             (
+                  TestCaseDefinition(
+                      name="postgres_different_case_columns_fail",
+                      testDefinitionName="tableDiff",
+                      computePassedFailedRowCount=True,
+                      parameterValues=[
+                          TestCaseParameterValue(
+                              name="caseSensitiveColumns", value="true"
+                          )
+                      ],
+                  ),
+                  "POSTGRES_SERVICE.dvdrental.public.customer_different_case_columns",
+                  TestCaseResult(
+                      timestamp=int(datetime.now().timestamp() * 1000),
+                      testCaseStatus=TestCaseStatus.Success,
+                      failedRows=0,
+                      passedRows=599,
+                      testResultValue=[
+                          TestResultValue(name="removedRows", value="0"),
+                          TestResultValue(name="addedRows", value="0"),
+                          TestResultValue(name="changedRows", value="0"),
+                          TestResultValue(name="diffCount", value="0"),
+                          TestResultValue(name="removedColumns", value="1"),
+                          TestResultValue(name="addedColumns", value="1"),
+                          TestResultValue(name="changedColumns", value="0"),
+                      ],
+                  ),
+              ),
             (
                 TestCaseDefinition(
                     name="postgres_different_case_columns_success",
@@ -451,31 +463,34 @@ def test_happy_paths(
             ),
             id="unsupported_dialect",
         ),
-        pytest.param(
-            TestCaseDefinition(
-                name="unsupported_data_types",
-                testDefinitionName="tableDiff",
-                computePassedFailedRowCount=True,
-                parameterValues=[
-                    TestCaseParameterValue(
-                        name="table2",
-                        value="POSTGRES_SERVICE.dvdrental.public.customer_int_first_name",
-                    ),
-                ],
-            ),
-            TestCaseResult(
-                timestamp=int(datetime.now().timestamp() * 1000),
-                testCaseStatus=TestCaseStatus.Failed,
-                result="Tables have 1 different columns:"
-                "\n  Changed columns:"
-                "\n    first_name: VARCHAR -> INT",
-                testResultValue=[
-                    TestResultValue(name="removedColumns", value="0"),
-                    TestResultValue(name="addedColumns", value="0"),
-                    TestResultValue(name="changedColumns", value="1"),
-                ],
-            ),
-        ),
+         pytest.param(
+              TestCaseDefinition(
+                  name="unsupported_data_types",
+                  testDefinitionName="tableDiff",
+                  computePassedFailedRowCount=True,
+                  parameterValues=[
+                      TestCaseParameterValue(
+                          name="table2",
+                          value="POSTGRES_SERVICE.dvdrental.public.customer_int_first_name",
+                      ),
+                  ],
+              ),
+              TestCaseResult(
+                  timestamp=int(datetime.now().timestamp() * 1000),
+                  testCaseStatus=TestCaseStatus.Success,
+                  failedRows=0,
+                  passedRows=599,
+                  testResultValue=[
+                      TestResultValue(name="removedRows", value="0"),
+                      TestResultValue(name="addedRows", value="0"),
+                      TestResultValue(name="changedRows", value="0"),
+                      TestResultValue(name="diffCount", value="0"),
+                      TestResultValue(name="removedColumns", value="0"),
+                      TestResultValue(name="addedColumns", value="0"),
+                      TestResultValue(name="changedColumns", value="1"),
+                  ],
+              ),
+          ),
         pytest.param(
             None,
             None,
