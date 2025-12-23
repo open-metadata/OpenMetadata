@@ -248,6 +248,11 @@ public final class Tables {
       return this;
     }
 
+    public TableFinder withFields(String... fields) {
+      includes.addAll(Arrays.asList(fields));
+      return this;
+    }
+
     public FluentTable fetch() {
       Table table;
       if (includes.isEmpty()) {

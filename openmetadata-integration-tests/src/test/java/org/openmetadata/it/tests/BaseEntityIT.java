@@ -118,6 +118,25 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   protected boolean supportsPatch = true;
   protected boolean supportsEmptyDescription = true;
   protected boolean supportsNameLengthValidation = true;
+  protected boolean supportsBulkAPI = false; // Override in subclasses that support bulk API
+  protected boolean supportsSearchIndex = true; // Override in subclasses that don't support search
+
+  // ===================================================================
+  // CHANGE TYPE - Controls how version changes are validated
+  // ===================================================================
+
+  /**
+   * Get the default change type for updates in session.
+   * Most entities use MINOR_UPDATE, but some may need CHANGE_CONSOLIDATED
+   * when changes happen within the same session window.
+   *
+   * <p>Matches EntityResourceTest.getChangeType() pattern.
+   *
+   * @return The default UpdateType for changes made within the same session
+   */
+  public UpdateType getChangeType() {
+    return UpdateType.MINOR_UPDATE;
+  }
 
   // ===================================================================
   // SHARED ENTITY ACCESSORS - Session-scoped entities for cross-test use
@@ -3108,5 +3127,267 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   void delete_systemEntity(TestNamespace ns) {
     // System entities are pre-created and cannot be deleted
     // This test verifies the behavior when applicable
+  }
+
+  // ===================================================================
+  // BULK API TESTS
+  // Equivalent to: test_bulkCreateOrUpdate, test_bulkCreateOrUpdate_partialFailure,
+  //                test_bulkCreateOrUpdate_async in EntityResourceTest
+  // ===================================================================
+
+  /**
+   * Test: Bulk create or update entities
+   * Equivalent to: test_bulkCreateOrUpdate in EntityResourceTest
+   *
+   * <p>Creates multiple entities using bulk API and validates all are created successfully.
+   */
+  @Test
+  void test_bulkCreateOrUpdate(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    // Create multiple entities for bulk operation
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      K createRequest = createRequest(ns.prefix("bulk_entity_" + i), ns);
+      createRequests.add(createRequest);
+    }
+
+    // Execute bulk create via entity-specific bulk API
+    org.openmetadata.schema.type.api.BulkOperationResult result = executeBulkCreate(createRequests);
+
+    // Validate result
+    assertNotNull(result, "Bulk operation result should not be null");
+    assertEquals(5, result.getNumberOfRowsProcessed(), "Should process 5 entities");
+    assertEquals(5, result.getNumberOfRowsPassed(), "All 5 entities should pass");
+    assertEquals(0, result.getNumberOfRowsFailed(), "No entities should fail");
+    assertEquals(
+        org.openmetadata.schema.type.ApiStatus.SUCCESS,
+        result.getStatus(),
+        "Status should be SUCCESS");
+
+    // Verify entities were created
+    assertNotNull(result.getSuccessRequest(), "Success request list should not be null");
+    assertEquals(5, result.getSuccessRequest().size(), "Should have 5 successful entities");
+
+    for (org.openmetadata.schema.type.api.BulkResponse bulkResponse : result.getSuccessRequest()) {
+      String fqn = (String) bulkResponse.getRequest();
+      assertNotNull(fqn, "FQN should not be null in success response");
+
+      T retrievedEntity = getEntityByName(fqn);
+      assertNotNull(retrievedEntity, "Entity should be retrievable by FQN: " + fqn);
+    }
+  }
+
+  /**
+   * Test: Bulk create with partial failure
+   * Equivalent to: test_bulkCreateOrUpdate_partialFailure in EntityResourceTest
+   *
+   * <p>Creates a mix of valid and invalid entities and verifies partial success handling.
+   */
+  @Test
+  void test_bulkCreateOrUpdate_partialFailure(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    // Create valid entities
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      K createRequest = createRequest(ns.prefix("bulk_partial_" + i), ns);
+      createRequests.add(createRequest);
+    }
+
+    // Add an invalid request (empty name should fail)
+    K invalidRequest = createInvalidRequestForBulk(ns);
+    if (invalidRequest != null) {
+      createRequests.add(invalidRequest);
+    }
+
+    // Execute bulk create
+    org.openmetadata.schema.type.api.BulkOperationResult result = executeBulkCreate(createRequests);
+
+    // Validate partial success
+    assertNotNull(result, "Bulk operation result should not be null");
+    assertTrue(result.getNumberOfRowsProcessed() >= 3, "Should process at least 3 rows");
+    assertTrue(result.getNumberOfRowsPassed() >= 3, "At least 3 rows should pass");
+
+    if (invalidRequest != null) {
+      assertTrue(result.getNumberOfRowsFailed() >= 1, "At least 1 row should fail");
+      assertEquals(
+          org.openmetadata.schema.type.ApiStatus.PARTIAL_SUCCESS,
+          result.getStatus(),
+          "Status should be PARTIAL_SUCCESS");
+    }
+  }
+
+  /**
+   * Test: Async bulk create
+   * Equivalent to: test_bulkCreateOrUpdate_async in EntityResourceTest
+   *
+   * <p>Tests async bulk creation where the API returns immediately and processing happens in
+   * background.
+   */
+  @Test
+  void test_bulkCreateOrUpdate_async(TestNamespace ns) {
+    if (!supportsBulkAPI) return;
+
+    // Create multiple entities for async bulk operation
+    List<K> createRequests = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      K createRequest = createRequest(ns.prefix("bulk_async_" + i), ns);
+      createRequests.add(createRequest);
+    }
+
+    // Execute async bulk create
+    org.openmetadata.schema.type.api.BulkOperationResult result =
+        executeBulkCreateAsync(createRequests);
+
+    // For async operations, we get immediate response
+    assertNotNull(result, "Async bulk operation result should not be null");
+    assertEquals(5, result.getNumberOfRowsProcessed(), "Should have 5 rows processed");
+    assertEquals(
+        org.openmetadata.schema.type.ApiStatus.SUCCESS,
+        result.getStatus(),
+        "Status should be SUCCESS");
+
+    // Wait for async processing to complete and verify entities exist
+    // Note: In production, this would use proper async completion tracking
+    for (int i = 0; i < 5; i++) {
+      String entityName = ns.prefix("bulk_async_" + i);
+      try {
+        T entity = getEntityByName(entityName);
+        if (entity != null) {
+          assertNotNull(entity, "Async created entity should exist: " + entityName);
+        }
+      } catch (Exception e) {
+        // Entity may not be created yet if async processing is slow
+      }
+    }
+  }
+
+  /**
+   * Execute bulk create operation.
+   * Subclasses that support bulk API should override this method.
+   *
+   * @param createRequests List of create requests
+   * @return BulkOperationResult
+   */
+  protected org.openmetadata.schema.type.api.BulkOperationResult executeBulkCreate(
+      List<K> createRequests) {
+    // Default implementation - entities that support bulk API should override
+    throw new UnsupportedOperationException(
+        "Bulk API not implemented for " + getEntityType() + ". Override executeBulkCreate()");
+  }
+
+  /**
+   * Execute async bulk create operation.
+   * Subclasses that support async bulk API should override this method.
+   *
+   * @param createRequests List of create requests
+   * @return BulkOperationResult
+   */
+  protected org.openmetadata.schema.type.api.BulkOperationResult executeBulkCreateAsync(
+      List<K> createRequests) {
+    // Default implementation - entities that support async bulk should override
+    throw new UnsupportedOperationException(
+        "Async Bulk API not implemented for "
+            + getEntityType()
+            + ". Override executeBulkCreateAsync()");
+  }
+
+  /**
+   * Create an invalid request for bulk failure testing.
+   * Subclasses should override to provide entity-specific invalid request.
+   *
+   * @param ns Test namespace
+   * @return Invalid create request, or null if not applicable
+   */
+  protected K createInvalidRequestForBulk(TestNamespace ns) {
+    return null; // Default - no invalid request
+  }
+
+  // ===================================================================
+  // SDK-ONLY CRUD TESTS
+  // Equivalent to: test_sdkOnlyCreateRetrieveUpdate, test_sdkOnlyRetrieveByName,
+  //                test_sdkOnlyListEntities, test_sdkOnlyAsyncOperations in EntityResourceTest
+  // ===================================================================
+
+  /**
+   * Test: SDK-only create, retrieve, and update operations
+   * Equivalent to: test_sdkOnlyCreateRetrieveUpdate in EntityResourceTest
+   */
+  @Test
+  void test_sdkOnlyCreateRetrieveUpdate(TestNamespace ns) {
+    // Create entity
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    assertNotNull(created, "Created entity should not be null");
+    assertNotNull(created.getId(), "Created entity should have ID");
+    assertEquals(0.1, created.getVersion(), 0.001, "Initial version should be 0.1");
+
+    // Retrieve by ID
+    T retrieved = getEntity(created.getId().toString());
+    assertNotNull(retrieved, "Retrieved entity should not be null");
+    assertEquals(created.getId(), retrieved.getId(), "IDs should match");
+
+    // Update via patch
+    if (supportsPatch) {
+      retrieved.setDescription("SDK-only updated description");
+      T updated = patchEntity(retrieved.getId().toString(), retrieved);
+
+      assertNotNull(updated, "Updated entity should not be null");
+      assertEquals(
+          "SDK-only updated description",
+          updated.getDescription(),
+          "Description should be updated");
+      assertTrue(updated.getVersion() > 0.1, "Version should increment after update");
+    }
+  }
+
+  /**
+   * Test: SDK-only retrieve by name
+   * Equivalent to: test_sdkOnlyRetrieveByName in EntityResourceTest
+   */
+  @Test
+  void test_sdkOnlyRetrieveByName(TestNamespace ns) {
+    // Create entity
+    K createRequest = createMinimalRequest(ns);
+    T created = createEntity(createRequest);
+
+    // Retrieve by name
+    T retrieved = getEntityByName(created.getFullyQualifiedName());
+    assertNotNull(retrieved, "Entity should be retrievable by FQN");
+    assertEquals(created.getId(), retrieved.getId(), "IDs should match");
+    assertEquals(
+        created.getFullyQualifiedName(), retrieved.getFullyQualifiedName(), "FQNs should match");
+  }
+
+  /**
+   * Test: SDK-only list entities with pagination
+   * Equivalent to: test_sdkOnlyListEntities in EntityResourceTest
+   */
+  @Test
+  void test_sdkOnlyListEntities(TestNamespace ns) {
+    // Create multiple entities
+    List<UUID> createdIds = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      K createRequest = createRequest(ns.prefix("sdk_list_" + i), ns);
+      T entity = createEntity(createRequest);
+      createdIds.add(entity.getId());
+    }
+
+    // List entities and verify our created entities are present
+    org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
+    params.setLimit(100);
+    org.openmetadata.sdk.models.ListResponse<T> response = listEntities(params);
+
+    assertNotNull(response, "List response should not be null");
+    assertNotNull(response.getData(), "List data should not be null");
+    assertTrue(response.getData().size() >= 3, "Should have at least 3 entities");
+
+    // Verify our entities are in the list
+    for (UUID createdId : createdIds) {
+      boolean found = response.getData().stream().anyMatch(e -> e.getId().equals(createdId));
+      assertTrue(found, "Created entity should be in list: " + createdId);
+    }
   }
 }

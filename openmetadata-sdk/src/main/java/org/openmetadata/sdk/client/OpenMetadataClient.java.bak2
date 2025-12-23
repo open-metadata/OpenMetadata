@@ -8,9 +8,6 @@ import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.OpenMetadataHttpClient;
 import org.openmetadata.sdk.network.RequestOptions;
-import org.openmetadata.sdk.services.ai.AIApplicationService;
-import org.openmetadata.sdk.services.ai.LLMModelService;
-import org.openmetadata.sdk.services.ai.PromptTemplateService;
 import org.openmetadata.sdk.services.apiservice.APICollectionService;
 import org.openmetadata.sdk.services.apiservice.APIEndpointService;
 import org.openmetadata.sdk.services.automations.WorkflowService;
@@ -18,6 +15,7 @@ import org.openmetadata.sdk.services.bots.BotService;
 import org.openmetadata.sdk.services.bulk.BulkAPI;
 import org.openmetadata.sdk.services.classification.ClassificationService;
 import org.openmetadata.sdk.services.classification.TagService;
+import org.openmetadata.sdk.services.ai.LLMModelService;
 import org.openmetadata.sdk.services.dataassets.ChartService;
 import org.openmetadata.sdk.services.dataassets.DashboardDataModelService;
 import org.openmetadata.sdk.services.dataassets.DashboardService;
@@ -59,10 +57,6 @@ import org.openmetadata.sdk.services.services.PipelineServiceService;
 import org.openmetadata.sdk.services.services.SearchServiceService;
 import org.openmetadata.sdk.services.services.StorageServiceService;
 import org.openmetadata.sdk.services.storages.ContainerService;
-import org.openmetadata.sdk.services.storages.DirectoryService;
-import org.openmetadata.sdk.services.storages.FileService;
-import org.openmetadata.sdk.services.storages.SpreadsheetService;
-import org.openmetadata.sdk.services.storages.WorksheetService;
 import org.openmetadata.sdk.services.teams.PersonaService;
 import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.TeamService;
@@ -102,10 +96,6 @@ public class OpenMetadataClient {
 
   // Storages
   private final ContainerService containers;
-  private final DirectoryService directories;
-  private final FileService files;
-  private final SpreadsheetService spreadsheets;
-  private final WorksheetService worksheets;
 
   // Glossary
   private final GlossaryService glossaries;
@@ -175,8 +165,6 @@ public class OpenMetadataClient {
   private final WorkflowDefinitionService workflowDefinitions;
 
   // AI
-  private final AIApplicationService aiApplications;
-  private final PromptTemplateService promptTemplates;
 
   public OpenMetadataClient(OpenMetadataConfig config) {
     this.config = config;
@@ -208,10 +196,6 @@ public class OpenMetadataClient {
 
     // Initialize storage services
     this.containers = new ContainerService(httpClient);
-    this.directories = new DirectoryService(httpClient);
-    this.files = new FileService(httpClient);
-    this.spreadsheets = new SpreadsheetService(httpClient);
-    this.worksheets = new WorksheetService(httpClient);
 
     // Initialize glossary services
     this.glossaries = new GlossaryService(httpClient);
@@ -281,8 +265,6 @@ public class OpenMetadataClient {
     this.workflowDefinitions = new WorkflowDefinitionService(httpClient);
 
     // Initialize AI services
-    this.aiApplications = new AIApplicationService(httpClient);
-    this.promptTemplates = new PromptTemplateService(httpClient);
   }
 
   public OpenMetadataConfig getConfig() {
@@ -363,22 +345,6 @@ public class OpenMetadataClient {
   // Storage Service Getters
   public ContainerService containers() {
     return containers;
-  }
-
-  public DirectoryService directories() {
-    return directories;
-  }
-
-  public FileService files() {
-    return files;
-  }
-
-  public SpreadsheetService spreadsheets() {
-    return spreadsheets;
-  }
-
-  public WorksheetService worksheets() {
-    return worksheets;
   }
 
   // Glossary Service Getters
@@ -549,13 +515,6 @@ public class OpenMetadataClient {
     return workflowDefinitions;
   }
 
-  // AI Service Getters
-  public AIApplicationService aiApplications() {
-    return aiApplications;
-  }
-
-  public PromptTemplateService promptTemplates() {
-    return promptTemplates;
   }
 
   /**

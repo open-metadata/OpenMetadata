@@ -3,6 +3,8 @@ package org.openmetadata.it.util;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
+import org.openmetadata.sdk.fluent.AIApplications;
+import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.fluent.Charts;
 import org.openmetadata.sdk.fluent.Classifications;
 import org.openmetadata.sdk.fluent.Containers;
@@ -13,7 +15,9 @@ import org.openmetadata.sdk.fluent.DataProducts;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.DatabaseServices;
 import org.openmetadata.sdk.fluent.Databases;
+import org.openmetadata.sdk.fluent.Directories;
 import org.openmetadata.sdk.fluent.Domains;
+import org.openmetadata.sdk.fluent.Files;
 import org.openmetadata.sdk.fluent.Glossaries;
 import org.openmetadata.sdk.fluent.GlossaryTerms;
 import org.openmetadata.sdk.fluent.MessagingServices;
@@ -26,6 +30,7 @@ import org.openmetadata.sdk.fluent.Pipelines;
 import org.openmetadata.sdk.fluent.Queries;
 import org.openmetadata.sdk.fluent.Roles;
 import org.openmetadata.sdk.fluent.SearchIndexes;
+import org.openmetadata.sdk.fluent.Spreadsheets;
 import org.openmetadata.sdk.fluent.StorageServices;
 import org.openmetadata.sdk.fluent.StoredProcedures;
 import org.openmetadata.sdk.fluent.Tables;
@@ -33,7 +38,9 @@ import org.openmetadata.sdk.fluent.Tags;
 import org.openmetadata.sdk.fluent.Teams;
 import org.openmetadata.sdk.fluent.TestCases;
 import org.openmetadata.sdk.fluent.Topics;
+import org.openmetadata.sdk.fluent.Usage;
 import org.openmetadata.sdk.fluent.Users;
+import org.openmetadata.sdk.fluent.Worksheets;
 
 public class SdkClients {
 
@@ -183,6 +190,12 @@ public class SdkClients {
    * This allows using static methods like Tables.find(id).fetch()
    */
   private static void initializeFluentAPIs(OpenMetadataClient client) {
+    // AI
+    AIApplications.setDefaultClient(client);
+
+    // Apps
+    Apps.setDefaultClient(client);
+
     // Data Assets
     Charts.setDefaultClient(client);
     Containers.setDefaultClient(client);
@@ -190,13 +203,18 @@ public class SdkClients {
     Dashboards.setDefaultClient(client);
     Databases.setDefaultClient(client);
     DatabaseSchemas.setDefaultClient(client);
+    Directories.setDefaultClient(client);
+    Files.setDefaultClient(client);
     MlModels.setDefaultClient(client);
     Pipelines.setDefaultClient(client);
     Queries.setDefaultClient(client);
     SearchIndexes.setDefaultClient(client);
+    Spreadsheets.setDefaultClient(client);
     StoredProcedures.setDefaultClient(client);
     Tables.setDefaultClient(client);
     Topics.setDefaultClient(client);
+    Usage.setDefaultClient(client);
+    Worksheets.setDefaultClient(client);
 
     // Services
     DashboardServices.setDefaultClient(client);
