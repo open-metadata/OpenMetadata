@@ -44,12 +44,12 @@ public record SubjectContext(User user, String impersonatedBy) {
   public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile,domains";
 
   public static SubjectContext getSubjectContext(String userName) {
-    User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+    User user = SubjectCache.getUserContext(userName);
     return new SubjectContext(user, null);
   }
 
   public static SubjectContext getSubjectContext(String userName, String impersonatedBy) {
-    User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+    User user = SubjectCache.getUserContext(userName);
     return new SubjectContext(user, impersonatedBy);
   }
 
