@@ -72,6 +72,19 @@ public class DatabaseServiceRepository
     supportsSearch = true;
   }
 
+  /**
+   * Update the OAuth credentials in the database for a given service.
+   * Similar to addTestConnectionResult, this persists the updated service entity.
+   *
+   * @param service The database service with updated OAuth credentials
+   * @return The updated database service
+   */
+  public DatabaseService persistOAuthCredentials(DatabaseService service) {
+    dao.update(service.getId(), service.getFullyQualifiedName(), org.openmetadata.schema.utils.JsonUtils.pojoToJson(service));
+    LOG.info("Persisted OAuth credentials to database for service: {}", service.getName());
+    return service;
+  }
+
   @Override
   public String exportToCsv(String name, String user, boolean recursive) throws IOException {
     DatabaseService databaseService =

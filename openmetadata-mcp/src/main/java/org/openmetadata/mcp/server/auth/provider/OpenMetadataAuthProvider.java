@@ -84,8 +84,11 @@ public class OpenMetadataAuthProvider implements OAuthAuthorizationServerProvide
           AuthenticationCodeFlowHandler.getInstance(
               SecurityConfigurationManager.getCurrentAuthConfig(),
               SecurityConfigurationManager.getCurrentAuthzConfig());
-      OidcClient oidcClient = authHandler.getClient();
+      // TODO: Update to use correct API to get OIDC client from authHandler
+      // OidcClient oidcClient = authHandler.getClient(); // Method doesn't exist
+      throw new AuthorizeException("not_implemented", "OpenMetadataAuthProvider is deprecated, use ConnectorOAuthProvider instead");
 
+      /*
       // Build MCP callback URL that will be invoked after IdP authentication
       // String mcpCallbackUrl = baseUrl + "/mcp/auth/callback";
 
@@ -117,6 +120,7 @@ public class OpenMetadataAuthProvider implements OAuthAuthorizationServerProvide
           params.getRedirectUri());
 
       return CompletableFuture.completedFuture(idpAuthUrl);
+      */
     } catch (Exception e) {
       LOG.error("Error during authorization", e);
       throw new AuthorizeException("server_error", "Failed to initialize authorization");

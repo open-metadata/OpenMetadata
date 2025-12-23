@@ -17,13 +17,17 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.server.auth.Constants;
+import org.openmetadata.mcp.server.auth.provider.ConnectorOAuthProvider;
 import org.openmetadata.mcp.server.auth.provider.OpenMetadataAuthProvider;
 import org.openmetadata.mcp.server.auth.settings.ClientRegistrationOptions;
 import org.openmetadata.mcp.server.auth.settings.RevocationOptions;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
@@ -100,20 +104,23 @@ public class McpServer implements McpServerProvider {
       //                          .messageEndpoint("/mcp")
       //                          .contextExtractor(new AuthEnrichedMcpContextExtractor())
       //                          .build();
-      OAuthClientInformation clientInfo = new OAuthClientInformation();
-      clientInfo.setClientId("0b8552fb-4ecc-47d7-8f5d-eaa47a42685f");
-      clientInfo.setClientSecret(
-          SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration().getSecret());
-      clientInfo.setRedirectUris(Collections.singletonList(new URI(Constants.REDIRECT_URI)));
-      clientInfo.setTokenEndpointAuthMethod("client_secret_post");
-      clientInfo.setGrantTypes(Arrays.asList("authorization_code", "refresh_token"));
-      clientInfo.setResponseTypes(Collections.singletonList("code"));
-      clientInfo.setScope(Constants.SCOPE);
-
-      // Create auth provider that integrates with OpenMetadata's existing SSO system
+      // Create connector-based OAuth provider (redirect-free, internal OAuth)
       String baseUrl = "http://localhost:8585";
-      OpenMetadataAuthProvider authProvider = new OpenMetadataAuthProvider(baseUrl);
-      authProvider.registerClient(clientInfo).get();
+      ConnectorOAuthProvider authProvider =
+          new ConnectorOAuthProvider(
+              SecretsManagerFactory.getSecretsManager(),
+              (DatabaseServiceRepository) Entity.getEntityRepository(Entity.DATABASE_SERVICE),
+              baseUrl);
+
+      // Register default MCP client (for dynamic client registration)
+      OAuthClientInformation mcpClient = new OAuthClientInformation();
+      mcpClient.setClientId("openmetadata-mcp-client");
+      mcpClient.setClientSecret("mcp-client-secret"); // Not used for connector OAuth
+      mcpClient.setRedirectUris(Collections.singletonList(new URI("http://localhost:3000/callback")));
+      mcpClient.setTokenEndpointAuthMethod("none"); // Public client
+      mcpClient.setGrantTypes(Arrays.asList("authorization_code", "refresh_token"));
+      mcpClient.setResponseTypes(Collections.singletonList("code"));
+      authProvider.registerClient(mcpClient).get();
 
       // Create registration options
       ClientRegistrationOptions registrationOptions = new ClientRegistrationOptions();
@@ -159,6 +166,16 @@ public class McpServer implements McpServerProvider {
       //      ServletHolder callbackHolder = new ServletHolder(callbackServlet);
       //      contextHandler.addServlet(callbackHolder, "/mcp/auth/callback");
       //      LOG.info("Registered MCP OAuth callback servlet at mcp/auth/callback");
+
+      // Register OAuth setup endpoint (one-time admin setup)
+      // Use /api/v1/mcp/oauth/setup to avoid conflict with /mcp/* wildcard pattern
+      org.openmetadata.mcp.server.auth.handlers.OAuthSetupHandler setupHandler =
+          new org.openmetadata.mcp.server.auth.handlers.OAuthSetupHandler(
+              SecretsManagerFactory.getSecretsManager(),
+              (DatabaseServiceRepository) Entity.getEntityRepository(Entity.DATABASE_SERVICE));
+      ServletHolder setupHolder = new ServletHolder(setupHandler);
+      contextHandler.addServlet(setupHolder, "/api/v1/mcp/oauth/setup");
+      LOG.info("Registered OAuth setup endpoint at /api/v1/mcp/oauth/setup");
 
       // Add well-known filter at root level for OAuth discovery (RFC 8414)
       OAuthWellKnownFilter wellKnownFilter = new OAuthWellKnownFilter();

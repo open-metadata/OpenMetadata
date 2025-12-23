@@ -43,6 +43,18 @@
       "type": "string",
       "format": "password"
     },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Choose the authentication method to connect to Snowflake. Default is basic username/password authentication.",
+      "type": "string",
+      "enum": ["basic", "oauth2", "keyPair"],
+      "default": "basic"
+    },
+    "oauth": {
+      "title": "OAuth 2.0 Credentials",
+      "description": "OAuth 2.0 credentials for Snowflake authentication. Used internally by OpenMetadata MCP server for redirect-free OAuth. Requires one-time setup via OpenMetadata UI.",
+      "$ref": "../common/oauthCredentials.json"
+    },
     "account": {
       "title": "Account",
       "description": "If the Snowflake URL is https://xyz1234.us-east-1.gcp.snowflakecomputing.com, then the account is xyz1234.us-east-1.gcp",
@@ -190,5 +202,31 @@
     }
   },
   "additionalProperties": false,
-  "required": ["username", "account", "warehouse"]
+  "required": ["account", "warehouse"],
+  "oneOf": [
+    {
+      "properties": {
+        "authType": {
+          "const": "basic"
+        }
+      },
+      "required": ["username", "password"]
+    },
+    {
+      "properties": {
+        "authType": {
+          "const": "oauth2"
+        }
+      },
+      "required": ["oauth"]
+    },
+    {
+      "properties": {
+        "authType": {
+          "const": "keyPair"
+        }
+      },
+      "required": ["username", "privateKey"]
+    }
+  ]
 }
