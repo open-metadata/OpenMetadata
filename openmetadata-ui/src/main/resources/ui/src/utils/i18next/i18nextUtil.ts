@@ -13,6 +13,7 @@
 
 import i18next, { InitOptions } from 'i18next';
 import { map, upperCase } from 'lodash';
+import arSA from '../../locale/languages/ar-sa.json';
 import deDe from '../../locale/languages/de-de.json';
 import enUS from '../../locale/languages/en-us.json';
 import esES from '../../locale/languages/es-es.json';
@@ -61,6 +62,7 @@ export const getInitOptions = (): InitOptions => {
       'th-TH': { translation: thTH },
       'mr-IN': { translation: mrIN },
       'tr-TR': { translation: trTR },
+      'ar-SA': { translation: arSA },
     },
     fallbackLng: ['en-US'],
     detection: {
@@ -113,4 +115,5 @@ export const languageMap: Record<string, SupportedLocales> = {
   pr: SupportedLocales.Persian,
   th: SupportedLocales.Thai,
   tr: SupportedLocales.Türkçe,
+  ar: SupportedLocales.العربية,
 };
