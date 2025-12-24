@@ -10,21 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, ThemeProvider, Typography } from "@mui/material";
+import { Box, Tab, Tabs, ThemeProvider, Typography } from "@mui/material";
+import type { TabsProps } from "@mui/material";
 import type { Meta } from "@storybook/react";
 import React, { useEffect, useState } from "react";
 import {
   CUSTOM_TABS_ARG_TYPES,
   CUSTOM_TABS_DEFAULT_ARGS,
-} from "../../constants/Tabs.constants";
+} from "../constants/Tabs.constants";
 import type {
   CommonTabPanelPropsType,
-  CustomTabsArgs,
   StorybookComponent,
   TabItem,
-} from "../../types/Tabs.types";
-import { createMuiTheme } from "../../theme/createMuiTheme";
-import { Tabs } from "./MuiTabs";
+} from "../types/Tabs.types";
+import { createMuiTheme } from "../theme/createMuiTheme";
+
+type CustomTabsArgs = TabsProps & {
+  tabs?: TabItem[];
+};
 
 function CommonTabPanel(props: CommonTabPanelPropsType) {
   const { children, value, index, ...other } = props;
@@ -44,34 +47,47 @@ function CommonTabPanel(props: CommonTabPanelPropsType) {
 
 const CustomTabsComponent: React.FC<CustomTabsArgs> = (args) => {
   const theme = createMuiTheme();
-  const tabs = args.tabs || CUSTOM_TABS_DEFAULT_ARGS.tabs;
+  const { tabs: tabsProp, ...tabsProps } = args;
+  const tabs = tabsProp || CUSTOM_TABS_DEFAULT_ARGS.tabs || [];
   const [value, setValue] = useState<string>(
-    args.value || tabs[0]?.value || "tab1"
+    (args.value as string) || tabs[0]?.value || "tab1"
   );
 
   useEffect(() => {
-    if (args.value) {
-      setValue(args.value);
-    } else if (tabs.length > 0) {
+    if (args.value && args.value !== value) {
+      setValue(args.value as string);
+    }
+  }, [args.value]);
+
+  useEffect(() => {
+    if (tabs.length > 0) {
       const currentTabExists = tabs.some((tab) => tab.value === value);
       if (!currentTabExists) {
         setValue(tabs[0]?.value || "tab1");
       }
     }
-  }, [args.value, tabs, value]);
+  }, [tabs, value]);
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ width: "100%", maxWidth: 800 }}>
         <Tabs
-          {...args}
-          tabs={tabs}
+          {...tabsProps}
           value={value}
           onChange={(_, newValue) => {
-            setValue(newValue);
+            setValue(newValue as string);
             args.onChange?.(_, newValue);
           }}
-        />
+        >
+          {tabs.map((tab) => (
+            <Tab
+              key={tab.value}
+              label={tab.label}
+              value={tab.value}
+              disabled={tab.disabled}
+            />
+          ))}
+        </Tabs>
         {tabs.map((tab) => (
           <CommonTabPanel key={tab.value} value={value} index={tab.value}>
             <Typography variant="h6" sx={{ mb: 2 }}>
@@ -96,21 +112,23 @@ export const CommonTabsBasic = () => {
   const theme = createMuiTheme();
   const [value, setValue] = useState<string>("tab1");
 
-  const tabs: TabItem[] = [
-    { label: "Tab One", value: "tab1" },
-    { label: "Tab Two", value: "tab2" },
-    { label: "Tab Three", value: "tab3" },
-  ];
+  const handleChange = (_: React.SyntheticEvent, newValue: string) => {
+    console.log('Tab changed to:', newValue);
+    setValue(newValue);
+  };
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ width: "100%", maxWidth: 800 }}>
         <Tabs
           value={value}
-          onChange={(_, newValue) => setValue(newValue)}
-          tabs={tabs}
+          onChange={handleChange}
           aria-label="Basic common tabs example"
-        />
+        >
+          <Tab label="Tab One" value="tab1" />
+          <Tab label="Tab Two" value="tab2" />
+          <Tab label="Tab Three" value="tab3" />
+        </Tabs>
         <CommonTabPanel value={value} index="tab1">
           Content for Tab One
         </CommonTabPanel>
@@ -143,10 +161,18 @@ export const CommonTabsManyTabs = () => {
       <Box sx={{ width: "100%", maxWidth: 800 }}>
         <Tabs
           value={value}
-          onChange={(_, newValue) => setValue(newValue)}
-          tabs={tabs}
+          onChange={(_, newValue) => setValue(newValue as string)}
           aria-label="Many tabs example"
-        />
+        >
+          {tabs.map((tab) => (
+            <Tab
+              key={tab.value}
+              label={tab.label}
+              value={tab.value}
+              disabled={tab.disabled}
+            />
+          ))}
+        </Tabs>
         {tabs.map((tab) => (
           <CommonTabPanel key={tab.value} value={value} index={tab.value}>
             <Typography variant="h6" sx={{ mb: 2 }}>
@@ -160,57 +186,23 @@ export const CommonTabsManyTabs = () => {
   );
 };
 
-// Common Tabs with Custom Margin
-export const CommonTabsWithMargin = () => {
-  const theme = createMuiTheme();
-  const [value, setValue] = useState<string>("tab1");
-
-  const tabs: TabItem[] = [
-    { label: "First Tab", value: "tab1" },
-    { label: "Second Tab", value: "tab2" },
-  ];
-
-  return (
-    <ThemeProvider theme={theme}>
-      <Box sx={{ width: "100%", maxWidth: 800 }}>
-        <Tabs
-          value={value}
-          onChange={(_, newValue) => setValue(newValue)}
-          tabs={tabs}
-          aria-label="Custom margin tabs example"
-          marginTop="24px"
-        />
-        <CommonTabPanel value={value} index="tab1">
-          Content for First Tab (with custom margin top)
-        </CommonTabPanel>
-        <CommonTabPanel value={value} index="tab2">
-          Content for Second Tab
-        </CommonTabPanel>
-      </Box>
-    </ThemeProvider>
-  );
-};
-
 // Tabs with Disabled Tab
 export const CommonTabsWithDisabled = () => {
   const theme = createMuiTheme();
   const [value, setValue] = useState<string>("tab1");
 
-  const tabs: TabItem[] = [
-    { label: "Active Tab", value: "tab1" },
-    { label: "Disabled Tab", value: "tab2", disabled: true },
-    { label: "Active Tab", value: "tab3" },
-  ];
-
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{ width: "100%", maxWidth: 800 }}>
         <Tabs
           value={value}
-          onChange={(_, newValue) => setValue(newValue)}
-          tabs={tabs}
+          onChange={(_, newValue) => setValue(newValue as string)}
           aria-label="Tabs with disabled tab example"
-        />
+        >
+          <Tab label="Active Tab" value="tab1" />
+          <Tab label="Disabled Tab" value="tab2" disabled />
+          <Tab label="Active Tab" value="tab3" />
+        </Tabs>
         <CommonTabPanel value={value} index="tab1">
           Content for Active Tab
         </CommonTabPanel>
@@ -241,12 +233,28 @@ export const CommonTabsWithCustomColors = () => {
       <Box sx={{ width: "100%", maxWidth: 800 }}>
         <Tabs
           value={value}
-          onChange={(_, newValue) => setValue(newValue)}
-          tabs={tabs}
+          onChange={(_, newValue) => setValue(newValue as string)}
           aria-label="Tabs with custom colors example"
-          activeTextColor={theme.palette.allShades.success[700]}
-          indicatorColor={theme.palette.allShades.success[700]}
-        />
+          sx={{
+            "& .MuiTab-root": {
+              "&.Mui-selected": {
+                color: theme.palette.allShades.success[700],
+              },
+            },
+            "& .MuiTabs-indicator": {
+              backgroundColor: theme.palette.allShades.success[700],
+            },
+          }}
+        >
+          {tabs.map((tab) => (
+            <Tab
+              key={tab.value}
+              label={tab.label}
+              value={tab.value}
+              disabled={tab.disabled}
+            />
+          ))}
+        </Tabs>
         {tabs.map((tab) => (
           <CommonTabPanel key={tab.value} value={value} index={tab.value}>
             <Typography variant="h6" sx={{ mb: 2 }}>
@@ -255,6 +263,54 @@ export const CommonTabsWithCustomColors = () => {
             <Typography>
               This tab uses custom green color for active text and indicator.
             </Typography>
+          </CommonTabPanel>
+        ))}
+      </Box>
+    </ThemeProvider>
+  );
+};
+
+// Tabs without Border
+export const CommonTabsWithoutBorder = () => {
+  const theme = createMuiTheme();
+  const [value, setValue] = useState<string>("tab1");
+
+  const tabs: TabItem[] = [
+    { label: "Documentation", value: "tab1" },
+    { label: "Sub Domains", value: "tab2" },
+    { label: "Data Products", value: "tab3" },
+    { label: "Activity Feeds & Tasks", value: "tab4" },
+    { label: "Assets", value: "tab5" },
+  ];
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Box sx={{ width: "100%", maxWidth: 1200 }}>
+        <Tabs
+          value={value}
+          onChange={(_, newValue) => setValue(newValue as string)}
+          aria-label="Tabs without border example"
+          sx={{
+            '& .MuiTabs-scroller': {
+              border: 'none',
+            },
+          }}
+        >
+          {tabs.map((tab) => (
+            <Tab
+              key={tab.value}
+              label={tab.label}
+              value={tab.value}
+              disabled={tab.disabled}
+            />
+          ))}
+        </Tabs>
+        {tabs.map((tab) => (
+          <CommonTabPanel key={tab.value} value={value} index={tab.value}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              {tab.label}
+            </Typography>
+            <Typography>Content for {tab.label} tab</Typography>
           </CommonTabPanel>
         ))}
       </Box>

@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { CustomTabsArgs } from "../types/Tabs.types";
+import type { TabsProps } from "@mui/material";
+import type { TabItem } from "../types/Tabs.types";
+
+type CustomTabsArgs = TabsProps & {
+  tabs?: TabItem[];
+};
 
 export const CUSTOM_TABS_DEFAULT_ARGS: CustomTabsArgs = {
   tabs: [
@@ -20,13 +25,7 @@ export const CUSTOM_TABS_DEFAULT_ARGS: CustomTabsArgs = {
   ],
   value: "tab1",
   variant: "standard",
-  marginTop: "13px",
   "aria-label": "Custom tabs example",
-  activeTextColor: undefined,
-  indicatorColor: undefined,
-  fontSize: undefined,
-  fontWeight: undefined,
-  selectedFontWeight: undefined,
   orientation: "horizontal",
   scrollButtons: false,
   allowScrollButtonsMobile: false,
@@ -40,33 +39,9 @@ export const CUSTOM_TABS_ARG_TYPES = {
     options: ["standard", "scrollable", "fullWidth"],
     description: "The variant to use",
   },
-  marginTop: {
-    control: "text",
-    description: "Custom margin top value",
-  },
   "aria-label": {
     control: "text",
     description: "Label for accessibility",
-  },
-  activeTextColor: {
-    control: "color",
-    description: "Color for active tab text",
-  },
-  indicatorColor: {
-    control: "color",
-    description: "Color for the tab indicator",
-  },
-  fontSize: {
-    control: "text",
-    description: "Font size for tab labels (e.g., '14px', '1rem', 14)",
-  },
-  fontWeight: {
-    control: "text",
-    description: "Font weight for tab labels (e.g., 400, 500, 'normal', 'bold')",
-  },
-  selectedFontWeight: {
-    control: "text",
-    description: "Font weight for selected tab label (e.g., 500, 600, 'normal', 'bold')",
   },
   orientation: {
     control: "select",

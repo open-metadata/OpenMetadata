@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { TabsProps as MuiTabsProps } from "@mui/material";
 import React from "react";
 
 export interface TabItem {
@@ -19,29 +18,11 @@ export interface TabItem {
   disabled?: boolean;
 }
 
-export interface TabsProps
-  extends Omit<
-    MuiTabsProps,
-    "children" | "value" | "onChange" | "indicatorColor" | "textColor"
-  > {
-  value: string;
-  onChange?: (event: React.SyntheticEvent, newValue: string) => void;
-  tabs: TabItem[];
-  marginTop?: string;
-  activeTextColor?: string;
-  indicatorColor?: string;
-  fontSize?: string | number;
-  fontWeight?: number | string;
-  selectedFontWeight?: number | string;
-}
-
 export interface CommonTabPanelPropsType {
   children?: React.ReactNode;
   index: string;
   value: string;
 }
-
-export type CustomTabsArgs = TabsProps;
 
 export type StorybookComponent<TArgs> = React.FC<TArgs> & {
   args?: TArgs;
