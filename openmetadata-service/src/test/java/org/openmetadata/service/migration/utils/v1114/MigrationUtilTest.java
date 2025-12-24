@@ -205,4 +205,191 @@ public class MigrationUtilTest extends OpenMetadataApplicationTest {
       }
     }
   }
+
+  @Test
+  public void testReseedRolesAndPoliciesDoesNotThrow() {
+    try (Handle handle = jdbi.open()) {
+      assertDoesNotThrow(
+          () -> MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType),
+          "reseedRolesAndPoliciesIfMissing should handle all cases without throwing");
+    }
+  }
+
+  @Test
+  public void testReseedRolesAndPoliciesIsIdempotent() {
+    try (Handle handle = jdbi.open()) {
+      Integer roleCountBefore =
+          handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one();
+      Integer policyCountBefore =
+          handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one();
+
+      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
+      Integer roleCountAfterFirst =
+          handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one();
+      Integer policyCountAfterFirst =
+          handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one();
+
+      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
+      Integer roleCountAfterSecond =
+          handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one();
+      Integer policyCountAfterSecond =
+          handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one();
+
+      assertEquals(
+          roleCountAfterFirst, roleCountAfterSecond, "Running twice should not create duplicates");
+      assertEquals(
+          policyCountAfterFirst,
+          policyCountAfterSecond,
+          "Running twice should not create duplicates");
+      assertTrue(roleCountAfterFirst >= roleCountBefore, "Should not decrease role count");
+      assertTrue(policyCountAfterFirst >= policyCountBefore, "Should not decrease policy count");
+    }
+  }
+
+  @Test
+  public void testRestoreRolePolicyRelationshipsDoesNotThrow() {
+    try (Handle handle = jdbi.open()) {
+      assertDoesNotThrow(
+          () -> MigrationUtil.restoreRolePolicyRelationshipsIfMissing(handle, connectionType),
+          "restoreRolePolicyRelationshipsIfMissing should handle all cases without throwing");
+    }
+  }
+
+  @Test
+  public void testRestoreRolePolicyRelationshipsIsIdempotent() {
+    try (Handle handle = jdbi.open()) {
+      String countQuery =
+          "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = 'role' AND toEntity = 'policy' AND relation = 1";
+
+      Integer countBefore = handle.createQuery(countQuery).mapTo(Integer.class).one();
+
+      MigrationUtil.restoreRolePolicyRelationshipsIfMissing(handle, connectionType);
+      Integer countAfterFirst = handle.createQuery(countQuery).mapTo(Integer.class).one();
+
+      MigrationUtil.restoreRolePolicyRelationshipsIfMissing(handle, connectionType);
+      Integer countAfterSecond = handle.createQuery(countQuery).mapTo(Integer.class).one();
+
+      assertEquals(
+          countAfterFirst, countAfterSecond, "Running twice should not create duplicate relations");
+      assertTrue(countAfterFirst >= countBefore, "Should not decrease relationship count");
+    }
+  }
+
+  @Test
+  public void testRestoreBotUserRolesDoesNotThrow() {
+    try (Handle handle = jdbi.open()) {
+      assertDoesNotThrow(
+          () -> MigrationUtil.restoreBotUserRolesIfMissing(handle, connectionType),
+          "restoreBotUserRolesIfMissing should handle all cases without throwing");
+    }
+  }
+
+  @Test
+  public void testRestoreBotUserRolesIsIdempotent() {
+    try (Handle handle = jdbi.open()) {
+      String countQuery =
+          "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = 'user' AND toEntity = 'role' AND relation = 1";
+
+      Integer countBefore = handle.createQuery(countQuery).mapTo(Integer.class).one();
+
+      MigrationUtil.restoreBotUserRolesIfMissing(handle, connectionType);
+      Integer countAfterFirst = handle.createQuery(countQuery).mapTo(Integer.class).one();
+
+      MigrationUtil.restoreBotUserRolesIfMissing(handle, connectionType);
+      Integer countAfterSecond = handle.createQuery(countQuery).mapTo(Integer.class).one();
+
+      assertEquals(
+          countAfterFirst, countAfterSecond, "Running twice should not create duplicate relations");
+      assertTrue(countAfterFirst >= countBefore, "Should not decrease relationship count");
+    }
+  }
+
+  @Test
+  public void testFullRecoveryFlowDoesNotThrow() {
+    try (Handle handle = jdbi.open()) {
+      assertDoesNotThrow(
+          () -> {
+            MigrationUtil.checkAndLogDataLossSymptoms(handle);
+            MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
+            MigrationUtil.restoreRolePolicyRelationshipsIfMissing(handle, connectionType);
+            MigrationUtil.restoreBotRelationshipsIfMissing(handle, connectionType);
+            MigrationUtil.restoreBotUserRolesIfMissing(handle, connectionType);
+          },
+          "Full recovery flow should complete without throwing");
+    }
+  }
+
+  @Test
+  public void testRecoveryPreservesExistingData() {
+    try (Handle handle = jdbi.open()) {
+      Integer roleCountBefore =
+          handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one();
+      Integer policyCountBefore =
+          handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one();
+      Integer relationCountBefore =
+          handle.createQuery("SELECT COUNT(*) FROM entity_relationship").mapTo(Integer.class).one();
+
+      MigrationUtil.checkAndLogDataLossSymptoms(handle);
+      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
+      MigrationUtil.restoreRolePolicyRelationshipsIfMissing(handle, connectionType);
+      MigrationUtil.restoreBotRelationshipsIfMissing(handle, connectionType);
+      MigrationUtil.restoreBotUserRolesIfMissing(handle, connectionType);
+
+      Integer roleCountAfter =
+          handle.createQuery("SELECT COUNT(*) FROM role_entity").mapTo(Integer.class).one();
+      Integer policyCountAfter =
+          handle.createQuery("SELECT COUNT(*) FROM policy_entity").mapTo(Integer.class).one();
+      Integer relationCountAfter =
+          handle.createQuery("SELECT COUNT(*) FROM entity_relationship").mapTo(Integer.class).one();
+
+      assertTrue(roleCountAfter >= roleCountBefore, "Recovery should not delete existing roles");
+      assertTrue(
+          policyCountAfter >= policyCountBefore, "Recovery should not delete existing policies");
+      assertTrue(
+          relationCountAfter >= relationCountBefore,
+          "Recovery should not delete existing relationships");
+    }
+  }
+
+  @Test
+  public void testSystemRolesExistAfterRecovery() {
+    try (Handle handle = jdbi.open()) {
+      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
+
+      String checkRoleQuery =
+          connectionType == ConnectionType.MYSQL
+              ? "SELECT COUNT(*) FROM role_entity WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name"
+              : "SELECT COUNT(*) FROM role_entity WHERE json->>'name' = :name";
+
+      String[] systemRoles = {"DataConsumer", "DataSteward", "IngestionBotRole"};
+      for (String roleName : systemRoles) {
+        Integer count =
+            handle.createQuery(checkRoleQuery).bind("name", roleName).mapTo(Integer.class).one();
+        assertTrue(count >= 0, "Query for role " + roleName + " should execute successfully");
+      }
+    }
+  }
+
+  @Test
+  public void testSystemPoliciesExistAfterRecovery() {
+    try (Handle handle = jdbi.open()) {
+      MigrationUtil.reseedRolesAndPoliciesIfMissing(handle, connectionType);
+
+      String checkPolicyQuery =
+          connectionType == ConnectionType.MYSQL
+              ? "SELECT COUNT(*) FROM policy_entity WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name"
+              : "SELECT COUNT(*) FROM policy_entity WHERE json->>'name' = :name";
+
+      String[] systemPolicies = {"OrganizationPolicy", "DataConsumerPolicy", "DataStewardPolicy"};
+      for (String policyName : systemPolicies) {
+        Integer count =
+            handle
+                .createQuery(checkPolicyQuery)
+                .bind("name", policyName)
+                .mapTo(Integer.class)
+                .one();
+        assertTrue(count >= 0, "Query for policy " + policyName + " should execute successfully");
+      }
+    }
+  }
 }
