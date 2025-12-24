@@ -1110,6 +1110,10 @@ export interface AccessDetails {
  */
 export interface PipelineObservability {
     /**
+     * Average runtime of the pipeline in milliseconds.
+     */
+    averageRunTime?: number;
+    /**
      * End time of the pipeline schedule.
      */
     endTime?: number;
