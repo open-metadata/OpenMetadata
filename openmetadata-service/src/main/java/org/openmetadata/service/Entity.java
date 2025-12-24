@@ -144,6 +144,8 @@ public final class Entity {
 
   public static final String FIELD_RELATED_TERMS = "relatedTerms";
 
+  public static final String FIELD_COLUMNS = "columns";
+
   //
   // Service entities
   //
