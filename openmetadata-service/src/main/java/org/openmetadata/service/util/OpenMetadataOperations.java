@@ -674,7 +674,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
           handle);
       org.openmetadata.service.migration.utils.v1114.MigrationUtil.reseedRolesAndPoliciesIfMissing(
           handle, connType);
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil
+          .restoreRolePolicyRelationshipsIfMissing(handle, connType);
       org.openmetadata.service.migration.utils.v1114.MigrationUtil.restoreBotRelationshipsIfMissing(
+          handle, connType);
+      org.openmetadata.service.migration.utils.v1114.MigrationUtil.restoreBotUserRolesIfMissing(
           handle, connType);
 
       LOG.info("Data recovery completed.");
