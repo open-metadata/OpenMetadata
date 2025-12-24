@@ -1,4 +1,4 @@
-#  Copyright 2025 Collate
+#  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -9,28 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# This workflow executes SSO-specific end-to-end (e2e) tests using Playwright with MySQL as the database.
-# 
-# Purpose:
-#   - Run SSO configuration tests for various authentication providers (Google, Azure AD, Okta, SAML, LDAP, etc.)
-#   - Validate SSO provider selection, field visibility, and configuration workflows
-#   - Tests are tagged with @sso and run in isolation from other Playwright tests
-#
-# Triggers:
-#   - Manual trigger via workflow_dispatch
-#   - Pull requests with "safe to test" label
-#   - Excludes draft PRs
-#
-# Test Location:
-#   - openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/SSOConfiguration.spec.ts
-#
-# For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
+# This workflow runs SSO authentication tests nightly to verify SSO providers are working correctly.
+# Tests are excluded from regular Playwright runs to avoid requiring SSO credentials for all CI/CD.
 
 name: SSO Authentication Tests (Nightly)
 
-# schedule:
+on:
+  # schedule:
   #   # Run every night at 2 AM UTC
-  #   - cron: '0 2 * * *'
+  #   - cron: '0 2 * * *'s
   workflow_dispatch: # Allow manual trigger
     inputs:
       sso_provider:
@@ -45,6 +32,7 @@ name: SSO Authentication Tests (Nightly)
           - auth0
           - saml
           - cognito
+          - all
 
 permissions:
   contents: read
@@ -56,7 +44,7 @@ concurrency:
 jobs:
   sso-auth-tests:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    timeout-minutes: 90
     environment: test
 
     strategy:
@@ -76,28 +64,8 @@ jobs:
           swap-storage: true
           docker-images: false
 
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
-
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Cache Maven Dependencies
         id: cache-output
@@ -108,7 +76,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Setup Openmetadata Test Environment
+      - name: Setup OpenMetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
@@ -119,14 +87,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
-      - name: Install dependencies
-        working-directory: openmetadata-ui/src/main/resources/ui/
+      - name: Install UI dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui
         run: yarn --ignore-scripts --frozen-lockfile
 
       - name: Install Playwright Browsers
-        run: npx playwright@1.51.1 install --with-deps
+        run: npx playwright@1.51.1 install --with-deps chromium
 
       - name: Run SSO Authentication Tests
         working-directory: openmetadata-ui/src/main/resources/ui
@@ -145,14 +113,23 @@ jobs:
         with:
           name: sso-auth-test-results-${{ matrix.provider }}
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
-          retention-days: 5
+          retention-days: 7
+
+      - name: Upload test traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sso-auth-test-traces-${{ matrix.provider }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/test-results/**/trace.zip
+          retention-days: 7
 
       - name: Clean Up
+        if: always()
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
-    
+
   notify:
     needs: sso-auth-tests
     runs-on: ubuntu-latest
