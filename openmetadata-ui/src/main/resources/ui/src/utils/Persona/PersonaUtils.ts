@@ -132,7 +132,7 @@ export const getCustomizePageOptions = (
     case 'governance':
       return list.reduce((acc, item) => {
         if (
-          [PageType.Glossary, PageType.GlossaryTerm, PageType.Domain].includes(
+          [PageType.Glossary, PageType.GlossaryTerm, PageType.Domain, PageType.DataProduct].includes(
             item
           )
         ) {
@@ -148,6 +148,7 @@ export const getCustomizePageOptions = (
             PageType.Glossary,
             PageType.GlossaryTerm,
             PageType.Domain,
+            PageType.DataProduct,
             PageType.LandingPage,
           ].includes(item)
         ) {

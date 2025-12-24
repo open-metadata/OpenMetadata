@@ -54,6 +54,8 @@ public class JWTTokenGenerator {
   private static final String EMAIL_CLAIM = "email";
   private static final String IS_BOT_CLAIM = "isBot";
   public static final String TOKEN_TYPE = "tokenType";
+  public static final String PREFERRED_USERNAME = "preferred_username";
+  public static final String USERNAME = "username";
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
@@ -159,6 +161,8 @@ public class JWTTokenGenerator {
               .withClaim(EMAIL_CLAIM, email)
               .withClaim(IS_BOT_CLAIM, isBot)
               .withClaim(TOKEN_TYPE, tokenType.value())
+              .withClaim(USERNAME, userName)
+              .withClaim(PREFERRED_USERNAME, userName)
               .withIssuedAt(new Date(System.currentTimeMillis()))
               .withExpiresAt(expires)
               .sign(algorithm);
