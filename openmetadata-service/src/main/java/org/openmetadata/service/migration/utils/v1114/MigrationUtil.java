@@ -28,6 +28,37 @@ import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 public class MigrationUtil {
 
   private static final int CONTAINS_RELATIONSHIP = 0;
+  private static final int HAS_RELATIONSHIP = 1;
+
+  private static final Map<String, String> BOT_USER_ROLE_MAPPING =
+      Map.of(
+          "ingestion-bot", "IngestionBotRole",
+          "profiler-bot", "ProfilerBotRole",
+          "lineage-bot", "LineageBotRole",
+          "usage-bot", "UsageBotRole",
+          "testsuite-bot", "QualityBotRole",
+          "governance-bot", "GovernanceBotRole",
+          "autoClassification-bot", "AutoClassificationBotRole",
+          "scim-bot", "ScimBotRole");
+
+  private static final Map<String, List<String>> ROLE_POLICY_MAPPING =
+      Map.ofEntries(
+          Map.entry("DataConsumer", List.of("DataConsumerPolicy")),
+          Map.entry("DataSteward", List.of("DataStewardPolicy")),
+          Map.entry("DefaultBotRole", List.of("DefaultBotPolicy", "DataConsumerPolicy")),
+          Map.entry("DomainOnlyAccessRole", List.of("DomainAccessPolicy")),
+          Map.entry("IngestionBotRole", List.of("DefaultBotPolicy", "IngestionBotPolicy")),
+          Map.entry("ProfilerBotRole", List.of("DefaultBotPolicy", "ProfilerBotPolicy")),
+          Map.entry("LineageBotRole", List.of("DefaultBotPolicy", "LineageBotPolicy")),
+          Map.entry("UsageBotRole", List.of("DefaultBotPolicy", "UsageBotPolicy")),
+          Map.entry("QualityBotRole", List.of("DefaultBotPolicy", "QualityBotPolicy")),
+          Map.entry("GovernanceBotRole", List.of("DefaultBotPolicy")),
+          Map.entry(
+              "AutoClassificationBotRole",
+              List.of("DefaultBotPolicy", "AutoClassificationBotPolicy")),
+          Map.entry("ScimBotRole", List.of("ScimBotPolicy")),
+          Map.entry("ApplicationBotRole", List.of("DefaultBotPolicy", "ApplicationBotPolicy")),
+          Map.entry("DataQualityBotRole", List.of("DefaultBotPolicy", "QualityBotPolicy")));
 
   private static final List<String> SYSTEM_POLICIES =
       Arrays.asList(
@@ -163,8 +194,215 @@ public class MigrationUtil {
 
     } catch (Exception e) {
       LOG.error("Error restoring bot relationships: {}", e.getMessage(), e);
-      // Don't fail the migration, just log the error
     }
+  }
+
+  /**
+   * Restores bot user role relationships that were deleted by the Flyway migration issue. The v004
+   * migration deletes entity_relationship records where toEntity='role', which includes bot user
+   * role assignments.
+   */
+  public static void restoreBotUserRolesIfMissing(Handle handle, ConnectionType connectionType) {
+    try {
+      LOG.info("Checking for bot users with missing role relationships...");
+
+      int restoredCount = 0;
+      for (Map.Entry<String, String> entry : BOT_USER_ROLE_MAPPING.entrySet()) {
+        String botUserName = entry.getKey();
+        String roleName = entry.getValue();
+
+        String userId = findBotUserId(handle, connectionType, botUserName);
+        if (userId == null) {
+          LOG.debug("Bot user {} not found, skipping", botUserName);
+          continue;
+        }
+
+        String roleId = findRoleId(handle, connectionType, roleName);
+        if (roleId == null) {
+          LOG.debug("Role {} not found, skipping", roleName);
+          continue;
+        }
+
+        if (hasUserRoleRelationship(handle, userId, roleId)) {
+          LOG.debug("Bot user {} already has role {}", botUserName, roleName);
+          continue;
+        }
+
+        String insertQuery = getInsertUserRoleRelationshipQuery(connectionType);
+        handle
+            .createUpdate(insertQuery)
+            .bind("userId", userId)
+            .bind("roleId", roleId)
+            .bind("relation", HAS_RELATIONSHIP)
+            .execute();
+
+        LOG.info("Restored role {} for bot user {}", roleName, botUserName);
+        restoredCount++;
+      }
+
+      if (restoredCount > 0) {
+        LOG.info("Restored {} bot user role relationships", restoredCount);
+      } else {
+        LOG.info("All bot users have proper role relationships");
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error restoring bot user roles: {}", e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Restores role→policy relationships that were deleted by the Flyway migration issue. The v004
+   * migration deletes entity_relationship records where fromEntity='role' or toEntity='role'.
+   */
+  public static void restoreRolePolicyRelationshipsIfMissing(
+      Handle handle, ConnectionType connectionType) {
+    try {
+      LOG.info("Checking for roles with missing policy relationships...");
+
+      int restoredCount = 0;
+      for (Map.Entry<String, List<String>> entry : ROLE_POLICY_MAPPING.entrySet()) {
+        String roleName = entry.getKey();
+        List<String> policyNames = entry.getValue();
+
+        String roleId = findRoleId(handle, connectionType, roleName);
+        if (roleId == null) {
+          LOG.debug("Role {} not found, skipping", roleName);
+          continue;
+        }
+
+        for (String policyName : policyNames) {
+          String policyId = findPolicyId(handle, connectionType, policyName);
+          if (policyId == null) {
+            LOG.debug("Policy {} not found, skipping", policyName);
+            continue;
+          }
+
+          if (hasRolePolicyRelationship(handle, roleId, policyId)) {
+            continue;
+          }
+
+          String insertQuery = getInsertRolePolicyRelationshipQuery(connectionType);
+          handle
+              .createUpdate(insertQuery)
+              .bind("roleId", roleId)
+              .bind("policyId", policyId)
+              .bind("relation", HAS_RELATIONSHIP)
+              .execute();
+
+          LOG.info("Restored policy {} for role {}", policyName, roleName);
+          restoredCount++;
+        }
+      }
+
+      if (restoredCount > 0) {
+        LOG.info("Restored {} role-policy relationships", restoredCount);
+      } else {
+        LOG.info("All roles have proper policy relationships");
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error restoring role-policy relationships: {}", e.getMessage(), e);
+    }
+  }
+
+  private static String findPolicyId(
+      Handle handle, ConnectionType connectionType, String policyName) {
+    String query = getCheckPolicyExistsQuery(connectionType).replace("COUNT(*)", "id");
+    List<Map<String, Object>> results =
+        handle.createQuery(query).bind("name", policyName).mapToMap().list();
+    return results.isEmpty() ? null : results.get(0).get("id").toString();
+  }
+
+  private static boolean hasRolePolicyRelationship(Handle handle, String roleId, String policyId) {
+    String query =
+        """
+        SELECT COUNT(*) as cnt FROM entity_relationship
+        WHERE fromId = :roleId AND toId = :policyId
+        AND fromEntity = 'role' AND toEntity = 'policy' AND relation = :relation
+        """;
+    Integer count =
+        handle
+            .createQuery(query)
+            .bind("roleId", roleId)
+            .bind("policyId", policyId)
+            .bind("relation", HAS_RELATIONSHIP)
+            .mapTo(Integer.class)
+            .one();
+    return count != null && count > 0;
+  }
+
+  private static String getInsertRolePolicyRelationshipQuery(ConnectionType connectionType) {
+    return switch (connectionType) {
+      case MYSQL -> """
+          INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+          VALUES (:roleId, :policyId, 'role', 'policy', :relation)
+          """;
+      case POSTGRES -> """
+          INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+          VALUES (:roleId, :policyId, 'role', 'policy', :relation)
+          ON CONFLICT DO NOTHING
+          """;
+    };
+  }
+
+  private static String findBotUserId(
+      Handle handle, ConnectionType connectionType, String userName) {
+    String query =
+        switch (connectionType) {
+          case MYSQL -> """
+          SELECT id FROM user_entity
+          WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
+          AND JSON_EXTRACT(json, '$.isBot') = true
+          """;
+          case POSTGRES -> """
+          SELECT id FROM user_entity
+          WHERE json->>'name' = :name
+          AND (json->>'isBot')::boolean = true
+          """;
+        };
+    List<Map<String, Object>> results =
+        handle.createQuery(query).bind("name", userName).mapToMap().list();
+    return results.isEmpty() ? null : results.get(0).get("id").toString();
+  }
+
+  private static String findRoleId(Handle handle, ConnectionType connectionType, String roleName) {
+    String query = getCheckRoleExistsQuery(connectionType).replace("COUNT(*)", "id");
+    List<Map<String, Object>> results =
+        handle.createQuery(query).bind("name", roleName).mapToMap().list();
+    return results.isEmpty() ? null : results.get(0).get("id").toString();
+  }
+
+  private static boolean hasUserRoleRelationship(Handle handle, String userId, String roleId) {
+    String query =
+        """
+        SELECT COUNT(*) as cnt FROM entity_relationship
+        WHERE fromId = :userId AND toId = :roleId
+        AND fromEntity = 'user' AND toEntity = 'role' AND relation = :relation
+        """;
+    Integer count =
+        handle
+            .createQuery(query)
+            .bind("userId", userId)
+            .bind("roleId", roleId)
+            .bind("relation", HAS_RELATIONSHIP)
+            .mapTo(Integer.class)
+            .one();
+    return count != null && count > 0;
+  }
+
+  private static String getInsertUserRoleRelationshipQuery(ConnectionType connectionType) {
+    return switch (connectionType) {
+      case MYSQL -> """
+          INSERT IGNORE INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+          VALUES (:userId, :roleId, 'user', 'role', :relation)
+          """;
+      case POSTGRES -> """
+          INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)
+          VALUES (:userId, :roleId, 'user', 'role', :relation)
+          ON CONFLICT DO NOTHING
+          """;
+    };
   }
 
   /**
