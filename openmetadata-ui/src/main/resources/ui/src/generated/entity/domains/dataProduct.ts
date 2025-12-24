@@ -77,9 +77,9 @@ export interface DataProduct {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
-     * Input ports for consuming data into this data product
+     * Input ports - data assets consumed by this data product
      */
-    inputPorts?: DataProductPort[];
+    inputPorts?: EntityReference[];
     /**
      * Current lifecycle stage of the data product
      */
@@ -89,9 +89,9 @@ export interface DataProduct {
      */
     name: string;
     /**
-     * Output ports for exposing data from this data product
+     * Output ports - data assets produced/exposed by this data product
      */
-    outputPorts?: DataProductPort[];
+    outputPorts?: EntityReference[];
     /**
      * Owners of this Data Product.
      */
@@ -140,8 +140,6 @@ export interface DataProduct {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Reference to the data asset exposed through this port
  */
 export interface EntityReference {
     /**
@@ -264,76 +262,6 @@ export enum EntityStatus {
     InReview = "In Review",
     Rejected = "Rejected",
     Unprocessed = "Unprocessed",
-}
-
-/**
- * Port definition for data product input/output
- */
-export interface DataProductPort {
-    /**
-     * Reference to the data asset exposed through this port
-     */
-    dataAsset?: EntityReference;
-    /**
-     * Description of the port
-     */
-    description?: string;
-    /**
-     * Display name of the port
-     */
-    displayName?: string;
-    /**
-     * Endpoint URL or connection string
-     */
-    endpoint?: string;
-    format?:   PortFormat;
-    /**
-     * Name of the port
-     */
-    name:      string;
-    portType:  PortType;
-    protocol?: PortProtocol;
-}
-
-/**
- * Data format supported by the port
- */
-export enum PortFormat {
-    Avro = "AVRO",
-    CSV = "CSV",
-    Custom = "CUSTOM",
-    Delta = "DELTA",
-    Iceberg = "ICEBERG",
-    JSON = "JSON",
-    Orc = "ORC",
-    Parquet = "PARQUET",
-    Protobuf = "PROTOBUF",
-    XML = "XML",
-}
-
-/**
- * Type of the data product port
- */
-export enum PortType {
-    Input = "INPUT",
-    Output = "OUTPUT",
-}
-
-/**
- * Protocol used by the port for data access
- */
-export enum PortProtocol {
-    AzureBlob = "AZURE_BLOB",
-    Custom = "CUSTOM",
-    File = "FILE",
-    Gcs = "GCS",
-    Graphql = "GRAPHQL",
-    Grpc = "GRPC",
-    JDBC = "JDBC",
-    Kafka = "KAFKA",
-    REST = "REST",
-    S3 = "S3",
-    Webhook = "WEBHOOK",
 }
 
 /**
