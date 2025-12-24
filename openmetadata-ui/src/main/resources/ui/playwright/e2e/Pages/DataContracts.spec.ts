@@ -124,6 +124,17 @@ test.describe('Data Contracts', () => {
   });
 
   test.beforeEach('Redirect to Home Page', async ({ page }) => {
+    // Clear page size preferences to prevent carryover between tests
+    await page.evaluate(() => {
+      const preferences = localStorage.getItem('om-user-preferences');
+      if (preferences) {
+        const parsed = JSON.parse(preferences);
+        delete parsed.state?.globalPageSize;
+        delete parsed.state?.assetListPageSize;
+        delete parsed.state?.contentListPageSize;
+        localStorage.setItem('om-user-preferences', JSON.stringify(parsed));
+      }
+    });
     await redirectToHomePage(page);
   });
 
@@ -862,8 +873,8 @@ test.describe('Data Contracts', () => {
 
         await saveContractResponse;
 
-        // Check all schema from 1 to 50, and 10 is the max-pagination chip
-        await expect(page.getByTitle('10')).toBeVisible();
+        // Check all schema from 1 to 50, and 25 is the max-pagination chip
+        await expect(page.getByTitle('25')).toBeVisible();
 
         for (let i = 1; i <= 50; i++) {
           if (i < 10) {
@@ -872,11 +883,12 @@ test.describe('Data Contracts', () => {
             await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
           }
 
-          // Click "Next Page" after every 5 checks
-          if (i % 5 === 0) {
+          // Click "Next Page" after every 25 checks
+          // Click "Next Page" after every 25 checks, but not at 50
+          if (i % 25 === 0 && i < 50) {
             // Schema from 51 to 75 Should not be visible
-            for (let i = 51; i <= 75; i++) {
-              await expect(page.getByText(`test_col_00${i}`)).not.toBeVisible();
+            for (let j = 51; j <= 75; j++) {
+              await expect(page.getByText(`test_col_00${j}`)).not.toBeVisible();
             }
             await page.getByRole('listitem', { name: 'Next Page' }).click();
           }
@@ -929,8 +941,9 @@ test.describe('Data Contracts', () => {
         for (let i = 26; i <= 50; i++) {
           await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
 
-          // Click "Next Page" after every 5 checks
-          if (i % 5 === 0) {
+          // Click "Next Page" after every 25 checks
+          // Click "Next Page" after every 25 checks, but not at 50
+          if (i % 25 === 0 && i < 50) {
             await page.getByRole('listitem', { name: 'Next Page' }).click();
           }
         }
@@ -984,8 +997,9 @@ test.describe('Data Contracts', () => {
           for (let i = 26; i <= 50; i++) {
             await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
 
-            // Click "Next Page" after every 5 checks
-            if (i % 5 === 0) {
+            // Click "Next Page" after every 25 checks
+            // Click "Next Page" after every 25 checks, but not at 50
+            if (i % 25 === 0 && i < 50) {
               await page.getByRole('listitem', { name: 'Next Page' }).click();
             }
           }

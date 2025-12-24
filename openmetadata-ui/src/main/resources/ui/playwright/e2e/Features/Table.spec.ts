@@ -54,6 +54,17 @@ test.describe('Table pagination sorting search scenarios ', () => {
   });
 
   test.beforeEach('Visit home page', async ({ dataConsumerPage: page }) => {
+    // Clear page size preferences to prevent carryover between tests
+    await page.evaluate(() => {
+      const preferences = localStorage.getItem('om-user-preferences');
+      if (preferences) {
+        const parsed = JSON.parse(preferences);
+        delete parsed.state?.globalPageSize;
+        delete parsed.state?.assetListPageSize;
+        delete parsed.state?.contentListPageSize;
+        localStorage.setItem('om-user-preferences', JSON.stringify(parsed));
+      }
+    });
     await redirectToHomePage(page);
   });
 
@@ -287,10 +298,10 @@ test.describe('Table & Data Model columns table pagination', () => {
       state: 'detached',
     });
 
-    // 50 Row + 1 Header row
+    // 25 Row + 1 Header row (default page size is 25)
     expect(
       page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(51);
+    ).toHaveCount(26);
 
     expect(page.getByTestId('page-indicator')).toHaveText(`Page 1 of 36`);
 
@@ -304,7 +315,7 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     expect(
       page.getByTestId('data-model-column-table').getByRole('row')
-    ).toHaveCount(51);
+    ).toHaveCount(26);
 
     await page.getByTestId('previous').click();
 

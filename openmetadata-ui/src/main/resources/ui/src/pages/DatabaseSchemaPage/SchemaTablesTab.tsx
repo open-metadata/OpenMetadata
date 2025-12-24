@@ -19,7 +19,7 @@ import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -87,6 +87,7 @@ function SchemaTablesTab({
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [tableData, setTableData] = useState<Array<Table>>([]);
   const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const { permissions } = usePermissionProvider();
@@ -107,7 +108,8 @@ function SchemaTablesTab({
     handlePageSizeChange,
     handlePageChange,
     pagingCursor,
-  } = usePaging();
+    pageSizeOptions,
+  } = usePaging(25, 'assetListPageSize', 500);
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
@@ -357,6 +359,7 @@ function SchemaTablesTab({
         isNumberBased: Boolean(searchValue),
         pagingHandler: tablePaginationHandler,
         onShowSizeChange: handlePageSizeChange,
+        pageSizeOptions,
       }}
       data-testid="databaseSchema-tables"
       dataSource={tableData}

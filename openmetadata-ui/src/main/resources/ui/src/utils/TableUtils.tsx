@@ -585,7 +585,7 @@ export function getTableExpandableConfig<T>(
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) =>
-      expandable ? (
+      expandable && !isEmpty((record as any).children) ? (
         <>
           {isDraggable && <IconDrag className="drag-icon" />}
           <Icon

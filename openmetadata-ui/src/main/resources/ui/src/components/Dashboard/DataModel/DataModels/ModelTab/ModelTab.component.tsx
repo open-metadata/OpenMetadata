@@ -16,7 +16,10 @@ import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
+import {
+  ASSET_LIST_PAGE_SIZE_OPTIONS,
+  PAGE_SIZE_LARGE,
+} from '../../../../../constants/constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS,
@@ -267,6 +270,7 @@ const ModelTab = () => {
       paging,
       pagingHandler: handleColumnsPageChange,
       onShowSizeChange: handlePageSizeChange,
+      pageSizeOptions: ASSET_LIST_PAGE_SIZE_OPTIONS,
     }),
     [
       currentPage,

@@ -24,6 +24,8 @@ export interface UserPreferences {
   language: SupportedLocales;
   selectedEntityTableColumns: Record<string, string[]>;
   globalPageSize: number;
+  assetListPageSize: number;
+  contentListPageSize: number;
   recentlyViewed: RecentlyViewedData[];
   recentlySearched: RecentlySearchedData[];
   recentlyViewedQuickLinks: RecentlyViewedData[];
@@ -44,6 +46,8 @@ const defaultPreferences: UserPreferences = {
   language: detectBrowserLanguage(),
   selectedEntityTableColumns: {},
   globalPageSize: PAGE_SIZE_BASE,
+  assetListPageSize: 25,
+  contentListPageSize: 50,
   recentlyViewed: [],
   recentlySearched: [],
   recentlyViewedQuickLinks: [],

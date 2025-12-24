@@ -85,7 +85,7 @@ const TableVersion: React.FC<TableVersionProp> = ({
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging(PAGE_SIZE_LARGE, 'assetListPageSize', 500);
   const { fqn: tableFqn } = useFqn();
   const [searchText, setSearchText] = useState('');
   // Pagination state for columns
