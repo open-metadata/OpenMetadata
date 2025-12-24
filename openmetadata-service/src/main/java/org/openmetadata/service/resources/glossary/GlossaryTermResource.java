@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -1064,5 +1065,137 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount();
     return Response.ok(result).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportGlossaryTerm",
+      summary = "Export glossary term in CSV format",
+      description = "Export glossary term and its children in CSV format.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with glossary terms",
+            content = @Content(mediaType = "text/plain"))
+      })
+  public String exportCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn)
+      throws IOException {
+    return exportCsvInternal(securityContext, fqn, false);
+  }
+
+  @GET
+  @Path("/name/{fqn}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportGlossaryTermAsync",
+      summary = "Export glossary term in CSV format asynchronously",
+      description = "Export glossary term and its children in CSV format asynchronously.",
+      responses = {
+        @ApiResponse(
+            responseCode = "202",
+            description = "Export initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    return exportCsvInternalAsync(securityContext, fqn, false);
+  }
+
+  @PUT
+  @Path("/name/{fqn}/import")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importGlossaryTerm",
+      summary = "Import glossary terms from CSV",
+      description =
+          "Import glossary terms from CSV to create, and update glossary terms. This is a synchronous API.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public CsvImportResult importCsv(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(description = "CSV data to import", required = true) String csv,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun)
+      throws IOException {
+    return importCsvInternal(securityContext, fqn, csv, dryRun, false);
+  }
+
+  @PUT
+  @Path("/name/{fqn}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importGlossaryTermAsync",
+      summary = "Import glossary term from CSV asynchronously",
+      description =
+          "Import glossary term and its children from CSV format asynchronously to create or update glossary terms.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.CSVImportResponse.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(description = "CSV data to import", required = true) String csv,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("dryRun")
+          @DefaultValue("true")
+          boolean dryRun) {
+    return importCsvInternalAsync(securityContext, fqn, csv, dryRun, false);
   }
 }

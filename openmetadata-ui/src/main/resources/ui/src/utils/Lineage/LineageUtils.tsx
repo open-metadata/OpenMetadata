@@ -94,7 +94,8 @@ export const prepareColumnLevelNodesFromEdges = (
         for (const fromCol of col.fromColumns || []) {
           acc.push({
             ...omit(node, 'columns'),
-            column: { ...col, fromColumns: [fromCol] },
+            fromColumn: fromCol,
+            toColumn: col.toColumn,
             docId: fromCol + '->' + col.toColumn,
             nodeDepth,
             ...picked,
@@ -130,21 +131,24 @@ export const prepareUpstreamColumnLevelNodesFromUpstreamEdges = (
 };
 
 export const getSearchNameEsQuery = (
-  searchText: string
+  searchText: string,
+  isColumnLevel = false
 ): QueryFieldInterface => {
   return {
     bool: {
       should: [
         {
           wildcard: {
-            'name.keyword': {
+            [isColumnLevel ? 'columns.name.keyword' : 'name.keyword']: {
               value: `*${searchText}*`,
             },
           },
         },
         {
           wildcard: {
-            'displayName.keyword': {
+            [isColumnLevel
+              ? 'columns.displayName.keyword'
+              : 'displayName.keyword']: {
               value: `*${searchText}*`,
             },
           },

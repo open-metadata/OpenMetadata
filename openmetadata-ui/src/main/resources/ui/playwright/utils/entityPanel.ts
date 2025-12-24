@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { redirectToExplorePage } from './common';
 
 export const openEntitySummaryPanel = async (
   page: Page,
@@ -94,11 +95,11 @@ export const editTags = async (
     .locator('[data-testid="selectable-list"]')
     .scrollIntoViewIfNeeded();
 
-    const searchTagResponse = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(
-        tagName
-      )}*index=tag_search_index*`
-    );
+  const searchTagResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      tagName
+    )}*index=tag_search_index*`
+  );
   const searchBar = page.locator('[data-testid="tag-select-search-bar"]');
   await searchBar.fill(tagName);
   await searchTagResponse;
@@ -350,3 +351,22 @@ export const navigateToIncidentsTab = async (page: Page) => {
     });
   }
 };
+
+export async function navigateToExploreAndSelectTable(
+  page: Page,
+  entityName: string
+) {
+  await redirectToExplorePage(page);
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  const permissionsResponse = page.waitForResponse((response) =>
+    response.url().includes('/permissions')
+  );
+
+  await openEntitySummaryPanel(page, entityName);
+
+  await permissionsResponse;
+}

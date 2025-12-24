@@ -525,3 +525,12 @@ export const splitCSV = (input: string): string[] => {
     value.replaceAll(/__ESCAPED_QUOTE__/g, '"').trim()
   );
 };
+
+export const getCustomPropertyEntityType = (entityType: EntityType) => {
+  switch (entityType) {
+    case EntityType.GLOSSARY:
+      return EntityType.GLOSSARY_TERM;
+    default:
+      return entityType;
+  }
+};
