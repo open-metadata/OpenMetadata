@@ -7,11 +7,15 @@ import java.util.function.BiPredicate;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
@@ -28,7 +32,9 @@ import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 public class MigrationUtil {
 
   private static final int CONTAINS_RELATIONSHIP = 0;
-  private static final int HAS_RELATIONSHIP = 1;
+  private static final int HAS_RELATIONSHIP = 10;
+
+  private static final String APP_ROLE_NAME = "ApplicationBotRole";
 
   private static final Map<String, String> BOT_USER_ROLE_MAPPING =
       Map.of(
@@ -206,14 +212,16 @@ public class MigrationUtil {
     try {
       LOG.info("Checking for bot users with missing role relationships...");
 
-      int restoredCount = 0;
-      for (Map.Entry<String, String> entry : BOT_USER_ROLE_MAPPING.entrySet()) {
-        String botUserName = entry.getKey();
-        String roleName = entry.getValue();
+      BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+      List<Bot> allBots =
+          botRepository.listAll(botRepository.getFields("*"), new ListFilter(Include.ALL));
 
-        String userId = findBotUserId(handle, connectionType, botUserName);
+      int restoredCount = 0;
+      for (Bot bot : allBots) {
+        String roleName = BOT_USER_ROLE_MAPPING.getOrDefault(bot.getName(), APP_ROLE_NAME);
+        String userId = findBotUserId(handle, connectionType, bot.getName().toLowerCase());
         if (userId == null) {
-          LOG.debug("Bot user {} not found, skipping", botUserName);
+          LOG.debug("Bot user {} not found, skipping", bot.getName());
           continue;
         }
 
@@ -224,7 +232,7 @@ public class MigrationUtil {
         }
 
         if (hasUserRoleRelationship(handle, userId, roleId)) {
-          LOG.debug("Bot user {} already has role {}", botUserName, roleName);
+          LOG.debug("Bot user {} already has role {}", bot.getName(), roleName);
           continue;
         }
 
@@ -236,7 +244,7 @@ public class MigrationUtil {
             .bind("relation", HAS_RELATIONSHIP)
             .execute();
 
-        LOG.info("Restored role {} for bot user {}", roleName, botUserName);
+        LOG.info("Restored role {} for bot user {}", roleName, bot.getName());
         restoredCount++;
       }
 
