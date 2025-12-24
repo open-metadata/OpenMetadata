@@ -324,3 +324,125 @@ def test_split_column_name():
 
     for column_name, components in column_names_split:
         assert components == split_column_name(column_name), column_name
+
+
+def test_standard_uuid_not_driver_license(analyzer):
+    """
+    Test to validate that standard UUID values are not incorrectly
+    tagged as Driver License.
+    """
+    standard_uuids = [
+        "a0f71563-b064-4b02-a21a-571dadadafb1",
+        "b1e82674-c175-5c13-b32b-682ebebebfc2",
+        "c2f93785-d286-6d24-c43c-793fcfcfcfd3",
+        "d3fa4896-e397-7e35-d54d-8a4fdf0f0fe4",
+        "e4fb5997-f4a8-8f46-e65e-9b5fef1f1ff5",
+        "f5fc6aa8-05b9-9057-f76f-ac6ff02f2006",
+        "061dcbb9-16ca-a168-0870-bd7001301117",
+        "172edcca-27db-b279-1981-ce8112412228",
+        "283feddb-38ec-c38a-2a92-df9223523339",
+        "394ff0ec-49fd-d49b-3ba3-e0a33464444a",
+        "4a500ffd-5af0-e5a4-4cb4-f1b445575556",
+        "5b611ffe-6bf1-f6b5-5dc5-02c556686667",
+    ]
+
+    # Test without driver license context
+    extracted = extract_pii_tags(analyzer, standard_uuids)
+    assert PIITag.US_DRIVER_LICENSE not in extracted, (
+        "Standard UUIDs should not be tagged as Driver License",
+        standard_uuids,
+        extracted,
+    )
+
+    # Test with GUID context
+    guid_context = ["guid", "id", "uuid"]
+    extracted_with_context = extract_pii_tags(
+        analyzer, standard_uuids, context=guid_context
+    )
+    assert PIITag.US_DRIVER_LICENSE not in extracted_with_context, (
+        "Standard UUIDs with GUID context should not be tagged as Driver License",
+        standard_uuids,
+        extracted_with_context,
+    )
+
+
+def test_salesforce_15_char_id_not_driver_license(analyzer):
+    """
+    Test to validate that Salesforce 15-character IDs are not incorrectly
+    tagged as Driver License.
+    """
+    salesforce_15_char = [
+        "0015g00000A1BcD",
+        "0033j00000ZXYuQ",
+        "5007A00001LmNOP",
+        "00Q9E000001abcD",
+        "0061U00000PqRsT",
+        "0031V00000UvWxY",
+        "0051W00000ZaBbC",
+        "0071X00000DeFgH",
+        "0081Y00000IjKlM",
+        "0091Z00000NoPqR",
+        "00A1a00000StUvW",
+        "00B1b00000XyZaB",
+    ]
+
+    # Test without driver license context
+    extracted = extract_pii_tags(analyzer, salesforce_15_char)
+    assert PIITag.US_DRIVER_LICENSE not in extracted, (
+        "Salesforce 15-char IDs should not be tagged as Driver License",
+        salesforce_15_char,
+        extracted,
+    )
+
+    # Test with Salesforce context
+    salesforce_context = ["salesforce", "id", "account"]
+    extracted_with_context = extract_pii_tags(
+        analyzer, salesforce_15_char, context=salesforce_context
+    )
+    assert PIITag.US_DRIVER_LICENSE not in extracted_with_context, (
+        "Salesforce 15-char IDs with context should not be tagged as Driver License",
+        salesforce_15_char,
+        extracted_with_context,
+    )
+
+
+def test_salesforce_18_char_id_not_driver_license(analyzer):
+    """
+    Test to validate that Salesforce 18-character IDs are not incorrectly
+    tagged as Driver License.
+    """
+    salesforce_18_char = [
+        "0015g00000A1BcDAAZ",
+        "0033j00000ZXYuQAAQ",
+        "5007A00001LmNOPQAZ",
+        "00Q9E000001abcDAAQ",
+        "0061U00000PqRsTAAV",
+        "0031V00000UvWxYAAJ",
+        "0051W00000ZaBbCAAK",
+        "0071X00000DeFgHAAL",
+        "0081Y00000IjKlMAAM",
+        "0091Z00000NoPqRAAN",
+        "00A1a00000StUvWAAO",
+        "00B1b00000XyZaBAAP",
+        "00C1c00000CdEfGAAR",
+        "00D1d00000HiJkLAAS",
+    ]
+
+    # Test without driver license context
+    extracted = extract_pii_tags(analyzer, salesforce_18_char)
+    assert PIITag.US_DRIVER_LICENSE not in extracted, (
+        "Salesforce 18-char IDs should not be tagged as Driver License",
+        salesforce_18_char,
+        extracted,
+    )
+
+    # Test with operational context
+    operational_context = ["operational", "account", "guid"]
+    extracted_with_context = extract_pii_tags(
+        analyzer, salesforce_18_char, context=operational_context
+    )
+    assert PIITag.US_DRIVER_LICENSE not in extracted_with_context, (
+        "Salesforce 18-char IDs with operational context should not be tagged as Driver License",
+        salesforce_18_char,
+        extracted_with_context,
+    )

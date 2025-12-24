@@ -33,17 +33,31 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.AggregationManagementClient;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class ElasticSearchAggregationManager implements AggregationManagementClient {
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
   private final ObjectMapper mapper;
+  private RBACConditionEvaluator rbacConditionEvaluator;
 
   public ElasticSearchAggregationManager(ElasticsearchClient client) {
     this.client = client;
     this.isClientAvailable = client != null;
+    mapper = new ObjectMapper();
+  }
+
+  public ElasticSearchAggregationManager(
+      ElasticsearchClient client, RBACConditionEvaluator rbacConditionEvaluator) {
+    this.client = client;
+    this.isClientAvailable = client != null;
+    this.rbacConditionEvaluator = rbacConditionEvaluator;
     mapper = new ObjectMapper();
   }
 
@@ -238,6 +252,106 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
     } catch (Exception e) {
       LOG.error("Failed to execute generic aggregation", e);
       throw new IOException("Failed to execute generic aggregation: " + e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public DataQualityReport genericAggregation(
+      String query,
+      String index,
+      SearchAggregation aggregationMetadata,
+      SubjectContext subjectContext)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot perform aggregation.");
+      throw new IOException("ElasticSearch client is not available");
+    }
+
+    try {
+      ElasticAggregationsBuilder aggregationsBuilder =
+          new ElasticAggregationsBuilder(client._transport().jsonpMapper());
+      Map<String, Aggregation> aggregations =
+          aggregationsBuilder.buildAggregations(aggregationMetadata.getAggregationTree());
+
+      SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder();
+      String indexName = Entity.getSearchRepository().getIndexOrAliasName(index);
+      searchRequestBuilder.index(indexName);
+
+      Query parsedQuery = null;
+      if (query != null) {
+        // Check if query string contains outer "query" wrapper and extract inner query
+        if (query.trim().startsWith("{")) {
+          final var queryToProcess = praseJsonQuery(query);
+          parsedQuery = Query.of(q -> q.withJson(new StringReader(queryToProcess)));
+        } else {
+          parsedQuery = Query.of(q -> q.queryString(qs -> qs.query(query)));
+        }
+      }
+
+      // Apply RBAC conditions
+      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
+        if (rbacQueryBuilder != null) {
+          Query rbacQuery = ((ElasticQueryBuilder) rbacQueryBuilder).buildV2();
+          if (parsedQuery != null) {
+            final Query existingQuery = parsedQuery;
+            Query combinedQuery =
+                Query.of(
+                    qb ->
+                        qb.bool(
+                            b -> {
+                              b.must(existingQuery);
+                              b.filter(rbacQuery);
+                              return b;
+                            }));
+            parsedQuery = combinedQuery;
+          } else {
+            parsedQuery = rbacQuery;
+          }
+        }
+      }
+
+      if (parsedQuery != null) {
+        searchRequestBuilder.query(parsedQuery);
+      }
+
+      searchRequestBuilder.aggregations(aggregations);
+      searchRequestBuilder.size(0);
+      searchRequestBuilder.timeout("30s");
+
+      SearchRequest searchRequest = searchRequestBuilder.build();
+      LOG.info(
+          "Generic Aggregation with RBAC - Index: {}, Query: {}, Aggregations count: {}",
+          indexName,
+          query,
+          aggregations.size());
+      LOG.debug("Generic Aggregation with RBAC - Full aggregations: {}", aggregations);
+
+      SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+
+      String response = serializeSearchResponse(searchResponse);
+      LOG.info(
+          "Generic Aggregation with RBAC - Response hits total: {}",
+          searchResponse.hits().total() != null ? searchResponse.hits().total().value() : 0);
+      LOG.debug("Generic Aggregation with RBAC - Full response: {}", response);
+
+      JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
+      Optional<JsonObject> aggregationResults =
+          Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
+      LOG.info(
+          "Generic Aggregation with RBAC - Aggregation results present: {}",
+          aggregationResults.isPresent());
+      if (aggregationResults.isPresent()) {
+        LOG.info(
+            "Generic Aggregation with RBAC - Aggregation results: {}", aggregationResults.get());
+      }
+
+      return SearchIndexUtils.parseAggregationResults(
+          aggregationResults, aggregationMetadata.getAggregationMetadata());
+    } catch (Exception e) {
+      LOG.error("Failed to execute generic aggregation with RBAC", e);
+      throw new IOException(
+          "Failed to execute generic aggregation with RBAC: " + e.getMessage(), e);
     }
   }
 
