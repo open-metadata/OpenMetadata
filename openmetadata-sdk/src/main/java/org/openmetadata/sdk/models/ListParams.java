@@ -64,6 +64,21 @@ public class ListParams {
     return this;
   }
 
+  public ListParams setDatabase(String database) {
+    filters.put("database", database);
+    return this;
+  }
+
+  public ListParams setDatabaseSchema(String databaseSchema) {
+    filters.put("databaseSchema", databaseSchema);
+    return this;
+  }
+
+  public ListParams setParent(String parent) {
+    filters.put("parent", parent);
+    return this;
+  }
+
   public ListParams addQueryParam(String key, String value) {
     queryParams.put(key, value);
     return this;

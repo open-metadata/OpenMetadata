@@ -2287,47 +2287,67 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void test_listTablesWithPagination(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Create 5 tables
+    // Create dedicated schema for this test
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Create 5 tables in that schema
     List<Table> tables = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      CreateTable req = createRequest(ns.prefix("page_table_" + i), ns);
+      CreateTable req = new CreateTable();
+      req.setName(ns.prefix("page_table_" + i));
+      req.setDatabaseSchema(schema.getFullyQualifiedName());
+      req.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
       tables.add(client.tables().create(req));
     }
 
-    // List with pagination (limit 2)
-    ListParams params = new ListParams().setLimit(2);
+    // List with pagination, filtered by database schema
+    ListParams params = new ListParams()
+        .setLimit(2)
+        .setDatabaseSchema(schema.getFullyQualifiedName());
 
     ListResponse<Table> response = client.tables().list(params);
 
     assertEquals(2, response.getData().size());
     assertNotNull(response.getPaging());
+    assertEquals(5, response.getPaging().getTotal());
   }
 
   @Test
   void test_bulkFetchWithOwners_pagination(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
+    // Create dedicated schema for this test
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
     // Create user as owner
     User owner = UserTestFactory.createUser(ns, "bulk_owner");
 
     // Create 3 tables with owner
     for (int i = 0; i < 3; i++) {
-      CreateTable req = createRequest(ns.prefix("bulk_table_" + i), ns);
+      CreateTable req = new CreateTable();
+      req.setName(ns.prefix("bulk_table_" + i));
+      req.setDatabaseSchema(schema.getFullyQualifiedName());
+      req.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
       req.setOwners(
           List.of(
               new EntityReference()
                   .withId(owner.getId())
                   .withType("user")
                   .withName(owner.getName())));
-      SdkClients.adminClient().tables().create(req);
+      client.tables().create(req);
     }
 
-    // List with owners field
-    ListParams params = new ListParams().setLimit(10).setFields("owners");
+    // List with owners field, filtered by schema
+    ListParams params = new ListParams()
+        .setLimit(10)
+        .setFields("owners")
+        .setDatabaseSchema(schema.getFullyQualifiedName());
 
     ListResponse<Table> response = client.tables().list(params);
 
-    assertTrue(response.getData().size() >= 3);
+    assertEquals(3, response.getData().size());
   }
 
   // ===================================================================
@@ -2745,24 +2765,38 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             .withDomains(List.of(domain.getFullyQualifiedName()));
     DatabaseService service = client.databaseServices().create(createService);
 
-    // Create multiple tables
+    // Create database and schema in the service with domain
+    CreateDatabase createDb =
+        new CreateDatabase()
+            .withName(ns.prefix("inherit_db"))
+            .withService(service.getFullyQualifiedName());
+    Database db = client.databases().create(createDb);
+
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("inherit_schema"))
+            .withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema = client.databaseSchemas().create(createSchema);
+
+    // Create multiple tables in that schema
     for (int i = 0; i < 3; i++) {
-      CreateTable req = createRequest(ns.prefix("inherit_table_" + i), ns);
-      SdkClients.adminClient().tables().create(req);
+      CreateTable req = new CreateTable()
+          .withName(ns.prefix("inherit_table_" + i))
+          .withDatabaseSchema(schema.getFullyQualifiedName())
+          .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
+      client.tables().create(req);
     }
 
-    // List tables with pagination
-    ListParams params = new ListParams().setLimit(2).setFields("domains");
+    // List tables with pagination, filtered by schema
+    ListParams params = new ListParams()
+        .setLimit(2)
+        .setFields("domains")
+        .setDatabaseSchema(schema.getFullyQualifiedName());
 
     ListResponse<Table> response = client.tables().list(params);
 
-    // Verify pagination works - in parallel tests, other tables may exist
-    // so just verify response structure and pagination limit is respected
-    assertNotNull(response);
-    assertNotNull(response.getData());
-    assertTrue(
-        response.getData().size() <= 2,
-        "Pagination limit should be respected: got " + response.getData().size());
+    assertEquals(2, response.getData().size());
+    assertEquals(3, response.getPaging().getTotal());
   }
 
   @Test
@@ -2885,22 +2919,18 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void get_TablesWithPagination_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Create 4 tables with same name but different schemas
+    // Create single service with multiple schemas
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    // Create 4 tables in different schemas under same database
+    CreateDatabase createDb =
+        new CreateDatabase()
+            .withName(ns.prefix("db"))
+            .withService(service.getFullyQualifiedName());
+    Database db = client.databases().create(createDb);
+
     List<java.util.UUID> createdIds = new ArrayList<>();
     for (int i = 0; i < 4; i++) {
-      // Create unique service and database for each
-      CreateDatabaseService createServiceReq =
-          new CreateDatabaseService()
-              .withName(ns.prefix("service_" + i))
-              .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake);
-      DatabaseService service = client.databaseServices().create(createServiceReq);
-
-      CreateDatabase createDb =
-          new CreateDatabase()
-              .withName(ns.prefix("db_" + i))
-              .withService(service.getFullyQualifiedName());
-      Database db = client.databases().create(createDb);
-
       CreateDatabaseSchema createSchema =
           new CreateDatabaseSchema()
               .withName(ns.prefix("schema_" + i))
@@ -2916,23 +2946,30 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       createdIds.add(table.getId());
     }
 
-    // Test pagination
-    ListParams params = new ListParams().setLimit(2);
+    // Test pagination with database filter
+    ListParams params = new ListParams()
+        .setLimit(2)
+        .setDatabase(db.getFullyQualifiedName());
 
     ListResponse<Table> page1 = client.tables().list(params);
     assertEquals(2, page1.getData().size());
+    assertEquals(4, page1.getPaging().getTotal());
 
     // Get next page
     if (page1.getPaging().getAfter() != null) {
       params.setAfter(page1.getPaging().getAfter());
       ListResponse<Table> page2 = client.tables().list(params);
-      assertTrue(page2.getData().size() >= 0);
+      assertEquals(2, page2.getData().size());
     }
   }
 
   @Test
   void get_tableListWithDifferentFields_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
+
+    // Create dedicated service and schema for this test
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
     // Create user as owner
     User owner = UserTestFactory.createUser(ns, "field_owner");
@@ -2957,7 +2994,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             .withTagFQN(tag.getFullyQualifiedName())
             .withSource(TagLabel.TagSource.CLASSIFICATION);
 
-    CreateTable req = createRequest(ns.prefix("field_table"), ns);
+    CreateTable req = new CreateTable()
+        .withName(ns.prefix("field_table"))
+        .withDatabaseSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").build()));
     req.setOwners(
         List.of(
             new EntityReference()
@@ -2966,16 +3006,26 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                 .withName(owner.getName())));
     req.setTags(List.of(tableTag));
 
-    SdkClients.adminClient().tables().create(req);
+    Table table = client.tables().create(req);
 
-    // List with different fields
-    ListParams paramsWithOwners = new ListParams().setLimit(10).setFields("owners");
+    // List with different fields, filtered by schema
+    ListParams paramsWithOwners = new ListParams()
+        .setLimit(10)
+        .setFields("owners")
+        .setDatabaseSchema(schema.getFullyQualifiedName());
     ListResponse<Table> withOwners = client.tables().list(paramsWithOwners);
     assertNotNull(withOwners);
+    assertEquals(1, withOwners.getData().size());
+    assertNotNull(withOwners.getData().get(0).getOwners());
 
-    ListParams paramsWithTags = new ListParams().setLimit(10).setFields("tags");
+    ListParams paramsWithTags = new ListParams()
+        .setLimit(10)
+        .setFields("tags")
+        .setDatabaseSchema(schema.getFullyQualifiedName());
     ListResponse<Table> withTags = client.tables().list(paramsWithTags);
     assertNotNull(withTags);
+    assertEquals(1, withTags.getData().size());
+    assertNotNull(withTags.getData().get(0).getTags());
   }
 
   @Test
