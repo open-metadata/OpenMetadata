@@ -278,6 +278,8 @@ export interface DatabaseConnection {
  * Epic FHIR Connection Config
  *
  * ServiceNow Connection Config
+ *
+ * Dremio Connection Config
  */
 export interface ConfigObject {
     /**
@@ -361,6 +363,8 @@ export interface ConfigObject {
      * Host and port of the Cockrooach service.
      *
      * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
+     *
+     * Host and port of the Dremio service.
      */
     hostPort?: string;
     /**
@@ -551,6 +555,8 @@ export interface ConfigObject {
      * Password
      *
      * Password to connect to ServiceNow.
+     *
+     * Password to connect to Dremio.
      */
     password?: string;
     /**
@@ -648,6 +654,9 @@ export interface ConfigObject {
      *
      * Username to connect to ServiceNow. This user should have read access to sys_db_object and
      * sys_dictionary tables.
+     *
+     * Username to connect to Dremio. This user should have privileges to read all the metadata
+     * in Dremio.
      */
     username?: string;
     /**
@@ -798,7 +807,10 @@ export interface ConfigObject {
      * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
-    sslMode?:            SSLMode;
+    /**
+     * SSL Mode for the connection. Dremio supports SSL connections.
+     */
+    sslMode?: boolean | SSLMode;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -1041,6 +1053,10 @@ export interface ConfigObject {
      * admin tables will be fetched.
      */
     includeSystemTables?: boolean;
+    /**
+     * Dremio Project ID. This is optional parameter to connect to a specific project.
+     */
+    projectId?: string;
     [property: string]: any;
 }
 
@@ -2129,6 +2145,8 @@ export enum ConfigScheme {
     DatabricksConnector = "databricks+connector",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
+    DremioFlight = "dremio+flight",
+    DremioPyodbc = "dremio+pyodbc",
     Druid = "druid",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
@@ -2202,6 +2220,7 @@ export enum ConfigType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
@@ -2324,6 +2343,7 @@ export enum DatabaseServiceType {
     DeltaLake = "DeltaLake",
     DomoDatabase = "DomoDatabase",
     Doris = "Doris",
+    Dremio = "Dremio",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
