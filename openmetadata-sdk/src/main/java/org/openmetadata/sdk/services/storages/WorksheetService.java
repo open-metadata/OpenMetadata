@@ -9,7 +9,7 @@ import org.openmetadata.sdk.services.EntityServiceBase;
 
 public class WorksheetService extends EntityServiceBase<Worksheet> {
   public WorksheetService(HttpClient httpClient) {
-    super(httpClient, "/v1/worksheets");
+    super(httpClient, "/v1/drives/worksheets");
   }
 
   @Override

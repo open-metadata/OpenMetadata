@@ -36,7 +36,10 @@ import org.openmetadata.sdk.network.RequestOptions;
 public final class OpenLineage {
   private static OpenMetadataClient defaultClient;
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final String BASE_PATH = "/v1/openlineage";
+  private static final String BASE_PATH = "/v1/openlineage/lineage";
+  private static final String DEFAULT_PRODUCER = "https://github.com/OpenMetadata/OpenMetadata";
+  private static final String DEFAULT_SCHEMA_URL =
+      "https://openlineage.io/spec/1-0-5/OpenLineage.json";
 
   private OpenLineage() {}
 
@@ -72,17 +75,38 @@ public final class OpenLineage {
    * Post a raw OpenLineage event directly.
    */
   public static String postEvent(Map<String, Object> event) throws OpenMetadataException {
+    // Add default producer and schemaURL if not set
+    Map<String, Object> eventWithDefaults = new HashMap<>(event);
+    if (!eventWithDefaults.containsKey("producer")) {
+      eventWithDefaults.put("producer", DEFAULT_PRODUCER);
+    }
+    if (!eventWithDefaults.containsKey("schemaURL")) {
+      eventWithDefaults.put("schemaURL", DEFAULT_SCHEMA_URL);
+    }
     return getClient()
         .getHttpClient()
-        .executeForString(HttpMethod.POST, BASE_PATH, event, RequestOptions.builder().build());
+        .executeForString(
+            HttpMethod.POST, BASE_PATH, eventWithDefaults, RequestOptions.builder().build());
   }
 
   /**
    * Post a batch of raw OpenLineage events.
    */
   public static String postBatch(List<Map<String, Object>> events) throws OpenMetadataException {
+    // Add default producer and schemaURL to each event if not set
+    List<Map<String, Object>> eventsWithDefaults = new ArrayList<>();
+    for (Map<String, Object> event : events) {
+      Map<String, Object> eventWithDefaults = new HashMap<>(event);
+      if (!eventWithDefaults.containsKey("producer")) {
+        eventWithDefaults.put("producer", DEFAULT_PRODUCER);
+      }
+      if (!eventWithDefaults.containsKey("schemaURL")) {
+        eventWithDefaults.put("schemaURL", DEFAULT_SCHEMA_URL);
+      }
+      eventsWithDefaults.add(eventWithDefaults);
+    }
     Map<String, Object> batchRequest = new HashMap<>();
-    batchRequest.put("events", events);
+    batchRequest.put("events", eventsWithDefaults);
     return getClient()
         .getHttpClient()
         .executeForString(
@@ -229,6 +253,13 @@ public final class OpenLineage {
      */
     public Map<String, Object> build() {
       Map<String, Object> result = new HashMap<>(event);
+      // Add default producer and schemaURL if not set
+      if (!result.containsKey("producer")) {
+        result.put("producer", DEFAULT_PRODUCER);
+      }
+      if (!result.containsKey("schemaURL")) {
+        result.put("schemaURL", DEFAULT_SCHEMA_URL);
+      }
       if (!job.isEmpty()) {
         result.put("job", job);
       }

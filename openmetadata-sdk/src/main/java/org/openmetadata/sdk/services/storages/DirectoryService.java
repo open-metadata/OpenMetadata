@@ -9,7 +9,7 @@ import org.openmetadata.sdk.services.EntityServiceBase;
 
 public class DirectoryService extends EntityServiceBase<Directory> {
   public DirectoryService(HttpClient httpClient) {
-    super(httpClient, "/v1/directories");
+    super(httpClient, "/v1/drives/directories");
   }
 
   @Override

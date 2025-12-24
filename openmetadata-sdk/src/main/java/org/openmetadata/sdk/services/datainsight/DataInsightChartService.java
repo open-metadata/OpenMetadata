@@ -21,8 +21,5 @@ public class DataInsightChartService extends EntityServiceBase<DataInsightChart>
     return httpClient.execute(HttpMethod.POST, basePath, request, DataInsightChart.class);
   }
 
-  @Override
-  public DataInsightChart update(String id, DataInsightChart entity) throws OpenMetadataException {
-    return httpClient.execute(HttpMethod.PUT, basePath, entity, DataInsightChart.class);
-  }
+  // Use base class update method which does proper JSON Patch
 }

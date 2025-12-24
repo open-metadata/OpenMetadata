@@ -8,6 +8,7 @@ import org.openmetadata.schema.api.services.CreateSearchService;
 import org.openmetadata.schema.api.services.CreateSearchService.SearchServiceType;
 import org.openmetadata.schema.entity.services.SearchService;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
+import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.type.SearchConnection;
 
 /**
@@ -36,6 +37,30 @@ public class SearchServiceTestFactory {
             .withServiceType(SearchServiceType.ElasticSearch)
             .withConnection(conn)
             .withDescription("Test ElasticSearch service");
+
+    return SdkClients.adminClient().searchServices().create(request);
+  }
+
+  /**
+   * Create an OpenSearch service with default settings. Each call creates a unique service to
+   * avoid conflicts in parallel test execution.
+   */
+  public static SearchService createOpenSearch(TestNamespace ns) {
+    String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+    String name = ns.prefix("openSearchService_" + uniqueId);
+
+    // Use OpenSearchConnection for OpenSearch service type
+    OpenSearchConnection osConn =
+        new OpenSearchConnection().withHostPort(URI.create("http://localhost:9200"));
+
+    SearchConnection conn = new SearchConnection().withConfig(osConn);
+
+    CreateSearchService request =
+        new CreateSearchService()
+            .withName(name)
+            .withServiceType(SearchServiceType.OpenSearch)
+            .withConnection(conn)
+            .withDescription("Test OpenSearch service");
 
     return SdkClients.adminClient().searchServices().create(request);
   }

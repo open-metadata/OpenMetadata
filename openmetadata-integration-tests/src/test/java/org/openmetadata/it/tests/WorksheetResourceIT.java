@@ -54,7 +54,8 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
     Spreadsheet spreadsheet = createTestSpreadsheet(ns);
     return new CreateWorksheet()
         .withName(ns.prefix("worksheet"))
-        .withSpreadsheet(spreadsheet.getFullyQualifiedName());
+        .withSpreadsheet(spreadsheet.getFullyQualifiedName())
+        .withDescription("Test worksheet created by integration test");
   }
 
   @Override
@@ -229,6 +230,7 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
 
     Worksheet worksheet = createEntity(request);
 
+    // Add columns via patch
     List<Column> columns = new ArrayList<>();
     columns.add(
         new Column()
@@ -241,16 +243,13 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
     worksheet.setColumns(columns);
     Worksheet updated = patchEntity(worksheet.getId().toString(), worksheet);
     assertEquals(2, updated.getColumns().size());
+    assertEquals("col1", updated.getColumns().get(0).getName());
+    assertEquals("col2", updated.getColumns().get(1).getName());
 
-    columns.add(
-        new Column()
-            .withName("col3")
-            .withDataType(ColumnDataType.DECIMAL)
-            .withDescription("Column 3"));
-
-    updated.setColumns(columns);
-    Worksheet final_updated = patchEntity(updated.getId().toString(), updated);
-    assertEquals(3, final_updated.getColumns().size());
+    // Verify columns persist on fresh fetch (need to request columns field)
+    Worksheet fetched = getEntityWithFields(updated.getId().toString(), "columns");
+    assertNotNull(fetched.getColumns());
+    assertEquals(2, fetched.getColumns().size());
   }
 
   @Test
@@ -508,21 +507,36 @@ public class WorksheetResourceIT extends BaseEntityIT<Worksheet, CreateWorksheet
 
   private Spreadsheet createTestSpreadsheet(TestNamespace ns, String baseName) {
     DriveService driveService = createTestDriveService(ns);
+    String spreadsheetName = ns.prefix(baseName);
 
-    CreateSpreadsheet request =
-        new CreateSpreadsheet()
-            .withName(ns.prefix(baseName))
-            .withService(driveService.getFullyQualifiedName());
+    try {
+      // Try to get existing spreadsheet first
+      return getSpreadsheetService()
+          .getByName(driveService.getFullyQualifiedName() + "." + spreadsheetName);
+    } catch (Exception e) {
+      // If not found, create it
+      CreateSpreadsheet request =
+          new CreateSpreadsheet()
+              .withName(spreadsheetName)
+              .withService(driveService.getFullyQualifiedName());
 
-    return getSpreadsheetService().create(request);
+      return getSpreadsheetService().create(request);
+    }
   }
 
   private DriveService createTestDriveService(TestNamespace ns) {
-    CreateDriveService request =
-        new CreateDriveService()
-            .withName(ns.prefix("google_drive"))
-            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
+    String serviceName = ns.prefix("google_drive");
+    try {
+      // Try to get existing service first
+      return getDriveServiceService().getByName(serviceName);
+    } catch (Exception e) {
+      // If not found, create it
+      CreateDriveService request =
+          new CreateDriveService()
+              .withName(serviceName)
+              .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
 
-    return getDriveServiceService().create(request);
+      return getDriveServiceService().create(request);
+    }
   }
 }

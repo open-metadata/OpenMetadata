@@ -452,14 +452,28 @@ public class SuggestionsResourceIT {
   // Helper methods
 
   private Table createTestTable(TestNamespace ns) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
-    return TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    // Use shortPrefix to avoid FQN length limit (256 chars)
+    String shortId = ns.shortPrefix();
+
+    // Create service with short name using factory
+    DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName("svc" + shortId, ns);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimpleWithName("sc" + shortId, ns, service);
+
+    return TableTestFactory.createSimpleWithName(
+        "tbl" + shortId, ns, schema.getFullyQualifiedName());
   }
 
   private Table createTestTableWithColumns(TestNamespace ns) {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    // Use shortPrefix to avoid FQN length limit (256 chars)
+    String shortId = ns.shortPrefix();
+
+    // Create service with short name using factory
+    DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName("svc" + shortId, ns);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimpleWithName("sc" + shortId, ns, service);
 
     List<Column> columns =
         List.of(
@@ -468,7 +482,7 @@ public class SuggestionsResourceIT {
             ColumnBuilder.of("email", "VARCHAR").dataLength(255).build());
 
     return Tables.create()
-        .name(ns.prefix("table_with_columns"))
+        .name("tbl" + shortId)
         .inSchema(schema.getFullyQualifiedName())
         .withColumns(columns)
         .execute();

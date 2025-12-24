@@ -33,6 +33,10 @@ import org.openmetadata.sdk.models.ListResponse;
 public class StoredProcedureResourceIT
     extends BaseEntityIT<StoredProcedure, CreateStoredProcedure> {
 
+  {
+    supportsSearchIndex = false; // StoredProcedure doesn't have search index
+  }
+
   // ===================================================================
   // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
   // ===================================================================
@@ -285,5 +289,281 @@ public class StoredProcedureResourceIT
     assertNotNull(proc);
     assertNotNull(proc.getDatabaseSchema());
     assertEquals(schema.getFullyQualifiedName(), proc.getDatabaseSchema().getFullyQualifiedName());
+  }
+
+  @Test
+  void post_storedProcedureWithInvalidDatabase_404(TestNamespace ns) {
+    CreateStoredProcedure request =
+        createRequest(ns.prefix("proc_invalid_schema"), ns).withDatabaseSchema("nonExistentSchema");
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating stored procedure with non-existent schema should fail");
+  }
+
+  @Test
+  void patch_storedProcedureCodeLanguage_200_OK(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    StoredProcedureCode initialCode =
+        new StoredProcedureCode()
+            .withCode(
+                "CREATE OR REPLACE PROCEDURE test_proc() AS $$ BEGIN RETURN; END; $$ LANGUAGE plpgsql;")
+            .withLanguage(StoredProcedureLanguage.SQL);
+
+    CreateStoredProcedure request = new CreateStoredProcedure();
+    request.setName(ns.prefix("proc_patch_code"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setStoredProcedureCode(initialCode);
+
+    StoredProcedure proc = createEntity(request);
+    assertNotNull(proc);
+    assertEquals(StoredProcedureLanguage.SQL, proc.getStoredProcedureCode().getLanguage());
+
+    String updatedCodeString =
+        "sales_vw\n"
+            + "create view sales_vw as\n"
+            + "select * from public.sales\n"
+            + "union all\n"
+            + "select * from spectrum.sales\n"
+            + "with no schema binding;";
+
+    StoredProcedureCode updatedCode =
+        new StoredProcedureCode()
+            .withCode(updatedCodeString)
+            .withLanguage(StoredProcedureLanguage.SQL);
+
+    proc.setStoredProcedureCode(updatedCode);
+    StoredProcedure updated = patchEntity(proc.getId().toString(), proc);
+
+    assertNotNull(updated);
+    assertNotNull(updated.getStoredProcedureCode());
+    assertEquals(updatedCodeString, updated.getStoredProcedureCode().getCode());
+    assertEquals(StoredProcedureLanguage.SQL, updated.getStoredProcedureCode().getLanguage());
+  }
+
+  @Test
+  void patch_storedProcedureCodeOnly_200_OK(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    StoredProcedureCode initialCode =
+        new StoredProcedureCode().withLanguage(StoredProcedureLanguage.SQL);
+
+    CreateStoredProcedure request = new CreateStoredProcedure();
+    request.setName(ns.prefix("proc_patch_code_only"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setStoredProcedureCode(initialCode);
+
+    StoredProcedure proc = createEntity(request);
+    assertNotNull(proc);
+
+    String codeString =
+        "sales_vw\n"
+            + "create view sales_vw as\n"
+            + "select * from public.sales\n"
+            + "union all\n"
+            + "select * from spectrum.sales\n"
+            + "with no schema binding;";
+
+    proc.getStoredProcedureCode().setCode(codeString);
+    StoredProcedure updated = patchEntity(proc.getId().toString(), proc);
+
+    assertNotNull(updated);
+    assertNotNull(updated.getStoredProcedureCode());
+    assertEquals(codeString, updated.getStoredProcedureCode().getCode());
+  }
+
+  @Test
+  void patch_usingFqn_storedProcedureCode_200(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    StoredProcedureCode initialCode =
+        new StoredProcedureCode().withLanguage(StoredProcedureLanguage.SQL);
+
+    CreateStoredProcedure request = new CreateStoredProcedure();
+    request.setName(ns.prefix("proc_patch_fqn"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setStoredProcedureCode(initialCode);
+
+    StoredProcedure proc = createEntity(request);
+    assertNotNull(proc);
+
+    String codeString =
+        "sales_vw\n"
+            + "create view sales_vw as\n"
+            + "select * from public.sales\n"
+            + "union all\n"
+            + "select * from spectrum.sales\n"
+            + "with no schema binding;";
+
+    StoredProcedureCode updatedCode =
+        new StoredProcedureCode().withCode(codeString).withLanguage(StoredProcedureLanguage.SQL);
+
+    proc.setStoredProcedureCode(updatedCode);
+
+    StoredProcedure fetched = getEntityByName(proc.getFullyQualifiedName());
+    fetched.setStoredProcedureCode(updatedCode);
+    StoredProcedure updated = patchEntity(fetched.getId().toString(), fetched);
+
+    assertNotNull(updated);
+    assertNotNull(updated.getStoredProcedureCode());
+    assertEquals(codeString, updated.getStoredProcedureCode().getCode());
+    assertEquals(proc.getFullyQualifiedName(), updated.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_validateGetWithDifferentFields(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    StoredProcedureCode code =
+        new StoredProcedureCode()
+            .withCode(
+                "CREATE OR REPLACE PROCEDURE test_fields() AS $$ BEGIN RETURN; END; $$ LANGUAGE plpgsql;")
+            .withLanguage(StoredProcedureLanguage.SQL);
+
+    CreateStoredProcedure request = new CreateStoredProcedure();
+    request.setName(ns.prefix("proc_test_fields"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setStoredProcedureCode(code);
+
+    StoredProcedure proc = createEntity(request);
+
+    StoredProcedure fetchedById = getEntity(proc.getId().toString());
+    assertNotNull(fetchedById.getService());
+    assertNotNull(fetchedById.getServiceType());
+    assertNotNull(fetchedById.getDatabase());
+    assertNotNull(fetchedById.getDatabaseSchema());
+    assertNotNull(fetchedById.getStoredProcedureCode());
+
+    StoredProcedure fetchedByName = getEntityByName(proc.getFullyQualifiedName());
+    assertNotNull(fetchedByName.getService());
+    assertNotNull(fetchedByName.getServiceType());
+    assertNotNull(fetchedByName.getDatabase());
+    assertNotNull(fetchedByName.getDatabaseSchema());
+    assertNotNull(fetchedByName.getStoredProcedureCode());
+
+    String fields = "owners,tags,followers";
+    StoredProcedure fetchedWithFields = getEntityWithFields(proc.getId().toString(), fields);
+    assertNotNull(fetchedWithFields.getService());
+    assertNotNull(fetchedWithFields.getServiceType());
+    assertNotNull(fetchedWithFields.getDatabaseSchema());
+    assertNotNull(fetchedWithFields.getDatabase());
+  }
+
+  @Test
+  void test_storedProcedureLanguages(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    for (StoredProcedureLanguage language :
+        new StoredProcedureLanguage[] {
+          StoredProcedureLanguage.SQL, StoredProcedureLanguage.Python, StoredProcedureLanguage.Java
+        }) {
+      StoredProcedureCode code =
+          new StoredProcedureCode()
+              .withCode("PROCEDURE code for " + language)
+              .withLanguage(language);
+
+      CreateStoredProcedure request = new CreateStoredProcedure();
+      request.setName(ns.prefix("proc_lang_" + language.value()));
+      request.setDatabaseSchema(schema.getFullyQualifiedName());
+      request.setStoredProcedureCode(code);
+
+      StoredProcedure proc = createEntity(request);
+      assertNotNull(proc);
+      assertEquals(language, proc.getStoredProcedureCode().getLanguage());
+      assertEquals("PROCEDURE code for " + language, proc.getStoredProcedureCode().getCode());
+    }
+  }
+
+  @Test
+  void test_storedProcedureCodeUpdate(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    StoredProcedureCode initialCode =
+        new StoredProcedureCode()
+            .withCode("CREATE PROCEDURE v1() AS $$ BEGIN RETURN; END; $$")
+            .withLanguage(StoredProcedureLanguage.SQL);
+
+    CreateStoredProcedure request = new CreateStoredProcedure();
+    request.setName(ns.prefix("proc_code_update"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setStoredProcedureCode(initialCode);
+
+    StoredProcedure proc = createEntity(request);
+    Double initialVersion = proc.getVersion();
+
+    String updatedCodeString = "CREATE PROCEDURE v2() AS $$ BEGIN RETURN 42; END; $$";
+    proc.getStoredProcedureCode().setCode(updatedCodeString);
+    StoredProcedure updated = patchEntity(proc.getId().toString(), proc);
+
+    assertNotNull(updated);
+    assertEquals(updatedCodeString, updated.getStoredProcedureCode().getCode());
+    assertTrue(updated.getVersion() > initialVersion, "Version should increment after code update");
+  }
+
+  @Test
+  void test_storedProcedureFQNGeneration(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    StoredProcedureCode code =
+        new StoredProcedureCode()
+            .withCode("CREATE PROCEDURE fqn_test() AS $$ BEGIN RETURN; END; $$")
+            .withLanguage(StoredProcedureLanguage.SQL);
+
+    String procName = ns.prefix("proc_fqn");
+    CreateStoredProcedure request = new CreateStoredProcedure();
+    request.setName(procName);
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setStoredProcedureCode(code);
+
+    StoredProcedure proc = createEntity(request);
+    assertNotNull(proc);
+
+    String expectedFqn = schema.getFullyQualifiedName() + "." + procName;
+    assertEquals(expectedFqn, proc.getFullyQualifiedName());
+    assertTrue(proc.getFullyQualifiedName().contains(procName));
+    assertTrue(proc.getFullyQualifiedName().contains(schema.getName()));
+  }
+
+  @Test
+  void test_storedProcedureVersionHistory(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    StoredProcedureCode code =
+        new StoredProcedureCode()
+            .withCode("CREATE PROCEDURE v1() AS $$ BEGIN RETURN; END; $$")
+            .withLanguage(StoredProcedureLanguage.SQL);
+
+    CreateStoredProcedure request = new CreateStoredProcedure();
+    request.setName(ns.prefix("proc_version"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setStoredProcedureCode(code);
+
+    StoredProcedure proc = createEntity(request);
+    Double version1 = proc.getVersion();
+
+    proc.setDescription("Updated description");
+    StoredProcedure updated = patchEntity(proc.getId().toString(), proc);
+    Double version2 = updated.getVersion();
+
+    assertTrue(version2 > version1, "Version should increment after update");
+
+    EntityHistory history = getVersionHistory(proc.getId());
+    assertNotNull(history);
+    assertNotNull(history.getVersions());
+    assertTrue(history.getVersions().size() >= 2, "Should have at least 2 versions");
+
+    StoredProcedure historicalVersion = getVersion(proc.getId(), version1);
+    assertNotNull(historicalVersion);
+    assertEquals(version1, historicalVersion.getVersion());
   }
 }

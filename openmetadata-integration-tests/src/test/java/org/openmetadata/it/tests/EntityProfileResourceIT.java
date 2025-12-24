@@ -323,18 +323,18 @@ public class EntityProfileResourceIT {
     return client.tables().create(request);
   }
 
-  private Table getTableWithProfile(OpenMetadataClient client, String fqn, Long startTs, Long endTs)
-      throws Exception {
-    String path = "/v1/tables/" + fqn + "/tableProfile";
+  /**
+   * Gets the table with the latest profile. Uses the /tableProfile/latest endpoint which returns a
+   * Table with profile attached.
+   */
+  private Table getTableWithProfile(
+      OpenMetadataClient client, String fqn, Long startTs, Long endTs) {
+    // Use the /tableProfile/latest endpoint which returns a Table with profile
+    String path = "/v1/tables/" + fqn + "/tableProfile/latest";
 
     RequestOptions options =
-        RequestOptions.builder()
-            .queryParam("startTs", String.valueOf(startTs))
-            .queryParam("endTs", String.valueOf(endTs))
-            .build();
+        RequestOptions.builder().queryParam("includeColumnProfile", "true").build();
 
-    String response = client.getHttpClient().executeForString(HttpMethod.GET, path, null, options);
-
-    return OBJECT_MAPPER.readValue(response, Table.class);
+    return client.getHttpClient().execute(HttpMethod.GET, path, null, Table.class, options);
   }
 }

@@ -37,8 +37,8 @@ public class ColumnResourceIT {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
 
-    Column idColumn =
-        Columns.build("id").withType(ColumnDataType.BIGINT).primaryKey().notNull().create();
+    // Note: primaryKey() already implies NOT NULL, so don't chain with notNull() which overwrites
+    Column idColumn = Columns.build("id").withType(ColumnDataType.BIGINT).primaryKey().create();
 
     Column nameColumn =
         Columns.build("name").withType(ColumnDataType.VARCHAR).withLength(255).notNull().create();

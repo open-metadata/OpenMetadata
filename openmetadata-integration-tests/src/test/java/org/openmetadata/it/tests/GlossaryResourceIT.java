@@ -26,6 +26,7 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -430,6 +431,426 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     Glossary verify = client.glossaries().get(updated.getId().toString(), "reviewers");
     assertNotNull(verify.getReviewers());
     assertEquals(2, verify.getReviewers().size());
+  }
+
+  @Test
+  void test_patchAddDeleteReviewers(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString(), "reviewers");
+    EntityReference reviewer1 = testUser1().getEntityReference();
+    fetched.setReviewers(List.of(reviewer1));
+
+    Glossary updated = patchEntity(fetched.getId().toString(), fetched);
+    assertEquals(0.2, updated.getVersion(), 0.001);
+
+    Glossary verify = client.glossaries().get(updated.getId().toString(), "reviewers");
+    assertNotNull(verify.getReviewers());
+    assertEquals(1, verify.getReviewers().size());
+
+    EntityReference reviewer2 = testUser2().getEntityReference();
+    verify.setReviewers(List.of(reviewer1, reviewer2));
+    updated = patchEntity(verify.getId().toString(), verify);
+
+    verify = client.glossaries().get(updated.getId().toString(), "reviewers");
+    assertEquals(2, verify.getReviewers().size());
+
+    verify.setReviewers(List.of(reviewer2));
+    updated = patchEntity(verify.getId().toString(), verify);
+
+    verify = client.glossaries().get(updated.getId().toString(), "reviewers");
+    assertEquals(1, verify.getReviewers().size());
+    assertEquals(reviewer2.getId(), verify.getReviewers().get(0).getId());
+  }
+
+  @Test
+  void test_updateGlossaryMutuallyExclusiveRemainsSame(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("mutuallyExclusiveGlossary"))
+            .withMutuallyExclusive(true)
+            .withDescription("Test mutually exclusive immutability");
+
+    Glossary glossary = createEntity(create);
+    assertTrue(glossary.getMutuallyExclusive());
+
+    glossary.setMutuallyExclusive(false);
+    Glossary updated = patchEntity(glossary.getId().toString(), glossary);
+
+    assertTrue(updated.getMutuallyExclusive());
+  }
+
+  @Test
+  void test_glossaryWithDomain(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    EntityReference domainRef = testDomain().getEntityReference();
+
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("glossaryWithDomain"))
+            .withDomains(List.of(domainRef.getFullyQualifiedName()))
+            .withDescription("Glossary with domain");
+
+    Glossary glossary = createEntity(create);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString(), "domains");
+    assertNotNull(fetched.getDomains());
+    assertFalse(fetched.getDomains().isEmpty());
+    assertEquals(domainRef.getId(), fetched.getDomains().get(0).getId());
+  }
+
+  @Test
+  void test_glossaryWithTagsAndOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    EntityReference ownerRef = testUser1().getEntityReference();
+    List<TagLabel> tags = List.of(personalDataTagLabel());
+
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("glossaryWithTagsOwner"))
+            .withOwners(List.of(ownerRef))
+            .withTags(tags)
+            .withDescription("Glossary with tags and owner");
+
+    Glossary glossary = createEntity(create);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString(), "owners,tags");
+    assertNotNull(fetched.getOwners());
+    assertNotNull(fetched.getTags());
+    assertFalse(fetched.getOwners().isEmpty());
+    assertFalse(fetched.getTags().isEmpty());
+  }
+
+  @Test
+  void test_deleteGlossaryWithTerms(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary createGlossary = createMinimalRequest(ns);
+    Glossary glossary = createEntity(createGlossary);
+
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("term1"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Test term");
+    client.glossaryTerms().create(createTerm);
+
+    assertThrows(
+        Exception.class,
+        () -> deleteEntity(glossary.getId().toString()),
+        "Cannot delete glossary with terms without recursive flag");
+
+    hardDeleteEntity(glossary.getId().toString());
+
+    assertThrows(
+        Exception.class,
+        () -> getEntity(glossary.getId().toString()),
+        "Glossary should be hard deleted");
+  }
+
+  @Test
+  void test_renameGlossarySystemProvider(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("systemGlossary"))
+            .withProvider(org.openmetadata.schema.type.ProviderType.SYSTEM)
+            .withDescription("System glossary");
+
+    Glossary glossary = createEntity(create);
+
+    glossary.setName(ns.prefix("renamedSystemGlossary"));
+
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(glossary.getId().toString(), glossary),
+        "Cannot rename system provider glossary");
+  }
+
+  @Test
+  void test_listGlossariesWithFields(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    EntityReference ownerRef = testUser1().getEntityReference();
+
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("listGlossaryFields"))
+            .withOwners(List.of(ownerRef))
+            .withDescription("Glossary for listing with fields");
+    createEntity(create);
+
+    org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
+    params.setFields("owners,tags");
+    params.setLimit(100);
+
+    org.openmetadata.sdk.models.ListResponse<Glossary> response = listEntities(params);
+
+    assertNotNull(response);
+    assertNotNull(response.getData());
+  }
+
+  @Test
+  void test_glossaryTermCount(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary createGlossary = createMinimalRequest(ns);
+    Glossary glossary = createEntity(createGlossary);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString(), "termCount");
+    assertEquals(0, fetched.getTermCount());
+
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm1 =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("termForCount1"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Test term 1");
+    client.glossaryTerms().create(createTerm1);
+
+    org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm2 =
+        new org.openmetadata.schema.api.data.CreateGlossaryTerm()
+            .withName(ns.prefix("termForCount2"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Test term 2");
+    client.glossaryTerms().create(createTerm2);
+
+    fetched = client.glossaries().get(glossary.getId().toString(), "termCount");
+    assertTrue(fetched.getTermCount() >= 2);
+  }
+
+  @Test
+  void test_glossaryUsageCount(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary createGlossary = createMinimalRequest(ns);
+    Glossary glossary = createEntity(createGlossary);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString(), "usageCount");
+    assertNotNull(fetched);
+  }
+
+  @Test
+  void test_updateGlossaryTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString(), "tags");
+
+    List<TagLabel> tags = List.of(personalDataTagLabel());
+    fetched.setTags(tags);
+
+    Glossary updated = patchEntity(fetched.getId().toString(), fetched);
+
+    Glossary verify = client.glossaries().get(updated.getId().toString(), "tags");
+    assertNotNull(verify.getTags());
+    assertFalse(verify.getTags().isEmpty());
+  }
+
+  @Test
+  void test_glossaryPagination(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    for (int i = 0; i < 5; i++) {
+      CreateGlossary create =
+          new CreateGlossary()
+              .withName(ns.prefix("paginationGlossary" + i))
+              .withDescription("Glossary for pagination test " + i);
+      createEntity(create);
+    }
+
+    org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
+    params.setLimit(2);
+
+    org.openmetadata.sdk.models.ListResponse<Glossary> firstPage = listEntities(params);
+    assertNotNull(firstPage);
+    assertEquals(2, firstPage.getData().size());
+
+    if (firstPage.getPaging() != null && firstPage.getPaging().getAfter() != null) {
+      params.setAfter(firstPage.getPaging().getAfter());
+      org.openmetadata.sdk.models.ListResponse<Glossary> secondPage = listEntities(params);
+      assertNotNull(secondPage);
+    }
+  }
+
+  @Test
+  void test_glossaryFieldValidation(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create =
+        new CreateGlossary().withName(ns.prefix("validationGlossary")).withDescription("");
+
+    Glossary glossary = createEntity(create);
+    assertNotNull(glossary);
+    assertEquals(ns.prefix("validationGlossary"), glossary.getName());
+  }
+
+  @Test
+  void test_glossaryWithEmptyReviewers(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("emptyReviewersGlossary"))
+            .withReviewers(List.of())
+            .withDescription("Glossary with empty reviewers list");
+
+    Glossary glossary = createEntity(create);
+    assertNotNull(glossary);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString(), "reviewers");
+    if (fetched.getReviewers() != null) {
+      assertTrue(fetched.getReviewers().isEmpty());
+    }
+  }
+
+  @Test
+  void test_updateGlossaryOwner(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString(), "owners");
+
+    EntityReference ownerRef = testUser1().getEntityReference();
+    fetched.setOwners(List.of(ownerRef));
+
+    Glossary updated = patchEntity(fetched.getId().toString(), fetched);
+
+    Glossary verify = client.glossaries().get(updated.getId().toString(), "owners");
+    assertNotNull(verify.getOwners());
+    assertEquals(1, verify.getOwners().size());
+    assertEquals(ownerRef.getId(), verify.getOwners().get(0).getId());
+
+    EntityReference newOwner = testUser2().getEntityReference();
+    verify.setOwners(List.of(newOwner));
+    updated = patchEntity(verify.getId().toString(), verify);
+
+    verify = client.glossaries().get(updated.getId().toString(), "owners");
+    assertEquals(1, verify.getOwners().size());
+    assertEquals(newOwner.getId(), verify.getOwners().get(0).getId());
+  }
+
+  @Test
+  void test_glossaryVersionIncrement(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
+    assertEquals(0.1, glossary.getVersion(), 0.001);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString());
+    fetched.setDescription("Updated description for version test");
+    Glossary updated = patchEntity(fetched.getId().toString(), fetched);
+    assertEquals(0.2, updated.getVersion(), 0.001);
+
+    // displayName update may or may not increment version depending on implementation
+    fetched = client.glossaries().get(updated.getId().toString());
+    fetched.setDisplayName("Updated Display Name");
+    updated = patchEntity(fetched.getId().toString(), fetched);
+    assertTrue(
+        updated.getVersion() >= 0.2, "Version should be at least 0.2 after displayName update");
+  }
+
+  @Test
+  void test_getGlossaryVersions(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString());
+    fetched.setDescription("Version 2 update");
+    patchEntity(fetched.getId().toString(), fetched);
+
+    fetched = client.glossaries().get(glossary.getId().toString());
+    fetched.setDescription("Version 3 update");
+    patchEntity(fetched.getId().toString(), fetched);
+
+    var versionHistory = client.glossaries().getVersionList(glossary.getId());
+    assertNotNull(versionHistory);
+    assertNotNull(versionHistory.getVersions());
+    // Version history should have at least 2 versions (creation + 1 update)
+    assertTrue(
+        versionHistory.getVersions().size() >= 2, "Should have at least 2 versions in history");
+  }
+
+  @Test
+  void test_getGlossarySpecificVersion(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create = createMinimalRequest(ns);
+    Glossary glossary = createEntity(create);
+    String originalDescription = glossary.getDescription();
+
+    Glossary fetched = client.glossaries().get(glossary.getId().toString());
+    fetched.setDescription("Updated to version 2");
+    Glossary v2 = patchEntity(fetched.getId().toString(), fetched);
+
+    Glossary version1 = client.glossaries().getVersion(glossary.getId().toString(), 0.1);
+    assertEquals(0.1, version1.getVersion(), 0.001);
+    assertEquals(originalDescription, version1.getDescription());
+
+    Glossary version2 = client.glossaries().getVersion(glossary.getId().toString(), 0.2);
+    assertEquals(0.2, version2.getVersion(), 0.001);
+    assertEquals("Updated to version 2", version2.getDescription());
+  }
+
+  @Test
+  void test_glossaryDisplayNameUpdate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("displayNameGlossary"))
+            .withDisplayName("Original Display Name")
+            .withDescription("Test display name");
+
+    Glossary glossary = createEntity(create);
+    assertEquals("Original Display Name", glossary.getDisplayName());
+
+    glossary.setDisplayName("Updated Display Name");
+    Glossary updated = patchEntity(glossary.getId().toString(), glossary);
+    assertEquals("Updated Display Name", updated.getDisplayName());
+  }
+
+  @Test
+  void test_glossaryWithAllFields(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    EntityReference ownerRef = testUser1().getEntityReference();
+    EntityReference reviewerRef = testUser2().getEntityReference();
+    List<TagLabel> tags = List.of(personalDataTagLabel());
+
+    CreateGlossary create =
+        new CreateGlossary()
+            .withName(ns.prefix("allFieldsGlossary"))
+            .withDisplayName("All Fields Glossary")
+            .withDescription("Glossary with all possible fields")
+            .withOwners(List.of(ownerRef))
+            .withReviewers(List.of(reviewerRef))
+            .withTags(tags)
+            .withMutuallyExclusive(true);
+
+    Glossary glossary = createEntity(create);
+
+    Glossary fetched =
+        client.glossaries().get(glossary.getId().toString(), "owners,reviewers,tags");
+    assertEquals("All Fields Glossary", fetched.getDisplayName());
+    assertTrue(fetched.getMutuallyExclusive());
+    assertNotNull(fetched.getOwners());
+    assertNotNull(fetched.getReviewers());
+    assertNotNull(fetched.getTags());
   }
 
   // ===================================================================

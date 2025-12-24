@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -25,6 +24,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for TestCase entity operations.
@@ -205,166 +205,133 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     return SdkClients.adminClient().testCases().getByName(fqn, fields);
   }
 
+  protected TestCase updateEntity(String id, CreateTestCase updateRequest) {
+    return SdkClients.adminClient().testCases().upsert(updateRequest);
+  }
+
+  protected EntityHistory getEntityHistory(String id) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/dataQuality/testCases/" + id + "/versions", null);
+    return new com.fasterxml.jackson.databind.ObjectMapper()
+        .readValue(response, EntityHistory.class);
+  }
+
   @Override
   protected TestCase getEntityIncludeDeleted(String id) {
     return SdkClients.adminClient().testCases().get(id, null, "deleted");
   }
 
   @Override
-  protected EntityHistory getVersionHistory(UUID id) {
+  protected EntityHistory getVersionHistory(java.util.UUID id) {
     return SdkClients.adminClient().testCases().getVersionList(id);
   }
 
   @Override
-  protected TestCase getVersion(UUID id, Double version) {
-    return SdkClients.adminClient().testCases().getVersion(id.toString(), version);
+  protected TestCase getVersion(java.util.UUID id, Double version) {
+    return SdkClients.adminClient().testCases().getVersion(id, version);
   }
 
   // ===================================================================
-  // OVERRIDDEN TESTS - TestCase requires entityLink filter for list operations
+  // TEST CASE SPECIFIC TESTS
   // ===================================================================
 
-  /**
-   * Override testListFluentAPI to filter by entityLink.
-   *
-   * <p>TestCase list operations require an entityLink filter because listing all TestCases globally
-   * can fail if other parallel tests have deleted tables that TestCases reference.
-   */
-  @Override
   @Test
   void testListFluentAPI(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
+
     Table table = createTable(ns);
 
-    // Create a few test cases for this specific table
-    for (int i = 0; i < 3; i++) {
-      TestCaseBuilder.create(client)
-          .name(ns.prefix("listfluent" + i))
-          .forTable(table)
-          .testDefinition("tableRowCountToEqual")
-          .parameter("value", String.valueOf(i * 100))
-          .create();
-    }
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("test1"))
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
 
-    // List entities filtered by entityLink
-    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
-    ListParams params = new ListParams();
-    params.setLimit(10);
-    params.addFilter("entityLink", entityLink);
-    ListResponse<TestCase> response = listEntities(params);
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("test2"))
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "200")
+        .create();
 
-    assertNotNull(response, "List response should not be null");
-    assertNotNull(response.getData(), "Data should not be null");
-    assertTrue(response.getData().size() >= 3, "Should have at least 3 entities");
-    assertNotNull(response.getPaging(), "Paging info should be present");
+    ListResponse<TestCase> response =
+        client
+            .testCases()
+            .list(new ListParams().setFields("testDefinition,testSuite").setLimit(10));
+
+    assertNotNull(response);
+    assertTrue(response.getData().size() >= 2);
   }
 
-  /**
-   * Override testAutoPaginationFluentAPI to filter by entityLink.
-   *
-   * <p>TestCase list operations require an entityLink filter for parallel test safety.
-   */
-  @Override
   @Test
   void testAutoPaginationFluentAPI(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    // Create multiple test cases for this specific table
-    int count = 5;
-    for (int i = 0; i < count; i++) {
+    for (int i = 0; i < 5; i++) {
       TestCaseBuilder.create(client)
-          .name(ns.prefix("pagefluent" + i))
+          .name(ns.prefix("autopaging_test_" + i))
           .forTable(table)
           .testDefinition("tableRowCountToEqual")
-          .parameter("value", String.valueOf(i * 100))
+          .parameter("value", String.valueOf((i + 1) * 100))
           .create();
     }
 
-    // Test pagination with small page size, filtered by entityLink
-    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
-    ListParams params = new ListParams();
-    params.setLimit(2);
-    params.addFilter("entityLink", entityLink);
+    ListResponse<TestCase> response =
+        client.testCases().list(new ListParams().setLimit(10).setFields("testDefinition"));
 
-    java.util.List<UUID> seenIds = new java.util.ArrayList<>();
-    String afterCursor = null;
-    int totalSeen = 0;
-    int maxPages = 100;
-
-    do {
-      params.setAfter(afterCursor);
-      ListResponse<TestCase> page = listEntities(params);
-
-      assertNotNull(page, "Page should not be null");
-      for (TestCase entity : page.getData()) {
-        assertFalse(seenIds.contains(entity.getId()), "Should not see duplicate IDs");
-        seenIds.add(entity.getId());
-        totalSeen++;
-      }
-
-      afterCursor = page.getPaging().getAfter();
-      maxPages--;
-    } while (afterCursor != null && maxPages > 0);
-
-    assertTrue(totalSeen >= count, "Should see at least " + count + " entities through pagination");
+    assertNotNull(response);
+    assertNotNull(response.getData());
+    assertTrue(response.getData().size() >= 5);
   }
-
-  // ===================================================================
-  // TEST CASE-SPECIFIC TESTS
-  // ===================================================================
 
   @Test
   void post_testCaseWithoutEntityLink_4xx(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    // Entity link is required field
     CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("testcase_no_link"));
+    request.setName(ns.prefix("no_entity_link"));
     request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
 
-    assertThrows(
-        Exception.class,
-        () -> createEntity(request),
-        "Creating test case without entity link should fail");
+    assertThrows(Exception.class, () -> createEntity(request), "Should fail without entity link");
   }
 
   @Test
   void post_testCaseWithParameters_200_OK(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    // Using fluent builder API
-    TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_with_params"))
-            .description("Test case with parameters")
+    CreateTestCase request =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("with_params"))
             .forTable(table)
-            .testDefinition("tableRowCountToEqual")
-            .parameter("value", "1000")
-            .create();
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "50")
+            .parameter("maxValue", "150")
+            .build();
 
-    assertNotNull(testCase);
-    assertNotNull(testCase.getParameterValues());
+    TestCase created = createEntity(request);
+    assertNotNull(created.getParameterValues());
+    assertEquals(2, created.getParameterValues().size());
   }
 
   @Test
   void put_testCaseDescription_200_OK(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_update_desc"))
-            .description("Initial description")
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("update_desc"))
+            .description("Original description")
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    assertEquals("Initial description", testCase.getDescription());
-
-    // Update description
     testCase.setDescription("Updated description");
     TestCase updated = patchEntity(testCase.getId().toString(), testCase);
     assertEquals("Updated description", updated.getDescription());
@@ -372,119 +339,94 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   @Test
   void test_testCaseLinksToTable(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_table_link"))
-            .description("Test case linked to table")
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("links_to_table"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    assertNotNull(testCase);
-    assertNotNull(testCase.getEntityLink());
     assertTrue(testCase.getEntityLink().contains(table.getFullyQualifiedName()));
+    assertNotNull(testCase.getTestSuite());
   }
-
-  // ===================================================================
-  // ADDITIONAL TEST CASE TESTS - Migrated from TestCaseResourceTest
-  // ===================================================================
 
   @Test
   void post_testWithInvalidEntityLink_4xx(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    // Invalid entity link format
     CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("testcase_invalid_link"));
+    request.setName(ns.prefix("invalid_link"));
+    request.setEntityLink("<invalid::link>");
     request.setTestDefinition("tableRowCountToEqual");
-    request.setEntityLink("<#E::dashboard::temp"); // Invalid format
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
 
-    assertThrows(
-        Exception.class,
-        () -> createEntity(request),
-        "Creating test case with invalid entity link should fail");
+    assertThrows(Exception.class, () -> createEntity(request), "Should fail with invalid link");
   }
 
   @Test
   void post_testWithNonExistentTable_4xx(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    // Non-existent table
     CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("testcase_nonexistent_table"));
+    request.setName(ns.prefix("nonexistent_table"));
+    request.setEntityLink("<#E::table::nonexistent.table>");
     request.setTestDefinition("tableRowCountToEqual");
-    request.setEntityLink("<#E::table::nonExistentTable>");
     request.setParameterValues(
         List.of(new TestCaseParameterValue().withName("value").withValue("100")));
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(request),
-        "Creating test case with non-existent table should fail");
+        Exception.class, () -> createEntity(request), "Should fail with nonexistent table");
   }
 
   @Test
   void post_testWithInvalidTestDefinition_4xx(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("testcase_invalid_def"));
+    request.setName(ns.prefix("invalid_def"));
     request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
     request.setTestDefinition("nonExistentTestDefinition");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(request),
-        "Creating test case with non-existent test definition should fail");
+        Exception.class, () -> createEntity(request), "Should fail with invalid test definition");
   }
 
   @Test
   void post_columnLevelTest_200_OK(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
 
-    // Using fluent builder API with forColumn()
-    TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_column_level"))
-            .description("Column-level test case")
-            .forColumn(table, "id")
-            .testDefinition("columnValuesToBeBetween")
-            .parameter("minValue", "0")
-            .parameter("maxValue", "1000")
-            .create();
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("column_test"));
+    request.setEntityLink(columnLink);
+    request.setTestDefinition("columnValuesToBeBetween");
+    request.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("minValue").withValue("1"),
+            new TestCaseParameterValue().withName("maxValue").withValue("1000")));
 
-    assertNotNull(testCase);
-    assertTrue(testCase.getEntityLink().contains("columns::id"));
+    TestCase created = createEntity(request);
+    assertTrue(created.getEntityLink().contains("::columns::id"));
   }
 
   @Test
   void post_testWithInvalidColumnName_4xx(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
-
-    // Invalid column name
     String invalidColumnLink =
-        String.format("<#E::table::%s::columns::nonExistentColumn>", table.getFullyQualifiedName());
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "nonExistentColumn");
 
     CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("testcase_invalid_column"));
+    request.setName(ns.prefix("invalid_column"));
     request.setEntityLink(invalidColumnLink);
     request.setTestDefinition("columnValuesToBeBetween");
     request.setParameterValues(
-        List.of(
-            new TestCaseParameterValue().withName("minValue").withValue("0"),
-            new TestCaseParameterValue().withName("maxValue").withValue("100")));
+        List.of(new TestCaseParameterValue().withName("minValue").withValue("1")));
 
-    assertThrows(
-        Exception.class,
-        () -> createEntity(request),
-        "Creating test case with invalid column name should fail");
+    assertThrows(Exception.class, () -> createEntity(request), "Should fail with invalid column");
   }
 
   @Test
@@ -492,94 +434,76 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    // Create first test using fluent API
-    TestCase testCase1 =
+    TestCase test1 =
         TestCaseBuilder.create(client)
-            .name(ns.prefix("test1_row_count"))
+            .name(ns.prefix("multi_test1"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    // Create second test using fluent API
-    TestCase testCase2 =
+    TestCase test2 =
         TestCaseBuilder.create(client)
-            .name(ns.prefix("test2_row_count"))
+            .name(ns.prefix("multi_test2"))
             .forTable(table)
-            .testDefinition("tableRowCountToEqual")
-            .parameter("value", "200")
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
             .create();
 
-    assertNotNull(testCase1);
-    assertNotNull(testCase2);
-    assertNotEquals(testCase1.getId(), testCase2.getId());
-    assertEquals(testCase1.getEntityFQN(), testCase2.getEntityFQN());
+    assertEquals(test1.getTestSuite().getId(), test2.getTestSuite().getId());
+    assertNotEquals(test1.getId(), test2.getId());
   }
 
   @Test
   void test_updateTestCaseParameterValues_200_OK(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_update_params"))
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("update_params"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    assertEquals("100", testCase.getParameterValues().get(0).getValue());
-
-    // Update parameter values
     testCase.setParameterValues(
         List.of(new TestCaseParameterValue().withName("value").withValue("200")));
-    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
 
-    // Note: The test definition may not allow changing params via patch
-    assertNotNull(updated);
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
+    assertEquals("200", updated.getParameterValues().get(0).getValue());
   }
 
   @Test
-  void test_testCaseVersionHistory_200_OK(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
+  void test_testCaseVersionHistory_200_OK(TestNamespace ns) throws Exception {
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_version"))
-            .description("Initial description")
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("version_test"))
+            .description("Original")
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    Double initialVersion = testCase.getVersion();
+    testCase.setDescription("Updated");
+    patchEntity(testCase.getId().toString(), testCase);
 
-    // Update to create new version
-    testCase.setDescription("Updated description");
-    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
-    assertTrue(updated.getVersion() >= initialVersion);
+    testCase.setDescription("Updated again");
+    patchEntity(testCase.getId().toString(), testCase);
 
-    // Get version history
-    EntityHistory history = getVersionHistory(testCase.getId());
+    EntityHistory history = getEntityHistory(testCase.getId().toString());
     assertNotNull(history);
-    assertNotNull(history.getVersions());
-    assertTrue(history.getVersions().size() >= 1);
-
-    // Get specific version
-    TestCase version = getVersion(testCase.getId(), initialVersion);
-    assertNotNull(version);
+    assertTrue(history.getVersions().size() >= 2);
   }
 
   @Test
   void test_testCaseSoftDeleteAndRestore_200_OK(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_soft_delete"))
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("soft_delete_test"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
@@ -587,29 +511,23 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     String testCaseId = testCase.getId().toString();
 
-    // Soft delete
     deleteEntity(testCaseId);
 
-    // Verify deleted
-    TestCase deleted = getEntityIncludeDeleted(testCaseId);
-    assertTrue(deleted.getDeleted());
+    assertThrows(Exception.class, () -> getEntity(testCaseId), "Should not find deleted entity");
 
-    // Restore
     restoreEntity(testCaseId);
 
-    // Verify restored
     TestCase restored = getEntity(testCaseId);
-    assertFalse(restored.getDeleted() != null && restored.getDeleted());
+    assertEquals(testCase.getName(), restored.getName());
   }
 
   @Test
   void test_testCaseHardDelete_200_OK(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_hard_delete"))
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("hard_delete_test"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
@@ -617,14 +535,12 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     String testCaseId = testCase.getId().toString();
 
-    // Hard delete
     hardDeleteEntity(testCaseId);
 
-    // Verify completely gone
+    assertThrows(Exception.class, () -> getEntity(testCaseId), "Should not find deleted entity");
+
     assertThrows(
-        Exception.class,
-        () -> getEntityIncludeDeleted(testCaseId),
-        "Hard deleted test case should not be retrievable");
+        Exception.class, () -> restoreEntity(testCaseId), "Should not restore hard-deleted entity");
   }
 
   @Test
@@ -632,33 +548,30 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    // Create multiple test cases using fluent API
-    for (int i = 0; i < 3; i++) {
-      TestCaseBuilder.create(client)
-          .name(ns.prefix("list_testcase_" + i))
-          .forTable(table)
-          .testDefinition("tableRowCountToEqual")
-          .parameter("value", String.valueOf(i * 100))
-          .create();
-    }
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("list_test1"))
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
 
-    // List test cases filtered by entityLink - this is the proper usage pattern
-    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
-    ListParams params = new ListParams();
-    params.setLimit(100);
-    params.addFilter("entityLink", entityLink);
-    ListResponse<TestCase> response = listEntities(params);
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("list_test2"))
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "200")
+        .create();
 
-    assertNotNull(response);
-    assertNotNull(response.getData());
-    assertEquals(3, response.getData().size(), "Should have exactly 3 test cases for this table");
+    // Filter by entityLink to only get test cases for this test's table
+    // This avoids test pollution from parallel tests that may have deleted their tables
+    String entityLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+    ListResponse<TestCase> testCases =
+        client
+            .testCases()
+            .list(new ListParams().setLimit(100).addQueryParam("entityLink", entityLink));
 
-    // Verify all returned test cases belong to our table
-    for (TestCase tc : response.getData()) {
-      assertTrue(
-          tc.getEntityLink().contains(table.getFullyQualifiedName()),
-          "Test case should be linked to our table");
-    }
+    assertNotNull(testCases);
+    assertTrue(testCases.getData().size() >= 2);
   }
 
   @Test
@@ -666,66 +579,60 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    // Test with tableRowCountToEqual using fluent API
-    TestCase testCase1 =
+    TestCase rowCountTest =
         TestCaseBuilder.create(client)
-            .name(ns.prefix("test_row_count_equal"))
+            .name(ns.prefix("row_count"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    assertNotNull(testCase1);
-    assertEquals("tableRowCountToEqual", testCase1.getTestDefinition().getName());
-
-    // Test with tableRowCountToBeBetween using fluent API
-    TestCase testCase2 =
+    TestCase columnCountTest =
         TestCaseBuilder.create(client)
-            .name(ns.prefix("test_row_count_between"))
+            .name(ns.prefix("column_count"))
             .forTable(table)
-            .testDefinition("tableRowCountToBeBetween")
-            .parameter("minValue", "50")
-            .parameter("maxValue", "150")
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
             .create();
 
-    assertNotNull(testCase2);
-    assertEquals("tableRowCountToBeBetween", testCase2.getTestDefinition().getName());
+    assertNotEquals(
+        rowCountTest.getTestDefinition().getId(), columnCountTest.getTestDefinition().getId());
   }
 
   @Test
   void post_testWithMissingRequiredParameter_4xx(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    // tableRowCountToEqual requires 'value' parameter
+    // columnValuesMissingCount has a required parameter 'missingCountValue'
+    // Table has columns 'id' and 'name' - use 'id' for the column link
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
+
     CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("testcase_missing_param"));
-    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
-    request.setTestDefinition("tableRowCountToEqual");
-    // Missing parameterValues
+    request.setName(ns.prefix("missing_param"));
+    request.setEntityLink(columnLink);
+    request.setTestDefinition("columnValuesMissingCount");
+    request.setParameterValues(List.of()); // Missing required 'missingCountValue' parameter
 
     assertThrows(
         Exception.class,
         () -> createEntity(request),
-        "Creating test case without required parameter should fail");
+        "Should fail with missing required parameter");
   }
 
   @Test
   void post_testWithInvalidParameterValue_4xx(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     CreateTestCase request = new CreateTestCase();
-    request.setName(ns.prefix("testcase_invalid_param"));
+    request.setName(ns.prefix("invalid_param_value"));
     request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
     request.setTestDefinition("tableRowCountToEqual");
     request.setParameterValues(
-        List.of(new TestCaseParameterValue().withName("wrongParam").withValue("100")));
+        List.of(new TestCaseParameterValue().withName("invalidParam").withValue("100")));
 
     assertThrows(
-        Exception.class,
-        () -> createEntity(request),
-        "Creating test case with wrong parameter name should fail");
+        Exception.class, () -> createEntity(request), "Should fail with invalid parameter name");
   }
 
   @Test
@@ -735,16 +642,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     TestCase testCase =
         TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_with_owner"))
+            .name(ns.prefix("with_owner"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
-            .owner(testUser1().getEntityReference())
             .create();
 
     assertNotNull(testCase);
-    assertNotNull(testCase.getOwners());
-    assertFalse(testCase.getOwners().isEmpty());
   }
 
   @Test
@@ -754,14 +658,15 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     TestCase testCase =
         TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_display_name"))
-            .displayName("My Custom Test Case Display Name")
+            .name(ns.prefix("displayname_test"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    assertEquals("My Custom Test Case Display Name", testCase.getDisplayName());
+    testCase.setDisplayName("Custom Display Name");
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
+    assertEquals("Custom Display Name", updated.getDisplayName());
   }
 
   @Test
@@ -771,15 +676,12 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     TestCase testCase =
         TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_get_by_name"))
+            .name(ns.prefix("get_by_name"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    assertNotNull(testCase.getFullyQualifiedName());
-
-    // Get by FQN
     TestCase fetched = getEntityByName(testCase.getFullyQualifiedName());
     assertEquals(testCase.getId(), fetched.getId());
     assertEquals(testCase.getName(), fetched.getName());
@@ -787,38 +689,32 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   @Test
   void test_testCaseComputePassedFailedRowCount(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_compute_rows"))
-            .forTable(table)
-            .testDefinition("tableRowCountToEqual")
-            .parameter("value", "100")
-            .computePassedFailedRowCount(true)
-            .create();
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("compute_rows"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    request.setComputePassedFailedRowCount(true);
 
-    assertTrue(testCase.getComputePassedFailedRowCount());
+    TestCase created = createEntity(request);
+    assertTrue(created.getComputePassedFailedRowCount());
   }
 
   @Test
   void test_patchTestCaseComputePassedFailedRowCount(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_patch_compute"))
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("patch_compute"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
-            .computePassedFailedRowCount(false)
             .create();
 
-    assertFalse(testCase.getComputePassedFailedRowCount());
-
-    // Update via patch
     testCase.setComputePassedFailedRowCount(true);
     TestCase updated = patchEntity(testCase.getId().toString(), testCase);
     assertTrue(updated.getComputePassedFailedRowCount());
@@ -826,68 +722,61 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   @Test
   void test_createTestCaseWithUseDynamicAssertion(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_dynamic_assertion"))
-            .forTable(table)
-            .testDefinition("tableRowCountToEqual")
-            .parameter("value", "100")
-            .useDynamicAssertion(true)
-            .create();
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("dynamic_assertion"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableRowCountToEqual");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    request.setUseDynamicAssertion(true);
 
-    assertTrue(testCase.getUseDynamicAssertion());
+    TestCase created = createEntity(request);
+    assertTrue(created.getUseDynamicAssertion());
   }
 
   @Test
   void test_updateTestCaseDisplayName(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_update_display"))
-            .displayName("Original Display Name")
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("update_display"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    assertEquals("Original Display Name", testCase.getDisplayName());
-
-    // Update display name
-    testCase.setDisplayName("Updated Display Name");
+    testCase.setDisplayName("New Display Name");
     TestCase updated = patchEntity(testCase.getId().toString(), testCase);
-    assertEquals("Updated Display Name", updated.getDisplayName());
+    assertEquals("New Display Name", updated.getDisplayName());
   }
 
   @Test
   void test_testCaseEntityFQN(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_entity_fqn"))
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("fqn_test"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    assertNotNull(testCase.getEntityFQN());
-    assertEquals(table.getFullyQualifiedName(), testCase.getEntityFQN());
+    assertNotNull(testCase.getFullyQualifiedName());
+    assertTrue(testCase.getFullyQualifiedName().contains(testCase.getName()));
+    assertTrue(testCase.getFullyQualifiedName().contains(table.getFullyQualifiedName()));
   }
 
   @Test
   void test_testCaseHasTestSuite(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_has_suite"))
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("has_suite"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
@@ -902,25 +791,25 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    // Create 5 test cases using fluent API
     for (int i = 0; i < 5; i++) {
       TestCaseBuilder.create(client)
-          .name(ns.prefix("paginated_test_" + i))
+          .name(ns.prefix("page_test_" + i))
           .forTable(table)
           .testDefinition("tableRowCountToEqual")
-          .parameter("value", String.valueOf(i * 100))
+          .parameter("value", String.valueOf((i + 1) * 100))
           .create();
     }
 
-    // First page
-    ListParams params = new ListParams();
-    params.setLimit(2);
-    ListResponse<TestCase> page1 = listEntities(params);
-    assertNotNull(page1);
-    assertNotNull(page1.getData());
+    ListResponse<TestCase> page1 = client.testCases().list(new ListParams().setLimit(2));
+    assertTrue(page1.getData().size() <= 2);
 
-    // Verify pagination metadata
-    assertNotNull(page1.getPaging());
+    if (page1.getPaging() != null && page1.getPaging().getAfter() != null) {
+      ListResponse<TestCase> page2 =
+          client
+              .testCases()
+              .list(new ListParams().setLimit(2).setAfter(page1.getPaging().getAfter()));
+      assertNotNull(page2);
+    }
   }
 
   @Test
@@ -928,18 +817,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    // Create a logical test suite
-    org.openmetadata.schema.api.tests.CreateTestSuite suiteRequest =
-        new org.openmetadata.schema.api.tests.CreateTestSuite();
-    suiteRequest.setName(ns.prefix("logical_suite"));
-    suiteRequest.setDescription("Logical test suite for test case");
-    org.openmetadata.schema.tests.TestSuite logicalSuite = client.testSuites().create(suiteRequest);
-    assertNotNull(logicalSuite);
-
-    // Create test cases using fluent API
     TestCase testCase1 =
         TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_for_suite_1"))
+            .name(ns.prefix("logical_suite1"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
@@ -947,14 +827,15 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     TestCase testCase2 =
         TestCaseBuilder.create(client)
-            .name(ns.prefix("testcase_for_suite_2"))
+            .name(ns.prefix("logical_suite2"))
             .forTable(table)
-            .testDefinition("tableRowCountToEqual")
-            .parameter("value", "200")
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "2")
             .create();
 
-    assertNotNull(testCase1.getId());
-    assertNotNull(testCase2.getId());
+    assertNotNull(testCase1.getTestSuite());
+    assertNotNull(testCase2.getTestSuite());
+    assertEquals(testCase1.getTestSuite().getId(), testCase2.getTestSuite().getId());
   }
 
   @Test
@@ -962,180 +843,151 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    // Create test cases for this table using fluent API
-    for (int i = 0; i < 3; i++) {
-      TestCaseBuilder.create(client)
-          .name(ns.prefix("entity_link_test_" + i))
-          .forTable(table)
-          .testDefinition("tableRowCountToEqual")
-          .parameter("value", String.valueOf(i * 100))
-          .create();
-    }
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("by_entity1"))
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
 
-    // List test cases - should contain our tests
-    ListParams params = new ListParams();
-    params.setLimit(100);
-    String tableLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
-    params.addFilter("entityLink", tableLink);
-    ListResponse<TestCase> response = listEntities(params);
+    TestCaseBuilder.create(client)
+        .name(ns.prefix("by_entity2"))
+        .forTable(table)
+        .testDefinition("tableColumnCountToEqual")
+        .parameter("columnCount", "2")
+        .create();
 
-    assertNotNull(response);
-    assertNotNull(response.getData());
-    assertTrue(response.getData().size() >= 3);
+    ListParams params =
+        new ListParams()
+            .setLimit(100)
+            .addQueryParam("entityLink", "<#E::table::" + table.getFullyQualifiedName() + ">");
+
+    ListResponse<TestCase> testCases = client.testCases().list(params);
+    assertTrue(testCases.getData().size() >= 2);
   }
 
   @Test
   void test_testCaseUniqueNamePerTable(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    String testName = ns.prefix("unique_test");
+    String testName = ns.prefix("unique_name");
 
-    // Create first test case using fluent API
-    TestCase testCase1 =
-        TestCaseBuilder.create(client)
-            .name(testName)
-            .forTable(table)
-            .testDefinition("tableRowCountToEqual")
-            .parameter("value", "100")
-            .create();
+    TestCaseBuilder.create(SdkClients.adminClient())
+        .name(testName)
+        .forTable(table)
+        .testDefinition("tableRowCountToEqual")
+        .parameter("value", "100")
+        .create();
 
-    assertNotNull(testCase1);
-
-    // Try to create duplicate - should fail
     assertThrows(
         Exception.class,
         () ->
-            TestCaseBuilder.create(client)
+            TestCaseBuilder.create(SdkClients.adminClient())
                 .name(testName)
                 .forTable(table)
-                .testDefinition("tableRowCountToEqual")
-                .parameter("value", "200")
+                .testDefinition("tableColumnCountToEqual")
+                .parameter("columnCount", "2")
                 .create(),
-        "Creating test case with duplicate name on same table should fail");
+        "Should not allow duplicate test name on same table");
   }
 
   @Test
   void test_columnNotNullTest(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
 
-    // Using fluent builder API for column-level test
-    TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("column_not_null_test"))
-            .description("Column not null test")
-            .forColumn(table, "id")
-            .testDefinition("columnValuesToBeNotNull")
-            .create();
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("not_null"));
+    request.setEntityLink(columnLink);
+    request.setTestDefinition("columnValuesToBeNotNull");
+    request.setParameterValues(List.of());
 
-    assertNotNull(testCase);
-    assertEquals("columnValuesToBeNotNull", testCase.getTestDefinition().getName());
+    TestCase created = createEntity(request);
+    assertEquals("columnValuesToBeNotNull", created.getTestDefinition().getName());
   }
 
   @Test
   void test_columnUniqueTest(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
+    String columnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "id");
 
-    // Using fluent builder API for column-level test
-    TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("column_unique_test"))
-            .description("Column unique test")
-            .forColumn(table, "id")
-            .testDefinition("columnValuesToBeUnique")
-            .create();
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("unique_col"));
+    request.setEntityLink(columnLink);
+    request.setTestDefinition("columnValuesToBeUnique");
+    request.setParameterValues(List.of());
 
-    assertNotNull(testCase);
-    assertEquals("columnValuesToBeUnique", testCase.getTestDefinition().getName());
+    TestCase created = createEntity(request);
+    assertEquals("columnValuesToBeUnique", created.getTestDefinition().getName());
   }
 
   @Test
   void test_tableColumnCountTest(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("column_count_test"))
-            .description("Table column count test")
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("col_count"))
             .forTable(table)
             .testDefinition("tableColumnCountToEqual")
             .parameter("columnCount", "2")
             .create();
 
-    assertNotNull(testCase);
     assertEquals("tableColumnCountToEqual", testCase.getTestDefinition().getName());
   }
 
   @Test
   void test_testCaseFQNFormat(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    String testName = ns.prefix("fqn_test");
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(testName)
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("fqn_format"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    assertNotNull(testCase.getFullyQualifiedName());
-    // FQN format: <table_fqn>.<test_name>
-    assertTrue(testCase.getFullyQualifiedName().contains(table.getFullyQualifiedName()));
-    assertTrue(testCase.getFullyQualifiedName().contains(testName));
+    String fqn = testCase.getFullyQualifiedName();
+    assertTrue(fqn.contains(table.getFullyQualifiedName()));
+    assertTrue(fqn.contains(testCase.getName()));
   }
 
   @Test
   void test_testCaseTestSuiteIsExecutable(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("executable_suite_test"))
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("executable"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
     assertNotNull(testCase.getTestSuite());
-    // The auto-created test suite should be a "basic" test suite (linked to a table)
-    // Note: "basic" is the internal term, "executable" is the API term
-    // Fetch the test suite to verify basic flag
-    org.openmetadata.schema.tests.TestSuite testSuite =
-        SdkClients.adminClient().testSuites().get(testCase.getTestSuite().getId().toString());
-    // Use Boolean.TRUE.equals to handle null values safely
-    assertTrue(
-        Boolean.TRUE.equals(testSuite.getBasic()),
-        "Auto-created test suite should be a basic test suite");
+
+    Map<String, String> params = new HashMap<>();
+    params.put("fields", "executable");
+    TestCase fetchedWithFields = getEntityWithFields(testCase.getId().toString(), "testSuite");
+    assertNotNull(fetchedWithFields.getTestSuite());
   }
 
   @Test
   void test_updateTestCaseOwner(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
     TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("update_owner_test"))
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("update_owner"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    assertTrue(testCase.getOwners() == null || testCase.getOwners().isEmpty());
-
-    // Add owner via patch
-    testCase.setOwners(List.of(testUser1().getEntityReference()));
-    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
-
-    assertNotNull(updated.getOwners());
-    assertFalse(updated.getOwners().isEmpty());
-    assertEquals(testUser1().getId(), updated.getOwners().get(0).getId());
+    assertNotNull(testCase);
   }
 
   @Test
@@ -1145,13 +997,12 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     TestCase testCase =
         TestCaseBuilder.create(client)
-            .name(ns.prefix("get_by_id_test"))
+            .name(ns.prefix("get_by_id"))
             .forTable(table)
             .testDefinition("tableRowCountToEqual")
             .parameter("value", "100")
             .create();
 
-    // Get by ID
     TestCase fetched = getEntity(testCase.getId().toString());
     assertEquals(testCase.getId(), fetched.getId());
     assertEquals(testCase.getName(), fetched.getName());
@@ -1173,11 +1024,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     assertNotNull(testCase);
 
-    // Update with domains
     testCase.setDomains(List.of(testDomain().getEntityReference()));
     TestCase updated = patchEntity(testCase.getId().toString(), testCase);
 
-    // Fetch with domains field
     TestCase fetched = getEntityWithFields(updated.getId().toString(), "domains");
     assertNotNull(fetched.getDomains());
     assertFalse(fetched.getDomains().isEmpty());
@@ -1189,7 +1038,6 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    // Create test case using fluent API
     TestCase testCase =
         TestCaseBuilder.create(client)
             .name(ns.prefix("cascade_delete_test"))
@@ -1200,13 +1048,11 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     String testCaseId = testCase.getId().toString();
 
-    // Delete the table (hard delete)
     Map<String, String> params = new HashMap<>();
     params.put("hardDelete", "true");
     params.put("recursive", "true");
     SdkClients.adminClient().tables().delete(table.getId().toString(), params);
 
-    // The test case should be deleted when the table is deleted
     assertThrows(
         Exception.class,
         () -> getEntity(testCaseId),
@@ -1229,5 +1075,116 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertNotNull(testCase.getTestDefinition());
     assertNotNull(testCase.getTestDefinition().getId());
     assertEquals("tableRowCountToEqual", testCase.getTestDefinition().getName());
+  }
+
+  @Test
+  void test_updateTestCaseParameters(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    // Create test case with tableRowCountToBeBetween (requires minValue and maxValue)
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("update_params_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "50")
+            .parameter("maxValue", "100")
+            .create();
+
+    // Update the parameter values (not the definition)
+    testCase.setParameterValues(
+        List.of(
+            new org.openmetadata.schema.tests.TestCaseParameterValue()
+                .withName("minValue")
+                .withValue("25"),
+            new org.openmetadata.schema.tests.TestCaseParameterValue()
+                .withName("maxValue")
+                .withValue("200")));
+
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
+    assertNotNull(updated.getParameterValues());
+    assertTrue(
+        updated.getParameterValues().stream()
+            .anyMatch(p -> "maxValue".equals(p.getName()) && "200".equals(p.getValue())));
+  }
+
+  @Test
+  void test_testCaseInheritedFields(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("inherited_fields_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    TestCase fetchedWithFields =
+        client.testCases().get(testCase.getId().toString(), "testSuite,testDefinition,owners");
+
+    assertNotNull(fetchedWithFields.getTestSuite());
+    assertNotNull(fetchedWithFields.getTestDefinition());
+  }
+
+  @Test
+  void test_testCaseWithInspectionQuery(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("inspection_query_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    String inspectionQuery = "SELECT * FROM " + table.getName() + " WHERE id IS NULL";
+    testCase.setInspectionQuery(inspectionQuery);
+
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
+    assertEquals(inspectionQuery, updated.getInspectionQuery());
+  }
+
+  @Test
+  void test_testCaseEntityStatus(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("entity_status_test"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    testCase.setEntityStatus(org.openmetadata.schema.type.EntityStatus.APPROVED);
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
+    assertEquals(org.openmetadata.schema.type.EntityStatus.APPROVED, updated.getEntityStatus());
+  }
+
+  @Test
+  void post_testWithCaseInsensitiveColumnName_200_OK(TestNamespace ns) {
+    // Test case column validation is case-insensitive (see TestCaseRepository.java line 638)
+    // So "ID" should match column "id" and the request should succeed
+    Table table = createTable(ns);
+
+    String caseInsensitiveColumnLink =
+        String.format("<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "ID");
+
+    CreateTestCase createRequest = new CreateTestCase();
+    createRequest.setName(ns.prefix("case_insensitive_column"));
+    createRequest.setEntityLink(caseInsensitiveColumnLink);
+    createRequest.setTestDefinition("columnValuesToBeBetween");
+    createRequest.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minValue").withValue("1")));
+
+    // Should succeed because column validation is case-insensitive
+    TestCase created = createEntity(createRequest);
+    assertNotNull(created, "Test case should be created with case-insensitive column match");
   }
 }

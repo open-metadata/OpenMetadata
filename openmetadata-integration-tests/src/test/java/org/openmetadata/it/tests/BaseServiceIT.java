@@ -15,8 +15,10 @@ import org.openmetadata.schema.EntityInterface;
 public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateEntity>
     extends BaseEntityIT<T, K> {
 
-  // Services typically don't support patch
+  // Services typically don't support patch and don't have search indices
   {
     supportsPatch = false;
+    supportsSearchIndex = false;
+    supportsDomains = false; // Services don't support domains field directly
   }
 }

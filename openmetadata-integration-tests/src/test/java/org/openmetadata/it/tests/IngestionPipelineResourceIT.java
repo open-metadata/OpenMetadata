@@ -2,8 +2,11 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
@@ -12,21 +15,36 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.env.TestSuiteBootstrap;
+import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.Progress;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressProperty;
+import org.openmetadata.schema.entity.services.ingestionPipelines.StepSummary;
+import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
+import org.openmetadata.schema.metadataIngestion.LogLevels;
+import org.openmetadata.schema.metadataIngestion.MessagingServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -308,5 +326,671 @@ public class IngestionPipelineResourceIT
         Exception.class,
         () -> createEntity(request2),
         "Creating duplicate ingestion pipeline in same service should fail");
+  }
+
+  @Test
+  void test_listPipelinesFilteredByServiceType(TestNamespace ns) {
+    DatabaseService dbService = DatabaseServiceTestFactory.createPostgres(ns);
+    MessagingService messagingService = MessagingServiceTestFactory.createKafka(ns);
+
+    DatabaseServiceMetadataPipeline dbMetadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+    MessagingServiceMetadataPipeline messagingMetadataPipeline =
+        new MessagingServiceMetadataPipeline()
+            .withTopicFilterPattern(new FilterPattern().withExcludes(List.of("orders.*")));
+
+    CreateIngestionPipeline dbRequest =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("db_pipeline"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(dbService.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(dbMetadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    CreateIngestionPipeline messagingRequest =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("messaging_pipeline"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(messagingService.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(messagingMetadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline dbPipeline = createEntity(dbRequest);
+    IngestionPipeline messagingPipeline = createEntity(messagingRequest);
+
+    ListParams params = new ListParams();
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("serviceType", "messagingService");
+    params.setQueryParams(queryParams);
+
+    ListResponse<IngestionPipeline> result = listEntities(params);
+    assertTrue(
+        result.getData().stream().anyMatch(p -> p.getId().equals(messagingPipeline.getId())));
+
+    queryParams.put("serviceType", "databaseService");
+    params.setQueryParams(queryParams);
+    result = listEntities(params);
+    assertTrue(result.getData().stream().anyMatch(p -> p.getId().equals(dbPipeline.getId())));
+  }
+
+  @Test
+  void test_listPipelinesFilteredByPipelineType(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline metadataRequest =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("metadata_pipeline"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline metadataPipelineEntity = createEntity(metadataRequest);
+
+    ListParams params = new ListParams();
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("pipelineType", "metadata");
+    params.setQueryParams(queryParams);
+
+    ListResponse<IngestionPipeline> result = listEntities(params);
+    assertTrue(result.getData().size() >= 1);
+    assertTrue(
+        result.getData().stream().anyMatch(p -> p.getId().equals(metadataPipelineEntity.getId())));
+  }
+
+  @Test
+  void test_listPipelinesFilteredByService(TestNamespace ns) {
+    DatabaseService service1 = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseService service2 = DatabaseServiceTestFactory.createSnowflake(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request1 =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("pipeline1"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service1.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    CreateIngestionPipeline request2 =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("pipeline2"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service2.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline1 = createEntity(request1);
+    IngestionPipeline pipeline2 = createEntity(request2);
+
+    ListParams params = new ListParams();
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("service", service1.getFullyQualifiedName());
+    params.setQueryParams(queryParams);
+
+    ListResponse<IngestionPipeline> result = listEntities(params);
+    assertEquals(1, result.getData().size());
+    assertEquals(pipeline1.getId(), result.getData().get(0).getId());
+  }
+
+  @Test
+  void test_updatePipelineScheduleInterval(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("schedule_update"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(
+                new AirflowConfig().withStartDate(START_DATE).withScheduleInterval("5 * * * *"));
+
+    IngestionPipeline pipeline = createEntity(request);
+    assertEquals("5 * * * *", pipeline.getAirflowConfig().getScheduleInterval());
+
+    pipeline.setAirflowConfig(
+        new AirflowConfig().withStartDate(START_DATE).withScheduleInterval("7 * * * *"));
+    IngestionPipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertEquals("7 * * * *", updated.getAirflowConfig().getScheduleInterval());
+  }
+
+  @Test
+  void test_updatePipelineConcurrency(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("concurrency_update"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE).withConcurrency(50));
+
+    IngestionPipeline pipeline = createEntity(request);
+    assertEquals(50, pipeline.getAirflowConfig().getConcurrency());
+
+    pipeline.setAirflowConfig(new AirflowConfig().withStartDate(START_DATE).withConcurrency(110));
+    IngestionPipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertEquals(110, updated.getAirflowConfig().getConcurrency());
+  }
+
+  @Test
+  void test_updatePipelineStartDate(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    Date initialStartDate = START_DATE;
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("startdate_update"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(initialStartDate));
+
+    IngestionPipeline pipeline = createEntity(request);
+    assertEquals(initialStartDate, pipeline.getAirflowConfig().getStartDate());
+
+    Date newStartDate = new DateTime("2021-11-13T20:20:39+00:00").toDate();
+    pipeline.setAirflowConfig(new AirflowConfig().withStartDate(newStartDate));
+    IngestionPipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertEquals(newStartDate, updated.getAirflowConfig().getStartDate());
+  }
+
+  @Test
+  void test_updateDatabaseServiceMetadataSourceConfig(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline initialPipeline =
+        new DatabaseServiceMetadataPipeline()
+            .withMarkDeletedTables(true)
+            .withIncludeViews(true)
+            .withSchemaFilterPattern(new FilterPattern().withExcludes(List.of("test.*")));
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("source_update"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(initialPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    assertNotNull(pipeline.getSourceConfig());
+
+    DatabaseServiceMetadataPipeline updatedPipeline =
+        new DatabaseServiceMetadataPipeline()
+            .withMarkDeletedTables(false)
+            .withIncludeViews(true)
+            .withSchemaFilterPattern(
+                new FilterPattern().withExcludes(List.of("information_schema.*")))
+            .withTableFilterPattern(new FilterPattern().withIncludes(List.of("sales.*")));
+
+    pipeline.setSourceConfig(new SourceConfig().withConfig(updatedPipeline));
+    IngestionPipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertNotNull(updated.getSourceConfig());
+  }
+
+  @Test
+  void test_updateDashboardServiceSourceConfig(TestNamespace ns) {
+    DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+    DashboardServiceMetadataPipeline initialPipeline =
+        new DashboardServiceMetadataPipeline()
+            .withDashboardFilterPattern(new FilterPattern().withIncludes(List.of("dashboard.*")));
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("dashboard_source_update"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(initialPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    assertNotNull(pipeline.getSourceConfig());
+
+    DashboardServiceMetadataPipeline updatedPipeline =
+        new DashboardServiceMetadataPipeline()
+            .withDashboardFilterPattern(
+                new FilterPattern().withIncludes(List.of("test1.*", "test2.*")));
+
+    pipeline.setSourceConfig(new SourceConfig().withConfig(updatedPipeline));
+    IngestionPipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertNotNull(updated.getSourceConfig());
+  }
+
+  @Test
+  void test_updateMessagingServiceSourceConfig(TestNamespace ns) {
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    MessagingServiceMetadataPipeline initialPipeline =
+        new MessagingServiceMetadataPipeline()
+            .withTopicFilterPattern(new FilterPattern().withExcludes(List.of("orders.*")));
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("messaging_source_update"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(initialPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    assertNotNull(pipeline.getSourceConfig());
+
+    MessagingServiceMetadataPipeline updatedPipeline =
+        new MessagingServiceMetadataPipeline()
+            .withTopicFilterPattern(
+                new FilterPattern().withIncludes(List.of("topic1.*", "topic2.*")));
+
+    pipeline.setSourceConfig(new SourceConfig().withConfig(updatedPipeline));
+    IngestionPipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertNotNull(updated.getSourceConfig());
+  }
+
+  @Test
+  void test_createUsagePipeline(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceQueryUsagePipeline usagePipeline =
+        new DatabaseServiceQueryUsagePipeline()
+            .withQueryLogDuration(1)
+            .withStageFileLocation("/tmp/test.log");
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("usage_pipeline"))
+            .withPipelineType(PipelineType.USAGE)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(usagePipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    assertNotNull(pipeline);
+    assertEquals(PipelineType.USAGE, pipeline.getPipelineType());
+    assertNotNull(pipeline.getSourceConfig());
+  }
+
+  @Test
+  void test_updateLoggerLevel(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("logger_level_update"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withLoggerLevel(LogLevels.INFO)
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    assertEquals(LogLevels.INFO, pipeline.getLoggerLevel());
+
+    pipeline.setLoggerLevel(LogLevels.ERROR);
+    IngestionPipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertEquals(LogLevels.ERROR, updated.getLoggerLevel());
+  }
+
+  @Test
+  void test_pipelineStatusCreation(TestNamespace ns) throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("status_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    String runId = UUID.randomUUID().toString();
+    PipelineStatus status =
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.RUNNING)
+            .withRunId(runId)
+            .withTimestamp(System.currentTimeMillis());
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+    client.getHttpClient().execute(HttpMethod.PUT, path, status, PipelineStatus.class);
+
+    String statusPath =
+        "/v1/services/ingestionPipelines/"
+            + pipeline.getFullyQualifiedName()
+            + "/pipelineStatus/"
+            + runId;
+    PipelineStatus retrieved =
+        client.getHttpClient().execute(HttpMethod.GET, statusPath, null, PipelineStatus.class);
+
+    assertNotNull(retrieved);
+    assertEquals(PipelineStatusType.RUNNING, retrieved.getPipelineState());
+    assertEquals(runId, retrieved.getRunId());
+  }
+
+  @Test
+  void test_pipelineStatusUpdate(TestNamespace ns) throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("status_update_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    String runId = UUID.randomUUID().toString();
+    PipelineStatus initialStatus =
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.RUNNING)
+            .withRunId(runId)
+            .withTimestamp(System.currentTimeMillis());
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+    client.getHttpClient().execute(HttpMethod.PUT, path, initialStatus, PipelineStatus.class);
+
+    PipelineStatus updatedStatus =
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.SUCCESS)
+            .withRunId(runId)
+            .withTimestamp(System.currentTimeMillis());
+
+    client.getHttpClient().execute(HttpMethod.PUT, path, updatedStatus, PipelineStatus.class);
+
+    String statusPath =
+        "/v1/services/ingestionPipelines/"
+            + pipeline.getFullyQualifiedName()
+            + "/pipelineStatus/"
+            + runId;
+    PipelineStatus retrieved =
+        client.getHttpClient().execute(HttpMethod.GET, statusPath, null, PipelineStatus.class);
+
+    assertNotNull(retrieved);
+    assertEquals(PipelineStatusType.SUCCESS, retrieved.getPipelineState());
+  }
+
+  @Test
+  void test_pipelineStatusDeletion(TestNamespace ns) throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("status_delete_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    String runId = UUID.randomUUID().toString();
+    PipelineStatus status =
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.SUCCESS)
+            .withRunId(runId)
+            .withTimestamp(System.currentTimeMillis());
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+    client.getHttpClient().execute(HttpMethod.PUT, path, status, PipelineStatus.class);
+
+    String deletePath = "/v1/services/ingestionPipelines/" + pipeline.getId() + "/pipelineStatus";
+    client.getHttpClient().execute(HttpMethod.DELETE, deletePath, null, Void.class);
+  }
+
+  @Test
+  void test_pipelineStatusDeletionByRunId(TestNamespace ns) throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("status_delete_runid_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    String runId1 = UUID.randomUUID().toString();
+    String runId2 = UUID.randomUUID().toString();
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+
+    PipelineStatus status1 =
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.RUNNING)
+            .withRunId(runId1)
+            .withTimestamp(System.currentTimeMillis());
+    client.getHttpClient().execute(HttpMethod.PUT, path, status1, PipelineStatus.class);
+
+    PipelineStatus status2 =
+        new PipelineStatus()
+            .withPipelineState(PipelineStatusType.SUCCESS)
+            .withRunId(runId2)
+            .withTimestamp(System.currentTimeMillis());
+    client.getHttpClient().execute(HttpMethod.PUT, path, status2, PipelineStatus.class);
+
+    String deletePath =
+        "/v1/services/ingestionPipelines/" + pipeline.getId() + "/pipelineStatus/" + runId1;
+    client.getHttpClient().execute(HttpMethod.DELETE, deletePath, null, Void.class);
+
+    String statusPath =
+        "/v1/services/ingestionPipelines/"
+            + pipeline.getFullyQualifiedName()
+            + "/pipelineStatus/"
+            + runId2;
+    PipelineStatus retrieved =
+        client.getHttpClient().execute(HttpMethod.GET, statusPath, null, PipelineStatus.class);
+    assertNotNull(retrieved);
+    assertEquals(runId2, retrieved.getRunId());
+  }
+
+  @Test
+  void test_pipelineProgressTracking(TestNamespace ns) throws OpenMetadataException {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("progress_test"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    String runId = UUID.randomUUID().toString();
+
+    Progress progressData = new Progress();
+    progressData.withAdditionalProperty(
+        "databases",
+        new ProgressProperty().withTotal(1).withProcessed(1).withEstimatedRemainingSeconds(0));
+    progressData.withAdditionalProperty(
+        "schemas",
+        new ProgressProperty().withTotal(47).withProcessed(30).withEstimatedRemainingSeconds(120));
+    progressData.withAdditionalProperty(
+        "tables",
+        new ProgressProperty()
+            .withTotal(9621)
+            .withProcessed(5000)
+            .withEstimatedRemainingSeconds(600));
+
+    List<StepSummary> steps = new ArrayList<>();
+    StepSummary stepSummary =
+        new StepSummary()
+            .withName("TestSource")
+            .withRecords(5000)
+            .withUpdatedRecords(100)
+            .withWarnings(5)
+            .withErrors(2)
+            .withFiltered(50)
+            .withProgress(progressData);
+    steps.add(stepSummary);
+
+    PipelineStatus status =
+        new PipelineStatus()
+            .withRunId(runId)
+            .withPipelineState(PipelineStatusType.RUNNING)
+            .withStartDate(System.currentTimeMillis())
+            .withTimestamp(System.currentTimeMillis())
+            .withStatus(steps);
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String path =
+        "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
+    client.getHttpClient().execute(HttpMethod.PUT, path, status, PipelineStatus.class);
+
+    String statusPath =
+        "/v1/services/ingestionPipelines/"
+            + pipeline.getFullyQualifiedName()
+            + "/pipelineStatus/"
+            + runId;
+    PipelineStatus retrieved =
+        client.getHttpClient().execute(HttpMethod.GET, statusPath, null, PipelineStatus.class);
+
+    assertNotNull(retrieved);
+    assertNotNull(retrieved.getStatus());
+    assertEquals(1, retrieved.getStatus().size());
+    assertNotNull(retrieved.getStatus().get(0).getProgress());
+
+    Progress retrievedProgress = retrieved.getStatus().get(0).getProgress();
+    assertEquals(3, retrievedProgress.getAdditionalProperties().size());
+
+    ProgressProperty dbProgress = retrievedProgress.getAdditionalProperties().get("databases");
+    assertNotNull(dbProgress);
+    assertEquals(1, dbProgress.getTotal());
+    assertEquals(1, dbProgress.getProcessed());
+
+    ProgressProperty schemaProgress = retrievedProgress.getAdditionalProperties().get("schemas");
+    assertNotNull(schemaProgress);
+    assertEquals(47, schemaProgress.getTotal());
+    assertEquals(30, schemaProgress.getProcessed());
+
+    ProgressProperty tableProgress = retrievedProgress.getAdditionalProperties().get("tables");
+    assertNotNull(tableProgress);
+    assertEquals(9621, tableProgress.getTotal());
+    assertEquals(5000, tableProgress.getProcessed());
+  }
+
+  @Test
+  void test_multipleServicesWithSamePipelineName(TestNamespace ns) {
+    DatabaseService service1 = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseService service2 = DatabaseServiceTestFactory.createSnowflake(ns);
+
+    String pipelineName = ns.prefix("same_name");
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    CreateIngestionPipeline request1 =
+        new CreateIngestionPipeline()
+            .withName(pipelineName)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service1.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    CreateIngestionPipeline request2 =
+        new CreateIngestionPipeline()
+            .withName(pipelineName)
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service2.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline1 = createEntity(request1);
+    IngestionPipeline pipeline2 = createEntity(request2);
+
+    assertNotNull(pipeline1);
+    assertNotNull(pipeline2);
+    assertNotEquals(pipeline1.getFullyQualifiedName(), pipeline2.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_pipelineWithAllAirflowConfigOptions(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true);
+
+    Integer concurrency = 75;
+    Integer retries = 3;
+    Integer retryDelay = 300;
+    String scheduleInterval = "0 */6 * * *";
+    Date startDate = new DateTime("2023-01-01T00:00:00+00:00").toDate();
+    Date endDate = new DateTime("2024-12-31T23:59:59+00:00").toDate();
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("full_airflow_config"))
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(
+                new AirflowConfig()
+                    .withStartDate(startDate)
+                    .withEndDate(endDate)
+                    .withScheduleInterval(scheduleInterval)
+                    .withConcurrency(concurrency)
+                    .withMaxActiveRuns(5)
+                    .withWorkflowTimeout(3600)
+                    .withRetries(retries)
+                    .withRetryDelay(retryDelay));
+
+    IngestionPipeline pipeline = createEntity(request);
+
+    assertNotNull(pipeline.getAirflowConfig());
+    assertEquals(startDate, pipeline.getAirflowConfig().getStartDate());
+    assertEquals(endDate, pipeline.getAirflowConfig().getEndDate());
+    assertEquals(scheduleInterval, pipeline.getAirflowConfig().getScheduleInterval());
+    assertEquals(concurrency, pipeline.getAirflowConfig().getConcurrency());
+    assertEquals(5, pipeline.getAirflowConfig().getMaxActiveRuns());
+    assertEquals(3600, pipeline.getAirflowConfig().getWorkflowTimeout());
+    assertEquals(retries, pipeline.getAirflowConfig().getRetries());
+    assertEquals(retryDelay, pipeline.getAirflowConfig().getRetryDelay());
   }
 }

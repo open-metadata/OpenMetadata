@@ -69,7 +69,8 @@ public class UsageResourceIT {
     Usage.reportFor("table", table.getId()).onDate(today).withCount(10).report();
     Usage.reportFor("table", table.getId()).onDate(yesterday).withCount(15).report();
 
-    EntityUsage usage = Usage.getForTable(table.getId().toString());
+    // Query usage with date and days params to get multiple days
+    EntityUsage usage = Usage.getForTable(table.getId().toString(), today, 7);
     assertNotNull(usage);
     assertNotNull(usage.getUsage());
     assertTrue(usage.getUsage().size() >= 2, "Usage should contain at least 2 entries");
@@ -91,16 +92,16 @@ public class UsageResourceIT {
     String today = LocalDate.now().format(DATE_FORMATTER);
 
     Usage.reportFor("table", table.getId()).onDate(today).withCount(5).report();
-
     Usage.reportFor("table", table.getId()).onDate(today).withCount(8).report();
 
+    // PUT usage is cumulative (adds to existing count), so 5 + 8 = 13
     EntityUsage usage = Usage.getForTable(table.getId().toString());
     assertNotNull(usage);
     assertNotNull(usage.getUsage());
     assertTrue(
         usage.getUsage().stream()
-            .anyMatch(dc -> dc.getDate().equals(today) && dc.getDailyStats().getCount() == 8),
-        "Usage should be updated to the new count");
+            .anyMatch(dc -> dc.getDate().equals(today) && dc.getDailyStats().getCount() == 13),
+        "Usage should be cumulative (5 + 8 = 13)");
 
     cleanupTable(table);
   }
@@ -183,13 +184,14 @@ public class UsageResourceIT {
     Usage.reportFor("table", table.getId()).onDate(today).withCount(10).report();
     Usage.reportFor("table", table.getId()).onDate(today).withCount(15).report();
 
+    // PUT usage is cumulative, so 5 + 10 + 15 = 30
     EntityUsage usage = Usage.getForTable(table.getId().toString());
     assertNotNull(usage);
     assertNotNull(usage.getUsage());
     assertTrue(
         usage.getUsage().stream()
-            .anyMatch(dc -> dc.getDate().equals(today) && dc.getDailyStats().getCount() == 15),
-        "Last reported count should be persisted");
+            .anyMatch(dc -> dc.getDate().equals(today) && dc.getDailyStats().getCount() == 30),
+        "Usage count should be cumulative (5 + 10 + 15 = 30)");
 
     cleanupTable(table);
   }
@@ -197,13 +199,15 @@ public class UsageResourceIT {
   @Test
   void testReportUsageAcrossWeek(TestNamespace ns) {
     Table table = createTable(ns, "usage_table_8");
+    String today = LocalDate.now().format(DATE_FORMATTER);
 
     for (int i = 0; i < 7; i++) {
       String date = LocalDate.now().minusDays(i).format(DATE_FORMATTER);
       Usage.reportFor("table", table.getId()).onDate(date).withCount((i + 1) * 10).report();
     }
 
-    EntityUsage usage = Usage.getForTable(table.getId().toString());
+    // Query with date and days params to get the full week of data
+    EntityUsage usage = Usage.getForTable(table.getId().toString(), today, 7);
     assertNotNull(usage);
     assertNotNull(usage.getUsage());
     assertTrue(usage.getUsage().size() >= 7, "Should have at least 7 days of usage data");

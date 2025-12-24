@@ -99,3 +99,13 @@ objectStorage:
   enabled: false
   provider: NOOP
   maxFileSize: 5242880
+
+# RDF Configuration - will be dynamically configured by TestSuiteBootstrap
+rdf:
+  enabled: true
+  baseUri: "https://open-metadata.org/"
+  storageType: "FUSEKI"
+  remoteEndpoint: "http://localhost:3030/openmetadata"
+  username: "admin"
+  password: "test-admin"
+  dataset: "openmetadata"

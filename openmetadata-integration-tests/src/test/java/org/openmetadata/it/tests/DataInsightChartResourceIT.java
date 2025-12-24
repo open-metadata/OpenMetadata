@@ -38,6 +38,7 @@ public class DataInsightChartResourceIT
     supportsDataProducts = false;
     supportsCustomExtension = false;
     supportsDomains = false;
+    supportsSearchIndex = false; // DataInsightChart doesn't have a search index
   }
 
   @Override

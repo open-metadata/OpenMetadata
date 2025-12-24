@@ -21,8 +21,5 @@ public class KpiService extends EntityServiceBase<Kpi> {
     return httpClient.execute(HttpMethod.POST, basePath, request, Kpi.class);
   }
 
-  @Override
-  public Kpi update(String id, Kpi entity) throws OpenMetadataException {
-    return httpClient.execute(HttpMethod.PUT, basePath, entity, Kpi.class);
-  }
+  // Use base class update method which does proper JSON Patch
 }

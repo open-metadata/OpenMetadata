@@ -55,7 +55,7 @@ public class SystemResourceIT {
         client
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET, "/system/version", null, RequestOptions.builder().build());
+                HttpMethod.GET, "/v1/system/version", null, RequestOptions.builder().build());
 
     assertNotNull(versionJson, "Version response should not be null");
     assertFalse(versionJson.isEmpty(), "Version response should not be empty");
@@ -82,7 +82,7 @@ public class SystemResourceIT {
         client
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET, "/system/status", null, RequestOptions.builder().build());
+                HttpMethod.GET, "/v1/system/status", null, RequestOptions.builder().build());
 
     assertNotNull(statusJson, "Status response should not be null");
     assertFalse(statusJson.isEmpty(), "Status response should not be empty");
@@ -105,7 +105,7 @@ public class SystemResourceIT {
         client
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET, "/system/status", null, RequestOptions.builder().build());
+                HttpMethod.GET, "/v1/system/status", null, RequestOptions.builder().build());
 
     assertNotNull(healthJson, "Health check response should not be null");
     assertFalse(healthJson.isEmpty(), "Health check response should not be empty");
@@ -123,7 +123,7 @@ public class SystemResourceIT {
             .getHttpClient()
             .executeForString(
                 HttpMethod.GET,
-                "/system/settings/" + SettingsType.CUSTOM_UI_THEME_PREFERENCE.value(),
+                "/v1/system/settings/" + SettingsType.CUSTOM_UI_THEME_PREFERENCE.value(),
                 null,
                 RequestOptions.builder().build());
 
@@ -155,7 +155,7 @@ public class SystemResourceIT {
             .getHttpClient()
             .executeForString(
                 HttpMethod.GET,
-                "/system/settings/" + SettingsType.LOGIN_CONFIGURATION.value(),
+                "/v1/system/settings/" + SettingsType.LOGIN_CONFIGURATION.value(),
                 null,
                 RequestOptions.builder().build());
 
@@ -178,13 +178,17 @@ public class SystemResourceIT {
         client
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET, "/system/settings", null, RequestOptions.builder().build());
+                HttpMethod.GET, "/v1/system/settings", null, RequestOptions.builder().build());
 
     assertNotNull(allSettingsJson, "All settings response should not be null");
     assertFalse(allSettingsJson.isEmpty(), "All settings response should not be empty");
 
-    JsonNode settingsArray = MAPPER.readTree(allSettingsJson);
-    assertTrue(settingsArray.isArray(), "Settings response should be an array");
+    JsonNode responseNode = MAPPER.readTree(allSettingsJson);
+    // API returns ResultList<Settings> which has a 'data' field containing the settings array
+    assertTrue(responseNode.has("data"), "Settings response should have 'data' field");
+
+    JsonNode settingsArray = responseNode.get("data");
+    assertTrue(settingsArray.isArray(), "Settings data should be an array");
     assertTrue(settingsArray.size() > 0, "Should have at least one setting configured");
 
     for (JsonNode settingNode : settingsArray) {
@@ -201,7 +205,10 @@ public class SystemResourceIT {
         client
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET, "/system/entities/count", null, RequestOptions.builder().build());
+                HttpMethod.GET,
+                "/v1/system/entities/count",
+                null,
+                RequestOptions.builder().build());
 
     assertNotNull(entitiesCountJson, "Entities count response should not be null");
     assertFalse(entitiesCountJson.isEmpty(), "Entities count response should not be empty");
@@ -228,7 +235,10 @@ public class SystemResourceIT {
         client
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET, "/system/services/count", null, RequestOptions.builder().build());
+                HttpMethod.GET,
+                "/v1/system/services/count",
+                null,
+                RequestOptions.builder().build());
 
     assertNotNull(servicesCountJson, "Services count response should not be null");
     assertFalse(servicesCountJson.isEmpty(), "Services count response should not be empty");
@@ -255,7 +265,7 @@ public class SystemResourceIT {
             .getHttpClient()
             .executeForString(
                 HttpMethod.GET,
-                "/system/settings/" + SettingsType.SEARCH_SETTINGS.value(),
+                "/v1/system/settings/" + SettingsType.SEARCH_SETTINGS.value(),
                 null,
                 RequestOptions.builder().build());
 
@@ -287,7 +297,7 @@ public class SystemResourceIT {
             .getHttpClient()
             .executeForString(
                 HttpMethod.GET,
-                "/system/settings/" + SettingsType.LINEAGE_SETTINGS.value(),
+                "/v1/system/settings/" + SettingsType.LINEAGE_SETTINGS.value(),
                 null,
                 RequestOptions.builder().build());
 
@@ -321,7 +331,7 @@ public class SystemResourceIT {
             .getHttpClient()
             .executeForString(
                 HttpMethod.GET,
-                "/system/settings/" + SettingsType.WORKFLOW_SETTINGS.value(),
+                "/v1/system/settings/" + SettingsType.WORKFLOW_SETTINGS.value(),
                 null,
                 RequestOptions.builder().build());
 
@@ -354,7 +364,7 @@ public class SystemResourceIT {
         client
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET, "/system/version", null, RequestOptions.builder().build());
+                HttpMethod.GET, "/v1/system/version", null, RequestOptions.builder().build());
 
     assertNotNull(versionJson, "Version info should not be null");
 
@@ -376,11 +386,11 @@ public class SystemResourceIT {
 
     String[] endpoints =
         new String[] {
-          "/system/version",
-          "/system/status",
-          "/system/entities/count",
-          "/system/services/count",
-          "/system/settings"
+          "/v1/system/version",
+          "/v1/system/status",
+          "/v1/system/entities/count",
+          "/v1/system/services/count",
+          "/v1/system/settings"
         };
 
     for (String endpoint : endpoints) {
@@ -406,18 +416,58 @@ public class SystemResourceIT {
         client
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET, "/system/status", null, RequestOptions.builder().build());
+                HttpMethod.GET, "/v1/system/status", null, RequestOptions.builder().build());
 
     JsonNode statusNode = MAPPER.readTree(statusJson);
 
     assertTrue(statusNode.has("migrations"), "Status should contain migrations");
 
     JsonNode migrations = statusNode.get("migrations");
+    // stepValidation schema has: description, passed, message (no statusCode)
     assertTrue(migrations.has("passed"), "Migrations should have passed field");
-    assertTrue(migrations.has("statusCode"), "Migrations should have statusCode field");
 
     assertTrue(
         migrations.get("passed").asBoolean(),
         "Migrations should have passed for integration tests to run");
+  }
+
+  @Test
+  void test_getEntitiesCountWithInclude() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    // Test with include=all
+    String allResponseJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/entities/count?include=all",
+                null,
+                RequestOptions.builder().build());
+
+    assertNotNull(allResponseJson, "All entities count response should not be null");
+
+    JsonNode allCountsNode = MAPPER.readTree(allResponseJson);
+    assertTrue(allCountsNode.has("tableCount"), "Should have table count");
+
+    // Test with include=non-deleted
+    String nonDeletedResponseJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/entities/count?include=non-deleted",
+                null,
+                RequestOptions.builder().build());
+
+    assertNotNull(nonDeletedResponseJson, "Non-deleted entities count should not be null");
+
+    JsonNode nonDeletedCountsNode = MAPPER.readTree(nonDeletedResponseJson);
+    assertTrue(nonDeletedCountsNode.has("tableCount"), "Should have table count");
+
+    int allTableCount = allCountsNode.get("tableCount").asInt();
+    int nonDeletedTableCount = nonDeletedCountsNode.get("tableCount").asInt();
+
+    assertTrue(allTableCount >= nonDeletedTableCount, "All count should be >= non-deleted count");
   }
 }

@@ -12,7 +12,9 @@ import org.openmetadata.it.factories.MlModelServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateMlModel;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.MlModel;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MlFeature;
@@ -570,5 +572,509 @@ public class MlModelResourceIT extends BaseEntityIT<MlModel, CreateMlModel> {
     assertNotNull(page1.getData());
     assertEquals(2, page1.getData().size());
     assertNotNull(page1.getPaging());
+  }
+
+  // ===================================================================
+  // ML STORE TESTS
+  // ===================================================================
+
+  @Test
+  void post_mlModelWithMlStore_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    org.openmetadata.schema.type.MlStore mlStore =
+        new org.openmetadata.schema.type.MlStore()
+            .withStorage("s3://my-bucket/models")
+            .withImageRepository("https://12345.dkr.ecr.region.amazonaws.com");
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_with_mlstore"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Random Forest");
+    request.setMlStore(mlStore);
+
+    MlModel mlModel = createEntity(request);
+    assertNotNull(mlModel);
+    assertNotNull(mlModel.getMlStore());
+    assertEquals(mlStore.getStorage(), mlModel.getMlStore().getStorage());
+    assertEquals(mlStore.getImageRepository(), mlModel.getMlStore().getImageRepository());
+  }
+
+  @Test
+  void patch_mlModelAddMlStore_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_add_mlstore"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("XGBoost");
+
+    MlModel mlModel = createEntity(request);
+    assertNull(mlModel.getMlStore());
+
+    org.openmetadata.schema.type.MlStore mlStore =
+        new org.openmetadata.schema.type.MlStore()
+            .withStorage("s3://ml-models/storage")
+            .withImageRepository("https://registry.com/images");
+
+    mlModel.setMlStore(mlStore);
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
+    assertNotNull(updated.getMlStore());
+    assertEquals(mlStore.getStorage(), updated.getMlStore().getStorage());
+  }
+
+  // ===================================================================
+  // SERVER TESTS
+  // ===================================================================
+
+  @Test
+  void post_mlModelWithServer_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_with_server"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Neural Network");
+    request.setServer(java.net.URI.create("http://localhost:5000/models"));
+
+    MlModel mlModel = createEntity(request);
+    assertNotNull(mlModel);
+    assertEquals("http://localhost:5000/models", mlModel.getServer().toString());
+  }
+
+  @Test
+  void patch_mlModelAddServer_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_add_server"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Decision Tree");
+
+    MlModel mlModel = createEntity(request);
+
+    mlModel.setServer(java.net.URI.create("http://mlserver.example.com/api"));
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
+    assertNotNull(updated.getServer());
+    assertEquals("http://mlserver.example.com/api", updated.getServer().toString());
+  }
+
+  @Test
+  void patch_mlModelUpdateServer_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_update_server"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("SVM");
+    request.setServer(java.net.URI.create("http://localhost:8080/v1"));
+
+    MlModel mlModel = createEntity(request);
+    assertEquals("http://localhost:8080/v1", mlModel.getServer().toString());
+
+    mlModel.setServer(java.net.URI.create("http://localhost:8080/v2"));
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
+    assertEquals("http://localhost:8080/v2", updated.getServer().toString());
+  }
+
+  // ===================================================================
+  // DASHBOARD INTEGRATION TESTS
+  // ===================================================================
+
+  @Test
+  void post_mlModelWithDashboard_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    Dashboard dashboard = createDashboard(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_with_dashboard"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Logistic Regression");
+    request.setDashboard(dashboard.getFullyQualifiedName());
+
+    MlModel mlModel = createEntity(request);
+    assertNotNull(mlModel);
+    assertNotNull(mlModel.getDashboard());
+    assertEquals(dashboard.getId(), mlModel.getDashboard().getId());
+  }
+
+  @Test
+  void patch_mlModelAddDashboard_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_add_dashboard"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("KNN");
+
+    MlModel mlModel = createEntity(request);
+
+    Dashboard dashboard = createDashboard(ns);
+
+    mlModel.setDashboard(dashboard.getEntityReference());
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
+    assertNotNull(updated.getDashboard());
+    assertEquals(dashboard.getId(), updated.getDashboard().getId());
+  }
+
+  @Test
+  void post_mlModelWithInvalidDashboard_4xx(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_invalid_dashboard"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Random Forest");
+    request.setDashboard("invalidDashboard");
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating ML model with invalid dashboard should fail");
+  }
+
+  // ===================================================================
+  // FEATURE SOURCE AND DATA SOURCE TESTS
+  // ===================================================================
+
+  @Test
+  void post_mlModelWithFeatureSources_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    List<org.openmetadata.schema.type.MlFeatureSource> featureSources =
+        Arrays.asList(
+            new org.openmetadata.schema.type.MlFeatureSource()
+                .withName("source_age")
+                .withDataType(org.openmetadata.schema.type.FeatureSourceDataType.INTEGER),
+            new org.openmetadata.schema.type.MlFeatureSource()
+                .withName("source_income")
+                .withDataType(org.openmetadata.schema.type.FeatureSourceDataType.NUMBER));
+
+    List<MlFeature> features =
+        Arrays.asList(
+            new MlFeature()
+                .withName("age_group")
+                .withDataType(MlFeatureDataType.Categorical)
+                .withFeatureSources(featureSources)
+                .withFeatureAlgorithm("Binning"));
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_feature_sources"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Random Forest");
+    request.setMlFeatures(features);
+
+    MlModel mlModel = createEntity(request);
+    assertNotNull(mlModel);
+    assertNotNull(mlModel.getMlFeatures());
+    assertEquals(1, mlModel.getMlFeatures().size());
+    assertNotNull(mlModel.getMlFeatures().get(0).getFeatureSources());
+    assertEquals(2, mlModel.getMlFeatures().get(0).getFeatureSources().size());
+  }
+
+  @Test
+  void post_mlModelWithDataSource_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    Table table = createTable(ns);
+
+    List<org.openmetadata.schema.type.MlFeatureSource> featureSources =
+        Arrays.asList(
+            new org.openmetadata.schema.type.MlFeatureSource()
+                .withName("table_column")
+                .withDataType(org.openmetadata.schema.type.FeatureSourceDataType.INTEGER)
+                .withDataSource(table.getEntityReference()));
+
+    List<MlFeature> features =
+        Arrays.asList(
+            new MlFeature()
+                .withName("derived_feature")
+                .withDataType(MlFeatureDataType.Numerical)
+                .withFeatureSources(featureSources));
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_with_datasource"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Deep Learning");
+    request.setMlFeatures(features);
+
+    MlModel mlModel = createEntity(request);
+    assertNotNull(mlModel);
+    assertNotNull(mlModel.getMlFeatures());
+    assertNotNull(mlModel.getMlFeatures().get(0).getFeatureSources());
+    assertNotNull(mlModel.getMlFeatures().get(0).getFeatureSources().get(0).getDataSource());
+    assertEquals(
+        table.getId(),
+        mlModel.getMlFeatures().get(0).getFeatureSources().get(0).getDataSource().getId());
+  }
+
+  @Test
+  void post_mlModelWithInvalidDataSource_4xx(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    org.openmetadata.schema.type.EntityReference invalidTable =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("table");
+
+    List<org.openmetadata.schema.type.MlFeatureSource> featureSources =
+        Arrays.asList(
+            new org.openmetadata.schema.type.MlFeatureSource()
+                .withName("invalid_source")
+                .withDataType(org.openmetadata.schema.type.FeatureSourceDataType.INTEGER)
+                .withDataSource(invalidTable));
+
+    List<MlFeature> features =
+        Arrays.asList(
+            new MlFeature()
+                .withName("test_feature")
+                .withDataType(MlFeatureDataType.Numerical)
+                .withFeatureSources(featureSources));
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_invalid_datasource"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Random Forest");
+    request.setMlFeatures(features);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating ML model with invalid data source should fail");
+  }
+
+  @Test
+  void patch_mlModelUpdateFeatureSources_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_update_sources"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Gradient Boosting");
+
+    MlModel mlModel = createEntity(request);
+
+    List<org.openmetadata.schema.type.MlFeatureSource> newSources =
+        Arrays.asList(
+            new org.openmetadata.schema.type.MlFeatureSource()
+                .withName("new_source")
+                .withDataType(org.openmetadata.schema.type.FeatureSourceDataType.STRING));
+
+    List<MlFeature> features =
+        Arrays.asList(
+            new MlFeature()
+                .withName("updated_feature")
+                .withDataType(MlFeatureDataType.Categorical)
+                .withFeatureSources(newSources));
+
+    mlModel.setMlFeatures(features);
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
+    assertNotNull(updated.getMlFeatures());
+    assertEquals(1, updated.getMlFeatures().size());
+    assertNotNull(updated.getMlFeatures().get(0).getFeatureSources());
+  }
+
+  // ===================================================================
+  // FEATURE ALGORITHM TESTS
+  // ===================================================================
+
+  @Test
+  void post_mlModelWithFeatureAlgorithm_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    List<MlFeature> features =
+        Arrays.asList(
+            new MlFeature()
+                .withName("pca_feature")
+                .withDataType(MlFeatureDataType.Numerical)
+                .withFeatureAlgorithm("PCA"));
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_feature_algo"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Random Forest");
+    request.setMlFeatures(features);
+
+    MlModel mlModel = createEntity(request);
+    assertNotNull(mlModel);
+    assertEquals("PCA", mlModel.getMlFeatures().get(0).getFeatureAlgorithm());
+  }
+
+  // ===================================================================
+  // ADDITIONAL UPDATE TESTS
+  // ===================================================================
+
+  @Test
+  void patch_mlModelUpdateAlgorithm_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_update_algo"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("regression");
+
+    MlModel mlModel = createEntity(request);
+    assertEquals("regression", mlModel.getAlgorithm());
+
+    mlModel.setAlgorithm("SVM");
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
+    assertEquals("SVM", updated.getAlgorithm());
+  }
+
+  @Test
+  void patch_mlModelUpdateTarget_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_update_target"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Random Forest");
+    request.setTarget("origTarget");
+
+    MlModel mlModel = createEntity(request);
+    assertEquals("origTarget", mlModel.getTarget());
+
+    mlModel.setTarget("newTarget");
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
+    assertEquals("newTarget", updated.getTarget());
+  }
+
+  @Test
+  void patch_mlModelUpdateMlFeatures_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    List<MlFeature> initialFeatures =
+        Arrays.asList(
+            new MlFeature().withName("feature1").withDataType(MlFeatureDataType.Numerical));
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_update_features"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Neural Network");
+    request.setMlFeatures(initialFeatures);
+
+    MlModel mlModel = createEntity(request);
+    assertEquals(1, mlModel.getMlFeatures().size());
+
+    List<MlFeature> updatedFeatures =
+        Arrays.asList(
+            new MlFeature().withName("new_feature").withDataType(MlFeatureDataType.Categorical));
+
+    mlModel.setMlFeatures(updatedFeatures);
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
+    assertEquals(1, updated.getMlFeatures().size());
+    assertEquals("new_feature", updated.getMlFeatures().get(0).getName());
+  }
+
+  @Test
+  void test_mlModelNoChange_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_no_change"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Random Forest");
+    request.setOwners(List.of(testUser1().getEntityReference()));
+
+    MlModel mlModel = createEntity(request);
+    Double initialVersion = mlModel.getVersion();
+
+    MlModel updated = patchEntity(mlModel.getId().toString(), mlModel);
+    assertEquals(initialVersion, updated.getVersion());
+  }
+
+  // ===================================================================
+  // TAG TESTS
+  // ===================================================================
+
+  @Test
+  void test_mlModelWithTags_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    org.openmetadata.schema.type.TagLabel tag =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_with_tags"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Logistic Regression");
+    request.setTags(List.of(tag));
+
+    MlModel mlModel = createEntity(request);
+    assertNotNull(mlModel.getTags());
+    assertFalse(mlModel.getTags().isEmpty());
+  }
+
+  @Test
+  void test_mlModelFeatureWithTags_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+
+    org.openmetadata.schema.type.TagLabel featureTag =
+        new org.openmetadata.schema.type.TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withLabelType(org.openmetadata.schema.type.TagLabel.LabelType.MANUAL);
+
+    List<MlFeature> features =
+        Arrays.asList(
+            new MlFeature()
+                .withName("tagged_feature")
+                .withDataType(MlFeatureDataType.Numerical)
+                .withTags(List.of(featureTag)));
+
+    CreateMlModel request = new CreateMlModel();
+    request.setName(ns.prefix("mlmodel_feature_tags"));
+    request.setService(service.getFullyQualifiedName());
+    request.setAlgorithm("Random Forest");
+    request.setMlFeatures(features);
+
+    MlModel mlModel = createEntity(request);
+    assertNotNull(mlModel.getMlFeatures());
+    assertNotNull(mlModel.getMlFeatures().get(0).getTags());
+    assertFalse(mlModel.getMlFeatures().get(0).getTags().isEmpty());
+  }
+
+  // ===================================================================
+  // HELPER METHODS
+  // ===================================================================
+
+  private Dashboard createDashboard(TestNamespace ns) {
+    org.openmetadata.schema.entity.services.DashboardService dashboardService =
+        org.openmetadata.it.factories.DashboardServiceTestFactory.createMetabase(ns);
+
+    org.openmetadata.schema.api.data.CreateDashboard request =
+        new org.openmetadata.schema.api.data.CreateDashboard();
+    request.setName(ns.prefix("dashboard"));
+    request.setService(dashboardService.getFullyQualifiedName());
+
+    return SdkClients.adminClient().dashboards().create(request);
+  }
+
+  private Table createTable(TestNamespace ns) {
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        org.openmetadata.it.factories.DatabaseSchemaTestFactory.createSimple(ns);
+    return org.openmetadata.it.factories.TableTestFactory.createSimple(
+        ns, schema.getFullyQualifiedName());
   }
 }

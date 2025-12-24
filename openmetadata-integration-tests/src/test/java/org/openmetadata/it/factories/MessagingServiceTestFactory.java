@@ -7,6 +7,7 @@ import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
+import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.type.MessagingConnection;
 
 /**
@@ -46,9 +47,11 @@ public class MessagingServiceTestFactory {
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     String name = ns.prefix("redpandaService_" + uniqueId);
 
-    KafkaConnection kafkaConn = new KafkaConnection().withBootstrapServers("localhost:9092");
+    // Use RedpandaConnection for Redpanda service type
+    RedpandaConnection redpandaConn =
+        new RedpandaConnection().withBootstrapServers("localhost:9092");
 
-    MessagingConnection conn = new MessagingConnection().withConfig(kafkaConn);
+    MessagingConnection conn = new MessagingConnection().withConfig(redpandaConn);
 
     CreateMessagingService request =
         new CreateMessagingService()

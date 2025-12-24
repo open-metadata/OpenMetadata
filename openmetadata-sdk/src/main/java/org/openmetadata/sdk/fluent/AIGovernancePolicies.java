@@ -3,6 +3,7 @@ package org.openmetadata.sdk.fluent;
 import java.util.*;
 import org.openmetadata.schema.api.ai.CreateAIGovernancePolicy;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
+import org.openmetadata.schema.entity.ai.PolicyType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
@@ -119,6 +120,11 @@ public final class AIGovernancePolicies {
 
     public AIGovernancePolicyCreator name(String name) {
       request.setName(name);
+      return this;
+    }
+
+    public AIGovernancePolicyCreator withPolicyType(PolicyType policyType) {
+      request.setPolicyType(policyType);
       return this;
     }
 

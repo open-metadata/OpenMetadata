@@ -20,6 +20,10 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class LLMModelResourceIT extends BaseEntityIT<LLMModel, CreateLLMModel> {
 
+  {
+    supportsSearchIndex = false; // LLMModel doesn't have a search index
+  }
+
   @Override
   protected CreateLLMModel createMinimalRequest(TestNamespace ns) {
     LLMService service = LLMServiceTestFactory.createOpenAI(ns);

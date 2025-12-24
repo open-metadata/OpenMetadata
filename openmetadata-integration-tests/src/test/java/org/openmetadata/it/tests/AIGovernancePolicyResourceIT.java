@@ -26,6 +26,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.ai.CreateAIGovernancePolicy;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
+import org.openmetadata.schema.entity.ai.PolicyType;
 import org.openmetadata.sdk.fluent.AIGovernancePolicies;
 
 /**
@@ -50,6 +51,7 @@ public class AIGovernancePolicyResourceIT {
     AIGovernancePolicy policy =
         AIGovernancePolicies.create()
             .name(policyName)
+            .withPolicyType(PolicyType.DataAccess)
             .withDescription("Test AI governance policy")
             .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.BLOCKING)
             .execute();
@@ -69,6 +71,7 @@ public class AIGovernancePolicyResourceIT {
     AIGovernancePolicy created =
         AIGovernancePolicies.create()
             .name(policyName)
+            .withPolicyType(PolicyType.ModelApproval)
             .withDescription("Policy to retrieve by name")
             .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.WARNING)
             .execute();
@@ -88,6 +91,7 @@ public class AIGovernancePolicyResourceIT {
     for (int i = 0; i < 3; i++) {
       AIGovernancePolicies.create()
           .name(ns.prefix("listPolicy" + i))
+          .withPolicyType(PolicyType.ComplianceCheck)
           .withDescription("Policy " + i + " for list test")
           .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.BLOCKING)
           .execute();
@@ -107,6 +111,7 @@ public class AIGovernancePolicyResourceIT {
     AIGovernancePolicy policy =
         AIGovernancePolicies.create()
             .name(policyName)
+            .withPolicyType(PolicyType.SecurityControl)
             .withDescription("Original description")
             .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.BLOCKING)
             .execute();
@@ -129,6 +134,7 @@ public class AIGovernancePolicyResourceIT {
     AIGovernancePolicy policy =
         AIGovernancePolicies.create()
             .name(policyName)
+            .withPolicyType(PolicyType.CostControl)
             .withDescription("Test policy")
             .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.WARNING)
             .execute();
@@ -150,6 +156,7 @@ public class AIGovernancePolicyResourceIT {
     AIGovernancePolicy policy =
         AIGovernancePolicies.create()
             .name(policyName)
+            .withPolicyType(PolicyType.BiasThreshold)
             .withDescription("Policy to delete")
             .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.BLOCKING)
             .execute();
@@ -171,6 +178,7 @@ public class AIGovernancePolicyResourceIT {
     AIGovernancePolicy policy =
         AIGovernancePolicies.create()
             .name(policyName)
+            .withPolicyType(PolicyType.PerformanceStandard)
             .withDisplayName("My Policy Display Name")
             .withDescription("Policy with display name")
             .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.BLOCKING)
@@ -193,6 +201,7 @@ public class AIGovernancePolicyResourceIT {
       AIGovernancePolicy policy =
           AIGovernancePolicies.create()
               .name(policyName)
+              .withPolicyType(PolicyType.DataAccess)
               .withDescription("Policy with enforcement level: " + level.value())
               .withEnforcementLevel(level)
               .execute();
@@ -209,6 +218,7 @@ public class AIGovernancePolicyResourceIT {
     AIGovernancePolicy created =
         AIGovernancePolicies.create()
             .name(policyName)
+            .withPolicyType(PolicyType.ModelApproval)
             .withDescription("Policy to test field retrieval")
             .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.WARNING)
             .execute();
@@ -230,6 +240,7 @@ public class AIGovernancePolicyResourceIT {
     AIGovernancePolicy policy =
         AIGovernancePolicies.create()
             .name(policyName)
+            .withPolicyType(PolicyType.ComplianceCheck)
             .withDescription("Policy to hard delete")
             .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.BLOCKING)
             .execute();
@@ -249,6 +260,7 @@ public class AIGovernancePolicyResourceIT {
     for (int i = 0; i < 5; i++) {
       AIGovernancePolicies.create()
           .name(ns.prefix("limitPolicy" + i))
+          .withPolicyType(PolicyType.SecurityControl)
           .withDescription("Policy " + i + " for limit test")
           .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.WARNING)
           .execute();
@@ -268,6 +280,7 @@ public class AIGovernancePolicyResourceIT {
     AIGovernancePolicy created =
         AIGovernancePolicies.create()
             .name(policyName)
+            .withPolicyType(PolicyType.CostControl)
             .withDescription("Policy to retrieve by ID")
             .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.BLOCKING)
             .execute();
@@ -286,6 +299,7 @@ public class AIGovernancePolicyResourceIT {
     AIGovernancePolicy policy =
         AIGovernancePolicies.create()
             .name(policyName)
+            .withPolicyType(PolicyType.DataAccess)
             .withDisplayName("Chained Policy")
             .withDescription("Original description")
             .withEnforcementLevel(CreateAIGovernancePolicy.EnforcementLevel.BLOCKING)

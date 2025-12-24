@@ -12,6 +12,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.ApplicationType;
 import org.openmetadata.sdk.fluent.AIApplications;
 
 /**
@@ -34,6 +35,7 @@ public class AIApplicationResourceIT {
     AIApplication app =
         AIApplications.create()
             .name(ns.prefix("testApp"))
+            .withApplicationType(ApplicationType.Chatbot)
             .withDescription("Test AI Application")
             .execute();
 
@@ -49,6 +51,7 @@ public class AIApplicationResourceIT {
     AIApplication app =
         AIApplications.create()
             .name(ns.prefix("displayNameApp"))
+            .withApplicationType(ApplicationType.Agent)
             .withDisplayName("My Display Name")
             .withDescription("App with display name")
             .now();
@@ -62,6 +65,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("getByIdApp"))
+            .withApplicationType(ApplicationType.Copilot)
             .withDescription("App for get by id test")
             .execute();
 
@@ -77,6 +81,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("getByNameApp"))
+            .withApplicationType(ApplicationType.Assistant)
             .withDescription("App for get by name test")
             .execute();
 
@@ -92,6 +97,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("findApp"))
+            .withApplicationType(ApplicationType.RAG)
             .withDescription("App for find test")
             .execute();
 
@@ -106,6 +112,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("findByNameApp"))
+            .withApplicationType(ApplicationType.CodeGenerator)
             .withDescription("App for find by name test")
             .execute();
 
@@ -119,16 +126,19 @@ public class AIApplicationResourceIT {
   void test_listAIApplications(TestNamespace ns) {
     AIApplications.create()
         .name(ns.prefix("listApp1"))
+        .withApplicationType(ApplicationType.DataAnalyst)
         .withDescription("First app for list test")
         .execute();
 
     AIApplications.create()
         .name(ns.prefix("listApp2"))
+        .withApplicationType(ApplicationType.DataAnalyst)
         .withDescription("Second app for list test")
         .execute();
 
     AIApplications.create()
         .name(ns.prefix("listApp3"))
+        .withApplicationType(ApplicationType.DataAnalyst)
         .withDescription("Third app for list test")
         .execute();
 
@@ -142,11 +152,13 @@ public class AIApplicationResourceIT {
   void test_listAIApplicationsWithLimit(TestNamespace ns) {
     AIApplications.create()
         .name(ns.prefix("limitApp1"))
+        .withApplicationType(ApplicationType.AutomationBot)
         .withDescription("App 1 for limit test")
         .execute();
 
     AIApplications.create()
         .name(ns.prefix("limitApp2"))
+        .withApplicationType(ApplicationType.AutomationBot)
         .withDescription("App 2 for limit test")
         .execute();
 
@@ -161,6 +173,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("updateDescApp"))
+            .withApplicationType(ApplicationType.MultiAgent)
             .withDescription("Initial description")
             .execute();
 
@@ -179,6 +192,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("updateDisplayApp"))
+            .withApplicationType(ApplicationType.Custom)
             .withDisplayName("Initial Display")
             .withDescription("App for display name update")
             .execute();
@@ -198,6 +212,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("deleteApp"))
+            .withApplicationType(ApplicationType.Chatbot)
             .withDescription("App to delete")
             .execute();
 
@@ -214,6 +229,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("hardDeleteApp"))
+            .withApplicationType(ApplicationType.Agent)
             .withDescription("App to hard delete")
             .execute();
 
@@ -230,6 +246,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("fieldsApp"))
+            .withApplicationType(ApplicationType.Copilot)
             .withDescription("App for fields test")
             .execute();
 
@@ -245,6 +262,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("includeAllApp"))
+            .withApplicationType(ApplicationType.Assistant)
             .withDescription("App for include all test")
             .execute();
 
@@ -258,11 +276,13 @@ public class AIApplicationResourceIT {
   void test_listAIApplicationsForEach(TestNamespace ns) {
     AIApplications.create()
         .name(ns.prefix("forEachApp1"))
+        .withApplicationType(ApplicationType.RAG)
         .withDescription("App 1 for forEach test")
         .execute();
 
     AIApplications.create()
         .name(ns.prefix("forEachApp2"))
+        .withApplicationType(ApplicationType.RAG)
         .withDescription("App 2 for forEach test")
         .execute();
 
@@ -283,6 +303,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("multiUpdateApp"))
+            .withApplicationType(ApplicationType.CodeGenerator)
             .withDescription("Initial description")
             .withDisplayName("Initial Display")
             .execute();
@@ -305,6 +326,7 @@ public class AIApplicationResourceIT {
     AIApplication created =
         AIApplications.create()
             .name(ns.prefix("versionApp"))
+            .withApplicationType(ApplicationType.DataAnalyst)
             .withDescription("Initial version")
             .execute();
 

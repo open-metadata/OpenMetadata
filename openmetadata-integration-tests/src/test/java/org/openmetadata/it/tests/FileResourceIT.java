@@ -121,7 +121,7 @@ public class FileResourceIT {
 
     File foundFile =
         Files.findByName(createdFile.getFullyQualifiedName())
-            .withFields("owners", "tags", "domain")
+            .withFields("owners", "tags", "domains")
             .fetch();
     assertNotNull(foundFile);
     assertEquals(createdFile.getId(), foundFile.getId());

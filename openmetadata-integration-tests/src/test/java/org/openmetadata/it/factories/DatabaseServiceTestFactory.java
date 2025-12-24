@@ -65,4 +65,19 @@ public class DatabaseServiceTestFactory {
       return createPostgres(ns);
     }
   }
+
+  /**
+   * Create a Postgres database service with a custom name.
+   * Useful for tests that need short names to avoid FQN length limits.
+   */
+  public static DatabaseService createPostgresWithName(String name, TestNamespace ns) {
+    PostgresConnection conn =
+        DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
+
+    return DatabaseServices.builder()
+        .name(name)
+        .connection(conn)
+        .description("Test Postgres service")
+        .create();
+  }
 }

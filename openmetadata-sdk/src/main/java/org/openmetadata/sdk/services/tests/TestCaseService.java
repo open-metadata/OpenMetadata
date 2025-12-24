@@ -29,7 +29,7 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
           "testSuites",
           "incidentId",
           "failedRowsSample",
-          "inspectionQuery",
+          // Note: inspectionQuery is user-editable and should be patchable
           "testDefinition", // Reference field - don't patch
           "entityLink", // Don't change entity link via patch
           "changeDescription",

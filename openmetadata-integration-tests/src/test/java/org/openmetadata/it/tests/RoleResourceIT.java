@@ -49,6 +49,7 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
     supportsSoftDelete = true;
     supportsPatch = true;
     supportsOwners = false;
+    supportsSearchIndex = false; // Role does not have search index
   }
 
   @Override

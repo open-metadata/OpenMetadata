@@ -38,6 +38,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
     supportsOwners = false; // Bot has bot user, not owners
     supportsDomains = false; // Bot doesn't support domains
     supportsDataProducts = false;
+    supportsSearchIndex = false; // Bot doesn't have a search index
   }
 
   // ===================================================================

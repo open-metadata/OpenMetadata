@@ -37,6 +37,7 @@ public class PersonaResourceIT extends BaseEntityIT<Persona, CreatePersona> {
     supportsSoftDelete = false; // Persona uses hard delete
     supportsDomains = false;
     supportsDataProducts = false;
+    supportsSearchIndex = false; // Persona doesn't have a search index
   }
 
   // ===================================================================

@@ -15,7 +15,6 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -44,11 +43,12 @@ public class NotificationTemplateResourceIT
   public NotificationTemplateResourceIT() {
     supportsFollowers = false;
     supportsTags = false;
-    supportsDomains = true;
+    supportsDomains = false; // NotificationTemplate doesn't support domains
     supportsDataProducts = false;
     supportsSoftDelete = true;
     supportsPatch = true;
-    supportsOwners = true;
+    supportsOwners = false; // NotificationTemplate doesn't support owners
+    supportsSearchIndex = false; // NotificationTemplate doesn't have a search index
   }
 
   @Override
@@ -313,48 +313,6 @@ public class NotificationTemplateResourceIT
     assertNotNull(history);
     assertNotNull(history.getVersions());
     assertTrue(history.getVersions().size() >= 2);
-  }
-
-  @Test
-  void test_createTemplateWithOwner(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    CreateNotificationTemplate create =
-        new CreateNotificationTemplate()
-            .withName(ns.prefix("ownedTemplate"))
-            .withTemplateSubject("Subject")
-            .withTemplateBody("Body")
-            .withOwners(List.of(testUser1().getEntityReference()))
-            .withDescription("Template with owner");
-
-    NotificationTemplate template = createEntity(create);
-
-    NotificationTemplate fetched =
-        client.notificationTemplates().get(template.getId().toString(), "owners");
-    assertNotNull(fetched.getOwners());
-    assertFalse(fetched.getOwners().isEmpty());
-  }
-
-  @Test
-  void test_createTemplateWithDomain(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    String domainFqn = testDomain().getFullyQualifiedName();
-
-    CreateNotificationTemplate create =
-        new CreateNotificationTemplate()
-            .withName(ns.prefix("templateWithDomain"))
-            .withTemplateSubject("Subject")
-            .withTemplateBody("Body")
-            .withDomains(List.of(domainFqn))
-            .withDescription("Template with domain");
-
-    NotificationTemplate template = createEntity(create);
-    assertNotNull(template.getId());
-
-    NotificationTemplate fetched =
-        client.notificationTemplates().get(template.getId().toString(), "domain");
-    assertNotNull(fetched);
   }
 
   @Test

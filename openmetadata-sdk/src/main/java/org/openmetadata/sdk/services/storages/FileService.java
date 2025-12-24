@@ -9,7 +9,7 @@ import org.openmetadata.sdk.services.EntityServiceBase;
 
 public class FileService extends EntityServiceBase<File> {
   public FileService(HttpClient httpClient) {
-    super(httpClient, "/v1/files");
+    super(httpClient, "/v1/drives/files");
   }
 
   @Override

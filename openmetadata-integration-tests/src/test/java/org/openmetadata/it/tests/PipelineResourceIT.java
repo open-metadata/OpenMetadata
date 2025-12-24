@@ -645,4 +645,442 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     assertNotNull(transformTask.getDownstreamTasks());
     assertTrue(transformTask.getDownstreamTasks().contains("extract"));
   }
+
+  @Test
+  void put_pipelineStatus_200_OK(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_status"));
+    request.setService(service.getFullyQualifiedName());
+
+    List<Task> tasks =
+        Arrays.asList(
+            new Task().withName("task1").withDescription("First task"),
+            new Task().withName("task2").withDescription("Second task"));
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+    assertNotNull(pipeline);
+
+    // Create pipeline status with task statuses
+    org.openmetadata.schema.type.Status t1Status =
+        new org.openmetadata.schema.type.Status()
+            .withName("task1")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful);
+    org.openmetadata.schema.type.Status t2Status =
+        new org.openmetadata.schema.type.Status()
+            .withName("task2")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed);
+
+    org.openmetadata.schema.entity.data.PipelineStatus pipelineStatus =
+        new org.openmetadata.schema.entity.data.PipelineStatus()
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+            .withTimestamp(System.currentTimeMillis())
+            .withTaskStatus(Arrays.asList(t1Status, t2Status));
+
+    // Update pipeline with status
+    java.util.Map<String, Object> statusData = new java.util.HashMap<>();
+    statusData.put("executionStatus", pipelineStatus.getExecutionStatus().value());
+    statusData.put("timestamp", pipelineStatus.getTimestamp());
+    statusData.put("taskStatus", pipelineStatus.getTaskStatus());
+
+    // addPipelineStatus expects FQN, not ID
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), pipelineStatus);
+
+    // Retrieve pipeline with status
+    Pipeline updatedPipeline =
+        client.pipelines().get(pipeline.getId().toString(), "pipelineStatus");
+    assertNotNull(updatedPipeline.getPipelineStatus());
+    assertEquals(
+        org.openmetadata.schema.type.StatusType.Failed,
+        updatedPipeline.getPipelineStatus().getExecutionStatus());
+  }
+
+  @Test
+  void put_pipelineInvalidStatus_4xx(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_invalid_status"));
+    request.setService(service.getFullyQualifiedName());
+
+    List<Task> tasks = Arrays.asList(new Task().withName("task1").withDescription("Task 1"));
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+
+    // Create status with invalid task name
+    org.openmetadata.schema.type.Status invalidTaskStatus =
+        new org.openmetadata.schema.type.Status()
+            .withName("invalidTask")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed);
+
+    org.openmetadata.schema.entity.data.PipelineStatus pipelineStatus =
+        new org.openmetadata.schema.entity.data.PipelineStatus()
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+            .withTimestamp(System.currentTimeMillis())
+            .withTaskStatus(Arrays.asList(invalidTaskStatus));
+
+    // Should fail because task name doesn't exist
+    assertThrows(
+        Exception.class,
+        () -> client.pipelines().addPipelineStatus(pipeline.getId().toString(), pipelineStatus),
+        "Adding status with invalid task name should fail");
+  }
+
+  @Test
+  void patch_pipelineTasksUpdate_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_patch_tasks"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDescription("Initial description");
+
+    List<Task> initialTasks =
+        Arrays.asList(
+            new Task().withName("task1").withDescription("Task 1"),
+            new Task().withName("task2").withDescription("Task 2"));
+    request.setTasks(initialTasks);
+
+    Pipeline pipeline = createEntity(request);
+    assertEquals(2, pipeline.getTasks().size());
+    assertEquals("Initial description", pipeline.getDescription());
+
+    // Add a new task and update description
+    List<Task> updatedTasks =
+        Arrays.asList(
+            new Task().withName("task1").withDescription("Task 1"),
+            new Task().withName("task2").withDescription("Task 2"),
+            new Task().withName("task3").withDescription("Task 3"));
+
+    pipeline.setTasks(updatedTasks);
+    pipeline.setDescription("Updated description");
+
+    Pipeline patched = patchEntity(pipeline.getId().toString(), pipeline);
+    assertEquals(3, patched.getTasks().size());
+    assertEquals("Updated description", patched.getDescription());
+  }
+
+  @Test
+  void test_pipelineScheduleInterval_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_schedule_interval"));
+    request.setService(service.getFullyQualifiedName());
+
+    // Test various schedule interval formats
+    String[] schedules = {"0 0 * * *", "@daily", "@hourly", "*/5 * * * *"};
+
+    for (String schedule : schedules) {
+      request.setName(ns.prefix("pipeline_schedule_" + schedule.replace(" ", "_")));
+      request.setScheduleInterval(schedule);
+
+      Pipeline pipeline = createEntity(request);
+      assertNotNull(pipeline);
+      assertEquals(schedule, pipeline.getScheduleInterval());
+    }
+  }
+
+  @Test
+  void test_pipelineConcurrency_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_concurrency"));
+    request.setService(service.getFullyQualifiedName());
+    request.setConcurrency(5);
+
+    Pipeline pipeline = createEntity(request);
+    assertNotNull(pipeline);
+    assertEquals(Integer.valueOf(5), pipeline.getConcurrency());
+
+    // Update concurrency
+    pipeline.setConcurrency(10);
+    Pipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertEquals(Integer.valueOf(10), updated.getConcurrency());
+  }
+
+  @Test
+  void test_pipelineStartDate_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_start_date"));
+    request.setService(service.getFullyQualifiedName());
+
+    java.util.Date startDate = new java.util.Date();
+    request.setStartDate(startDate);
+
+    Pipeline pipeline = createEntity(request);
+    assertNotNull(pipeline);
+    assertNotNull(pipeline.getStartDate());
+  }
+
+  @Test
+  void test_pipelineWithDifferentServices_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    PipelineService airflowService = PipelineServiceTestFactory.createAirflow(ns);
+    PipelineService glueService = PipelineServiceTestFactory.createGlue(ns);
+
+    // Create pipeline with Airflow service
+    CreatePipeline airflowRequest = new CreatePipeline();
+    airflowRequest.setName(ns.prefix("airflow_pipeline"));
+    airflowRequest.setService(airflowService.getFullyQualifiedName());
+    Pipeline airflowPipeline = createEntity(airflowRequest);
+    assertNotNull(airflowPipeline);
+    assertEquals(
+        airflowService.getFullyQualifiedName(),
+        airflowPipeline.getService().getFullyQualifiedName());
+
+    // Create pipeline with Glue service
+    CreatePipeline glueRequest = new CreatePipeline();
+    glueRequest.setName(ns.prefix("glue_pipeline"));
+    glueRequest.setService(glueService.getFullyQualifiedName());
+    Pipeline gluePipeline = createEntity(glueRequest);
+    assertNotNull(gluePipeline);
+    assertEquals(
+        glueService.getFullyQualifiedName(), gluePipeline.getService().getFullyQualifiedName());
+  }
+
+  @Test
+  void test_pipelineTaskDescriptionUpdate(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    List<Task> tasks =
+        Arrays.asList(
+            new Task().withName("task1").withDescription("Original description"),
+            new Task().withName("task2").withDescription("Original description 2"));
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_task_desc"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+    assertEquals("Original description", pipeline.getTasks().get(0).getDescription());
+
+    // Update task description
+    List<Task> updatedTasks =
+        Arrays.asList(
+            new Task().withName("task1").withDescription("Updated description"),
+            new Task().withName("task2").withDescription("Original description 2"));
+
+    pipeline.setTasks(updatedTasks);
+    Pipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+
+    assertEquals("Updated description", updated.getTasks().get(0).getDescription());
+    assertEquals("Original description 2", updated.getTasks().get(1).getDescription());
+  }
+
+  @Test
+  void test_pipelineMultipleStatusUpdates(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_multi_status"));
+    request.setService(service.getFullyQualifiedName());
+
+    List<Task> tasks = Arrays.asList(new Task().withName("task1").withDescription("Task 1"));
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+
+    // Create task status for task1
+    org.openmetadata.schema.type.Status task1StatusSuccess =
+        new org.openmetadata.schema.type.Status()
+            .withName("task1")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful);
+
+    // Add first status (with taskStatus)
+    org.openmetadata.schema.entity.data.PipelineStatus status1 =
+        new org.openmetadata.schema.entity.data.PipelineStatus()
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Successful)
+            .withTimestamp(System.currentTimeMillis() - 3600000)
+            .withTaskStatus(Arrays.asList(task1StatusSuccess));
+
+    // addPipelineStatus expects FQN, not ID
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), status1);
+
+    // Create task status for second update
+    org.openmetadata.schema.type.Status task1StatusFailed =
+        new org.openmetadata.schema.type.Status()
+            .withName("task1")
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed);
+
+    // Add second status (with taskStatus)
+    org.openmetadata.schema.entity.data.PipelineStatus status2 =
+        new org.openmetadata.schema.entity.data.PipelineStatus()
+            .withExecutionStatus(org.openmetadata.schema.type.StatusType.Failed)
+            .withTimestamp(System.currentTimeMillis())
+            .withTaskStatus(Arrays.asList(task1StatusFailed));
+
+    client.pipelines().addPipelineStatus(pipeline.getFullyQualifiedName(), status2);
+
+    // Verify latest status
+    Pipeline updatedPipeline =
+        client.pipelines().get(pipeline.getId().toString(), "pipelineStatus");
+    assertNotNull(updatedPipeline.getPipelineStatus());
+  }
+
+  @Test
+  void test_pipelineSourceUrlValidation(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_url_validation"));
+    request.setService(service.getFullyQualifiedName());
+    request.setSourceUrl("http://localhost:8080/dag");
+
+    Pipeline pipeline = createEntity(request);
+    assertEquals("http://localhost:8080/dag", pipeline.getSourceUrl());
+
+    // Update to HTTPS
+    pipeline.setSourceUrl("https://airflow.example.com/dag");
+    Pipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertEquals("https://airflow.example.com/dag", updated.getSourceUrl());
+  }
+
+  @Test
+  void test_pipelineCompleteWorkflow(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    // Create pipeline with all fields
+    List<Task> tasks =
+        Arrays.asList(
+            new Task()
+                .withName("extract")
+                .withDescription("Extract data")
+                .withDisplayName("Extract"),
+            new Task()
+                .withName("transform")
+                .withDescription("Transform data")
+                .withDisplayName("Transform")
+                .withDownstreamTasks(List.of("extract")),
+            new Task()
+                .withName("load")
+                .withDescription("Load data")
+                .withDisplayName("Load")
+                .withDownstreamTasks(List.of("transform")));
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("complete_pipeline"));
+    request.setService(service.getFullyQualifiedName());
+    request.setDescription("Complete ETL pipeline");
+    request.setDisplayName("Complete ETL Pipeline");
+    request.setSourceUrl("https://airflow.example.com/etl_pipeline");
+    request.setScheduleInterval("0 0 * * *");
+    request.setConcurrency(5);
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+
+    // Verify all fields
+    assertNotNull(pipeline);
+    assertEquals("Complete ETL pipeline", pipeline.getDescription());
+    assertEquals("Complete ETL Pipeline", pipeline.getDisplayName());
+    assertEquals("https://airflow.example.com/etl_pipeline", pipeline.getSourceUrl());
+    assertEquals("0 0 * * *", pipeline.getScheduleInterval());
+    assertEquals(Integer.valueOf(5), pipeline.getConcurrency());
+    assertEquals(3, pipeline.getTasks().size());
+
+    // Verify FQN
+    String expectedFQN = service.getFullyQualifiedName() + "." + ns.prefix("complete_pipeline");
+    assertEquals(expectedFQN, pipeline.getFullyQualifiedName());
+
+    // Update pipeline
+    pipeline.setDescription("Updated ETL pipeline");
+    pipeline.setConcurrency(10);
+
+    Pipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertEquals("Updated ETL pipeline", updated.getDescription());
+    assertEquals(Integer.valueOf(10), updated.getConcurrency());
+
+    // Delete and restore
+    deleteEntity(pipeline.getId().toString());
+    Pipeline deleted = getEntityIncludeDeleted(pipeline.getId().toString());
+    assertTrue(deleted.getDeleted());
+
+    restoreEntity(pipeline.getId().toString());
+    Pipeline restored = getEntity(pipeline.getId().toString());
+    assertFalse(restored.getDeleted());
+  }
+
+  @Test
+  void test_pipelineTaskSourceUrl(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    List<Task> tasks =
+        Arrays.asList(
+            new Task()
+                .withName("task1")
+                .withDescription("Task 1")
+                .withSourceUrl("http://localhost:8080/task1"),
+            new Task()
+                .withName("task2")
+                .withDescription("Task 2")
+                .withSourceUrl("http://localhost:8080/task2"));
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_task_urls"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+    assertNotNull(pipeline.getTasks());
+    assertEquals(2, pipeline.getTasks().size());
+    assertEquals("http://localhost:8080/task1", pipeline.getTasks().get(0).getSourceUrl());
+    assertEquals("http://localhost:8080/task2", pipeline.getTasks().get(1).getSourceUrl());
+  }
+
+  @Test
+  void test_pipelineEmptyTaskList(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_empty_tasks"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(new java.util.ArrayList<>());
+
+    Pipeline pipeline = createEntity(request);
+    assertNotNull(pipeline);
+    assertTrue(pipeline.getTasks() == null || pipeline.getTasks().isEmpty());
+  }
+
+  @Test
+  void test_pipelineTaskDisplayName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    List<Task> tasks =
+        Arrays.asList(
+            new Task()
+                .withName("extract_task")
+                .withDisplayName("Extract Data Task")
+                .withDescription("Extract data from source"));
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_task_display"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(tasks);
+
+    Pipeline pipeline = createEntity(request);
+    assertEquals("Extract Data Task", pipeline.getTasks().get(0).getDisplayName());
+    assertEquals("extract_task", pipeline.getTasks().get(0).getName());
+  }
 }

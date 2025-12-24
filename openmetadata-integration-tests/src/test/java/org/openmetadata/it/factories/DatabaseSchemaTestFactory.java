@@ -36,4 +36,27 @@ public class DatabaseSchemaTestFactory {
         .in(database.getFullyQualifiedName())
         .execute();
   }
+
+  /**
+   * Create a schema with a newly created database service.
+   */
+  public static DatabaseSchema createSimple(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    return createSimple(ns, service);
+  }
+
+  /**
+   * Create a schema with a custom name using fluent API.
+   * Useful for tests that need short names to avoid FQN length limits.
+   */
+  public static DatabaseSchema createSimpleWithName(
+      String schemaName, TestNamespace ns, DatabaseService service) {
+    // Create database first using short name
+    String shortDbName = "db" + schemaName.substring(2); // Use same short ID
+    Database database =
+        Databases.create().name(shortDbName).in(service.getFullyQualifiedName()).execute();
+
+    // Then create schema using the specified name
+    return DatabaseSchemas.create().name(schemaName).in(database.getFullyQualifiedName()).execute();
+  }
 }

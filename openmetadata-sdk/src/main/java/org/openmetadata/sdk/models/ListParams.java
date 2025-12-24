@@ -64,6 +64,18 @@ public class ListParams {
     return this;
   }
 
+  public ListParams addQueryParam(String key, String value) {
+    queryParams.put(key, value);
+    return this;
+  }
+
+  public ListParams setQueryParams(Map<String, String> params) {
+    if (params != null) {
+      queryParams.putAll(params);
+    }
+    return this;
+  }
+
   public Map<String, String> toQueryParams() {
     Map<String, String> params = new HashMap<>();
 

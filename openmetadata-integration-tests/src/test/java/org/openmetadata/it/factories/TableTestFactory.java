@@ -54,4 +54,12 @@ public class TableTestFactory {
         .withColumns(DEFAULT_COLUMNS)
         .execute();
   }
+
+  /**
+   * Create table with a direct name (no namespace prefix) using fluent API.
+   * Useful for tests that need short names to avoid FQN length limits.
+   */
+  public static Table createSimpleWithName(String name, TestNamespace ns, String schemaFqn) {
+    return Tables.create().name(name).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+  }
 }

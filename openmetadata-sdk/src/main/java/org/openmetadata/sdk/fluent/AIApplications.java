@@ -3,6 +3,7 @@ package org.openmetadata.sdk.fluent;
 import java.util.*;
 import org.openmetadata.schema.api.ai.CreateAIApplication;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.ApplicationType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
@@ -118,6 +119,11 @@ public final class AIApplications {
 
     public AIApplicationCreator name(String name) {
       request.setName(name);
+      return this;
+    }
+
+    public AIApplicationCreator withApplicationType(ApplicationType applicationType) {
+      request.setApplicationType(applicationType);
       return this;
     }
 

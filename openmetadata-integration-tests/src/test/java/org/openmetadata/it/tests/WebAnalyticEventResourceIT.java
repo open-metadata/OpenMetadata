@@ -51,18 +51,10 @@ public class WebAnalyticEventResourceIT {
             .withDescription("Test web analytic event")
             .withEventType(WebAnalyticEventType.PAGE_VIEW);
 
-    String requestJson = OBJECT_MAPPER.writeValueAsString(createRequest);
-
-    String responseJson =
+    WebAnalyticEvent createdEvent =
         client
             .getHttpClient()
-            .executeForString(
-                HttpMethod.POST, EVENTS_PATH, requestJson, RequestOptions.builder().build());
-
-    assertNotNull(responseJson, "Response should not be null");
-    assertFalse(responseJson.isEmpty(), "Response should not be empty");
-
-    WebAnalyticEvent createdEvent = OBJECT_MAPPER.readValue(responseJson, WebAnalyticEvent.class);
+            .execute(HttpMethod.POST, EVENTS_PATH, createRequest, WebAnalyticEvent.class);
 
     assertNotNull(createdEvent.getId(), "Created event should have an ID");
     assertEquals(createRequest.getName(), createdEvent.getName(), "Event name should match");
@@ -84,29 +76,19 @@ public class WebAnalyticEventResourceIT {
             .withDescription("Test event for retrieval")
             .withEventType(WebAnalyticEventType.PAGE_VIEW);
 
-    String requestJson = OBJECT_MAPPER.writeValueAsString(createRequest);
-    String createResponseJson =
-        client
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.POST, EVENTS_PATH, requestJson, RequestOptions.builder().build());
-
     WebAnalyticEvent createdEvent =
-        OBJECT_MAPPER.readValue(createResponseJson, WebAnalyticEvent.class);
-
-    String getResponseJson =
         client
             .getHttpClient()
-            .executeForString(
+            .execute(HttpMethod.POST, EVENTS_PATH, createRequest, WebAnalyticEvent.class);
+
+    WebAnalyticEvent retrievedEvent =
+        client
+            .getHttpClient()
+            .execute(
                 HttpMethod.GET,
                 EVENTS_PATH + "/" + createdEvent.getId(),
                 null,
-                RequestOptions.builder().build());
-
-    assertNotNull(getResponseJson, "Get response should not be null");
-
-    WebAnalyticEvent retrievedEvent =
-        OBJECT_MAPPER.readValue(getResponseJson, WebAnalyticEvent.class);
+                WebAnalyticEvent.class);
 
     assertEquals(createdEvent.getId(), retrievedEvent.getId(), "Event IDs should match");
     assertEquals(createdEvent.getName(), retrievedEvent.getName(), "Event names should match");
@@ -133,18 +115,10 @@ public class WebAnalyticEventResourceIT {
                         "http://localhost:8585/table/sample_data.ecommerce_db.shopify.dim_customer")
                     .withUrl("/table/sample_data.ecommerce_db.shopify.dim_customer"));
 
-    String eventDataJson = OBJECT_MAPPER.writeValueAsString(eventData);
-
-    String responseJson =
+    WebAnalyticEventData submittedData =
         client
             .getHttpClient()
-            .executeForString(
-                HttpMethod.PUT, COLLECT_PATH, eventDataJson, RequestOptions.builder().build());
-
-    assertNotNull(responseJson, "Submit response should not be null");
-
-    WebAnalyticEventData submittedData =
-        OBJECT_MAPPER.readValue(responseJson, WebAnalyticEventData.class);
+            .execute(HttpMethod.PUT, COLLECT_PATH, eventData, WebAnalyticEventData.class);
 
     assertNotNull(submittedData, "Submitted data should not be null");
     assertEquals(eventData.getTimestamp(), submittedData.getTimestamp(), "Timestamps should match");
@@ -172,11 +146,9 @@ public class WebAnalyticEventResourceIT {
                     .withFullUrl("http://localhost:8585/dashboard/test_" + ns.shortPrefix())
                     .withUrl("/dashboard/test_" + ns.shortPrefix()));
 
-    String eventDataJson = OBJECT_MAPPER.writeValueAsString(eventData);
     client
         .getHttpClient()
-        .executeForString(
-            HttpMethod.PUT, COLLECT_PATH, eventDataJson, RequestOptions.builder().build());
+        .execute(HttpMethod.PUT, COLLECT_PATH, eventData, WebAnalyticEventData.class);
 
     RequestOptions options =
         RequestOptions.builder()
@@ -218,11 +190,9 @@ public class WebAnalyticEventResourceIT {
                       .withFullUrl("http://localhost:8585/page_" + ns.shortPrefix() + "_" + i)
                       .withUrl("/page_" + ns.shortPrefix() + "_" + i));
 
-      String eventDataJson = OBJECT_MAPPER.writeValueAsString(eventData);
       client
           .getHttpClient()
-          .executeForString(
-              HttpMethod.PUT, COLLECT_PATH, eventDataJson, RequestOptions.builder().build());
+          .execute(HttpMethod.PUT, COLLECT_PATH, eventData, WebAnalyticEventData.class);
     }
 
     RequestOptions options =
@@ -275,17 +245,12 @@ public class WebAnalyticEventResourceIT {
                     .withFullUrl("http://localhost:8585/new_" + ns.shortPrefix())
                     .withUrl("/new_" + ns.shortPrefix()));
 
-    String oldEventJson = OBJECT_MAPPER.writeValueAsString(oldEventData);
     client
         .getHttpClient()
-        .executeForString(
-            HttpMethod.PUT, COLLECT_PATH, oldEventJson, RequestOptions.builder().build());
-
-    String newEventJson = OBJECT_MAPPER.writeValueAsString(newEventData);
+        .execute(HttpMethod.PUT, COLLECT_PATH, oldEventData, WebAnalyticEventData.class);
     client
         .getHttpClient()
-        .executeForString(
-            HttpMethod.PUT, COLLECT_PATH, newEventJson, RequestOptions.builder().build());
+        .execute(HttpMethod.PUT, COLLECT_PATH, newEventData, WebAnalyticEventData.class);
 
     RequestOptions recentOptions =
         RequestOptions.builder()
@@ -336,17 +301,12 @@ public class WebAnalyticEventResourceIT {
             .withDescription("Second list test event")
             .withEventType(WebAnalyticEventType.PAGE_VIEW);
 
-    String request1Json = OBJECT_MAPPER.writeValueAsString(createRequest1);
     client
         .getHttpClient()
-        .executeForString(
-            HttpMethod.POST, EVENTS_PATH, request1Json, RequestOptions.builder().build());
-
-    String request2Json = OBJECT_MAPPER.writeValueAsString(createRequest2);
+        .execute(HttpMethod.POST, EVENTS_PATH, createRequest1, WebAnalyticEvent.class);
     client
         .getHttpClient()
-        .executeForString(
-            HttpMethod.POST, EVENTS_PATH, request2Json, RequestOptions.builder().build());
+        .execute(HttpMethod.POST, EVENTS_PATH, createRequest2, WebAnalyticEvent.class);
 
     RequestOptions listOptions = RequestOptions.builder().queryParam("limit", "100").build();
 

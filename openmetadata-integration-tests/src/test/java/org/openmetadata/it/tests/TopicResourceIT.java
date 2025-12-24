@@ -609,4 +609,515 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     assertNotNull(response);
     assertTrue(response.getData().size() <= 2);
   }
+
+  @Test
+  void post_topicWithDifferentService_200_ok(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    MessagingService kafkaService = MessagingServiceTestFactory.createKafka(ns);
+    MessagingService redpandaService = MessagingServiceTestFactory.createRedpanda(ns);
+
+    CreateTopic kafkaRequest = new CreateTopic();
+    kafkaRequest.setName(ns.prefix("kafka_topic"));
+    kafkaRequest.setService(kafkaService.getFullyQualifiedName());
+    kafkaRequest.setPartitions(1);
+    Topic kafkaTopic = createEntity(kafkaRequest);
+    assertNotNull(kafkaTopic);
+    assertEquals(
+        kafkaService.getFullyQualifiedName(), kafkaTopic.getService().getFullyQualifiedName());
+
+    CreateTopic redpandaRequest = new CreateTopic();
+    redpandaRequest.setName(ns.prefix("redpanda_topic"));
+    redpandaRequest.setService(redpandaService.getFullyQualifiedName());
+    redpandaRequest.setPartitions(1);
+    Topic redpandaTopic = createEntity(redpandaRequest);
+    assertNotNull(redpandaTopic);
+    assertEquals(
+        redpandaService.getFullyQualifiedName(),
+        redpandaTopic.getService().getFullyQualifiedName());
+  }
+
+  @Test
+  void put_topicSchemaFields_200_ok(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    List<Field> fields =
+        Arrays.asList(
+            new Field().withName("id").withDataType(FieldDataType.STRING),
+            new Field().withName("first_name").withDataType(FieldDataType.STRING),
+            new Field().withName("last_name").withDataType(FieldDataType.STRING),
+            new Field().withName("email").withDataType(FieldDataType.STRING),
+            new Field().withName("address_line_1").withDataType(FieldDataType.STRING),
+            new Field().withName("address_line_2").withDataType(FieldDataType.STRING),
+            new Field().withName("post_code").withDataType(FieldDataType.STRING),
+            new Field().withName("county").withDataType(FieldDataType.STRING));
+
+    String schemaText =
+        "{\"namespace\":\"org.open-metadata.kafka\",\"name\":\"Customer\",\"type\":\"record\","
+            + "\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},"
+            + "{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},"
+            + "{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}";
+
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaText(schemaText)
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(fields);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_schema_fields"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+    assertNotNull(topic.getMessageSchema());
+    assertNotNull(topic.getMessageSchema().getSchemaFields());
+    assertEquals(fields.size(), topic.getMessageSchema().getSchemaFields().size());
+
+    Topic fetched = client.topics().get(topic.getId().toString());
+    assertNotNull(fetched.getMessageSchema());
+    assertNotNull(fetched.getMessageSchema().getSchemaFields());
+  }
+
+  @Test
+  void put_updateMessageSchema_200_ok(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    MessageSchema schema1 =
+        new MessageSchema().withSchemaText("abc").withSchemaType(SchemaType.Avro);
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_update_schema"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema1);
+
+    Topic topic = createEntity(request);
+    assertEquals(SchemaType.Avro, topic.getMessageSchema().getSchemaType());
+    assertEquals("abc", topic.getMessageSchema().getSchemaText());
+
+    MessageSchema schema2 =
+        new MessageSchema().withSchemaText("bcd").withSchemaType(SchemaType.Avro);
+    topic.setMessageSchema(schema2);
+    Topic updated = patchEntity(topic.getId().toString(), topic);
+    assertEquals("bcd", updated.getMessageSchema().getSchemaText());
+  }
+
+  @Test
+  void patch_topicRetentionSize_200_ok(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_retention_size"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setRetentionSize(1000.0);
+
+    Topic topic = createEntity(request);
+    assertEquals(1000.0, topic.getRetentionSize());
+
+    topic.setRetentionSize(2000.0);
+    Topic updated = patchEntity(topic.getId().toString(), topic);
+    assertEquals(2000.0, updated.getRetentionSize());
+  }
+
+  @Test
+  void patch_topicMinimumInSyncReplicas_200_ok(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_min_insync"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(3);
+    request.setReplicationFactor(3);
+    request.setMinimumInSyncReplicas(1);
+
+    Topic topic = createEntity(request);
+    assertEquals(1, topic.getMinimumInSyncReplicas());
+
+    topic.setMinimumInSyncReplicas(2);
+    Topic updated = patchEntity(topic.getId().toString(), topic);
+    assertEquals(2, updated.getMinimumInSyncReplicas());
+  }
+
+  @Test
+  void test_topicWithNestedSchemaFields(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    Field nestedField1 = new Field().withName("street").withDataType(FieldDataType.STRING);
+    Field nestedField2 = new Field().withName("city").withDataType(FieldDataType.STRING);
+
+    Field addressField =
+        new Field()
+            .withName("address")
+            .withDataType(FieldDataType.RECORD)
+            .withChildren(Arrays.asList(nestedField1, nestedField2));
+
+    List<Field> fields =
+        Arrays.asList(new Field().withName("id").withDataType(FieldDataType.STRING), addressField);
+
+    String schemaText =
+        "{\"namespace\":\"org.test\",\"name\":\"User\",\"type\":\"record\","
+            + "\"fields\":[{\"name\":\"id\",\"type\":\"string\"},"
+            + "{\"name\":\"address\",\"type\":{\"type\":\"record\",\"name\":\"Address\","
+            + "\"fields\":[{\"name\":\"street\",\"type\":\"string\"},{\"name\":\"city\",\"type\":\"string\"}]}}]}";
+
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaText(schemaText)
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(fields);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_nested_fields"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+    assertNotNull(topic.getMessageSchema());
+    assertNotNull(topic.getMessageSchema().getSchemaFields());
+
+    Field fetchedAddressField =
+        topic.getMessageSchema().getSchemaFields().stream()
+            .filter(f -> f.getName().equals("address"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(fetchedAddressField);
+    assertNotNull(fetchedAddressField.getChildren());
+    assertEquals(2, fetchedAddressField.getChildren().size());
+  }
+
+  @Test
+  void test_topicSchemaFieldsWithDifferentDataTypes(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    List<Field> fields =
+        Arrays.asList(
+            new Field().withName("string_field").withDataType(FieldDataType.STRING),
+            new Field().withName("int_field").withDataType(FieldDataType.INT),
+            new Field().withName("long_field").withDataType(FieldDataType.LONG),
+            new Field().withName("float_field").withDataType(FieldDataType.FLOAT),
+            new Field().withName("double_field").withDataType(FieldDataType.DOUBLE),
+            new Field().withName("boolean_field").withDataType(FieldDataType.BOOLEAN),
+            new Field().withName("bytes_field").withDataType(FieldDataType.BYTES));
+
+    String schemaText =
+        "{\"namespace\":\"org.test\",\"name\":\"TestTypes\",\"type\":\"record\","
+            + "\"fields\":[{\"name\":\"string_field\",\"type\":\"string\"},"
+            + "{\"name\":\"int_field\",\"type\":\"int\"},"
+            + "{\"name\":\"long_field\",\"type\":\"long\"},"
+            + "{\"name\":\"float_field\",\"type\":\"float\"},"
+            + "{\"name\":\"double_field\",\"type\":\"double\"},"
+            + "{\"name\":\"boolean_field\",\"type\":\"boolean\"},"
+            + "{\"name\":\"bytes_field\",\"type\":\"bytes\"}]}";
+
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaText(schemaText)
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(fields);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_various_types"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+    assertNotNull(topic.getMessageSchema());
+    assertNotNull(topic.getMessageSchema().getSchemaFields());
+    assertEquals(7, topic.getMessageSchema().getSchemaFields().size());
+  }
+
+  @Test
+  void test_topicWithJSONSchema(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    String jsonSchemaText =
+        "{"
+            + "\"$schema\":\"http://json-schema.org/draft-07/schema#\","
+            + "\"type\":\"object\","
+            + "\"properties\":{"
+            + "\"id\":{\"type\":\"string\"},"
+            + "\"name\":{\"type\":\"string\"}"
+            + "}"
+            + "}";
+
+    MessageSchema schema =
+        new MessageSchema().withSchemaText(jsonSchemaText).withSchemaType(SchemaType.JSON);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_json_schema"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+    assertEquals(SchemaType.JSON, topic.getMessageSchema().getSchemaType());
+    assertEquals(jsonSchemaText, topic.getMessageSchema().getSchemaText());
+  }
+
+  @Test
+  void test_topicWithProtobufSchema(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    String protobufSchemaText =
+        "syntax = \"proto3\";\n"
+            + "message TestMessage {\n"
+            + "  string id = 1;\n"
+            + "  string name = 2;\n"
+            + "}";
+
+    MessageSchema schema =
+        new MessageSchema().withSchemaText(protobufSchemaText).withSchemaType(SchemaType.Protobuf);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_protobuf_schema"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+    assertEquals(SchemaType.Protobuf, topic.getMessageSchema().getSchemaType());
+    assertEquals(protobufSchemaText, topic.getMessageSchema().getSchemaText());
+  }
+
+  @Test
+  void test_topicWithOtherSchemaType(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    MessageSchema schema =
+        new MessageSchema().withSchemaText("custom schema").withSchemaType(SchemaType.Other);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_other_schema"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(schema);
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+    assertEquals(SchemaType.Other, topic.getMessageSchema().getSchemaType());
+  }
+
+  @Test
+  void test_topicWithCompactCleanupPolicy(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_compact"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setCleanupPolicies(List.of(CleanupPolicy.COMPACT));
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+    assertNotNull(topic.getCleanupPolicies());
+    assertEquals(1, topic.getCleanupPolicies().size());
+    assertEquals(CleanupPolicy.COMPACT, topic.getCleanupPolicies().get(0));
+  }
+
+  @Test
+  void test_topicWithDeleteCleanupPolicy(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_delete"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setCleanupPolicies(List.of(CleanupPolicy.DELETE));
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+    assertNotNull(topic.getCleanupPolicies());
+    assertEquals(1, topic.getCleanupPolicies().size());
+    assertEquals(CleanupPolicy.DELETE, topic.getCleanupPolicies().get(0));
+  }
+
+  @Test
+  void patch_updateCleanupPolicy_200_ok(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_cleanup_update"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setCleanupPolicies(List.of(CleanupPolicy.COMPACT));
+
+    Topic topic = createEntity(request);
+    assertEquals(1, topic.getCleanupPolicies().size());
+    assertEquals(CleanupPolicy.COMPACT, topic.getCleanupPolicies().get(0));
+
+    topic.setCleanupPolicies(List.of(CleanupPolicy.DELETE));
+    Topic updated = patchEntity(topic.getId().toString(), topic);
+    assertEquals(1, updated.getCleanupPolicies().size());
+    assertEquals(CleanupPolicy.DELETE, updated.getCleanupPolicies().get(0));
+
+    topic.setCleanupPolicies(List.of(CleanupPolicy.COMPACT, CleanupPolicy.DELETE));
+    Topic updatedBoth = patchEntity(topic.getId().toString(), topic);
+    assertEquals(2, updatedBoth.getCleanupPolicies().size());
+    assertTrue(updatedBoth.getCleanupPolicies().contains(CleanupPolicy.COMPACT));
+    assertTrue(updatedBoth.getCleanupPolicies().contains(CleanupPolicy.DELETE));
+  }
+
+  @Test
+  void test_topicWithAllAttributes(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    List<Field> fields =
+        Arrays.asList(
+            new Field().withName("id").withDataType(FieldDataType.STRING),
+            new Field().withName("name").withDataType(FieldDataType.STRING));
+
+    String schemaText =
+        "{\"namespace\":\"org.test\",\"name\":\"Complete\",\"type\":\"record\","
+            + "\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"name\",\"type\":\"string\"}]}";
+
+    MessageSchema schema =
+        new MessageSchema()
+            .withSchemaText(schemaText)
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(fields);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_complete"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(10);
+    request.setReplicationFactor(3);
+    request.setRetentionTime(86400.0);
+    request.setRetentionSize(1073741824.0);
+    request.setMaximumMessageSize(1048576);
+    request.setMinimumInSyncReplicas(2);
+    request.setMessageSchema(schema);
+    request.setCleanupPolicies(List.of(CleanupPolicy.COMPACT, CleanupPolicy.DELETE));
+    request.setDescription("Complete topic with all attributes");
+    request.setDisplayName("Complete Topic");
+    request.setOwners(List.of(testUser1().getEntityReference()));
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+    assertEquals(10, topic.getPartitions());
+    assertEquals(3, topic.getReplicationFactor());
+    assertEquals(86400.0, topic.getRetentionTime());
+    assertEquals(1073741824.0, topic.getRetentionSize());
+    assertEquals(1048576, topic.getMaximumMessageSize());
+    assertEquals(2, topic.getMinimumInSyncReplicas());
+    assertNotNull(topic.getMessageSchema());
+    assertEquals(2, topic.getCleanupPolicies().size());
+    assertEquals("Complete topic with all attributes", topic.getDescription());
+    assertEquals("Complete Topic", topic.getDisplayName());
+  }
+
+  @Test
+  void test_topicUpdateSampleDataMultipleTimes(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_sample_update"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+
+    Topic topic = createEntity(request);
+
+    List<String> messages1 =
+        Arrays.asList(
+            "{\"id\": 1, \"name\": \"first\"}",
+            "{\"id\": 2, \"name\": \"second\"}",
+            "{\"id\": 3, \"name\": \"third\"}");
+    TopicSampleData sampleData1 = new TopicSampleData().withMessages(messages1);
+    topic.setSampleData(sampleData1);
+    Topic updated1 = patchEntity(topic.getId().toString(), topic);
+    assertNotNull(updated1);
+
+    List<String> messages2 =
+        Arrays.asList(
+            "{\"id\": 10, \"name\": \"updated1\"}", "{\"id\": 20, \"name\": \"updated2\"}");
+    TopicSampleData sampleData2 = new TopicSampleData().withMessages(messages2);
+    updated1.setSampleData(sampleData2);
+    Topic updated2 = patchEntity(updated1.getId().toString(), updated1);
+    assertNotNull(updated2);
+  }
+
+  @Test
+  void test_topicWithZeroPartitions_400(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_zero_partitions"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(0);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating topic with zero partitions should fail");
+  }
+
+  @Test
+  void test_topicWithNegativePartitions_400(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_negative_partitions"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(-1);
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Creating topic with negative partitions should fail");
+  }
+
+  @Test
+  void test_topicWithLargePartitionCount(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_large_partitions"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1000);
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+    assertEquals(1000, topic.getPartitions());
+  }
+
+  @Test
+  void test_topicWithLargeReplicationFactor(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+
+    CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_large_replication"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setReplicationFactor(100);
+
+    Topic topic = createEntity(request);
+    assertNotNull(topic);
+    assertEquals(100, topic.getReplicationFactor());
+  }
 }

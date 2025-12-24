@@ -8,6 +8,7 @@ import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnection;
 import org.openmetadata.schema.type.PipelineConnection;
 
 /**
@@ -36,6 +37,32 @@ public class PipelineServiceTestFactory {
             .withServiceType(PipelineServiceType.Airflow)
             .withConnection(conn)
             .withDescription("Test Airflow service");
+
+    return SdkClients.adminClient().pipelineServices().create(request);
+  }
+
+  /**
+   * Create a Glue pipeline service with default settings. Each call creates a unique service to
+   * avoid conflicts in parallel test execution.
+   */
+  public static PipelineService createGlue(TestNamespace ns) {
+    String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+    String name = ns.prefix("glueService_" + uniqueId);
+
+    GluePipelineConnection glueConn =
+        new GluePipelineConnection()
+            .withAwsConfig(
+                new org.openmetadata.schema.security.credentials.AWSCredentials()
+                    .withAwsRegion("us-west-2"));
+
+    PipelineConnection conn = new PipelineConnection().withConfig(glueConn);
+
+    CreatePipelineService request =
+        new CreatePipelineService()
+            .withName(name)
+            .withServiceType(PipelineServiceType.GluePipeline)
+            .withConnection(conn)
+            .withDescription("Test Glue service");
 
     return SdkClients.adminClient().pipelineServices().create(request);
   }

@@ -228,7 +228,7 @@ public class WorkflowDefinitionResourceIT {
     request.put("name", name);
     request.put("displayName", "Test Workflow");
     request.put("description", "Integration test workflow");
-    request.put("type", "PeriodicBatchEntity");
+    request.put("type", "periodicBatchEntity");
     request.put("trigger", trigger);
     request.put("nodes", List.of(startNode, endNode));
     request.put("edges", List.of(edge));

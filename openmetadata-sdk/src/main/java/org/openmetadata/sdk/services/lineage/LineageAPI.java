@@ -72,4 +72,27 @@ public class LineageAPI {
     return httpClient.executeForString(
         HttpMethod.GET, String.format("/v1/lineage/%s/%s/export", entityType, entityId), null);
   }
+
+  public String getLineageByName(
+      String entityType, String fqn, String upstreamDepth, String downstreamDepth)
+      throws OpenMetadataException {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+
+    if (upstreamDepth != null) optionsBuilder.queryParam("upstreamDepth", upstreamDepth);
+    if (downstreamDepth != null) optionsBuilder.queryParam("downstreamDepth", downstreamDepth);
+
+    return httpClient.executeForString(
+        HttpMethod.GET,
+        String.format("/v1/lineage/%s/name/%s", entityType, encodePathSegment(fqn)),
+        null,
+        optionsBuilder.build());
+  }
+
+  private String encodePathSegment(String segment) {
+    try {
+      return java.net.URLEncoder.encode(segment, "UTF-8").replace("+", "%20");
+    } catch (java.io.UnsupportedEncodingException e) {
+      return segment;
+    }
+  }
 }

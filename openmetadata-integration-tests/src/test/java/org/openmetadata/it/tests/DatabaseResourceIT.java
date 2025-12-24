@@ -356,14 +356,11 @@ public class DatabaseResourceIT extends BaseEntityIT<Database, CreateDatabase> {
 
     // Update: Change description
     String newDescription = "Updated description";
+    String oldDescription = createRequest.getDescription();
     created.setDescription(newDescription);
     ChangeDescription expectedChange =
-        EntityValidation.getChangeDescription(created.getVersion(), UpdateType.MINOR_UPDATE);
-    expectedChange
-        .getFieldsUpdated()
-        .add(
-            EntityValidation.fieldUpdated(
-                "description", createRequest.getDescription(), newDescription));
+        EntityValidation.getChangeDescription(created, UpdateType.MINOR_UPDATE);
+    EntityValidation.fieldUpdated(expectedChange, "description", oldDescription, newDescription);
 
     Database updated = patchEntityAndCheck(created, UpdateType.MINOR_UPDATE, expectedChange);
     assertEquals(0.2, updated.getVersion(), 0.001, "Version should be 0.2 after update");
