@@ -39,7 +39,7 @@ import { test } from '../fixtures/pages';
 
 const { expect } = test;
 
-test.describe('SSO Configuration Tests', { tag: '@sso' }, () => {
+test.describe('SSO Configuration Tests', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await enableSSOEditMode(page);

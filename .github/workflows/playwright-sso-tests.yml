@@ -26,35 +26,44 @@
 #
 # For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
 
-name: Playwright SSO Tests
-on:
-  workflow_dispatch:
-  pull_request_target:
-    types:
-      - labeled
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
-    paths-ignore:
-      - '.github/**'
-      - 'openmetadata-dist/**'
-      - 'docker/**'
-      - '!docker/development/docker-compose.yml'
-      - '!docker/development/docker-compose-postgres.yml'
+name: SSO Authentication Tests (Nightly)
+
+# schedule:
+  #   # Run every night at 2 AM UTC
+  #   - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual trigger
+    inputs:
+      sso_provider:
+        description: "SSO Provider to test"
+        required: true
+        default: "google"
+        type: choice
+        options:
+          - google
+          - okta
+          - azure
+          - auth0
+          - saml
+          - cognito
 
 permissions:
   contents: read
 
 concurrency:
-  group: playwright-sso-tests-${{ github.head_ref || github.run_id }}
+  group: sso-auth-tests-${{ github.workflow }}-${{ github.event.inputs.sso_provider || 'scheduled' }}
   cancel-in-progress: true
 
 jobs:
-  playwright-sso-tests:
+  sso-auth-tests:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     environment: test
+
+    strategy:
+      fail-fast: false
+      matrix:
+        provider: ${{ github.event.inputs.sso_provider == 'all' && fromJSON('["google", "okta", "azure", "auth0"]') || github.event.inputs.sso_provider && fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) || fromJSON('["google"]') }}
+
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -103,7 +112,8 @@ jobs:
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
-          args: "-d mysql"
+          # Skip ingestion setup for SSO tests
+          args: "-d postgresql -i false"
           ingestion_dependency: "all"
 
       - name: Setup Node.js
@@ -118,19 +128,22 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright@1.51.1 install --with-deps
 
-      - name: Run Playwright SSO tests
-        working-directory: openmetadata-ui/src/main/resources/ui/
-        run: npx playwright test --grep @sso
+      - name: Run SSO Authentication Tests
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npx playwright test playwright/e2e/Auth/SSOAuthentication.spec.ts --workers=1
         env:
+          SSO_PROVIDER_TYPE: ${{ matrix.provider }}
+          SSO_USERNAME: ${{ secrets[format('{0}_SSO_USERNAME', upper(matrix.provider))] }}
+          SSO_PASSWORD: ${{ secrets[format('{0}_SSO_PASSWORD', upper(matrix.provider))] }}
           PLAYWRIGHT_IS_OSS: true
-          # Recommended: pass the GitHub token lets this action correctly
-          # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        timeout-minutes: 60
 
-      - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: playwright-sso-report
+          name: sso-auth-test-results-${{ matrix.provider }}
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
 
@@ -139,3 +152,13 @@ jobs:
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
+    
+  notify:
+    needs: sso-auth-tests
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Send notification on failure
+        run: |
+          echo "SSO Authentication tests failed for one or more providers"
+          # Add your notification logic here (Slack, email, etc.)
