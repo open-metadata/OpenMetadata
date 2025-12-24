@@ -1,12 +1,17 @@
 package org.openmetadata.service.migration.utils.v1114;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiPredicate;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 
@@ -22,8 +27,43 @@ import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 @Slf4j
 public class MigrationUtil {
 
-  // Relationship.CONTAINS ordinal value
   private static final int CONTAINS_RELATIONSHIP = 0;
+
+  private static final List<String> SYSTEM_POLICIES =
+      Arrays.asList(
+          "OrganizationPolicy",
+          "DataConsumerPolicy",
+          "DataStewardPolicy",
+          "TeamOnlyPolicy",
+          "ApplicationBotPolicy",
+          "AutoClassificationBotPolicy",
+          "DefaultBotPolicy",
+          "DomainAccessPolicy",
+          "IngestionBotPolicy",
+          "LineageBotPolicy",
+          "ProfilerBotPolicy",
+          "QualityBotPolicy",
+          "ScimBotPolicy",
+          "UsageBotPolicy");
+
+  private static final List<String> SYSTEM_ROLES =
+      Arrays.asList(
+          "DataConsumer",
+          "DataSteward",
+          "ApplicationBotRole",
+          "AuoClassificationBotRole",
+          "DataQualityBotRole",
+          "DefaultBotRole",
+          "DomainOnlyAccessRole",
+          "GovernanceBotRole",
+          "IngestionBotRole",
+          "LineageBotRole",
+          "ProfilerBotRole",
+          "QualityBotRole",
+          "ScimBotRole",
+          "UsageBotRole");
+
+  private static final int RESEED_THRESHOLD_PERCENT = 50;
 
   public static void updateSearchSettingsBoostConfiguration() {
     try {
@@ -248,5 +288,138 @@ public class MigrationUtil {
           ON CONFLICT DO NOTHING
           """;
     };
+  }
+
+  /**
+   * Re-seeds default system roles and policies if a significant number are missing. This recovers
+   * from data loss caused by the Flyway migration --force issue. Re-seeds if more than 50% of
+   * system policies/roles are missing - does not override existing data.
+   */
+  public static void reseedRolesAndPoliciesIfMissing(Handle handle, ConnectionType connectionType) {
+    try {
+      List<String> missingPolicies = findMissingSystemPolicies(handle, connectionType);
+      List<String> missingRoles = findMissingSystemRoles(handle, connectionType);
+
+      int missingPolicyPercent = (missingPolicies.size() * 100) / SYSTEM_POLICIES.size();
+      int missingRolePercent = (missingRoles.size() * 100) / SYSTEM_ROLES.size();
+
+      if (missingPolicyPercent >= RESEED_THRESHOLD_PERCENT) {
+        LOG.info(
+            "Missing {}% of system policies ({}). Re-seeding default policies...",
+            missingPolicyPercent, missingPolicies);
+        reseedPolicies();
+      } else if (!missingPolicies.isEmpty()) {
+        LOG.info(
+            "Some system policies missing ({}) but below threshold, skipping re-seed",
+            missingPolicies);
+      }
+
+      if (missingRolePercent >= RESEED_THRESHOLD_PERCENT) {
+        LOG.info(
+            "Missing {}% of system roles ({}). Re-seeding default roles...",
+            missingRolePercent, missingRoles);
+        reseedRoles();
+      } else if (!missingRoles.isEmpty()) {
+        LOG.info(
+            "Some system roles missing ({}) but below threshold, skipping re-seed", missingRoles);
+      }
+
+      if (missingPolicies.isEmpty() && missingRoles.isEmpty()) {
+        LOG.info("All system roles and policies exist, skipping re-seed");
+      }
+    } catch (Exception e) {
+      LOG.error("Error checking/re-seeding roles and policies: {}", e.getMessage(), e);
+    }
+  }
+
+  private static List<String> findMissingSystemPolicies(
+      Handle handle, ConnectionType connectionType) {
+    String query = getCheckPolicyExistsQuery(connectionType);
+    return SYSTEM_POLICIES.stream()
+        .filter(
+            policyName -> {
+              Integer count =
+                  handle.createQuery(query).bind("name", policyName).mapTo(Integer.class).one();
+              return count == null || count == 0;
+            })
+        .toList();
+  }
+
+  private static List<String> findMissingSystemRoles(Handle handle, ConnectionType connectionType) {
+    String query = getCheckRoleExistsQuery(connectionType);
+    return SYSTEM_ROLES.stream()
+        .filter(
+            roleName -> {
+              Integer count =
+                  handle.createQuery(query).bind("name", roleName).mapTo(Integer.class).one();
+              return count == null || count == 0;
+            })
+        .toList();
+  }
+
+  private static String getCheckPolicyExistsQuery(ConnectionType connectionType) {
+    return switch (connectionType) {
+      case MYSQL -> """
+          SELECT COUNT(*) FROM policy_entity
+          WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
+          """;
+      case POSTGRES -> """
+          SELECT COUNT(*) FROM policy_entity
+          WHERE json->>'name' = :name
+          """;
+    };
+  }
+
+  private static String getCheckRoleExistsQuery(ConnectionType connectionType) {
+    return switch (connectionType) {
+      case MYSQL -> """
+          SELECT COUNT(*) FROM role_entity
+          WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = :name
+          """;
+      case POSTGRES -> """
+          SELECT COUNT(*) FROM role_entity
+          WHERE json->>'name' = :name
+          """;
+    };
+  }
+
+  private static void reseedPolicies() {
+    try {
+      EntityRepository<Policy> policyRepository =
+          (EntityRepository<Policy>) Entity.getEntityRepository(Entity.POLICY);
+      List<Policy> policies = policyRepository.getEntitiesFromSeedData();
+      int seeded = 0;
+      for (Policy policy : policies) {
+        try {
+          policyRepository.initializeEntity(policy);
+          seeded++;
+        } catch (Exception e) {
+          LOG.debug("Policy already exists or failed to seed: {}", e.getMessage());
+        }
+      }
+      LOG.info("Re-seeded {} default policies", seeded);
+    } catch (Exception e) {
+      LOG.error("Failed to re-seed policies: {}", e.getMessage(), e);
+    }
+  }
+
+  private static void reseedRoles() {
+    try {
+      EntityRepository<Role> roleRepository =
+          (EntityRepository<Role>) Entity.getEntityRepository(Entity.ROLE);
+      List<Role> roles = roleRepository.getEntitiesFromSeedData();
+      int seeded = 0;
+      for (Role role : roles) {
+        try {
+          roleRepository.initializeEntity(role);
+          seeded++;
+        } catch (Exception e) {
+          LOG.debug("Role already exists or failed to seed: {}", e.getMessage());
+        }
+      }
+      LOG.info("Re-seeded {} default roles", seeded);
+    } catch (Exception e) {
+      LOG.error("Failed to re-seed roles: {}", e.getMessage(), e);
+    }
   }
 }
