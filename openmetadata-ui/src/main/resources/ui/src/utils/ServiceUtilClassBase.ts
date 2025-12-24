@@ -189,6 +189,7 @@ class ServiceUtilClassBase {
     DriveServiceType.SharePoint,
     DatabaseServiceType.ServiceNow,
     MetadataServiceType.Collibra,
+    PipelineServiceType.Mulesoft,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
