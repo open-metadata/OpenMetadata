@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import type { Components, Theme } from '@mui/material/styles';
+import type { ThemeColors } from '../types';
 import { BODY_FONT_SIZES, BODY_LINE_HEIGHTS } from './typography-constants';
 
 export const tabTheme = (
-  colors: any
+  colors: ThemeColors
 ): Pick<Components<Theme>, 'MuiTabs' | 'MuiTab'> => ({
   MuiTabs: {
     styleOverrides: {
