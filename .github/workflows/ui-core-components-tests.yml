@@ -40,10 +40,161 @@ permissions:
   pull-requests: write
 
 jobs:
-  placeholder:
-    name: Placeholder - No Tests
+  unit-tests:
+    name: Jest Unit Tests
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: openmetadata-ui-core-components/src/main/resources/ui
+
     steps:
-      - name: Placeholder step
-        run: echo "Nothing to test"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.17.0"
+          cache: "yarn"
+          cache-dependency-path: openmetadata-ui-core-components/src/main/resources/ui/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run Jest tests
+        run: |
+          if [ "${{ github.event.inputs.run-coverage }}" == "false" ]; then
+            yarn test --maxWorkers=2
+          else
+            yarn test --coverage --maxWorkers=2
+          fi
+        env:
+          CI: true
+
+      - name: Generate coverage report
+        if: (success() || failure()) && github.event.inputs.run-coverage != 'false'
+        run: yarn test:coverage --coverageReporters=json-summary --coverageReporters=lcov
+
+      - name: Upload coverage to Codecov
+        if: (success() || failure()) && github.event.inputs.run-coverage != 'false'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./openmetadata-ui-core-components/src/main/resources/ui/coverage/lcov.info
+          flags: ui-core-components
+          name: ui-core-components-coverage
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request' && (success() || failure())
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coveragePath = './openmetadata-ui-core-components/src/main/resources/ui/coverage/coverage-summary.json';
+
+            let coverageComment = '## 🧪 UI Core Components Test Results\n\n';
+
+            if (fs.existsSync(coveragePath)) {
+              const coverage = JSON.parse(fs.readFileSync(coveragePath, 'utf8'));
+              const total = coverage.total;
+
+              coverageComment += '### Coverage Summary\n\n';
+              coverageComment += '| Metric | Coverage |\n';
+              coverageComment += '|--------|----------|\n';
+              coverageComment += `| Statements | ${total.statements.pct}% |\n`;
+              coverageComment += `| Branches | ${total.branches.pct}% |\n`;
+              coverageComment += `| Functions | ${total.functions.pct}% |\n`;
+              coverageComment += `| Lines | ${total.lines.pct}% |\n\n`;
+            } else {
+              coverageComment += '⚠️ Coverage report not found\n\n';
+            }
+
+            coverageComment += `**Status:** ${{ job.status }}\n`;
+            coverageComment += `**Workflow:** [${context.workflow}](${context.payload.repository.html_url}/actions/runs/${context.runId})`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: coverageComment
+            });
+
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            openmetadata-ui-core-components/src/main/resources/ui/coverage/
+          retention-days: 30
+
+  type-check:
+    name: TypeScript Type Check
+    runs-on: ubuntu-latest
+    if: github.event.inputs.skip-type-check != 'true'
+
+    defaults:
+      run:
+        working-directory: openmetadata-ui-core-components/src/main/resources/ui
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.17.0"
+          cache: "yarn"
+          cache-dependency-path: openmetadata-ui-core-components/src/main/resources/ui/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run type check
+        run: yarn type-check
+
+  lint:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: openmetadata-ui-core-components/src/main/resources/ui
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.17.0"
+          cache: "yarn"
+          cache-dependency-path: openmetadata-ui-core-components/src/main/resources/ui/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Check for linter
+        id: check-lint
+        run: |
+          if grep -q '"lint"' package.json; then
+            echo "has_lint=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_lint=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run linter
+        if: steps.check-lint.outputs.has_lint == 'true'
+        run: yarn lint
+        continue-on-error: true
