@@ -1,0 +1,108 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/ingestionPipelines/operationMetricsBatch.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OperationMetricsBatch",
+  "description": "Batch of operation metrics for efficient transmission during ingestion pipeline execution",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetricsBatch",
+  "definitions": {
+    "operationSummary": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.OperationSummary",
+      "description": "Aggregated summary of operations",
+      "properties": {
+        "count": {
+          "description": "Total number of operations",
+          "type": "integer",
+          "default": 0
+        },
+        "totalTimeMs": {
+          "description": "Total time spent on operations in milliseconds",
+          "type": "number"
+        },
+        "avgTimeMs": {
+          "description": "Average time per operation in milliseconds",
+          "type": "number"
+        },
+        "minTimeMs": {
+          "description": "Minimum operation time in milliseconds",
+          "type": "number"
+        },
+        "maxTimeMs": {
+          "description": "Maximum operation time in milliseconds",
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "operationMetric": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetric",
+      "description": "Single operation metric with flexible categorization",
+      "properties": {
+        "category": {
+          "description": "High-level category: db_queries, api_calls, entity_operations",
+          "type": "string"
+        },
+        "operation": {
+          "description": "Operation name - free form string like 'SELECT', 'GET:/dashboards', 'yield_columns'",
+          "type": "string"
+        },
+        "entityType": {
+          "description": "Entity type being operated on (Table, Dashboard, Pipeline, etc.) - free form string",
+          "type": "string"
+        },
+        "entityFqn": {
+          "description": "Fully qualified name of the entity if applicable",
+          "type": "string"
+        },
+        "timestamp": {
+          "description": "When the operation occurred",
+          "$ref": "../../../type/basic.json#/definitions/timestamp"
+        },
+        "durationMs": {
+          "description": "Duration of the operation in milliseconds",
+          "type": "integer"
+        },
+        "success": {
+          "description": "Whether the operation succeeded",
+          "type": "boolean",
+          "default": true
+        },
+        "errorMessage": {
+          "description": "Error message if operation failed",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Additional context (query text snippet, response size, etc.)",
+          "$ref": "../../../type/basic.json#/definitions/map"
+        }
+      },
+      "required": ["category", "operation", "timestamp"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "runId": {
+      "description": "Pipeline run ID",
+      "type": "string"
+    },
+    "stepName": {
+      "description": "Name of the ingestion step",
+      "type": "string"
+    },
+    "batchTimestamp": {
+      "description": "When this batch was created",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "metrics": {
+      "description": "List of operation metrics",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/operationMetric"
+      }
+    }
+  },
+  "required": ["runId", "stepName", "metrics"],
+  "additionalProperties": false
+}

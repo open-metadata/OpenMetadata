@@ -37,9 +37,11 @@ import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetricsBatch;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -57,6 +59,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.logstorage.LogStorageInterface;
+import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -80,6 +83,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Setter private PipelineServiceClientInterface pipelineServiceClient;
   @Setter @Getter private LogStorageInterface logStorage;
   @Setter @Getter private LogStorageConfiguration logStorageConfiguration;
+  @Setter @Getter private IngestionProgressTracker progressTracker;
 
   // HTTP/2 metrics tracking
   private static long http2RequestCount = 0;
@@ -880,6 +884,93 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     } catch (Exception e) {
       return new ArrayList<>();
     }
+  }
+
+  public Response streamProgress(String pipelineFQN, UUID runId) {
+    if (progressTracker == null) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity("Progress tracking is not configured")
+          .build();
+    }
+
+    return Response.ok()
+        .type("text/event-stream")
+        .entity(
+            new jakarta.ws.rs.core.StreamingOutput() {
+              @Override
+              public void write(java.io.OutputStream output) throws java.io.IOException {
+                try {
+                  output.write("retry: 1000\n\n".getBytes());
+                  output.flush();
+
+                  IngestionProgressTracker.ProgressState currentState =
+                      progressTracker.getProgressState(pipelineFQN, runId);
+                  if (currentState != null && currentState.getLatestUpdate() != null) {
+                    String json =
+                        org.openmetadata.schema.utils.JsonUtils.pojoToJson(
+                            currentState.getLatestUpdate());
+                    output.write(
+                        String.format("data: %s\n\n", json)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    output.flush();
+                  }
+
+                  java.util.function.Consumer<ProgressUpdate> listener =
+                      update -> {
+                        try {
+                          String json = org.openmetadata.schema.utils.JsonUtils.pojoToJson(update);
+                          output.write(
+                              String.format("data: %s\n\n", json)
+                                  .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                          output.flush();
+                        } catch (java.io.IOException e) {
+                          LOG.debug(
+                              "Client disconnected for progress stream {}/{}", pipelineFQN, runId);
+                          throw new RuntimeException(e);
+                        }
+                      };
+
+                  progressTracker.registerProgressListener(pipelineFQN, runId, listener);
+
+                  try {
+                    while (!Thread.currentThread().isInterrupted()) {
+                      Thread.sleep(30000);
+                      output.write(": heartbeat\n\n".getBytes());
+                      output.flush();
+                    }
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                  } finally {
+                    progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
+                  }
+                } catch (Exception e) {
+                  LOG.error("Error streaming progress for {}/{}", pipelineFQN, runId, e);
+                }
+              }
+            })
+        .build();
+  }
+
+  public RestUtil.PutResponse<?> updateProgress(
+      String fqn, UUID runId, ProgressUpdate progressUpdate) {
+    if (progressTracker == null) {
+      LOG.debug("Progress tracking is not configured, ignoring progress update");
+      return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
+    }
+
+    progressTracker.updateProgress(fqn, runId, progressUpdate);
+    return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
+  }
+
+  public RestUtil.PutResponse<?> addOperationMetrics(
+      String fqn, UUID runId, OperationMetricsBatch batch) {
+    if (progressTracker == null) {
+      LOG.debug("Progress tracking is not configured, ignoring metrics batch");
+      return new RestUtil.PutResponse<>(Response.Status.OK, batch, ENTITY_FIELDS_CHANGED);
+    }
+
+    progressTracker.addMetricsBatch(fqn, runId, batch);
+    return new RestUtil.PutResponse<>(Response.Status.OK, batch, ENTITY_FIELDS_CHANGED);
   }
 
   public PipelineServiceClientResponse deployIngestionPipeline(

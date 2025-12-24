@@ -1125,7 +1125,7 @@ public class IngestionPipelineResourceTest
         "stored_procedures",
         new ProgressProperty().withTotal(100).withProcessed(0).withEstimatedRemainingSeconds(null));
 
-    // Create step summary with progress
+    // Create step summary with progress and source/sink timing
     List<StepSummary> steps = new ArrayList<>();
     StepSummary stepSummary =
         new StepSummary()
@@ -1135,7 +1135,9 @@ public class IngestionPipelineResourceTest
             .withWarnings(5)
             .withErrors(2)
             .withFiltered(50)
-            .withProgress(progressData);
+            .withProgress(progressData)
+            .withSourceTimeMs(45230.5)
+            .withSinkTimeMs(12450.2);
     steps.add(stepSummary);
 
     // Create and submit pipeline status with progress data
@@ -1197,5 +1199,278 @@ public class IngestionPipelineResourceTest
     assertEquals(100, spProgress.getTotal());
     assertEquals(0, spProgress.getProcessed());
     assertNull(spProgress.getEstimatedRemainingSeconds());
+
+    // Verify source and sink timing
+    StepSummary retrievedStep = retrievedStatus.getStatus().get(0);
+    assertEquals(45230.5, retrievedStep.getSourceTimeMs(), 0.01);
+    assertEquals(12450.2, retrievedStep.getSinkTimeMs(), 0.01);
+  }
+
+  @Test
+  void testSourceAndSinkTimingInIngestionStatus(TestInfo test) throws IOException {
+    // Create a test ingestion pipeline
+    CreateIngestionPipeline create = createRequest(test);
+    IngestionPipeline pipeline = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    String runId = UUID.randomUUID().toString();
+
+    // Create step summary with source and sink timing (simulating real ingestion metrics)
+    List<StepSummary> steps = new ArrayList<>();
+    StepSummary stepSummary =
+        new StepSummary()
+            .withName("DatabaseService")
+            .withRecords(1500)
+            .withSourceTimeMs(120500.75) // ~2 minutes fetching from source
+            .withSinkTimeMs(35200.25); // ~35 seconds writing to OpenMetadata
+    steps.add(stepSummary);
+
+    // Create and submit pipeline status
+    PipelineStatus pipelineStatus =
+        new PipelineStatus()
+            .withRunId(runId)
+            .withPipelineState(PipelineStatusType.SUCCESS)
+            .withStartDate(System.currentTimeMillis() - 160000) // Started ~2.5 min ago
+            .withEndDate(System.currentTimeMillis())
+            .withTimestamp(System.currentTimeMillis())
+            .withStatus(steps);
+
+    TestUtils.put(
+        getPipelineStatusTarget(pipeline.getFullyQualifiedName()),
+        pipelineStatus,
+        Response.Status.CREATED,
+        ADMIN_AUTH_HEADERS);
+
+    // Retrieve and verify
+    PipelineStatus retrievedStatus =
+        TestUtils.get(
+            getPipelineStatusByRunId(pipeline.getFullyQualifiedName(), runId),
+            PipelineStatus.class,
+            ADMIN_AUTH_HEADERS);
+
+    assertNotNull(retrievedStatus);
+    assertEquals(PipelineStatusType.SUCCESS, retrievedStatus.getPipelineState());
+    assertNotNull(retrievedStatus.getStatus());
+    assertEquals(1, retrievedStatus.getStatus().size());
+
+    StepSummary retrievedStep = retrievedStatus.getStatus().get(0);
+    assertEquals("DatabaseService", retrievedStep.getName());
+    assertEquals(1500, retrievedStep.getRecords());
+
+    // Verify source and sink timing were persisted
+    assertNotNull(retrievedStep.getSourceTimeMs());
+    assertNotNull(retrievedStep.getSinkTimeMs());
+    assertEquals(120500.75, retrievedStep.getSourceTimeMs(), 0.01);
+    assertEquals(35200.25, retrievedStep.getSinkTimeMs(), 0.01);
+
+    // Verify source time > sink time (typical for database connectors)
+    assertTrue(
+        retrievedStep.getSourceTimeMs() > retrievedStep.getSinkTimeMs(),
+        "Source time should typically be greater than sink time for database connectors");
+  }
+
+  @Test
+  void put_pipelineProgress_200(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline = createRequest(getEntityName(test));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    UUID runId = UUID.randomUUID();
+
+    // Create progress update with the ingestion bot (which has EDIT_INGESTION_PIPELINE_STATUS)
+    Map<String, Object> progressData = new HashMap<>();
+    Map<String, Object> tableProgress = new HashMap<>();
+    tableProgress.put("total", 100);
+    tableProgress.put("processed", 50);
+    tableProgress.put("estimatedRemainingSeconds", 300);
+    progressData.put("Table", tableProgress);
+
+    Map<String, Object> progressUpdate = new HashMap<>();
+    progressUpdate.put("runId", runId.toString());
+    progressUpdate.put("timestamp", System.currentTimeMillis());
+    progressUpdate.put("updateType", "PROCESSING");
+    progressUpdate.put("progress", progressData);
+
+    Response response =
+        SecurityUtil.addHeaders(
+                getProgressTarget(ingestionPipeline.getFullyQualifiedName(), runId.toString()),
+                INGESTION_BOT_AUTH_HEADERS)
+            .put(jakarta.ws.rs.client.Entity.json(progressUpdate));
+    assertEquals(OK.getStatusCode(), response.getStatus());
+  }
+
+  @Test
+  void put_pipelineProgress_403(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline = createRequest(getEntityName(test));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    UUID runId = UUID.randomUUID();
+
+    Map<String, Object> progressUpdate = new HashMap<>();
+    progressUpdate.put("runId", runId.toString());
+    progressUpdate.put("timestamp", System.currentTimeMillis());
+    progressUpdate.put("updateType", "PROCESSING");
+
+    // Try to update progress without having the EDIT_INGESTION_PIPELINE_STATUS permission
+    assertResponse(
+        () ->
+            TestUtils.put(
+                getProgressTarget(ingestionPipeline.getFullyQualifiedName(), runId.toString()),
+                progressUpdate,
+                OK,
+                authHeaders(USER2.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(
+            USER2.getName(), List.of(MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS)));
+  }
+
+  @Test
+  void post_operationMetrics_200(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline = createRequest(getEntityName(test));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    UUID runId = UUID.randomUUID();
+
+    // Create metrics batch
+    Map<String, Object> metricsBatch = new HashMap<>();
+    metricsBatch.put("runId", runId.toString());
+    metricsBatch.put("stepName", "TestSource");
+    metricsBatch.put("batchTimestamp", System.currentTimeMillis());
+
+    List<Map<String, Object>> metrics = new ArrayList<>();
+    Map<String, Object> metric = new HashMap<>();
+    metric.put("category", "db_queries");
+    metric.put("operation", "SELECT");
+    metric.put("entityType", "Table");
+    metric.put("timestamp", System.currentTimeMillis());
+    metric.put("durationMs", 150);
+    metric.put("success", true);
+    metrics.add(metric);
+    metricsBatch.put("metrics", metrics);
+
+    Response response =
+        SecurityUtil.addHeaders(
+                getMetricsTarget(ingestionPipeline.getFullyQualifiedName(), runId.toString()),
+                INGESTION_BOT_AUTH_HEADERS)
+            .post(jakarta.ws.rs.client.Entity.json(metricsBatch));
+    assertEquals(OK.getStatusCode(), response.getStatus());
+  }
+
+  @Test
+  void post_operationMetrics_403(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline = createRequest(getEntityName(test));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    UUID runId = UUID.randomUUID();
+
+    Map<String, Object> metricsBatch = new HashMap<>();
+    metricsBatch.put("runId", runId.toString());
+    metricsBatch.put("stepName", "TestSource");
+    metricsBatch.put("metrics", new ArrayList<>());
+
+    // Try to submit metrics without having the EDIT_INGESTION_PIPELINE_STATUS permission
+    assertResponse(
+        () ->
+            TestUtils.post(
+                getMetricsTarget(ingestionPipeline.getFullyQualifiedName(), runId.toString()),
+                metricsBatch,
+                OK.getStatusCode(),
+                authHeaders(USER2.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(
+            USER2.getName(), List.of(MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS)));
+  }
+
+  protected final WebTarget getProgressTarget(String fqn, String runId) {
+    return getCollection().path("/progress/" + fqn + "/" + runId);
+  }
+
+  protected final WebTarget getMetricsTarget(String fqn, String runId) {
+    return getCollection().path("/metrics/" + fqn + "/" + runId);
+  }
+
+  protected final WebTarget getProgressStreamTarget(String fqn, String runId) {
+    return getCollection().path("/progress/" + fqn + "/stream/" + runId);
+  }
+
+  @Test
+  void get_progressStream_contentType(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline = createRequest(getEntityName(test));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    UUID runId = UUID.randomUUID();
+
+    // Make request to SSE endpoint and verify content type
+    Response response =
+        SecurityUtil.addHeaders(
+                getProgressStreamTarget(
+                    ingestionPipeline.getFullyQualifiedName(), runId.toString()),
+                ADMIN_AUTH_HEADERS)
+            .get();
+
+    // SSE endpoint should return 200 with text/event-stream content type
+    assertEquals(OK.getStatusCode(), response.getStatus());
+    assertTrue(
+        response.getMediaType().toString().contains("text/event-stream"),
+        "Expected text/event-stream content type but got: " + response.getMediaType());
+
+    // Close the response to terminate the stream
+    response.close();
+  }
+
+  @Test
+  void get_progressStream_withInitialState(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline = createRequest(getEntityName(test));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    UUID runId = UUID.randomUUID();
+
+    // First, send a progress update so there's initial state
+    Map<String, Object> progressUpdate = new HashMap<>();
+    progressUpdate.put("runId", runId.toString());
+    progressUpdate.put("timestamp", System.currentTimeMillis());
+    progressUpdate.put("updateType", "PROCESSING");
+    progressUpdate.put("message", "Test progress message");
+
+    Response putResponse =
+        SecurityUtil.addHeaders(
+                getProgressTarget(ingestionPipeline.getFullyQualifiedName(), runId.toString()),
+                INGESTION_BOT_AUTH_HEADERS)
+            .put(jakarta.ws.rs.client.Entity.json(progressUpdate));
+    assertEquals(OK.getStatusCode(), putResponse.getStatus());
+
+    // Now connect to SSE stream and verify we can read initial data
+    Response response =
+        SecurityUtil.addHeaders(
+                getProgressStreamTarget(
+                    ingestionPipeline.getFullyQualifiedName(), runId.toString()),
+                ADMIN_AUTH_HEADERS)
+            .get();
+
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    // Read some data from the stream (this will include the retry directive and possibly initial
+    // state)
+    String streamData = response.readEntity(String.class);
+
+    // SSE streams start with retry directive
+    assertTrue(
+        streamData.contains("retry:") || streamData.contains("data:"),
+        "SSE stream should contain retry directive or data");
+
+    response.close();
+  }
+
+  @Test
+  void get_progressStream_pipelineNotFound(TestInfo test) throws IOException {
+    UUID runId = UUID.randomUUID();
+    String nonExistentFqn = "nonexistent.service.pipeline";
+
+    // Request stream for non-existent pipeline
+    Response response =
+        SecurityUtil.addHeaders(
+                getProgressStreamTarget(nonExistentFqn, runId.toString()), ADMIN_AUTH_HEADERS)
+            .get();
+
+    // Should return 404 for non-existent pipeline
+    assertEquals(Response.Status.NOT_FOUND.getStatusCode(), response.getStatus());
   }
 }

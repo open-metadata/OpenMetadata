@@ -22,6 +22,10 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     PipelineState,
     PipelineStatus,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
+    ProgressUpdate,
+    ProgressUpdateType,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     IngestionStatus,
     StepSummary,
@@ -172,3 +176,36 @@ class WorkflowStatusMixin:
                 for step in self.workflow_steps()  # type: ignore
             ]
         )
+
+    def send_progress_update(
+        self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING
+    ) -> None:
+        """
+        Send a progress update to the OpenMetadata server via SSE endpoint.
+        Called periodically during workflow execution.
+        """
+        try:
+            from metadata.utils.progress_tracker import ProgressTrackerState
+
+            if (
+                self.config.ingestionPipelineFQN
+                and self.ingestion_pipeline
+                and self.ingestion_pipeline.fullyQualifiedName
+            ):
+                progress_tracker = ProgressTrackerState()
+                progress_data = progress_tracker.get_progress_as_dict()
+
+                progress_update = ProgressUpdate(
+                    runId=self.run_id,
+                    timestamp=Timestamp(int(datetime.now().timestamp() * 1000)),
+                    updateType=update_type,
+                    progress=progress_data if progress_data else None,
+                )
+
+                self.metadata.send_progress_update(
+                    self.ingestion_pipeline.fullyQualifiedName.root,
+                    self.run_id,
+                    progress_update,
+                )
+        except Exception as err:
+            logger.debug(f"Failed to send progress update: {err}")

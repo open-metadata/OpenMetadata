@@ -256,6 +256,7 @@ class REST:
         """
         retry_codes = self._retry_codes
         limit_codes = self._limit_codes
+
         try:
             resp = self._session.request(method, url, **opts)
             resp.raise_for_status()

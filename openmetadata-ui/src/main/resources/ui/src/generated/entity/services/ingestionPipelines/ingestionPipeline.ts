@@ -750,6 +750,11 @@ export interface StepSummary {
      */
     name: string;
     /**
+     * Operation metrics by category (db_queries, api_calls) -> operation -> entityType ->
+     * summary
+     */
+    operationMetrics?: { [key: string]: { [key: string]: { [key: string]: OperationMetric } } };
+    /**
      * Detailed progress tracking by entity type (databases, schemas, tables, stored procedures)
      */
     progress?: { [key: string]: Progress };
@@ -757,6 +762,14 @@ export interface StepSummary {
      * Number of successfully processed records.
      */
     records?: number;
+    /**
+     * Total time spent processing and sinking data to OpenMetadata (milliseconds)
+     */
+    sinkTimeMs?: number;
+    /**
+     * Total time spent fetching data from source systems (milliseconds)
+     */
+    sourceTimeMs?: number;
     /**
      * Number of successfully updated records.
      */
@@ -783,6 +796,30 @@ export interface StackTraceError {
      * Exception stack trace
      */
     stackTrace?: string;
+}
+
+export interface OperationMetric {
+    /**
+     * Average time per operation in milliseconds
+     */
+    avgTimeMs?: number;
+    /**
+     * Total number of operations
+     */
+    count?: number;
+    /**
+     * Maximum operation time in milliseconds
+     */
+    maxTimeMs?: number;
+    /**
+     * Minimum operation time in milliseconds
+     */
+    minTimeMs?: number;
+    /**
+     * Total time spent in milliseconds
+     */
+    totalTimeMs?: number;
+    [property: string]: any;
 }
 
 export interface Progress {

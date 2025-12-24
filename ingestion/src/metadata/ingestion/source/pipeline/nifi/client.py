@@ -23,7 +23,8 @@ from metadata.generated.schema.entity.services.connections.pipeline.nifi.clientC
 from metadata.generated.schema.entity.services.connections.pipeline.nifiConnection import (
     NifiConnection,
 )
-from metadata.ingestion.ometa.client import REST, ClientConfig, HTTPError
+from metadata.ingestion.connections.source_api_client import TrackedREST
+from metadata.ingestion.ometa.client import ClientConfig, HTTPError
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -43,7 +44,7 @@ class NifiClient:
     Wrapper on top of Nifi REST API
     """
 
-    client: REST
+    client: TrackedREST
 
     def __init__(self, connection: NifiConnection):
         self.connection = connection
@@ -69,7 +70,7 @@ class NifiClient:
             client_config.auth_header = AUTHORIZATION_HEADER
             client_config.access_token = self.token
 
-            self.client = REST(client_config)
+            self.client = TrackedREST(client_config, source_name="nifi")
         elif isinstance(self.connection.nifiConfig, NifiClientCertificateAuth):
             ca_path = self.connection.nifiConfig.certificateAuthorityPath
             cc_path = self.connection.nifiConfig.clientCertificatePath
@@ -78,7 +79,7 @@ class NifiClient:
             client_config.verify = ca_path if ca_path else False
             client_config.cert = (cc_path, ck_path)
 
-            self.client = REST(client_config)
+            self.client = TrackedREST(client_config, source_name="nifi")
             access = self.client.get("access")
             logger.debug(access)
 
@@ -90,7 +91,7 @@ class NifiClient:
         """
         if not self._token:
             try:
-                client = REST(
+                client = TrackedREST(
                     ClientConfig(
                         base_url=self.api_endpoint,
                         verify=self.verify,
@@ -99,7 +100,8 @@ class NifiClient:
                         api_version="",
                         auth_token_mode=None,
                         auth_token=lambda: (NO_ACCESS_TOKEN, 0),
-                    )
+                    ),
+                    source_name="nifi",
                 )
 
                 res = client.post("access/token", data=self.data)
