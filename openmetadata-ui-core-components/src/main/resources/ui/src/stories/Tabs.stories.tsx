@@ -113,7 +113,6 @@ export const CommonTabsBasic = () => {
   const [value, setValue] = useState<string>("tab1");
 
   const handleChange = (_: React.SyntheticEvent, newValue: string) => {
-    console.log('Tab changed to:', newValue);
     setValue(newValue);
   };
 

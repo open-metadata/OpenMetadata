@@ -10,57 +10,57 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { Components, Theme } from '@mui/material/styles';
-import type { ThemeColors } from '../types';
-import { BODY_FONT_SIZES, BODY_LINE_HEIGHTS } from './typography-constants';
+import type { Components, Theme } from "@mui/material/styles";
+import type { ThemeColors } from "../types";
+import { BODY_FONT_SIZES, BODY_LINE_HEIGHTS } from "./typography-constants";
 
 export const tabTheme = (
   colors: ThemeColors
-): Pick<Components<Theme>, 'MuiTabs' | 'MuiTab'> => ({
+): Pick<Components<Theme>, "MuiTabs" | "MuiTab"> => ({
   MuiTabs: {
     styleOverrides: {
       root: () => ({
-        width: '100%',
+        width: "100%",
         background: colors.white,
         color: colors.gray[900],
-        '& .MuiTabs-scroller': {
-          height: '48px',
+        "& .MuiTabs-scroller": {
+          height: "48px",
           backgroundColor: colors.white,
-          borderRadius: '12px',
+          borderRadius: "12px",
           border: `1px solid ${colors.blueGray?.[100] || colors.gray[200]}`,
-          padding: '0 20px',
+          padding: "0 20px",
         },
-        '& .MuiTabs-flexContainer': {
-          gap: '8px',
+        "& .MuiTabs-flexContainer": {
+          gap: "8px",
         },
-        '& .MuiTab-root': {
-          textTransform: 'none' as const,
+        "& .MuiTab-root": {
+          textTransform: "none" as const,
           fontSize: BODY_FONT_SIZES.BODY1,
           fontWeight: 400,
           color: colors.gray[900],
-          textAlign: 'center',
-          '&.Mui-selected': {
+          textAlign: "center",
+          "&.Mui-selected": {
             color: colors.blue?.[700],
             fontWeight: 600,
-            fontSize: BODY_FONT_SIZES.BODY1, 
+            fontSize: BODY_FONT_SIZES.BODY1,
           },
-          '&.Mui-disabled': {
+          "&.Mui-disabled": {
             color: colors.gray[400],
-            cursor: 'not-allowed',
-            '&:hover': {
-            backgroundColor: 'transparent',
-            color: colors.gray[300],
+            cursor: "not-allowed",
+            "&:hover": {
+              backgroundColor: "transparent",
+              color: colors.gray[300],
+            },
           },
-          },
-          '&:hover': {
+          "&:hover": {
             color: colors.brand[600],
-            backgroundColor: 'transparent',
+            backgroundColor: "transparent",
           },
         },
-        '& .MuiTabs-indicator': {
-          height: '2px',
+        "& .MuiTabs-indicator": {
+          height: "2px",
           backgroundColor: colors.blue?.[700],
-          bottom: '6px',
+          bottom: "6px",
         },
       }),
     },
@@ -68,26 +68,25 @@ export const tabTheme = (
   MuiTab: {
     styleOverrides: {
       root: () => ({
-        textTransform: 'none' as const,
-        fontSize: BODY_FONT_SIZES.BODY1, 
+        textTransform: "none" as const,
+        fontSize: BODY_FONT_SIZES.BODY1,
         fontWeight: 400,
-        lineHeight: BODY_LINE_HEIGHTS.BODY1, 
+        lineHeight: BODY_LINE_HEIGHTS.BODY1,
         color: colors.gray[900],
-        textAlign: 'center',
-        minWidth: 'auto',
-        padding: '8px 12px',
-        '&.Mui-selected': {
+        textAlign: "center",
+        minWidth: "auto",
+        padding: "8px 12px",
+        "&.Mui-selected": {
           color: colors.blue?.[700],
           fontWeight: 600,
-          fontSize: BODY_FONT_SIZES.BODY1, 
-          lineHeight: BODY_LINE_HEIGHTS.BODY1, 
+          fontSize: BODY_FONT_SIZES.BODY1,
+          lineHeight: BODY_LINE_HEIGHTS.BODY1,
         },
-        '&.Mui-disabled': {
-          color: colors.gray[600],
-          cursor: 'not-allowed',
+        "&.Mui-disabled": {
+          color: colors.gray[400],
+          cursor: "not-allowed",
         },
       }),
     },
   },
 });
-
