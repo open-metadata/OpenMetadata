@@ -38,6 +38,14 @@ const DomainRouter = withSuspenseFallback(
     () => import(/* webpackChunkName: "DomainRouter" */ './DomainRouter')
   )
 );
+const DataProductListPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "DataProductListPage" */ '../DataProduct/DataProductListPage'
+      )
+  )
+);
 const SettingsRouter = withSuspenseFallback(
   React.lazy(
     () => import(/* webpackChunkName: "SettingsRouter" */ './SettingsRouter')
@@ -284,7 +292,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   // Get all plugin routes that should be in AUTHENTICATED_ROUTE position
   const pluginRoutes = useMemo(() => {
-    return plugins.flatMap((plugin) => {
+    return plugins?.flatMap((plugin) => {
       const routes = plugin.getRoutes?.() || [];
 
       // Filter routes that don't have position or have AUTHENTICATED_ROUTE position
@@ -578,31 +586,26 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.INCIDENT_MANAGER}
       />
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={userPermissions.hasViewPermissions(
-              ResourceEntity.TEST_CASE,
-              permissions
-            )}>
-            <IncidentManagerDetailPage />
-          </AdminProtectedRoute>
-        }
-        path={ROUTES.TEST_CASE_DETAILS}
-      />
 
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={userPermissions.hasViewPermissions(
-              ResourceEntity.TEST_CASE,
-              permissions
-            )}>
-            <IncidentManagerDetailPage />
-          </AdminProtectedRoute>
-        }
-        path={ROUTES.TEST_CASE_DETAILS_WITH_TAB}
-      />
+      {[
+        ROUTES.TEST_CASE_DETAILS,
+        ROUTES.TEST_CASE_DETAILS_WITH_TAB,
+        ROUTES.TEST_CASE_DIMENSIONS,
+        ROUTES.TEST_CASE_DIMENSIONS_WITH_TAB,
+      ].map((route) => (
+        <Route
+          element={
+            <AdminProtectedRoute
+              hasPermission={userPermissions.hasViewPermissions(
+                ResourceEntity.TEST_CASE,
+                permissions
+              )}>
+              <IncidentManagerDetailPage />
+            </AdminProtectedRoute>
+          }
+          path={route}
+        />
+      ))}
 
       <Route
         element={
@@ -703,8 +706,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
 
       {/* Plugin routes */}
-      {pluginRoutes.map((route, idx) => {
-        return <Route key={idx} {...route} />;
+      {pluginRoutes?.map((route) => {
+        return <Route key={route.path ?? route.id} {...route} />;
       })}
 
       <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.HOME} />
@@ -719,10 +722,15 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<ClassificationRouter />} path="/tags/*" />
       <Route element={<TagPage />} path={ROUTES.TAG_ITEM} />
       <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_TAB} />
+      <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_SUB_TAB} />
       <Route element={<GlossaryRouter />} path="/glossary/*" />
       <Route element={<GlossaryTermRouter />} path="/glossary-term/*" />
       <Route element={<SettingsRouter />} path="/settings/*" />
       <Route element={<DomainRouter />} path="/domain/*" />
+      <Route
+        element={<DataProductListPage pageTitle={t('label.data-product')} />}
+        path={ROUTES.DATA_PRODUCT}
+      />
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />
       <Route
         element={

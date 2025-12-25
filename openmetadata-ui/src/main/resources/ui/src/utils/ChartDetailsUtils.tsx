@@ -12,19 +12,27 @@
  */
 
 import { t } from 'i18next';
+import { get } from 'lodash';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
+import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ChartDetailsTabsProps } from './ChartDetailsClassBase';
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.DOMAINS},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
@@ -33,18 +41,22 @@ export const getChartDetailPageTabs = ({
   chartDetails,
   editLineagePermission,
   editCustomAttributePermission,
-  viewAllPermission,
+  viewCustomPropertiesPermission,
   handleFeedCount,
   feedCount,
   activeTab,
   deleted,
   getEntityFeedCount,
   fetchChart,
+  labelMap,
 }: ChartDetailsTabsProps): TabProps[] => {
   return [
     {
       label: (
-        <TabsLabel id={EntityTabs.DETAILS} name={t('label.detail-plural')} />
+        <TabsLabel
+          id={EntityTabs.DETAILS}
+          name={get(labelMap, EntityTabs.LINEAGE, t('label.detail-plural'))}
+        />
       ),
       key: EntityTabs.DETAILS,
       children: <GenericTab type={PageType.Chart} />,
@@ -55,7 +67,11 @@ export const getChartDetailPageTabs = ({
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={t('label.activity-feed-and-task-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.LINEAGE,
+            t('label.activity-feed-and-task-plural')
+          )}
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -73,22 +89,43 @@ export const getChartDetailPageTabs = ({
       ),
     },
     {
-      label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+      label: (
+        <TabsLabel
+          id={EntityTabs.LINEAGE}
+          name={get(labelMap, EntityTabs.LINEAGE, t('label.lineage'))}
+        />
+      ),
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={chartDetails as SourceType}
-          entityType={EntityType.CHART}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={chartDetails as SourceType}
+            entityType={EntityType.CHART}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
     },
     {
       label: (
         <TabsLabel
+          id={EntityTabs.CONTRACT}
+          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
+        />
+      ),
+      key: EntityTabs.CONTRACT,
+      children: <ContractTab />,
+    },
+    {
+      label: (
+        <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.CUSTOM_PROPERTIES,
+            t('label.custom-property-plural')
+          )}
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
@@ -96,7 +133,7 @@ export const getChartDetailPageTabs = ({
         <CustomPropertyTable<EntityType.CHART>
           entityType={EntityType.CHART}
           hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewAllPermission}
+          hasPermission={viewCustomPropertiesPermission}
           isVersionView={false}
         />
       ),

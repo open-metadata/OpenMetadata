@@ -111,6 +111,14 @@ public interface MessageDecorator<T> {
         entityUrl = getEntityUrl("tags", fqn.split("\\.")[0], "");
         break;
 
+      case Entity.USER:
+        entityUrl = getEntityUrl("users", fqn, "");
+        break;
+
+      case Entity.TEAM:
+        entityUrl = getEntityUrl("settings/members/teams", fqn, "");
+        break;
+
       case Entity.INGESTION_PIPELINE:
         entityUrl = getIngestionPipelineUrl(this, entityType, entityInterface);
         break;

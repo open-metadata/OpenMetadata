@@ -25,6 +25,9 @@ export const createIconWithRings = (
     outerRingOpacity?: number;
     innerRingOffset?: string;
     outerRingOffset?: string;
+    borderWidth?: string;
+    innerBorderWidth?: string;
+    outerBorderWidth?: string;
   } = {}
 ) => {
   const {
@@ -34,6 +37,9 @@ export const createIconWithRings = (
     outerRingOpacity = 0.14,
     innerRingOffset = '3px',
     outerRingOffset = '8px',
+    borderWidth = '2px',
+    innerBorderWidth,
+    outerBorderWidth,
   } = options;
 
   return {
@@ -50,7 +56,7 @@ export const createIconWithRings = (
       right: `-${innerRingOffset}`,
       bottom: `-${innerRingOffset}`,
       borderRadius: '50%',
-      border: '2px solid',
+      border: `${innerBorderWidth || borderWidth} solid`,
       borderColor: 'currentColor',
       opacity: innerRingOpacity,
       pointerEvents: 'none',
@@ -63,7 +69,7 @@ export const createIconWithRings = (
       right: `-${outerRingOffset}`,
       bottom: `-${outerRingOffset}`,
       borderRadius: '50%',
-      border: '2px solid',
+      border: `${outerBorderWidth || borderWidth} solid`,
       borderColor: 'currentColor',
       opacity: outerRingOpacity,
       pointerEvents: 'none',
@@ -84,10 +90,12 @@ export const iconRingVariants = {
   notification: createIconWithRings({
     iconSize: '20px',
     marginTop: '0px',
-    innerRingOpacity: 0.3,
-    outerRingOpacity: 0.1,
-    innerRingOffset: '4px',
-    outerRingOffset: '8px',
+    innerRingOpacity: 0.12,
+    outerRingOpacity: 0.06,
+    innerRingOffset: '-12px',
+    outerRingOffset: '-4px',
+    innerBorderWidth: '16px',
+    outerBorderWidth: '22px',
   }),
 
   status: createIconWithRings({

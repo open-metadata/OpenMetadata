@@ -42,6 +42,7 @@ import { Settings, SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
+import brandClassBase from '../../utils/BrandData/BrandClassBase';
 import { getField } from '../../utils/formUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getThemeConfig } from '../../utils/ThemeUtils';
@@ -307,7 +308,9 @@ const AppearanceConfigSettingsPage = () => {
                 <PageHeader
                   data={{
                     header: t('label.theme'),
-                    subHeader: t('message.appearance-configuration-message'),
+                    subHeader: t('message.appearance-configuration-message', {
+                      brandName: brandClassBase.getPageTitle(),
+                    }),
                   }}
                 />
                 <Button

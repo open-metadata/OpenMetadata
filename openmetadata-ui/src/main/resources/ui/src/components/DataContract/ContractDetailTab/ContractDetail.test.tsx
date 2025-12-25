@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /*
  *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +25,7 @@ import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
+import '../../../test/unit/mocks/mui.mock';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
@@ -39,7 +39,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => {
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return function MockErrorPlaceHolder({ type, children }: any) {
     return (
       <div data-testid="error-placeholder" data-type={type}>
@@ -95,9 +95,17 @@ jest.mock('../ContractYaml/ContractYaml.component', () => {
   };
 });
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
+jest.mock('../ContractSLACard/ContractSLA.component', () =>
+  jest
+    .fn()
+    .mockImplementation(({ contract }: any) => (
+      <div data-testid="contract-sla">SLA for {contract?.name}</div>
+    ))
+);
+
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockImplementation(() => {
-    return <div>RichTextEditorPreviewerNew</div>;
+    return <div>RichTextEditorPreviewerV1</div>;
   });
 });
 
@@ -232,8 +240,7 @@ describe('ContractDetail', () => {
 
       expect(screen.getByText('Test Contract')).toBeInTheDocument();
       expect(screen.getByText('label.description')).toBeInTheDocument();
-
-      expect(screen.getAllByText('RichTextEditorPreviewerNew')).toHaveLength(2);
+      expect(screen.getByText('RichTextEditorPreviewerV1')).toBeInTheDocument();
     });
 
     it('should display contract actions', () => {

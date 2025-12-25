@@ -48,12 +48,12 @@
       {
         "name": "classificationTags",
         "type": "terms",
-        "script": "def classificationTags = []; if (params._source.tags != null) { for (tag in params._source.tags) { if (tag.source == 'Classification') { classificationTags.add(tag.tagFQN); } } } return classificationTags;"
+        "field": "classificationTags"
       },
       {
         "name": "glossaryTags",
         "type": "terms",
-        "script": "def glossaryTags = []; if (params._source.tags != null) { for (tag in params._source.tags) { if (tag.source == 'Glossary') { glossaryTags.add(tag.tagFQN); } } } return glossaryTags;"
+        "field": "glossaryTags"
       },
       {
         "name": "certification.tagLabel.tagFQN",
@@ -118,7 +118,7 @@
       },
       {
         "field": "usageSummary.weeklyStats.percentileRank",
-        "factor": 0.05,
+        "factor": 1.0,
         "modifier": "none",
         "missing": 0
       }
@@ -368,7 +368,7 @@
         },
         {
           "field": "usageSummary.monthlyStats.percentileRank",
-          "factor": 0.1,
+          "factor": 1.0,
           "modifier": "none",
           "missing": 0
         }
@@ -3636,7 +3636,7 @@
     "globalInstructions": [
       {
         "section": "QUERY GENERATION PROCESS",
-        "content": "1. Analyze the USER QUERY to identify key entities, concepts (like domain, owner, tags, data product), and filter values.\n2. Consult the provided FIELD SUMMARY for the detected entity type.\n3. Select the MOST APPROPRIATE field(s) from the summary based on their descriptions.\n4. Determine the correct query type (`match` for flexible/text search, `term` for exact/keyword search) based on the field description and the guidelines below.\n5. Construct the OpenSearch query JSON using ONLY the selected fields and types.",
+        "content": "1. Analyze the USER QUERY to identify key entities, concepts (like domain, owner, tags, data product, certification), and filter values.\n2. Consult the provided FIELD SUMMARY for the detected entity type.\n3. Select the MOST APPROPRIATE field(s) from the summary based on their descriptions.\n4. Determine the correct query type (`match` for flexible/text search, `term` for exact/keyword search) based on the field description and the guidelines below.\n5. Construct the OpenSearch query JSON using ONLY the selected fields and types.",
         "order": 1
       },
       {
@@ -3646,7 +3646,7 @@
       },
       {
         "section": "INCORRECT VS CORRECT PATTERNS",
-        "content": "\u274c INCORRECT: Tables query missing entityType filter\n{\"bool\": {\"must\": [{\"term\": {\"owners.name\": \"accounting\"}}]}}\n\n\u2705 CORRECT: Tables query with entityType filter\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"accounting\"}}]}}\n\n\u274c INCORRECT: Using nested query for columns\n{\"bool\": {\"must\": [{\"nested\": {\"path\": \"columns\", \"query\": {\"match\": {\"columns.name\": \"SKU\"}}}}]}}\n\n\u2705 CORRECT: Direct match query for columns\n{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"match\": {\"columns.name\": \"SKU\"}}]}}\n\n\u274c INCORRECT: Using owner.name (singular)\n{\"term\": {\"owner.name\": \"marketing\"}}\n\n\u2705 CORRECT: Using owners.name (plural)\n{\"term\": {\"owners.name\": \"marketing\"}}\n\n\u274c INCORRECT: Using tags for tier\n{\"term\": {\"tags.tagFQN\": \"Tier1\"}}\n\n\u2705 CORRECT: Using tier.tagFQN with proper format\n{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}",
+        "content": "\u274c INCORRECT: Tables query missing entityType filter AND using only one owner field\n{\"bool\": {\"must\": [{\"term\": {\"owners.displayName.keyword\": \"accounting\"}}]}}\n\n\u2705 CORRECT: Tables query with entityType filter\n{\"bool\": {\"must\": [{\"bool\": {\"should\": [{\"term\": {\"entityType.keyword\": \"table\"}}]}}, {\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"accounting\"}}, {\"term\": {\"owners.displayName.keyword\": \"accounting\"}}]}}]}}\n\n\u274c INCORRECT: Using nested query for columns\n{\"bool\": {\"must\": [{\"nested\": {\"path\": \"columns\", \"query\": {\"match\": {\"columns.name\": \"SKU\"}}}}]}}\n\n\u2705 CORRECT: Direct match query for columns\n{\"bool\": {\"must\": [{\"bool\": {\"should\": [{\"term\": {\"entityType.keyword\": \"table\"}}]}}, {\"match\": {\"columns.name\": \"SKU\"}}]}}\n\n\u274c INCORRECT: Using owner.name (singular) or only one field\n{\"term\": {\"owner.name\": \"marketing\"}}\n{\"term\": {\"owners.name\": \"marketing\"}}\n\n\u2705 CORRECT: Search BOTH owners.name and owners.displayName.keyword\n{\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"marketing\"}}, {\"term\": {\"owners.displayName.keyword\": \"marketing\"}}]}}\n\n\u274c INCORRECT: Using tags for tier\n{\"term\": {\"tags.tagFQN\": \"Tier1\"}}\n\n\u2705 CORRECT: Using tier.tagFQN with proper format\n{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}",
         "order": 6
       },
       {
@@ -3656,8 +3656,13 @@
       },
       {
         "section": "CRITICAL FIELD CORRECTIONS",
-        "content": "1. Use 'owners.name' (plural) NOT 'owner.name' (singular)\n2. Use 'tags.tagFQN' NOT just 'tags' for regular tags\n3. Use 'tier.tagFQN' NOT 'tags.tagFQN' for tier-related queries\n4. Top-level fields like 'owners', 'tags', 'tier' do NOT need nested queries\n5. Only use nested queries for 'columns', 'charts', 'tasks', etc.",
+        "content": "1. ALWAYS search BOTH 'owners.name' AND 'owners.displayName.keyword' in a should clause, NOT 'owner.name' (singular)\n2. Use 'tags.tagFQN' NOT just 'tags' for regular tags\n3. Use 'tier.tagFQN' NOT 'tags.tagFQN' for tier-related queries\n4. Top-level fields like 'owners', 'tags', 'tier' do NOT need nested queries\n5. Only use nested queries for 'columns', 'charts', 'tasks', etc.",
         "order": 11
+      },
+      {
+        "section": "OWNER FIELD SELECTION",
+        "content": "When filtering by owner, ALWAYS search BOTH fields simultaneously:\n\n✅ CORRECT PATTERN (use for ALL owner queries):\n{\"bool\": {\"should\": [\n  {\"term\": {\"owners.name\": \"value\"}},\n  {\"term\": {\"owners.displayName.keyword\": \"value\"}}\n]}}\n\nThis matches whether the value is a username (e.g., 'jsmith') OR display name (e.g., 'John Smith').\n\n⚠️ NEVER use 'owner.name' (singular) - always use 'owners' (plural)\n⚠️ ALWAYS include BOTH fields in a should clause",
+        "order": 12
       },
       {
         "section": "AMBIGUITY RESOLUTION",
@@ -3670,8 +3675,18 @@
         "order": 14
       },
       {
+        "section": "SERVICE TYPE FILTERING",
+        "content": "When a user specifies a particular service type (e.g., 'big query', 'redshift', 'snowflake', 'looker', 'tableau',...):\n1. ALWAYS add a term filter for 'serviceType' with the CANONICAL form, with lowercase and without spaces. For example, if query mentions 'Big Query', add {\"term\":{\"serviceType\":\"bigquery\"}}.",
+        "order": 15
+      },
+      {
         "section": "TIER TAG FORMATTING",
         "content": "When querying by tier, ALWAYS follow these formats:\n- For Tier 1: \"tier.tagFQN\": \"Tier.Tier1\" (not \"tier1\" or \"Tier1\")\n- For Tier 2: \"tier.tagFQN\": \"Tier.Tier2\" (not \"tier2\" or \"Tier2\")\n- For Tier 3: \"tier.tagFQN\": \"Tier.Tier3\" (not \"tier3\" or \"Tier3\")",
+        "order": 15
+      },
+      {
+        "section": "CERTIFICATION FORMATTING",
+        "content": "When querying by Certification, ALWAYS follow these formats:\n- For Gold: \"certification.tagLabel.tagFQN\": \"Certification.Gold\" (not \"gold\")\n- For Silver: \"certification.tagLabel.tagFQN\": \"Certification.Silver\" (not \"silver\")\n- For Bronze: \"certification.tagLabel.tagFQN\": \"Certification.Bronze\" (not \"bronze\")\n- Use this when asked about 'assets with gold certification' or 'gold certified assets', etc.",
         "order": 15
       },
       {
@@ -3686,7 +3701,7 @@
         "sections": [
           {
             "section": "TABLE FIELDS",
-            "content": "- name (text): Use match query for fuzzy text search\n  Example: {\"match\": {\"name\": \"customer\"}}\n\n- name.keyword (exact): Use term query for exact matching\n  Example: {\"term\": {\"name.keyword\": \"customer_orders\"}}\n\n- description (text): Use match query for content search\n  Example: {\"match\": {\"description\": \"sales data\"}}\n\n- owners.name (keyword): Use term query for exact matching\n  Example: {\"term\": {\"owners.name\": \"marketing\"}}\n\n- tier.tagFQN (keyword): Use term query for tier classification\n  Example: {\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}\n\n- tags.tagFQN (keyword): Use term query for tags\n  Example: {\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}\n\n- columns.name (keyword): Use direct match queries for columns\n  Example: {\"match\": {\"columns.name\": \"address\"}}\n  \u26a0\ufe0f IMPORTANT: Do NOT use nested query syntax for columns\n\n- service.name, database.name, databaseSchema.name (keywords): Use term queries\n  Example: {\"term\": {\"service.name\": \"snowflake\"}}",
+            "content": "- name (text): Use match query for fuzzy text search\n  Example: {\"match\": {\"name\": \"customer\"}}\n\n- name.keyword (exact): Use term query for exact matching\n  Example: {\"term\": {\"name.keyword\": \"customer_orders\"}}\n\n- description (text): Use match query for content search\n  Example: {\"match\": {\"description\": \"sales data\"}}\n\n- owners (keyword fields): ALWAYS search BOTH owners.name and owners.displayName.keyword\n  Example: {\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"value\"}}, {\"term\": {\"owners.displayName.keyword\": \"value\"}}]}}\n  This matches usernames OR display names in a single query\n\n- tier.tagFQN (keyword): Use term query for tier classification\n  Example: {\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}\n\n- tags.tagFQN (keyword): Use term query for tags\n  Example: {\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}\n\n- columns.name (keyword): Use direct match queries for columns\n  Example: {\"match\": {\"columns.name\": \"address\"}}\n  ⚠️ IMPORTANT: Do NOT use nested query syntax for columns\n\n- service.name, database.name, databaseSchema.name (keywords): Use term queries\n  Example: {\"term\": {\"service.name\": \"snowflake\"}}",
             "order": 10
           }
         ]
@@ -3696,7 +3711,7 @@
         "sections": [
           {
             "section": "DASHBOARD FIELDS",
-            "content": "- charts.name (nested): Use nested query for searching charts\n  Example: {\"nested\": {\"path\": \"charts\", \"query\": {\"match\": {\"charts.name\": \"revenue\"}}}}\n\n- service.name: Use term query for the dashboard service\n  Example: {\"term\": {\"service.name\": \"looker\"}}\n\n- owners.name: Use term query for ownership\n  Example: {\"term\": {\"owners.name\": \"marketing\"}}",
+            "content": "- charts.name (nested): Use nested query for searching charts\n  Example: {\"nested\": {\"path\": \"charts\", \"query\": {\"match\": {\"charts.name\": \"revenue\"}}}}\n\n- service.name: Use term query for the dashboard service\n  Example: {\"term\": {\"service.name\": \"looker\"}}\n\n- owners (keyword fields): ALWAYS search BOTH owners.name and owners.displayName.keyword\n  Example: {\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"value\"}}, {\"term\": {\"owners.displayName.keyword\": \"value\"}}]}}\n  This matches usernames OR display names in a single query",
             "order": 10
           }
         ]
@@ -3705,7 +3720,7 @@
     "examples": [
       {
         "query": "tables owned by marketing",
-        "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"term\": {\"owners.name\": \"marketing\"}}]}}",
+        "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"entityType\": \"table\"}}, {\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"marketing\"}}, {\"term\": {\"owners.displayName.keyword\": \"marketing\"}}]}}]}}",
         "entityTypes": [
           "table"
         ]
@@ -3726,7 +3741,7 @@
       },
       {
         "query": "tables owned by marketing",
-        "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"owners.name\": \"marketing\"}}]}}",
+        "esQuery": "{\"bool\": {\"must\": [{\"bool\": {\"should\": [{\"term\": {\"owners.name\": \"marketing\"}}, {\"term\": {\"owners.displayName.keyword\": \"marketing\"}}]}}]}}",
         "entityTypes": [
           "table"
         ]
@@ -3755,6 +3770,20 @@
       {
         "query": "find all tier1 and tier2 tables",
         "esQuery": "{\"bool\": {\"should\": [{\"term\": {\"tier.tagFQN\": \"Tier.Tier1\"}}, {\"term\": {\"tier.tagFQN\": \"Tier.Tier2\"}}]}}",
+        "entityTypes": [
+          "table"
+        ]
+      },
+      {
+        "query": "gold certified tables",
+        "esQuery": "{\"bool\": {\"should\": [{\"term\": {\"certification.tagLabel.tagFQN\": \"Certification.Gold\"}}]}}",
+        "entityTypes": [
+          "table"
+        ]
+      },
+      {
+        "query": "tables with silver certification",
+        "esQuery": "{\"bool\": {\"should\": [{\"term\": {\"certification.tagLabel.tagFQN\": \"Certification.Silver\"}}]}}",
         "entityTypes": [
           "table"
         ]
@@ -3796,6 +3825,16 @@
         "description": "Find tables with no description:",
         "query": "tables without description",
         "esQuery": "{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"description\":\"\"}}]}}"
+      },
+      {
+        "description": "Find all data assets owned by a specific user.",
+        "query": "All assets owned by John Doe",
+        "esQuery": "{\"bool\": {\"must\": [{\"bool\": {\"should\": [[{\"term\": {\"owners.name\": \"john\"}}, {\"term\": {\"owners.displayName.keyword\": \"john+doe\"}}]}}]}}"
+      },
+      {
+        "description": "Find tables that belong to a specific service",
+        "query": "Provide a list of all big query tables",
+        "esQuery": "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"bool\":{\"should\":[{\"term\":{\"serviceType\":\"bigquery\"}}]}}]}}}"
       }
     ],
     "mappingConfiguration": {

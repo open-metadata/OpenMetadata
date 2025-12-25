@@ -4,16 +4,19 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.slack.api.model.block.LayoutBlock;
 import java.util.List;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.openmetadata.service.notifications.channels.NotificationMessage;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class SlackMessage {
+public class SlackMessage implements NotificationMessage {
   private List<LayoutBlock> blocks;
   private List<Attachment> attachments;
 
@@ -21,6 +24,7 @@ public class SlackMessage {
   @Setter
   @NoArgsConstructor
   @AllArgsConstructor
+  @Builder
   @JsonInclude(JsonInclude.Include.NON_NULL)
   public static class Attachment {
     private String color;

@@ -97,7 +97,7 @@ REDSHIFT_GET_ALL_RELATION_INFO = textwrap.dedent(
       c.relkind
     FROM pg_catalog.pg_class c
     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-    WHERE c.relkind = 'r'
+    WHERE (c.relkind IN ('r', 'S', 'f') {view_filter})
       AND n.nspname = :schema
     UNION
     SELECT
@@ -238,8 +238,40 @@ SELECT
 """
 
 
-REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"
+REDSHIFT_TEST_PARTITION_DETAILS = """
+SELECT
+    has_table_privilege('SVV_TABLE_INFO', 'SELECT') as can_access_svv_table_info
+"""
 
+REDSHIFT_GET_ALL_CONSTRAINTS = """
+select 
+  n.nspname as "schema",
+  c.relname as "table_name",
+  t.contype as "constraint_type",
+  t.conkey,
+  pg_catalog.pg_get_constraintdef(t.oid, true)::varchar(512) as condef,
+  a.attname as "column_name"
+FROM pg_catalog.pg_class c
+LEFT JOIN pg_catalog.pg_namespace n
+  ON n.oid = c.relnamespace
+JOIN pg_catalog.pg_constraint t
+  ON t.conrelid = c.oid
+JOIN pg_catalog.pg_attribute a
+  ON t.conrelid = a.attrelid AND a.attnum = ANY(t.conkey)
+WHERE n.nspname not like '^pg_' and schema=:schema
+UNION
+SELECT
+  s.schemaname AS "schema",
+  c.tablename AS "table_name",
+  'p' as "constraint_type",
+  null as conkey,
+  null as condef,
+  c.columnname as "column_name"
+FROM
+    svv_external_columns c
+    JOIN svv_external_schemas s ON s.schemaname = c.schemaname
+where 1 and schema=:schema;
+"""
 
 # Redshift views definitions only contains the select query
 # hence we are appending "create view <schema>.<table> as " to select query

@@ -207,6 +207,7 @@ def find_in_iter(element: Any, container: Iterable[Any]) -> Optional[Any]:
     :param container: container with element
     :return: element or None
     """
+    logger.debug(f"[find_in_iter] Searching for element '{element}'")
     return next((elem for elem in container if elem == element), None)
 
 

@@ -56,7 +56,9 @@
     "assets": {
       "description": "Data assets collection that is part of this data product.",
       "$ref": "../../type/entityReferenceList.json",
-      "default": null
+      "default": null,
+      "deprecated": true,
+      "$comment": "@deprecated Use PUT /v1/dataProducts/{name}/assets/add bulkAssets API endpoint to add assets to data product"
     },
     "tags": {
       "description": "Tags for this Data Product.",
@@ -69,6 +71,16 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "inputPorts": {
+      "description": "Input ports - data assets consumed by this data product.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "outputPorts": {
+      "description": "Output ports - data assets produced/exposed by this data product.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     }
   },
   "required": [

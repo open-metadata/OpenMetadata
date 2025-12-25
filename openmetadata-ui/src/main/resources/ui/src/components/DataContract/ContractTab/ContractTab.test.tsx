@@ -49,6 +49,12 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   })),
 }));
 
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockImplementation(() => ({
+    entityType: 'table',
+  })),
+}));
+
 jest.mock('../../common/Loader/Loader', () => {
   return function MockLoader() {
     return <div data-testid="loader">Loading...</div>;

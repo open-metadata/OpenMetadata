@@ -12,7 +12,6 @@
  */
 import { WidgetProps } from '@rjsf/utils';
 import { Select } from 'antd';
-import { capitalize } from 'lodash';
 import { FC } from 'react';
 import { getPopupContainer } from '../../../../../utils/formUtils';
 import TreeSelectWidget from './TreeSelectWidget';
@@ -29,7 +28,7 @@ const SelectWidget: FC<WidgetProps> = (props) => {
       allowClear
       autoFocus={rest.autofocus}
       className="d-block w-full"
-      data-testid="select-widget"
+      data-testid={`select-widget-${rest.id}`}
       disabled={rest.disabled}
       getPopupContainer={getPopupContainer}
       id={rest.id}
@@ -45,11 +44,29 @@ const SelectWidget: FC<WidgetProps> = (props) => {
           data-testid={`select-option-${option.label}`}
           key={option.value}
           value={option.value}>
-          {capitalize(option.label)}
+          {rest.capitalizeOptionLabel
+            ? typeof option.label === 'string'
+              ? option.label.charAt(0).toUpperCase() + option.label.slice(1)
+              : option.label
+            : option.label}
         </Select.Option>
       ))}
     </Select>
   );
 };
 
-export default SelectWidget;
+function withSelectWidget(WrappedComponent: FC<WidgetProps>) {
+  return function SelectWidget({
+    capitalizeOptionLabel = false,
+    ...props
+  }: WidgetProps & { capitalizeOptionLabel?: boolean }) {
+    return (
+      <WrappedComponent
+        {...props}
+        capitalizeOptionLabel={capitalizeOptionLabel}
+      />
+    );
+  };
+}
+
+export default withSelectWidget(SelectWidget);

@@ -20,7 +20,9 @@ import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -38,14 +40,20 @@ import static org.openmetadata.csv.EntityCsvTest.getSuccessRecord;
 import static org.openmetadata.schema.type.ColumnDataType.ARRAY;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.BINARY;
+import static org.openmetadata.schema.type.ColumnDataType.BOOLEAN;
 import static org.openmetadata.schema.type.ColumnDataType.CHAR;
 import static org.openmetadata.schema.type.ColumnDataType.DATE;
 import static org.openmetadata.schema.type.ColumnDataType.DECIMAL;
+import static org.openmetadata.schema.type.ColumnDataType.DOUBLE;
 import static org.openmetadata.schema.type.ColumnDataType.FLOAT;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
+import static org.openmetadata.schema.type.ColumnDataType.TIMESTAMP;
 import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
@@ -62,10 +70,20 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
-import static org.openmetadata.service.util.TestUtils.*;
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
+import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
 import com.google.common.collect.Lists;
 import es.org.elasticsearch.client.Request;
@@ -77,10 +95,18 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
-import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -136,6 +162,8 @@ import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ColumnProfilerConfig;
+import org.openmetadata.schema.type.CompressionStrategy;
+import org.openmetadata.schema.type.CompressionStrategy.CompressionType;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.Edge;
@@ -148,6 +176,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableConstraint.ConstraintType;
@@ -159,6 +188,8 @@ import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -210,6 +241,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   public TableResourceTest() {
     super(TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
+    supportsBulkAPI = true;
     supportsSearchIndex = true;
   }
 
@@ -341,6 +373,55 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     create.setTablePartition(partition);
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertTablePartition(partition, created.getTablePartition());
+  }
+
+  @Test
+  void patch_tableCompressionAttributes(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withTableConstraints(null);
+    List<Column> columns = new ArrayList<>();
+    columns.add(getColumn("time", TIMESTAMP, null));
+    columns.add(getColumn("device_id", INT, null));
+    columns.add(getColumn("temperature", DOUBLE, null));
+    create.setColumns(columns);
+
+    Table table = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    CompressionStrategy compressionStrategy =
+        new CompressionStrategy()
+            .withCompressionType(CompressionType.POLICY_BASED)
+            .withSegmentColumns(List.of("device_id"))
+            .withOrderColumns(List.of("time"));
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    table
+        .withCompressionEnabled(true)
+        .withCompressionCodec("TimescaleDB Native")
+        .withCompressionStrategy(compressionStrategy);
+    fieldAdded(change, "compressionEnabled", true);
+    fieldAdded(change, "compressionCodec", "TimescaleDB Native");
+    fieldAdded(change, "compressionStrategy", compressionStrategy);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertEquals(true, table.getCompressionEnabled());
+    assertEquals("TimescaleDB Native", table.getCompressionCodec());
+    assertCompressionStrategy(compressionStrategy, table.getCompressionStrategy());
+
+    originalJson = JsonUtils.pojoToJson(table);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    table.withCompressionCodec("LZ4");
+    fieldUpdated(change, "compressionCodec", "TimescaleDB Native", "LZ4");
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    originalJson = JsonUtils.pojoToJson(table);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    table.withCompressionEnabled(null).withCompressionCodec(null).withCompressionStrategy(null);
+    fieldDeleted(change, "compressionEnabled", true);
+    fieldDeleted(change, "compressionCodec", "LZ4");
+    fieldDeleted(change, "compressionStrategy", compressionStrategy);
+    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -2392,6 +2473,122 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
+  void test_tierRemovalFromDatabaseAndSearch(TestInfo test)
+      throws IOException, InterruptedException {
+    Table table = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    table.withTags(List.of(TIER1_TAG_LABEL));
+
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    fieldAdded(change, FIELD_TAGS, List.of(TIER1_TAG_LABEL));
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertNotNull(table.getTags());
+    assertEquals(1, table.getTags().size());
+    assertEquals(TIER1_TAG_LABEL.getTagFQN(), table.getTags().get(0).getTagFQN());
+
+    Thread.sleep(2000);
+
+    assertTierInSearch(table, TIER1_TAG_LABEL.getTagFQN());
+
+    originalJson = JsonUtils.pojoToJson(table);
+    table.withTags(new ArrayList<>());
+
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    fieldDeleted(change, FIELD_TAGS, List.of(TIER1_TAG_LABEL));
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertTrue(table.getTags() == null || table.getTags().isEmpty());
+
+    Thread.sleep(2000);
+
+    assertTierNotInSearch(table);
+  }
+
+  private void assertTierInSearch(Table table, String expectedTierFqn) throws IOException {
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
+
+    Request refreshRequest =
+        new Request(
+            "POST",
+            format(
+                "%s/_refresh", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    searchClient.performRequest(refreshRequest);
+
+    Request request =
+        new Request(
+            "GET",
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        format(
+            "{\"size\": 1, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            table.getId().toString());
+    request.setJsonEntity(query);
+
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+
+    assertFalse(hitsList.isEmpty(), "Table should be found in search index");
+
+    Map<String, Object> source = (Map<String, Object>) hitsList.get(0).get("_source");
+    Map<String, Object> tier = (Map<String, Object>) source.get("tier");
+
+    assertNotNull(tier, "Tier should be present in search index");
+    assertEquals(expectedTierFqn, tier.get("tagFQN"), "Tier tag FQN should match in search index");
+
+    searchClient.close();
+  }
+
+  private void assertTierNotInSearch(Table table) throws IOException {
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
+
+    Request refreshRequest =
+        new Request(
+            "POST",
+            format(
+                "%s/_refresh", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    searchClient.performRequest(refreshRequest);
+
+    Request request =
+        new Request(
+            "GET",
+            format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        format(
+            "{\"size\": 1, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            table.getId().toString());
+    request.setJsonEntity(query);
+
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+
+    assertFalse(hitsList.isEmpty(), "Table should be found in search index");
+
+    Map<String, Object> source = (Map<String, Object>) hitsList.get(0).get("_source");
+    Object tier = source.get("tier");
+
+    assertNull(tier, "Tier should be removed from search index");
+
+    searchClient.close();
+  }
+
+  @Test
   void test_ownershipInheritance(TestInfo test) throws IOException {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
@@ -3793,6 +3990,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
+  private void assertCompressionStrategy(CompressionStrategy expected, CompressionStrategy actual) {
+    if (expected == null && actual == null) {
+      return;
+    }
+
+    assertNotNull(expected);
+    assertNotNull(actual);
+    assertEquals(expected.getCompressionType(), actual.getCompressionType());
+    assertEquals(expected.getSegmentColumns(), actual.getSegmentColumns());
+    assertEquals(expected.getOrderColumns(), actual.getOrderColumns());
+    assertEquals(expected.getCompressionLevel(), actual.getCompressionLevel());
+  }
+
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException {
@@ -3823,6 +4033,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       TableType expectedTableType = TableType.fromValue(expected.toString());
       TableType actualTableType = TableType.fromValue(actual.toString());
       assertEquals(expectedTableType, actualTableType);
+    } else if (fieldName.endsWith("compressionStrategy")) {
+      CompressionStrategy expectedStrategy =
+          JsonUtils.convertValue(expected, CompressionStrategy.class);
+      CompressionStrategy actualStrategy =
+          JsonUtils.convertValue(actual, CompressionStrategy.class);
+      assertEquals(expectedStrategy, actualStrategy);
+    } else if (fieldName.endsWith("compressionEnabled")) {
+      assertEquals(expected, actual);
+    } else if (fieldName.endsWith("compressionCodec")) {
+      assertEquals(expected, actual);
     } else if (fieldName.endsWith("owners")) {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedOwners =
@@ -4324,194 +4544,6 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("Data steward updated description", updatedColumn.getDescription());
     assertEquals(1, updatedColumn.getTags().size());
     assertEquals("PersonalData.Personal", updatedColumn.getTags().get(0).getTagFQN());
-  }
-
-  @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  void test_concurrentColumnUpdates_reproduceDataLoss(TestInfo test) throws Exception {
-    // This test reproduces the concurrent update issue described in the GitHub issue
-    // where two near-simultaneous PATCH calls against the same table version can
-    // silently wipe out each other's changes
-
-    Table table = createAndCheckEntity(createRequest(test), ADMIN_AUTH_HEADERS);
-
-    // IMPORTANT: Get the table state that both threads will use as their base
-    // This simulates both requests reading the same version 0.2 as in the issue
-    Table baseTableState = getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
-    String baseTableJson = JsonUtils.pojoToJson(baseTableState);
-    Double baseVersion = baseTableState.getVersion();
-    LOG.info("Base table version for both requests: {}", baseVersion);
-
-    // Set up for concurrent updates matching the issue scenario
-    CountDownLatch startLatch = new CountDownLatch(1);
-    CountDownLatch completionLatch = new CountDownLatch(2);
-    AtomicReference<Table> resultA = new AtomicReference<>();
-    AtomicReference<Table> resultB = new AtomicReference<>();
-    AtomicReference<Exception> errorRef = new AtomicReference<>();
-
-    // Request A: Add description to a column (simulating eventid column description update)
-    Thread threadA =
-        new Thread(
-            () -> {
-              try {
-                startLatch.await();
-
-                // Use the same base table state (simulating both requests starting with version
-                // 0.2)
-                Table tableForA = JsonUtils.readValue(baseTableJson, Table.class);
-
-                // Add description to eventid column (index 2 in default test columns)
-                if (tableForA.getColumns() != null && tableForA.getColumns().size() > 2) {
-                  Column eventIdColumn = tableForA.getColumns().get(2);
-                  eventIdColumn.setDescription(
-                      "Unique identifier for the event, used to capture and track changes affecting the customer-address relationship.");
-                }
-
-                // Small delay to ensure concurrent processing
-                Thread.sleep(50);
-
-                // Apply update using the original base JSON
-                Table updated =
-                    patchEntity(tableForA.getId(), baseTableJson, tableForA, ADMIN_AUTH_HEADERS);
-                resultA.set(updated);
-                LOG.info(
-                    "Request A completed: version {} -> {}", baseVersion, updated.getVersion());
-
-              } catch (Exception e) {
-                LOG.error("Request A failed", e);
-                errorRef.compareAndSet(null, e);
-              } finally {
-                completionLatch.countDown();
-              }
-            });
-
-    // Request B: Add tags to multiple columns (simulating classification tags)
-    Thread threadB =
-        new Thread(
-            () -> {
-              try {
-                startLatch.await();
-
-                // Small delay to simulate the 358ms difference in the issue
-                Thread.sleep(358);
-
-                // Use the same base table state (simulating both requests starting with version
-                // 0.2)
-                Table tableForB = JsonUtils.readValue(baseTableJson, Table.class);
-
-                // Add tags to table
-                List<TagLabel> tableTags = new ArrayList<>();
-                tableTags.add(TIER2_TAG_LABEL);
-                tableForB.setTags(tableTags);
-
-                // Add tags to columns
-                if (tableForB.getColumns() != null && tableForB.getColumns().size() >= 2) {
-                  // Tag first column (addressid)
-                  Column col0 = tableForB.getColumns().get(0);
-                  List<TagLabel> col0Tags = new ArrayList<>();
-                  col0Tags.add(
-                      new TagLabel()
-                          .withTagFQN("PersonalData.Personal")
-                          .withSource(TagLabel.TagSource.CLASSIFICATION));
-                  col0Tags.add(
-                      new TagLabel()
-                          .withTagFQN("PII.Sensitive")
-                          .withSource(TagLabel.TagSource.CLASSIFICATION));
-                  col0.setTags(col0Tags);
-
-                  // Tag second column (customerid)
-                  Column col1 = tableForB.getColumns().get(1);
-                  List<TagLabel> col1Tags = new ArrayList<>();
-                  col1Tags.add(
-                      new TagLabel()
-                          .withTagFQN("PII.Sensitive")
-                          .withSource(TagLabel.TagSource.CLASSIFICATION));
-                  col1.setTags(col1Tags);
-                }
-
-                // Apply update using the original base JSON
-                Table updated =
-                    patchEntity(tableForB.getId(), baseTableJson, tableForB, ADMIN_AUTH_HEADERS);
-                resultB.set(updated);
-                LOG.info(
-                    "Request B completed: version {} -> {}", baseVersion, updated.getVersion());
-
-              } catch (Exception e) {
-                LOG.error("Request B failed", e);
-                errorRef.compareAndSet(null, e);
-              } finally {
-                completionLatch.countDown();
-              }
-            });
-
-    // Start both threads
-    threadA.start();
-    threadB.start();
-
-    // Release threads to simulate concurrent requests
-    startLatch.countDown();
-
-    // Wait for completion
-    assertTrue(
-        completionLatch.await(30, TimeUnit.SECONDS), "Requests should complete within timeout");
-
-    // Check for errors
-    if (errorRef.get() != null) {
-      throw new AssertionError("Request execution failed", errorRef.get());
-    }
-
-    // Get final table state
-    Table finalTable = getEntity(table.getId(), "columns,tags", ADMIN_AUTH_HEADERS);
-
-    // Verify the issue: Request A's column description should be preserved
-    // This assertion should FAIL if the concurrent update bug exists
-    assertNotNull(finalTable.getColumns());
-    assertTrue(finalTable.getColumns().size() > 2);
-    Column eventIdColumn = finalTable.getColumns().get(2);
-
-    // This is the key assertion - it should fail if Request B overwrote Request A's changes
-    assertEquals(
-        "Unique identifier for the event, used to capture and track changes affecting the customer-address relationship.",
-        eventIdColumn.getDescription(),
-        "Column description from Request A should be preserved (this will fail if concurrent update bug exists)");
-
-    // Verify Request B's changes are also present
-    // Check table tags
-    assertNotNull(finalTable.getTags());
-    assertTrue(
-        finalTable.getTags().stream()
-            .anyMatch(tag -> tag.getTagFQN().equals(TIER2_TAG_LABEL.getTagFQN())),
-        "Table should have Tier2 tag from Request B");
-
-    // Check column tags
-    Column firstColumn = finalTable.getColumns().get(0);
-    assertNotNull(firstColumn.getTags());
-    assertTrue(firstColumn.getTags().size() >= 2, "First column should have tags from Request B");
-
-    // Log final state for debugging
-    LOG.info(
-        "Final table version: {}, Request A version: {}, Request B version: {}",
-        finalTable.getVersion(),
-        resultA.get() != null ? resultA.get().getVersion() : "null",
-        resultB.get() != null ? resultB.get().getVersion() : "null");
-
-    // Log what we found to help debug
-    LOG.info("EventId column final description: {}", eventIdColumn.getDescription());
-    LOG.info("Table final tags: {}", finalTable.getTags());
-    LOG.info("First column final tags: {}", firstColumn.getTags());
-
-    // Both requests should have succeeded and resulted in version increments
-    assertNotNull(resultA.get(), "Request A should have completed");
-    assertNotNull(resultB.get(), "Request B should have completed");
-    assertTrue(finalTable.getVersion() > table.getVersion(), "Version should be incremented");
-
-    // Additional check: If both updates were properly merged, we should see version increments for
-    // both
-    // If the issue exists, one update might overwrite the other
-    if (resultA.get().getVersion().equals(resultB.get().getVersion())) {
-      LOG.warn(
-          "Both requests resulted in the same version - this suggests one overwrote the other!");
-    }
   }
 
   @Test
@@ -5459,14 +5491,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(1, tableWithDomain.getDomains().size());
     assertEquals(domain.getId(), tableWithDomain.getDomains().getFirst().getId());
 
-    // Step 6: Add the table to the dataProduct
-    String originalJson = JsonUtils.pojoToJson(dataProduct);
-    dataProduct.setAssets(List.of(table.getEntityReference()));
-    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
-    fieldAdded(change, "assets", List.of(table.getEntityReference()));
-    dataProduct =
-        dataProductTest.patchEntityAndCheck(
-            dataProduct, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    // Step 6: Add the table to the dataProduct using the bulk add API
+    BulkAssets bulkAssets = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    jakarta.ws.rs.client.WebTarget bulkAddTarget =
+        getResource("dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add");
+    TestUtils.put(bulkAddTarget, bulkAssets, Status.OK, ADMIN_AUTH_HEADERS);
 
     // Verify table has the dataProduct
     Table tableWithDataProduct =
@@ -5508,12 +5537,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(dataProduct.getId(), fullyRestoredTable.getDataProducts().getFirst().getId());
 
     // Additional verification: Check that the dataProduct still lists the table as an asset
-    DataProduct verifyDataProduct =
-        dataProductTest.getEntity(dataProduct.getId(), "assets", ADMIN_AUTH_HEADERS);
-    assertNotNull(verifyDataProduct.getAssets());
+    // Note: Assets field is deprecated, use the paginated assets API instead
+    ResultList<EntityReference> assets =
+        dataProductTest.getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(assets);
     assertTrue(
-        verifyDataProduct.getAssets().stream()
-            .anyMatch(asset -> asset.getId().equals(table.getId())),
+        assets.getData().stream().anyMatch(asset -> asset.getId().equals(table.getId())),
         "Table should still be an asset of the data product after restore");
 
     // Cleanup: Hard delete all test entities
@@ -5522,6 +5551,54 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
     dataProductTest.deleteEntity(dataProduct.getId(), false, true, ADMIN_AUTH_HEADERS);
     domainTest.deleteEntity(domain.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testReindexEntities(TestInfo test) throws IOException, InterruptedException {
+    CreateTable createTable1 = createRequest(test, 1).withName("reindex_test_table_1");
+    Table table1 = createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 = createRequest(test, 2).withName("reindex_test_table_2");
+    Table table2 = createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 = createRequest(test, 3).withName("reindex_test_table_3");
+    Table table3 = createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> entityRefs =
+        Arrays.asList(
+            table1.getEntityReference(), table2.getEntityReference(), table3.getEntityReference());
+
+    assertDoesNotThrow(
+        () -> Entity.getSearchRepository().getSearchClient().reindexEntities(entityRefs));
+
+    Thread.sleep(2000);
+
+    Table verifyTable1 = getEntity(table1.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable1);
+    assertEquals(table1.getName(), verifyTable1.getName());
+
+    Table verifyTable2 = getEntity(table2.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable2);
+    assertEquals(table2.getName(), verifyTable2.getName());
+
+    Table verifyTable3 = getEntity(table3.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable3);
+    assertEquals(table3.getName(), verifyTable3.getName());
+
+    deleteEntity(table1.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(table2.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(table3.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testReindexEntities_EmptyList() {
+    assertDoesNotThrow(
+        () -> Entity.getSearchRepository().getSearchClient().reindexEntities(listOf()));
+  }
+
+  @Test
+  void testReindexEntities_NullList() {
+    assertDoesNotThrow(() -> Entity.getSearchRepository().getSearchClient().reindexEntities(null));
   }
 
   @Test
@@ -5587,5 +5664,398 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals("Personal", personalTag.getName());
     assertEquals("PersonalData.Personal", personalTag.getTagFQN());
     assertNull(personalTag.getReason());
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    // Critical test: Verify that bulk updates preserve user-made changes
+    // and only update the fields sent in the bulk request (incremental updates)
+
+    // Step 1: Bot creates initial table (using regular create, not bulk)
+    CreateTable botCreate =
+        createRequest(test, 1)
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    Table table = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", table.getDescription());
+    assertEquals(1, table.getTags().size());
+
+    // Step 2: User edits description and adds tag
+    String originalJson = JsonUtils.pojoToJson(table);
+    String userDescription = "User-edited description - should be preserved";
+    table.setDescription(userDescription);
+    table.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Table userEditedTable = patchEntity(table.getId(), originalJson, table, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedTable.getDescription());
+    assertEquals(2, userEditedTable.getTags().size());
+
+    // Step 3: Bot sends bulk update with new tag and different description
+    // Bot's description should be IGNORED (bot protection)
+    // Bot's tag should be MERGED (added to existing)
+    CreateTable botUpdate =
+        createRequest(test, 1)
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify user edits were preserved
+    Table verifyTable = getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    // Description should still be user's (bot protection)
+    assertEquals(
+        userDescription,
+        verifyTable.getDescription(),
+        "Bot should NOT be able to overwrite user-edited description");
+
+    // Tags should be merged (original 2 + new 1 from bot)
+    assertEquals(3, verifyTable.getTags().size(), "Tags should be merged, not replaced");
+
+    List<String> tagFqns =
+        verifyTable.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+    assertTrue(tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+
+    // Cleanup
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_ColumnSchemaUpdates(TestInfo test) throws IOException {
+    // Test that bulk updates correctly handle column schema changes
+    // Verify columns can be added, removed, renamed, and updated
+
+    // Step 1: Create table with initial columns
+    Column c1 = getColumn(C1, BIGINT, null).withDescription("Initial C1");
+    Column c2 = getColumn("C2", STRING, null).withDescription("Initial C2");
+    Column c3 = getColumn("C3", INT, null).withDescription("Initial C3");
+
+    CreateTable createTable =
+        createRequest(test, 1).withName(getEntityName(test)).withColumns(List.of(c1, c2, c3));
+
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+    assertEquals(3, table.getColumns().size());
+
+    // Step 2: Update via bulk with modified columns:
+    // - Keep C1 with updated description
+    // - Remove C2
+    // - Rename C3 to C3_renamed
+    // - Add new columns C4 and C5
+    Column c1Updated = getColumn(C1, BIGINT, null).withDescription("Updated C1 via bulk");
+    Column c3Renamed = getColumn("C3_renamed", INT, null).withDescription("Renamed from C3");
+    Column c4New = getColumn("C4", STRING, null).withDescription("New column C4");
+    Column c5New = getColumn("C5", BOOLEAN, null).withDescription("New column C5");
+
+    CreateTable updateRequest =
+        createRequest(test, 1)
+            .withName(getEntityName(test))
+            .withColumns(List.of(c1Updated, c3Renamed, c4New, c5New));
+
+    List<CreateTable> bulkRequests = List.of(updateRequest);
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(bulkTarget, bulkRequests, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertEquals(1, result.getNumberOfRowsPassed());
+
+    // Step 3: Verify column schema changes
+    Table updatedTable = getEntity(table.getId(), "columns", ADMIN_AUTH_HEADERS);
+
+    assertEquals(4, updatedTable.getColumns().size(), "Should have 4 columns after update");
+
+    // Verify C1 was updated
+    Column verifyC1 = updatedTable.getColumns().get(0);
+    assertEquals(C1, verifyC1.getName());
+    assertEquals("Updated C1 via bulk", verifyC1.getDescription());
+
+    // Verify C3_renamed exists
+    Column verifyC3Renamed =
+        updatedTable.getColumns().stream()
+            .filter(c -> c.getName().equals("C3_renamed"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(verifyC3Renamed, "C3_renamed should exist");
+    assertEquals("Renamed from C3", verifyC3Renamed.getDescription());
+
+    // Verify C4 and C5 were added
+    Column verifyC4 =
+        updatedTable.getColumns().stream()
+            .filter(c -> c.getName().equals("C4"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(verifyC4, "C4 should be added");
+
+    Column verifyC5 =
+        updatedTable.getColumns().stream()
+            .filter(c -> c.getName().equals("C5"))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(verifyC5, "C5 should be added");
+
+    // Verify C2 was removed
+    boolean hasC2 = updatedTable.getColumns().stream().anyMatch(c -> c.getName().equals("C2"));
+    assertFalse(hasC2, "C2 should be removed");
+
+    // Cleanup
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    // Test that bulk updates MERGE tags (add new, keep existing)
+    // NOT replace tags completely
+
+    // Step 1: Create table with initial tags
+    CreateTable createTable =
+        createRequest(test, 1)
+            .withName(getEntityName(test))
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+    assertEquals(2, table.getTags().size());
+
+    // Step 2: Send bulk update with additional tag (not replacing existing)
+    CreateTable updateRequest =
+        createRequest(test, 1)
+            .withName(getEntityName(test))
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(updateRequest), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify tags were merged (original 2 + new 1 = 3 total)
+    Table updatedTable = getEntity(table.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        3, updatedTable.getTags().size(), "Tags should be merged: 2 original + 1 new = 3 total");
+
+    List<String> tagFqns =
+        updatedTable.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+
+    assertTrue(
+        tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()),
+        "Original tag USER_ADDRESS should still exist");
+    assertTrue(
+        tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()),
+        "Original tag PERSONAL_DATA should still exist");
+    assertTrue(
+        tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+        "New tag PII_SENSITIVE should be added");
+
+    // Cleanup
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    // Test that while bots cannot overwrite user descriptions,
+    // admins CAN update descriptions via bulk
+
+    // Step 1: User creates table
+    CreateTable createTable = createRequest(test, 1).withDescription("User-created description");
+
+    Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+    assertEquals("User-created description", table.getDescription());
+
+    // Step 2: Admin updates description via bulk
+    String adminDescription = "Admin-updated description via bulk";
+    CreateTable adminUpdate = createRequest(test, 1).withDescription(adminDescription);
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify admin's description was applied
+    Table updatedTable = getEntity(table.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        adminDescription,
+        updatedTable.getDescription(),
+        "Admin should be able to update description via bulk");
+
+    // Cleanup
+    deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_bulkCreateOrUpdate_generatesChangeEvents(TestInfo test) throws IOException {
+    int tableCount = 3;
+    List<CreateTable> createRequests = new ArrayList<>();
+
+    for (int i = 0; i < tableCount; i++) {
+      String tableName = getEntityName(test, i);
+      CreateTable create =
+          createRequest(tableName).withDescription("Table " + i + " for bulk creation test");
+      createRequests.add(create);
+    }
+
+    WebTarget target = getResource("tables/bulk");
+    BulkOperationResult result =
+        TestUtils.put(target, createRequests, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertEquals(tableCount, result.getNumberOfRowsProcessed());
+    assertEquals(tableCount, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+
+    ResultList<ChangeEvent> changeEvents =
+        getChangeEvents(TABLE, null, null, null, ADMIN_AUTH_HEADERS);
+    assertNotNull(changeEvents);
+    assertNotNull(changeEvents.getData());
+
+    long bulkCreatedEventCount =
+        changeEvents.getData().stream()
+            .filter(
+                event ->
+                    event.getEntityType().equals(TABLE)
+                        && event.getEventType().equals(ENTITY_CREATED)
+                        && event.getUserName().equals("admin"))
+            .count();
+
+    assertTrue(
+        bulkCreatedEventCount >= tableCount,
+        "Expected at least "
+            + tableCount
+            + " change events for bulk created tables, but found "
+            + bulkCreatedEventCount);
+
+    for (CreateTable createRequest : createRequests) {
+      Optional<ChangeEvent> tableEvent =
+          changeEvents.getData().stream()
+              .filter(
+                  event ->
+                      event.getEntityType().equals(TABLE)
+                          && event.getEntityFullyQualifiedName() != null
+                          && event.getEntityFullyQualifiedName().contains(createRequest.getName()))
+              .findFirst();
+
+      assertTrue(
+          tableEvent.isPresent(), "Change event not found for table: " + createRequest.getName());
+      assertEquals(ENTITY_CREATED, tableEvent.get().getEventType());
+      assertEquals("admin", tableEvent.get().getUserName());
+    }
+
+    // Update the descriptions for bulk update test
+    for (int i = 0; i < createRequests.size(); i++) {
+      CreateTable request = createRequests.get(i);
+      createRequests.set(
+          i,
+          createRequest(request.getName()).withDescription("Updated description for table " + i));
+    }
+
+    target = getResource("tables/bulk");
+    result =
+        TestUtils.put(target, createRequests, BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(result);
+    assertEquals(tableCount, result.getNumberOfRowsProcessed());
+    assertEquals(tableCount, result.getNumberOfRowsPassed());
+    assertEquals(0, result.getNumberOfRowsFailed());
+
+    changeEvents = getChangeEvents(null, TABLE, null, null, ADMIN_AUTH_HEADERS);
+    assertNotNull(changeEvents);
+    assertNotNull(changeEvents.getData());
+
+    long bulkUpdatedEventCount =
+        changeEvents.getData().stream()
+            .filter(
+                event ->
+                    event.getEntityType().equals(TABLE)
+                        && (event.getEventType().equals(ENTITY_UPDATED)
+                            || event.getEventType().equals(ENTITY_FIELDS_CHANGED))
+                        && event.getUserName().equals("admin"))
+            .count();
+
+    assertTrue(
+        bulkUpdatedEventCount >= tableCount,
+        "Expected at least "
+            + tableCount
+            + " change events for bulk updated tables, but found "
+            + bulkUpdatedEventCount);
+  }
+
+  private String getEntityLink(Table table, Column column) {
+    // Build entity link in the format: <#E::entityType::fqn>
+    if (column == null)
+      return String.format("<#E::%s::%s>", entityType, table.getFullyQualifiedName());
+    return String.format(
+        "<#E::%s::%s::%s::%s>",
+        entityType, table.getFullyQualifiedName(), Entity.FIELD_COLUMNS, column.getName());
+  }
+
+  @Test
+  void test_recognizerFeedback_autoAppliedTagsOnColumns(TestInfo test)
+      throws HttpResponseException {
+    if (!supportsTags) {
+      return; // Skip if entity doesn't support tags
+    }
+
+    // Create an entity with auto-applied tags (simulating recognizer output)
+    TagLabel autoAppliedTag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withLabelType(TagLabel.LabelType.GENERATED)
+            .withState(TagLabel.State.SUGGESTED)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    TagLabel manualTag =
+        new TagLabel()
+            .withTagFQN("Tier.Tier1")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    Column testColumn =
+        getColumn("test_column", BIGINT, USER_ADDRESS_TAG_LABEL)
+            .withTags(listOf(autoAppliedTag, manualTag));
+    CreateTable create =
+        createRequest(getEntityName(test))
+            .withColumns(listOf(testColumn))
+            .withTableConstraints(emptyList());
+
+    Table entity = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Submit feedback for false positive on auto-applied tag
+    RecognizerFeedback feedback =
+        new RecognizerFeedback()
+            .withEntityLink(getEntityLink(entity, testColumn))
+            .withTagFQN("PII.Sensitive")
+            .withFeedbackType(RecognizerFeedback.FeedbackType.FALSE_POSITIVE)
+            .withUserReason(RecognizerFeedback.UserReason.NOT_SENSITIVE_DATA)
+            .withUserComments("This field contains product IDs, not personal information");
+
+    // Submit feedback via API
+    RecognizerFeedback submittedFeedback = submitRecognizerFeedback(feedback, ADMIN_AUTH_HEADERS);
+    assertNotNull(submittedFeedback.getId());
+
+    // Verify the auto-applied tag is removed after feedback processing
+    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+    List<Column> results =
+        tableRepository
+            .getTableColumnsByFQN(
+                entity.getFullyQualifiedName(), Integer.MAX_VALUE, 0, "tags", null, null, null)
+            .getData();
+
+    assertEquals(1, results.size());
+    assertTagsDoNotContain(results.getFirst().getTags(), listOf(autoAppliedTag));
+    assertTagsContain(results.getFirst().getTags(), listOf(manualTag));
   }
 }

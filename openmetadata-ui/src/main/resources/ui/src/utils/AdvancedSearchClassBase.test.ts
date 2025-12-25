@@ -10,9 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { MULTISELECT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
+import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchUtils';
+import { getEntityName } from './EntityUtils';
 
 jest.mock('../rest/miscAPI', () => ({
   getAggregateFieldOptions: jest.fn().mockImplementation(() =>
@@ -24,6 +28,14 @@ jest.mock('../rest/miscAPI', () => ({
 
 jest.mock('./JSONLogicSearchClassBase', () => ({
   getQueryBuilderFields: jest.fn(),
+}));
+
+jest.mock('./EntityUtils', () => ({
+  getEntityName: jest.fn(),
+}));
+
+jest.mock('./AdvancedSearchUtils', () => ({
+  getCustomPropertyAdvanceSearchEnumOptions: jest.fn(),
 }));
 
 describe('AdvancedSearchClassBase', () => {
@@ -42,6 +54,7 @@ describe('AdvancedSearchClassBase', () => {
       'deleted',
       EntityFields.OWNERS,
       EntityFields.DOMAINS,
+      EntityFields.DATA_PRODUCT,
       'serviceType',
       EntityFields.TAG,
       EntityFields.CERTIFICATION,
@@ -195,5 +208,64 @@ describe('getEntitySpecificQueryBuilderFields', () => {
     ]);
 
     expect(Object.keys(result)).toEqual([]);
+  });
+});
+
+describe('getCustomPropertiesSubFields', () => {
+  let advancedSearchClassBase: AdvancedSearchClassBase;
+  const mockGetEntityName = getEntityName as jest.Mock;
+  const mockGetCustomPropertyAdvanceSearchEnumOptions =
+    getCustomPropertyAdvanceSearchEnumOptions as jest.Mock;
+
+  beforeEach(() => {
+    advancedSearchClassBase = new AdvancedSearchClassBase();
+    jest.clearAllMocks();
+  });
+
+  it('should return correct configuration for enum type custom property', () => {
+    const mockField = {
+      name: 'statusField',
+      type: 'enum',
+      customPropertyConfig: {
+        config: {
+          values: ['ACTIVE', 'INACTIVE', 'PENDING'],
+        },
+      },
+    };
+
+    const mockLabel = 'Status Field';
+    const mockEnumOptions = [
+      { value: 'ACTIVE', title: 'Active' },
+      { value: 'INACTIVE', title: 'Inactive' },
+      { value: 'PENDING', title: 'Pending' },
+    ];
+
+    mockGetEntityName.mockReturnValue(mockLabel);
+    mockGetCustomPropertyAdvanceSearchEnumOptions.mockReturnValue(
+      mockEnumOptions
+    );
+
+    const result = advancedSearchClassBase.getCustomPropertiesSubFields(
+      mockField as CustomPropertySummary
+    );
+
+    expect(mockGetEntityName).toHaveBeenCalledWith(mockField);
+    expect(mockGetCustomPropertyAdvanceSearchEnumOptions).toHaveBeenCalledWith([
+      'ACTIVE',
+      'INACTIVE',
+      'PENDING',
+    ]);
+
+    expect(result).toEqual({
+      subfieldsKey: 'statusField',
+      dataObject: {
+        type: 'multiselect',
+        label: mockLabel,
+        operators: MULTISELECT_FIELD_OPERATORS,
+        fieldSettings: {
+          listValues: mockEnumOptions,
+        },
+      },
+    });
   });
 });

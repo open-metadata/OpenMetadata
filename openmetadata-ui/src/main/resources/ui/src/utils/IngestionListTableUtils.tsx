@@ -14,8 +14,7 @@
 import Icon from '@ant-design/icons';
 import { Col, Row, Tag, Typography } from 'antd';
 import classNames from 'classnames';
-import cronstrue from 'cronstrue/i18n';
-import { capitalize, isUndefined, startCase } from 'lodash';
+import { isUndefined, startCase } from 'lodash';
 import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
 import { ReactComponent as PausedIcon } from '../assets/svg/ic-pause.svg';
 import { ReactComponent as TimeDateIcon } from '../assets/svg/time-date.svg';
@@ -24,8 +23,8 @@ import {
   IngestionPipeline,
   PipelineType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { getScheduleDescriptionTexts } from './date-time/DateTimeUtils';
 import { getEntityName, highlightSearchText } from './EntityUtils';
-import { getCurrentLocaleForConstrue } from './i18next/i18nextUtil';
 import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './StringsUtils';
 
@@ -79,24 +78,8 @@ export const renderScheduleField = (_: string, record: IngestionPipeline) => {
       </Typography.Text>
     );
   }
-  const scheduleDescription = cronstrue.toString(
-    record.airflowConfig.scheduleInterval,
-    {
-      use24HourTimeFormat: false,
-      verbose: true,
-      locale: getCurrentLocaleForConstrue(), // To get localized string
-    }
-  );
-
-  const firstSentenceEndIndex = scheduleDescription.indexOf(',');
-
-  const descriptionFirstPart = scheduleDescription
-    .slice(0, firstSentenceEndIndex)
-    .trim();
-
-  const descriptionSecondPart = capitalize(
-    scheduleDescription.slice(firstSentenceEndIndex + 1).trim()
-  );
+  const { descriptionFirstPart, descriptionSecondPart } =
+    getScheduleDescriptionTexts(record.airflowConfig.scheduleInterval);
 
   return (
     <Row gutter={[8, 8]} wrap={false}>

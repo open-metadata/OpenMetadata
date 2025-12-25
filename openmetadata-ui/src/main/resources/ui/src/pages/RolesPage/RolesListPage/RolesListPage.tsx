@@ -22,13 +22,12 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import Table from '../../../components/common/Table/Table';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { NO_DATA_PLACEHOLDER, ROUTES } from '../../../constants/constants';
+import { ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
@@ -55,6 +54,7 @@ import {
   getPolicyWithFqnPath,
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
+import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './roles-list.less';
 
@@ -72,6 +72,7 @@ const RolesListPage = () => {
     handlePageSizeChange,
     handlePagingChange,
     showPagination,
+    pagingCursor,
   } = usePaging();
 
   const { permissions } = usePermissionProvider();
@@ -121,17 +122,7 @@ const RolesListPage = () => {
           </Link>
         ),
       },
-      {
-        title: t('label.description').toString(),
-        dataIndex: 'description',
-        key: 'description',
-        render: (_, record) =>
-          isEmpty(record?.description) ? (
-            NO_DATA_PLACEHOLDER
-          ) : (
-            <RichTextEditorPreviewerNew markdown={record?.description ?? ''} />
-          ),
-      },
+      ...descriptionTableObject(),
       {
         title: t('label.policy-plural').toString(),
         dataIndex: 'policies',
@@ -151,7 +142,7 @@ const RolesListPage = () => {
                     {getEntityName(policy)}
                   </Link>
                 ) : (
-                  <Tooltip key={uniqueId()} title={NO_PERMISSION_TO_VIEW}>
+                  <Tooltip key={uniqueId()} title={t(NO_PERMISSION_TO_VIEW)}>
                     {getEntityName(policy)}
                   </Tooltip>
                 )
@@ -173,7 +164,7 @@ const RolesListPage = () => {
                         ) : (
                           <Tooltip
                             key={uniqueId()}
-                            title={NO_PERMISSION_TO_VIEW}>
+                            title={t(NO_PERMISSION_TO_VIEW)}>
                             {getEntityName(policy)}
                           </Tooltip>
                         )
@@ -208,7 +199,7 @@ const RolesListPage = () => {
                   ? t('label.delete-entity', {
                       entity: t('label.role-plural').toString(),
                     })
-                  : NO_PERMISSION_FOR_ACTION
+                  : t(NO_PERMISSION_FOR_ACTION)
               }>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}
@@ -224,7 +215,7 @@ const RolesListPage = () => {
     ];
   }, []);
 
-  const fetchRoles = async (paging?: Paging) => {
+  const fetchRoles = async (paging?: Partial<Paging>) => {
     setIsLoading(true);
     try {
       const data = await getRoles(
@@ -253,18 +244,28 @@ const RolesListPage = () => {
   };
 
   const handlePaging = ({ currentPage, cursorType }: PagingHandlerParams) => {
-    handlePageChange(currentPage);
     if (cursorType && paging) {
       fetchRoles({
         [cursorType]: paging[cursorType],
         total: paging.total,
       } as Paging);
+      handlePageChange(
+        currentPage,
+        { cursorType, cursorValue: paging[cursorType] },
+        pageSize
+      );
     }
   };
 
   useEffect(() => {
-    fetchRoles();
-  }, [pageSize]);
+    const { cursorType, cursorValue } = pagingCursor ?? {};
+
+    if (cursorType && cursorValue) {
+      fetchRoles({ [cursorType]: cursorValue });
+    } else {
+      fetchRoles();
+    }
+  }, [pageSize, pagingCursor]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.role-plural').toString()}>
@@ -277,7 +278,12 @@ const RolesListPage = () => {
         </Col>
         <Col span={24}>
           <Space className="w-full justify-between">
-            <PageHeader data={PAGE_HEADERS.ROLES} />
+            <PageHeader
+              data={{
+                header: t(PAGE_HEADERS.ROLES.header),
+                subHeader: t(PAGE_HEADERS.ROLES.subHeader),
+              }}
+            />
 
             {addRolePermission && (
               <Button

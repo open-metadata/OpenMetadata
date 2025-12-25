@@ -38,6 +38,7 @@ import { getFilters, tabsInfo } from './NotificationBox.utils';
 import NotificationFeedCard from './NotificationFeedCard.component';
 
 const NotificationBox = ({
+  activeTab,
   hasMentionNotification,
   hasTaskNotification,
   onMarkTaskNotificationRead,
@@ -71,9 +72,11 @@ const NotificationBox = ({
       // For mention notifications, get the actual user who made the mention from posts
       let actualUser = mainFeed.from;
       let actualTimestamp = mainFeed.postTs;
+      let feedType = feed.type || ThreadType.Conversation;
+      const isConversationFeed = feed.type === ThreadType.Conversation;
 
       if (
-        feed.type === ThreadType.Conversation &&
+        activeTab === ThreadType.Conversation &&
         feed.posts &&
         feed.posts.length > 0
       ) {
@@ -85,9 +88,10 @@ const NotificationBox = ({
           )
           .sort((a, b) => (b.postTs ?? 0) - (a.postTs ?? 0))[0];
 
-        if (mentionPost && mentionPost.postTs !== undefined) {
+        if (mentionPost?.postTs !== undefined) {
           actualUser = mentionPost.from;
           actualTimestamp = mentionPost.postTs;
+          feedType = ThreadType.Conversation;
         }
       }
 
@@ -96,7 +100,8 @@ const NotificationBox = ({
           createdBy={actualUser}
           entityFQN={entityFQN as string}
           entityType={entityType as string}
-          feedType={feed.type || ThreadType.Conversation}
+          feedType={feedType}
+          isConversationFeed={isConversationFeed}
           key={`${actualUser} ${mainFeed.id}`}
           task={feed}
           timestamp={actualTimestamp}
@@ -106,8 +111,8 @@ const NotificationBox = ({
   }, [notifications]);
 
   const getNotificationData = (
-    threadType: ThreadType,
-    feedFilter: FeedFilter
+    feedFilter: FeedFilter,
+    threadType?: ThreadType
   ) => {
     setIsLoading(true);
     getFeedsWithFilter(currentUser?.id, feedFilter, undefined, threadType)
@@ -132,7 +137,7 @@ const NotificationBox = ({
       onTabChange(key);
       const { threadType, feedFilter } = getFilters(key as ThreadType);
 
-      getNotificationData(threadType, feedFilter);
+      getNotificationData(feedFilter, threadType);
 
       setViewAllPath(
         getUserPath(
@@ -156,7 +161,7 @@ const NotificationBox = ({
   );
 
   useEffect(() => {
-    getNotificationData(ThreadType.Task, FeedFilter.ASSIGNED_TO);
+    getNotificationData(FeedFilter.ASSIGNED_TO, ThreadType.Task);
   }, []);
 
   const getTabTitle = (name: string, key: string) => {
