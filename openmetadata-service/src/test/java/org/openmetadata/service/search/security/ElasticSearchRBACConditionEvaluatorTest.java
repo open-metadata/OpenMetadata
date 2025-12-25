@@ -193,8 +193,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     // Evaluate the condition through RBAC evaluator
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-    String generatedQuery = elasticQuery.toString();
+    Query elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = serializeQueryToJson(elasticQuery);
 
     // Verify that the generated query correctly contains reviewer information
     assertTrue(generatedQuery.contains("reviewers.id"), "The query should contain 'reviewers.id'.");
