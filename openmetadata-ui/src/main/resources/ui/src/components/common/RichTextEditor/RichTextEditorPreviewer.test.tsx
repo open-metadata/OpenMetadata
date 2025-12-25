@@ -25,7 +25,6 @@ import { PreviewerProp } from './RichTextEditor.interface';
 import RichTextEditorPreviewer from './RichTextEditorPreviewer';
 
 const mockDescription =
-  // eslint-disable-next-line max-len
   '**Headings**\n\n# H1\n## H2\n### H3\n\n***\n**Bold**\n\n**bold text**\n\n\n***\n**Italic**\n\n*italic*\n\n***\n**BlockQuote**\n\n> blockquote\n\n***\n**Ordered List**\n\n1. First item\n2. Second item\n3. Third item\n\n\n***\n**Unordered List**\n\n- First item\n- Second item\n- Third item\n\n\n***\n**Code**\n\n`code`\n\n\n***\n**Horizontal Rule**\n\n---\n\n\n***\n**Link**\n[title](https://www.example.com)\n\n\n***\n**Image**\n\n![alt text](https://github.com/open-metadata/OpenMetadata/blob/main/docs/.gitbook/assets/openmetadata-banner.png?raw=true)\n\n\n***\n**Table**\n\n| Syntax | Description |\n| ----------- | ----------- |\n| Header | Title |\n| Paragraph | Text |\n***\n\n**Fenced Code Block**\n\n```\n{\n  "firstName": "John",\n  "lastName": "Smith",\n  "age": 25\n}\n```\n\n\n***\n**Strikethrough**\n~~The world is flat.~~\n';
 
 const mockCodeBlockMarkdown =
@@ -641,10 +640,9 @@ describe('Test RichTextEditor Previewer Component', () => {
 
   it('Should apply custom className to container', () => {
     const customClass = 'custom-previewer-class';
-    render(
-      <RichTextEditorPreviewer {...mockProp} className={customClass} />,
-      { wrapper: MemoryRouter }
-    );
+    render(<RichTextEditorPreviewer {...mockProp} className={customClass} />, {
+      wrapper: MemoryRouter,
+    });
 
     const container = screen.getByTestId('viewer-container');
 
@@ -708,40 +706,36 @@ describe('Test RichTextEditor Previewer Component', () => {
   });
 
   it('Should not show read more button when showReadMoreBtn is false', () => {
-    render(
-      <RichTextEditorPreviewer {...mockProp} showReadMoreBtn={false} />,
-      { wrapper: MemoryRouter }
-    );
+    render(<RichTextEditorPreviewer {...mockProp} showReadMoreBtn={false} />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(screen.queryByTestId('read-more-button')).not.toBeInTheDocument();
   });
 
   it('Should format HTML content using formatContent utility', () => {
     const htmlMarkdown = '<p>Test HTML content</p>';
-    render(
-      <RichTextEditorPreviewer {...mockProp} markdown={htmlMarkdown} />,
-      { wrapper: MemoryRouter }
-    );
+    render(<RichTextEditorPreviewer {...mockProp} markdown={htmlMarkdown} />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
   });
 
   it('Should handle markdown without HTML tags', () => {
     const plainMarkdown = 'Plain text without any HTML';
-    render(
-      <RichTextEditorPreviewer {...mockProp} markdown={plainMarkdown} />,
-      { wrapper: MemoryRouter }
-    );
+    render(<RichTextEditorPreviewer {...mockProp} markdown={plainMarkdown} />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(screen.getByText(plainMarkdown)).toBeInTheDocument();
   });
 
   it('Should render latex content using replaceLatex', () => {
     const latexMarkdown = '$$latex \\frac{a}{b}$$';
-    render(
-      <RichTextEditorPreviewer {...mockProp} markdown={latexMarkdown} />,
-      { wrapper: MemoryRouter }
-    );
+    render(<RichTextEditorPreviewer {...mockProp} markdown={latexMarkdown} />, {
+      wrapper: MemoryRouter,
+    });
 
     expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
   });
@@ -775,7 +769,7 @@ describe('Test RichTextEditor Previewer Component', () => {
   });
 
   it('Should render with default maxLength when not specified', () => {
-    const { maxLength, ...propsWithoutMaxLength } = mockProp;
+    const { maxLength: _maxLength, ...propsWithoutMaxLength } = mockProp;
     render(<RichTextEditorPreviewer {...propsWithoutMaxLength} />, {
       wrapper: MemoryRouter,
     });
@@ -836,10 +830,7 @@ describe('Test RichTextEditor Previewer Component', () => {
   it('Should handle extendedAutolinks in Viewer', () => {
     const markdownWithAutolink = 'Visit https://example.com for more info';
     render(
-      <RichTextEditorPreviewer
-        {...mockProp}
-        markdown={markdownWithAutolink}
-      />,
+      <RichTextEditorPreviewer {...mockProp} markdown={markdownWithAutolink} />,
       { wrapper: MemoryRouter }
     );
 
@@ -870,9 +861,7 @@ describe('Test RichTextEditor Previewer Component', () => {
 
     expect(screen.getByTestId('read-more-button')).toBeInTheDocument();
 
-    rerender(
-      <RichTextEditorPreviewer {...mockProp} isDescriptionExpanded />
-    );
+    rerender(<RichTextEditorPreviewer {...mockProp} isDescriptionExpanded />);
 
     expect(screen.getByTestId('read-less-button')).toBeInTheDocument();
   });
