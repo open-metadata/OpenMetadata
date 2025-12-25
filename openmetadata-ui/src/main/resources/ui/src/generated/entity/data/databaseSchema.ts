@@ -101,6 +101,10 @@ export interface DatabaseSchema {
      */
     retentionPeriod?: string;
     /**
+     * Reviewers of this schema.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Link to the database cluster/service where this schema is hosted in.
      */
     service: EntityReference;

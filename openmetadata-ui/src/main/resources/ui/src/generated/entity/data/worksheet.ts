@@ -101,6 +101,10 @@ export interface Worksheet {
      */
     owners?: EntityReference[];
     /**
+     * Reviewers of this worksheet.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Number of rows in the worksheet
      */
     rowCount?: number;

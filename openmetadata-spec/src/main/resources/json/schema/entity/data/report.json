@@ -51,6 +51,10 @@
       "description": "Owners of this Report.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "reviewers": {
+      "description": "Reviewers of this Report.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "service": {
       "description": "Link to service where this report is hosted in.",
       "$ref": "../../type/entityReference.json"
