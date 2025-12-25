@@ -26,12 +26,11 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
-import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
-import static org.openmetadata.service.Entity.getEntities;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
@@ -40,6 +39,7 @@ import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
 import com.google.common.collect.Streams;
 import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -64,10 +64,11 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.tests.CustomMetric;
@@ -79,9 +80,11 @@ import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DataModel;
+import org.openmetadata.schema.type.EntityProfile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.PipelineObservability;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.SystemProfile;
@@ -98,6 +101,7 @@ import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
@@ -109,21 +113,22 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.ValidatorUtil;
 
 @Slf4j
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
+  public static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
   // Table fields that can be updated in a PUT request
-  static final String UPDATE_FIELDS = "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
+  public static final String UPDATE_FIELDS =
+      "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -133,6 +138,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
+  public static final String TABLE_PIPELINE_OBSERVABILITY_EXTENSION = "table.pipelineObservability";
   public static final String TABLE_COLUMN_EXTENSION = "table.column";
   public static final String TABLE_EXTENSION = "table.table";
   public static final String CUSTOM_METRICS_EXTENSION = "customMetrics.";
@@ -157,11 +163,11 @@ public class TableRepository extends EntityRepository<Table> {
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);
     fieldFetchers.put("testSuite", this::fetchAndSetTestSuites);
-    fieldFetchers.put("queries", this::fetchAndSetQueries);
     fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndSetTableProfilerConfigs);
     fieldFetchers.put("joins", this::fetchAndSetJoins);
     fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+    fieldFetchers.put("pipelineObservability", this::fetchAndSetPipelineObservability);
   }
 
   @Override
@@ -192,15 +198,6 @@ public class TableRepository extends EntityRepository<Table> {
       for (Column column : table.getColumns()) {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
       }
-    }
-    if (fields.contains("queries")) {
-      List<Query> queriesEntity =
-          getEntities(
-              listOrEmpty(findTo(table.getId(), TABLE, Relationship.MENTIONED_IN, QUERY)),
-              "id",
-              ALL);
-      List<String> queries = listOrEmpty(queriesEntity).stream().map(Query::getQuery).toList();
-      table.setQueries(queries);
     }
   }
 
@@ -246,13 +243,6 @@ public class TableRepository extends EntityRepository<Table> {
     setFieldFromMap(true, tables, batchFetchTestSuites(tables), Table::setTestSuite);
   }
 
-  private void fetchAndSetQueries(List<Table> tables, Fields fields) {
-    if (!fields.contains("queries") || tables == null || tables.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, tables, batchFetchQueries(tables), Table::setQueries);
-  }
-
   private void fetchAndSetTableProfilerConfigs(List<Table> tables, Fields fields) {
     if (!fields.contains(TABLE_PROFILER_CONFIG) || tables == null || tables.isEmpty()) {
       return;
@@ -280,15 +270,29 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private void fetchAndSetColumnTags(List<Table> tables, Fields fields) {
-    if (!fields.contains(FIELD_TAGS)
-        || !fields.contains(COLUMN_FIELD)
-        || tables == null
-        || tables.isEmpty()) {
+    if (!fields.contains(FIELD_TAGS) || tables == null || tables.isEmpty()) {
       return;
     }
-    // Use bulk tag fetching to avoid N+1 queries
-    bulkPopulateEntityFieldTags(
-        tables, entityType, Table::getColumns, Table::getFullyQualifiedName);
+    List<String> entityFQNs = tables.stream().map(Table::getFullyQualifiedName).toList();
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+    for (Table table : tables) {
+      table.setTags(
+          addDerivedTagsGracefully(
+              tagsMap.getOrDefault(table.getFullyQualifiedName(), Collections.emptyList())));
+    }
+
+    if (fields.contains(COLUMN_FIELD)) {
+      bulkPopulateEntityFieldTags(
+          tables, entityType, Table::getColumns, Table::getFullyQualifiedName);
+    }
+  }
+
+  private void fetchAndSetPipelineObservability(List<Table> tables, Fields fields) {
+    if (!fields.contains("pipelineObservability") || tables == null || tables.isEmpty()) {
+      return;
+    }
+    setFieldFromMap(
+        true, tables, batchFetchPipelineObservability(tables), Table::setPipelineObservability);
   }
 
   @Override
@@ -502,6 +506,153 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  @Transaction
+  public Table addPipelineObservability(
+      UUID tableId, List<PipelineObservability> pipelineObservabilityList) {
+    // Validate the request content
+    Table table = find(tableId, NON_DELETED);
+
+    // Store each pipeline observability individually using pipeline FQN as unique key
+    for (PipelineObservability observability : pipelineObservabilityList) {
+      if (observability.getPipeline() != null
+          && observability.getPipeline().getFullyQualifiedName() != null) {
+        String pipelineFqn = observability.getPipeline().getFullyQualifiedName();
+        String extension = TABLE_PIPELINE_OBSERVABILITY_EXTENSION + "." + pipelineFqn;
+
+        daoCollection
+            .entityExtensionDAO()
+            .insert(
+                tableId, extension, "pipelineObservability", JsonUtils.pojoToJson(observability));
+
+        // Index pipeline status data to Elasticsearch for Trends and Metrics APIs
+        try {
+          indexPipelineStatus(table, observability);
+        } catch (Exception e) {
+          LOG.error(
+              "Failed to index pipeline status for table {} and pipeline {}: {}",
+              table.getFullyQualifiedName(),
+              pipelineFqn,
+              e.getMessage(),
+              e);
+        }
+      }
+    }
+
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    // Return table with updated observability data
+    return table.withPipelineObservability(getAllPipelineObservability(table));
+  }
+
+  @Transaction
+  public Table addSinglePipelineObservability(
+      UUID tableId, PipelineObservability pipelineObservability) {
+    // Validate the request content
+    Table table = find(tableId, NON_DELETED);
+
+    if (pipelineObservability.getPipeline() != null
+        && pipelineObservability.getPipeline().getFullyQualifiedName() != null) {
+      String pipelineFqn = pipelineObservability.getPipeline().getFullyQualifiedName();
+      String extension = TABLE_PIPELINE_OBSERVABILITY_EXTENSION + "." + pipelineFqn;
+
+      daoCollection
+          .entityExtensionDAO()
+          .insert(
+              tableId,
+              extension,
+              "pipelineObservability",
+              JsonUtils.pojoToJson(pipelineObservability));
+
+      // Index pipeline status data to Elasticsearch for Trends and Metrics APIs
+      try {
+        indexPipelineStatus(table, pipelineObservability);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to index pipeline status for table {} and pipeline {}: {}",
+            table.getFullyQualifiedName(),
+            pipelineFqn,
+            e.getMessage(),
+            e);
+      }
+    }
+
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    return table.withPipelineObservability(getAllPipelineObservability(table));
+  }
+
+  public List<PipelineObservability> getPipelineObservability(UUID tableId) {
+    // Validate the request content
+    Table table = find(tableId, NON_DELETED);
+    return getAllPipelineObservability(table);
+  }
+
+  public List<PipelineObservability> getPipelineObservabilityByName(String tableFqn) {
+    // Validate the request content
+    Table table = findByName(tableFqn, NON_DELETED);
+    return getAllPipelineObservability(table);
+  }
+
+  private List<PipelineObservability> getAllPipelineObservability(Table table) {
+    List<ExtensionRecord> extensionRecords =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensions(table.getId(), TABLE_PIPELINE_OBSERVABILITY_EXTENSION);
+
+    List<PipelineObservability> pipelineObservabilityList = new ArrayList<>();
+    for (ExtensionRecord extensionRecord : extensionRecords) {
+      PipelineObservability observability =
+          JsonUtils.readValue(extensionRecord.extensionJson(), PipelineObservability.class);
+
+      // Enrich with serviceType if not already present
+      if (observability.getServiceType() == null && observability.getPipeline() != null) {
+        try {
+          Pipeline pipeline =
+              Entity.getEntity(
+                  Entity.PIPELINE, observability.getPipeline().getId(), "", Include.NON_DELETED);
+          if (pipeline != null && pipeline.getServiceType() != null) {
+            observability.setServiceType(pipeline.getServiceType());
+          }
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to fetch serviceType for pipeline {}: {}",
+              observability.getPipeline().getFullyQualifiedName(),
+              e.getMessage());
+        }
+      }
+
+      pipelineObservabilityList.add(observability);
+    }
+
+    return pipelineObservabilityList;
+  }
+
+  @Transaction
+  public Table deletePipelineObservability(UUID tableId) {
+    // Validate the request content and delete all pipeline observability data
+    Table table = find(tableId, NON_DELETED);
+
+    List<ExtensionRecord> extensionRecords =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensions(tableId, TABLE_PIPELINE_OBSERVABILITY_EXTENSION);
+
+    for (ExtensionRecord record : extensionRecords) {
+      daoCollection.entityExtensionDAO().delete(tableId, record.extensionName());
+    }
+
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    return table;
+  }
+
+  @Transaction
+  public Table deleteSinglePipelineObservability(UUID tableId, String pipelineFqn) {
+    // Validate the request content and delete specific pipeline observability
+    Table table = find(tableId, NON_DELETED);
+    String extension = TABLE_PIPELINE_OBSERVABILITY_EXTENSION + "." + pipelineFqn;
+    daoCollection.entityExtensionDAO().delete(tableId, extension);
+    setFieldsInternal(table, Fields.EMPTY_FIELDS);
+    return table.withPipelineObservability(getAllPipelineObservability(table));
+  }
+
   public TableProfilerConfig getTableProfilerConfig(Table table) {
     return JsonUtils.readValue(
         daoCollection
@@ -584,32 +735,54 @@ public class TableRepository extends EntityRepository<Table> {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);
     validateProfilerTimestamps(createTableProfile);
+    TableProfile tableProfile = createTableProfile.getTableProfile();
+    EntityProfile entityProfile;
+    entityProfile =
+        new EntityProfile()
+            .withProfileData(tableProfile)
+            .withId(UUID.randomUUID())
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.TABLE)
+            .withTimestamp(tableProfile.getTimestamp())
+            .withEntityReference(table.getEntityReference());
     daoCollection
         .profilerDataTimeSeriesDao()
         .insert(
             table.getFullyQualifiedName(),
             TABLE_PROFILE_EXTENSION,
             "tableProfile",
-            JsonUtils.pojoToJson(createTableProfile.getTableProfile()));
+            JsonUtils.pojoToJson(entityProfile));
 
     for (ColumnProfile columnProfile : createTableProfile.getColumnProfile()) {
-      // Validate all the columns
       Column column = getColumnNameForProfiler(table.getColumns(), columnProfile, null);
       if (column == null) {
         throw new IllegalArgumentException("Invalid column name " + columnProfile.getName());
       }
+      entityProfile =
+          new EntityProfile()
+              .withProfileData(columnProfile)
+              .withId(UUID.randomUUID())
+              .withProfileType(CreateEntityProfile.ProfileTypeEnum.COLUMN)
+              .withTimestamp(columnProfile.getTimestamp())
+              .withEntityReference(table.getEntityReference());
       daoCollection
           .profilerDataTimeSeriesDao()
           .insert(
               column.getFullyQualifiedName(),
               TABLE_COLUMN_PROFILE_EXTENSION,
               "columnProfile",
-              JsonUtils.pojoToJson(columnProfile));
+              JsonUtils.pojoToJson(entityProfile));
     }
 
     List<SystemProfile> systemProfiles = createTableProfile.getSystemProfile();
     if (systemProfiles != null && !systemProfiles.isEmpty()) {
       for (SystemProfile systemProfile : createTableProfile.getSystemProfile()) {
+        entityProfile =
+            new EntityProfile()
+                .withProfileData(systemProfile)
+                .withId(UUID.randomUUID())
+                .withProfileType(CreateEntityProfile.ProfileTypeEnum.SYSTEM)
+                .withTimestamp(systemProfile.getTimestamp())
+                .withEntityReference(table.getEntityReference());
         // system metrics timestamp is the one of the operation. We'll need to
         // update the entry if it already exists in the database
         String storedSystemProfile =
@@ -626,7 +799,7 @@ public class TableRepository extends EntityRepository<Table> {
                 table.getFullyQualifiedName(),
                 SYSTEM_PROFILE_EXTENSION,
                 "systemProfile",
-                JsonUtils.pojoToJson(systemProfile),
+                JsonUtils.pojoToJson(entityProfile),
                 systemProfile.getTimestamp(),
                 systemProfile.getOperation().value(),
                 storedSystemProfile != null);
@@ -673,22 +846,37 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) {
+    List<EntityProfile> entityProfiles;
     List<TableProfile> tableProfiles;
-    tableProfiles =
+    entityProfiles =
         JsonUtils.readObjects(
             daoCollection
                 .profilerDataTimeSeriesDao()
                 .listBetweenTimestampsByOrder(
                     fqn, TABLE_PROFILE_EXTENSION, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC),
-            TableProfile.class);
+            EntityProfile.class);
+    tableProfiles =
+        entityProfiles != null
+            ? entityProfiles.stream()
+                .map(
+                    ep ->
+                        (TableProfile)
+                            EntityProfileRepository.deserializeProfileData(ep).getProfileData())
+                .toList()
+            : Collections.emptyList();
     return new ResultList<>(
         tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
 
   public ResultList<ColumnProfile> getColumnProfiles(
-      String fqn, Long startTs, Long endTs, boolean authorizePII) {
+      String fqn,
+      Long startTs,
+      Long endTs,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    List<EntityProfile> entityProfiles;
     List<ColumnProfile> columnProfiles;
-    columnProfiles =
+    entityProfiles =
         JsonUtils.readObjects(
             daoCollection
                 .profilerDataTimeSeriesDao()
@@ -698,21 +886,32 @@ public class TableRepository extends EntityRepository<Table> {
                     startTs,
                     endTs,
                     EntityTimeSeriesDAO.OrderBy.DESC),
-            ColumnProfile.class);
+            EntityProfile.class);
+    columnProfiles =
+        entityProfiles != null
+            ? entityProfiles.stream()
+                .map(
+                    ep ->
+                        (ColumnProfile)
+                            EntityProfileRepository.deserializeProfileData(ep).getProfileData())
+                .toList()
+            : Collections.emptyList();
     ResultList<ColumnProfile> columnProfileResultList =
         new ResultList<>(
             columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
-    if (!authorizePII) {
-      // Mask the PII data
-      columnProfileResultList.setData(
-          PIIMasker.getColumnProfile(fqn, columnProfileResultList.getData()));
-    }
+
+    // Mask the PII data
+    columnProfileResultList.setData(
+        PIIMasker.getColumnProfile(
+            fqn, columnProfileResultList.getData(), authorizer, securityContext));
+
     return columnProfileResultList;
   }
 
   public ResultList<SystemProfile> getSystemProfiles(String fqn, Long startTs, Long endTs) {
+    List<EntityProfile> entityProfiles;
     List<SystemProfile> systemProfiles;
-    systemProfiles =
+    entityProfiles =
         JsonUtils.readObjects(
             daoCollection
                 .profilerDataTimeSeriesDao()
@@ -722,20 +921,36 @@ public class TableRepository extends EntityRepository<Table> {
                     startTs,
                     endTs,
                     EntityTimeSeriesDAO.OrderBy.DESC),
-            SystemProfile.class);
+            EntityProfile.class);
+
+    systemProfiles =
+        entityProfiles != null
+            ? entityProfiles.stream()
+                .map(
+                    ep ->
+                        (SystemProfile)
+                            EntityProfileRepository.deserializeProfileData(ep).getProfileData())
+                .toList()
+            : Collections.emptyList();
     return new ResultList<>(
         systemProfiles, startTs.toString(), endTs.toString(), systemProfiles.size());
   }
 
   private void setColumnProfile(List<Column> columnList) {
     for (Column column : listOrEmpty(columnList)) {
-      ColumnProfile columnProfile =
+      ColumnProfile columnProfile = null;
+      EntityProfile entityProfile =
           JsonUtils.readValue(
               daoCollection
                   .profilerDataTimeSeriesDao()
                   .getLatestExtension(
                       column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
-              ColumnProfile.class);
+              EntityProfile.class);
+      if (entityProfile != null) {
+        columnProfile =
+            (ColumnProfile)
+                EntityProfileRepository.deserializeProfileData(entityProfile).getProfileData();
+      }
       column.setProfile(columnProfile);
       if (column.getChildren() != null) {
         setColumnProfile(column.getChildren());
@@ -744,25 +959,38 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table getLatestTableProfile(
-      String fqn, boolean authorizePII, boolean includeColumnProfile) {
+      String fqn,
+      boolean includeColumnProfile,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = findByName(fqn, ALL);
-    TableProfile tableProfile =
+
+    EntityProfile entityProfile =
         JsonUtils.readValue(
             daoCollection
                 .profilerDataTimeSeriesDao()
                 .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
-            TableProfile.class);
-    table.setProfile(tableProfile);
+            EntityProfile.class);
+
+    if (entityProfile == null) {
+      table.setProfile(null);
+    } else {
+      TableProfile tableProfile =
+          (TableProfile)
+              EntityProfileRepository.deserializeProfileData(entityProfile).getProfileData();
+      table.setProfile(tableProfile);
+    }
+
     if (includeColumnProfile) {
       setColumnProfile(table.getColumns());
     }
 
-    // Set the column tags. Will be used to hide the data
-    if (!authorizePII) {
-      populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
-      table.setColumns(PIIMasker.getTableProfile(table.getColumns()));
-    }
+    // Always populate field tags; the masking strategy decides what to do with them
+    populateEntityFieldTags(entityType, table.getColumns(), table.getFullyQualifiedName(), true);
 
+    List<Column> maskedColumns =
+        PIIMasker.getTableProfile(fqn, table.getColumns(), authorizer, securityContext);
+    table.setColumns(maskedColumns);
     return table;
   }
 
@@ -1421,7 +1649,7 @@ public class TableRepository extends EntityRepository<Table> {
         if (!nullOrEmpty(constraint.getReferredColumns())) {
           for (String column : constraint.getReferredColumns()) {
             String toParent = FullyQualifiedName.getParentFQN(column);
-            String columnName = FullyQualifiedName.getColumnName(column);
+            String columnName = getColumnName(column);
             try {
               Table toTable = findByName(toParent, ALL);
               validateColumn(toTable, columnName);
@@ -1453,6 +1681,14 @@ public class TableRepository extends EntityRepository<Table> {
           COLUMN_FIELD, origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
+      recordChange(
+          "compressionEnabled", original.getCompressionEnabled(), updated.getCompressionEnabled());
+      recordChange(
+          "compressionCodec", original.getCompressionCodec(), updated.getCompressionCodec());
+      recordChange(
+          "compressionStrategy",
+          original.getCompressionStrategy(),
+          updated.getCompressionStrategy());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
       recordChange("locationPath", original.getLocationPath(), updated.getLocationPath());
       recordChange(
@@ -1511,8 +1747,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     @Override
     protected void handleColumnLineageUpdates(
-        List<String> deletedColumns,
-        java.util.HashMap<String, String> originalUpdatedColumnFqnMap) {
+        List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       boolean hasRenames = !originalUpdatedColumnFqnMap.isEmpty();
       boolean hasDeletes = !deletedColumns.isEmpty();
 
@@ -1522,8 +1757,8 @@ public class TableRepository extends EntityRepository<Table> {
         if (lineageRepository != null) {
           lineageRepository.updateColumnLineage(
               updated.getId(),
-              hasRenames ? originalUpdatedColumnFqnMap : java.util.Collections.emptyMap(),
-              hasDeletes ? deletedColumns : java.util.Collections.emptyList(),
+              hasRenames ? originalUpdatedColumnFqnMap : Collections.emptyMap(),
+              hasDeletes ? deletedColumns : Collections.emptyList(),
               updated.getSchemaDefinition(),
               updated.getUpdatedBy());
         }
@@ -1651,7 +1886,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
       } else { // Dry run don't create the entity
         repository.setFullyQualifiedName(entity);
-        repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED);
+        repository.findByNameOrNull(entity.getFullyQualifiedName(), NON_DELETED);
         // Track the dryRun created entities, as they may be referred by other entities being
         // created
         // during import
@@ -1779,22 +2014,42 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public ResultList<Column> getTableColumns(
-      UUID tableId, int limit, int offset, String fieldsParam, Include include) {
+      UUID tableId,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = find(tableId, include);
-    return getTableColumnsInternal(table, limit, offset, fieldsParam);
+    return getTableColumnsInternal(
+        table, limit, offset, fieldsParam, include, authorizer, securityContext);
   }
 
   public ResultList<Column> getTableColumnsByFQN(
-      String fqn, int limit, int offset, String fieldsParam, Include include) {
+      String fqn,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = findByName(fqn, include);
-    return getTableColumnsInternal(table, limit, offset, fieldsParam);
+    return getTableColumnsInternal(
+        table, limit, offset, fieldsParam, include, authorizer, securityContext);
   }
 
-  private org.openmetadata.service.util.ResultList<Column> getTableColumnsInternal(
-      Table table, int limit, int offset, String fieldsParam) {
+  private ResultList<Column> getTableColumnsInternal(
+      Table table,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     // For paginated column access, we need to load the table with columns
     // but we'll optimize the field loading to only process what we need
-    Table fullTable = get(null, table.getId(), getFields(Set.of(COLUMN_FIELD)), NON_DELETED, false);
+    Table fullTable = get(null, table.getId(), getFields(Set.of(COLUMN_FIELD)), include, false);
 
     List<Column> allColumns = fullTable.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {
@@ -1822,7 +2077,9 @@ public class TableRepository extends EntityRepository<Table> {
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(paginatedColumns);
       populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
-      paginatedColumns = PIIMasker.getTableProfile(paginatedColumns);
+      paginatedColumns =
+          PIIMasker.getTableProfile(
+              table.getFullyQualifiedName(), paginatedColumns, authorizer, securityContext);
     }
 
     // Calculate pagination metadata
@@ -1878,6 +2135,56 @@ public class TableRepository extends EntityRepository<Table> {
     return configMap;
   }
 
+  private Map<UUID, List<PipelineObservability>> batchFetchPipelineObservability(
+      List<Table> tables) {
+    Map<UUID, List<PipelineObservability>> observabilityMap = new HashMap<>();
+    if (tables == null || tables.isEmpty()) {
+      return observabilityMap;
+    }
+
+    // Batch fetch all pipeline observability extensions for the tables
+    List<CollectionDAO.ExtensionRecordWithId> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionBatch(entityListToStrings(tables), TABLE_PIPELINE_OBSERVABILITY_EXTENSION);
+
+    // Group records by table ID and collect all pipeline observability data
+    Map<UUID, List<CollectionDAO.ExtensionRecordWithId>> recordsByTableId = new HashMap<>();
+    for (CollectionDAO.ExtensionRecordWithId record : records) {
+      recordsByTableId.computeIfAbsent(record.id(), k -> new ArrayList<>()).add(record);
+    }
+
+    // Convert extension records to PipelineObservability objects for each table
+    for (Map.Entry<UUID, List<CollectionDAO.ExtensionRecordWithId>> entry :
+        recordsByTableId.entrySet()) {
+      UUID tableId = entry.getKey();
+      List<PipelineObservability> tableObservabilityList = new ArrayList<>();
+
+      for (CollectionDAO.ExtensionRecordWithId record : entry.getValue()) {
+        try {
+          PipelineObservability observability =
+              JsonUtils.readValue(record.extensionJson(), PipelineObservability.class);
+          tableObservabilityList.add(observability);
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to parse pipeline observability for table {}: {}", tableId, e.getMessage());
+        }
+      }
+
+      observabilityMap.put(
+          tableId, tableObservabilityList.isEmpty() ? null : tableObservabilityList);
+    }
+
+    // Ensure all tables have an entry in the map
+    for (Table table : tables) {
+      if (!observabilityMap.containsKey(table.getId())) {
+        observabilityMap.put(table.getId(), null);
+      }
+    }
+
+    return observabilityMap;
+  }
+
   private Map<UUID, EntityReference> batchFetchTestSuites(List<Table> tables) {
     Map<UUID, EntityReference> testSuiteMap = new HashMap<>();
     if (tables == null || tables.isEmpty()) {
@@ -1897,40 +2204,6 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     return testSuiteMap;
-  }
-
-  private Map<UUID, List<String>> batchFetchQueries(List<Table> tables) {
-    Map<UUID, List<String>> queriesMap = new HashMap<>();
-    if (tables == null || tables.isEmpty()) {
-      return queriesMap;
-    }
-
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(entityListToStrings(tables), Relationship.MENTIONED_IN.ordinal(), QUERY);
-
-    Map<UUID, List<EntityReference>> queryRefsMap = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject relRecord : records) {
-      UUID tableId = UUID.fromString(relRecord.getFromId());
-      EntityReference queryRef =
-          getEntityReferenceById(QUERY, UUID.fromString(relRecord.getToId()), NON_DELETED);
-      queryRefsMap.computeIfAbsent(tableId, k -> new ArrayList<>()).add(queryRef);
-    }
-
-    for (UUID tableId : queryRefsMap.keySet()) {
-      List<Query> queriesEntity = getEntities(queryRefsMap.get(tableId), "id", ALL);
-      List<String> queries = queriesEntity.stream().map(Query::getQuery).toList();
-      queriesMap.put(tableId, queries);
-    }
-
-    for (Table table : tables) {
-      if (!queriesMap.containsKey(table.getId())) {
-        queriesMap.put(table.getId(), List.of());
-      }
-    }
-
-    return queriesMap;
   }
 
   private Map<UUID, TableJoins> batchFetchJoins(List<Table> tables) {
@@ -1967,19 +2240,41 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public ResultList<Column> searchTableColumnsById(
-      UUID id, String query, int limit, int offset, String fieldsParam, Include include) {
+      UUID id,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = get(null, id, getFields(fieldsParam), include, false);
-    return searchTableColumnsInternal(table, query, limit, offset, fieldsParam);
+    return searchTableColumnsInternal(
+        table, query, limit, offset, fieldsParam, authorizer, securityContext);
   }
 
   public ResultList<Column> searchTableColumnsByFQN(
-      String fqn, String query, int limit, int offset, String fieldsParam, Include include) {
+      String fqn,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
-    return searchTableColumnsInternal(table, query, limit, offset, fieldsParam);
+    return searchTableColumnsInternal(
+        table, query, limit, offset, fieldsParam, authorizer, securityContext);
   }
 
   private ResultList<Column> searchTableColumnsInternal(
-      Table table, String query, int limit, int offset, String fieldsParam) {
+      Table table,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
     List<Column> allColumns = table.getColumns();
     if (allColumns == null || allColumns.isEmpty()) {
       return new ResultList<>(List.of(), null, null, 0);
@@ -2021,10 +2316,16 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
 
+    if (fields.contains("tags") || fields.contains("*")) {
+      populateEntityFieldTags(entityType, paginatedResults, table.getFullyQualifiedName(), true);
+    }
+
     if (fieldsParam != null && fieldsParam.contains("profile")) {
       setColumnProfile(matchingColumns);
       populateEntityFieldTags(entityType, matchingColumns, table.getFullyQualifiedName(), true);
-      matchingColumns = PIIMasker.getTableProfile(matchingColumns);
+      matchingColumns =
+          PIIMasker.getTableProfile(
+              table.getFullyQualifiedName(), matchingColumns, authorizer, securityContext);
     }
 
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
@@ -2041,5 +2342,75 @@ public class TableRepository extends EntityRepository<Table> {
       }
     }
     return flattened;
+  }
+
+  private void indexPipelineStatus(Table table, PipelineObservability observability)
+      throws IOException {
+    if (observability.getPipeline() == null
+        || observability.getPipeline().getFullyQualifiedName() == null) {
+      return;
+    }
+
+    String pipelineFqn = observability.getPipeline().getFullyQualifiedName();
+    String pipelineId =
+        observability.getPipeline().getId() != null
+            ? observability.getPipeline().getId().toString()
+            : "";
+    String pipelineName = observability.getPipeline().getName();
+
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("pipelineId", pipelineId);
+    doc.put("pipelineFqn", pipelineFqn);
+    doc.put("pipelineName", pipelineName);
+    doc.put("serviceType", table.getServiceType());
+    doc.put("serviceName", table.getService() != null ? table.getService().getName() : "");
+    doc.put("tableId", table.getId().toString());
+    doc.put("tableFqn", table.getFullyQualifiedName());
+
+    if (observability.getLastRunStatus() != null) {
+      doc.put("executionStatus", observability.getLastRunStatus().value());
+    }
+
+    doc.put(
+        "timestamp",
+        observability.getLastRunTime() != null
+            ? observability.getLastRunTime()
+            : System.currentTimeMillis());
+
+    if (observability.getStartTime() != null) {
+      doc.put("startTime", observability.getStartTime());
+    }
+
+    if (observability.getEndTime() != null) {
+      doc.put("endTime", observability.getEndTime());
+
+      // Calculate runtime in milliseconds (endTime - startTime)
+      if (observability.getStartTime() != null) {
+        Long runtime = observability.getEndTime() - observability.getStartTime();
+        doc.put("runtime", runtime);
+      }
+    }
+
+    if (observability.getScheduleInterval() != null) {
+      doc.put("scheduleInterval", observability.getScheduleInterval());
+    }
+
+    doc.put("deleted", false);
+    doc.put("entityType", "pipelineStatus");
+
+    String docId = pipelineFqn + "_" + table.getId().toString();
+    String docJson = JsonUtils.pojoToJson(doc);
+
+    // Use getIndexOrAliasName to get the correct index name with prefix
+    String indexName =
+        Entity.getSearchRepository().getIndexOrAliasName("pipeline_status_search_index");
+    searchRepository.getSearchClient().createEntity(indexName, docId, docJson);
+
+    LOG.debug(
+        "Indexed pipeline status for table {} and pipeline {} to index {} with doc ID {}",
+        table.getFullyQualifiedName(),
+        pipelineFqn,
+        indexName,
+        docId);
   }
 }

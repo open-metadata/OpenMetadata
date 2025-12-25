@@ -35,10 +35,10 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.util.DIContainer;
-import org.openmetadata.service.util.ResultList;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobDetail;
@@ -71,16 +71,47 @@ public abstract class AbstractEventConsumer
   }
 
   private void init(JobExecutionContext context) {
-    EventSubscription sub =
-        (EventSubscription) context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
     this.jobDetail = context.getJobDetail();
-    this.eventSubscription = sub;
-    EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
-    this.offset = eventSubscriptionOffset.getCurrentOffset();
-    this.startingOffset = eventSubscriptionOffset.getStartingOffset();
-    this.alertMetrics = loadInitialMetrics();
-    this.destinationMap = loadDestinationsMap(context);
-    this.doInit(context);
+    try {
+      Object alertInfoValue = context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
+      if (alertInfoValue == null) {
+        LOG.error("ALERT_INFO_KEY not found in JobDataMap");
+        return;
+      }
+
+      if (alertInfoValue instanceof String subscriptionJson) {
+        this.eventSubscription = JsonUtils.readValue(subscriptionJson, EventSubscription.class);
+        if (this.eventSubscription == null) {
+          LOG.error("Failed to deserialize EventSubscription from JSON: {}", subscriptionJson);
+          return;
+        }
+      } else if (alertInfoValue instanceof EventSubscription subscription) {
+        this.eventSubscription = subscription;
+      } else {
+        LOG.error(
+            "Unexpected type for ALERT_INFO_KEY: {}. Expected String or EventSubscription.",
+            alertInfoValue.getClass().getName());
+        return;
+      }
+
+      if (this.eventSubscription.getDestinations() == null
+          || this.eventSubscription.getDestinations().isEmpty()) {
+        LOG.error(
+            "EventSubscription {} has no destinations configured",
+            this.eventSubscription.getName());
+        return;
+      }
+
+      EventSubscriptionOffset eventSubscriptionOffset = loadInitialOffset(context);
+      this.offset = eventSubscriptionOffset.getCurrentOffset();
+      this.startingOffset = eventSubscriptionOffset.getStartingOffset();
+      this.alertMetrics = loadInitialMetrics();
+      this.destinationMap = loadDestinationsMap(context);
+      this.doInit(context);
+    } catch (Exception e) {
+      LOG.error("Failed to initialize EventConsumer from JobDataMap", e);
+      this.eventSubscription = null;
+    }
   }
 
   protected void doInit(JobExecutionContext context) {
@@ -136,60 +167,55 @@ public abstract class AbstractEventConsumer
   }
 
   private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
-    EventSubscriptionOffset jobStoredOffset =
-        (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
-    // If the Job Data Map has the latest offset, use it
-    if (jobStoredOffset != null) {
-      return jobStoredOffset;
-    } else {
-      EventSubscriptionOffset eventSubscriptionOffset =
-          getStartingOffset(eventSubscription.getId());
-      // Update the Job Data Map with the latest offset
-      context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
-      return eventSubscriptionOffset;
+    Object offsetValue = jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
+    if (offsetValue != null) {
+      EventSubscriptionOffset offset = null;
+      if (offsetValue instanceof String offsetJson) {
+        offset = JsonUtils.readValue(offsetJson, EventSubscriptionOffset.class);
+      } else if (offsetValue instanceof EventSubscriptionOffset existingOffset) {
+        offset = existingOffset;
+      }
+      if (offset != null) {
+        return offset;
+      }
     }
+
+    EventSubscriptionOffset dbOffset = getStartingOffset(eventSubscription.getId());
+    if (dbOffset != null) {
+      context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, JsonUtils.pojoToJson(dbOffset));
+      return dbOffset;
+    }
+
+    LOG.warn("No offset found for subscription {}, using default", eventSubscription.getId());
+    return getStartingOffset(eventSubscription.getId());
   }
 
   private Map<UUID, Destination<ChangeEvent>> loadDestinationsMap(JobExecutionContext context) {
-    Map<UUID, Destination<ChangeEvent>> dMap =
-        (Map<UUID, Destination<ChangeEvent>>)
-            context.getJobDetail().getJobDataMap().get(DESTINATION_MAP_KEY);
-    if (dMap == null) {
-      dMap = new HashMap<>();
-      for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
-        dMap.put(
-            subscriptionDest.getId(), AlertFactory.getAlert(eventSubscription, subscriptionDest));
-      }
-      context.getJobDetail().getJobDataMap().put(DESTINATION_MAP_KEY, dMap);
+    Map<UUID, Destination<ChangeEvent>> dMap = new HashMap<>();
+    for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
+      dMap.put(
+          subscriptionDest.getId(), AlertFactory.getAlert(eventSubscription, subscriptionDest));
     }
     return dMap;
   }
 
   private AlertMetrics loadInitialMetrics() {
-    AlertMetrics metrics = (AlertMetrics) jobDetail.getJobDataMap().get(METRICS_EXTENSION);
-    if (metrics != null) {
-      return metrics;
-    } else {
-      String json =
-          Entity.getCollectionDAO()
-              .eventSubscriptionDAO()
-              .getSubscriberExtension(eventSubscription.getId().toString(), METRICS_EXTENSION);
-      if (json != null) {
-        return JsonUtils.readValue(json, AlertMetrics.class);
-      }
-      // Update the Job Data Map with the latest offset
-      return new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0);
+    String json =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getSubscriberExtension(eventSubscription.getId().toString(), METRICS_EXTENSION);
+    if (json != null) {
+      return JsonUtils.readValue(json, AlertMetrics.class);
     }
+    return new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0);
   }
 
   @Override
   public void publishEvents(Map<ChangeEvent, Set<UUID>> events) {
-    // If no events return
     if (events.isEmpty()) {
       return;
     }
 
-    // Filter the Change Events based on Alert Trigger Config
     Map<ChangeEvent, Set<UUID>> filteredEvents = getFilteredEvents(eventSubscription, events);
 
     for (var eventWithReceivers : filteredEvents.entrySet()) {
@@ -208,7 +234,6 @@ public abstract class AbstractEventConsumer
   @Override
   public void commit(JobExecutionContext jobExecutionContext) {
     long currentTime = System.currentTimeMillis();
-    // Upsert Offset
     EventSubscriptionOffset eventSubscriptionOffset =
         new EventSubscriptionOffset()
             .withCurrentOffset(offset)
@@ -228,7 +253,8 @@ public abstract class AbstractEventConsumer
         .getJobDataMap()
         .put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
 
-    // Upsert Metrics
+    jobExecutionContext.getJobDetail().getJobDataMap().put(ALERT_INFO_KEY, eventSubscription);
+
     AlertMetrics metrics =
         new AlertMetrics()
             .withTotalEvents(alertMetrics.getTotalEvents())
@@ -243,11 +269,6 @@ public abstract class AbstractEventConsumer
             METRICS_EXTENSION,
             "alertMetrics",
             JsonUtils.pojoToJson(metrics));
-
-    jobExecutionContext.getJobDetail().getJobDataMap().put(METRICS_EXTENSION, alertMetrics);
-
-    // Populate the Destination map
-    jobExecutionContext.getJobDetail().getJobDataMap().put(DESTINATION_MAP_KEY, destinationMap);
   }
 
   @Override
@@ -269,16 +290,17 @@ public abstract class AbstractEventConsumer
 
   @Override
   public void execute(JobExecutionContext jobExecutionContext) {
-    // Must Have , Before Execute the Init, Quartz Requires a Non-Arg Constructor
     this.init(jobExecutionContext);
+    if (this.eventSubscription == null) {
+      LOG.error("Skipping job execution - EventSubscription could not be loaded");
+      return;
+    }
     long batchSize = 0;
     Map<ChangeEvent, Set<UUID>> eventsWithReceivers = new HashMap<>();
     try {
-      // Poll Events from Change Event Table
       ResultList<ChangeEvent> batch = pollEvents(offset, eventSubscription.getBatchSize());
       batchSize = batch.getPaging().getTotal();
       eventsWithReceivers.putAll(createEventsWithReceivers(batch.getData()));
-      // Publish Events
       if (!eventsWithReceivers.isEmpty()) {
         alertMetrics.withTotalEvents(alertMetrics.getTotalEvents() + eventsWithReceivers.size());
         publishEvents(eventsWithReceivers);
@@ -293,7 +315,6 @@ public abstract class AbstractEventConsumer
 
     } finally {
       if (!eventsWithReceivers.isEmpty()) {
-        // Commit the Offset
         offset += batchSize;
         commit(jobExecutionContext);
       }
@@ -301,7 +322,7 @@ public abstract class AbstractEventConsumer
   }
 
   public EventSubscription getEventSubscription() {
-    return (EventSubscription) jobDetail.getJobDataMap().get(ALERT_INFO_KEY);
+    return eventSubscription;
   }
 
   private Map<ChangeEvent, Set<UUID>> createEventsWithReceivers(List<ChangeEvent> events) {

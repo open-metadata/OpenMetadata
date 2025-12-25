@@ -32,6 +32,7 @@ interface Props {
   entityFQN: string;
   createPermission: boolean;
   onClose: () => void;
+  showToastInSnackbar?: boolean;
 }
 
 const AnnouncementDrawer: FC<Props> = ({
@@ -40,6 +41,7 @@ const AnnouncementDrawer: FC<Props> = ({
   entityFQN,
   entityType,
   createPermission = false,
+  showToastInSnackbar = false,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -111,6 +113,7 @@ const AnnouncementDrawer: FC<Props> = ({
   return (
     <Drawer
       closable={false}
+      data-testid="announcement-drawer"
       open={open}
       placement="right"
       title={title}
@@ -143,6 +146,7 @@ const AnnouncementDrawer: FC<Props> = ({
           entityFQN={entityFQN || ''}
           entityType={entityType || ''}
           open={isAddAnnouncementOpen}
+          showToastInSnackbar={showToastInSnackbar}
           onCancel={handleCloseAnnouncementModal}
           onSave={handleSaveAnnouncement}
         />

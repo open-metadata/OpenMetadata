@@ -50,6 +50,7 @@ export class DatabaseSchemaClass extends EntityClass {
   entity = {
     name: `pw-database-schema-${uuid()}`,
     database: `${this.service.name}.${this.database.name}`,
+    description: 'description',
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -120,6 +121,16 @@ export class DatabaseSchemaClass extends EntityClass {
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    database: ResponseDataWithServiceType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+    this.databaseResponseData = data.database;
+  }
+
   async visitEntityPage(page: Page) {
     await visitServiceDetailsPage(
       page,
@@ -130,13 +141,22 @@ export class DatabaseSchemaClass extends EntityClass {
       false
     );
 
+    await page.waitForLoadState('networkidle');
+
+    // Wait for the database to be visible before clicking
+    await page.getByTestId(this.database.name).waitFor({ state: 'visible' });
+
     const databaseResponse = page.waitForResponse(
       `/api/v1/databases/name/*${this.database.name}?**`
     );
     await page.getByTestId(this.database.name).click();
     await databaseResponse;
+
+    // Wait for database schema to be visible
+    await page.getByTestId(this.entity.name).waitFor({ state: 'visible' });
+
     const databaseSchemaResponse = page.waitForResponse(
-      `/api/v1/databaseSchemas/name/*${this.entity}?*`
+      `/api/v1/databaseSchemas/name/*${this.entity.name}?*`
     );
     await page.getByTestId(this.entity.name).click();
     await databaseSchemaResponse;

@@ -12,10 +12,13 @@
 """
 Source connection handler
 """
-from typing import Optional
+from typing import Optional, Union
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.airbyte.oauthClientAuth import (
+    Oauth20ClientCredentialsAuthentication,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.airbyteConnection import (
     AirbyteConnection,
@@ -25,20 +28,30 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.airbyte.client import AirbyteClient
+from metadata.ingestion.source.pipeline.airbyte.client import (
+    AirbyteClient,
+    AirbyteCloudClient,
+)
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: AirbyteConnection) -> AirbyteClient:
+def get_connection(
+    connection: AirbyteConnection,
+) -> Union[AirbyteClient, AirbyteCloudClient]:
     """
-    Create connection
+    Create connection - returns appropriate client based on auth type.
+    OAuth authentication indicates Airbyte Cloud, otherwise self-hosted instance.
     """
+    if connection.auth and isinstance(
+        connection.auth, Oauth20ClientCredentialsAuthentication
+    ):
+        return AirbyteCloudClient(connection)
     return AirbyteClient(connection)
 
 
 def test_connection(
     metadata: OpenMetadata,
-    client: AirbyteClient,
+    client: Union[AirbyteClient, AirbyteCloudClient],
     service_connection: AirbyteConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,

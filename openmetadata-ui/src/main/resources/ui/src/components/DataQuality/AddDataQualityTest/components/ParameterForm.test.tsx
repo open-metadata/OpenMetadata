@@ -18,6 +18,7 @@ import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import {
   MOCK_TABLE_COLUMN_NAME_TO_EXIST,
   MOCK_TABLE_CUSTOM_SQL_QUERY,
+  MOCK_TABLE_DIFF_DEFINITION,
   MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN,
   MOCK_TABLE_TEST_WITH_COLUMN,
   MOCK_TABLE_WITH_DATE_TIME_COLUMNS,
@@ -69,6 +70,12 @@ jest.mock('../../../../rest/searchAPI', () => {
         hits: [],
       },
     }),
+  };
+});
+
+jest.mock('../../../../rest/tableAPI', () => {
+  return {
+    getTableDetailsByFQN: jest.fn(),
   };
 });
 
@@ -182,5 +189,59 @@ describe('ParameterForm component test', () => {
     const selectBox = await screen.findByRole('combobox');
 
     expect(selectBox).toBeInTheDocument();
+  });
+
+  describe('Table Diff functionality', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('Should render table2 parameter for table diff definition', async () => {
+      await act(async () => {
+        renderWithForm(
+          <ParameterForm
+            definition={MOCK_TABLE_DIFF_DEFINITION as TestDefinition}
+            table={MOCK_TABLE_WITH_DATE_TIME_COLUMNS}
+          />
+        );
+      });
+
+      const table2Select = await screen.findByTestId('table2');
+
+      expect(table2Select).toBeInTheDocument();
+    });
+
+    it('Should render all parameters when table has columns', async () => {
+      await act(async () => {
+        renderWithForm(
+          <ParameterForm
+            definition={MOCK_TABLE_DIFF_DEFINITION as TestDefinition}
+            table={MOCK_TABLE_WITH_DATE_TIME_COLUMNS}
+          />
+        );
+      });
+
+      const parameters = await screen.findAllByTestId('parameter');
+
+      expect(parameters.length).toBeGreaterThan(0);
+    });
+
+    it('Should have table2.keyColumns disabled when table2 is not selected', async () => {
+      await act(async () => {
+        renderWithForm(
+          <ParameterForm
+            definition={MOCK_TABLE_DIFF_DEFINITION as TestDefinition}
+            table={MOCK_TABLE_WITH_DATE_TIME_COLUMNS}
+          />
+        );
+      });
+
+      const keyColumnsInputs = screen.getAllByRole('combobox');
+      const table2KeyColumnsInput = keyColumnsInputs.find((input) =>
+        input.id.includes('table2.keyColumns')
+      );
+
+      expect(table2KeyColumnsInput).toBeDisabled();
+    });
   });
 });

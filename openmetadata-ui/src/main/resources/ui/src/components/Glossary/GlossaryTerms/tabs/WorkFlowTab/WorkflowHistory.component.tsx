@@ -19,8 +19,8 @@ import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-ch
 import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
 import { GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME } from '../../../../../constants/Glossary.contant';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../../../generated/entity/data/glossaryTerm';
 import {
   WorkflowInstanceState,
@@ -62,10 +62,10 @@ const WorkflowHistory = memo(
 
     // Collapse only when status is approved
     const initialCollapseState = useMemo(() => {
-      const status = glossaryTerm?.status ?? Status.Approved;
+      const status = glossaryTerm?.entityStatus ?? EntityStatus.Approved;
 
-      return status === Status.Approved && !propGlossaryTerm;
-    }, [glossaryTerm?.status]);
+      return status === EntityStatus.Approved && !propGlossaryTerm;
+    }, [glossaryTerm?.entityStatus]);
 
     const [isCollapsed, setIsCollapsed] = useState(initialCollapseState);
 
@@ -80,7 +80,7 @@ const WorkflowHistory = memo(
 
       setIsLoading(true);
       try {
-        const startTs = getEpochMillisForPastDays(30);
+        const startTs = getEpochMillisForPastDays(180);
         const endTs = getCurrentMillis();
         const entityLink = createGlossaryTermEntityLink(
           glossaryTerm.fullyQualifiedName
@@ -91,7 +91,8 @@ const WorkflowHistory = memo(
           startTs,
           endTs,
           entityLink,
-          workflowDefinitionName: 'GlossaryTermApprovalWorkflow',
+          workflowDefinitionName:
+            GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME,
         });
 
         const instances = instancesResponse.data || [];
@@ -199,21 +200,33 @@ const WorkflowHistory = memo(
 
     const workflowContent = useMemo(() => {
       if (isLoading) {
-        return <Loader />;
+        return (
+          <div
+            className={classNames('flex-center h-40', {
+              'workflow-history-widget-rightPanel': !propGlossaryTerm,
+            })}>
+            <Loader size="small" />
+          </div>
+        );
       }
 
       if (isEmpty(workflowHistory)) {
         return (
-          <Empty
-            description={
-              <Text className="text-grey-muted">
-                {t('label.no-entity-available', {
-                  entity: t('label.workflow-history'),
-                })}
-              </Text>
-            }
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
+          <div
+            className={classNames('workflow-history-widget', {
+              'workflow-history-widget-rightPanel': !propGlossaryTerm,
+            })}>
+            <Empty
+              description={
+                <Text className="text-grey-muted">
+                  {t('label.no-entity-available', {
+                    entity: t('label.workflow-history'),
+                  })}
+                </Text>
+              }
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          </div>
         );
       }
 

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContractTabMode } from '../../../constants/DataContract.constants';
@@ -21,31 +22,35 @@ import {
   getContractByEntityId,
 } from '../../../rest/contractAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
+import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import Loader from '../../common/Loader/Loader';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import AddDataContract from '../AddDataContract/AddDataContract';
 import { ContractDetail } from '../ContractDetailTab/ContractDetail';
+import './contract-tab.less';
 
 export const ContractTab = () => {
-  const {
-    data: { id },
-  } = useGenericContext();
+  const { data: entityData } = useGenericContext();
   const { t } = useTranslation();
   const [tabMode, setTabMode] = useState<DataContractTabMode>(
     DataContractTabMode.VIEW
   );
   const [contract, setContract] = useState<DataContract>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const { id } = entityData ?? {};
 
   const fetchContract = async () => {
     try {
       setIsLoading(true);
-      const contract = await getContractByEntityId(id, EntityType.TABLE, [
+      const contract = await getContractByEntityId(id, entityType, [
         TabSpecificField.OWNERS,
       ]);
       setContract(contract);
     } catch {
-      //
+      setContract(undefined);
     } finally {
       setIsLoading(false);
     }
@@ -53,20 +58,28 @@ export const ContractTab = () => {
 
   const handleDelete = () => {
     if (contract?.id) {
-      deleteContractById(contract.id)
-        .then(() => {
-          showSuccessToast(
-            t('message.entity-deleted-successfully', {
-              entity: t('label.contract'),
-            })
-          );
-          fetchContract();
-          setTabMode(DataContractTabMode.VIEW);
-        })
-        .catch((err) => {
-          showErrorToast(err);
-        });
+      setIsDeleteModalVisible(true);
     }
+  };
+
+  const handleContractDeleteConfirm = async () => {
+    if (!contract?.id) {
+      return;
+    }
+    try {
+      await deleteContractById(contract.id);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: t('label.contract'),
+        })
+      );
+      fetchContract();
+      setTabMode(DataContractTabMode.VIEW);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+
+    setIsDeleteModalVisible(false);
   };
 
   useEffect(() => {
@@ -76,19 +89,6 @@ export const ContractTab = () => {
   const content = useMemo(() => {
     switch (tabMode) {
       case DataContractTabMode.ADD:
-        return (
-          <AddDataContract
-            contract={contract}
-            onCancel={() => {
-              setTabMode(DataContractTabMode.VIEW);
-            }}
-            onSave={() => {
-              fetchContract();
-              setTabMode(DataContractTabMode.VIEW);
-            }}
-          />
-        );
-
       case DataContractTabMode.EDIT:
         return (
           <AddDataContract
@@ -118,5 +118,21 @@ export const ContractTab = () => {
     }
   }, [tabMode, contract]);
 
-  return isLoading ? <Loader /> : content;
+  return isLoading ? (
+    <Loader />
+  ) : (
+    <div className="contract-tab-container">
+      {content}
+      <DeleteWidgetModal
+        allowSoftDelete={false}
+        entityName={contract?.name ?? ''}
+        entityType={EntityType.DATA_CONTRACT}
+        visible={isDeleteModalVisible}
+        onCancel={() => {
+          setIsDeleteModalVisible(false);
+        }}
+        onDelete={handleContractDeleteConfirm}
+      />
+    </div>
+  );
 };

@@ -615,7 +615,7 @@ describe('Explore Utils', () => {
             should: [
               {
                 term: {
-                  entityType: 'table',
+                  'entityType.keyword': 'table',
                 },
               },
             ],
@@ -663,26 +663,26 @@ describe('Explore Utils', () => {
   describe('getQuickFilterObjectForEntities', () => {
     it('return the filterObject having single entity as bucketValues', () => {
       const updatedTreeData = getQuickFilterObjectForEntities(
-        EntityFields.ENTITY_TYPE,
+        EntityFields.ENTITY_TYPE_KEYWORD,
         [EntityType.PIPELINE]
       );
 
       expect(updatedTreeData).toEqual({
-        key: 'entityType',
-        label: 'entityType',
+        key: 'entityType.keyword',
+        label: 'entityType.keyword',
         value: [{ key: 'pipeline', label: 'pipeline' }],
       });
     });
 
     it('return the filterObject having multiple entity as bucketValues', () => {
       const updatedTreeData = getQuickFilterObjectForEntities(
-        EntityFields.ENTITY_TYPE,
+        EntityFields.ENTITY_TYPE_KEYWORD,
         [EntityType.TABLE, EntityType.STORED_PROCEDURE]
       );
 
       expect(updatedTreeData).toEqual({
-        key: 'entityType',
-        label: 'entityType',
+        key: 'entityType.keyword',
+        label: 'entityType.keyword',
         value: [
           { key: 'table', label: 'table' },
           { key: 'storedProcedure', label: 'storedProcedure' },

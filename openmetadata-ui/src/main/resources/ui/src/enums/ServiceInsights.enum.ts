@@ -23,3 +23,10 @@ export enum ServiceInsightsWidgetType {
   MOST_EXPENSIVE_QUERIES = 'mostExpensiveQueries',
   DATA_QUALITY = 'dataQuality',
 }
+
+export enum AgentStatus {
+  Successful = 'Successful',
+  Failed = 'Failed',
+  Running = 'Running',
+  Pending = 'Pending',
+}

@@ -37,6 +37,10 @@ export interface CreateChart {
      */
     domains?: string[];
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Life Cycle of the entity
      */
     lifeCycle?: LifeCycle;
@@ -73,13 +77,19 @@ export enum ChartType {
     Area = "Area",
     Bar = "Bar",
     BoxPlot = "BoxPlot",
+    Gauge = "Gauge",
+    Graph = "Graph",
+    Heatmap = "Heatmap",
     Histogram = "Histogram",
     Line = "Line",
+    Map = "Map",
     Other = "Other",
     Pie = "Pie",
+    SANKey = "SanKey",
     Scatter = "Scatter",
     Table = "Table",
     Text = "Text",
+    Timeline = "Timeline",
 }
 
 /**
@@ -213,6 +223,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -267,7 +281,29 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }

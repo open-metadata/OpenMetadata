@@ -11,16 +11,34 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Drawer, Form, FormProps, Input, Space } from 'antd';
+import {
+  Button,
+  Card,
+  Drawer,
+  Form,
+  FormProps,
+  Input,
+  Select,
+  Space,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isArray, isEmpty, isEqual, pick } from 'lodash';
-import { FC, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  FocusEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
-import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
-import { EntityType } from '../../../../enums/entity.enum';
+import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
+import { OPEN_METADATA } from '../../../../constants/Services.constant';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
+import { ServiceCategory } from '../../../../enums/service.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { Table } from '../../../../generated/entity/data/table';
 import {
@@ -45,6 +63,7 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import {
+  createScrollToErrorHandler,
   generateFormFields,
   getPopupContainer,
 } from '../../../../utils/formUtils';
@@ -55,6 +74,7 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import AlertBar from '../../../AlertBar/AlertBar';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../../common/Loader/Loader';
+import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import { EditTestCaseModalProps } from './EditTestCaseModal.interface';
 import ParameterForm from './ParameterForm';
 
@@ -79,8 +99,9 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
     useState<TestDefinition>();
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingOnSave, setIsLoadingOnSave] = useState(false);
-  const [table, setTable] = useState<Table>();
+  const [table, setTable] = useState<Table & { entityType: EntityType }>();
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [activeField, setActiveField] = useState<string>('');
 
   // =============================================
   // COMPUTED VALUES
@@ -98,6 +119,8 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
   const isComputeRowCountFieldVisible = useMemo(() => {
     return selectedDefinition?.supportsRowLevelPassedFailed ?? false;
   }, [selectedDefinition]);
+
+  const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
 
   const { tags, glossaryTerms, tierTag } = useMemo(() => {
     if (!testCase?.tags) {
@@ -117,13 +140,51 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
     };
   }, [testCase?.tags]);
 
+  const handleActiveField = useCallback(
+    (id: string) => {
+      // Only update if id matches pattern root/{any string}
+      if (/^root\/.+/.test(id)) {
+        setActiveField((pre) => {
+          if (pre !== id) {
+            return id;
+          }
+
+          return pre;
+        });
+      }
+    },
+    [setActiveField]
+  );
+
   const paramsField = useMemo(() => {
     if (selectedDefinition?.parameterDefinition) {
-      return <ParameterForm definition={selectedDefinition} table={table} />;
+      return (
+        <div
+          onClick={() => handleActiveField(`root/${selectedDefinition.name}`)}>
+          <ParameterForm definition={selectedDefinition} table={table} />
+        </div>
+      );
     }
 
     return <></>;
-  }, [selectedDefinition, table]);
+  }, [selectedDefinition, table, handleActiveField]);
+
+  const dimensionColumnOptions = useMemo(() => {
+    const selectedColumn = getColumnNameFromEntityLink(testCase?.entityLink);
+
+    return table?.columns?.reduce((acc, col) => {
+      if (col.name === selectedColumn) {
+        return acc;
+      }
+
+      acc.push({
+        label: getEntityName(col),
+        value: col.name,
+      });
+
+      return acc;
+    }, [] as { label: string; value: string }[]);
+  }, [table?.columns]);
 
   // =============================================
   // FORM FIELDS
@@ -138,8 +199,9 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         required: false,
         props: {
           'data-testid': 'compute-passed-failed-row-count',
+          id: 'root/computePassedFailedRowCount',
         },
-        id: 'root/computePassedFailedRowCount',
+        id: 'computePassedFailedRowCount',
         formItemLayout: FormItemLayout.HORIZONTAL,
         newLook: true,
       },
@@ -167,12 +229,13 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         name: 'tags',
         required: false,
         label: t('label.tag-plural'),
-        id: 'root/tags',
+        id: 'tags',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
           selectProps: {
             'data-testid': 'tags-selector',
             getPopupContainer,
+            id: 'root/tags',
           },
           newLook: true,
           initialValue: tags,
@@ -182,12 +245,13 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         name: 'glossaryTerms',
         required: false,
         label: t('label.glossary-term-plural'),
-        id: 'root/glossaryTerms',
+        id: 'glossaryTerms',
         type: FieldTypes.TAG_SUGGESTION,
         props: {
           selectProps: {
             'data-testid': 'glossary-terms-selector',
             getPopupContainer,
+            id: 'root/glossaryTerms',
           },
           newLook: true,
           initialValue: glossaryTerms,
@@ -207,6 +271,16 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
   // =============================================
   // HANDLERS
   // =============================================
+
+  const handleFieldFocus = useCallback(
+    (event: FocusEvent<HTMLFormElement>) => {
+      if (event.target.id) {
+        handleActiveField(event.target.id);
+      }
+    },
+    [handleActiveField]
+  );
+
   const handleFormSubmit: FormProps['onFinish'] = async (value) => {
     setErrorMessage('');
     const updatedTestCase = {
@@ -230,6 +304,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
             ...(value.tags ?? []),
             ...(value.glossaryTerms ?? []),
           ],
+      dimensionColumns: value.dimensionColumns || undefined,
     };
 
     const jsonPatch = compare(testCase, updatedTestCase);
@@ -295,9 +370,15 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
     }
     try {
       const response = await getTableDetailsByFQN(tableFqn, {
-        fields: 'columns',
+        fields: [
+          TabSpecificField.TAGS,
+          TabSpecificField.OWNERS,
+          TabSpecificField.DOMAINS,
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.COLUMNS,
+        ],
       });
-      setTable(response);
+      setTable({ ...response, entityType: EntityType.TABLE });
     } catch (error) {
       // Handle error silently
     }
@@ -311,9 +392,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         testCase.testDefinition.id || ''
       );
 
-      if (testCase.testDefinition?.fullyQualifiedName === TABLE_DIFF) {
-        await fetchTableDetails(tableFqn);
-      }
+      await fetchTableDetails(tableFqn);
 
       const formValue = pick(testCase, [
         'name',
@@ -321,6 +400,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         'description',
         'computePassedFailedRowCount',
         'useDynamicAssertion',
+        'dimensionColumns',
       ]);
 
       form.setFieldsValue({
@@ -346,14 +426,6 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
   useEffect(() => {
     if (testCase && open) {
       fetchTestDefinitionById();
-
-      const isContainsColumnName = testCase.parameterValues?.find(
-        (value) => value.name === 'columnName' || value.name === 'column'
-      );
-
-      if (isContainsColumnName) {
-        fetchTableDetails(tableFqn);
-      }
     }
   }, [testCase, open]);
 
@@ -412,25 +484,69 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
             form={form}
             layout="vertical"
             name="tableTestForm"
-            scrollToFirstError={{
-              behavior: 'smooth',
-              block: 'center',
-              scrollMode: 'if-needed',
-            }}
-            onFinish={handleFormSubmit}>
+            onFinish={handleFormSubmit}
+            onFinishFailed={scrollToError}
+            onFocus={handleFieldFocus}>
             {!showOnlyParameter && (
               <Card className="form-card-section">
                 <Form.Item required label={t('label.table')} name="table">
-                  <Input disabled />
+                  <Input disabled id="root/selected-entity" />
                 </Form.Item>
                 {isColumn && (
                   <Form.Item required label={t('label.column')} name="column">
-                    <Input disabled />
+                    <Input disabled id="root/column" />
+                  </Form.Item>
+                )}
+                {isColumn && (
+                  <Form.Item
+                    label={t('label.dimension-plural')}
+                    name="dimensionColumns">
+                    <Select
+                      getPopupContainer={getPopupContainer}
+                      id="root/dimensionColumns"
+                      mode="multiple"
+                      options={dimensionColumnOptions}
+                    />
                   </Form.Item>
                 )}
               </Card>
             )}
+            <Card className="form-card-section test-type-card">
+              <Form.Item
+                required
+                label={t('label.test-entity', {
+                  entity: t('label.type'),
+                })}
+                name="testDefinition">
+                <Input
+                  disabled
+                  id={`root/${selectedDefinition?.name}`}
+                  placeholder={t('message.enter-test-case-name')}
+                />
+              </Form.Item>
 
+              {generateFormFields(
+                testCaseClassBase.createFormAdditionalFields(
+                  selectedDefinition?.supportsDynamicAssertion ?? false
+                )
+              )}
+
+              <Form.Item
+                noStyle
+                shouldUpdate={(prevValues, currentValues) => {
+                  return !isEqual(
+                    prevValues['useDynamicAssertion'],
+                    currentValues['useDynamicAssertion']
+                  );
+                }}>
+                {({ getFieldValue }) =>
+                  getFieldValue('useDynamicAssertion') ? null : paramsField
+                }
+              </Form.Item>
+
+              {isComputeRowCountFieldVisible &&
+                generateFormFields(computeRowCountField)}
+            </Card>
             {!showOnlyParameter && (
               <Card className="form-card-section">
                 <Form.Item
@@ -445,78 +561,20 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
                   ]}>
                   <Input
                     disabled
+                    id="root/name"
                     placeholder={t('message.enter-test-case-name')}
                   />
                 </Form.Item>
 
                 <Form.Item label={t('label.display-name')} name="displayName">
-                  <Input placeholder={t('message.enter-test-case-name')} />
-                </Form.Item>
-
-                {generateFormFields(formFields)}
-              </Card>
-            )}
-
-            {!showOnlyParameter && (
-              <Card className="form-card-section">
-                <Form.Item
-                  required
-                  label={t('label.test-entity', {
-                    entity: t('label.type'),
-                  })}
-                  name="testDefinition">
                   <Input
-                    disabled
+                    id="root/displayName"
                     placeholder={t('message.enter-test-case-name')}
                   />
                 </Form.Item>
 
-                {generateFormFields(
-                  testCaseClassBase.createFormAdditionalFields(
-                    selectedDefinition?.supportsDynamicAssertion ?? false
-                  )
-                )}
-
-                <Form.Item
-                  noStyle
-                  shouldUpdate={(prevValues, currentValues) => {
-                    return !isEqual(
-                      prevValues['useDynamicAssertion'],
-                      currentValues['useDynamicAssertion']
-                    );
-                  }}>
-                  {({ getFieldValue }) =>
-                    getFieldValue('useDynamicAssertion') ? null : paramsField
-                  }
-                </Form.Item>
-
-                {isComputeRowCountFieldVisible &&
-                  generateFormFields(computeRowCountField)}
+                {generateFormFields(formFields)}
               </Card>
-            )}
-
-            {/* Show params and dynamic assertion fields outside cards when showOnlyParameter is true */}
-            {showOnlyParameter && (
-              <>
-                {generateFormFields(
-                  testCaseClassBase.createFormAdditionalFields(
-                    selectedDefinition?.supportsDynamicAssertion ?? false
-                  )
-                )}
-
-                <Form.Item
-                  noStyle
-                  shouldUpdate={(prevValues, currentValues) => {
-                    return !isEqual(
-                      prevValues['useDynamicAssertion'],
-                      currentValues['useDynamicAssertion']
-                    );
-                  }}>
-                  {({ getFieldValue }) =>
-                    getFieldValue('useDynamicAssertion') ? null : paramsField
-                  }
-                </Form.Item>
-              </>
             )}
           </Form>
         </div>
@@ -531,13 +589,11 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
   return (
     <Drawer
       destroyOnClose
-      className="custom-drawer-style"
+      className="custom-drawer-style test-case-form-drawer"
       closable={false}
       footer={drawerFooter}
-      maskClosable={false}
       open={open}
       placement="right"
-      size="large"
       title={
         <label data-testid="edit-test-case-drawer-title">
           {t('label.edit-entity', {
@@ -545,6 +601,7 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
           })}
         </label>
       }
+      width="75%"
       {...drawerProps}
       extra={
         <Button
@@ -558,7 +615,17 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
         form.resetFields();
         onCancel();
       }}>
-      <div className="drawer-form-content">{formContent}</div>
+      <div className="drawer-content-wrapper">
+        <div className="drawer-form-content">{formContent}</div>
+        <div className="drawer-doc-panel service-doc-panel markdown-parser">
+          <ServiceDocPanel
+            activeField={activeField}
+            selectedEntity={table}
+            serviceName={TEST_CASE_FORM}
+            serviceType={OPEN_METADATA as ServiceCategory}
+          />
+        </div>
+      </div>
     </Drawer>
   );
 };

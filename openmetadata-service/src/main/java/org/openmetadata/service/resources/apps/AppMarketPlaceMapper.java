@@ -42,9 +42,11 @@ public class AppMarketPlaceMapper
             .withFeatures(create.getFeatures())
             .withSourcePythonClass(create.getSourcePythonClass())
             .withAllowConfiguration(create.getAllowConfiguration())
+            .withAllowConcurrentExecution(create.getAllowConcurrentExecution())
             .withSystem(create.getSystem())
             .withSupportsInterrupt(create.getSupportsInterrupt())
-            .withEventSubscriptions(create.getEventSubscriptions());
+            .withEventSubscriptions(create.getEventSubscriptions())
+            .withSupportsIngestionRunner(create.getSupportsIngestionRunner());
 
     // Validate App
     validateApplication(app);

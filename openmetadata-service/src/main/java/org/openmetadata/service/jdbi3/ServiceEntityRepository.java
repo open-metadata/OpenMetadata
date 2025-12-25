@@ -107,7 +107,8 @@ public abstract class ServiceEntityRepository<
 
   /** Remove the secrets from the secret manager */
   @Override
-  protected void postDelete(T service) {
+  protected void postDelete(T service, boolean hardDelete) {
+    super.postDelete(service, hardDelete);
     if (service.getConnection() != null) {
       SecretsManagerFactory.getSecretsManager()
           .deleteSecretsFromServiceConnectionConfig(

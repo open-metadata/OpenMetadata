@@ -47,6 +47,7 @@ import { Transi18next } from '../../utils/CommonUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import CustomizableDataProductPage from '../CustomizableDataProductPage/CustomizableDataProductPage';
 import CustomizableDomainPage from '../CustomizableDomainPage/CustomizableDomainPage';
 import { CustomizeDetailsPage } from '../CustomizeDetailsPage/CustomizeDetailsPage';
 import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
@@ -339,6 +340,15 @@ export const CustomizablePage = () => {
         />
       );
 
+    case PageType.DataProduct:
+      return (
+        <CustomizableDataProductPage
+          initialPageData={currentPage}
+          personaDetails={personaDetails}
+          onSaveLayout={handlePageCustomizeSave}
+        />
+      );
+
     case PageType.Glossary:
     case PageType.GlossaryTerm:
       return (
@@ -363,6 +373,11 @@ export const CustomizablePage = () => {
     case PageType.MlModel:
     case PageType.APIEndpoint:
     case PageType.APICollection:
+    case PageType.Chart:
+    case PageType.Directory:
+    case PageType.File:
+    case PageType.Spreadsheet:
+    case PageType.Worksheet:
       return (
         <CustomizeDetailsPage
           initialPageData={currentPage}

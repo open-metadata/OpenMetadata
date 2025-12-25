@@ -274,6 +274,11 @@ jest.mock('../../../hooks/useCustomPages', () => ({
   useCustomPages: jest.fn().mockReturnValue([]),
 }));
 
+jest.mock('../../../constants/LeftSidebar.constants', () => ({
+  SIDEBAR_NESTED_KEYS: {},
+  SIDEBAR_LIST: [],
+}));
+
 describe('Test PipelineDetails component', () => {
   it('Checks if the PipelineDetails component has all the proper components rendered', async () => {
     const { container } = render(

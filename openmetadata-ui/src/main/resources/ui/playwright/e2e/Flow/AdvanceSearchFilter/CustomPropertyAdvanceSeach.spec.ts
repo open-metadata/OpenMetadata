@@ -129,13 +129,15 @@ test('CustomProperty Dashboard Filter', async ({ page }) => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--field .ant-select'),
-        'Custom Properties'
+        'Custom Properties',
+        true
       );
 
       await selectOption(
         page,
         ruleLocator.locator('.rule--field .ant-select'),
-        'Dashboard'
+        'Dashboard',
+        true
       );
 
       // Select Custom Property Field when we want filter

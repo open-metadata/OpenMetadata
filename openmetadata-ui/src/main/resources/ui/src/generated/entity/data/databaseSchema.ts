@@ -50,6 +50,10 @@ export interface DatabaseSchema {
      */
     domains?: EntityReference[];
     /**
+     * Status of the DatabaseSchema.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -70,6 +74,10 @@ export interface DatabaseSchema {
      * Unique identifier that identifies this schema instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
@@ -183,6 +191,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -237,9 +249,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -486,6 +520,21 @@ export enum SamplingMethodType {
 }
 
 /**
+ * Status of the DatabaseSchema.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
  * Life Cycle properties of the entity
  *
  * This schema defines Life Cycle Properties.
@@ -553,6 +602,7 @@ export enum DatabaseServiceType {
     Doris = "Doris",
     Druid = "Druid",
     DynamoDB = "DynamoDB",
+    Epic = "Epic",
     Exasol = "Exasol",
     Glue = "Glue",
     Greenplum = "Greenplum",
@@ -574,11 +624,13 @@ export enum DatabaseServiceType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",

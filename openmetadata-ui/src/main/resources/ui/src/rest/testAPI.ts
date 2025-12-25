@@ -15,11 +15,13 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { SORT_ORDER } from '../enums/common.enum';
+import { TestCaseType, TestSuiteType } from '../enums/TestSuite.enum';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
 import { DataQualityReport } from '../generated/tests/dataQualityReport';
 import {
   TestCase,
+  TestCaseDimensionResult,
   TestCaseResult,
   TestCaseStatus,
 } from '../generated/tests/testCase';
@@ -36,16 +38,6 @@ import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
-
-export enum TestSuiteType {
-  basic = 'basic',
-  logical = 'logical',
-}
-export enum TestCaseType {
-  all = 'all',
-  table = 'table',
-  column = 'column',
-}
 
 export type ListTestSuitePrams = ListParams & {
   testSuiteType?: TestSuiteType;
@@ -81,6 +73,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   tier?: string;
   serviceName?: string;
   dataQualityDimension?: string;
+  followedBy?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {
@@ -121,6 +114,13 @@ export type DataQualityReportParamsType = {
   q?: string;
   aggregationQuery: string;
   index: string;
+};
+
+export type TestCaseDimensionResultParams = {
+  dimensionalityKey?: string;
+  startTs?: number;
+  endTs?: number;
+  dimensionName?: string;
 };
 
 const testCaseUrl = '/dataQuality/testCases';
@@ -234,6 +234,20 @@ export const getTestCaseVersionDetails = async (
   const url = `${testCaseUrl}/${id}/versions/${version}`;
 
   const response = await APIClient.get(url);
+
+  return response.data;
+};
+
+// Test case dimensionality results
+export const getTestCaseDimensionResultsByFqn = async (
+  fqn: string,
+  params?: TestCaseDimensionResultParams
+) => {
+  const response = await APIClient.get<
+    PagingResponse<TestCaseDimensionResult[]>
+  >(`${testCaseUrl}/dimensionResults/${getEncodedFqn(fqn)}`, {
+    params,
+  });
 
   return response.data;
 };

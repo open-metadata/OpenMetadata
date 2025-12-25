@@ -16,10 +16,14 @@ package org.openmetadata.service.resources.search;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.resources.EntityResourceTest.C1;
 import static org.openmetadata.service.resources.EntityResourceTest.C2;
+import static org.openmetadata.service.resources.EntityResourceTest.GLOSSARY1_TERM1_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.PERSONAL_DATA_TAG_LABEL;
+import static org.openmetadata.service.resources.EntityResourceTest.PII_SENSITIVE_TAG_LABEL;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -35,13 +39,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Column;
@@ -54,6 +63,8 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
+import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.util.TestUtils;
 
@@ -174,6 +185,29 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
             assertEquals(
                 200, response.getStatus(), "Search in index '" + index + "' should succeed");
           });
+    }
+  }
+
+  @Test
+  void testDisplayNameFallbackSortingIntegration() throws IOException {
+    String testPrefix = "displayname_sort_test_" + System.currentTimeMillis();
+
+    // Create tables with different displayName scenarios to test the sorting behavior
+    List<Table> testTables = createTablesForDisplayNameSortTest(testPrefix);
+
+    // Wait for search indexing to complete
+    TestUtils.simulateWork(10);
+
+    try {
+      // Test sorting by displayName.keyword ASC - this is the scenario from the user's curl command
+      testDisplayNameSortingBehavior(testPrefix, "asc");
+
+      // Also test DESC sorting to ensure it works in both directions
+      testDisplayNameSortingBehavior(testPrefix, "desc");
+
+    } finally {
+      // Clean up test entities
+      cleanupTestTables(testTables);
     }
   }
 
@@ -839,12 +873,19 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void testSearchQueryPaginationConsistency() throws IOException {
-    // Create multiple entities to test pagination
-    String pattern = "pagination_test_" + System.currentTimeMillis();
-    // Create 15 tables to ensure we have enough for pagination
+    // Create multiple entities to test pagination - varied score
+    String pattern = "pagination_test";
     List<Table> tables = new ArrayList<>();
     for (int i = 0; i < 15; i++) {
-      String tableName = pattern + "_table_" + String.format("%02d", i);
+      String minimalUUIDToBreakTies = UUID.randomUUID().toString().substring(0, 8);
+      String minimalUUIDsToBreakTies2 = UUID.randomUUID().toString().substring(0, 8);
+      String tableName =
+          "pagination_test_"
+              + i
+              + "_"
+              + UUID.randomUUID()
+              + minimalUUIDToBreakTies
+              + minimalUUIDsToBreakTies2;
       CreateTable createTable =
           tableResourceTest
               .createRequest(tableName)
@@ -855,7 +896,7 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
       tables.add(tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS));
     }
     // Wait for indexing
-    TestUtils.simulateWork(5);
+    TestUtils.simulateWork(20);
     // Test pagination consistency
     assertDoesNotThrow(
         () -> {
@@ -905,14 +946,34 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
           Set<String> tablePage1Ids = extractEntityIds(tablePage1);
           Set<String> tablePage2Ids = extractEntityIds(tablePage2);
 
+          Map<String, String> idToNameMap = getIdNameMapFromTables(tables);
+
+          // Helper to format id → name
+          Function<Set<String>, Map<String, String>> extractNames =
+              ids -> ids.stream().collect(Collectors.toMap(id -> id, idToNameMap::get));
+          LOG.info("Pagination Test - Page1 Entities: {}", extractNames.apply(tablePage1Ids));
+          LOG.info("Pagination Test - Page2 Entities: {}", extractNames.apply(tablePage2Ids));
+
           // Ensure no overlap between pages
           Set<String> intersection = new HashSet<>(tablePage1Ids);
           intersection.retainAll(tablePage2Ids);
-          assertTrue(intersection.isEmpty(), "No entities should appear in both pages");
-
+          assertTrue(
+              intersection.isEmpty(),
+              String.format(
+                  """
+                    No entities should appear in both pages, but found: %d
+                    Page 1 entities: %s
+                    Page 2 entities: %s""",
+                  intersection.size(), tablePage1Ids, tablePage2Ids));
           LOG.info(
               "Pagination test - Table total: {}, DataAsset total: {}", tableTotal, dataAssetTotal);
         });
+  }
+
+  // Get names from ids for logging
+  private Map<String, String> getIdNameMapFromTables(List<Table> tables) {
+    return tables.stream()
+        .collect(Collectors.toMap(table -> table.getId().toString(), Table::getName));
   }
 
   // Helper method to extract total hits from search response
@@ -1203,6 +1264,879 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
       // This is where we might see the issue - when filtering by a database service,
       // we might still see dashboard/chart entities if they happen to have the same
       // service.displayName field
+    }
+  }
+
+  private List<Table> createTablesForDisplayNameSortTest(String testPrefix)
+      throws org.apache.http.client.HttpResponseException {
+    List<Table> tables = new ArrayList<>();
+
+    try {
+      // Table 1: Has a proper displayName starting with 'A'
+      CreateTable createTable1 =
+          tableResourceTest
+              .createRequest(testPrefix + "_table1")
+              .withName("zebra_analytics_table_" + testPrefix)
+              .withDisplayName("Alpha Analytics Dashboard") // displayName starts with 'A'
+              .withDescription("Table with proper displayName");
+
+      tables.add(tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS));
+
+      // Table 2: Has null displayName (will fall back to name)
+      CreateTable createTable2 =
+          tableResourceTest
+              .createRequest(testPrefix + "_table2")
+              .withName("alpha_data_table_" + testPrefix)
+              .withDisplayName(null) // null displayName - should fall back to name
+              .withDescription("Table with null displayName");
+
+      tables.add(tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS));
+
+      // Table 3: Has empty displayName (will fall back to name)
+      CreateTable createTable3 =
+          tableResourceTest
+              .createRequest(testPrefix + "_table3")
+              .withName("beta_metrics_table_" + testPrefix)
+              .withDisplayName("") // empty displayName - should fall back to name
+              .withDescription("Table with empty displayName");
+
+      tables.add(tableResourceTest.createEntity(createTable3, ADMIN_AUTH_HEADERS));
+
+      // Table 4: Has whitespace-only displayName (will fall back to name)
+      CreateTable createTable4 =
+          tableResourceTest
+              .createRequest(testPrefix + "_table4")
+              .withName("gamma_reports_table_" + testPrefix)
+              .withDisplayName("   ") // whitespace-only displayName - should fall back to name
+              .withDescription("Table with whitespace displayName");
+
+      tables.add(tableResourceTest.createEntity(createTable4, ADMIN_AUTH_HEADERS));
+
+      // Table 5: Has proper displayName starting with 'Z'
+      CreateTable createTable5 =
+          tableResourceTest
+              .createRequest(testPrefix + "_table5")
+              .withName("omega_insights_table_" + testPrefix)
+              .withDisplayName("Zebra Business Intelligence") // displayName starts with 'Z'
+              .withDescription("Table with proper displayName starting with Z");
+
+      tables.add(tableResourceTest.createEntity(createTable5, ADMIN_AUTH_HEADERS));
+
+    } catch (Exception e) {
+      LOG.error("Error creating test tables: {}", e.getMessage());
+      // Clean up any tables that were created before the error
+      cleanupTestTables(tables);
+      throw e;
+    }
+
+    return tables;
+  }
+
+  private void testDisplayNameSortingBehavior(String testPrefix, String sortOrder)
+      throws IOException {
+    // Use a simpler approach - search by a pattern in the name and filter by entity type
+    // This avoids complex JSON encoding issues while still testing the sorting behavior
+    WebTarget target =
+        getResource("search/query")
+            .queryParam("q", testPrefix) // Search for our test prefix
+            .queryParam("index", "table") // Use table index directly
+            .queryParam("from", 0)
+            .queryParam("size", 15)
+            .queryParam("deleted", false)
+            .queryParam("sort_field", "displayName.keyword")
+            .queryParam("sort_order", sortOrder);
+
+    String searchResult = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+    ObjectMapper objectMapper = new ObjectMapper();
+    JsonNode searchResponse = objectMapper.readTree(searchResult);
+
+    // Extract the hits from the search response
+    JsonNode hits = searchResponse.get("hits").get("hits");
+    assertTrue(hits.isArray(), "Search hits should be an array");
+    assertTrue(hits.size() >= 5, "Should find at least 5 test tables");
+
+    // Verify the sorting behavior
+    List<String> actualDisplayNames = new ArrayList<>();
+    List<String> actualNames = new ArrayList<>();
+
+    for (JsonNode hit : hits) {
+      JsonNode source = hit.get("_source");
+      String displayName = source.get("displayName").asText();
+      String name = source.get("name").asText();
+
+      // Only process our test tables
+      if (name.contains(testPrefix)) {
+        actualDisplayNames.add(displayName);
+        actualNames.add(name);
+      }
+    }
+
+    assertEquals(5, actualDisplayNames.size(), "Should find exactly 5 test tables");
+
+    if ("asc".equals(sortOrder)) {
+      verifyAscendingSortOrder(actualDisplayNames, actualNames, testPrefix);
+    } else {
+      verifyDescendingSortOrder(actualDisplayNames, actualNames, testPrefix);
+    }
+
+    // Key assertion: Verify no empty displayName appears in results
+    for (String displayName : actualDisplayNames) {
+      assertNotNull(displayName, "DisplayName should never be null in search results");
+      assertFalse(
+          displayName.trim().isEmpty(),
+          "DisplayName should never be empty in search results due to fallback logic");
+    }
+  }
+
+  private void verifyAscendingSortOrder(
+      List<String> displayNames, List<String> names, String testPrefix) {
+    // Print actual results for debugging
+    System.out.println("=== Actual Sort Results ===");
+    for (int i = 0; i < displayNames.size(); i++) {
+      System.out.println(String.format("%d. displayName='%s'", i, displayNames.get(i)));
+    }
+
+    // The key verification: displayName fallback is working
+    // 1. No empty displayNames in results (they should all fall back to name)
+    // 2. Proper sorting behavior
+
+    assertEquals(5, displayNames.size(), "Should find exactly 5 test tables");
+
+    // Verify no empty displayNames (this is the main fix)
+    for (String displayName : displayNames) {
+      assertNotNull(displayName, "DisplayName should never be null");
+      assertFalse(
+          displayName.trim().isEmpty(),
+          "DisplayName should never be empty (should fall back to name)");
+    }
+
+    // Verify the original issue is fixed: empty displayName doesn't sort to the top
+    assertNotEquals(
+        "", displayNames.getFirst(), "Empty displayName should not sort to the top in ASC order");
+
+    // Verify that entities with displayNames containing proper values are present
+    boolean hasAlphaAnalytics = displayNames.contains("Alpha Analytics Dashboard");
+    boolean hasZebraIntelligence = displayNames.contains("Zebra Business Intelligence");
+    boolean hasTableNames = displayNames.stream().anyMatch(name -> name.contains(testPrefix));
+
+    assertTrue(hasAlphaAnalytics, "Should find 'Alpha Analytics Dashboard'");
+    assertTrue(hasZebraIntelligence, "Should find 'Zebra Business Intelligence'");
+    assertTrue(hasTableNames, "Should find fallback table names with test prefix");
+  }
+
+  private void verifyDescendingSortOrder(
+      List<String> displayNames, List<String> names, String testPrefix) {
+    // Print actual results for debugging
+    System.out.println("=== Actual DESC Sort Results ===");
+    for (int i = 0; i < displayNames.size(); i++) {
+      System.out.printf("%d. displayName='%s'%n", i, displayNames.get(i));
+    }
+
+    assertEquals(5, displayNames.size(), "Should find exactly 5 test tables in DESC order");
+
+    // Verify no empty displayNames (this is the main fix)
+    for (String displayName : displayNames) {
+      assertNotNull(displayName, "DisplayName should never be null in DESC order");
+      assertFalse(
+          displayName.trim().isEmpty(),
+          "DisplayName should never be empty in DESC order (should fall back to name)");
+    }
+
+    // Verify that entities with displayNames containing proper values are present
+    boolean hasAlphaAnalytics = displayNames.contains("Alpha Analytics Dashboard");
+    boolean hasZebraIntelligence = displayNames.contains("Zebra Business Intelligence");
+    boolean hasTableNames = displayNames.stream().anyMatch(name -> name.contains(testPrefix));
+
+    assertTrue(hasAlphaAnalytics, "Should find 'Alpha Analytics Dashboard' in DESC");
+    assertTrue(hasZebraIntelligence, "Should find 'Zebra Business Intelligence' in DESC");
+    assertTrue(hasTableNames, "Should find fallback table names with test prefix in DESC");
+  }
+
+  @Test
+  void testSearchWithIncludeAggregationsParameter() throws IOException {
+    // Wait for indexing
+    TestUtils.simulateWork(2);
+
+    String query = "*";
+    String index = "table_search_index";
+
+    // Test search WITH aggregations (default behavior)
+    WebTarget targetWithAggs =
+        getResource("search/query")
+            .queryParam("q", query)
+            .queryParam("index", index)
+            .queryParam("from", 0)
+            .queryParam("size", 10)
+            .queryParam("include_aggregations", "true");
+
+    String resultWithAggs = TestUtils.get(targetWithAggs, String.class, ADMIN_AUTH_HEADERS);
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode responseWithAggs = mapper.readTree(resultWithAggs);
+
+    // Verify aggregations are present
+    assertTrue(
+        responseWithAggs.has("aggregations"),
+        "Response should contain aggregations when include_aggregations=true");
+    JsonNode aggregations = responseWithAggs.get("aggregations");
+    assertNotNull(aggregations, "Aggregations should not be null");
+    assertTrue(
+        aggregations.size() > 0, "Aggregations should contain at least one aggregation field");
+
+    // Test search WITHOUT aggregations
+    WebTarget targetWithoutAggs =
+        getResource("search/query")
+            .queryParam("q", query)
+            .queryParam("index", index)
+            .queryParam("from", 0)
+            .queryParam("size", 10)
+            .queryParam("include_aggregations", "false");
+
+    String resultWithoutAggs = TestUtils.get(targetWithoutAggs, String.class, ADMIN_AUTH_HEADERS);
+    JsonNode responseWithoutAggs = mapper.readTree(resultWithoutAggs);
+
+    // Verify aggregations are either absent or empty
+    if (responseWithoutAggs.has("aggregations")) {
+      JsonNode aggsWithout = responseWithoutAggs.get("aggregations");
+      assertEquals(
+          0, aggsWithout.size(), "Aggregations should be empty when include_aggregations=false");
+    }
+
+    // Verify both responses have hits
+    assertTrue(
+        responseWithAggs.has("hits") && responseWithAggs.get("hits").has("hits"),
+        "Response with aggregations should have hits");
+    assertTrue(
+        responseWithoutAggs.has("hits") && responseWithoutAggs.get("hits").has("hits"),
+        "Response without aggregations should have hits");
+
+    // Verify the same number of search results
+    int hitsWithAggs = responseWithAggs.get("hits").get("hits").size();
+    int hitsWithoutAggs = responseWithoutAggs.get("hits").get("hits").size();
+    assertEquals(
+        hitsWithAggs,
+        hitsWithoutAggs,
+        "Both responses should return the same number of search results");
+
+    // Verify response size is smaller without aggregations
+    int sizeWithAggs = resultWithAggs.length();
+    int sizeWithoutAggs = resultWithoutAggs.length();
+    assertTrue(
+        sizeWithoutAggs < sizeWithAggs,
+        "Response without aggregations should be smaller than response with aggregations");
+
+    LOG.info(
+        "Response size comparison: with aggregations={}KB, without aggregations={}KB",
+        sizeWithAggs / 1024,
+        sizeWithoutAggs / 1024);
+  }
+
+  private void cleanupTestTables(List<Table> tables) {
+    for (Table table : tables) {
+      try {
+        tableResourceTest.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
+      } catch (Exception e) {
+        LOG.warn("Failed to cleanup test table {}: {}", table.getName(), e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  void testGlossaryTermSearchWithHierarchyAndWildcardDoesNotCauseTooManyClauses()
+      throws IOException {
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+
+    try {
+      glossaryResourceTest.setup(null);
+      glossaryTermResourceTest.setup(null);
+    } catch (Exception e) {
+      LOG.warn("Some entities already exist - continuing with test execution");
+    }
+
+    String testPrefix = "hierarchy_wildcard_test_" + System.currentTimeMillis();
+
+    List<Glossary> createdGlossaries = new ArrayList<>();
+    List<org.openmetadata.schema.entity.data.GlossaryTerm> createdTerms = new ArrayList<>();
+
+    try {
+      for (int glossaryIdx = 0; glossaryIdx < 3; glossaryIdx++) {
+        CreateGlossary createGlossary =
+            glossaryResourceTest.createRequest(testPrefix + "_glossary_" + glossaryIdx);
+        Glossary glossary = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+        createdGlossaries.add(glossary);
+
+        for (int i = 0; i < 100; i++) {
+          String termName = testPrefix + "_glossary" + glossaryIdx + "_term_" + i;
+          org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm =
+              glossaryTermResourceTest
+                  .createRequest(termName)
+                  .withGlossary(glossary.getFullyQualifiedName())
+                  .withDisplayName(
+                      "Test Term " + i + " with various names like revenue expense event")
+                  .withDescription(
+                      "Test term "
+                          + i
+                          + " for hierarchy wildcard search with keywords: revenue, expense, event, performance, measure, achievement");
+          org.openmetadata.schema.entity.data.GlossaryTerm term =
+              glossaryTermResourceTest.createEntity(createTerm, ADMIN_AUTH_HEADERS);
+          createdTerms.add(term);
+        }
+      }
+
+      TestUtils.simulateWork(5);
+
+      String wildcardQuery = "*e*";
+
+      assertDoesNotThrow(
+          () -> {
+            WebTarget target =
+                getResource("search/query")
+                    .queryParam("q", wildcardQuery)
+                    .queryParam("index", "glossary_term_search_index")
+                    .queryParam("from", 0)
+                    .queryParam("size", 25)
+                    .queryParam("deleted", false)
+                    .queryParam("track_total_hits", true)
+                    .queryParam("getHierarchy", true);
+
+            Response response;
+            try {
+              String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+              response = Response.ok(result).build();
+            } catch (org.apache.http.client.HttpResponseException e) {
+              LOG.error("Error occurred while executing search query: {}", e.getMessage());
+              response = Response.status(e.getStatusCode()).entity(e.getMessage()).build();
+            }
+
+            assertEquals(
+                200,
+                response.getStatus(),
+                "Glossary term search with hierarchy and wildcard query should not cause too_many_clauses error");
+
+            String responseBody = (String) response.getEntity();
+            assertNotNull(responseBody);
+            assertFalse(responseBody.isEmpty());
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode responseJson = mapper.readTree(responseBody);
+            assertFalse(
+                responseBody.contains("too_many_clauses"),
+                "Response should not contain too_many_clauses error");
+          },
+          "Search with getHierarchy=true and wildcard query should succeed");
+
+    } finally {
+      for (org.openmetadata.schema.entity.data.GlossaryTerm term : createdTerms) {
+        try {
+          glossaryTermResourceTest.deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary term {}: {}", term.getName(), e.getMessage());
+        }
+      }
+      for (Glossary glossary : createdGlossaries) {
+        try {
+          glossaryResourceTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary {}: {}", glossary.getName(), e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
+  void testClassificationAndGlossaryTagsAggregations() throws IOException {
+    String testPrefix = "tag_aggregation_test_" + System.currentTimeMillis();
+
+    CreateTable createTable =
+        tableResourceTest
+            .createRequest(testPrefix)
+            .withName(testPrefix + "_table")
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("id")
+                        .withDataType(ColumnDataType.BIGINT)
+                        .withTags(List.of(PII_SENSITIVE_TAG_LABEL, PERSONAL_DATA_TAG_LABEL))
+                        .withOrdinalPosition(1),
+                    new Column()
+                        .withName("name")
+                        .withDataType(ColumnDataType.VARCHAR)
+                        .withDataLength(100)
+                        .withTags(List.of(GLOSSARY1_TERM1_LABEL))
+                        .withOrdinalPosition(2)))
+            .withTableConstraints(null);
+
+    Table testTable = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
+    assertNotNull(testTable);
+
+    TestUtils.simulateWork(5);
+
+    try {
+      Response response = searchWithQuery(testPrefix, "table_search_index");
+      assertEquals(200, response.getStatus(), "Search should succeed");
+
+      String responseBody = (String) response.getEntity();
+      assertNotNull(responseBody);
+
+      ObjectMapper objectMapper = new ObjectMapper();
+      JsonNode jsonResponse = objectMapper.readTree(responseBody);
+
+      assertTrue(jsonResponse.has("aggregations"), "Response should have aggregations field");
+      JsonNode aggregations = jsonResponse.get("aggregations");
+
+      JsonNode classificationTagsAgg = null;
+      if (aggregations.has("classificationTags")) {
+        classificationTagsAgg = aggregations.get("classificationTags");
+      } else if (aggregations.has("sterms#classificationTags")) {
+        classificationTagsAgg = aggregations.get("sterms#classificationTags");
+      }
+
+      JsonNode glossaryTagsAgg = null;
+      if (aggregations.has("glossaryTags")) {
+        glossaryTagsAgg = aggregations.get("glossaryTags");
+      } else if (aggregations.has("sterms#glossaryTags")) {
+        glossaryTagsAgg = aggregations.get("sterms#glossaryTags");
+      }
+
+      assertNotNull(
+          classificationTagsAgg,
+          "Aggregations should have classificationTags field (field-based, not scripted)");
+      assertNotNull(
+          glossaryTagsAgg,
+          "Aggregations should have glossaryTags field (field-based, not scripted)");
+
+      assertTrue(
+          classificationTagsAgg.has("buckets"),
+          "classificationTags aggregation should have buckets");
+      assertTrue(glossaryTagsAgg.has("buckets"), "glossaryTags aggregation should have buckets");
+
+      JsonNode classificationBuckets = classificationTagsAgg.get("buckets");
+      JsonNode glossaryBuckets = glossaryTagsAgg.get("buckets");
+
+      assertTrue(classificationBuckets.isArray(), "Classification buckets should be an array");
+      assertTrue(glossaryBuckets.isArray(), "Glossary buckets should be an array");
+
+      Set<String> classificationTagsFound = new HashSet<>();
+      for (JsonNode bucket : classificationBuckets) {
+        assertTrue(bucket.has("key"), "Each classification bucket should have a key field");
+        assertTrue(
+            bucket.has("doc_count"), "Each classification bucket should have a doc_count field");
+        String tagFQN = bucket.get("key").asText();
+        long docCount = bucket.get("doc_count").asLong();
+        classificationTagsFound.add(tagFQN);
+        LOG.info("Found classification tag: {} with count: {}", tagFQN, docCount);
+      }
+
+      Set<String> glossaryTagsFound = new HashSet<>();
+      for (JsonNode bucket : glossaryBuckets) {
+        assertTrue(bucket.has("key"), "Each glossary bucket should have a key field");
+        assertTrue(bucket.has("doc_count"), "Each glossary bucket should have a doc_count field");
+        String tagFQN = bucket.get("key").asText();
+        long docCount = bucket.get("doc_count").asLong();
+        glossaryTagsFound.add(tagFQN);
+        LOG.info("Found glossary tag: {} with count: {}", tagFQN, docCount);
+      }
+
+      LOG.info("Classification tags found: {}", classificationTagsFound);
+      LOG.info("Glossary tags found: {}", glossaryTagsFound);
+
+    } finally {
+      tableResourceTest.deleteEntity(testTable.getId(), ADMIN_AUTH_HEADERS);
+    }
+  }
+
+  @Test
+  void testEntityTypeCountsWithQueryFilterWithOuterWrapper() {
+    TestUtils.simulateWork(2);
+    assertDoesNotThrow(
+        () -> {
+          String queryFilter =
+              URLEncoder.encode(
+                  "{\"query\": {\"bool\": {\"must\": [{\"term\": {\"deleted\": false}}]}}}",
+                  StandardCharsets.UTF_8);
+          WebTarget target =
+              getResource("search/entityTypeCounts")
+                  .queryParam("q", "*")
+                  .queryParam("index", "dataAsset")
+                  .queryParam("query_filter", queryFilter);
+
+          String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+          Response response = Response.ok(result).build();
+          assertEquals(
+              200,
+              response.getStatus(),
+              "Entity type counts with query_filter should return successfully");
+          String responseBody = (String) response.getEntity();
+          assertNotNull(responseBody);
+          assertTrue(responseBody.contains("aggregations"), "Response should contain aggregations");
+          LOG.info("Query filter with outer wrapper test passed");
+        });
+  }
+
+  @Test
+  void testEntityTypeCountsWithQueryFilterWithoutOuterWrapper() {
+    TestUtils.simulateWork(2);
+    assertDoesNotThrow(
+        () -> {
+          String queryFilter =
+              URLEncoder.encode(
+                  "{\"bool\": {\"must\": [{\"term\": {\"deleted\": false}}]}}",
+                  StandardCharsets.UTF_8);
+          WebTarget target =
+              getResource("search/entityTypeCounts")
+                  .queryParam("q", "*")
+                  .queryParam("index", "dataAsset")
+                  .queryParam("query_filter", queryFilter);
+
+          String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+          Response response = Response.ok(result).build();
+          assertEquals(
+              200,
+              response.getStatus(),
+              "Entity type counts with query_filter should return successfully");
+          String responseBody = (String) response.getEntity();
+          assertNotNull(responseBody);
+          assertTrue(responseBody.contains("aggregations"), "Response should contain aggregations");
+          LOG.info("Query filter without outer wrapper test passed");
+        });
+  }
+
+  @Test
+  void testEntityTypeCountsWithMalformedQueryFilter() {
+    TestUtils.simulateWork(2);
+    assertDoesNotThrow(
+        () -> {
+          String malformedFilter =
+              URLEncoder.encode("{\"query\": {\"invalid_syntax", StandardCharsets.UTF_8);
+          WebTarget target =
+              getResource("search/entityTypeCounts")
+                  .queryParam("q", "*")
+                  .queryParam("index", "dataAsset")
+                  .queryParam("query_filter", malformedFilter);
+
+          String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+          Response response = Response.ok(result).build();
+          assertEquals(
+              200,
+              response.getStatus(),
+              "Entity type counts should handle malformed query_filter gracefully");
+          String responseBody = (String) response.getEntity();
+          assertNotNull(responseBody);
+          LOG.info("Malformed query filter test passed - handled gracefully");
+        });
+  }
+
+  @Test
+  void testEntityTypeCountsWithSpecificIndexes() throws IOException {
+    TestUtils.simulateWork(3);
+    String[] indexes = {"table", "dashboard", "pipeline", "topic"};
+    for (String index : indexes) {
+      Response response = getEntityTypeCounts("*", index);
+      assertEquals(
+          200,
+          response.getStatus(),
+          "Entity type counts for index " + index + " should return successfully");
+      String responseBody = (String) response.getEntity();
+      assertNotNull(responseBody);
+
+      ObjectMapper objectMapper = new ObjectMapper();
+      JsonNode jsonResponse = objectMapper.readTree(responseBody);
+      assertTrue(
+          jsonResponse.has("aggregations"),
+          "Response for index " + index + " should have aggregations");
+      assertTrue(jsonResponse.has("hits"), "Response for index " + index + " should have hits");
+      LOG.info("Entity type counts for index {} passed", index);
+    }
+  }
+
+  @Test
+  void testEntityTypeCountsAccuracyForDataAsset() throws IOException {
+    TestUtils.simulateWork(3);
+    Response response = getEntityTypeCounts("*", "dataAsset");
+    assertEquals(200, response.getStatus(), "Entity type counts should return successfully");
+    String responseBody = (String) response.getEntity();
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    JsonNode jsonResponse = objectMapper.readTree(responseBody);
+    JsonNode aggregations = jsonResponse.get("aggregations");
+    assertNotNull(aggregations, "Response should have aggregations");
+
+    JsonNode entityTypeAgg =
+        aggregations.has("entityType")
+            ? aggregations.get("entityType")
+            : aggregations.get("sterms#entityType");
+    assertNotNull(entityTypeAgg, "Aggregations should have entityType field");
+
+    JsonNode buckets = entityTypeAgg.get("buckets");
+    assertNotNull(buckets, "EntityType aggregation should have buckets");
+
+    Map<String, Long> entityTypeCounts = new HashMap<>();
+    for (JsonNode bucket : buckets) {
+      String entityType = bucket.get("key").asText();
+      long count = bucket.get("doc_count").asLong();
+      entityTypeCounts.put(entityType, count);
+      LOG.info("Entity type: {} has count: {}", entityType, count);
+    }
+
+    long totalCountFromBuckets =
+        entityTypeCounts.values().stream().mapToLong(Long::longValue).sum();
+    JsonNode hits = jsonResponse.get("hits");
+    assertNotNull(hits, "Response should have hits");
+    JsonNode total = hits.get("total");
+    long totalHits;
+    if (total.isObject()) {
+      totalHits = total.get("value").asLong();
+    } else {
+      totalHits = total.asLong();
+    }
+
+    LOG.info("Total hits from aggregation buckets: {}", totalCountFromBuckets);
+    LOG.info("Total hits from search: {}", totalHits);
+    assertEquals(
+        totalHits, totalCountFromBuckets, "Sum of entity type counts should match total hits");
+  }
+
+  @Test
+  void testEntityTypeCountsWithComplexQueryFilter() {
+    TestUtils.simulateWork(2);
+    assertDoesNotThrow(
+        () -> {
+          String complexFilter =
+              "{"
+                  + "\"query\": {"
+                  + "\"bool\": {"
+                  + "\"must\": ["
+                  + "{\"term\": {\"deleted\": false}},"
+                  + "{\"exists\": {\"field\": \"name\"}}"
+                  + "],"
+                  + "\"must_not\": ["
+                  + "{\"term\": {\"entityType\": \"test\"}}"
+                  + "]"
+                  + "}"
+                  + "}"
+                  + "}";
+          WebTarget target =
+              getResource("search/entityTypeCounts")
+                  .queryParam("q", "*")
+                  .queryParam("index", "dataAsset")
+                  .queryParam(
+                      "query_filter", URLEncoder.encode(complexFilter, StandardCharsets.UTF_8));
+
+          String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+          Response response = Response.ok(result).build();
+          assertEquals(
+              200,
+              response.getStatus(),
+              "Entity type counts with complex query_filter should return successfully");
+          String responseBody = (String) response.getEntity();
+          assertNotNull(responseBody);
+          assertTrue(responseBody.contains("aggregations"), "Response should contain aggregations");
+          LOG.info("Complex query filter test passed");
+        });
+  }
+
+  @Test
+  void testEntityTypeCountsWithDeletedFilter() throws IOException {
+    TestUtils.simulateWork(3);
+    Response responseWithDeleted =
+        getEntityTypeCountsWithParams("*", "dataAsset", true, null, null);
+    assertEquals(
+        200,
+        responseWithDeleted.getStatus(),
+        "Entity type counts with deleted=true should return successfully");
+
+    Response responseWithoutDeleted =
+        getEntityTypeCountsWithParams("*", "dataAsset", false, null, null);
+    assertEquals(
+        200,
+        responseWithoutDeleted.getStatus(),
+        "Entity type counts with deleted=false should return successfully");
+
+    String bodyWithDeleted = (String) responseWithDeleted.getEntity();
+    String bodyWithoutDeleted = (String) responseWithoutDeleted.getEntity();
+    assertNotNull(bodyWithDeleted);
+    assertNotNull(bodyWithoutDeleted);
+    LOG.info("Deleted filter test passed");
+  }
+
+  @Test
+  void testEntityTypeCountsResponseFormat() throws IOException {
+    TestUtils.simulateWork(3);
+    Response response = getEntityTypeCounts("*", "all");
+    assertEquals(200, response.getStatus(), "Entity type counts should return successfully");
+    String responseBody = (String) response.getEntity();
+
+    ObjectMapper objectMapper = new ObjectMapper();
+    JsonNode jsonResponse = objectMapper.readTree(responseBody);
+
+    assertTrue(jsonResponse.has("took"), "Response should have 'took' field");
+    assertTrue(jsonResponse.has("timed_out"), "Response should have 'timed_out' field");
+    assertTrue(jsonResponse.has("_shards"), "Response should have '_shards' field");
+    assertTrue(jsonResponse.has("hits"), "Response should have 'hits' field");
+    assertTrue(jsonResponse.has("aggregations"), "Response should have 'aggregations' field");
+
+    JsonNode shards = jsonResponse.get("_shards");
+    assertTrue(shards.has("total"), "Shards should have 'total' field");
+    assertTrue(shards.has("successful"), "Shards should have 'successful' field");
+    assertTrue(shards.has("skipped"), "Shards should have 'skipped' field");
+    assertTrue(shards.has("failed"), "Shards should have 'failed' field");
+
+    LOG.info("Response format validation passed");
+  }
+
+  @Test
+  void testEntityTypeCountsWithEmptyResults() {
+    TestUtils.simulateWork(2);
+    assertDoesNotThrow(
+        () -> {
+          String nonExistentQuery = "nonexistent_entity_xyz_" + UUID.randomUUID();
+          Response response = getEntityTypeCounts(nonExistentQuery, "dataAsset");
+          assertEquals(
+              200,
+              response.getStatus(),
+              "Entity type counts with no results should return successfully");
+          String responseBody = (String) response.getEntity();
+          assertNotNull(responseBody);
+          assertTrue(responseBody.contains("aggregations"), "Response should contain aggregations");
+
+          ObjectMapper objectMapper = new ObjectMapper();
+          JsonNode jsonResponse = objectMapper.readTree(responseBody);
+          JsonNode hits = jsonResponse.get("hits");
+          JsonNode total = hits.get("total");
+          long totalHits;
+          if (total.isObject()) {
+            totalHits = total.get("value").asLong();
+          } else {
+            totalHits = total.asLong();
+          }
+          assertEquals(0, totalHits, "Should have zero hits for non-existent query");
+          LOG.info("Empty results test passed");
+        });
+  }
+
+  @Test
+  void testGlossaryTermHierarchySearchRelevanceScoring() throws IOException {
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+
+    try {
+      glossaryResourceTest.setup(null);
+      glossaryTermResourceTest.setup(null);
+    } catch (Exception e) {
+      LOG.warn("Some entities already exist - continuing with test execution");
+    }
+
+    String testPrefix = "hierarchy_relevance_test_" + System.currentTimeMillis();
+    List<Glossary> createdGlossaries = new ArrayList<>();
+    List<org.openmetadata.schema.entity.data.GlossaryTerm> createdTerms = new ArrayList<>();
+
+    try {
+      CreateGlossary createGlossary1 =
+          glossaryResourceTest.createRequest(testPrefix + "_glossary_low_score");
+      Glossary glossary1 = glossaryResourceTest.createEntity(createGlossary1, ADMIN_AUTH_HEADERS);
+      createdGlossaries.add(glossary1);
+
+      org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm1 =
+          glossaryTermResourceTest
+              .createRequest(testPrefix + "_term_description_match")
+              .withGlossary(glossary1.getFullyQualifiedName())
+              .withDisplayName("Product Feature")
+              .withDescription("This term describes Venta metrics and related analytics");
+      org.openmetadata.schema.entity.data.GlossaryTerm term1 =
+          glossaryTermResourceTest.createEntity(createTerm1, ADMIN_AUTH_HEADERS);
+      createdTerms.add(term1);
+
+      CreateGlossary createGlossary2 =
+          glossaryResourceTest.createRequest(testPrefix + "_glossary_high_score");
+      Glossary glossary2 = glossaryResourceTest.createEntity(createGlossary2, ADMIN_AUTH_HEADERS);
+      createdGlossaries.add(glossary2);
+
+      org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm2 =
+          glossaryTermResourceTest
+              .createRequest("Venta_Neta_" + testPrefix)
+              .withGlossary(glossary2.getFullyQualifiedName())
+              .withDisplayName("Venta Neta LW")
+              .withDescription("Last week net sales metric");
+      org.openmetadata.schema.entity.data.GlossaryTerm term2 =
+          glossaryTermResourceTest.createEntity(createTerm2, ADMIN_AUTH_HEADERS);
+      createdTerms.add(term2);
+
+      TestUtils.simulateWork(5);
+
+      String searchQuery = "Venta";
+
+      WebTarget target =
+          getResource("search/query")
+              .queryParam("q", searchQuery)
+              .queryParam("index", "glossary_term_search_index")
+              .queryParam("from", 0)
+              .queryParam("size", 25)
+              .queryParam("deleted", false)
+              .queryParam("track_total_hits", true)
+              .queryParam("getHierarchy", true);
+
+      String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+      assertNotNull(result);
+      assertFalse(result.isEmpty());
+
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode responseArray = mapper.readTree(result);
+      assertTrue(
+          responseArray.isArray(), "Response should be an array of glossaries with hierarchy");
+      assertTrue(responseArray.size() >= 2, "Should return at least 2 glossaries");
+
+      JsonNode firstGlossary = responseArray.get(0);
+      String firstGlossaryFqn = firstGlossary.get("fullyQualifiedName").asText();
+
+      assertEquals(
+          glossary2.getFullyQualifiedName(),
+          firstGlossaryFqn,
+          "Glossary with term having 'Venta' in name should appear first (higher relevance score)");
+
+      LOG.info(
+          "Hierarchy search relevance test passed - glossaries correctly sorted by highest-scoring child term");
+
+    } finally {
+      for (org.openmetadata.schema.entity.data.GlossaryTerm term : createdTerms) {
+        try {
+          glossaryTermResourceTest.deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary term {}: {}", term.getName(), e.getMessage());
+        }
+      }
+      for (Glossary glossary : createdGlossaries) {
+        try {
+          glossaryResourceTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary {}: {}", glossary.getName(), e.getMessage());
+        }
+      }
+    }
+  }
+
+  private Response getEntityTypeCountsWithParams(
+      String query, String index, Boolean deleted, String queryFilter, String postFilter) {
+    WebTarget target = getResource("search/entityTypeCounts").queryParam("q", query);
+
+    if (index != null) {
+      target = target.queryParam("index", index);
+    }
+    if (deleted != null) {
+      target = target.queryParam("deleted", deleted);
+    }
+    if (queryFilter != null) {
+      target = target.queryParam("query_filter", queryFilter);
+    }
+    if (postFilter != null) {
+      target = target.queryParam("post_filter", postFilter);
+    }
+
+    try {
+      String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+      return Response.ok(result).build();
+    } catch (org.apache.http.client.HttpResponseException e) {
+      LOG.error("Error occurred while getting entity type counts: {}", e.getMessage());
+      return Response.status(e.getStatusCode()).entity(e.getMessage()).build();
     }
   }
 }

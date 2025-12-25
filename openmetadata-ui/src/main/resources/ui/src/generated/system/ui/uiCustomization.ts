@@ -239,12 +239,17 @@ export enum EntityType {
 export enum PageType {
     APICollection = "APICollection",
     APIEndpoint = "APIEndpoint",
+    Chart = "Chart",
+    Classification = "Classification",
     Container = "Container",
     Dashboard = "Dashboard",
     DashboardDataModel = "DashboardDataModel",
+    DataProduct = "DataProduct",
     Database = "Database",
     DatabaseSchema = "DatabaseSchema",
+    Directory = "Directory",
     Domain = "Domain",
+    File = "File",
     Glossary = "Glossary",
     GlossaryTerm = "GlossaryTerm",
     LandingPage = "LandingPage",
@@ -252,9 +257,12 @@ export enum PageType {
     MlModel = "MlModel",
     Pipeline = "Pipeline",
     SearchIndex = "SearchIndex",
+    Spreadsheet = "Spreadsheet",
     StoredProcedure = "StoredProcedure",
     Table = "Table",
+    Tag = "Tag",
     Topic = "Topic",
+    Worksheet = "Worksheet",
 }
 
 /**

@@ -17,6 +17,15 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom/extend-expect';
 
+// Polyfill for TextEncoder and TextDecoder
+import { TextDecoder, TextEncoder } from 'util';
+
+Object.assign(global, {
+  TextDecoder,
+  TextEncoder,
+  structuredClone: (v) => JSON.parse(JSON.stringify(v)),
+});
+
 // Reference: https://github.com/ant-design/ant-design/issues/21096
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -97,6 +106,9 @@ jest.mock('utils/i18next/LocalUtil', () => ({
   }),
   detectBrowserLanguage: jest.fn().mockReturnValue('en-US'),
   t: (key) => key,
+  translateWithNestedKeys: jest.fn((key, params) => {
+    return params ? `${key}_${JSON.stringify(params)}` : key;
+  }),
   dir: jest.fn().mockReturnValue('ltr'),
 }));
 /**
@@ -126,6 +138,7 @@ jest.mock('./utils/TableColumn.util', () => ({
   dataProductTableObject: jest.fn().mockReturnValue([]),
   tagTableObject: jest.fn().mockReturnValue([]),
   columnFilterIcon: jest.fn(),
+  descriptionTableObject: jest.fn().mockReturnValue([]),
 }));
 
 /**
@@ -142,5 +155,76 @@ jest.mock('./utils/AdvancedSearchClassBase', () => {
       autocomplete: jest.fn().mockReturnValue(jest.fn()),
       getQbConfigs: jest.fn().mockReturnValue({}),
     },
+  };
+});
+
+jest.mock('./utils/EnvironmentUtils', () => ({
+  isDev: jest.fn().mockReturnValue('test'),
+}));
+
+/**
+ * Mock MUI theme to provide proper theme context
+ * Note: We keep the actual ThemeProvider so tests can wrap components properly
+ */
+jest.mock('@mui/material/styles', () => {
+  const actual = jest.requireActual('@mui/material/styles');
+
+  return {
+    ...actual,
+  };
+});
+
+/**
+ * Mock @mui/styled-engine to prevent styled-components/emotion conflicts in tests
+ * Note: We keep ThemeContext from the actual package to allow ThemeProvider to work properly
+ */
+jest.mock('@mui/styled-engine', () => {
+  const actual = jest.requireActual('@mui/styled-engine');
+
+  const React = require('react');
+
+  const styled = (component) => () => {
+    return React.forwardRef((props, ref) => {
+      return React.createElement(component, { ...props, ref });
+    });
+  };
+
+  return {
+    ...actual,
+    __esModule: true,
+    default: styled,
+    styled,
+    keyframes: () => 'mock-keyframes',
+    css: (...args) => args,
+    internal_mutateStyles: jest.fn(),
+    internal_serializeStyles: jest.fn(),
+  };
+});
+
+/**
+ * Mock @mui/material components for consistent testing
+ */
+jest.mock('@mui/material', () => {
+  const React = require('react');
+
+  const styled = (component) => () => component;
+
+  return {
+    ...jest.requireActual('@mui/material'),
+    Button: React.forwardRef(({ children, onClick, ...props }, ref) =>
+      React.createElement(
+        'button',
+        { ...props, onClick, ref, 'data-testid': props['data-testid'] },
+        children
+      )
+    ),
+    Grid: React.forwardRef(({ children, ...props }, ref) =>
+      React.createElement(
+        'div',
+        { ...props, ref, 'data-testid': props['data-testid'] },
+        children
+      )
+    ),
+    styled,
   };
 });

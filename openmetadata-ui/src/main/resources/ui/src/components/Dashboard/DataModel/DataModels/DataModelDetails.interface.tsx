@@ -33,3 +33,8 @@ export interface DataModelDetailsProps {
   ) => Promise<void>;
   handleToggleDelete: (version?: number) => void;
 }
+
+export interface DataModelTableProps {
+  showDeleted: boolean;
+  handleShowDeleted: (checked: boolean) => void;
+}

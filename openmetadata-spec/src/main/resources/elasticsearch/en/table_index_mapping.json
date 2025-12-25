@@ -155,6 +155,15 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "fqnHash": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 512
+          }
+        }
+      },
       "tableType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
@@ -265,7 +274,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -361,7 +377,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -501,6 +524,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -609,6 +633,7 @@
         "properties": {
           "tagFQN": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "text": {
                 "type": "text",
@@ -629,6 +654,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {
@@ -657,20 +690,183 @@
         }
       },
       "upstreamLineage": {
-        "type": "object"
+        "properties": {
+          "fromEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "toEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "pipeline": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "columns": {
+            "properties": {
+              "fromColumns": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "toColumn": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "docId": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 512
+              }
+            }
+          }
+        }
       },
       "upstreamEntityRelationship": {
-        "type": "object"
+        "properties": {
+          "entity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "relatedEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "entityRelationship": {
-        "type": "object"
+        "properties": {
+          "entity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          },
+          "relatedEntity": {
+            "properties": {
+              "fqnHash": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "serviceType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
       "entityType": {
-        "type": "keyword"
+        "type": "keyword",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
+      },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "totalVotes": {
         "type": "long",

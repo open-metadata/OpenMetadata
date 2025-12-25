@@ -20,7 +20,8 @@ import { ReactComponent as DomainNoDataPlaceholder } from '../../../../assets/sv
 import { ReactComponent as DomainIcon } from '../../../../assets/svg/ic-domains-widget.svg';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_LARGE,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../../constants/constants';
 import {
@@ -28,14 +29,15 @@ import {
   getSortField,
   getSortOrder,
 } from '../../../../constants/Widgets.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
-import { searchData } from '../../../../rest/miscAPI';
+import { getAllDomainsWithAssetsCount } from '../../../../rest/domainAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { getDomainIcon } from '../../../../utils/DomainUtils';
 import { getDomainDetailsPath } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -64,6 +66,7 @@ const DomainsWidget = ({
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [assetsCounts, setAssetsCounts] = useState<Record<string, number>>({});
 
   const fetchDomains = useCallback(async () => {
     setLoading(true);
@@ -72,19 +75,22 @@ const DomainsWidget = ({
       const sortField = getSortField(selectedSortBy);
       const sortOrder = getSortOrder(selectedSortBy);
 
-      const res = await searchData(
-        '',
-        INITIAL_PAGING_VALUE,
-        PAGE_SIZE_LARGE,
-        '',
-        sortField,
-        sortOrder,
-        SearchIndex.DOMAIN
-      );
+      const [res, counts] = await Promise.all([
+        searchQuery({
+          query: '',
+          pageNumber: INITIAL_PAGING_VALUE,
+          pageSize: PAGE_SIZE_MEDIUM,
+          sortField,
+          sortOrder,
+          searchIndex: SearchIndex.DOMAIN,
+        }),
+        getAllDomainsWithAssetsCount(),
+      ]);
 
-      const domains = res?.data?.hits?.hits.map((hit) => hit._source);
+      const domains = res?.hits?.hits.map((hit) => hit._source);
       const sortedDomains = applySortToData(domains, selectedSortBy);
       setDomains(sortedDomains as Domain[]);
+      setAssetsCounts(counts);
     } catch {
       setError(t('message.fetch-domain-list-error'));
       setDomains([]);
@@ -130,7 +136,9 @@ const DomainsWidget = ({
         actionButtonLink={ROUTES.DOMAIN}
         actionButtonText={t('label.explore-domain')}
         description={t('message.domains-no-data-message')}
-        icon={<DomainNoDataPlaceholder />}
+        icon={
+          <DomainNoDataPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
+        }
         title={t('label.no-domains-yet')}
       />
     ),
@@ -141,12 +149,13 @@ const DomainsWidget = ({
     () => (
       <div className="entity-list-body">
         <div className="domains-widget-grid">
-          {domains.map((domain) => (
+          {domains.slice(0, PAGE_SIZE_BASE).map((domain) => (
             <Button
               className={classNames('domain-card', {
                 'domain-card-full': isFullSize,
                 'p-0': !isFullSize,
               })}
+              data-testid={`domain-card-${domain.id || domain.name}`}
               key={domain.id}
               onClick={() => handleDomainClick(domain)}>
               {isFullSize ? (
@@ -166,7 +175,7 @@ const DomainsWidget = ({
                         {domain.displayName || domain.name}
                       </Typography.Text>
                       <span className="domain-card-full-count">
-                        {domain.assets?.length || 0}
+                        {assetsCounts[domain.fullyQualifiedName ?? ''] ?? 0}
                       </span>
                     </div>
                   </div>
@@ -187,7 +196,7 @@ const DomainsWidget = ({
                       </Typography.Text>
                     </span>
                     <span className="domain-card-count">
-                      {domain.assets?.length || 0}
+                      {assetsCounts[domain.fullyQualifiedName ?? ''] ?? 0}
                     </span>
                   </div>
                 </div>
@@ -201,7 +210,7 @@ const DomainsWidget = ({
   );
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && domains.length > 10,
+    () => Boolean(!loading) && domains.length > PAGE_SIZE_BASE,
     [domains, loading]
   );
 
@@ -209,13 +218,11 @@ const DomainsWidget = ({
     () => (
       <WidgetFooter
         moreButtonLink="/domain"
-        moreButtonText={t('label.view-more-count', {
-          countValue: domains.length > 10 ? domains.length - 10 : undefined,
-        })}
+        moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
     ),
-    [t, domains.length, loading]
+    [t, showWidgetFooterMoreButton]
   );
 
   const widgetHeader = useMemo(
@@ -232,7 +239,6 @@ const DomainsWidget = ({
         sortOptions={DOMAIN_SORT_BY_OPTIONS}
         title={t('label.domain-plural')}
         widgetKey={widgetKey}
-        widgetWidth={2}
         onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />
@@ -251,7 +257,10 @@ const DomainsWidget = ({
   );
 
   return (
-    <WidgetWrapper dataLength={10} header={widgetHeader} loading={loading}>
+    <WidgetWrapper
+      dataTestId="KnowledgePanel.Domains"
+      header={widgetHeader}
+      loading={loading}>
       <div className="domains-widget-container">
         <div className="widget-content flex-1">
           {error ? (

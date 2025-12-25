@@ -17,8 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
-import es.org.elasticsearch.action.search.SearchResponse;
-import es.org.elasticsearch.search.suggest.Suggest;
+import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -44,17 +43,27 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.PreviewSearchRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.AsyncService;
+import os.org.opensearch.client.opensearch.core.search.Suggest;
 
 @Slf4j
 @Path("/v1/search")
@@ -63,9 +72,11 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 @Collection(name = "search")
 public class SearchResource {
   private final SearchRepository searchRepository;
+  private final Authorizer authorizer;
 
   public SearchResource(Authorizer authorizer) {
     this.searchRepository = Entity.getSearchRepository();
+    this.authorizer = authorizer;
   }
 
   @GET
@@ -180,7 +191,19 @@ public class SearchResource {
                   "Explain the results of the query. Defaults to false. Only for debugging purposes.")
           @DefaultValue("false")
           @QueryParam("explain")
-          boolean explain)
+          boolean explain,
+      @Parameter(
+              description =
+                  "Enable semantic search using embeddings and RDF context. When true, combines vector similarity with traditional BM25 scoring.")
+          @DefaultValue("false")
+          @QueryParam("semanticSearch")
+          boolean semanticSearch,
+      @Parameter(
+              description =
+                  "Include aggregations in the search response. Defaults to true. Set to false to skip aggregations for faster response times when only search results are needed.")
+          @DefaultValue("true")
+          @QueryParam("include_aggregations")
+          boolean includeAggregations)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -213,7 +236,9 @@ public class SearchResource {
             .withApplyDomainFilter(
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
-            .withExplain(explain);
+            .withExplain(explain)
+            .withSemanticSearch(semanticSearch)
+            .withIncludeAggregations(includeAggregations);
     return searchRepository.search(request, subjectContext);
   }
 
@@ -598,5 +623,237 @@ public class SearchResource {
             .withDomains(domains);
 
     return searchRepository.getEntityTypeCounts(request, index);
+  }
+
+  @POST
+  @Path("/reindexEntities")
+  @Operation(
+      operationId = "reindexOnlySelectedEntities.",
+      summary = "Only Reindex the selected entities in Elasticsearch.",
+      description =
+          "Only Reindex the selected entities in Elasticsearch. Maximum 500 entities per request. Job timeout: 30 minutes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Reindex process started.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Bad request - too many entities or invalid input.")
+      })
+  public Response reindexEntities(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Recreate flag: if true, remove existing entity from ES first then add updated one")
+          @DefaultValue("false")
+          @QueryParam("recreate")
+          boolean recreate,
+      @Parameter(description = "Job timeout in minutes (default: 30, max: 60)")
+          @DefaultValue("5")
+          @QueryParam("timeoutMinutes")
+          int timeoutMinutes,
+      @Valid List<EntityReference> entities) {
+    authorizer.authorizeAdmin(securityContext);
+    final int maxEntitiesPerRequest = 500;
+    final int maxTimeoutMinutes = 10;
+
+    if (entities == null || entities.isEmpty()) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity("Entity list cannot be empty")
+          .build();
+    }
+
+    if (entities.size() > maxEntitiesPerRequest) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(
+              String.format(
+                  "Too many entities requested: %d. Maximum allowed: %d",
+                  entities.size(), maxEntitiesPerRequest))
+          .build();
+    }
+
+    if (timeoutMinutes < 1 || timeoutMinutes > maxTimeoutMinutes) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(
+              String.format(
+                  "Invalid timeout: %d minutes. Must be between 1 and %d",
+                  timeoutMinutes, maxTimeoutMinutes))
+          .build();
+    }
+
+    Future<?> future =
+        AsyncService.getInstance()
+            .getExecutorService()
+            .submit(
+                () -> {
+                  int totalEntities = entities.size();
+                  int successCount = 0;
+                  int failureCount = 0;
+                  int skippedCount = 0;
+                  List<String> failures = new ArrayList<>();
+                  long startTime = System.currentTimeMillis();
+
+                  LOG.info(
+                      "Starting reindex job for {} entities. Recreate mode: {}, Timeout: {} minutes",
+                      totalEntities,
+                      recreate,
+                      timeoutMinutes);
+
+                  for (EntityReference ref : entities) {
+                    try {
+                      EntityInterface entity = Entity.getEntity(ref, "*", Include.ALL);
+
+                      String entityId = entity.getId().toString();
+                      String entityType = entity.getEntityReference().getType();
+                      IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
+
+                      if (indexMapping == null) {
+                        LOG.warn(
+                            "Skipping entity {} ({}): No index mapping found for type {}",
+                            ref.getFullyQualifiedName(),
+                            entityId,
+                            entityType);
+                        skippedCount++;
+                        continue;
+                      }
+
+                      String indexName =
+                          indexMapping.getIndexName(searchRepository.getClusterAlias());
+                      SearchIndex searchIndex =
+                          searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
+                      String doc = JsonUtils.pojoToJson(searchIndex.buildSearchIndexDoc());
+
+                      long docSizeBytes = doc.getBytes().length;
+                      long maxContentLength = 100L * 1024 * 1024;
+
+                      if (docSizeBytes > maxContentLength) {
+                        LOG.warn(
+                            "Entity {} ({}) size {} bytes exceeds http.max_content_length ({}). Attempting to reindex with reduced payload.",
+                            ref.getFullyQualifiedName(),
+                            entityId,
+                            docSizeBytes,
+                            maxContentLength);
+
+                        EntityInterface reducedEntity =
+                            Entity.getEntity(
+                                ref,
+                                "id,name,fullyQualifiedName,displayName,description,owners,tags,deleted",
+                                Include.NON_DELETED);
+                        SearchIndex reducedSearchIndex =
+                            searchRepository
+                                .getSearchIndexFactory()
+                                .buildIndex(entityType, reducedEntity);
+                        doc = JsonUtils.pojoToJson(reducedSearchIndex.buildSearchIndexDoc());
+
+                        long reducedSize = doc.getBytes().length;
+                        if (reducedSize > maxContentLength) {
+                          LOG.error(
+                              "Even with reduced payload, entity {} ({}) size {} bytes exceeds limit. Skipping.",
+                              ref.getFullyQualifiedName(),
+                              entityId,
+                              reducedSize);
+                          failures.add(
+                              String.format(
+                                  "%s (%s): Document too large (%d bytes)",
+                                  ref.getFullyQualifiedName(), entityId, reducedSize));
+                          failureCount++;
+                          continue;
+                        }
+                        LOG.info(
+                            "Successfully reduced entity size from {} to {} bytes",
+                            docSizeBytes,
+                            reducedSize);
+                      }
+
+                      if (recreate) {
+                        searchRepository.getSearchClient().deleteEntity(indexName, entityId);
+                        LOG.debug(
+                            "Deleted entity {} ({}) from index {}",
+                            ref.getFullyQualifiedName(),
+                            entityId,
+                            indexName);
+                        searchRepository.getSearchClient().createEntity(indexName, entityId, doc);
+                        LOG.debug(
+                            "Recreated entity {} ({}) in index {}",
+                            ref.getFullyQualifiedName(),
+                            entityId,
+                            indexName);
+                      } else {
+                        searchRepository.updateEntityIndex(entity);
+                        LOG.debug(
+                            "Updated entity {} ({}) in index {}",
+                            ref.getFullyQualifiedName(),
+                            entityId,
+                            indexName);
+                      }
+
+                      successCount++;
+
+                      if ((successCount + failureCount) % 10 == 0) {
+                        LOG.info(
+                            "Reindex progress: {}/{} completed (Success: {}, Failed: {}, Skipped: {})",
+                            successCount + failureCount + skippedCount,
+                            totalEntities,
+                            successCount,
+                            failureCount,
+                            skippedCount);
+                      }
+
+                    } catch (Exception e) {
+                      failureCount++;
+                      String errorMsg =
+                          String.format(
+                              "%s (%s): %s",
+                              ref.getFullyQualifiedName(), ref.getId(), e.getMessage());
+                      failures.add(errorMsg);
+                      LOG.error(
+                          "Failed to reindex entity {} ({}): {}",
+                          ref.getFullyQualifiedName(),
+                          ref.getId(),
+                          e.getMessage(),
+                          e);
+                    }
+                  }
+
+                  long durationMinutes = (System.currentTimeMillis() - startTime) / 60000;
+                  LOG.info(
+                      "Reindex job completed in {} minutes. Total: {}, Success: {}, Failed: {}, Skipped: {}",
+                      durationMinutes,
+                      totalEntities,
+                      successCount,
+                      failureCount,
+                      skippedCount);
+
+                  if (!failures.isEmpty()) {
+                    LOG.warn("Failed entities: {}", String.join("; ", failures));
+                  }
+                });
+
+    AsyncService.getInstance()
+        .getExecutorService()
+        .submit(
+            () -> {
+              try {
+                future.get(timeoutMinutes, TimeUnit.MINUTES);
+              } catch (TimeoutException e) {
+                future.cancel(true);
+                LOG.error(
+                    "Reindex job timed out after {} minutes and was cancelled", timeoutMinutes);
+              } catch (Exception e) {
+                LOG.error("Reindex job failed with error: {}", e.getMessage(), e);
+              }
+            });
+
+    return Response.ok()
+        .entity(
+            String.format(
+                "Reindex process started for %d entities with %d minute timeout. Check logs for progress updates.",
+                entities.size(), timeoutMinutes))
+        .build();
   }
 }

@@ -70,7 +70,14 @@
         }
       },
       "domainType": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -136,7 +143,14 @@
         "type": "text"
       },
       "entityType": {
-        "type": "keyword"
+        "type": "keyword",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
       },
       "owners": {
         "properties": {
@@ -185,6 +199,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "experts": {
         "type": "keyword"
       },
@@ -212,6 +229,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {

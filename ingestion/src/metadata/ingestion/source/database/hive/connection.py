@@ -48,10 +48,19 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.hive.custom_hive_connection import (
+    CustomHiveConnection,
+)
 from metadata.utils.constants import THREE_MIN
+from metadata.utils.ssl_manager import check_ssl_and_init
 
 HIVE_POSTGRES_SCHEME = "hive+postgres"
 HIVE_MYSQL_SCHEME = "hive+mysql"
+
+# Monkey-patch the pyhive.hive module to use our custom connection
+import pyhive.hive
+
+pyhive.hive.Connection = CustomHiveConnection
 
 
 def get_connection_url(connection: HiveConnection) -> str:
@@ -112,6 +121,34 @@ def get_connection(connection: HiveConnection) -> Engine:
         connection.connectionArguments.root[
             "kerberos_service_name"
         ] = connection.kerberosServiceName
+
+    # Handle SSL using SSL manager (following established patterns)
+    ssl_manager = check_ssl_and_init(connection)
+    if ssl_manager:
+        connection = ssl_manager.setup_ssl(connection)
+        # Store SSL manager for cleanup
+        connection._ssl_manager = ssl_manager
+
+    # Add SSL configuration to connection arguments if SSL is enabled
+    if hasattr(connection, "useSSL") and connection.useSSL:
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+        connection.connectionArguments.root["use_ssl"] = True
+
+        # Add SSL certificate configuration if available
+        if hasattr(connection, "sslConfig") and connection.sslConfig:
+            if connection.sslConfig.root.sslCertificate:
+                connection.connectionArguments.root[
+                    "ssl_certfile"
+                ] = connection.sslConfig.root.sslCertificate
+            if connection.sslConfig.root.sslKey:
+                connection.connectionArguments.root[
+                    "ssl_keyfile"
+                ] = connection.sslConfig.root.sslKey
+            if connection.sslConfig.root.caCertificate:
+                connection.connectionArguments.root[
+                    "ssl_ca_certs"
+                ] = connection.sslConfig.root.caCertificate
 
     return create_generic_db_connection(
         connection=connection,
@@ -192,8 +229,10 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    if service_connection.metastoreConnection and isinstance(
-        service_connection.metastoreConnection, dict
+    if (
+        service_connection.metastoreConnection
+        and isinstance(service_connection.metastoreConnection, dict)
+        and len(service_connection.metastoreConnection) > 0
     ):
         try:
             service_connection.metastoreConnection = MysqlConnection.model_validate(

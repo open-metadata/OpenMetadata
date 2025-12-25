@@ -39,6 +39,10 @@
       "description": "User who made the query.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to this Query resource.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -132,6 +136,10 @@
     "domains" : {
       "description": "Domains the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "entityStatus": {
+      "description": "Status of the Query.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "query", "service"],

@@ -85,13 +85,22 @@ const MetricDetailsPage = () => {
     try {
       const res = await saveUpdatedMetricData(updatedData);
 
-      setMetricDetails((previous) => {
-        return {
+      if (key === 'unitOfMeasurement') {
+        setMetricDetails((previous) => ({
           ...previous,
           version: res.version,
-          ...(key ? { [key]: res[key] } : res),
-        };
-      });
+          unitOfMeasurement: res.unitOfMeasurement,
+          customUnitOfMeasurement: res.customUnitOfMeasurement,
+        }));
+      } else {
+        setMetricDetails((previous) => {
+          return {
+            ...previous,
+            version: res.version,
+            ...(key ? { [key]: res[key] } : res),
+          };
+        });
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -129,6 +138,7 @@ const MetricDetailsPage = () => {
           TabSpecificField.VOTES,
           TabSpecificField.EXTENSION,
           TabSpecificField.RELATED_METRICS,
+          TabSpecificField.REVIEWERS,
         ].join(','),
       });
       const { id, fullyQualifiedName } = res;
@@ -231,6 +241,7 @@ const MetricDetailsPage = () => {
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
           TabSpecificField.VOTES,
+          TabSpecificField.REVIEWERS,
         ].join(','),
       });
       setMetricDetails(details);

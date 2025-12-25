@@ -61,6 +61,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -125,6 +126,7 @@ export enum DataType {
  * This schema defines all possible metric types in OpenMetadata.
  */
 export enum MetricType {
+    CardinalityDistribution = "cardinalityDistribution",
     ColumnCount = "columnCount",
     ColumnNames = "columnNames",
     CountInSet = "countInSet",

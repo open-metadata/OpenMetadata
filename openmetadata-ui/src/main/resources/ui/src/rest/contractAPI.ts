@@ -10,9 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
+import {
+  ContractAllResult,
+  ContractResultFilter,
+} from '../components/DataContract/ContractDetailTab/contract.interface';
 import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
-import { DataContract } from '../generated/entity/data/dataContract';
+import {
+  DataContract,
+  EntityStatus,
+} from '../generated/entity/data/dataContract';
 import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
@@ -23,7 +32,7 @@ interface ListContractsParams extends ListParams {
   /**
    * status of the contract
    */
-  status?: 'Active';
+  status?: EntityStatus;
   /**
    * entity ID to filter by
    */
@@ -40,7 +49,7 @@ export const listContracts = async (params: ListContractsParams) => {
 
 export const getContract = async (fqn: string) => {
   const response = await APIClient.get<CreateDataContract>(
-    `/data-contracts/${fqn}`
+    `/dataContracts/name/${fqn}`
   );
 
   return response.data;
@@ -55,11 +64,11 @@ export const createContract = async (contract: CreateDataContract) => {
   return response.data;
 };
 
-export const updateContract = async (contract: CreateDataContract) => {
-  const response = await APIClient.put<CreateDataContract>(
-    `/dataContracts`,
-    contract
-  );
+export const updateContract = async (id: string, data: Operation[]) => {
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<CreateDataContract>
+  >(`/dataContracts/${id}`, data);
 
   return response.data;
 };
@@ -94,7 +103,7 @@ export const validateContractById = async (contractId: string) => {
 
 export const deleteContractById = async (contractId: string) => {
   const response = await APIClient.delete<void>(
-    `/dataContracts/${contractId}?hardDelete=true`
+    `/dataContracts/${contractId}?hardDelete=true&recursive=true`
   );
 
   return response.data;
@@ -113,7 +122,258 @@ export const getContractResultByResultId = async (
 
 export const getLatestContractResults = async (contractId: string) => {
   const response = await APIClient.get<DataContractResult>(
-    `/dataContracts/${contractId}/results`
+    `/dataContracts/${contractId}/results/latest`
+  );
+
+  return response.data;
+};
+
+export const getAllContractResults = async (
+  contractId: string,
+  params: ContractResultFilter
+) => {
+  const response = await APIClient.get<ContractAllResult>(
+    `/dataContracts/${contractId}/results`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+// ODCS (Open Data Contract Standard) Import/Export APIs
+
+export interface ODCSDataContract {
+  apiVersion: string;
+  kind: string;
+  id: string;
+  name?: string;
+  version: string;
+  status: string;
+  tenant?: string;
+  domain?: string;
+  dataProduct?: string;
+  tags?: string[];
+  description?: {
+    purpose?: string;
+    limitations?: string;
+    usage?: string;
+  };
+  schema?: ODCSSchemaElement[];
+  quality?: ODCSQualityRule[];
+  support?: ODCSSupportChannel[];
+  price?: ODCSPricing;
+  team?: ODCSTeamMember[];
+  roles?: ODCSRole[];
+  slaProperties?: ODCSSlaProperty[];
+  servers?: ODCSServer[];
+  customProperties?: ODCSCustomProperty[];
+  contractCreatedTs?: string;
+}
+
+export interface ODCSSchemaElement {
+  name: string;
+  physicalName?: string;
+  physicalType?: string;
+  description?: string;
+  businessName?: string;
+  tags?: string[];
+  logicalType?: string;
+  logicalTypeOptions?: Record<string, unknown>;
+  primaryKey?: boolean;
+  primaryKeyPosition?: number;
+  required?: boolean;
+  unique?: boolean;
+  partitioned?: boolean;
+  classification?: string;
+  properties?: ODCSSchemaElement[];
+}
+
+export interface ODCSQualityRule {
+  type?: string;
+  name?: string;
+  description?: string;
+  rule?: string;
+  column?: string;
+  query?: string;
+  engine?: string;
+  dimension?: string;
+  severity?: string;
+}
+
+export interface ODCSSupportChannel {
+  channel: string;
+  url: string;
+  description?: string;
+  tool?: string;
+  scope?: string;
+}
+
+export interface ODCSPricing {
+  priceAmount?: number;
+  priceCurrency?: string;
+  priceUnit?: string;
+}
+
+export interface ODCSTeamMember {
+  username?: string;
+  name?: string;
+  description?: string;
+  role?: string;
+  dateIn?: string;
+  dateOut?: string;
+}
+
+export interface ODCSRole {
+  role: string;
+  description?: string;
+  access?: string;
+  firstLevelApprovers?: string[];
+  secondLevelApprovers?: string[];
+}
+
+export interface ODCSSlaProperty {
+  property: string;
+  value: string;
+  valueExt?: string;
+  unit?: string;
+  element?: string;
+  driver?: string;
+}
+
+export interface ODCSServer {
+  server: string;
+  type: string;
+  description?: string;
+  environment?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  schema?: string;
+}
+
+export interface ODCSCustomProperty {
+  property?: string;
+  value?: string;
+}
+
+/**
+ * Export a data contract to ODCS v3.0.2 JSON format
+ */
+export const exportContractToODCS = async (
+  contractId: string,
+  fields?: string
+): Promise<ODCSDataContract> => {
+  const response = await APIClient.get<ODCSDataContract>(
+    `${BASE_URL}/${contractId}/odcs`,
+    { params: { fields } }
+  );
+
+  return response.data;
+};
+
+/**
+ * Export a data contract to ODCS v3.0.2 YAML format
+ */
+export const exportContractToODCSYaml = async (
+  contractId: string,
+  fields?: string
+): Promise<string> => {
+  const response = await APIClient.get<string>(
+    `${BASE_URL}/${contractId}/odcs/yaml`,
+    {
+      params: { fields },
+      headers: { Accept: 'application/yaml' },
+      responseType: 'text',
+    }
+  );
+
+  return response.data;
+};
+
+/**
+ * Export a data contract by FQN to ODCS v3.0.2 JSON format
+ */
+export const exportContractToODCSByFqn = async (
+  fqn: string,
+  fields?: string
+): Promise<ODCSDataContract> => {
+  const response = await APIClient.get<ODCSDataContract>(
+    `${BASE_URL}/name/${fqn}/odcs`,
+    { params: { fields } }
+  );
+
+  return response.data;
+};
+
+/**
+ * Import a data contract from ODCS v3.0.2 JSON format
+ */
+export const importContractFromODCS = async (
+  odcs: ODCSDataContract,
+  entityId: string,
+  entityType: string
+): Promise<DataContract> => {
+  const response = await APIClient.post<DataContract>(
+    `${BASE_URL}/odcs`,
+    odcs,
+    { params: { entityId, entityType } }
+  );
+
+  return response.data;
+};
+
+/**
+ * Import a data contract from ODCS v3.0.2 YAML format
+ */
+export const importContractFromODCSYaml = async (
+  yamlContent: string,
+  entityId: string,
+  entityType: string
+): Promise<DataContract> => {
+  const response = await APIClient.post<DataContract>(
+    `${BASE_URL}/odcs/yaml`,
+    yamlContent,
+    {
+      params: { entityId, entityType },
+      headers: { 'Content-Type': 'application/yaml' },
+    }
+  );
+
+  return response.data;
+};
+
+/**
+ * Create or update a data contract from ODCS v3.0.2 JSON format
+ */
+export const createOrUpdateContractFromODCS = async (
+  odcs: ODCSDataContract,
+  entityId: string,
+  entityType: string
+): Promise<DataContract> => {
+  const response = await APIClient.put<DataContract>(`${BASE_URL}/odcs`, odcs, {
+    params: { entityId, entityType },
+  });
+
+  return response.data;
+};
+
+/**
+ * Create or update a data contract from ODCS v3.0.2 YAML format
+ */
+export const createOrUpdateContractFromODCSYaml = async (
+  yamlContent: string,
+  entityId: string,
+  entityType: string
+): Promise<DataContract> => {
+  const response = await APIClient.put<DataContract>(
+    `${BASE_URL}/odcs/yaml`,
+    yamlContent,
+    {
+      params: { entityId, entityType },
+      headers: { 'Content-Type': 'application/yaml' },
+    }
   );
 
   return response.data;

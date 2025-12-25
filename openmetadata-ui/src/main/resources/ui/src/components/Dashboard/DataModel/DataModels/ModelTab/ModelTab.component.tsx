@@ -12,7 +12,7 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { groupBy, omit, uniqBy } from 'lodash';
+import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -177,12 +177,15 @@ const ModelTab = () => {
     field?: keyof Column
   ) => {
     const response = await updateDataModelColumn(columnFqn, column);
+    const cleanResponse = isEmpty(response.children)
+      ? omit(response, 'children')
+      : response;
 
     setPaginatedColumns((prev) =>
       prev.map((col) =>
         col.fullyQualifiedName === columnFqn
           ? // Have to omit the field which is being updated to avoid persisted old value
-            { ...omit(col, field ?? ''), ...response }
+            { ...omit(col, field ?? ''), ...cleanResponse }
           : col
       )
     );

@@ -14,7 +14,64 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
   DATA_CONSUMER_RULES,
   ORGANIZATION_POLICY_RULES,
+  VIEW_ALL_RULE,
 } from '../constant/permission';
+import { PolicyClass } from '../support/access-control/PoliciesClass';
+import { RolesClass } from '../support/access-control/RolesClass';
+import { UserClass } from '../support/user/UserClass';
+import { getApiContext, redirectToHomePage } from './common';
+
+let policy: PolicyClass;
+let role: RolesClass;
+
+export const initializePermissions = async (
+  page: Page,
+  effect: 'allow' | 'deny',
+  operations: string[]
+) => {
+  await redirectToHomePage(page);
+  const { apiContext } = await getApiContext(page);
+
+  policy = new PolicyClass();
+
+  const policyRules = [
+    ...VIEW_ALL_RULE,
+    {
+      name: `Global${effect}AllOperationsPolicy`,
+      resources: ['All'],
+      operations,
+      effect,
+    },
+  ];
+
+  await policy.create(apiContext, policyRules);
+
+  role = new RolesClass();
+  await role.create(apiContext, [policy.responseData.name]);
+
+  return { apiContext, policy, role };
+};
+
+export const assignRoleToUser = async (page: Page, testUser: UserClass) => {
+  const { apiContext } = await getApiContext(page);
+
+  await testUser.patch({
+    apiContext,
+    patchData: [
+      {
+        op: 'replace',
+        path: '/roles',
+        value: [
+          {
+            id: role.responseData.id,
+            type: 'role',
+            name: role.responseData.name,
+          },
+        ],
+      },
+    ],
+  });
+};
 
 export const checkNoPermissionPlaceholder = async (
   page: Page,
@@ -99,32 +156,38 @@ export const validateViewPermissions = async (
   }
 
   await page.click('[data-testid="sample_data"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(
     page,
     /Sample Data/,
     permission?.viewSampleData
   );
   await page.click('[data-testid="table_queries"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(page, /Queries/, permission?.viewQueries);
+
   await page.click('[data-testid="profiler"]');
-  await page.getByTestId('loader').waitFor({ state: 'detached' });
-  await page.waitForLoadState('domcontentloaded');
-  await page.getByText('Data Quality').click();
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(
     page,
     /Data Observability/,
     permission?.viewTests
   );
   await page.click('[data-testid="lineage"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
 
-  await expect(page.locator('[data-testid="edit-lineage"]')).toBeDisabled();
+  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
 
   await page.click('[data-testid="custom_properties"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(page, /Custom Properties/);
 };
 
@@ -168,4 +231,13 @@ export const updateDefaultOrganizationPolicy = async (
       'Content-Type': 'application/json-patch+json',
     },
   });
+};
+
+export const cleanupPermissions = async (apiContext: APIRequestContext) => {
+  if (role?.responseData?.id) {
+    await role.delete(apiContext);
+  }
+  if (policy?.responseData?.id) {
+    await policy.delete(apiContext);
+  }
 };

@@ -19,14 +19,12 @@ import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionCl
 import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
 import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestionClass';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
-import S3IngestionClass from '../../support/entity/ingestion/S3IngestionClass';
 import { UserClass } from '../../support/user/UserClass';
 import { checkAutoPilotStatus } from '../../utils/AutoPilot';
 import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
-  reloadAndWaitForNetworkIdle,
 } from '../../utils/common';
 import { getServiceCategoryFromService } from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
@@ -35,7 +33,9 @@ const user = new UserClass();
 
 const services = [
   ApiIngestionClass,
-  S3IngestionClass,
+  // Skipping S3 as it is failing intermittently in CI
+  // Remove the comment when fixed: https://github.com/open-metadata/OpenMetadata/issues/23727
+  // S3IngestionClass,
   MetabaseIngestionClass,
   MysqlIngestionClass,
   KafkaIngestionClass,
@@ -49,7 +49,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
-  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
+  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'retain-on-failure',
   video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
@@ -115,55 +115,73 @@ services.forEach((ServiceClass) => {
           state: 'detached',
         });
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
-        // Wait for the auto pilot status banner to be visible
-        await page.waitForSelector(
-          '[data-testid="auto-pilot-status-banner"] [data-testid="status-banner-icon-RUNNING"] ',
-          {
-            state: 'visible',
-          }
-        );
-
-        // Click the close icon to hide the banner
-        await page.click('[data-testid="status-banner-close-icon"]');
-
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
-        // Check if the auto pilot status banner is hidden
-        await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-RUNNING')
-        ).toBeHidden();
-
         // Check the auto pilot status
         await checkAutoPilotStatus(page, service);
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
-
         // Wait for the auto pilot status banner to be visible
         await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-FINISHED')
+          page.getByText('AutoPilot agents run completed successfully.')
         ).toBeVisible();
 
-        // Click the close icon to hide the banner
-        await page.click('[data-testid="status-banner-close-icon"]');
+        if (service.serviceType === 'Mysql') {
+          await page.reload();
+          await page.waitForLoadState('networkidle');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
 
-        // Reload the page and wait for the network to be idle
-        await reloadAndWaitForNetworkIdle(page);
+          await page.getByTestId('agent-status-widget-view-more').click();
 
-        // Check if the auto pilot status banner is hidden
-        await expect(
-          page
-            .getByTestId('auto-pilot-status-banner')
-            .getByTestId('status-banner-icon-FINISHED')
-        ).toBeHidden();
+          await page.waitForSelector(
+            '[data-testid="agent-status-card-Metadata"]',
+            {
+              state: 'visible',
+            }
+          );
+
+          // Check the agents statuses
+          await expect(
+            page.getByTestId('agent-status-card-Lineage')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Usage')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Auto Classification')
+          ).toBeVisible();
+          await expect(
+            page.getByTestId('agent-status-card-Profiler')
+          ).toBeVisible();
+
+          // Check the agents summary
+          await expect(
+            page
+              .getByTestId('agent-status-summary-item-Successful')
+              .getByTestId('pipeline-count')
+          ).toHaveText('3');
+          await expect(
+            page
+              .getByTestId('agent-status-summary-item-Pending')
+              .getByTestId('pipeline-count')
+          ).toHaveText('2');
+
+          // Check the total data assets count
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Database-count')
+          ).toHaveText('1');
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Database Schema-count')
+          ).toHaveText('2');
+          await expect(
+            page
+              .getByTestId('total-data-assets-widget')
+              .getByTestId('Table-count')
+          ).toHaveText('3');
+        }
       });
 
       test('Agents created by AutoPilot should be deleted', async ({

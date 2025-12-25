@@ -38,7 +38,6 @@ import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import {
   getEmptyJsonTree,
-  getTierOptions,
   getTreeConfig,
 } from '../../../utils/AdvancedSearchUtils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
@@ -81,7 +80,6 @@ export const AdvanceSearchProvider = ({
   entityType,
 }: AdvanceSearchProviderProps) => {
   const tabsInfo = searchClassBase.getTabsInfo();
-  const tierOptions = useMemo(getTierOptions, []);
   const location = useCustomLocation();
   const navigate = useNavigate();
   const { tab } = useRequiredParams<UrlParams>();
@@ -109,7 +107,6 @@ export const AdvanceSearchProvider = ({
       searchIndex: searchIndex,
       searchOutputType: searchOutputType,
       isExplorePage,
-      tierOptions,
     })
   );
 
@@ -172,7 +169,6 @@ export const AdvanceSearchProvider = ({
         searchIndex: searchIndex,
         searchOutputType: searchOutputType,
         isExplorePage,
-        tierOptions,
       })
     );
   }, [searchIndex, isExplorePage]);
@@ -207,6 +203,7 @@ export const AdvanceSearchProvider = ({
     setTreeInternal(
       QbUtils.checkTree(QbUtils.loadTree(getEmptyJsonTree()), config)
     );
+
     setQueryFilter(undefined);
     setSQLQuery('');
   }, [config]);
@@ -292,7 +289,6 @@ export const AdvanceSearchProvider = ({
       searchIndex: searchIndex,
       searchOutputType: searchOutputType,
       isExplorePage,
-      tierOptions,
     });
 
     let extensionSubField = customProps;

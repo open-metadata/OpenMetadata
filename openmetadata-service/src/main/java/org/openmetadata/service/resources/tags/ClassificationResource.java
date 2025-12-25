@@ -51,6 +51,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -58,7 +59,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/classifications")
@@ -79,7 +79,7 @@ public class ClassificationResource
     extends EntityResource<Classification, ClassificationRepository> {
   private final ClassificationMapper mapper = new ClassificationMapper();
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
-  static final String FIELDS = "owners,usageCount,termCount";
+  static final String FIELDS = "owners,reviewers,usageCount,termCount,autoClassificationConfig";
 
   static class ClassificationList extends ResultList<Classification> {
     /* Required for serde */
@@ -91,7 +91,7 @@ public class ClassificationResource
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("usageCount,termCount", MetadataOperation.VIEW_BASIC);
+    addViewOperation("reviewers,usageCount,termCount", MetadataOperation.VIEW_BASIC);
     return null;
   }
 

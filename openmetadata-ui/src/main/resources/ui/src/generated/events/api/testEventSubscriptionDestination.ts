@@ -27,6 +27,11 @@ export interface Destination {
     category: SubscriptionCategory;
     config?:  Webhook;
     /**
+     * Maximum depth for downstream stakeholder notification traversal. If null, traverses
+     * without depth limit (with cycle protection).
+     */
+    downstreamDepth?: number | null;
+    /**
      * Is the subscription enabled.
      */
     enabled?: boolean;
@@ -34,6 +39,12 @@ export interface Destination {
      * Unique identifier that identifies this Event Subscription.
      */
     id?: string;
+    /**
+     * Enable notification of downstream entity stakeholders. When true, notifications will
+     * traverse lineage to include stakeholders of entities that consume data from the affected
+     * entity.
+     */
+    notifyDownstream?: boolean;
     /**
      * Read timeout in seconds. (Default 12s).
      */

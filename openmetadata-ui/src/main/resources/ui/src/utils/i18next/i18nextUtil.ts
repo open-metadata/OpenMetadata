@@ -30,6 +30,7 @@ import ruRU from '../../locale/languages/ru-ru.json';
 import thTH from '../../locale/languages/th-th.json';
 import trTR from '../../locale/languages/tr-tr.json';
 import zhCN from '../../locale/languages/zh-cn.json';
+import zhTW from '../../locale/languages/zh-tw.json';
 import { SupportedLocales } from './LocalUtil.interface';
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -46,6 +47,7 @@ export const getInitOptions = (): InitOptions => {
       'ko-KR': { translation: koKR },
       'fr-FR': { translation: frFR },
       'zh-CN': { translation: zhCN },
+      'zh-TW': { translation: zhTW },
       'ja-JP': { translation: jaJP },
       'pt-BR': { translation: ptBR },
       'pt-PT': { translation: ptPT },
@@ -84,6 +86,7 @@ export const getCurrentLocaleForConstrue = () => {
       SupportedLocales['Português (Brasil)'],
       SupportedLocales['Português (Portugal)'],
       SupportedLocales.简体中文,
+      SupportedLocales.繁體中文,
     ].includes(i18next.resolvedLanguage as SupportedLocales)
   ) {
     return i18next.resolvedLanguage.replaceAll('-', '_');

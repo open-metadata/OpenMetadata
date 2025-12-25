@@ -1,13 +1,13 @@
 # MLflow
 
-In this section, we provide guides and references to use the MLflow connector. You can view the full documentation for MLflow [here](https://docs.open-metadata.org/connectors/ml-model/mlflow).
+In this section, we provide guides and references to use the MLflow connector. You can view the full documentation for MLflow <a href="https://docs.open-metadata.org/connectors/ml-model/mlflow" target="_blank">here</a>.
 
 ## Requirements
 To extract metadata, OpenMetadata needs two elements:
-- **Tracking URI**: Address of local or remote tracking server. More information can be found in the MLFlow documentation [here](https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded)
+- **Tracking URI**: Address of local or remote tracking server. More information can be found in the MLFlow documentation <a href="https://www.mlflow.org/docs/latest/tracking.html#where-runs-are-recorded" target="_blank">here</a>
 - **Registry URI**: Address of local or remote model registry server.
 
-You can find further information on the MLflow connector in the [docs](https://docs.open-metadata.org/connectors/ml-model/mlflow).
+You can find further information on the MLflow connector in the <a href="https://docs.open-metadata.org/connectors/ml-model/mlflow" target="_blank">docs</a>.
 
 ## Connection Details
 

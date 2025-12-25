@@ -40,16 +40,16 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   const data = getDummyDataByPage(currentPageType as PageType);
 
   useMemo(() => {
+    // Only set dummy data if we're in edit/preview mode
     if (
+      props.isEditView &&
       props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)
     ) {
       setGlossaryChildTerms(
         customizeGlossaryTermPageClassBase.getGlossaryChildTerms()
       );
     }
-
-    return () => setGlossaryChildTerms([]);
-  }, [props.widgetKey]);
+  }, [props.widgetKey, props.isEditView]);
 
   const widgetName = startCase(
     props.widgetKey.replace('KnowledgePanel.', '').replace(/\d+$/, '')

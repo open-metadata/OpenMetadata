@@ -43,6 +43,9 @@
               "$ref": "storageServiceMetadataPipeline.json"
             },
             {
+              "$ref": "driveServiceMetadataPipeline.json"
+            },
+            {
               "$ref": "searchServiceMetadataPipeline.json"
             },
             {
@@ -231,6 +234,11 @@
         "pipelineRunId": {
           "description": "Unique identifier of pipeline run, used to identify the current pipeline run",
           "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "enableStreamableLogs": {
+          "description": "Enable streaming logs to a remote log storage via the OpenMetadata Server",
+          "type": "boolean",
+          "default": false
         }
       },
       "required": ["source", "workflowConfig"],

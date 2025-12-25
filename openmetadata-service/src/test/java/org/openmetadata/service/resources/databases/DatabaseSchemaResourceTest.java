@@ -14,7 +14,9 @@
 package org.openmetadata.service.resources.databases;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
+import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.apache.commons.lang3.StringEscapeUtils.escapeCsv;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -30,6 +32,7 @@ import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
 import static org.openmetadata.csv.EntityCsvTest.getSuccessRecord;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
@@ -38,9 +41,11 @@ import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -71,7 +76,11 @@ import org.openmetadata.schema.type.DatabaseSchemaProfilerConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableProfilerConfig;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -80,7 +89,6 @@ import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -95,6 +103,7 @@ public class DatabaseSchemaResourceTest
         "databaseSchemas",
         DatabaseSchemaResource.FIELDS);
     supportedNameCharacters = "_'+#- .()$" + EntityResourceTest.RANDOM_STRING_GENERATOR.generate(1);
+    supportsBulkAPI = true;
   }
 
   @Test
@@ -685,6 +694,144 @@ public class DatabaseSchemaResourceTest
         "At least one column should have updated description");
   }
 
+  @Test
+  void testImportExportWithTableConstraints() throws IOException {
+    // Create a schema for this test to avoid conflicts
+    CreateDatabaseSchema createSchema = createRequest("constraint_test_schema");
+    DatabaseSchema schema = createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+
+    // Create tables and columns for FK relationships
+    Column c1 = new Column().withName("user_ref").withDataType(ColumnDataType.STRING);
+    Column c2 = new Column().withName("tenant_id").withDataType(ColumnDataType.STRING);
+    Column c3 = new Column().withName("user_id").withDataType(ColumnDataType.STRING);
+
+    // Create target table (referenced table with 2 columns)
+    Table targetTable =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("target_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTableConstraints(null)
+                .withColumns(List.of(c2, c3)),
+            ADMIN_AUTH_HEADERS);
+
+    // Create source table (no constraints initially)
+    Table sourceTable =
+        tableTest.createEntity(
+            tableTest
+                .createRequest("source_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of(c1))
+                .withTableConstraints(null),
+            ADMIN_AUTH_HEADERS);
+
+    // Resolve column FQNs needed for FK definitions
+    Table targetRef =
+        tableTest.getEntityByName(targetTable.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+
+    // Create foreign key constraint - simple 1:1 mapping
+    String targetCol1FQN = targetRef.getColumns().getFirst().getFullyQualifiedName();
+
+    String originalJson = JsonUtils.pojoToJson(sourceTable);
+    Table sourceTableV2 = JsonUtils.deepCopy(sourceTable, Table.class);
+
+    // Create a simple 1:1 foreign key constraint: 1 local column referencing 1 referred column
+    TableConstraint foreignKeyConstraint =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("user_ref")) // 1 local column
+            .withReferredColumns(
+                Collections.singletonList(targetCol1FQN)); // 1 referred column (1:1 mapping)
+
+    sourceTableV2.setTableConstraints(Collections.singletonList(foreignKeyConstraint));
+
+    Table updatedSourceTable =
+        tableTest.patchEntity(sourceTable.getId(), originalJson, sourceTableV2, ADMIN_AUTH_HEADERS);
+
+    // Verify constraint was created correctly
+    assertNotNull(updatedSourceTable.getTableConstraints());
+    assertEquals(1, updatedSourceTable.getTableConstraints().size());
+    TableConstraint constraint = updatedSourceTable.getTableConstraints().getFirst();
+    assertEquals(TableConstraint.ConstraintType.FOREIGN_KEY, constraint.getConstraintType());
+    assertEquals(1, constraint.getColumns().size()); // 1 local column
+    assertEquals(1, constraint.getReferredColumns().size()); // 1 referred column (1:1 mapping)
+
+    // Export recursively to CSV - this should include table constraints
+    String exportedCsv = exportCsvRecursive(schema.getFullyQualifiedName());
+    assertNotNull(exportedCsv);
+
+    List<String> csvLines = List.of(exportedCsv.split(CsvUtil.LINE_SEPARATOR));
+    assertTrue(csvLines.size() > 1, "Export should contain schema, tables, and columns");
+
+    // Modify CSV to update some metadata while preserving structure
+    String header = csvLines.getFirst();
+    List<String> modified = new ArrayList<>();
+    modified.add(header);
+
+    for (String line : csvLines.subList(1, csvLines.size())) {
+      if (line.contains("source_table") && line.contains("table")) {
+        // Update table description
+        line = line.replace("source_table", "source_table Updated via CSV import");
+      }
+      modified.add(line);
+    }
+
+    String newCsv = String.join(CsvUtil.LINE_SEPARATOR, modified) + CsvUtil.LINE_SEPARATOR;
+
+    // Import the modified CSV recursively
+    CsvImportResult result = importCsvRecursive(schema.getFullyQualifiedName(), newCsv, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Fetch the updated source table and verify constraints are preserved
+    Table importedSourceTable =
+        tableTest.getEntityByName(
+            updatedSourceTable.getFullyQualifiedName(),
+            "tableConstraints,columns,description",
+            ADMIN_AUTH_HEADERS);
+
+    // Verify table constraints are still present after CSV import
+    assertNotNull(
+        importedSourceTable.getTableConstraints(),
+        "Table constraints should be preserved after CSV import");
+    assertEquals(
+        1,
+        importedSourceTable.getTableConstraints().size(),
+        "Should have exactly one table constraint");
+
+    TableConstraint preservedConstraint = importedSourceTable.getTableConstraints().getFirst();
+    assertEquals(
+        TableConstraint.ConstraintType.FOREIGN_KEY, preservedConstraint.getConstraintType());
+    assertEquals(1, preservedConstraint.getColumns().size(), "Should have 1 local column");
+    assertEquals(
+        1,
+        preservedConstraint.getReferredColumns().size(),
+        "Should have 1 referred column (1:1 mapping)");
+
+    // Verify the specific column references are preserved
+    assertEquals("user_ref", preservedConstraint.getColumns().getFirst());
+    assertTrue(
+        preservedConstraint.getReferredColumns().contains(targetCol1FQN),
+        "Should contain target column FQN");
+
+    // Verify search index building works without crashing
+    assertDoesNotThrow(
+        () -> {
+          Entity.buildSearchIndex(Entity.TABLE, importedSourceTable);
+        },
+        "Search index building should not crash with table constraints after CSV import");
+
+    // Verify target table is also intact
+    Table importedTargetTable =
+        tableTest.getEntityByName(
+            targetTable.getFullyQualifiedName(), "columns", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(importedTargetTable.getColumns());
+    assertEquals(
+        2, importedTargetTable.getColumns().size(), "Target table should still have 2 columns");
+  }
+
   @Override
   public DatabaseSchema validateGetWithDifferentFields(DatabaseSchema schema, boolean byName)
       throws HttpResponseException {
@@ -1013,5 +1160,155 @@ public class DatabaseSchemaResourceTest
         2,
         totalDownstreamEdges,
         "Sum of downstream edges across pages should match total downstream edges");
+  }
+
+  @Test
+  void testBulk_PreservesUserEditsOnUpdate(TestInfo test) throws IOException {
+    // Critical test: Verify that bulk updates preserve user-made changes
+    // and only update the fields sent in the bulk request (incremental updates)
+
+    // Step 1: Bot creates initial databaseschema (using regular create, not bulk)
+    CreateDatabaseSchema botCreate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot initial description")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL));
+
+    DatabaseSchema entity = createEntity(botCreate, INGESTION_BOT_AUTH_HEADERS);
+    assertEquals("Bot initial description", entity.getDescription());
+    assertEquals(1, entity.getTags().size());
+
+    // Step 2: User edits description and adds tag
+    String originalJson = JsonUtils.pojoToJson(entity);
+    String userDescription = "User-edited description - should be preserved";
+    entity.setDescription(userDescription);
+    entity.setTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    DatabaseSchema userEditedEntity =
+        patchEntity(entity.getId(), originalJson, entity, ADMIN_AUTH_HEADERS);
+    assertEquals(userDescription, userEditedEntity.getDescription());
+    assertEquals(2, userEditedEntity.getTags().size());
+
+    // Step 3: Bot sends bulk update with new tag and different description
+    // Bot's description should be IGNORED (bot protection)
+    // Bot's tag should be MERGED (added to existing)
+    CreateDatabaseSchema botUpdate =
+        createRequest(test.getDisplayName())
+            .withDescription("Bot trying to overwrite - should be ignored")
+            .withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult updateResult =
+        TestUtils.put(
+            bulkTarget,
+            List.of(botUpdate),
+            BulkOperationResult.class,
+            OK,
+            INGESTION_BOT_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, updateResult.getStatus());
+    assertEquals(1, updateResult.getNumberOfRowsPassed());
+
+    // Step 4: Verify user edits were preserved
+    DatabaseSchema verifyEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    // Description should still be user's (bot protection)
+    assertEquals(
+        userDescription,
+        verifyEntity.getDescription(),
+        "Bot should NOT be able to overwrite user-edited description");
+
+    // Tags should be merged (original 2 + new 1 from bot)
+    assertEquals(3, verifyEntity.getTags().size(), "Tags should be merged, not replaced");
+
+    List<String> tagFqns =
+        verifyEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+    assertTrue(tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()));
+    assertTrue(tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()));
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_TagMergeBehavior(TestInfo test) throws IOException {
+    // Test that bulk updates MERGE tags (add new, keep existing)
+    // NOT replace tags completely
+
+    // Step 1: Create databaseschema with initial tags
+    CreateDatabaseSchema createRequest =
+        createRequest(test.getDisplayName())
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PERSONAL_DATA_TAG_LABEL));
+
+    DatabaseSchema entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals(2, entity.getTags().size());
+
+    // Step 2: Send bulk update with additional tag (not replacing existing)
+    CreateDatabaseSchema updateRequest =
+        createRequest(test.getDisplayName()).withTags(List.of(PII_SENSITIVE_TAG_LABEL));
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(updateRequest), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify tags were merged (original 2 + new 1 = 3 total)
+    DatabaseSchema updatedEntity = getEntity(entity.getId(), "tags", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        3, updatedEntity.getTags().size(), "Tags should be merged: 2 original + 1 new = 3 total");
+
+    List<String> tagFqns =
+        updatedEntity.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+
+    assertTrue(
+        tagFqns.contains(USER_ADDRESS_TAG_LABEL.getTagFQN()),
+        "Original tag USER_ADDRESS should still exist");
+    assertTrue(
+        tagFqns.contains(PERSONAL_DATA_TAG_LABEL.getTagFQN()),
+        "Original tag PERSONAL_DATA should still exist");
+    assertTrue(
+        tagFqns.contains(PII_SENSITIVE_TAG_LABEL.getTagFQN()),
+        "New tag PII_SENSITIVE should be added");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBulk_AdminCanOverrideDescription(TestInfo test) throws IOException {
+    // Test that while bots cannot overwrite user descriptions,
+    // admins CAN update descriptions via bulk
+
+    // Step 1: User creates databaseschema
+    CreateDatabaseSchema createRequest =
+        createRequest(test.getDisplayName()).withDescription("User-created description");
+
+    DatabaseSchema entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    assertEquals("User-created description", entity.getDescription());
+
+    // Step 2: Admin updates description via bulk
+    String adminDescription = "Admin-updated description via bulk";
+    CreateDatabaseSchema adminUpdate =
+        createRequest(test.getDisplayName()).withDescription(adminDescription);
+
+    WebTarget bulkTarget = getCollection().path("/bulk");
+    BulkOperationResult result =
+        TestUtils.put(
+            bulkTarget, List.of(adminUpdate), BulkOperationResult.class, OK, ADMIN_AUTH_HEADERS);
+
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+
+    // Step 3: Verify admin's description was applied
+    DatabaseSchema updatedEntity = getEntity(entity.getId(), "", ADMIN_AUTH_HEADERS);
+    assertEquals(
+        adminDescription,
+        updatedEntity.getDescription(),
+        "Admin should be able to update description via bulk");
+
+    // Cleanup
+    deleteEntity(entity.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 }

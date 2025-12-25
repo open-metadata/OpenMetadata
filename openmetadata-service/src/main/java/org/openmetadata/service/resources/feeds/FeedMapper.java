@@ -30,7 +30,8 @@ public class FeedMapper {
         .withUpdatedBy(user)
         .withUpdatedAt(System.currentTimeMillis())
         .withEntityRef(new EntityReference().withId(randomUUID).withType(Entity.THREAD))
-        .withGeneratedBy(Thread.GeneratedBy.USER);
+        .withGeneratedBy(Thread.GeneratedBy.USER)
+        .withDomains(create.getDomains());
   }
 
   private TaskDetails getTaskDetails(CreateTaskDetails create) {

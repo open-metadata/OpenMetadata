@@ -58,7 +58,13 @@
   "mappings": {
     "properties": {
       "id": {
-        "type": "keyword"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -115,7 +121,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -322,7 +335,18 @@
         }
       },
       "entityType": {
-        "type": "keyword"
+        "type": "keyword",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
+      },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tier": {
         "properties": {
@@ -376,6 +400,14 @@
             "normalizer": "lowercase_normalizer"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "totalVotes": {
         "type": "long",

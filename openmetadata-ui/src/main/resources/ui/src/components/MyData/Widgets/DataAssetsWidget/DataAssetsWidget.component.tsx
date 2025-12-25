@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetIcon } from '../../../../assets/svg/ic-data-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
-import { ROUTES } from '../../../../constants/constants';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../../constants/constants';
 import {
   getSortField,
   getSortOrder,
@@ -52,7 +52,7 @@ const DataAssetsWidget = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [services, setServices] = useState<Bucket[]>([]);
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
-    DATA_ASSETS_SORT_BY_KEYS.A_TO_Z
+    DATA_ASSETS_SORT_BY_KEYS.HIGH_TO_LOW
   );
 
   const widgetData = useMemo(
@@ -68,14 +68,7 @@ const DataAssetsWidget = ({
       const sortField = getSortField(selectedSortBy);
       const sortOrder = getSortOrder(selectedSortBy);
       const res = await searchData('', 0, 0, '', sortField, sortOrder, [
-        SearchIndex.TABLE,
-        SearchIndex.TOPIC,
-        SearchIndex.DASHBOARD,
-        SearchIndex.PIPELINE,
-        SearchIndex.MLMODEL,
-        SearchIndex.CONTAINER,
-        SearchIndex.SEARCH_INDEX,
-        SearchIndex.API_ENDPOINT_INDEX,
+        SearchIndex.DATA_ASSET,
       ]);
       setServices(res?.data.aggregations?.['sterms#serviceType'].buckets);
     } catch (error) {
@@ -119,7 +112,7 @@ const DataAssetsWidget = ({
     () => (
       <WidgetEmptyState
         icon={
-          <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
+          <NoDataAssetsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
         }
         title={t('message.no-data-assets-yet')}
       />
@@ -135,7 +128,7 @@ const DataAssetsWidget = ({
             'cards-scroll-container flex-1 overflow-y-auto',
             isFullSize ? 'justify-start' : 'justify-center'
           )}>
-          {sortedServices.map((service) => (
+          {sortedServices.slice(0, PAGE_SIZE_MEDIUM).map((service) => (
             <div
               className="card-wrapper"
               key={service.key}
@@ -152,8 +145,17 @@ const DataAssetsWidget = ({
   );
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && services?.length > 10,
+    () => Boolean(!loading) && services?.length > PAGE_SIZE_MEDIUM,
     [services, loading]
+  );
+
+  const translatedSortOptions = useMemo(
+    () =>
+      DATA_ASSETS_SORT_BY_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
   );
 
   const widgetHeader = useMemo(
@@ -165,10 +167,9 @@ const DataAssetsWidget = ({
         icon={<DataAssetIcon height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}
-        sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.data-asset-plural')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />
@@ -184,6 +185,7 @@ const DataAssetsWidget = ({
       selectedSortBy,
       handleSortByClick,
       handleTitleClick,
+      translatedSortOptions,
     ]
   );
 
@@ -200,12 +202,12 @@ const DataAssetsWidget = ({
         </div>
       </div>
     ),
-    [emptyState, dataAssetsContent, services, showWidgetFooterMoreButton, t]
+    [emptyState, dataAssetsContent, showWidgetFooterMoreButton, t]
   );
 
   return (
     <WidgetWrapper
-      dataLength={services.length !== 0 ? services.length : 10}
+      dataTestId="KnowledgePanel.DataAssets"
       header={widgetHeader}
       loading={loading}>
       {widgetContent}

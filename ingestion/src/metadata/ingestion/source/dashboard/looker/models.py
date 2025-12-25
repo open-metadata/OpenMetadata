@@ -53,6 +53,9 @@ class LookMlView(BaseModel):
         None, description="To track lineage with the source"
     )
     tags: Optional[List[str]] = Field(None, description="Tags for the view")
+    extends__all: Optional[List[List[str]]] = Field(
+        None, alias="extends__all", description="List of views this view extends"
+    )
 
 
 class LkmlFile(BaseModel):

@@ -40,6 +40,7 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../../enums/entity.enum';
+import { TestSuiteType } from '../../../../enums/TestSuite.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
@@ -53,7 +54,6 @@ import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualit
 import {
   getListTestSuitesBySearch,
   ListTestSuitePramsBySearch,
-  TestSuiteType,
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../../utils/formUtils';
@@ -71,7 +71,7 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
 import { TestSuiteSearchParams } from '../../DataQuality.interface';
 import PieChartSummaryPanel from '../../SummaryPannel/PieChartSummaryPanel.component';
@@ -159,16 +159,12 @@ export const TestSuites = () => {
               {record.basic ? (
                 <Link
                   data-testid={name}
-                  to={{
-                    pathname: getEntityDetailsPath(
-                      EntityType.TABLE,
-                      record.basicEntityReference?.fullyQualifiedName ?? '',
-                      EntityTabs.PROFILER
-                    ),
-                    search: QueryString.stringify({
-                      activeTab: TableProfilerTab.DATA_QUALITY,
-                    }),
-                  }}>
+                  to={getEntityDetailsPath(
+                    EntityType.TABLE,
+                    record.basicEntityReference?.fullyQualifiedName ?? '',
+                    EntityTabs.PROFILER,
+                    ProfilerTabPath.DATA_QUALITY
+                  )}>
                   {record.basicEntityReference?.fullyQualifiedName ??
                     record.basicEntityReference?.name}
                 </Link>

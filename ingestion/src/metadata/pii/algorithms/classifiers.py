@@ -29,7 +29,7 @@ from typing import (
 
 from presidio_analyzer import AnalyzerEngine
 
-from metadata.generated.schema.entity.data.table import DataType
+from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.pii.algorithms.column_patterns import get_pii_column_name_patterns
 from metadata.pii.algorithms.feature_extraction import (
     extract_pii_from_column_names,
@@ -71,6 +71,11 @@ class ColumnClassifier(ABC, Generic[T]):
         The scores are a mapping of class labels to their respective scores:
         higher scores indicate a higher likelihood of the class for the given inputs.
         """
+
+    def classify(self, column: Column, sample_data: Sequence[Any]) -> Mapping[T, float]:
+        return self.predict_scores(
+            sample_data, column_name=column.name.root, column_data_type=column.dataType
+        )
 
 
 @final

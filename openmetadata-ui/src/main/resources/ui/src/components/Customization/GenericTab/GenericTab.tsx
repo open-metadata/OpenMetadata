@@ -81,6 +81,7 @@ export const GenericTab = ({ type }: GenericTabProps) => {
       verticalCompact
       className={classNames('grid-container bg-grey', {
         'custom-tab': !leftSideWidgetPresent,
+        'height-auto': type === PageType.Glossary,
       })}
       cols={8}
       containerPadding={[0, 0]}

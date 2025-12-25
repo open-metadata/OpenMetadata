@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.datamodels;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,6 +44,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
@@ -52,6 +55,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DashboardDataModelRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -60,7 +64,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/dashboard/datamodels")
 @Tag(
@@ -85,6 +88,12 @@ public class DashboardDataModelResource
 
   public DashboardDataModelResource(Authorizer authorizer, Limits limits) {
     super(Entity.DASHBOARD_DATA_MODEL, authorizer, limits);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+
+    return listOf(MetadataOperation.EDIT_LINEAGE);
   }
 
   public static class DashboardDataModelList extends ResultList<DashboardDataModel> {
@@ -308,6 +317,45 @@ public class DashboardDataModelResource
     DashboardDataModel dashboardDataModel =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dashboardDataModel);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateDashboardDataModels",
+      summary = "Bulk create or update dashboardDataModels",
+      description =
+          "Create or update multiple dashboardDataModels in a single operation. "
+              + "Returns a BulkOperationResult with success/failure details for each dashboardDataModel.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk operation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateDashboardDataModel> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH

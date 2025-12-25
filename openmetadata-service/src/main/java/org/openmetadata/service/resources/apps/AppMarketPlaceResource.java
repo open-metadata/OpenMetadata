@@ -37,6 +37,7 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -49,7 +50,6 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.AppMarketPlaceUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/apps/marketplace")
 @Tag(

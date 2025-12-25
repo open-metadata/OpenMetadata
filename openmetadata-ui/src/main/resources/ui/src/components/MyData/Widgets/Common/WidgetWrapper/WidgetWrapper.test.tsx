@@ -20,6 +20,7 @@ const mockProps = {
   loading: false,
   dataLength: 5,
   className: 'custom-wrapper-class',
+  dataTestId: 'widget-wrapper',
 };
 
 const renderWidgetWrapper = (props = {}) => {

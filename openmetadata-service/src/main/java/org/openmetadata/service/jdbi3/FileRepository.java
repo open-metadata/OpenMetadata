@@ -136,12 +136,10 @@ public class FileRepository extends EntityRepository<File> {
     // Inherit domain from directory if available, otherwise from service
     if (nullOrEmpty(file.getDomains())) {
       if (file.getDirectory() != null) {
-        Directory directory =
-            Entity.getEntity(file.getDirectory(), "domains,service", Include.NON_DELETED);
+        Directory directory = Entity.getEntity(file.getDirectory(), "domains,service", Include.ALL);
         inheritDomains(file, fields, directory);
       } else {
-        DriveService service =
-            Entity.getEntity(file.getService(), FIELD_DOMAINS, Include.NON_DELETED);
+        DriveService service = Entity.getEntity(file.getService(), FIELD_DOMAINS, Include.ALL);
         inheritDomains(file, fields, service);
       }
     }

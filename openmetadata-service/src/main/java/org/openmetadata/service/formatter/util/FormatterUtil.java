@@ -42,15 +42,20 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.ContractExecutionStatus;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.factory.ParserFactory;
 import org.openmetadata.service.formatter.field.DefaultFieldFormatter;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -298,8 +303,12 @@ public class FormatterUtil {
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())
         .withEntityType(entityType)
-        .withDomains(entityInterface.getDomains())
+        .withDomains(
+            entityInterface.getDomains() == null
+                ? null
+                : entityInterface.getDomains().stream().map(EntityReference::getId).toList())
         .withUserName(updateBy)
+        .withImpersonatedBy(entityInterface.getImpersonatedBy())
         .withTimestamp(entityInterface.getUpdatedAt())
         .withChangeDescription(entityInterface.getChangeDescription())
         .withCurrentVersion(entityInterface.getVersion());
@@ -316,12 +325,21 @@ public class FormatterUtil {
               .ENTITY_UPDATED; // workaround as adding a test case result is sent as a POST request
       TestCaseResult testCaseResult =
           JsonUtils.readOrConvertValue(entityTimeSeries, TestCaseResult.class);
+      // Load TestCase with all fields including relationships
       TestCase testCase =
-          Entity.getEntityByName(
-              TEST_CASE,
-              testCaseResult.getTestCaseFQN(),
-              TEST_CASE_RESULT + ",testSuites",
-              Include.ALL);
+          Entity.getEntityByName(TEST_CASE, testCaseResult.getTestCaseFQN(), "*", Include.ALL);
+      // Populate inherited fields (owners, tags, domains) for notification templates
+      TestCaseRepository testCaseRepository =
+          (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+      testCaseRepository.setInheritedFields(
+          testCase, new EntityUtil.Fields(testCaseRepository.getAllowedFields()));
+      // Load failedRowsSample
+      try {
+        TableData failedRowsSample = testCaseRepository.getSampleData(testCase, false);
+        testCase.setFailedRowsSample(failedRowsSample);
+      } catch (Exception e) {
+        LOG.info("Failed to load failedRowsSample: {}", e.getMessage());
+      }
       ChangeEvent changeEvent =
           getChangeEvent(
               updateBy,
@@ -342,33 +360,59 @@ public class FormatterUtil {
     if (entityTimeSeries instanceof DataContractResult) {
       DataContractResult result =
           JsonUtils.readOrConvertValue(entityTimeSeries, DataContractResult.class);
-      DataContract contract =
-          Entity.getEntityByName(
-              Entity.DATA_CONTRACT, result.getDataContractFQN(), "", Include.ALL);
-      ChangeEvent changeEvent =
-          getChangeEvent(updateBy, eventType, contract.getEntityReference().getType(), contract);
-
-      return changeEvent
-          .withChangeDescription(
-              new ChangeDescription()
-                  .withFieldsUpdated(
-                      List.of(
-                          new FieldChange().withName(DATA_CONTRACT_RESULT).withNewValue(result))))
-          .withEntity(contract)
-          .withEntityFullyQualifiedName(contract.getFullyQualifiedName());
+      // Don't create ChangeEvent for intermediate "Running" status
+      // Final notification will be sent when DQ validation completes
+      if (result.getContractExecutionStatus() == ContractExecutionStatus.Running) {
+        return null;
+      }
+      return getDataContractResultEvent(result, updateBy, eventType);
     }
     return null;
   }
 
+  public static ChangeEvent getDataContractResultEvent(
+      DataContractResult result, String updateBy, EventType eventType) {
+    DataContract contract =
+        Entity.getEntityByName(Entity.DATA_CONTRACT, result.getDataContractFQN(), "*", Include.ALL);
+
+    // Populate the entity reference with complete information (including fullyQualifiedName)
+    if (contract.getEntity() != null) {
+      EntityReference fullEntityRef =
+          Entity.getEntityReferenceById(
+              contract.getEntity().getType(), contract.getEntity().getId(), Include.NON_DELETED);
+      contract.setEntity(fullEntityRef);
+    }
+
+    ChangeEvent changeEvent =
+        getChangeEvent(updateBy, eventType, contract.getEntityReference().getType(), contract);
+
+    return changeEvent
+        .withChangeDescription(
+            new ChangeDescription()
+                .withFieldsUpdated(
+                    List.of(new FieldChange().withName(DATA_CONTRACT_RESULT).withNewValue(result))))
+        .withEntity(contract)
+        .withEntityFullyQualifiedName(contract.getFullyQualifiedName());
+  }
+
   private static ChangeEvent getChangeEventForThread(
       String updateBy, EventType eventType, String entityType, Thread thread) {
-    return new ChangeEvent()
-        .withId(UUID.randomUUID())
-        .withEventType(eventType)
-        .withEntityId(thread.getId())
-        .withDomains(thread.getDomains())
-        .withEntityType(entityType)
-        .withUserName(updateBy)
-        .withTimestamp(thread.getUpdatedAt());
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(eventType)
+            .withEntityId(thread.getId())
+            .withDomains(thread.getDomains())
+            .withEntityType(entityType)
+            .withUserName(updateBy)
+            .withImpersonatedBy(thread.getImpersonatedBy())
+            .withTimestamp(thread.getUpdatedAt());
+
+    // Include changeDescription if present
+    if (thread.getChangeDescription() != null) {
+      changeEvent.withChangeDescription(thread.getChangeDescription());
+    }
+
+    return changeEvent;
   }
 }

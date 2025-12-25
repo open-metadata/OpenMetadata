@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.APICollectionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -61,7 +62,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/apiCollections")
 @Tag(
@@ -90,7 +90,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
   }
 
   public APICollectionResource(Authorizer authorizer, Limits limits) {
-    super(Entity.API_COLLCECTION, authorizer, limits);
+    super(Entity.API_COLLECTION, authorizer, limits);
   }
 
   public static class APICollectionList extends ResultList<APICollection> {
@@ -313,6 +313,45 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
     APICollection apiCollection =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, apiCollection);
+  }
+
+  @PUT
+  @Path("/bulk")
+  @Operation(
+      operationId = "bulkCreateOrUpdateAPICollections",
+      summary = "Bulk create or update API collections",
+      description =
+          "Create or update multiple API collections in a single operation. "
+              + "Returns a BulkOperationResult with success/failure details for each API collection.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Bulk operation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Bulk operation accepted for async processing",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response bulkCreateOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @DefaultValue("false") @QueryParam("async") boolean async,
+      List<CreateAPICollection> createRequests) {
+    return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
   }
 
   @PATCH

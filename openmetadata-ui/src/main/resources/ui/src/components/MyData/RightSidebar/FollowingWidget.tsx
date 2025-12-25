@@ -19,7 +19,11 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
-import { KNOWLEDGE_LIST_LENGTH, ROUTES } from '../../../constants/constants';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+} from '../../../constants/constants';
 import {
   applySortToData,
   FOLLOWING_WIDGET_FILTER_OPTIONS,
@@ -40,6 +44,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
@@ -78,11 +83,15 @@ function FollowingWidget({
       const sortField = getSortField(selectedEntityFilter);
       const sortOrder = getSortOrder(selectedEntityFilter);
 
+      const queryFilterObj = getTermQuery(
+        { followers: currentUser.id },
+        'must'
+      );
+
       const res = await searchQuery({
-        pageSize: KNOWLEDGE_LIST_LENGTH,
+        pageSize: PAGE_SIZE_MEDIUM,
         searchIndex: SearchIndex.ALL,
-        query: '*',
-        filters: `followers:${currentUser.id}`,
+        queryFilter: queryFilterObj,
         sortField,
         sortOrder,
       });
@@ -170,10 +179,10 @@ function FollowingWidget({
     () => (
       <WidgetEmptyState
         actionButtonLink={ROUTES.EXPLORE}
-        actionButtonText={t('label.browse-assets')}
+        actionButtonText={t('label.explore-assets')}
         description={t('message.not-followed-anything')}
         icon={
-          <NoDataAssetsPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />
+          <NoDataAssetsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
         }
         title={t('message.not-following-any-assets-yet')}
       />
@@ -181,12 +190,8 @@ function FollowingWidget({
     []
   );
 
-  const showMoreCount = useMemo(() => {
-    return followedData.length > 0 ? followedData.length.toString() : '';
-  }, [followedData]);
-
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!isLoadingOwnedData) && followedData?.length > 10,
+    () => Boolean(!isLoadingOwnedData) && followedData?.length > PAGE_SIZE_BASE,
     [followedData, isLoadingOwnedData]
   );
 
@@ -194,7 +199,7 @@ function FollowingWidget({
     return (
       <div className="entity-list-body">
         <div className="cards-scroll-container flex-1 overflow-y-auto">
-          {followedData.map((item) => {
+          {followedData.slice(0, PAGE_SIZE_BASE).map((item) => {
             const extraInfo = getEntityExtraInfo(item);
 
             return (
@@ -256,6 +261,15 @@ function FollowingWidget({
     );
   }, [followedData, emptyState, isExpanded]);
 
+  const translatedSortOptions = useMemo(
+    () =>
+      FOLLOWING_WIDGET_FILTER_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -265,10 +279,9 @@ function FollowingWidget({
         icon={<FollowingAssetsIcon height={22} width={22} />}
         isEditView={isEditView}
         selectedSortBy={selectedEntityFilter}
-        sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.following-assets')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => handleEntityFilterChange({ key })}
         onTitleClick={() =>
           navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.FOLLOWING))
@@ -285,6 +298,7 @@ function FollowingWidget({
       widgetKey,
       widgetData?.w,
       handleEntityFilterChange,
+      translatedSortOptions,
     ]
   );
 
@@ -300,9 +314,7 @@ function FollowingWidget({
               currentUser?.name ?? '',
               UserPageTabs.FOLLOWING
             )}
-            moreButtonText={t('label.view-more-count', {
-              countValue: showMoreCount,
-            })}
+            moreButtonText={t('label.view-more')}
             showMoreButton={showWidgetFooterMoreButton}
           />
         </div>
@@ -313,14 +325,13 @@ function FollowingWidget({
     emptyState,
     followingContent,
     currentUser?.name,
-    showMoreCount,
     showWidgetFooterMoreButton,
     t,
   ]);
 
   return (
     <WidgetWrapper
-      dataLength={followedData.length !== 0 ? followedData.length : 10}
+      dataTestId="KnowledgePanel.Following"
       header={widgetHeader}
       loading={isLoadingOwnedData}>
       {WidgetContent}

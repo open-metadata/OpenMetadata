@@ -22,9 +22,11 @@ import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -174,16 +176,28 @@ public class TopicRepository extends EntityRepository<Topic> {
       return;
     }
 
-    // Filter topics that have message schemas and use bulk tag fetching
-    List<Topic> topicsWithSchemas =
-        topics.stream().filter(t -> t.getMessageSchema() != null).toList();
+    // First, fetch topic-level tags (important for search indexing)
+    List<String> entityFQNs = topics.stream().map(Topic::getFullyQualifiedName).toList();
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+    for (Topic topic : topics) {
+      topic.setTags(
+          addDerivedTagsGracefully(
+              tagsMap.getOrDefault(topic.getFullyQualifiedName(), Collections.emptyList())));
+    }
 
-    if (!topicsWithSchemas.isEmpty()) {
-      bulkPopulateEntityFieldTags(
-          topicsWithSchemas,
-          entityType,
-          t -> t.getMessageSchema().getSchemaFields(),
-          Topic::getFullyQualifiedName);
+    // Then, if messageSchema field is requested, also fetch schema field tags
+    if (fields.contains("messageSchema")) {
+      // Filter topics that have message schemas and use bulk tag fetching
+      List<Topic> topicsWithSchemas =
+          topics.stream().filter(t -> t.getMessageSchema() != null).toList();
+
+      if (!topicsWithSchemas.isEmpty()) {
+        bulkPopulateEntityFieldTags(
+            topicsWithSchemas,
+            entityType,
+            t -> t.getMessageSchema().getSchemaFields(),
+            Topic::getFullyQualifiedName);
+      }
     }
   }
 

@@ -13,7 +13,15 @@
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { groupBy, isEmpty, omit, reduce, sortBy, startCase } from 'lodash';
+import {
+  groupBy,
+  isEmpty,
+  omit,
+  orderBy,
+  reduce,
+  sortBy,
+  startCase,
+} from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -75,13 +83,11 @@ const TotalDataAssetsWidget = ({
       applicationConfig?.customTheme?.primaryColor ??
       DEFAULT_THEME.primaryColor;
 
+    // Generate palette and arrange from dark to light for high-to-low data
     const fullPalette = generatePalette(primaryColor);
-    const reversed = fullPalette.slice().reverse();
 
-    const firstTwo = reversed.slice(0, 2);
-    const remaining = reversed.slice(2);
-
-    return [...remaining, ...firstTwo];
+    // Reverse the palette to ensure dark-to-light order for high-to-low data
+    return fullPalette.slice().reverse();
   }, [applicationConfig?.customTheme?.primaryColor]);
 
   const widgetData = useMemo(() => {
@@ -92,67 +98,74 @@ const TotalDataAssetsWidget = ({
     return currentLayout?.find((item) => item.i === widgetKey)?.w === 2;
   }, [currentLayout, widgetKey]);
 
-  const { graphData, rightSideEntityList, dataByDate, availableDates } =
-    useMemo(() => {
-      const results = chartData?.results ?? [];
+  const { graphData, dataByDate, availableDates } = useMemo(() => {
+    const results = chartData?.results ?? [];
 
-      const groupedByDay = groupBy(results, 'day');
-      const labels: string[] = [];
+    const groupedByDay = groupBy(results, 'day');
+    const labels: string[] = [];
 
-      const graphData = Object.entries(groupedByDay).map(
-        ([dayKey, entries]) => {
-          const day = Number(dayKey);
-          const values = entries.reduce((acc, curr) => {
-            if (curr.group) {
-              labels.push(curr.group);
-            }
-
-            return {
-              ...acc,
-              [curr.group ?? 'count']: curr.count,
-            };
-          }, {});
-
-          return {
-            day,
-            dayString: customFormatDateTime(day, 'dd MMM'),
-            ...values,
-          };
+    const graphData = Object.entries(groupedByDay).map(([dayKey, entries]) => {
+      const day = Number(dayKey);
+      const values = entries.reduce((acc, curr) => {
+        if (curr.group) {
+          labels.push(curr.group);
         }
-      );
 
-      const sortedData = sortBy(graphData, 'day');
-      const uniqueLabels = Array.from(new Set(labels));
-
-      const dataByDate: Record<number, Record<string, number>> = {};
-      sortedData.forEach((item) => {
-        dataByDate[item.day] = omit(item, ['day', 'dayString']);
-      });
-
-      const availableDates = sortedData.map(({ day, dayString }) => ({
-        day,
-        dayString,
-      }));
+        return {
+          ...acc,
+          [curr.group ?? 'count']: curr.count,
+        };
+      }, {});
 
       return {
-        graphData: sortedData,
-        rightSideEntityList: uniqueLabels,
-        dataByDate,
-        availableDates,
+        day,
+        dayString: customFormatDateTime(day, 'dd MMM'),
+        ...values,
       };
-    }, [chartData?.results]);
+    });
 
-  const selectedDateData = useMemo(() => {
+    const sortedData = sortBy(graphData, 'day');
+
+    const dataByDate: Record<number, Record<string, number>> = {};
+    sortedData.forEach((item) => {
+      dataByDate[item.day] = omit(item, ['day', 'dayString']);
+    });
+
+    const availableDates = sortedData.map(({ day, dayString }) => ({
+      day,
+      dayString,
+    }));
+
+    return {
+      graphData: sortedData,
+      dataByDate,
+      availableDates,
+    };
+  }, [chartData?.results]);
+
+  const { selectedDateData, sortedEntityList, totalDatAssets } = useMemo(() => {
     if (!selectedDate) {
-      return {};
+      return { selectedDateData: {}, sortedEntityList: [], totalDatAssets: 0 };
     }
 
-    return dataByDate[selectedDate] ?? {};
-  }, [selectedDate, dataByDate]);
+    const rawData = dataByDate[selectedDate] ?? {};
 
-  const totalDatAssets = useMemo(() => {
-    return reduce(selectedDateData, (acc, value) => acc + value, 0);
-  }, [selectedDateData]);
+    // Sort data by count (high to low) and create sorted structures
+    const sortedEntries = orderBy(
+      Object.entries(rawData),
+      ([, value]) => value,
+      'desc'
+    );
+    const sortedData = Object.fromEntries(sortedEntries);
+    const entityList = Object.keys(sortedData);
+    const total = reduce(sortedData, (acc, value) => acc + value, 0);
+
+    return {
+      selectedDateData: sortedData,
+      sortedEntityList: entityList,
+      totalDatAssets: total,
+    };
+  }, [selectedDate, dataByDate]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -186,10 +199,10 @@ const TotalDataAssetsWidget = ({
     return (
       <WidgetEmptyState
         actionButtonLink={ROUTES.EXPLORE}
-        actionButtonText={t('label.browse-assets')}
+        actionButtonText={t('label.explore-assets')}
         description={t('message.no-data-for-total-assets')}
         icon={
-          <TotalDataAssetsEmptyIcon height={SIZE.LARGE} width={SIZE.LARGE} />
+          <TotalDataAssetsEmptyIcon height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
         }
         title={t('label.no-data-assets-to-display')}
       />
@@ -222,7 +235,7 @@ const TotalDataAssetsWidget = ({
                   nameKey="name"
                   outerRadius={117}
                   paddingAngle={1}>
-                  {rightSideEntityList.map((label, index) => (
+                  {sortedEntityList.map((label, index) => (
                     <Cell
                       fill={pieChartColors[index % pieChartColors.length]}
                       key={label}
@@ -252,11 +265,17 @@ const TotalDataAssetsWidget = ({
 
           {/* Right-side Legend */}
           {isFullSizeWidget && (
-            <div className="flex-1 legend-list p-md">
-              {rightSideEntityList.map((label, index) => (
-                <div className="d-flex items-center gap-3 text-sm" key={label}>
+            <div
+              className="flex-1 legend-list p-md"
+              data-testid="assets-legend">
+              {sortedEntityList.map((label, index) => (
+                <div
+                  className="d-flex items-center gap-3 text-sm"
+                  data-testid={`legend-item-${label}`}
+                  key={label}>
                   <span
                     className="h-3 w-3"
+                    data-testid={`legend-color-${label}`}
                     style={{
                       borderRadius: '50%',
                       backgroundColor:
@@ -266,7 +285,9 @@ const TotalDataAssetsWidget = ({
                   <Typography.Text ellipsis={{ tooltip: true }}>
                     {startCase(label)}
                   </Typography.Text>
-                  <span className="text-xs font-medium p-y-xss p-x-xs data-value">
+                  <span
+                    className="text-xs font-medium p-y-xss p-x-xs data-value"
+                    data-testid={`legend-count-${label}`}>
                     {selectedDateData[label] ?? 0}
                   </span>
                 </div>
@@ -298,8 +319,9 @@ const TotalDataAssetsWidget = ({
     selectedDate,
     selectedDateData,
     totalDatAssets,
-    rightSideEntityList,
+    sortedEntityList,
     isFullSizeWidget,
+    pieChartColors,
   ]);
 
   useEffect(() => {
@@ -312,6 +334,15 @@ const TotalDataAssetsWidget = ({
     }
   }, [graphData]);
 
+  const translatedSortOptions = useMemo(
+    () =>
+      DATA_ASSETS_SORT_BY_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.label),
+      })),
+    [t]
+  );
+
   const widgetHeader = useMemo(
     () => (
       <WidgetHeader
@@ -322,10 +353,9 @@ const TotalDataAssetsWidget = ({
         icon={<TotalAssetsWidgetIcon height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}
-        sortOptions={DATA_ASSETS_SORT_BY_OPTIONS}
+        sortOptions={translatedSortOptions}
         title={t('label.data-insight-total-entity-summary')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => setSelectedSortBy(key)}
         onTitleClick={() => navigate(ROUTES.DATA_INSIGHT)}
       />
@@ -340,12 +370,14 @@ const TotalDataAssetsWidget = ({
       widgetKey,
       widgetData?.w,
       setSelectedSortBy,
+      translatedSortOptions,
     ]
   );
 
   return (
     <WidgetWrapper
       dataLength={graphData.length > 0 ? graphData.length : 10}
+      dataTestId="KnowledgePanel.TotalAssets"
       header={widgetHeader}
       loading={isLoading}>
       <div className="total-data-assets-widget-container">

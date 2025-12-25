@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import test, { expect } from '@playwright/test';
-
+import { expect, Page, test as base } from '@playwright/test';
 import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
@@ -22,8 +22,16 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
-import { updatePersonaDisplayName } from '../../utils/persona';
+import {
+  checkPersonaInProfile,
+  navigateToPersonaSettings,
+  navigateToPersonaWithPagination,
+  removePersonaDefault,
+  setPersonaAsDefault,
+  updatePersonaDisplayName,
+} from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
 const PERSONA_DETAILS = {
@@ -31,6 +39,27 @@ const PERSONA_DETAILS = {
   displayName: `persona ${uuid()}`,
   description: `Persona description ${uuid()}.`,
 };
+
+const user = new UserClass();
+const persona1 = new PersonaClass();
+const persona2 = new PersonaClass();
+
+const test = base.extend<{
+  adminPage: Page;
+  userPage: Page;
+}>({
+  adminPage: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminPage.goto('/');
+    await use(adminPage);
+    await adminPage.close();
+  },
+  userPage: async ({ browser }, use) => {
+    const userPage = await browser.newPage();
+    await use(userPage);
+    await userPage.close();
+  },
+});
 
 // use the admin user to login
 test.use({
@@ -55,7 +84,9 @@ test.describe.serial('Persona operations', () => {
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+    const personaListResponse = page.waitForResponse(`/api/v1/personas?*`);
     await settingClick(page, GlobalSettingOptions.PERSONA);
+    await personaListResponse;
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   });
@@ -100,11 +131,11 @@ test.describe.serial('Persona operations', () => {
 
     await page.getByRole('button', { name: 'Create' }).click();
 
-    // Verify created persona details
+    await page.waitForLoadState('networkidle');
 
-    await expect(
-      page.getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-    ).toBeVisible();
+    await navigateToPersonaSettings(page);
+
+    await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
 
     const personaResponse = page.waitForResponse(
       `/api/v1/personas/name/${encodeURIComponent(
@@ -112,9 +143,7 @@ test.describe.serial('Persona operations', () => {
       )}?fields=users`
     );
 
-    await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-      .click();
+    await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
     await personaResponse;
 
@@ -146,9 +175,7 @@ test.describe.serial('Persona operations', () => {
   test('Persona update description flow should work properly', async ({
     page,
   }) => {
-    await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-      .click();
+    await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
     await page.getByTestId('edit-description').click();
 
@@ -172,9 +199,7 @@ test.describe.serial('Persona operations', () => {
   });
 
   test('Persona rename flow should work properly', async ({ page }) => {
-    await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-      .click();
+    await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
     await updatePersonaDisplayName({ page, displayName: 'Test Persona' });
 
@@ -193,11 +218,9 @@ test.describe.serial('Persona operations', () => {
   });
 
   test('Remove users in persona should work properly', async ({ page }) => {
-    await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-      .click();
+    await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
-    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
     await page.getByRole('tab', { name: 'Users' }).click();
 
     await page
@@ -223,9 +246,7 @@ test.describe.serial('Persona operations', () => {
   });
 
   test('Delete persona should work properly', async ({ page }) => {
-    await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-      .click();
+    await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
     await page.click('[data-testid="manage-button"]');
 
@@ -255,5 +276,191 @@ test.describe.serial('Persona operations', () => {
     await deleteResponse;
 
     await page.waitForURL('**/settings/persona');
+  });
+});
+
+test.describe.serial('Default persona setting and removal flow', () => {
+  const test = base.extend<{
+    adminPage: Page;
+    userPage: Page;
+  }>({
+    adminPage: async ({ browser }, use) => {
+      const adminContext = await browser.newContext({
+        storageState: 'playwright/.auth/admin.json',
+      });
+      const page = await adminContext.newPage();
+      await page.goto('/');
+      await use(page);
+      await adminContext.close();
+    },
+    userPage: async ({ browser }, use) => {
+      const userContext = await browser.newContext({
+        storageState: undefined,
+      });
+      const page = await userContext.newPage();
+      await user.login(page);
+      await use(page);
+      await userContext.close();
+    },
+  });
+
+  test.beforeAll('Setup user for default persona flow', async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await user.create(apiContext);
+    const adminResponse = await apiContext.get('/api/v1/users/name/admin');
+    const adminData = await adminResponse.json();
+
+    await persona1.create(apiContext, [user.responseData.id, adminData.id]);
+    await persona2.create(apiContext, [user.responseData.id]);
+    await afterAction();
+  });
+
+  test('Set and remove default persona should work properly', async ({
+    adminPage,
+    userPage,
+  }) => {
+    test.slow(true);
+
+    await test.step(
+      'Admin creates a persona and sets the default persona',
+      async () => {
+        await navigateToPersonaSettings(adminPage);
+        await adminPage.getByTestId('add-persona-button').click();
+
+        await validateFormNameFieldInput({
+          page: adminPage,
+          value: PERSONA_DETAILS.name,
+          fieldName: 'Name',
+          fieldSelector: '[data-testid="name"]',
+          errorDivSelector: '#name_help',
+        });
+
+        await adminPage
+          .getByTestId('displayName')
+          .fill(PERSONA_DETAILS.displayName);
+
+        await adminPage
+          .locator(descriptionBox)
+          .fill(PERSONA_DETAILS.description);
+
+        const userListResponse = adminPage.waitForResponse(
+          '/api/v1/users?limit=*&isBot=false*'
+        );
+        await adminPage.getByTestId('add-users').click();
+        await userListResponse;
+
+        await adminPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        const searchUser = adminPage.waitForResponse(
+          `/api/v1/search/query?q=*${encodeURIComponent(
+            user.responseData.displayName
+          )}*`
+        );
+        await adminPage
+          .getByTestId('searchbar')
+          .fill(user.responseData.displayName);
+        await searchUser;
+
+        await adminPage
+          .getByRole('listitem', { name: user.responseData.displayName })
+          .click();
+        await adminPage.getByTestId('selectable-list-update-btn').click();
+
+        await adminPage.getByRole('button', { name: 'Create' }).click();
+
+        await adminPage.waitForLoadState('networkidle');
+
+        await navigateToPersonaSettings(adminPage);
+
+        await waitForAllLoadersToDisappear(adminPage, 'skeleton-card-loader');
+
+        const personaResponse = adminPage.waitForResponse(
+          `/api/v1/personas/name/${encodeURIComponent(
+            PERSONA_DETAILS.name
+          )}?fields=users`
+        );
+
+        await navigateToPersonaWithPagination(
+          adminPage,
+          PERSONA_DETAILS.name,
+          true
+        );
+
+        await personaResponse;
+
+        await adminPage.getByRole('tab', { name: 'Users' }).click();
+
+        await adminPage.waitForSelector('[data-testid="entity-header-name"]', {
+          state: 'visible',
+        });
+
+        await expect(adminPage.getByTestId('entity-header-name')).toContainText(
+          PERSONA_DETAILS.name
+        );
+
+        await expect(
+          adminPage.getByTestId('entity-header-display-name')
+        ).toContainText(PERSONA_DETAILS.displayName);
+
+        await expect(
+          adminPage.locator(
+            '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
+          )
+        ).toContainText(PERSONA_DETAILS.description);
+
+        await expect(
+          adminPage.getByTestId(user.responseData.name)
+        ).toContainText(user.responseData.name);
+
+        await setPersonaAsDefault(adminPage);
+      }
+    );
+
+    await test.step(
+      'User refreshes and checks the default persona is applied',
+      async () => {
+        await userPage.reload();
+        await waitForAllLoadersToDisappear(userPage);
+        await checkPersonaInProfile(userPage, PERSONA_DETAILS.displayName);
+      }
+    );
+
+    await test.step('Changing default persona', async () => {
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
+
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      await personaListResponse;
+      await navigateToPersonaWithPagination(
+        adminPage,
+        persona1.responseData.fullyQualifiedName ?? persona1.responseData.name,
+        true
+      );
+
+      await adminPage.waitForLoadState('networkidle');
+      await setPersonaAsDefault(adminPage);
+    });
+
+    await test.step('Verify changed default persona for new user', async () => {
+      await userPage.reload();
+      await waitForAllLoadersToDisappear(userPage);
+      await checkPersonaInProfile(userPage, persona1.responseData.displayName);
+    });
+
+    await test.step('Admin removes the default persona', async () => {
+      await navigateToPersonaSettings(adminPage);
+      await removePersonaDefault(
+        adminPage,
+        persona1.responseData?.fullyQualifiedName
+      );
+    });
+
+    await test.step('User refreshes and sees no default persona', async () => {
+      await userPage.reload();
+      await waitForAllLoadersToDisappear(userPage);
+      await checkPersonaInProfile(userPage); // Expect no persona again
+    });
   });
 });

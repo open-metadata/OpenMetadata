@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-types */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -138,7 +137,11 @@ export const getAlertEventsFromId = async ({
   params,
 }: {
   id: string;
-  params?: { status?: TypedEventStatus; limit?: number; paginationOffset?: number };
+  params?: {
+    status?: TypedEventStatus;
+    limit?: number;
+    paginationOffset?: number;
+  };
 }) => {
   const response = await axiosClient.get<PagingResponse<TypedEvent[]>>(
     `${BASE_URL}/id/${id}/listEvents`,

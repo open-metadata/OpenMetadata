@@ -147,6 +147,17 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   const { toggleModal, sqlQuery, onResetAllFilters } = useAdvanceSearch();
 
+  const translatedSortingFields = useMemo(() => {
+    const sortingFields =
+      tabsInfo[searchIndex as ExploreSearchIndex]?.sortingFields ??
+      entitySortingFields;
+
+    return sortingFields.map((field) => ({
+      ...field,
+      name: t(field.name),
+    }));
+  }, [searchIndex, t]);
+
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
   };
@@ -365,10 +376,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                             />
                             <span className="sorting-dropdown-container">
                               <SortingDropDown
-                                fieldList={
-                                  tabsInfo[searchIndex as ExploreSearchIndex]
-                                    ?.sortingFields ?? entitySortingFields
-                                }
+                                fieldList={translatedSortingFields}
                                 handleFieldDropDown={onChangeSortValue}
                                 sortField={sortValue}
                               />
@@ -462,6 +470,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                         },
                         ['description', 'displayName']
                       )}
+                      panelPath="explore"
                     />
                   </Col>
                 )}

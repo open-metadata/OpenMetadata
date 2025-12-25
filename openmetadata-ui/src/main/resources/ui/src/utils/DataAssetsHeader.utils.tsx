@@ -32,24 +32,30 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
+import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Directory } from '../generated/entity/data/directory';
+import { File } from '../generated/entity/data/file';
 import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { SearchIndex } from '../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../generated/entity/data/storedProcedure';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Worksheet } from '../generated/entity/data/worksheet';
 import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
+import { DriveService } from '../generated/entity/services/driveService';
 import { MessagingService } from '../generated/entity/services/messagingService';
 import { MetadataService } from '../generated/entity/services/metadataService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
@@ -57,9 +63,10 @@ import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
 import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
+import { formatDateTime } from './date-time/DateTimeUtils';
 import {
-  getBreadcrumbForContainer,
   getBreadcrumbForEntitiesWithServiceOnly,
+  getBreadcrumbForEntityWithParent,
   getBreadcrumbForTable,
   getEntityBreadcrumbs,
 } from './EntityUtils';
@@ -97,14 +104,19 @@ export const ExtraInfoLabel = ({
   return (
     <div className="d-flex align-start extra-info-container">
       <Typography.Text
-        className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+        className="whitespace-nowrap text-sm d-flex flex-col gap-2 w-full"
         data-testid={dataTestId}>
         {!isEmpty(label) && (
           <span className="extra-info-label-heading">{label}</span>
         )}
-        <div className={classNames('font-medium extra-info-value')}>
-          {value}
-        </div>
+
+        <Typography.Text
+          className={classNames('font-medium extra-info-value')}
+          ellipsis={{
+            tooltip: true,
+          }}>
+          {value ?? NO_DATA_PLACEHOLDER}
+        </Typography.Text>
       </Typography.Text>
     </div>
   );
@@ -418,8 +430,9 @@ export const getDataAssetsHeaderInfo = (
         </>
       );
 
-      returnData.breadcrumbs = getBreadcrumbForContainer({
+      returnData.breadcrumbs = getBreadcrumbForEntityWithParent({
         entity: containerDetails,
+        entityType: EntityType.CONTAINER,
         parents: parentContainers,
       });
 
@@ -589,6 +602,16 @@ export const getDataAssetsHeaderInfo = (
 
       break;
 
+    case EntityType.DRIVE_SERVICE:
+      const driveServiceDetails = dataAsset as DriveService;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        driveServiceDetails,
+        EntityType.DRIVE_SERVICE
+      );
+
+      break;
+
     case EntityType.STORED_PROCEDURE:
       const storedProcedureDetails = dataAsset as StoredProcedure;
 
@@ -692,6 +715,194 @@ export const getDataAssetsHeaderInfo = (
       const metric = dataAsset as Metric;
 
       returnData.breadcrumbs = getEntityBreadcrumbs(metric, EntityType.METRIC);
+
+      break;
+    }
+    case EntityType.CHART: {
+      const chart = dataAsset as Chart;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(chart, EntityType.CHART);
+
+      break;
+    }
+    case EntityType.DIRECTORY: {
+      const directory = dataAsset as Directory;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        directory,
+        EntityType.DIRECTORY
+      );
+
+      returnData.extraInfo = (
+        <>
+          {directory.directoryType && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.type')}
+                value={directory.directoryType}
+              />
+            </>
+          )}
+          {directory.numberOfFiles !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.file-plural')}
+                value={directory.numberOfFiles}
+              />
+            </>
+          )}
+          {directory.numberOfSubDirectories !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.subdirectory-plural')}
+                value={directory.numberOfSubDirectories}
+              />
+            </>
+          )}
+        </>
+      );
+
+      break;
+    }
+
+    case EntityType.FILE: {
+      const file = dataAsset as File;
+      returnData.breadcrumbs = getEntityBreadcrumbs(file, EntityType.FILE);
+
+      returnData.extraInfo = (
+        <>
+          {file.fileType && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel label={t('label.type')} value={file.fileType} />
+            </>
+          )}
+          {file.fileExtension !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.extension')}
+                value={file.fileExtension}
+              />
+            </>
+          )}
+          {file.fileVersion !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.version')}
+                value={file.fileVersion}
+              />
+            </>
+          )}
+        </>
+      );
+
+      break;
+    }
+
+    case EntityType.SPREADSHEET: {
+      const spreadsheet = dataAsset as Spreadsheet;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        spreadsheet,
+        EntityType.SPREADSHEET
+      );
+
+      returnData.extraInfo = (
+        <>
+          {spreadsheet.mimeType && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.mime-type')}
+                value={
+                  <Tooltip title={spreadsheet.mimeType}>
+                    <Typography.Text ellipsis className="w-full">
+                      {spreadsheet.mimeType}
+                    </Typography.Text>
+                  </Tooltip>
+                }
+              />
+            </>
+          )}
+          {spreadsheet.createdTime !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.created-time')}
+                value={formatDateTime(spreadsheet.createdTime)}
+              />
+            </>
+          )}
+          {spreadsheet.modifiedTime !== undefined && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.modified-time')}
+                value={formatDateTime(spreadsheet.modifiedTime)}
+              />
+            </>
+          )}
+        </>
+      );
+
+      break;
+    }
+
+    case EntityType.WORKSHEET: {
+      const worksheet = dataAsset as Worksheet;
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        worksheet,
+        EntityType.WORKSHEET
+      );
+
+      returnData.extraInfo = (
+        <>
+          {worksheet.rowCount && (
+            <>
+              <Divider
+                className="self-center vertical-divider"
+                type="vertical"
+              />
+              <ExtraInfoLabel
+                label={t('label.row-count')}
+                value={worksheet.rowCount}
+              />
+            </>
+          )}
+        </>
+      );
 
       break;
     }

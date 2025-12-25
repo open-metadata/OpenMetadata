@@ -14,13 +14,13 @@ import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j

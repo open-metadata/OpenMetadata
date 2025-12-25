@@ -38,6 +38,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +62,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -89,7 +92,6 @@ import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 import org.quartz.SchedulerException;
 
@@ -244,16 +246,19 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
-      @Parameter(description = "Filter by agent type", schema = @Schema(type = "string"))
+      @Parameter(
+              description =
+                  "Filter by agent type(s). Can be a single value or comma-separated values",
+              schema = @Schema(type = "string"))
           @QueryParam("agentType")
-          String agentType,
+          String agentTypes,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentType);
+    ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentTypes);
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -325,21 +330,24 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("endTs")
           Long endTs) {
     App installation = repository.getByName(uriInfo, name, repository.getFields("id,pipelines"));
+    ResultList<AppRunRecord> appRuns;
     if (installation.getAppType().equals(AppType.Internal)) {
-      return repository.listAppRuns(installation, limitParam, offset);
-    }
-    if (!installation.getPipelines().isEmpty()) {
+      appRuns = repository.listAppRuns(installation, limitParam, offset);
+    } else if (!installation.getPipelines().isEmpty()) {
       EntityReference pipelineRef = installation.getPipelines().get(0);
       IngestionPipelineRepository ingestionPipelineRepository =
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       IngestionPipeline ingestionPipeline =
           ingestionPipelineRepository.get(
               uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
-      return ingestionPipelineRepository
-          .listExternalAppStatus(ingestionPipeline.getFullyQualifiedName(), startTs, endTs)
-          .map(pipelineStatus -> convertPipelineStatus(installation, pipelineStatus));
+      appRuns =
+          ingestionPipelineRepository
+              .listExternalAppStatus(ingestionPipeline.getFullyQualifiedName(), startTs, endTs)
+              .map(pipelineStatus -> convertPipelineStatus(installation, pipelineStatus));
+    } else {
+      throw new IllegalArgumentException("App does not have a scheduled deployment");
     }
-    throw new IllegalArgumentException("App does not have a scheduled deployment");
+    return sortRunsByStartTime(appRuns);
   }
 
   protected static AppRunRecord convertPipelineStatus(App app, PipelineStatus pipelineStatus) {
@@ -360,6 +368,18 @@ public class AppResource extends EntityResource<App, AppRepository> {
               case RUNNING -> AppRunRecord.Status.RUNNING;
             })
         .withConfig(pipelineStatus.getConfig());
+  }
+
+  private ResultList<AppRunRecord> sortRunsByStartTime(ResultList<AppRunRecord> runs) {
+    if (runs == null || nullOrEmpty(runs.getData())) {
+      return runs;
+    }
+    List<AppRunRecord> sortedRuns = new ArrayList<>(runs.getData());
+    sortedRuns.sort(
+        Comparator.comparing(
+            AppRunRecord::getStartTime, Comparator.nullsLast(Comparator.reverseOrder())));
+    runs.setData(sortedRuns);
+    return runs;
   }
 
   @GET
@@ -587,7 +607,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    App app = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
+      return ApplicationHandler.getInstance()
+          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
+    } else {
+      return app;
+    }
   }
 
   @GET
@@ -623,7 +649,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    App app = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
+      return ApplicationHandler.getInstance()
+          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
+    } else {
+      return app;
+    }
   }
 
   @GET
@@ -1080,6 +1112,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+
+        if (app.getSupportsIngestionRunner()) {
+          service.setIngestionRunner(app.getIngestionRunner());
+        }
+
         PipelineServiceClientResponse response =
             pipelineServiceClient.runPipeline(ingestionPipeline, service, configPayload);
         return Response.status(response.getCode()).entity(response).build();
@@ -1165,6 +1202,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
             Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+
+        if (app.getSupportsIngestionRunner()) {
+          service.setIngestionRunner(app.getIngestionRunner());
+        }
+
         PipelineServiceClientResponse status =
             pipelineServiceClient.deployPipeline(ingestionPipeline, service);
         if (status.getCode() == 200) {

@@ -20,6 +20,8 @@ export interface TagsViewerProps {
   displayType?: DisplayType;
   showNoDataPlaceholder?: boolean;
   tagType?: TagSource;
+  newLook?: boolean;
+  entityFqn?: string;
 }
 
 export enum DisplayType {

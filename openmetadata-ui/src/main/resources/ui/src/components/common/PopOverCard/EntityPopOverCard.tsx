@@ -23,35 +23,11 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
-import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
-import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
-import { getDashboardByFqn } from '../../../rest/dashboardAPI';
-import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemaDetailsByFQN,
-} from '../../../rest/databaseAPI';
-import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
-import { getDataProductByName } from '../../../rest/dataProductAPI';
-import { getDomainByName } from '../../../rest/domainAPI';
-import {
-  getGlossariesByName,
-  getGlossaryTermByFQN,
-} from '../../../rest/glossaryAPI';
-import { getMetricByFqn } from '../../../rest/metricsAPI';
-import { getMlModelByFQN } from '../../../rest/mlModelAPI';
-import { getPipelineByFqn } from '../../../rest/pipelineAPI';
-import { getContainerByFQN } from '../../../rest/storageAPI';
-import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
-import { getTableDetailsByFQN } from '../../../rest/tableAPI';
-import { getTagByFqn } from '../../../rest/tagAPI';
-import { getTestCaseByFqn } from '../../../rest/testAPI';
-import { getTopicByFqn } from '../../../rest/topicsAPI';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
@@ -95,121 +71,12 @@ export const PopoverContent: React.FC<{
   const getData = useCallback(async () => {
     const fields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS}`;
     setLoading(true);
-    let promise: Promise<EntityUnion> | null = null;
 
-    switch (entityType) {
-      case EntityType.TABLE:
-        promise = getTableDetailsByFQN(entityFQN, { fields });
-
-        break;
-      case EntityType.TEST_CASE:
-        promise = getTestCaseByFqn(entityFQN, {
-          fields: [TabSpecificField.OWNERS],
-        });
-
-        break;
-      case EntityType.TOPIC:
-        promise = getTopicByFqn(entityFQN, { fields });
-
-        break;
-      case EntityType.DASHBOARD:
-      case EntityType.CHART:
-        promise = getDashboardByFqn(entityFQN, { fields });
-
-        break;
-      case EntityType.PIPELINE:
-        promise = getPipelineByFqn(entityFQN, { fields });
-
-        break;
-      case EntityType.MLMODEL:
-        promise = getMlModelByFQN(entityFQN, { fields });
-
-        break;
-      case EntityType.DATABASE:
-        promise = getDatabaseDetailsByFQN(entityFQN, {
-          fields: TabSpecificField.OWNERS,
-        });
-
-        break;
-      case EntityType.DATABASE_SCHEMA:
-        promise = getDatabaseSchemaDetailsByFQN(entityFQN, {
-          fields: TabSpecificField.OWNERS,
-          include: Include.All,
-        });
-
-        break;
-      case EntityType.GLOSSARY_TERM:
-        promise = getGlossaryTermByFQN(entityFQN, {
-          fields: TabSpecificField.OWNERS,
-        });
-
-        break;
-      case EntityType.GLOSSARY:
-        promise = getGlossariesByName(entityFQN, {
-          fields: TabSpecificField.OWNERS,
-        });
-
-        break;
-
-      case EntityType.CONTAINER:
-        promise = getContainerByFQN(entityFQN, {
-          fields: TabSpecificField.OWNERS,
-          include: Include.All,
-        });
-
-        break;
-
-      case EntityType.DASHBOARD_DATA_MODEL:
-        promise = getDataModelByFqn(entityFQN, { fields });
-
-        break;
-
-      case EntityType.STORED_PROCEDURE:
-        promise = getStoredProceduresByFqn(entityFQN, { fields });
-
-        break;
-      case EntityType.DOMAIN:
-        promise = getDomainByName(entityFQN, {
-          fields: TabSpecificField.OWNERS,
-        });
-
-        break;
-
-      case EntityType.DATA_PRODUCT:
-        promise = getDataProductByName(entityFQN, {
-          fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAINS],
-        });
-
-        break;
-
-      case EntityType.TAG:
-        promise = getTagByFqn(entityFQN);
-
-        break;
-
-      case EntityType.API_COLLECTION:
-        promise = getApiCollectionByFQN(entityFQN, { fields });
-
-        break;
-
-      case EntityType.API_ENDPOINT:
-        promise = getApiEndPointByFQN(entityFQN, { fields });
-
-        break;
-      case EntityType.METRIC:
-        promise = getMetricByFqn(entityFQN, {
-          fields: [
-            TabSpecificField.OWNERS,
-            TabSpecificField.TAGS,
-            TabSpecificField.DOMAINS,
-          ],
-        });
-
-        break;
-
-      default:
-        break;
-    }
+    const promise = entityUtilClassBase.getEntityByFqn(
+      entityType,
+      entityFQN,
+      fields
+    );
 
     if (promise) {
       try {

@@ -12,22 +12,21 @@
 Lineage Source Module
 """
 import csv
+import multiprocessing
 import os
-import threading
 import time
 import traceback
 from abc import ABC
-from functools import partial
-from typing import Any, Callable, Iterable, Iterator, List, Optional, Union
+from multiprocessing import Process, Queue
+from threading import Thread
+from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
+
+import networkx as nx
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.type.basic import (
-    FullyQualifiedEntityName,
-    SqlQuery,
-    Uuid,
-)
+from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -42,23 +41,27 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_column_fqn,
     get_lineage_by_graph,
     get_lineage_by_procedure_graph,
-    get_lineage_by_query,
 )
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
-from metadata.ingestion.models.topology import Queue
+from metadata.ingestion.models.topology import Queue as TopologyQueue
+from metadata.ingestion.source.database.lineage_processors import (
+    process_chunk_in_subprocess,
+    query_lineage_processor,
+    view_lineage_processor,
+)
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
-from metadata.utils import fqn
-from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 
-CHUNK_SIZE = 100
+CHUNK_SIZE = 200
 
-THREAD_TIMEOUT = 3 * 60 * 10  # 30 minutes in seconds
+QUERY_PROCESSING_TIMEOUT = 300
+PROCESS_TIMEOUT = CHUNK_SIZE * QUERY_PROCESSING_TIMEOUT
+
+MAX_ACTIVE_TIMED_OUT_THREADS = 10
 
 
 class LineageSource(QueryParserSource, ABC):
@@ -74,6 +77,223 @@ class LineageSource(QueryParserSource, ABC):
     """
 
     dialect: Dialect
+
+    @staticmethod
+    def generate_lineage_with_processes(
+        producer_fn: Callable[[], Iterable[Any]],
+        processor_fn: Callable[[Any, Queue], None],
+        args: Tuple[Any, ...],
+        chunk_size: int = CHUNK_SIZE,
+        processor_timeout: int = PROCESS_TIMEOUT,
+        max_threads: int = MAX_ACTIVE_TIMED_OUT_THREADS,
+    ):
+        """
+        Process data in separate processes with timeout control.
+
+        Args:
+            producer_fn: Function that yields data chunks
+            processor_fn: Function that processes data and adds results to the queue
+            chunk_size: Size of chunks to process
+            processor_timeout: Maximum time in seconds to wait for a processor process
+        """
+        # TODO: We are not using multiprocessing yet since processes don't share
+        # the objects natively and creates separate copies. That will break the
+        # graph functionality for temporary lineage processing. Need to find a
+        # better solution for handling shared graphs or pulling graph update states
+        # to parent process.
+        # + It causes log level to be not applied correctly. For reference, if parent
+        # process is running with log level debug the child processes will have
+        # unset log level.
+        # from metadata.utils.helpers import can_spawn_child_process
+        #
+        # multiprocessing_supported = can_spawn_child_process()
+        multiprocessing_supported = False
+
+        if multiprocessing_supported:
+            max_processes = min(
+                multiprocessing.cpu_count(), 8
+            )  # Limit to 8 or available CPUs whichever minimum
+            logger.info(
+                f"Starting lineage processing with `{max_processes}` maximum processes"
+            )
+        else:
+            logger.debug(
+                "Current process cannot spawn child processes. Lineage processing will"
+                " be performed in the same process with multithreading."
+            )
+            max_processes = max_threads
+            logger.info(
+                f"Starting lineage processing with `{max_processes}` maximum threads"
+            )
+
+        def chunk_generator():
+            """Group items from producer into chunks of specified size."""
+            chunk_index = 1
+            temp_chunk = []
+            for item in producer_fn():
+                temp_chunk.append(item)
+                if len(temp_chunk) >= chunk_size:
+                    logger.debug(
+                        f"Processing chunk {chunk_index}: size={len(temp_chunk)}"
+                    )
+                    yield temp_chunk
+                    temp_chunk = []
+                    chunk_index += 1
+            if temp_chunk:
+                logger.debug(
+                    f"Processing final chunk {chunk_index}: size={len(temp_chunk)}"
+                )
+                yield temp_chunk
+
+        # Use appropriate queue type based on processing mode
+        if multiprocessing_supported:
+            queue = Queue()  # multiprocessing.Queue for processes
+        else:
+            queue = TopologyQueue()  # TopologyQueue wrapper for threads
+
+        # Create chunk iterator and tracking
+        chunk_iter = iter(chunk_generator())
+        chunks_exhausted = False
+
+        active_processes = []
+        process_start_times = {}
+        completed_chunks = 0
+        remaining_chunks = 0
+        total_started_processes = 0
+        active_timed_out_threads = []
+
+        def start_next_process():
+            """Start the next pending process if available."""
+            nonlocal total_started_processes
+
+            # Try to get the next chunk for next time
+            try:
+                chunk = next(chunk_iter)
+            except StopIteration:
+                # No more chunks to process
+                return False
+
+            # Use billiard.Process to handle the multiprocessing instead of the
+            # multiprocessing.Process since spawning child process from daemon
+            # process is not supported in Airflow 2+.
+            # Billiard is a fork of multiprocessing that is compatible with Airflow
+            # and recommended by the Airflow team.
+            # ref: https://github.com/apache/airflow/issues/14896
+            total_started_processes += 1
+            if multiprocessing_supported:
+                process = Process(
+                    target=process_chunk_in_subprocess,
+                    args=(chunk, processor_fn, queue, *args),
+                )
+            else:
+                process = Thread(
+                    target=process_chunk_in_subprocess,
+                    args=(chunk, processor_fn, queue, *args),
+                    daemon=True,
+                )
+            process_start_times[process.name] = time.time()
+            process.start()
+            logger.debug(
+                f"Started lineage process {process.name} for chunk {total_started_processes} "
+                f"(active: {len(active_processes) + 1}/{max_processes}, chunk_size: {len(chunk)})"
+            )
+            active_processes.append(process)
+
+            return True
+
+        # Process requests from the queue and check for completed or timed-out processes
+        def queue_has_items():
+            """Check if queue has items based on queue type."""
+            if multiprocessing_supported:
+                return not queue.empty()
+            else:
+                return queue.has_tasks()
+
+        def process_queue_items():
+            """Process items from queue based on queue type."""
+            while queue_has_items():
+                if multiprocessing_supported:
+                    yield queue.get_nowait()
+                else:
+                    yield from queue.process()
+
+        while active_processes or not chunks_exhausted or queue_has_items():
+            # Process any available requests from the queue
+            try:
+                yield from process_queue_items()
+            except Exception as exc:
+                logger.warning(f"Error processing queue: {exc}")
+                logger.debug(traceback.format_exc())
+
+            # Check for completed or timed-out processes
+            still_active = []
+            for process in active_processes:
+                if process.is_alive():
+                    # Check if the process has timed out
+                    if (
+                        time.time() - process_start_times[process.name]
+                        > processor_timeout
+                    ):
+                        if multiprocessing_supported:
+                            logger.warning(
+                                f"Process {process.name} timed out after {processor_timeout}s"
+                            )
+                            process.terminate()  # Force terminate the timed out process
+                        else:
+                            logger.warning(
+                                f"Thread {process.name} timed out after {processor_timeout}s"
+                            )
+                            active_timed_out_threads.append(process)
+                        completed_chunks += 1
+                    else:
+                        still_active.append(process)
+                else:
+                    # Clean up completed process
+                    process.join()
+                    completed_chunks += 1
+                    runtime = time.time() - process_start_times[process.name]
+                    logger.debug(
+                        f"Lineage process {process.name} completed successfully "
+                        f"(runtime: {runtime:.1f}s, progress: {completed_chunks}/{total_started_processes})"
+                    )
+
+            # check if any of the active_timed_out_threads are completed
+            active_timed_out_threads = [
+                thread for thread in active_timed_out_threads if thread.is_alive()
+            ]
+
+            # check if there are more than MAX_ACTIVE_TIMED_OUT_THREADS
+            if len(active_timed_out_threads) > MAX_ACTIVE_TIMED_OUT_THREADS:
+                remaining_chunks = sum(1 for _ in chunk_iter)
+                logger.warning(
+                    f"There are more than {MAX_ACTIVE_TIMED_OUT_THREADS} active timed out threads, "
+                    f"skipping remaining {remaining_chunks}/{completed_chunks+remaining_chunks} chunks. "
+                )
+                break
+
+            active_processes = still_active
+
+            # Start initial/next processes to fill available slots
+            while len(active_processes) < max_processes:
+                if start_next_process():
+                    continue
+                chunks_exhausted = True
+                break
+
+            # Small pause to prevent CPU spinning
+            if active_processes or not chunks_exhausted:
+                time.sleep(0.1)
+
+        # Final check for any remaining queue requests
+        try:
+            yield from process_queue_items()
+        except Exception as exc:
+            logger.warning(f"Error processing queue: {exc}")
+            logger.debug(traceback.format_exc())
+
+        logger.info(
+            f"Lineage processing completed with {completed_chunks}/{completed_chunks+remaining_chunks} chunks processed"
+        )
 
     def yield_table_queries_from_logs(self) -> Iterator[TableQuery]:
         """
@@ -106,111 +326,6 @@ class LineageSource(QueryParserSource, ABC):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to read queries form log file due to: {err}")
 
-    def get_table_query(self) -> Iterator[TableQuery]:
-        """
-        If queryLogFilePath available in config iterate through log file
-        otherwise execute the sql query to fetch TableQuery data.
-
-        This is a simplified version of the UsageSource query parsing.
-        """
-        if self.config.sourceConfig.config.queryLogFilePath:
-            yield from self.yield_table_queries_from_logs()
-        else:
-            logger.info(
-                f"Scanning query logs for {self.start.date()} - {self.end.date()}"
-            )
-            yield from self.yield_table_query()
-
-    @staticmethod
-    def generate_lineage_in_thread(
-        producer_fn: Callable[[], Iterable[Any]],
-        processor_fn: Callable[[Any, Queue], None],
-        chunk_size: int = CHUNK_SIZE,
-        thread_timeout: int = THREAD_TIMEOUT,
-        max_threads: int = 10,  # Default maximum number of concurrent threads
-    ):
-        """
-        Process data in separate daemon threads with timeout control.
-
-        Args:
-            producer_fn: Function that yields data chunks
-            processor_fn: Function that processes data and adds results to the queue
-            chunk_size: Size of chunks to process
-            thread_timeout: Maximum time in seconds to wait for a processor thread
-            max_threads: Maximum number of concurrent threads to run
-        """
-        queue = Queue()
-        active_threads = []
-
-        def process_chunk(chunk):
-            """Process a chunk of data in a thread."""
-            try:
-                processor_fn(chunk, queue)
-            except Exception as e:
-                logger.error(f"Error processing chunk: {e}")
-                logger.debug(traceback.format_exc())
-
-        # Create an iterator for the chunks but don't consume it all at once
-        chunk_iterator = iter(chunk_generator(producer_fn, chunk_size))
-
-        # Process results from the queue and check for timed-out threads
-        chunk_processed = False  # Flag to track if all chunks have been processed
-        ignored_threads = 0
-
-        while True:
-            # Start new threads until we reach the max_threads limit
-            while (
-                len(active_threads) + ignored_threads
-            ) < max_threads and not chunk_processed:
-                try:
-                    # Only fetch a new chunk when we're ready to create a thread
-                    chunk = next(chunk_iterator)
-                    thread = threading.Thread(target=process_chunk, args=(chunk,))
-                    thread.start_time = time.time()  # Track when the thread started
-                    thread.daemon = True
-                    active_threads.append(thread)
-                    thread.start()
-                except StopIteration:
-                    # No more chunks to process
-                    chunk_processed = True
-                    break
-
-            if ignored_threads == max_threads:
-                logger.warning(f"Max threads reached, skipping remaining threads")
-                break
-
-            # Process any available results
-            if queue.has_tasks():
-                yield from queue.process()
-
-            # Check for completed or timed-out threads
-            still_active = []
-            for thread in active_threads:
-                if thread.is_alive():
-                    # Check if the thread has timed out
-                    if time.time() - thread.start_time > thread_timeout:
-                        logger.warning(
-                            f"Thread {thread.name} timed out after {thread_timeout}s"
-                        )
-                        ignored_threads += 1
-                    else:
-                        still_active.append(thread)
-                # If thread is not alive, it has completed normally
-
-            active_threads = still_active
-
-            # Exit conditions: no more active threads and no more chunks to process
-            if not active_threads and chunk_processed:
-                break
-
-            # Small pause to prevent CPU spinning
-            if active_threads:
-                time.sleep(0.1)
-
-        # Final check for any remaining results
-        while queue.has_tasks():
-            yield from queue.process()
-
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
         Given an engine, iterate over the query results to
@@ -241,56 +356,25 @@ class LineageSource(QueryParserSource, ABC):
                             f"Error processing query_dict {query_dict}: {exc}"
                         )
 
-    def _query_already_processed(self, table_query: TableQuery) -> bool:
+    def get_table_query(self) -> Iterator[TableQuery]:
         """
-        Check if a query has already been processed by validating if exists
-        in ES with lineageProcessed as True
+        If queryLogFilePath available in config iterate through log file
+        otherwise execute the sql query to fetch TableQuery data.
+        This is a simplified version of the UsageSource query parsing.
         """
-        checksums = self.metadata.es_get_queries_with_lineage(
-            service_name=table_query.serviceName,
-        )
-        return fqn.get_query_checksum(table_query.query) in checksums or {}
+        if self.config.sourceConfig.config.queryLogFilePath:
+            yield from self.yield_table_queries_from_logs()
+        else:
+            logger.info(
+                f"Scanning query logs for {self.start.date()} - {self.end.date()}"
+            )
+            yield from self.yield_table_query()
 
-    def query_lineage_generator(
-        self, table_queries: List[TableQuery], queue: Queue
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        if self.graph is None and self.source_config.enableTempTableLineage:
-            import networkx as nx
-
-            # Create a directed graph
-            self.graph = nx.DiGraph()
-
-        for table_query in table_queries or []:
-            if not self._query_already_processed(table_query):
-                lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
-                    self.metadata,
-                    query=table_query.query,
-                    service_name=table_query.serviceName,
-                    database_name=table_query.databaseName,
-                    schema_name=table_query.databaseSchema,
-                    dialect=self.dialect,
-                    timeout_seconds=self.source_config.parsingTimeoutLimit,
-                    graph=self.graph,
-                )
-
-                for lineage_request in lineages or []:
-                    queue.put(lineage_request)
-
-                    # If we identified lineage properly, ingest the original query
-                    if lineage_request.right:
-                        queue.put(
-                            Either(
-                                right=CreateQueryRequest(
-                                    query=SqlQuery(table_query.query),
-                                    query_type=table_query.query_type,
-                                    duration=table_query.duration,
-                                    processedLineage=True,
-                                    service=FullyQualifiedEntityName(
-                                        self.config.serviceName
-                                    ),
-                                )
-                            )
-                        )
+    def query_lineage_producer(self) -> Iterator[TableQuery]:
+        """
+        Retrieve queries to be fetched for lineage processing
+        """
+        return self.get_table_query()
 
     def yield_query_lineage(
         self,
@@ -302,88 +386,78 @@ class LineageSource(QueryParserSource, ABC):
         logger.info("Processing Query Lineage")
         connection_type = str(self.service_connection.type.value)
         self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
-        producer_fn = self.get_table_query
-        processor_fn = self.query_lineage_generator
-        yield from self.generate_lineage_in_thread(
+        producer_fn = self.query_lineage_producer
+        processor_fn = query_lineage_processor
+        args = (
+            self.metadata,
+            self.dialect,
+            self.graph,
+            self.source_config.processCrossDatabaseLineage,
+            self.source_config.crossDatabaseServiceNames,
+            self.source_config.parsingTimeoutLimit,
+            self.config.serviceName,
+        )
+        yield from self.generate_lineage_with_processes(
             producer_fn,
             processor_fn,
+            args,
             max_threads=self.source_config.threads,
         )
 
-    def view_lineage_generator(
-        self, views: List[TableView], queue: Queue
-    ) -> Iterable[Either[AddLineageRequest]]:
-        try:
-            for view in views:
-                if (
-                    filter_by_database(
-                        self.source_config.databaseFilterPattern,
-                        view.db_name,
-                    )
-                    or filter_by_schema(
-                        self.source_config.schemaFilterPattern,
-                        view.schema_name,
-                    )
-                    or filter_by_table(
-                        self.source_config.tableFilterPattern,
-                        view.table_name,
-                    )
-                ):
-                    self.status.filter(
-                        view.table_name,
-                        "View Filtered Out",
-                    )
-                    continue
-                for lineage in get_view_lineage(
-                    view=view,
-                    metadata=self.metadata,
-                    service_name=self.config.serviceName,
-                    connection_type=self.service_connection.type.value,
-                    timeout_seconds=self.source_config.parsingTimeoutLimit,
-                ):
-                    if lineage.right is not None:
-                        view_fqn = fqn.build(
-                            metadata=self.metadata,
-                            entity_type=Table,
-                            service_name=self.service_name,
-                            database_name=view.db_name,
-                            schema_name=view.schema_name,
-                            table_name=view.table_name,
-                            skip_es_search=True,
-                        )
-                        queue.put(
-                            Either(
-                                right=OMetaLineageRequest(
-                                    lineage_request=lineage.right,
-                                    override_lineage=self.source_config.overrideViewLineage,
-                                    entity_fqn=view_fqn,
-                                    entity=Table,
-                                )
-                            )
-                        )
-                    else:
-                        queue.put(lineage)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error processing view {view}: {exc}")
+    def view_lineage_producer(self) -> Iterable[TableView]:
+        """
+        Get the view definition from ES
+        """
+        for view in self.metadata.yield_es_view_def(
+            service_name=self.config.serviceName,
+            incremental=self.source_config.incrementalLineageProcessing,
+        ):
+            if (
+                filter_by_database(
+                    self.source_config.databaseFilterPattern,
+                    view.db_name,
+                )
+                or filter_by_schema(
+                    self.source_config.schemaFilterPattern,
+                    view.schema_name,
+                )
+                or filter_by_table(
+                    self.source_config.tableFilterPattern,
+                    view.table_name,
+                )
+            ):
+                self.status.filter(
+                    view.table_name,
+                    "View Filtered Out",
+                )
+                continue
+            yield view
 
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing View Lineage")
-        producer_fn = partial(
-            self.metadata.yield_es_view_def,
+        producer_fn = self.view_lineage_producer
+        processor_fn = view_lineage_processor
+        args = (
+            self.metadata,
             self.config.serviceName,
-            self.source_config.incrementalLineageProcessing,
+            self.service_connection.type.value,
+            self.source_config.processCrossDatabaseLineage,
+            self.source_config.crossDatabaseServiceNames,
+            self.source_config.parsingTimeoutLimit,
+            self.source_config.overrideViewLineage,
         )
-        processor_fn = self.view_lineage_generator
-        yield from self.generate_lineage_in_thread(
-            producer_fn, processor_fn, max_threads=self.source_config.threads
+        yield from self.generate_lineage_with_processes(
+            producer_fn,
+            processor_fn,
+            args,
+            max_threads=self.source_config.threads,
         )
 
     def yield_procedure_lineage(
         self,
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         """
-        By default stored procedure lineage is not supported.
+        By default stored   procedure lineage is not supported.
         """
         logger.info(
             f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}"
@@ -410,6 +484,7 @@ class LineageSource(QueryParserSource, ABC):
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())
+        return []
 
     def get_add_cross_database_lineage_request(
         self,
@@ -417,6 +492,9 @@ class LineageSource(QueryParserSource, ABC):
         to_entity: Table,
         column_lineage: List[ColumnLineage] = None,
     ) -> Optional[Either[AddLineageRequest]]:
+        """
+        Get the add cross database lineage request
+        """
         if from_entity and to_entity:
             return Either(
                 right=AddLineageRequest(
@@ -452,6 +530,9 @@ class LineageSource(QueryParserSource, ABC):
         Based on the query logs, prepare the lineage
         and send it to the sink
         """
+        if self.graph is None and self.source_config.enableTempTableLineage:
+            # Create a directed graph
+            self.graph = nx.DiGraph()
         if (
             self.procedure_graph_map is None
             and self.source_config.enableTempTableLineage
@@ -482,18 +563,3 @@ class LineageSource(QueryParserSource, ABC):
             and self.source_config.crossDatabaseServiceNames
         ):
             yield from self.yield_cross_database_lineage() or []
-
-
-def chunk_generator(producer_fn, chunk_size):
-    """
-    Group items from producer into chunks of specified size.
-    This is a separate function to allow for better lazy evaluation.
-    """
-    temp_chunk = []
-    for item in producer_fn():
-        temp_chunk.append(item)
-        if len(temp_chunk) >= chunk_size:
-            yield temp_chunk
-            temp_chunk = []
-    if temp_chunk:
-        yield temp_chunk

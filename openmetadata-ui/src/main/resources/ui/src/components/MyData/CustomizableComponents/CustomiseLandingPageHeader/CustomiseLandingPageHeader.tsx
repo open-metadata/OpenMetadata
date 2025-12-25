@@ -52,6 +52,7 @@ import CustomiseSearchBar from './CustomiseSearchBar';
 const CustomiseLandingPageHeader = ({
   addedWidgetsList,
   backgroundColor,
+  dataTestId,
   handleAddWidget,
   hideCustomiseButton = false,
   isPreviewHeader = false,
@@ -153,7 +154,10 @@ const CustomiseLandingPageHeader = ({
   }, [fetchAnnouncements]);
 
   return (
-    <div className="customise-landing-page-header" style={landingPageStyle}>
+    <div
+      className="customise-landing-page-header"
+      data-testid={dataTestId}
+      style={landingPageStyle}>
       <div className="header-container">
         <div className="dashboard-header">
           <div
@@ -239,13 +243,37 @@ const CustomiseLandingPageHeader = ({
                 infinite={false}
                 nextArrow={<CustomNextArrow />}
                 prevArrow={<CustomPrevArrow />}
-                slidesToScroll={6}
-                slidesToShow={6}>
+                responsive={[
+                  {
+                    breakpoint: 1900,
+                    settings: {
+                      slidesToShow: 8,
+                      slidesToScroll: 8,
+                    },
+                  },
+                  {
+                    breakpoint: 1600,
+                    settings: {
+                      slidesToShow: 6,
+                      slidesToScroll: 6,
+                    },
+                  },
+                  {
+                    breakpoint: 1300,
+                    settings: {
+                      slidesToShow: 4,
+                      slidesToScroll: 4,
+                    },
+                  },
+                ]}
+                slidesToScroll={10}
+                slidesToShow={10}>
                 {recentlyViewData.map((data, index) => (
                   <div
                     className={classNames('customise-recently-viewed-data', {
                       disabled: !onHomePage,
                     })}
+                    data-testid="recently-viewed-asset"
                     key={index}
                     role="button"
                     tabIndex={0}
@@ -257,7 +285,7 @@ const CustomiseLandingPageHeader = ({
                         {data.icon}
                       </div>
                       <Typography.Text
-                        className="text-sm font-medium text-white wrap-text"
+                        className="text-sm font-medium text-white"
                         ellipsis={{ tooltip: true }}>
                         {data.name}
                       </Typography.Text>

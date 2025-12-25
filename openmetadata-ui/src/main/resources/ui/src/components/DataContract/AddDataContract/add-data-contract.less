@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
 .ant-tabs.ant-tabs-left.contract-tabs {
   .ant-tabs-content-holder {
@@ -28,13 +28,65 @@
       overflow: initial;
     }
   }
+  .contract-prev-button,
+  .contract-next-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: @size-xs @size-sm;
+    border: 1px solid @grey-300;
+    border-radius: 8px;
+    font-weight: 600;
+    gap: 4px;
+    box-shadow: 0px 1px 2px 0px @grey-27, 0px -2px 0px 0px @grey-27 inset,
+      0px 0px 0px 1px @grey-27 inset;
 
+    .anticon {
+      margin-top: 2px;
+      margin-left: 6px;
+    }
+  }
+  .contract-prev-button {
+    color: @grey-700;
+    svg {
+      color: @grey-400;
+    }
+
+    &:hover {
+      background: @grey-100;
+
+      svg {
+        color: @grey-700;
+      }
+    }
+  }
   .ant-tabs-left-content {
     height: 100%;
   }
+  .ant-checkbox-checked {
+    .ant-checkbox-inner {
+      background-color: @primary-1;
+      border: 1px solid @primary-color;
+      &::after {
+        border-color: @primary-color;
+      }
+    }
+  }
 
+  .ant-checkbox-indeterminate {
+    .ant-checkbox-inner {
+      background-color: @primary-1;
+      border: 1px solid @primary-color;
+      &::after {
+        width: 7px;
+        height: 2px;
+        border-radius: 8px;
+        border: 1px solid @primary-color;
+      }
+    }
+  }
   .ant-tabs-nav {
-    width: 180px;
+    width: 200px;
     height: initial;
     border: none;
     padding: 0;
@@ -51,7 +103,7 @@
         border: none;
         border-radius: 8px 0 0 8px;
         background: transparent;
-        color: #6b7280;
+        color: @de-active-color;
         font-weight: 500;
         transition: all 0.2s ease;
 
@@ -60,17 +112,17 @@
         }
 
         &:hover {
-          background: #f3f4f6;
-          color: #374151;
+          background: @grey-36;
+          color: @blue-43;
         }
 
         &.ant-tabs-tab-active {
-          background: #ebf5ff;
-          color: #1d4ed8;
-          border-right: 3px solid #1d4ed8;
+          background: @grey-37;
+          color: @blue-42;
+          border-right: 3px solid @blue-42;
 
           .ant-tabs-tab-btn {
-            color: #1d4ed8;
+            color: @blue-42;
             font-weight: 600;
           }
         }
@@ -104,6 +156,10 @@
     min-height: 500px;
     border-radius: 0 8px 8px 8px;
   }
+  .schema-table-name {
+    color: @grey-600;
+    font-weight: @font-medium;
+  }
 
   // Contract detail Forms
   .contract-detail-form-tab-title {
@@ -126,6 +182,9 @@
     border-radius: 8px;
     border: 1px solid @border-color-7;
     box-shadow: @button-box-shadow-default;
+    display: flex;
+    flex-direction: column;
+    gap: @size-lg;
   }
 
   // Table styling
@@ -144,23 +203,6 @@
   & > div:first-child {
     background: transparent;
     padding: 0 0 20px 0;
-
-    .ant-typography {
-      margin: 0;
-
-      &.ant-typography-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: #111827;
-        margin-bottom: 4px !important;
-      }
-
-      &.ant-typography-paragraph {
-        font-size: 14px;
-        color: #6b7280;
-        margin: 0 !important;
-      }
-    }
   }
 
   // Form styling within tabs
@@ -170,30 +212,73 @@
 
       .ant-form-item-label {
         padding-bottom: 8px;
-
         label {
           font-size: 14px;
           font-weight: 500;
-          color: #374151;
+          color: @grey-700;
 
           &.ant-form-item-required::before {
-            color: #ef4444;
+            color: @red-21;
           }
         }
       }
+    }
 
-      .ant-form-item-control {
-        .ant-input,
-        .ant-select-selector,
-        .ant-mentions {
-          border-radius: 6px;
-          border: 1px solid #d1d5db;
+    input[type='text'],
+    .ant-picker {
+      color: @grey-700;
+      font-weight: 500;
+      min-height: 40px;
+      border: 1px solid @grey-300;
+      border-radius: 8px;
+      box-shadow: 0 1px 2px 0px @grey-27;
+    }
 
-          &:focus,
-          &:hover {
-            border-color: #3b82f6;
-          }
+    .ant-input-number-input {
+      color: @grey-700;
+      font-weight: 500;
+      border-radius: 8px;
+      min-height: 40px;
+      box-shadow: 0 1px 2px 0px @grey-27;
+    }
+
+    .ant-select-selector,
+    .ant-mentions {
+      border-radius: 8px;
+      border: 1px solid @grey-300;
+      color: @grey-700;
+      min-height: 40px;
+      box-shadow: 0 1px 2px 0px @grey-27;
+
+      &:focus,
+      &:hover {
+        border-color: @primary-color;
+      }
+
+      > .ant-select-selection-search {
+        input[type='search'] {
+          height: 40px;
+          font-weight: 500;
         }
+      }
+    }
+
+    .ant-select-selection-placeholder,
+    .ant-select-selection-item {
+      line-height: 40px;
+    }
+
+    .ant-select-selection-overflow {
+      .ant-select-selection-overflow-item {
+        .ant-select-selection-item {
+          line-height: 22px;
+        }
+      }
+    }
+
+    .query-builder-container {
+      .group--field {
+        align-self: baseline;
       }
     }
   }
@@ -206,6 +291,21 @@
 }
 
 .add-contract-card {
+  .add-contract-card-header {
+    .ant-btn.add-contract-cancel-button {
+      margin-right: 8px;
+      border: 1px solid @grey-300;
+      color: @grey-700;
+      font-weight: 600;
+      box-shadow: 0px 1px 2px 0px @grey-27, 0px -2px 0px 0px @grey-27 inset,
+        0px 0px 0px 1px @grey-27 inset;
+    }
+
+    .ant-btn.add-contract-save-button {
+      font-weight: 600;
+    }
+  }
+
   .add-contract-card-title {
     font-size: 18px;
     font-weight: 600;
@@ -222,5 +322,36 @@
   > .ant-card-body {
     padding: 0;
     padding-left: 20px;
+  }
+}
+
+.semantic-rule-editor-view-only {
+  input[type='text'] {
+    color: @grey-700;
+    box-shadow: 0px 1px 2px 0px @grey-27;
+    border: 1px solid @grey-300;
+    font-weight: 500;
+  }
+
+  .ant-select-selector,
+  .ant-mentions {
+    border: 1px solid @grey-300;
+    color: @grey-700;
+    font-weight: 500;
+    min-height: 40px !important;
+    box-shadow: 0 1px 2px 0px @grey-27;
+
+    .ant-select-selector,
+    .ant-mentions {
+      border: 1px solid @grey-300;
+      color: @grey-700;
+      min-height: 40px !important;
+      box-shadow: 0 1px 2px 0px @grey-27;
+
+      &:focus,
+      &:hover {
+        border-color: @primary-color;
+      }
+    }
   }
 }

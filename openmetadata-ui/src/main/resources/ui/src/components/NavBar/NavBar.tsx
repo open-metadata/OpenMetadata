@@ -52,11 +52,7 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
-import {
-  BackgroundJob,
-  EnumCleanupArgs,
-  JobType,
-} from '../../generated/jobs/backgroundJob';
+import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -248,7 +244,7 @@ const NavBar = () => {
         const { jobArgs, status, jobType } = backgroundJobData;
 
         if (jobType === JobType.CustomPropertyEnumCleanup) {
-          const enumCleanupArgs = jobArgs as EnumCleanupArgs;
+          const enumCleanupArgs = jobArgs;
           if (!enumCleanupArgs.entityType) {
             showErrorToast(
               {
@@ -280,11 +276,11 @@ const NavBar = () => {
       icon: Logo,
     });
     notification.onclick = () => {
-      const isChrome = window.navigator.userAgent.indexOf('Chrome');
+      const isChrome = globalThis.navigator.userAgent.indexOf('Chrome');
       // Applying logic to open a new window onclick of browser notification from chrome
       // As it does not open the concerned tab by default.
       if (isChrome > -1) {
-        window.open(path);
+        globalThis.open(path);
       } else {
         navigate(path);
       }
@@ -317,7 +313,7 @@ const NavBar = () => {
       const now = Date.now();
 
       if (lastFetchTime) {
-        const timeSinceLastFetch = now - parseInt(lastFetchTime);
+        const timeSinceLastFetch = now - Number.parseInt(lastFetchTime);
         if (timeSinceLastFetch < ONE_HOUR_MS) {
           // Less than 1 hour since last fetch, skip API call
           return;
@@ -466,13 +462,7 @@ const NavBar = () => {
                 }
               />
             </Tooltip>
-            {isHomePage ? (
-              <Typography.Text className="font-semibold navbar-title">
-                {t('label.home')}
-              </Typography.Text>
-            ) : isTourPage ? (
-              <></>
-            ) : (
+            {!isHomePage && !isTourPage && (
               <>
                 <GlobalSearchBar />
                 <DomainSelectableList
@@ -538,6 +528,7 @@ const NavBar = () => {
               className="cursor-pointer"
               dropdownRender={() => (
                 <NotificationBox
+                  activeTab={activeTab}
                   hasMentionNotification={hasMentionNotification}
                   hasTaskNotification={hasTaskNotification}
                   onMarkMentionsNotificationRead={

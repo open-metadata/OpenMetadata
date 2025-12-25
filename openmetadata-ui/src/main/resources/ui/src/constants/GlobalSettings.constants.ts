@@ -22,6 +22,7 @@ export enum GlobalSettingsMenuCategory {
   APPLICATIONS = 'apps',
   PERSONA = 'persona',
   SEARCH = 'search',
+  SSO = 'sso',
 }
 
 export enum GlobalSettingOptions {
@@ -54,7 +55,7 @@ export enum GlobalSettingOptions {
   DATA_INSIGHT = 'dataInsight',
   EMAIL = 'email',
   NOTIFICATIONS = 'notifications',
-  ALERT = 'alert',
+  ALERTS = 'alerts',
   OBSERVABILITY = 'observability',
   GLOSSARY_TERM = 'glossaryTerm',
   ADD_NOTIFICATION = 'add-notification',
@@ -88,5 +89,12 @@ export enum GlobalSettingOptions {
   TEST_CASES = 'testCases',
   TAGS = 'tags',
   DOMAINS = 'domains',
+  SSO = 'sso',
+  CHARTS = 'charts',
   SECURITY = 'security',
+  DRIVES = 'drives',
+  DIRECTORIES = 'directories',
+  FILES = 'files',
+  SPREADSHEETS = 'spreadsheets',
+  WORKSHEETS = 'worksheets',
 }

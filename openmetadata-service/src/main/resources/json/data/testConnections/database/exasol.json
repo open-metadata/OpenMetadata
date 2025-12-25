@@ -26,6 +26,13 @@
         "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
         "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
         "mandatory": false
+      },
+      {
+        "name": "GetQueries",
+        "description":"Check if we can access the EXA_DBA_AUDIT_SQL table to get query logs, These queries are analyzed in the usage & lineage workflow.",
+        "errorMessage": "Failed to fetch queries, please validate if Exasol instance has EXA_DBA_AUDIT_SQL extension installed and the user has at least select privileges for EXA_DBA_AUDIT_SQL table.",
+        "mandatory": false
       }
     ]
   }
+

@@ -21,10 +21,10 @@ import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.automations.WorkflowResource.WorkflowList;
-import org.openmetadata.service.util.ResultList;
 
 public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWorkflow> {
 

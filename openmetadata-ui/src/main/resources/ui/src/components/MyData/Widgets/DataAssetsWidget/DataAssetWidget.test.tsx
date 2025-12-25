@@ -76,27 +76,12 @@ describe('DataAssetsWidget', () => {
     );
   };
 
-  it('should fetch dataAssets initially', () => {
+  it('should fetch dataAssets initially using DATA_ASSET index', () => {
     renderDataAssetsWidget();
 
-    expect(searchData).toHaveBeenCalledWith(
-      '',
-      0,
-      0,
-      '',
-      'name.keyword',
-      'asc',
-      [
-        SearchIndex.TABLE,
-        SearchIndex.TOPIC,
-        SearchIndex.DASHBOARD,
-        SearchIndex.PIPELINE,
-        SearchIndex.MLMODEL,
-        SearchIndex.CONTAINER,
-        SearchIndex.SEARCH_INDEX,
-        SearchIndex.API_ENDPOINT_INDEX,
-      ]
-    );
+    expect(searchData).toHaveBeenCalledWith('', 0, 0, '', 'updatedAt', 'desc', [
+      SearchIndex.DATA_ASSET,
+    ]);
   });
 
   it('should render DataAssetsWidget with widget wrapper', async () => {
@@ -110,7 +95,9 @@ describe('DataAssetsWidget', () => {
 
     renderDataAssetsWidget();
 
-    expect(await screen.findByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('KnowledgePanel.DataAssets')
+    ).toBeInTheDocument();
     expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
     expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
   });
@@ -137,7 +124,9 @@ describe('DataAssetsWidget', () => {
 
     renderDataAssetsWidget();
 
-    expect(await screen.findByTestId('widget-wrapper')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('KnowledgePanel.DataAssets')
+    ).toBeInTheDocument();
     expect(await screen.findByTestId('widget-header')).toBeInTheDocument();
     expect(
       await screen.findByText('label.data-asset-plural')

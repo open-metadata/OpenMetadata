@@ -13,7 +13,8 @@
 import { expect } from '@playwright/test';
 import { Page } from 'playwright';
 import { EXPECTED_BUCKETS } from '../constant/explore';
-import { getApiContext } from './common';
+import { getApiContext, redirectToExplorePage } from './common';
+import { openEntitySummaryPanel } from './entityPanel';
 
 export interface Bucket {
   key: string;
@@ -125,7 +126,15 @@ export const selectDataAssetFilter = async (
     '/api/v1/search/query?*index=dataAsset&from=0&size=0*'
   );
   await page.getByRole('button', { name: 'Data Assets' }).click();
-  await page.getByTestId(`${filterValue}-checkbox`).check();
+  const dataAssetDropdownRequest = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+  );
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill(filterValue.toLowerCase());
+  await dataAssetDropdownRequest;
+  await page.getByTestId(`${filterValue.toLowerCase()}-checkbox`).check();
   await page.getByTestId('update-btn').click();
 };
 
@@ -241,4 +250,65 @@ export const validateBucketsForIndexAndSort = async (
   const totalCount = response.hits.total.value ?? 0;
 
   expect(totalCount).toEqual(docCount);
+};
+
+export const selectSortOrder = async (page: Page, sortOrder: string) => {
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.getByTestId('sorting-dropdown-label').click();
+  await page.waitForSelector(`role=menuitem[name="${sortOrder}"]`, {
+    state: 'visible',
+  });
+  const nameFilter = page.waitForResponse(
+    `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=desc*`
+  );
+  await page.getByRole('menuitem', { name: sortOrder }).click();
+  await nameFilter;
+
+  await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
+    sortOrder
+  );
+
+  const ascSortOrder = page.waitForResponse(
+    `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=asc*`
+  );
+  await page.getByTestId('sort-order-button').click();
+  await ascSortOrder;
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+};
+
+export const verifyEntitiesAreSorted = async (page: Page) => {
+  // Wait for search results to be stable after sort
+  await page.waitForSelector('[data-testid="search-results"]', {
+    state: 'visible',
+  });
+  await page.waitForLoadState('networkidle');
+
+  const entityNames = await page.$$eval(
+    '[data-testid="search-results"] .explore-search-card [data-testid="entity-link"]',
+    (elements) => elements.map((el) => el.textContent?.trim() ?? '')
+  );
+
+  // Elasticsearch keyword field with case-insensitive sorting
+  const sortedEntityNames = [...entityNames].sort((a, b) => {
+    const aLower = a.toLowerCase();
+    const bLower = b.toLowerCase();
+
+    return aLower < bLower ? -1 : aLower > bLower ? 1 : 0;
+  });
+
+  expect(entityNames).toEqual(sortedEntityNames);
+};
+
+export const navigateToExploreAndSelectEntity = async (
+  page: Page,
+  entityName: string
+) => {
+  await redirectToExplorePage(page);
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+    timeout: 15000,
+  });
+
+  await openEntitySummaryPanel(page, entityName);
 };

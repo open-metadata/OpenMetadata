@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the Alation connector.
 
 ## Requirements
 
-Follow the official documentation to generate a API Access Token from [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-an-api-access-token)
+Follow the official documentation to generate a API Access Token from <a href="https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-an-api-access-token" target="_blank">here</a>
 
 ## Connection Details
 
@@ -23,7 +23,7 @@ Following authentication types are supported:
 - username: Username of the user.
 - password: Password of the user.
 
-2. Access Token Authentication: The access token created using the steps mentioned [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-via-ui) can directly be entered. We'll use that directly to authenticate the Alation APIs
+2. Access Token Authentication: The access token created using the steps mentioned <a href="https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-via-ui" target="_blank">here</a> can directly be entered. We'll use that directly to authenticate the Alation APIs
 - accessToken: Generated access token
 $$
 
@@ -75,7 +75,7 @@ Password to connect to Postgres.
 $$section
 ### AWS Access Key ID $(id="awsAccessKeyId")
 
-When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests ([docs](https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html)).
+When you interact with AWS, you specify your AWS security credentials to verify who you are and whether you have permission to access the resources that you are requesting. AWS uses the security credentials to authenticate and authorize your requests (<a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/security-creds.html" target="_blank">docs</a>).
 
 Access keys consist of two parts:
 1. An access key ID (for example, `AKIAIOSFODNN7EXAMPLE`),
@@ -83,7 +83,7 @@ Access keys consist of two parts:
 
 You must use both the access key ID and secret access key together to authenticate your requests.
 
-You can find further information on how to manage your access keys [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)
+You can find further information on how to manage your access keys <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html" target="_blank">here</a>
 $$
 
 $$section
@@ -95,11 +95,11 @@ $$
 $$section
 ### AWS Region $(id="awsRegion")
 
-Each AWS Region is a separate geographic area in which AWS clusters data centers ([docs](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html)).
+Each AWS Region is a separate geographic area in which AWS clusters data centers (<a href="https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html" target="_blank">docs</a>).
 
 As AWS can have instances in multiple regions, we need to know the region the service you want reach belongs to.
 
-Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials [here](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials).
+Note that the AWS Region is the only required parameter when configuring a connection. When connecting to the services programmatically, there are different ways in which we can extract and use the rest of AWS configurations. You can find further information about configuring your credentials <a href="https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials" target="_blank">here</a>.
 $$
 
 $$section
@@ -107,7 +107,7 @@ $$section
 
 If you are using temporary credentials to access your services, you will need to inform the AWS Access Key ID and AWS Secrets Access Key. Also, these will include an AWS Session Token.
 
-You can find more information on [Using temporary credentials with AWS resources](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html).
+You can find more information on <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_use-resources.html" target="_blank">Using temporary credentials with AWS resources</a>.
 $$
 
 $$section
@@ -115,7 +115,7 @@ $$section
 
 To connect programmatically to an AWS service, you use an endpoint. An *endpoint* is the URL of the entry point for an AWS web service. The AWS SDKs and the AWS Command Line Interface (AWS CLI) automatically use the default endpoint for each service in an AWS Region. But you can specify an alternate endpoint for your API requests.
 
-Find more information on [AWS service endpoints](https://docs.aws.amazon.com/general/latest/gr/rande.html).
+Find more information on <a href="https://docs.aws.amazon.com/general/latest/gr/rande.html" target="_blank">AWS service endpoints</a>.
 $$
 
 $$section
@@ -125,7 +125,7 @@ A named profile is a collection of settings and credentials that you can apply t
 
 You can inform this field if you'd like to use a profile other than `default`.
 
-Find here more information about [Named profiles for the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html).
+Find here more information about <a href="https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-profiles.html" target="_blank">Named profiles for the AWS CLI</a>.
 $$
 
 $$section
@@ -137,7 +137,7 @@ A user who wants to access a role in a different account must also have permissi
 
 This is a required field if you'd like to `AssumeRole`.
 
-Find more information on [AssumeRole](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html).
+Find more information on <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html" target="_blank">AssumeRole</a>.
 $$
 
 $$section
@@ -147,7 +147,7 @@ An identifier for the assumed role session. Use the role session name to uniquel
 
 By default, we'll use the name `OpenMetadataSession`.
 
-Find more information about the [Role Session Name](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session.).
+Find more information about the <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=An%20identifier%20for%20the%20assumed%20role%20session." target="_blank">Role Session Name</a>.
 $$
 
 $$section
@@ -155,7 +155,7 @@ $$section
 
 The source identity specified by the principal that is calling the `AssumeRole` operation. You can use source identity information in AWS CloudTrail logs to determine who took actions with a role.
 
-Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
+Find more information about <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity" target="_blank">Source Identity</a>.
 $$
 
 ### Host and Port

@@ -15,42 +15,159 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.rules.RuleEngine;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FilterEntityImpl implements JavaDelegate {
-  private Expression excludedFilterExpr;
+  private static final Logger log = LoggerFactory.getLogger(FilterEntityImpl.class);
+  private Expression excludedFieldsExpr;
+  private Expression filterExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
-    List<String> excludedFilter =
-        JsonUtils.readOrConvertValue(excludedFilterExpr.getValue(execution), List.class);
+    List<String> excludedFilter = null;
+    if (excludedFieldsExpr != null && excludedFieldsExpr.getValue(execution) != null) {
+      excludedFilter =
+          JsonUtils.readOrConvertValue(excludedFieldsExpr.getValue(execution), List.class);
+    }
 
     String entityLinkStr =
         (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
 
-    execution.setVariable(
-        PASSES_FILTER_VARIABLE, passesExcludedFilter(entityLinkStr, excludedFilter));
+    // Parse entity type from entity link to determine which filter to use
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
+    String entityType = entityLink.getEntityType();
+
+    // Extract entity-specific filter
+    String filterLogic =
+        extractEntitySpecificFilter(
+            filterExpr != null ? filterExpr.getValue(execution) : null, entityType);
+
+    boolean passesFilter = passesExcludedFilter(entityLinkStr, excludedFilter, filterLogic);
+
+    if (passesFilter) {
+      String triggerWorkflowDefinitionKey =
+          WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+      String mainWorkflowDefinitionName =
+          TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(triggerWorkflowDefinitionKey);
+      String currentProcessInstanceId = execution.getProcessInstanceId();
+      WorkflowHandler.getInstance()
+          .terminateDuplicateInstances(
+              mainWorkflowDefinitionName, entityLinkStr, currentProcessInstanceId);
+    }
+
+    String workflowKey =
+        WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+    log.debug("Trigger {} - Entity {} passes filter: {}", workflowKey, entityLinkStr, passesFilter);
+    execution.setVariable(PASSES_FILTER_VARIABLE, passesFilter);
   }
 
-  private boolean passesExcludedFilter(String entityLinkStr, List<String> excludedFilter) {
+  private String extractEntitySpecificFilter(Object filterObj, String entityType) {
+    if (filterObj == null || entityType == null) {
+      return null;
+    }
+
+    // Parse JSON string into map if needed
+    if (filterObj instanceof String) {
+      String filterStr = (String) filterObj;
+      // Handle empty string as "no filter"
+      if (filterStr.trim().isEmpty()) {
+        return null; // Empty string means no filtering
+      }
+      // Check if it's a JSON object string
+      if (filterStr.trim().startsWith("{") && filterStr.trim().endsWith("}")) {
+        try {
+          java.util.Map<String, String> filterMap =
+              JsonUtils.readValue(filterStr, java.util.Map.class);
+          return extractFromFilterMap(filterMap, entityType);
+        } catch (Exception e) {
+          log.error(
+              "Invalid filter format. Expected JSON object with entity-specific filters: {}",
+              filterStr);
+          return null;
+        }
+      }
+      log.warn("Plain string filters are no longer supported. Use entity-specific filter object.");
+      return null;
+    }
+
+    // Handle map format with entity-specific filters
+    if (filterObj instanceof java.util.Map) {
+      @SuppressWarnings("unchecked")
+      java.util.Map<String, String> filterMap = (java.util.Map<String, String>) filterObj;
+      return extractFromFilterMap(filterMap, entityType);
+    }
+
+    log.error("Unexpected filter object type: {}", filterObj.getClass().getName());
+    return null;
+  }
+
+  private String extractFromFilterMap(java.util.Map<String, String> filterMap, String entityType) {
+    if (filterMap == null || entityType == null) {
+      return null;
+    }
+
+    // First check for entity-specific filter
+    String specificFilter = filterMap.get(entityType);
+    if (specificFilter != null && !specificFilter.trim().isEmpty()) {
+      return specificFilter;
+    }
+
+    // Fall back to default filter if no specific filter found
+    String defaultFilter = filterMap.get("default");
+    if (defaultFilter != null && !defaultFilter.trim().isEmpty()) {
+      return defaultFilter;
+    }
+
+    return null;
+  }
+
+  private boolean passesExcludedFilter(
+      String entityLinkStr, List<String> excludedFilter, String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+
+    boolean excludeFieldFilter;
     Optional<ChangeDescription> oChangeDescription =
         Optional.ofNullable(entity.getChangeDescription());
 
     // ChangeDescription is empty means it is a Create event.
     if (oChangeDescription.isEmpty()) {
-      return true;
-    }
-    ChangeDescription changeDescription = oChangeDescription.get();
+      excludeFieldFilter = true;
+    } else {
+      ChangeDescription changeDescription = oChangeDescription.get();
 
-    List<FieldChange> changedFields = changeDescription.getFieldsAdded();
-    changedFields.addAll(changeDescription.getFieldsDeleted());
-    changedFields.addAll(changeDescription.getFieldsUpdated());
-    return changedFields.isEmpty()
-        || changedFields.stream()
-            .anyMatch(changedField -> !excludedFilter.contains(changedField.getName()));
+      List<FieldChange> changedFields = changeDescription.getFieldsAdded();
+      changedFields.addAll(changeDescription.getFieldsDeleted());
+      changedFields.addAll(changeDescription.getFieldsUpdated());
+      excludeFieldFilter =
+          changedFields.isEmpty()
+              || excludedFilter == null
+              || excludedFilter.isEmpty()
+              || changedFields.stream()
+                  .anyMatch(changedField -> !excludedFilter.contains(changedField.getName()));
+    }
+
+    // If excludeFields are there in change description, then don't even trigger workflow or
+    // evaluate jsonLogic, so return false to not trigger workflow
+    if (!excludeFieldFilter) return false;
+    // If excludeFields are not there in change description, then evaluate jsonLogic, if jsonLogic
+    // evaluates to true, then don't trigger the workflow, send false
+    boolean jsonFilter;
+    if (filterLogic != null && !filterLogic.trim().isEmpty()) {
+      jsonFilter =
+          (Boolean.TRUE.equals(
+              RuleEngine.getInstance().apply(filterLogic, JsonUtils.getMap(entity))));
+    } else {
+      jsonFilter = false; // No filter means pass
+    }
+
+    return !jsonFilter;
   }
 }

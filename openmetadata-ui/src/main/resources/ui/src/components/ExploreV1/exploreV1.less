@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../styles/variables.less');
+@import (reference) '../../styles/variables.less';
 
 @quick-filters-container-height: 86px;
 
@@ -62,12 +62,15 @@
   .explore-right-panel {
     position: sticky;
     top: 0;
-    overflow-y: auto;
+    border-radius: 8px;
+    overflow: hidden;
+    padding-left: 0px !important;
   }
 
   .explore-main-container {
     height: 100%;
     overflow-y: auto;
+    scrollbar-width: none;
     overflow-x: hidden;
   }
 
@@ -76,6 +79,7 @@
       100vh - @om-navbar-height - @quick-filters-container-height - @size-mlg
     );
     overflow-y: auto;
+    margin-right: 0;
   }
 
   .explore-main-card {

@@ -112,6 +112,11 @@ jest.mock('../../rest/testAPI', () => {
     ListTestCaseParamsBySearch: jest
       .fn()
       .mockImplementation(() => Promise.resolve({ data: [] })),
+    TestCaseType: {
+      all: 'all',
+      table: 'table',
+      column: 'column',
+    },
   };
 });
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
@@ -158,6 +163,15 @@ jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => {
     </div>
   ));
 });
+
+jest.mock('../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockImplementation(() => ({
+    entityRules: {
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
 
 describe('TestSuiteDetailsPage component', () => {
   it('component should render', async () => {

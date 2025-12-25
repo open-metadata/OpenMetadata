@@ -23,6 +23,8 @@ const table1 = new TableClass();
 const table2 = new TableClass();
 
 test.describe('Bulk Re-Deploy pipelines ', () => {
+  test.slow();
+
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await createNewPage(browser);
 
@@ -48,6 +50,11 @@ test.describe('Bulk Re-Deploy pipelines ', () => {
     await redirectToHomePage(page);
   });
 
+  /**
+   * Re-deploy all TestSuite ingestion pipelines
+   * @description Navigates to Data Observability settings, selects multiple pipelines, triggers bulk redeploy,
+   * and verifies success confirmation.
+   */
   test('Re-deploy all test-suite ingestion pipelines', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.DATA_OBSERVABILITY);
 
@@ -56,11 +63,18 @@ test.describe('Bulk Re-Deploy pipelines ', () => {
     ).not.toBeEnabled();
     await expect(page.locator('.ant-table-container')).toBeVisible();
 
-    await page.getByRole('checkbox').first().click();
+    await page.locator(`td [type="checkbox"]`).first().click();
+    await page.locator(`td [type="checkbox"]`).nth(1).click();
 
     await expect(page.getByRole('button', { name: 'Re Deploy' })).toBeEnabled();
 
+    const redeployResponse = page.waitForRequest(
+      (request) =>
+        request.url().includes('/api/v1/services/ingestionPipelines/deploy') &&
+        request.method() === 'POST'
+    );
     await page.getByRole('button', { name: 'Re Deploy' }).click();
+    await redeployResponse;
 
     await expect(
       page.getByText('Pipelines Re Deploy Successfully')

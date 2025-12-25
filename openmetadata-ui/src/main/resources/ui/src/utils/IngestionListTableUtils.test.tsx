@@ -10,12 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { renderNameField, renderTypeField } from './IngestionListTableUtils';
+import { getScheduleDescriptionTexts } from './date-time/DateTimeUtils';
+import {
+  renderNameField,
+  renderScheduleField,
+  renderTypeField,
+} from './IngestionListTableUtils';
 
 jest.mock('./EntityUtils', () => ({
-  ...jest.requireActual('./EntityUtils'),
+  getEntityName: jest.fn((entity) => entity?.name || ''),
   highlightSearchText: jest.fn((text, searchText) => {
     if (searchText) {
       return text.replace(
@@ -30,14 +35,22 @@ jest.mock('./EntityUtils', () => ({
 }));
 
 jest.mock('./StringsUtils', () => ({
-  ...jest.requireActual('./StringsUtils'),
   stringToHTML: jest.fn((text) => text),
+}));
+
+jest.mock('./date-time/DateTimeUtils', () => ({
+  getScheduleDescriptionTexts: jest.fn().mockReturnValue({
+    descriptionFirstPart: 'Every day',
+    descriptionSecondPart: 'at 12:00 AM',
+  }),
 }));
 
 const mockRecord = {
   name: 'Test Pipeline',
   pipelineType: PipelineType.Metadata,
-  airflowConfig: {},
+  airflowConfig: {
+    scheduleInterval: '0 0 * * *',
+  },
   sourceConfig: {},
 };
 
@@ -80,5 +93,34 @@ describe('renderTypeField', () => {
     const pipelineTypeElement = getByTestId('pipeline-type');
 
     expect(pipelineTypeElement.innerHTML).toBe('Metadata');
+  });
+});
+
+describe('renderScheduleField', () => {
+  it('should render schedule with formatted description texts', () => {
+    render(renderScheduleField('', mockRecord));
+
+    expect(screen.getByText('Every day')).toBeInTheDocument();
+    expect(screen.getByText('at 12:00 AM')).toBeInTheDocument();
+  });
+
+  it('should call getScheduleDescriptionTexts with correct schedule interval', () => {
+    render(renderScheduleField('', mockRecord));
+
+    expect(getScheduleDescriptionTexts).toHaveBeenCalledWith('0 0 * * *');
+  });
+
+  it('should render no data placeholder when schedule interval is not available', () => {
+    const recordWithoutSchedule = {
+      ...mockRecord,
+      airflowConfig: {},
+    };
+
+    render(renderScheduleField('', recordWithoutSchedule));
+
+    const noDataElement = screen.getByTestId('scheduler-no-data');
+
+    expect(noDataElement).toBeInTheDocument();
+    expect(noDataElement).toHaveTextContent('--');
   });
 });

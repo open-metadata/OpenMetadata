@@ -114,6 +114,7 @@ jest.mock('../../../utils/TableUtils', () => ({
       'glossary',
     ]),
   handleUpdateTableColumnSelections: jest.fn(),
+  pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
 }));
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({

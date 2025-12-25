@@ -159,7 +159,18 @@
         "type": "text"
       },
       "entityType": {
-        "type": "keyword"
+        "type": "keyword",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
+      },
+      "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "owners": {
         "properties": {
@@ -216,6 +227,7 @@
         "properties": {
           "tagFQN": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "text": {
                 "type": "text",
@@ -236,6 +248,14 @@
             "type": "keyword"
           }
         }
+      },
+      "classificationTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "glossaryTags": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "tags": {
         "properties": {
@@ -298,7 +318,14 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
           },
           "description": {
             "type": "text"
@@ -397,6 +424,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }

@@ -16,15 +16,17 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.API_COLLCECTION;
+import static org.openmetadata.service.Entity.API_COLLECTION;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiPredicate;
@@ -99,7 +101,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     if (endpoint.getApiCollection() != null) {
       APICollection apiCollection =
           Entity.getEntity(
-              API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domains", ALL);
+              API_COLLECTION, endpoint.getApiCollection().getId(), "owners,domains", ALL);
       inheritOwners(endpoint, fields, apiCollection);
       inheritDomains(endpoint, fields, apiCollection);
     }
@@ -184,32 +186,45 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       return;
     }
 
-    // Bulk fetch tags for request schemas
-    List<APIEndpoint> endpointsWithRequestSchema =
-        apiEndpoints.stream()
-            .filter(e -> e.getRequestSchema() != null)
-            .collect(java.util.stream.Collectors.toList());
-
-    if (!endpointsWithRequestSchema.isEmpty()) {
-      bulkPopulateEntityFieldTags(
-          endpointsWithRequestSchema,
-          entityType,
-          e -> e.getRequestSchema().getSchemaFields(),
-          e -> e.getFullyQualifiedName() + ".requestSchema");
+    // First, fetch endpoint-level tags (important for search indexing)
+    List<String> entityFQNs =
+        apiEndpoints.stream().map(APIEndpoint::getFullyQualifiedName).toList();
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+    for (APIEndpoint endpoint : apiEndpoints) {
+      endpoint.setTags(
+          addDerivedTagsGracefully(
+              tagsMap.getOrDefault(endpoint.getFullyQualifiedName(), Collections.emptyList())));
     }
 
-    // Bulk fetch tags for response schemas
-    List<APIEndpoint> endpointsWithResponseSchema =
-        apiEndpoints.stream()
-            .filter(e -> e.getResponseSchema() != null)
-            .collect(java.util.stream.Collectors.toList());
+    // Then, if schemas are requested, also fetch schema field tags
+    if (fields.contains("requestSchema") || fields.contains("responseSchema")) {
+      // Bulk fetch tags for request schemas
+      List<APIEndpoint> endpointsWithRequestSchema =
+          apiEndpoints.stream()
+              .filter(e -> e.getRequestSchema() != null)
+              .collect(java.util.stream.Collectors.toList());
 
-    if (!endpointsWithResponseSchema.isEmpty()) {
-      bulkPopulateEntityFieldTags(
-          endpointsWithResponseSchema,
-          entityType,
-          e -> e.getResponseSchema().getSchemaFields(),
-          e -> e.getFullyQualifiedName() + ".responseSchema");
+      if (!endpointsWithRequestSchema.isEmpty()) {
+        bulkPopulateEntityFieldTags(
+            endpointsWithRequestSchema,
+            entityType,
+            e -> e.getRequestSchema().getSchemaFields(),
+            e -> e.getFullyQualifiedName() + ".requestSchema");
+      }
+
+      // Bulk fetch tags for response schemas
+      List<APIEndpoint> endpointsWithResponseSchema =
+          apiEndpoints.stream()
+              .filter(e -> e.getResponseSchema() != null)
+              .collect(java.util.stream.Collectors.toList());
+
+      if (!endpointsWithResponseSchema.isEmpty()) {
+        bulkPopulateEntityFieldTags(
+            endpointsWithResponseSchema,
+            entityType,
+            e -> e.getResponseSchema().getSchemaFields(),
+            e -> e.getFullyQualifiedName() + ".responseSchema");
+      }
     }
   }
 

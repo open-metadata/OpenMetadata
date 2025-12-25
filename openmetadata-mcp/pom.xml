@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.open-metadata</groupId>
         <artifactId>platform</artifactId>
-        <version>1.8.0-SNAPSHOT</version>
+        <version>1.12.0-SNAPSHOT</version>
     </parent>
     
     <artifactId>openmetadata-mcp</artifactId>
@@ -19,7 +19,7 @@
         <assertj-core.version>3.26.3</assertj-core.version>
         <okhttp.version>4.12.0</okhttp.version>
         <awaitility.version>4.2.2</awaitility.version>
-        <mcp-sdk.version>0.10.0</mcp-sdk.version>
+        <mcp-sdk.version>0.14.0</mcp-sdk.version>
         <testcontainers.version>1.20.4</testcontainers.version>
         <jetty.version>11.0.25</jetty.version>
     </properties>
@@ -39,7 +39,21 @@
                 <version>${testcontainers.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.commons</groupId>
+                        <artifactId>commons-compress</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
+            <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-compress -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>1.27.1</version>
+                <scope>test</scope>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
     
@@ -47,6 +61,11 @@
         <dependency>
             <groupId>io.modelcontextprotocol.sdk</groupId>
             <artifactId>mcp</artifactId>
+            <version>${mcp-sdk.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.modelcontextprotocol.sdk</groupId>
+            <artifactId>mcp-json-jackson2</artifactId>
             <version>${mcp-sdk.version}</version>
         </dependency>
         <dependency>

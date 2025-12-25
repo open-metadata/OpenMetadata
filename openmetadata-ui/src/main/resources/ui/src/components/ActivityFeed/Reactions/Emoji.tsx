@@ -48,7 +48,7 @@ const Emoji: FC<EmojiProps> = ({
     [reactionType]
   );
 
-  const { image } = useImage(`emojis/${reactionObject?.reaction}.png`);
+  const { image } = useImage(`emojis/${reactionObject?.reaction}`);
 
   // check if current user has reacted with emoji
   const isReacted = reactionList.some(

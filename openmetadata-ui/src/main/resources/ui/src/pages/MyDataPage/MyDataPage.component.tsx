@@ -35,7 +35,10 @@ import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
-import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
+import {
+  getConstrainedWidgetWidth,
+  getWidgetFromKey,
+} from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
@@ -102,11 +105,19 @@ const MyDataPage = () => {
           (p: Page) => p.pageType === PageType.LandingPage
         ) ?? { layout: [], pageType: PageType.LandingPage };
 
-        const filteredLayout = pageData.layout.filter(
-          (widget: WidgetConfig) =>
-            !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||
-            !isEmpty(widget.config)
-        );
+        const filteredLayout = pageData.layout
+          .filter(
+            (widget: WidgetConfig) =>
+              !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||
+              !isEmpty(widget.config)
+          )
+          .map((widget: WidgetConfig) => {
+            return {
+              ...widget,
+              w: getConstrainedWidgetWidth(widget.w),
+              h: 3,
+            };
+          });
 
         setLayout(
           isEmpty(filteredLayout)
@@ -249,12 +260,13 @@ const MyDataPage = () => {
     <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
       <PageLayoutV1
         className="p-b-lg"
-        mainContainerClassName="p-t-0"
+        mainContainerClassName="p-t-0 my-data-page-main-container"
         pageTitle={t('label.my-data')}>
         <div className="grid-wrapper">
           <CustomiseLandingPageHeader
             overlappedContainer
             backgroundColor={backgroundColor}
+            dataTestId="landing-page-header"
             hideCustomiseButton={!selectedPersona}
             onHomePage
             onBackgroundColorUpdate={handleBackgroundColorUpdate}

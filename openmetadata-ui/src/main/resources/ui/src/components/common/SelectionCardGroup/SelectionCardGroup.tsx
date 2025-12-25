@@ -15,54 +15,61 @@ import { Card } from 'antd';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/check-colored.svg';
+import { BetaBadge } from '../Badge/Badge.component';
 import './selection-card-group.less';
 import {
   SelectionCardGroupProps,
   SelectionCardProps,
 } from './SelectionCardGroup.interface';
 
-const SelectionCard: FC<SelectionCardProps> = ({
+export const SelectionCard: FC<SelectionCardProps> = ({
   option,
   isSelected,
   onClick,
   disabled = false,
-}: SelectionCardProps) => (
-  <Card
-    className={classNames('selection-card', {
-      selected: isSelected,
-      disabled: disabled,
-    })}
-    style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
-    onClick={disabled ? undefined : onClick}>
-    <div className="selection-content">
-      <div className="d-flex gap-3">
-        <span className="selection-icon">{option.icon}</span>
-        <div className="selection-header">
-          <div className="selection-title">{option.label}</div>
-          <div className="selection-description">{option.description}</div>
+}: SelectionCardProps) => {
+  return (
+    <Card
+      className={classNames('selection-card', {
+        selected: isSelected,
+        disabled: disabled,
+        'has-beta': option.isBeta,
+      })}
+      style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
+      onClick={disabled ? undefined : onClick}>
+      {option.isBeta && <BetaBadge />}
+      <div className="selection-content">
+        <div className="d-flex gap-3">
+          <span className="selection-icon">{option.icon}</span>
+          <div className="selection-header">
+            <div className="selection-title">{option.label}</div>
+            <div className="selection-description">{option.description}</div>
+          </div>
         </div>
+        {isSelected ? (
+          <div className="custom-radio checked">
+            <CheckIcon />
+          </div>
+        ) : (
+          <div className="custom-radio unchecked" />
+        )}
       </div>
-      {isSelected ? (
-        <div className="custom-radio checked">
-          <CheckIcon />
-        </div>
-      ) : (
-        <div className="custom-radio unchecked" />
-      )}
-    </div>
-  </Card>
-);
+    </Card>
+  );
+};
 
 const SelectionCardGroup: FC<SelectionCardGroupProps> = ({
   options,
   value,
   onChange,
   className,
+  onClick,
   disabled = false,
 }: SelectionCardGroupProps) => {
   const handleOptionSelect = (selectedValue: string) => {
     if (!disabled) {
       onChange?.(selectedValue);
+      onClick?.();
     }
   };
 

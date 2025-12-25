@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import { useNavigate } from 'react-router-dom';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -38,33 +38,18 @@ jest.mock(
   })
 );
 
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(),
+}));
+
 const mockNavigate = jest.fn();
 
-jest.mock('react-router-dom', () => ({
-  useNavigate: mockNavigate,
-}));
-
-jest.mock('../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue([
-    {
-      title: 'label.owner-plural',
-      dataIndex: 'owners',
-      key: 'owners',
-      width: 180,
-      filterIcon: () => <div>FilterIcon</div>,
-      render: () => (
-        <OwnerLabel
-          isCompactView={false}
-          maxVisibleOwners={4}
-          owners={[{ id: '1', name: 'John Doe', type: 'user' }]}
-          showLabel={false}
-        />
-      ),
-    },
-  ]),
-}));
-
 describe('Database Util', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+  });
+
   describe('getQueryFilterForDatabase', () => {
     it('should return the correct query filter', () => {
       const serviceType = 'mysql';

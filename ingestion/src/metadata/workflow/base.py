@@ -53,7 +53,12 @@ from metadata.utils.class_helper import (
 from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.streamable_logger import (
+    cleanup_streamable_logging,
+    setup_streamable_logging_for_workflow,
+)
 from metadata.workflow.workflow_output_handler import WorkflowOutputHandler
+from metadata.workflow.workflow_resource_metrics import WorkflowResourceMetrics
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = ingestion_logger()
@@ -109,6 +114,21 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.metadata = create_ometa_client(
             self.workflow_config.openMetadataServerConfig
         )
+
+        # Setup streamable logging if configured
+        if (
+            self.config.ingestionPipelineFQN
+            and self.config.pipelineRunId
+            and self.config.enableStreamableLogs
+        ):
+            setup_streamable_logging_for_workflow(
+                metadata=self.metadata,
+                pipeline_fqn=self.config.ingestionPipelineFQN,
+                run_id=self.config.pipelineRunId,
+                log_level=self.workflow_config.loggerLevel.value,
+                enable_streaming=True,
+            )
+
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.post_init()
@@ -128,6 +148,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # Stop the timer first. This runs in a separate thread and if not properly closed
         # it can hung the workflow
         self.timer.stop()
+
+        # Cleanup streamable logging if it was configured
+        cleanup_streamable_logging()
+
         self.metadata.close()
 
         for step in self.workflow_steps():
@@ -236,6 +260,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             ingestion_status = self.build_ingestion_status()
             self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
             self.stop()
+            self.print_status()
 
     @property
     def run_id(self) -> str:
@@ -247,7 +272,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             if self.config.pipelineRunId:
                 self._run_id = str(self.config.pipelineRunId.root)
             else:
-                self._run_id = str(uuid.uuid4())
+                self._run_id = str(uuid.uuid4())  # pylint: disable=no-member
 
         return self._run_id
 
@@ -293,6 +318,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                         ),
                         sourceConfig=self.config.source.sourceConfig,
                         airflowConfig=AirflowConfig(),
+                        enableStreamableLogs=self.config.enableStreamableLogs,
                     )
                 )
 
@@ -324,11 +350,32 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         try:
             for step in self.workflow_steps():
+
+                record_count: int = (
+                    step.status.record_count
+                    if step.status.record_count > 0
+                    else len(step.status.records)
+                )
+
                 logger.info(
-                    f"{step.name}: Processed {len(step.status.records)} records,"
+                    f"{step.name}: Processed {record_count} records,"
                     f" updated {len(step.status.updated_records)} records,"
                     f" filtered {len(step.status.filtered)} records,"
                     f" found {len(step.status.failures)} errors"
+                )
+
+            # Only calculate resource metrics when debug is enabled
+            # for no unnecessary computations
+            if self._is_debug_enabled():
+                metrics = WorkflowResourceMetrics()
+                logger.debug(
+                    f"Workflow Resources - "
+                    f"CPU: {metrics.cpu_usage_percent:.2f}% "
+                    f"({metrics.system_cpu_cores}c/{metrics.system_cpu_threads}t) | "
+                    f"Memory: {metrics.memory_used_mb:.2f}MB/"
+                    f"{metrics.memory_total_mb:.2f}MB "
+                    f"({metrics.memory_usage_percent:.2f}%) | "
+                    f"Processes: {metrics.active_processes}"
                 )
 
         except Exception as exc:

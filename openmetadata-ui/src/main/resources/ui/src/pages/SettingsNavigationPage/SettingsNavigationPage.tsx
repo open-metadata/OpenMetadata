@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,36 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  CloseOutlined,
-  HolderOutlined,
-  RedoOutlined,
-  SaveOutlined,
-} from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Col,
-  Row,
-  Space,
-  Switch,
-  Tree,
-  TreeDataNode,
-  TreeProps,
-  Typography,
-} from 'antd';
+import { HolderOutlined } from '@ant-design/icons';
+import { Card, Col, Row, Switch, Tree, TreeDataNode, TreeProps } from 'antd';
 import { cloneDeep, isEqual } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDown } from '../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../assets/svg/ic-arrow-right.svg';
+import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
+import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
 import {
   getHiddenKeysFromNavigationItems,
   getTreeDataForNavigationItems,
 } from '../../utils/CustomizaNavigation/CustomizeNavigation';
+import { getNavigationItems } from '../../utils/SettingsNavigationPageUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import './settings-navigation-page.less';
 
@@ -48,24 +33,8 @@ interface Props {
   onSave: (navigationList: NavigationItem[]) => Promise<void>;
 }
 
-const getNavigationItems = (
-  treeData: TreeDataNode[],
-  hiddenKeys: string[]
-): NavigationItem[] => {
-  return treeData.map((item) => {
-    return {
-      id: item.key,
-      title: item.title,
-      isHidden: hiddenKeys.includes(item.key as string),
-      children: getNavigationItems(item.children ?? [], hiddenKeys),
-    } as NavigationItem;
-  });
-};
-
 export const SettingsNavigationPage = ({ onSave }: Props) => {
   const { t } = useTranslation();
-  const [saving, setSaving] = useState(false);
-  const navigate = useNavigate();
   const { getNavigation } = useCustomizeStore();
   const currentNavigation = getNavigation();
 
@@ -77,29 +46,16 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
   );
 
   const disableSave = useMemo(() => {
-    // Get the initial hidden keys from the current navigation
-    const initialHiddenKeys =
-      getHiddenKeysFromNavigationItems(currentNavigation);
+    // Get the current navigation items from the modified tree data
+    const currentNavigationItems = getNavigationItems(treeData, hiddenKeys);
 
-    // Get the current navigation items from the tree data
-    const currentNavigationItems =
-      getNavigationItems(treeData, hiddenKeys) || [];
-
-    // Get the current hidden keys from the current navigation items
-    const currentHiddenKeys =
-      getHiddenKeysFromNavigationItems(currentNavigationItems) || [];
-
-    // Check if the initial hidden keys are the same as the current hidden keys
-    return isEqual(initialHiddenKeys, currentHiddenKeys);
+    // Compare the entire structure including order, names, hidden status, and all properties
+    return isEqual(currentNavigation, currentNavigationItems);
   }, [currentNavigation, treeData, hiddenKeys]);
 
   const handleSave = async () => {
-    setSaving(true);
-
     const navigationItems = getNavigationItems(treeData, hiddenKeys);
-
     await onSave(navigationItems);
-    setSaving(false);
   };
 
   const onDrop: TreeProps['onDrop'] = (info) => {
@@ -183,80 +139,40 @@ export const SettingsNavigationPage = ({ onSave }: Props) => {
     </div>
   );
 
-  const handleCancel = () => {
-    navigate(-1);
-  };
-
   return (
-    <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
-      <Row gutter={[0, 20]}>
-        <Col span={24}>
-          <Card
-            bodyStyle={{ padding: 0 }}
-            bordered={false}
-            extra={
-              <Space>
-                <Button
-                  data-testid="cancel-button"
-                  disabled={saving}
-                  icon={<CloseOutlined />}
-                  onClick={handleCancel}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  data-testid="reset-button"
-                  disabled={saving}
-                  icon={<RedoOutlined />}
-                  onClick={handleReset}>
-                  {t('label.reset')}
-                </Button>
-                <Button
-                  data-testid="save-button"
-                  disabled={disableSave}
-                  icon={<SaveOutlined />}
-                  loading={saving}
-                  type="primary"
-                  onClick={handleSave}>
-                  {t('label.save')}
-                </Button>
-              </Space>
-            }
-            title={
-              <div>
-                <Typography.Title
-                  className="m-0"
-                  data-testid="customize-page-title"
-                  level={5}>
-                  {t('label.customize-your-navigation')}
-                </Typography.Title>
-                <Typography.Paragraph className="m-0 text-sm font-normal">
-                  {t('message.customize-your-navigation-subheader')}
-                </Typography.Paragraph>
-              </div>
-            }
-          />
-        </Col>
-
-        <Col span={24}>
-          <Card
-            bordered={false}
-            className="custom-navigation-tree-container"
-            title="Navigation Menus">
-            <Tree
-              autoExpandParent
-              blockNode
-              defaultExpandAll
-              showIcon
-              draggable={{ icon: <HolderOutlined /> }}
-              itemHeight={48}
-              switcherIcon={switcherIcon}
-              titleRender={titleRenderer}
-              treeData={treeData}
-              onDrop={onDrop}
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
+      <PageLayoutV1 className="bg-grey" pageTitle="Settings Navigation Page">
+        <Row gutter={[0, 20]}>
+          <Col span={24}>
+            <CustomizablePageHeader
+              disableSave={disableSave}
+              personaName={t('label.customize-your-navigation')}
+              onReset={handleReset}
+              onSave={handleSave}
             />
-          </Card>
-        </Col>
-      </Row>
-    </PageLayoutV1>
+          </Col>
+
+          <Col span={24}>
+            <Card
+              bordered={false}
+              className="custom-navigation-tree-container"
+              title="Navigation Menus">
+              <Tree
+                autoExpandParent
+                blockNode
+                defaultExpandAll
+                showIcon
+                draggable={{ icon: <HolderOutlined /> }}
+                itemHeight={48}
+                switcherIcon={switcherIcon}
+                titleRender={titleRenderer}
+                treeData={treeData}
+                onDrop={onDrop}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </PageLayoutV1>
+    </NavigationBlocker>
   );
 };

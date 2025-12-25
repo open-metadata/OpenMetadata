@@ -14,6 +14,13 @@ import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import LeftSidebar from './LeftSidebar.component';
 
+jest.mock(
+  '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({ applications: [], plugins: [] }),
+  })
+);
+
 describe('LeftSidebar', () => {
   it('renders sidebar links correctly', () => {
     render(
@@ -25,7 +32,7 @@ describe('LeftSidebar', () => {
     expect(screen.getByTestId('image')).toBeInTheDocument();
     expect(screen.getByTestId('app-bar-item-explore')).toBeInTheDocument();
     expect(screen.getByTestId('observability')).toBeInTheDocument();
-    expect(screen.getByTestId('app-bar-item-domain')).toBeInTheDocument();
+    expect(screen.getByTestId('domains-section')).toBeInTheDocument();
     expect(screen.getByTestId('governance')).toBeInTheDocument();
     expect(screen.getByTestId('app-bar-item-settings')).toBeInTheDocument();
     expect(screen.getByTestId('app-bar-item-logout')).toBeInTheDocument();

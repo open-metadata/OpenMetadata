@@ -13,11 +13,44 @@
 @import (reference) '../../styles/variables.less';
 
 .profiler-configuration-page-container {
-  width: 70%;
   margin: @margin-md auto 0;
-  padding: @padding-md;
+  padding: @padding-mlg;
   background-color: @white;
   border-radius: @border-rad-sm;
+
+  .profiler-configuration-collapse {
+    border: none;
+    border-radius: @border-rad-sm;
+
+    &.ant-collapse > .ant-collapse-item {
+      border-bottom: none;
+    }
+
+    .ant-collapse-content {
+      border: 1px solid @grey-200;
+      border-bottom-right-radius: @border-rad-sm;
+      border-bottom-left-radius: @border-rad-sm;
+    }
+
+    .ant-collapse-header {
+      background-color: @grey-50;
+      .page-header-container .heading {
+        font-size: @font-size-base;
+      }
+    }
+
+    &.ant-collapse > .ant-collapse-item:last-child > .ant-collapse-header {
+      border-radius: @border-rad-sm;
+    }
+    .ant-collapse-item:last-child > .ant-collapse-content {
+      border-bottom-right-radius: @border-rad-sm;
+      border-bottom-left-radius: @border-rad-sm;
+    }
+
+    .ant-collapse-content-box {
+      padding: @padding-lg;
+    }
+  }
 
   .ant-form-item {
     margin: 0px;
@@ -26,12 +59,14 @@
   .ant-card {
     border-radius: 10px;
   }
-}
 
-.profiler-configuration-form-item-container {
-  background-color: @grey-6;
-
-  .ant-card-body {
-    padding: 20px;
+  .matrix-collapse-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: @padding-mlg @padding-lg 0;
+    margin-right: -@padding-lg;
+    margin-left: -@padding-lg;
+    border-top: 1px solid @grey-200;
   }
 }

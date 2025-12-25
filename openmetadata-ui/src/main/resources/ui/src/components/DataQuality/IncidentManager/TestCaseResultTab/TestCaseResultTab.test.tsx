@@ -123,10 +123,19 @@ jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
 });
 
 const mockUpdateTestCaseById = jest.fn();
+const mockGetTestDefinitionById = jest.fn();
 jest.mock('../../../../rest/testAPI', () => ({
   updateTestCaseById: jest
     .fn()
     .mockImplementation(() => mockUpdateTestCaseById()),
+  getTestDefinitionById: jest
+    .fn()
+    .mockImplementation(() => mockGetTestDefinitionById()),
+  TestCaseType: {
+    all: 'all',
+    table: 'table',
+    column: 'column',
+  },
 }));
 
 // Mock TagsContainerV2 to capture props
@@ -270,7 +279,75 @@ describe('TestCaseResultTab', () => {
     mockUseTestCaseStore.showAILearningBanner = false;
   });
 
-  // Tier tag tests
+  describe('Compute Row Count visibility', () => {
+    beforeEach(() => {
+      mockGetTestDefinitionById.mockClear();
+      mockUseTestCaseStore.testCase = mockTestCaseData;
+      mockUseTestCaseStore.isTabExpanded = false;
+    });
+
+    it('should show Compute Row Count when testDefinition supports supportsRowLevelPassedFailed', async () => {
+      const testCaseWithComputeRowCount = {
+        ...mockTestCaseData,
+        computePassedFailedRowCount: true,
+      };
+      mockUseTestCaseStore.testCase = testCaseWithComputeRowCount;
+      mockGetTestDefinitionById.mockResolvedValue({
+        id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+        name: 'columnValuesToMatchRegex',
+        supportsRowLevelPassedFailed: true,
+      });
+
+      render(<TestCaseResultTab />);
+
+      expect(
+        await screen.findByTestId('computed-row-count-container')
+      ).toBeInTheDocument();
+    });
+
+    it('should not show Compute Row Count when testDefinition does not support supportsRowLevelPassedFailed', async () => {
+      const testCaseWithComputeRowCount = {
+        ...mockTestCaseData,
+        computePassedFailedRowCount: false,
+      };
+      mockUseTestCaseStore.testCase = testCaseWithComputeRowCount;
+      mockGetTestDefinitionById.mockResolvedValue({
+        id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+        name: 'tableColumnCountToEqual',
+        supportsRowLevelPassedFailed: false,
+      });
+
+      render(<TestCaseResultTab />);
+
+      await screen.findByTestId('test-case-result-tab-container');
+
+      expect(
+        screen.queryByTestId('computed-row-count-container')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not show Compute Row Count when computePassedFailedRowCount is undefined', async () => {
+      const testCaseWithoutComputeRowCount = {
+        ...mockTestCaseData,
+        computePassedFailedRowCount: undefined,
+      };
+      mockUseTestCaseStore.testCase = testCaseWithoutComputeRowCount;
+      mockGetTestDefinitionById.mockResolvedValue({
+        id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+        name: 'columnValuesToMatchRegex',
+        supportsRowLevelPassedFailed: true,
+      });
+
+      render(<TestCaseResultTab />);
+
+      await screen.findByTestId('test-case-result-tab-container');
+
+      expect(
+        screen.queryByTestId('computed-row-count-container')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('Tier tag filtering', () => {
     beforeEach(() => {
       mockTagsContainerV2.mockClear();

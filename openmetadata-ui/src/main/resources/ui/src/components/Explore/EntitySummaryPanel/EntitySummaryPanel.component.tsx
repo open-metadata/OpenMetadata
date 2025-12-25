@@ -11,57 +11,127 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from 'antd';
+import { CloseOutlined } from '@mui/icons-material';
+import { Button, Card } from 'antd';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { get } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { LineageData } from '../../../components/Lineage/Lineage.interface';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Operation } from '../../../generated/entity/policies/policy';
+import { EntityReference } from '../../../generated/entity/type';
+import { PipelineViewMode } from '../../../generated/settings/settings';
+import { TagLabel } from '../../../generated/tests/testCase';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
+import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
+import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
+import { getChartByFqn } from '../../../rest/chartsAPI';
+import { getDashboardByFqn } from '../../../rest/dashboardAPI';
+import {
+  getDatabaseDetailsByFQN,
+  getDatabaseSchemaDetailsByFQN,
+} from '../../../rest/databaseAPI';
+import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
+import { getDataProductByName } from '../../../rest/dataProductAPI';
+import { getDomainByName } from '../../../rest/domainAPI';
+import { getDriveAssetByFqn } from '../../../rest/driveAPI';
+import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
+import { getLineageDataByFQN } from '../../../rest/lineageAPI';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import { getMetricByFqn } from '../../../rest/metricsAPI';
+import { getMlModelByFQN } from '../../../rest/mlModelAPI';
+import { getPipelineByFqn } from '../../../rest/pipelineAPI';
+import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
+import { getContainerByFQN } from '../../../rest/storageAPI';
+import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
+import { getTableDetailsByFQN } from '../../../rest/tableAPI';
+import { getTopicByFqn } from '../../../rest/topicsAPI';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
 } from '../../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../../utils/PermissionsUtils';
+import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
+import { EntityTitleSection } from '../../common/EntityTitleSection/EntityTitleSection';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
+import { DataAssetSummaryPanelV1 } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
+import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
+import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import CustomPropertiesSection from './CustomPropertiesSection';
+import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
+import { LineageTabContent } from './LineageTab';
 
 export default function EntitySummaryPanel({
   entityDetails,
+  handleClosePanel,
   highlights,
+  isSideDrawer = false,
+  panelPath,
+  upstreamDepth,
+  downstreamDepth,
+  pipelineViewMode,
+  nodesPerLayer,
 }: EntitySummaryPanelProps) {
+  // Fallback when tests mock EntityUtils and omit DRAWER_NAVIGATION_OPTIONS
+  const NAV_OPTIONS = DRAWER_NAVIGATION_OPTIONS || {
+    explore: 'Explore',
+    lineage: 'Lineage',
+  };
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { getEntityPermission } = usePermissionProvider();
-  const [isPermissionLoading, setIsPermissionLoading] =
-    useState<boolean>(false);
+  const [isPermissionLoading, setIsPermissionLoading] = useState<boolean>(true);
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
+    EntityRightPanelTab.OVERVIEW
+  );
+  const [entityData, setEntityData] = useState<any>(null);
+  const [entityTypeDetail, setEntityTypeDetail] = useState<any>(null);
+  const [isEntityDataLoading, setIsEntityDataLoading] = useState(false);
+  const [lineageData, setLineageData] = useState<LineageData | null>(null);
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
+  const [lineageFilter, setLineageFilter] = useState<'upstream' | 'downstream'>(
+    'downstream'
+  );
 
   const id = useMemo(() => {
-    setIsPermissionLoading(true);
-
     return entityDetails?.details?.id ?? '';
   }, [entityDetails?.details?.id]);
+
+  const entityType = useMemo(() => {
+    return get(entityDetails, 'details.entityType') as EntityType;
+  }, [entityDetails]);
 
   const fetchResourcePermission = async (entityFqn: string) => {
     try {
       setIsPermissionLoading(true);
-      const type =
-        get(entityDetails, 'details.entityType') ?? ResourceEntity.TABLE;
+      const type = (get(entityDetails, 'details.entityType') ??
+        ResourceEntity.TABLE) as ResourceEntity;
       const permissions = await getEntityPermission(type, entityFqn);
       setEntityPermissions(permissions);
     } catch {
@@ -70,12 +140,303 @@ export default function EntitySummaryPanel({
       setIsPermissionLoading(false);
     }
   };
+  // Memoize the entity fetch map to avoid recreating it on every render
+  const entityFetchMap = useMemo(() => {
+    const commonFields = 'owners,domains,tags,extension';
+
+    return {
+      [EntityType.TABLE]: (fqn: string) =>
+        getTableDetailsByFQN(fqn, { fields: commonFields }),
+      [EntityType.TOPIC]: (fqn: string) =>
+        getTopicByFqn(fqn, { fields: commonFields }),
+      [EntityType.DASHBOARD]: (fqn: string) =>
+        getDashboardByFqn(fqn, { fields: commonFields }),
+      [EntityType.PIPELINE]: (fqn: string) =>
+        getPipelineByFqn(fqn, { fields: commonFields }),
+      [EntityType.MLMODEL]: (fqn: string) =>
+        getMlModelByFQN(fqn, { fields: commonFields }),
+      [EntityType.DATABASE]: (fqn: string) =>
+        getDatabaseDetailsByFQN(fqn, { fields: commonFields }),
+      [EntityType.DATABASE_SCHEMA]: (fqn: string) =>
+        getDatabaseSchemaDetailsByFQN(fqn, { fields: commonFields }),
+      [EntityType.DASHBOARD_DATA_MODEL]: (fqn: string) =>
+        getDataModelByFqn(fqn, { fields: commonFields }),
+      [EntityType.SEARCH_INDEX]: (fqn: string) =>
+        getSearchIndexDetailsByFQN(fqn),
+      [EntityType.STORED_PROCEDURE]: (fqn: string) =>
+        getStoredProceduresByFqn(fqn, { fields: commonFields }),
+      [EntityType.CONTAINER]: (fqn: string) =>
+        getContainerByFQN(fqn, { fields: commonFields }),
+      [EntityType.GLOSSARY_TERM]: (fqn: string) =>
+        getGlossaryTermByFQN(fqn, { fields: commonFields }),
+      [EntityType.CHART]: (fqn: string) =>
+        getChartByFqn(fqn, { fields: commonFields }),
+      [EntityType.METRIC]: (fqn: string) =>
+        getMetricByFqn(fqn, { fields: commonFields }),
+      [EntityType.API_ENDPOINT]: (fqn: string) =>
+        getApiEndPointByFQN(fqn, { fields: commonFields }),
+      [EntityType.API_COLLECTION]: (fqn: string) =>
+        getApiCollectionByFQN(fqn, { fields: commonFields }),
+      [EntityType.DIRECTORY]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.DIRECTORY, commonFields),
+      [EntityType.FILE]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.FILE, commonFields),
+      [EntityType.SPREADSHEET]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.SPREADSHEET, commonFields),
+      [EntityType.WORKSHEET]: (fqn: string) =>
+        getDriveAssetByFqn(fqn, EntityType.WORKSHEET, commonFields),
+      [EntityType.DATA_PRODUCT]: (fqn: string) =>
+        getDataProductByName(fqn, { fields: commonFields }),
+      [EntityType.DOMAIN]: (fqn: string) =>
+        getDomainByName(fqn, { fields: commonFields }),
+    } as Record<string, (fqn: string) => Promise<unknown>>;
+  }, []);
+
+  const fetchEntityData = useCallback(async () => {
+    if (!entityDetails?.details?.fullyQualifiedName || !entityType) {
+      return;
+    }
+
+    setIsEntityDataLoading(true);
+    try {
+      const fqn = entityDetails.details.fullyQualifiedName;
+      let entityPromise: Promise<any> | null = null;
+
+      const fetchFn = entityFetchMap[entityType];
+      if (fetchFn) {
+        entityPromise = fetchFn(fqn);
+      }
+
+      if (entityPromise) {
+        const data = await entityPromise;
+        // Merge API data with essential fields from entityDetails.details
+        const mergedData = {
+          ...data,
+          // Essential fields that are used in DataAssetSummaryPanelV1
+          entityType: entityDetails.details.entityType,
+          fullyQualifiedName: entityDetails.details.fullyQualifiedName,
+          id: entityDetails.details.id,
+          description: data.description ?? entityDetails.details.description,
+          displayName: entityDetails.details.displayName,
+          name: entityDetails.details.name,
+          deleted: entityDetails.details.deleted,
+          serviceType: (entityDetails.details as any).serviceType,
+          service: data.service ?? entityDetails.details.service,
+          // Prefer canonical data; fallback to search result if missing
+          owners: data.owners ?? entityDetails.details.owners,
+          domains: data.domains ?? entityDetails.details.domains,
+          tags: data.tags ?? entityDetails.details.tags,
+          dataProducts:
+            data.dataProducts ?? (entityDetails.details as any).dataProducts,
+          tier: (entityDetails.details as any).tier,
+          columnNames: (entityDetails.details as any).columnNames,
+          database: (entityDetails.details as any).database,
+          databaseSchema: (entityDetails.details as any).databaseSchema,
+          tableType: (entityDetails.details as any).tableType,
+        };
+        setEntityData(mergedData);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsEntityDataLoading(false);
+    }
+  }, [entityDetails?.details?.fullyQualifiedName, entityType, entityFetchMap]);
+
+  const fetchEntityTypeDetail = useCallback(async () => {
+    if (!entityType || entityType === EntityType.KNOWLEDGE_PAGE) {
+      return;
+    }
+
+    try {
+      const typeDetail = await getTypeByFQN(entityType);
+      setEntityTypeDetail(typeDetail);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [entityType]);
+
+  const fetchLineageData = useCallback(async () => {
+    const currentFqn = entityDetails?.details?.fullyQualifiedName;
+
+    if (!currentFqn || !entityType) {
+      setIsLineageLoading(false);
+      setLineageData(null);
+
+      return;
+    }
+
+    try {
+      setIsLineageLoading(true);
+
+      const response = await getLineageDataByFQN({
+        fqn: currentFqn,
+        entityType,
+        config: {
+          upstreamDepth: upstreamDepth ?? 1,
+          downstreamDepth: downstreamDepth ?? 1,
+          nodesPerLayer: nodesPerLayer ?? 50,
+          pipelineViewMode: pipelineViewMode ?? PipelineViewMode.Node,
+        },
+      });
+
+      if (entityDetails?.details?.fullyQualifiedName !== currentFqn) {
+        return;
+      }
+
+      setLineageData(response);
+    } catch (error) {
+      if (entityDetails?.details?.fullyQualifiedName === currentFqn) {
+        showErrorToast(error as AxiosError);
+        setLineageData(null);
+      }
+    } finally {
+      if (entityDetails?.details?.fullyQualifiedName === currentFqn) {
+        setIsLineageLoading(false);
+      }
+    }
+  }, [
+    entityDetails?.details?.fullyQualifiedName,
+    entityType,
+    upstreamDepth,
+    downstreamDepth,
+    nodesPerLayer,
+    pipelineViewMode,
+  ]);
+
+  const updateEntityData = useCallback(
+    (updatedData: Partial<EntityData>) => {
+      setEntityData((prevData: EntityData | null) => {
+        // Use entityDetails.details as a fallback if prevData is null.
+        // This handles the initial update before fetchEntityData completes.
+        const baseData = prevData || entityDetails.details;
+
+        // Safety check: If the base data's ID doesn't match the current entity,
+        // abort the update to prevent state corruption.
+        if (baseData.id !== entityDetails.details.id) {
+          return prevData; // Return the original state without changes
+        }
+
+        const newState = { ...baseData, ...updatedData };
+
+        return newState;
+      });
+    },
+    [entityDetails.details]
+  );
+
+  const handleOwnerUpdate = useCallback(
+    (owners: EntityReference[]) => {
+      updateEntityData({ owners });
+    },
+    [updateEntityData]
+  );
+
+  const handleDomainUpdate = useCallback(
+    (domains: EntityReference[]) => {
+      updateEntityData({ domains });
+    },
+    [updateEntityData]
+  );
+
+  const handleTagsUpdate = useCallback(
+    (updatedTags: TagLabel[]) => {
+      // updatedTags from TagsSection only contains classification tags
+      const currentTags = entityData?.tags ?? [];
+      const glossaryTags = currentTags.filter(
+        (tag: TagLabel) => tag.source === TagSource.Glossary
+      );
+      const tierTags = currentTags.filter((tag: TagLabel) =>
+        tag.tagFQN?.startsWith('Tier.')
+      );
+      updateEntityData({
+        tags: [...updatedTags, ...glossaryTags, ...tierTags],
+      });
+    },
+    [entityData, updateEntityData]
+  );
+
+  const handleTierUpdate = useCallback(
+    (updatedTier?: TagLabel) => {
+      const currentTags = entityData?.tags ?? [];
+      const tagsWithoutTier = currentTags.filter(
+        (tag: TagLabel) => !tag.tagFQN?.startsWith('Tier.')
+      );
+      const newTags = updatedTier
+        ? [...tagsWithoutTier, updatedTier]
+        : tagsWithoutTier;
+      updateEntityData({ tags: newTags });
+    },
+    [entityData, updateEntityData]
+  );
+
+  const handleDataProductsUpdate = useCallback(
+    (updatedDataProducts: EntityReference[]) => {
+      updateEntityData({ dataProducts: updatedDataProducts });
+    },
+    [updateEntityData]
+  );
+
+  const handleGlossaryTermsUpdate = useCallback(
+    async (updatedTags: TagLabel[]) => {
+      // The child component (`GlossaryTermsSection`) now handles the API call.
+      // We just need to update the parent's state with the new tags.
+      updateEntityData({ tags: updatedTags });
+    },
+    [updateEntityData]
+  );
+
+  const handleDescriptionUpdate = useCallback(
+    (updatedDescription: string) => {
+      updateEntityData({ description: updatedDescription });
+    },
+    [updateEntityData]
+  );
+
+  const handleLineageClick = useCallback(() => {
+    const fqn = entityDetails?.details?.fullyQualifiedName;
+    const type = entityDetails?.details?.entityType as EntityType;
+
+    if (fqn && type) {
+      const lineageUrl = getEntityDetailsPath(type, fqn, EntityTabs.LINEAGE);
+      navigate(lineageUrl);
+    }
+  }, [entityDetails, navigate]);
 
   useEffect(() => {
     if (id) {
       fetchResourcePermission(id);
     }
   }, [id]);
+
+  // Reset activeTab to OVERVIEW when entity changes
+  useEffect(() => {
+    setActiveTab(EntityRightPanelTab.OVERVIEW);
+  }, [entityDetails?.details?.id]);
+
+  // Reset lineage data when entity changes to prevent stale data
+  useEffect(() => {
+    setLineageData(null);
+    setIsLineageLoading(false);
+  }, [entityDetails?.details?.id]);
+
+  useEffect(() => {
+    if (activeTab === EntityRightPanelTab.CUSTOM_PROPERTIES) {
+      fetchEntityData();
+      fetchEntityTypeDetail();
+    } else if (activeTab === EntityRightPanelTab.LINEAGE) {
+      fetchLineageData();
+    } else if (activeTab === EntityRightPanelTab.OVERVIEW) {
+      fetchEntityData();
+    }
+  }, [
+    activeTab,
+    entityType,
+    entityDetails?.details?.fullyQualifiedName,
+    fetchEntityData,
+    fetchEntityTypeDetail,
+    fetchLineageData,
+  ]);
 
   const viewPermission = useMemo(
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
@@ -98,16 +459,13 @@ export default function EntitySummaryPanel({
         />
       );
     }
-    const type = get(entityDetails, 'details.entityType') ?? EntityType.TABLE;
+    const type = (get(entityDetails, 'details.entityType') ??
+      EntityType.TABLE) as EntityType;
     const entity = entityDetails.details;
 
     return (
       <DataAssetSummaryPanel
-        componentType={
-          tab === DRAWER_NAVIGATION_OPTIONS.lineage
-            ? tab
-            : DRAWER_NAVIGATION_OPTIONS.explore
-        }
+        componentType={tab === NAV_OPTIONS.lineage ? tab : NAV_OPTIONS.explore}
         dataAsset={
           entity as SearchedDataProps['data'][number]['_source'] & {
             dataProducts: DataProduct[];
@@ -119,42 +477,241 @@ export default function EntitySummaryPanel({
     );
   }, [tab, entityDetails, viewPermission, isPermissionLoading]);
 
+  const summaryComponentV1 = useMemo(() => {
+    if (isPermissionLoading) {
+      return <Loader />;
+    }
+    if (!viewPermission) {
+      return (
+        <ErrorPlaceHolder
+          className="border-none h-min-80"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-asset'),
+          })}
+          size={SIZE.MEDIUM}
+          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+        />
+      );
+    }
+    const type = (get(entityDetails, 'details.entityType') ??
+      EntityType.TABLE) as EntityType;
+    const entity = entityData || entityDetails.details;
+
+    return (
+      <DataAssetSummaryPanelV1
+        componentType={tab === NAV_OPTIONS.lineage ? tab : NAV_OPTIONS.explore}
+        dataAsset={
+          entity as SearchedDataProps['data'][number]['_source'] & {
+            dataProducts: DataProduct[];
+          }
+        }
+        entityType={type}
+        highlights={highlights}
+        panelPath={panelPath}
+        onDataProductsUpdate={handleDataProductsUpdate}
+        onDescriptionUpdate={handleDescriptionUpdate}
+        onDomainUpdate={handleDomainUpdate}
+        onGlossaryTermsUpdate={handleGlossaryTermsUpdate}
+        onLineageClick={handleLineageClick}
+        onLinkClick={handleClosePanel}
+        onOwnerUpdate={handleOwnerUpdate}
+        onTagsUpdate={handleTagsUpdate}
+        onTierUpdate={handleTierUpdate}
+      />
+    );
+  }, [
+    tab,
+    entityDetails,
+    entityData,
+    viewPermission,
+    isPermissionLoading,
+    handleOwnerUpdate,
+    handleDomainUpdate,
+    handleTagsUpdate,
+    handleTierUpdate,
+    handleDataProductsUpdate,
+    handleDescriptionUpdate,
+    handleGlossaryTermsUpdate,
+    handleLineageClick,
+  ]);
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),
     [entityDetails, getEntityLinkFromType]
   );
-  const entityIcon = useMemo(() => {
+
+  const handleTabChange = (tab: EntityRightPanelTab) => {
+    setActiveTab(tab);
+  };
+
+  const renderLineageContent = () => {
+    if (isLineageLoading) {
+      return (
+        <div className="flex-center p-lg">
+          <Loader size="default" />
+        </div>
+      );
+    }
+
+    if (lineageData) {
+      return (
+        <LineageTabContent
+          entityFqn={entityDetails?.details?.fullyQualifiedName || ''}
+          filter={lineageFilter}
+          lineageData={lineageData}
+          onFilterChange={setLineageFilter}
+        />
+      );
+    }
+
     return (
-      <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle entity-icon">
-        {searchClassBase.getEntityIcon(
-          get(entityDetails, 'details.entityType') ?? ''
-        )}
-      </span>
+      <div className="text-center text-grey-muted p-lg">
+        {t('label.no-data-found')}
+      </div>
     );
-  }, [entityDetails]);
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case EntityRightPanelTab.OVERVIEW:
+        return (
+          <>
+            {viewPermission && !isSideDrawer && (
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
+            )}
+            <div className="overview-tab-content">{summaryComponentV1}</div>
+          </>
+        );
+      case EntityRightPanelTab.SCHEMA:
+        return (
+          <>
+            {viewPermission && !isSideDrawer && (
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
+            )}
+            <div className="entity-summary-panel-tab-content">
+              <EntityDetailsSection
+                dataAsset={entityDetails.details}
+                entityType={entityType}
+                highlights={highlights}
+                isLoading={isPermissionLoading}
+              />
+            </div>
+          </>
+        );
+      case EntityRightPanelTab.LINEAGE:
+        return (
+          <>
+            {viewPermission && !isSideDrawer && (
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
+            )}
+            <div className="entity-summary-panel-tab-content">
+              <div className="p-x-md">{renderLineageContent()}</div>
+            </div>
+          </>
+        );
+      case EntityRightPanelTab.DATA_QUALITY:
+        return (
+          <>
+            {viewPermission && !isSideDrawer && (
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
+            )}
+            <DataQualityTab
+              entityFQN={entityDetails.details.fullyQualifiedName || ''}
+              entityType={entityType}
+            />
+          </>
+        );
+      case EntityRightPanelTab.CUSTOM_PROPERTIES: {
+        return (
+          <>
+            {viewPermission && !isSideDrawer && (
+              <EntityTitleSection
+                className="title-section"
+                entityDetails={entityDetails.details}
+                entityLink={entityLink}
+              />
+            )}
+            <CustomPropertiesSection
+              entityData={entityData}
+              entityDetails={entityDetails}
+              entityType={entityType}
+              entityTypeDetail={entityTypeDetail}
+              isEntityDataLoading={isEntityDataLoading}
+              viewCustomPropertiesPermission={getPrioritizedViewPermission(
+                entityPermissions,
+                Operation.ViewCustomFields
+              )}
+            />
+          </>
+        );
+      }
+      default:
+        return summaryComponent;
+    }
+  };
 
   return (
-    <Card
-      className="summary-panel-container"
-      title={
-        viewPermission && (
-          <Link
-            className="no-underline"
-            data-testid="entity-link"
-            target={searchClassBase.getSearchEntityLinkTarget(
-              entityDetails.details
-            )}
-            to={entityLink}>
-            <Typography.Text className="m-b-0 d-block summary-panel-title">
-              {entityIcon}
-              {stringToHTML(
-                searchClassBase.getEntityName(entityDetails.details)
-              )}
-            </Typography.Text>
-          </Link>
-        )
-      }>
-      {summaryComponent}
-    </Card>
+    <div
+      className={classNames('entity-summary-panel-container', {
+        explore: panelPath === 'explore',
+        lineage: panelPath === 'lineage',
+        'glossary-term-assets-tab': panelPath === 'glossary-term-assets-tab',
+      })}>
+      {isSideDrawer && (
+        <div className="d-flex items-center justify-between">
+          <EntityTitleSection
+            className="drawer-title-section"
+            entityDetails={entityDetails.details}
+            entityLink={entityLink}
+            testId="entity-header-title"
+            tooltipPlacement="bottomLeft"
+          />
+          <Button
+            aria-label={t('label.close')}
+            className="drawer-close-icon flex-center mr-2"
+            data-testid="drawer-close-icon"
+            icon={<CloseOutlined />}
+            size="small"
+            onClick={handleClosePanel}
+          />
+        </div>
+      )}
+      <div className="d-flex gap-2 w-full h-full">
+        <Card
+          bordered={false}
+          className={`summary-panel-container ${
+            isSideDrawer ? 'drawer-summary-panel-container' : ''
+          }`}>
+          <Card
+            className={`content-area ${
+              isSideDrawer ? 'drawer-content-area' : ''
+            }`}
+            style={{ width: '100%', display: 'block' }}>
+            {renderTabContent()}
+          </Card>
+        </Card>
+        <EntityRightPanelVerticalNav
+          activeTab={activeTab}
+          entityType={entityType}
+          isSideDrawer={isSideDrawer}
+          onTabChange={handleTabChange}
+        />
+      </div>
+    </div>
   );
 }
