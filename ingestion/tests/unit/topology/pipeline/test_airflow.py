@@ -54,7 +54,7 @@ MOCK_CONFIG = {
     "sink": {"type": "metadata-rest", "config": {}},
     "workflowConfig": {
         "openMetadataServerConfig": {
-            "hostPort": "http://host.docker.internal:8585/api",
+            "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
             "securityConfig": {"jwtToken": "token"},
         },
