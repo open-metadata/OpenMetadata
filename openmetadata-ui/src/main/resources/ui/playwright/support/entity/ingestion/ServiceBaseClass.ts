@@ -311,27 +311,11 @@ class ServiceBaseClass {
     );
   }
 
-  handleIngestionRetry = async (ingestionType = 'metadata', page: Page) => {
-    const { apiContext } = await getApiContext(page);
-
-    // Need to wait before start polling as Ingestion is taking time to reflect state on their db
-    // Queued status are not stored in DB. cc: @ulixius9
-    await page.waitForTimeout(2000);
-
-    const response = await apiContext
-      .get(
-        `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
-          this.serviceName
-        }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
-          this.category
-        )}`
-      )
-      .then((res) => res.json());
-
-    const workflowData = response.data.filter(
-      (d: { pipelineType: string }) => d.pipelineType === ingestionType
-    )[0];
-
+  executeIngestionRetrySteps = async (
+    page: Page,
+    workflowData: { fullyQualifiedName: string; name: string },
+    ingestionType: string
+  ) => {
     const oneHourBefore = Date.now() - 86400000;
     let consecutiveErrors = 0;
 
@@ -398,6 +382,39 @@ class ServiceBaseClass {
         .getByTestId('pipeline-status')
         .last()
     ).toContainText('Success');
+  };
+
+  handleIngestionRetryWithWorkflow = async (
+    page: Page,
+    workflowDetails: { fullyQualifiedName: string; name: string },
+    ingestionType = 'metadata'
+  ) => {
+    await page.waitForTimeout(2000);
+    await this.executeIngestionRetrySteps(page, workflowDetails, ingestionType);
+  };
+
+  handleIngestionRetry = async (ingestionType = 'metadata', page: Page) => {
+    const { apiContext } = await getApiContext(page);
+
+    // Need to wait before start polling as Ingestion is taking time to reflect state on their db
+    // Queued status are not stored in DB. cc: @ulixius9
+    await page.waitForTimeout(2000);
+
+    const response = await apiContext
+      .get(
+        `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
+          this.serviceName
+        }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
+          this.category
+        )}`
+      )
+      .then((res) => res.json());
+
+    const workflowData = response.data.find(
+      (d: { pipelineType: string }) => d.pipelineType === ingestionType
+    );
+
+    await this.executeIngestionRetrySteps(page, workflowData, ingestionType);
   };
 
   async updateService(page: Page) {
