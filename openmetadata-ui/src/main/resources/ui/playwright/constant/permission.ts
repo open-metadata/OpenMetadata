@@ -52,10 +52,13 @@ export const DATA_STEWARD_RULES: PolicyRulesType[] = [
     name: 'DataStewardRole',
     resources: ['All'],
     operations: [
+      'EditCertification',
       'EditDescription',
       'EditDisplayName',
+      'EditGlossaryTerms',
       'EditLineage',
       'EditOwners',
+      'EditTier',
       'EditTags',
       'ViewAll',
     ],
@@ -114,6 +117,16 @@ export const EDIT_USER_FOR_TEAM_RULES: PolicyRulesType[] = [
     resources: ['team'],
     operations: ['EditUsers'],
     effect: 'allow',
+  },
+];
+
+export const OWNER_TEAM_RULES: PolicyRulesType[] = [
+  {
+    name: 'Owner-EditRule',
+    resources: ['team'],
+    operations: ['Create', 'EditAll'],
+    effect: 'allow',
+    condition: 'isOwner()',
   },
 ];
 

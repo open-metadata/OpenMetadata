@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 
@@ -46,7 +47,7 @@ public class LogStorageFactoryTest {
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName("test-bucket")
-            .withRegion("us-east-1")
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
             .withPrefix("test-prefix");
 
     defaultConfig = null; // null config should create default storage

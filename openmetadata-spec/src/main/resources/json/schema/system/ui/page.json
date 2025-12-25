@@ -25,11 +25,18 @@
         "Glossary",
         "GlossaryTerm",
         "Domain",
+        "DataProduct",
         "APICollection",
         "APIEndpoint",
         "Metric",
         "MlModel",
-        "Chart"
+        "Tag",
+        "Classification",
+        "Chart",
+        "Directory",
+        "File",
+        "Spreadsheet",
+        "Worksheet"
       ]
     }
   },

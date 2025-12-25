@@ -1,0 +1,9 @@
+{
+  "name": "system-notification-logical-test-case-added",
+  "fullyQualifiedName": "system-notification-logical-test-case-added",
+  "displayName": "Logical Test Case Added Notification",
+  "description": "System default template for logical test case addition notifications",
+  "provider": "system",
+  "templateSubject": "[{{publisherName}}] - Change Event Update from {{emailingEntity}}",
+  "templateBody": "<strong>{{event.userName}}</strong> added <strong>logical test case(s)</strong> to <strong>Test Suite</strong>: <a href=\"{{buildEntityUrl event.entityType entity}}\">{{entity.fullyQualifiedName}}</a>"
+}

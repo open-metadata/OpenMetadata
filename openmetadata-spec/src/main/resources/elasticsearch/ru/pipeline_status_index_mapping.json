@@ -1,0 +1,106 @@
+{
+  "settings": {
+    "index": {
+      "max_ngram_diff": 17,
+      "number_of_shards": 1,
+      "number_of_replicas": 1
+    },
+    "analysis": {
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "char_filter": [],
+          "filter": [
+            "lowercase"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "pipelineId": {
+        "type": "keyword",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 36
+          }
+        }
+      },
+      "pipelineFqn": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "pipelineName": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
+      },
+      "serviceType": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "serviceName": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "executionStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "timestamp": {
+        "type": "date",
+        "format": "epoch_millis"
+      },
+      "endTime": {
+        "type": "date",
+        "format": "epoch_millis"
+      },
+      "startTime": {
+        "type": "date",
+        "format": "epoch_millis"
+      },
+      "lastRunTime": {
+        "type": "date",
+        "format": "epoch_millis"
+      },
+      "runtime": {
+        "type": "long"
+      },
+      "scheduleInterval": {
+        "type": "keyword"
+      },
+      "tableId": {
+        "type": "keyword",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 36
+          }
+        }
+      },
+      "tableFqn": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "deleted": {
+        "type": "boolean"
+      },
+      "entityType": {
+        "type": "keyword"
+      }
+    }
+  }
+}

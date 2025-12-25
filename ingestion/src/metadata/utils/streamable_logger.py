@@ -63,6 +63,7 @@ from typing import Any, Dict, Optional
 from uuid import UUID
 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import BASE_LOGGING_FORMAT, METADATA_LOGGER, ingestion_logger
 
 logger = ingestion_logger()
@@ -175,8 +176,8 @@ class StreamableLogHandler(logging.Handler):
         metadata: OpenMetadata,
         pipeline_fqn: str,
         run_id: UUID,
-        batch_size: int = 100,
-        flush_interval: float = 5.0,
+        batch_size: int = 500,
+        flush_interval_sec: float = 10.0,
         max_queue_size: int = 10000,
         enable_streaming: bool = True,
     ):
@@ -188,7 +189,7 @@ class StreamableLogHandler(logging.Handler):
             pipeline_fqn: Fully qualified name of the pipeline
             run_id: Unique run identifier
             batch_size: Number of log entries to batch before sending
-            flush_interval: Time in seconds between automatic flushes
+            flush_interval_sec: Time in seconds between automatic flushes
             max_queue_size: Maximum size of the log queue
             enable_streaming: Whether to enable log streaming (can be disabled for testing)
         """
@@ -198,7 +199,7 @@ class StreamableLogHandler(logging.Handler):
         self.pipeline_fqn = pipeline_fqn
         self.run_id = run_id
         self.batch_size = batch_size
-        self.flush_interval = flush_interval
+        self.flush_interval_sec = flush_interval_sec
         self.enable_streaming = enable_streaming
 
         # Local fallback handler
@@ -247,6 +248,43 @@ class StreamableLogHandler(logging.Handler):
             )
             self.worker_thread.start()
 
+    def _drain_queue_to_buffer(self, buffer: list) -> tuple[list, bool]:
+        """
+        Drain all available items from the queue into the buffer.
+
+        Args:
+            buffer: Current buffer to append items to
+
+        Returns:
+            Updated buffer and whether a flush marker was encountered
+        """
+        timeout = min(1.0, self.flush_interval_sec)
+        flush_requested = False
+
+        # Get items from queue until empty
+        while True:
+            try:
+                # Use timeout for first call, then get_nowait for remaining
+                log_entry = (
+                    self.log_queue.get(timeout=timeout)
+                    if timeout
+                    else self.log_queue.get_nowait()
+                )
+
+                if log_entry is None:
+                    # Flush marker encountered
+                    flush_requested = True
+                else:
+                    buffer.append(log_entry)
+
+                # After first successful get, switch to no timeout for draining
+                timeout = None
+
+            except queue.Empty:
+                break
+
+        return buffer, flush_requested
+
     def _worker_loop(self):
         """Background worker that ships logs to the server"""
         buffer = []
@@ -254,18 +292,14 @@ class StreamableLogHandler(logging.Handler):
 
         while not self.stop_event.is_set():
             try:
-                # Try to get log entry with timeout
-                timeout = min(1.0, self.flush_interval)
-                try:
-                    log_entry = self.log_queue.get(timeout=timeout)
-                    buffer.append(log_entry)
-                except queue.Empty:
-                    pass
+                # Drain all available items from queue
+                buffer, flush_requested = self._drain_queue_to_buffer(buffer)
 
                 # Check if we should flush
                 should_flush = (
-                    len(buffer) >= self.batch_size
-                    or (time.time() - last_flush) >= self.flush_interval
+                    flush_requested
+                    or len(buffer) >= self.batch_size
+                    or (time.time() - last_flush) >= self.flush_interval_sec
                 )
 
                 if should_flush and buffer:
@@ -273,11 +307,17 @@ class StreamableLogHandler(logging.Handler):
                     buffer = []
                     last_flush = time.time()
 
+                # Let's not flush too often
+                time.sleep(1.0)
+
             except Exception as e:
                 logger.error(f"Error in log shipping worker: {e}")
                 # Continue processing to avoid blocking
 
-        # Final flush on shutdown
+        # Final cleanup - drain ALL remaining items from the queue
+        buffer, _ = self._drain_queue_to_buffer(buffer)
+
+        # Send any final buffered logs
         if buffer:
             self._ship_logs(buffer)
 
@@ -286,7 +326,7 @@ class StreamableLogHandler(logging.Handler):
         if not logs:
             return
 
-        log_content = "\n".join(logs)
+        log_content = "\n".join(logs) + "\n"  # Ensure newline at end
 
         try:
             # Try to send logs with circuit breaker
@@ -383,18 +423,15 @@ class StreamableLogHandler(logging.Handler):
             # Log final metrics
             logger.info(f"StreamableLogHandler metrics: {self.get_metrics()}")
 
-            # Signal worker to stop
+            # Signal worker to stop AFTER ensuring any pending flush is processed
             self.stop_event.set()
 
             # Wait for worker to finish (with timeout)
             if self.worker_thread.is_alive():
                 self.worker_thread.join(timeout=5.0)
 
-            # Close the log stream if we have a session
-            if self.session_id and hasattr(self.metadata, "close_log_stream"):
-                self.metadata.close_log_stream(
-                    self.pipeline_fqn, self.run_id, self.session_id
-                )
+            # Close the log stream
+            self.metadata.close_log_stream(self.pipeline_fqn, self.run_id)
 
         # Close fallback handler
         self.fallback_handler.close()
@@ -430,12 +467,20 @@ class StreamableLogHandlerManager:
 
     @classmethod
     def cleanup(cls) -> None:
-        """Clean up the current handler"""
+        """Clean up the current handler, flushing any remaining logs first"""
         if cls._instance:
             try:
+                # Force flush any remaining logs before cleanup
+                cls._instance.flush()
+
+                # Close will properly wait for worker thread to finish processing
+                # the flush marker and any remaining buffered logs
+                cls._instance.close()
+
+                # Only remove handler from logger after worker thread has finished
                 metadata_logger = logging.getLogger(METADATA_LOGGER)
                 metadata_logger.removeHandler(cls._instance)
-                cls._instance.close()
+
                 logger.debug("Streamable logging handler cleaned up")
             except Exception as e:
                 logger.warning(f"Error during handler cleanup: {e}")
@@ -506,8 +551,9 @@ def setup_streamable_logging_for_workflow(
         StreamableLogHandlerManager.set_handler(handler)
 
         logger.info(
-            f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {run_id}"
+            f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {model_str(run_id)}"
         )
+        metadata.validate_versions()  # Send the version check log
 
         return handler
 

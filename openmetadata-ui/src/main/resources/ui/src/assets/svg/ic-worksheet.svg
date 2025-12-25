@@ -1,0 +1,9 @@
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24">
+  <rect x="3" y="1.31" width="18" height="21.37" rx="3" ry="3" fill="none" stroke="currentColor" />
+  <line x1="10.55" y1="16.77" x2="18.17" y2="16.77" stroke-linecap="round" fill="none" stroke="currentColor" />
+  <line x1="10.55" y1="12.09" x2="18.17" y2="12.09" stroke-linecap="round" fill="none" stroke="currentColor" />
+  <line x1="10.55" y1="7.41" x2="18.17" y2="7.41" stroke-linecap="round" fill="none" stroke="currentColor" />
+  <rect x="6.32" y="15.55" width="2.32" height="2.26" rx=".4" ry=".4"/>
+  <rect x="6.32" y="10.87" width="2.32" height="2.26" rx=".4" ry=".4"/>
+  <rect x="6.32" y="6.19" width="2.32" height="2.26" rx=".4" ry=".4"/>
+</svg>

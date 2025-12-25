@@ -12,7 +12,6 @@
  */
 import { SearchIndex } from '../enums/search.enum';
 import { Property } from '../pages/SearchSettingsPage/searchSettings.interface';
-import i18n from '../utils/i18next/LocalUtil';
 
 export const ENTITY_PATH_TO_SEARCH_INDEX: Record<string, SearchIndex> = {
   table: SearchIndex.TABLE,
@@ -37,24 +36,28 @@ export const ENTITY_PATH_TO_SEARCH_INDEX: Record<string, SearchIndex> = {
   domain: SearchIndex.DOMAIN,
   searchIndex: SearchIndex.SEARCH_INDEX,
   storedProcedure: SearchIndex.STORED_PROCEDURE,
+  directory: SearchIndex.DIRECTORY_SEARCH_INDEX,
+  file: SearchIndex.FILE_SEARCH_INDEX,
+  spreadsheet: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+  worksheet: SearchIndex.WORKSHEET_SEARCH_INDEX,
 };
 
 export const globalSettings: Property[] = [
   {
     key: 'maxAggregateSize',
-    label: i18n.t('label.max-aggregate-size'),
+    label: 'label.max-aggregate-size',
     min: 100,
     max: 10000,
   },
   {
     key: 'maxResultHits',
-    label: i18n.t('label.max-result-hits'),
+    label: 'label.max-result-hits',
     min: 100,
     max: 10000,
   },
   {
     key: 'maxAnalyzedOffset',
-    label: i18n.t('label.max-analyzed-offset'),
+    label: 'label.max-analyzed-offset',
     min: 1000,
     max: 1000000,
   },
@@ -62,13 +65,13 @@ export const globalSettings: Property[] = [
 
 export const fieldValueBoostBaseColumns = [
   {
-    title: i18n.t('label.field'),
+    title: 'label.field',
     dataIndex: 'field',
     key: 'field',
     width: 250,
   },
   {
-    title: i18n.t('label.factor'),
+    title: 'label.factor',
     dataIndex: 'factor',
     key: 'factor',
     width: 80,
@@ -77,13 +80,13 @@ export const fieldValueBoostBaseColumns = [
 
 export const fieldValueBoostAdditionalColumns = [
   {
-    title: i18n.t('label.modifier'),
+    title: 'label.modifier',
     dataIndex: 'modifier',
     key: 'modifier',
     width: 120,
   },
   {
-    title: i18n.t('label.missing-value'),
+    title: 'label.missing-value',
     dataIndex: 'missing',
     key: 'missing',
     width: 120,

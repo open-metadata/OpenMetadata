@@ -33,7 +33,8 @@ SET json = jsonb_build_object(
 )
 FROM table_entity te
 WHERE pdts.entityFQNHash = te.fqnHash
-  AND pdts.extension = 'table.tableProfile';
+  AND pdts.extension = 'table.tableProfile'
+  AND pdts.json->>'profileData' IS NULL;
 
 -- Migrate system profiles (direct match)
 UPDATE profiler_data_time_series pdts
@@ -51,7 +52,8 @@ SET json = jsonb_build_object(
 )
 FROM table_entity te
 WHERE pdts.entityFQNHash = te.fqnHash
-  AND pdts.extension = 'table.systemProfile';
+  AND pdts.extension = 'table.systemProfile'
+  AND pdts.json->>'profileData' IS NULL;
 
 -- Migrate column profiles using temporary mapping table for better performance
 -- Use UNLOGGED table for memory-like performance (no WAL writes)
@@ -95,7 +97,8 @@ SET json = jsonb_build_object(
 FROM column_to_table_mapping ctm
 INNER JOIN table_entity te ON ctm.table_hash = te.fqnHash
 WHERE pdts.entityFQNHash = ctm.column_hash
-  AND pdts.extension = 'table.columnProfile';
+  AND pdts.extension = 'table.columnProfile'
+  AND pdts.json->>'profileData' IS NULL;
 
 -- Clean up temporary table
 DROP TABLE IF EXISTS column_to_table_mapping;

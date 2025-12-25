@@ -34,14 +34,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
 import com.networknt.schema.SpecVersion.VersionFlag;
-import jakarta.json.Json;
-import jakarta.json.JsonArray;
-import jakarta.json.JsonArrayBuilder;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonPatch;
-import jakarta.json.JsonReader;
-import jakarta.json.JsonStructure;
-import jakarta.json.JsonValue;
+import jakarta.json.*;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
@@ -684,6 +677,17 @@ public final class JsonUtils {
         throw new ConstraintViolationException(FAILED_TO_PROCESS_JSON + detailedErrors, violations);
       }
     }
+  }
+
+  public static boolean isValidJson(Object obj) {
+    if (!(obj instanceof String json)) return false;
+    JsonReader reader = Json.createReader(new StringReader(json));
+    try {
+      reader.readValue();
+    } catch (JsonException e) {
+      return false;
+    }
+    return true;
   }
 
   private static Class<?> getValueClass(JsonNode jsonNode) {

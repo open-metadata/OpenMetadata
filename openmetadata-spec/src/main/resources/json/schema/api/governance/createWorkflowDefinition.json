@@ -6,6 +6,21 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.governance.CreateWorkflowDefinition",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "definitions": {
+    "workflowConfiguration": {
+      "type": "object",
+      "properties": {
+        "storeStageStatus": {
+          "title": "Storage Workflow Stage Status",
+          "description": "If True, all the stage status will be stored in the database.",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "required": ["storeStageStatus"]
+    }
+  },
   "properties": {
     "name": {
       "description": "Name that identifies this Workflow Definition.",
@@ -26,6 +41,10 @@
     },
     "type": {
       "$ref": "../../governance/workflows/workflowDefinition.json#/definitions/type"
+    },
+    "config": {
+      "description": "Configuration for the Workflow Definition",
+      "$ref": "#/definitions/workflowConfiguration"
     },
     "trigger": {
       "existingJavaType": "org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface",
@@ -48,10 +67,7 @@
             "$ref": "../../governance/workflows/elements/nodes/automatedTask/checkEntityAttributesTask.json"
           },
           {
-            "$ref": "../../governance/workflows/elements/nodes/automatedTask/setGlossaryTermStatusTask.json"
-          },
-          {
-            "$ref": "../../governance/workflows/elements/nodes/automatedTask/setEntityCertificationTask.json"
+            "$ref": "../../governance/workflows/elements/nodes/automatedTask/setEntityAttributeTask.json"
           },
           {
             "$ref": "../../governance/workflows/elements/nodes/endEvent/endEvent.json"

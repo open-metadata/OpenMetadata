@@ -15,6 +15,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import './styles/index';
+import { getBasePath } from './utils/HistoryUtils';
 
 const container = document.getElementById('root');
 if (!container) {
@@ -30,6 +31,10 @@ root.render(
 
 if ('serviceWorker' in navigator && 'indexedDB' in window) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/app-worker.js');
+    const basePath = getBasePath();
+    const serviceWorkerPath = basePath
+      ? `${basePath}/app-worker.js`
+      : '/app-worker.js';
+    navigator.serviceWorker.register(serviceWorkerPath);
   });
 }

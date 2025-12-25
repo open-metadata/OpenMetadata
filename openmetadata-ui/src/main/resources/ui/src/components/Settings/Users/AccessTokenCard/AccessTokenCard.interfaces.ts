@@ -20,4 +20,5 @@ export type MockProps = {
   botUserData?: User;
   revokeTokenHandlerBot?: () => Promise<void>;
   disabled?: boolean;
+  isSCIMBot?: boolean;
 };

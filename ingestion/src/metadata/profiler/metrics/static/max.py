@@ -13,7 +13,7 @@
 Max Metric definition
 """
 from functools import partial
-from typing import Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 
 from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
@@ -23,6 +23,7 @@ from metadata.generated.schema.configuration.profilerConfiguration import Metric
 from metadata.generated.schema.entity.data.table import DataType, Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
+from metadata.profiler.metrics.pandas_metric_protocol import PandasComputation
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
     FLOAT_SET,
@@ -31,8 +32,14 @@ from metadata.profiler.orm.registry import (
     is_date_time,
     is_quantifiable,
 )
+from metadata.utils.logger import profiler_logger
 
 # pylint: disable=duplicate-code
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+logger = profiler_logger()
 
 
 class MaxFn(GenericFunction):
@@ -97,20 +104,60 @@ class Max(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
+        computation = self.get_pandas_computation()
+        accumulator = computation.create_accumulator()
+        for df in dfs:
+            try:
+                accumulator = computation.update_accumulator(accumulator, df)
+            except Exception as err:
+                logger.debug(
+                    f"Error while computing max for column {self.col.name}: {err}"
+                )
+                return None
+        return computation.aggregate_accumulator(accumulator)
+
+    def get_pandas_computation(self) -> PandasComputation:
+        """Returns the logic to compute this metrics using Pandas"""
+        return PandasComputation[Optional[float], Optional[float]](
+            create_accumulator=lambda: None,
+            update_accumulator=lambda acc, df: Max.update_accumulator(
+                acc, df, self.col
+            ),
+            aggregate_accumulator=lambda acc: acc,
+        )
+
+    @staticmethod
+    def update_accumulator(
+        current_max: Optional[float], df: "pd.DataFrame", column
+    ) -> Optional[float]:
+        """Computes one DataFrame chunk and updates the running maximum
+
+        Maintains a single maximum value (not a list). Compares chunk's max
+        with current maximum and returns the larger value.
+        """
         import pandas as pd
 
-        if is_quantifiable(self.col.type):
-            return max((df[self.col.name].max() for df in dfs))
+        chunk_max = None
 
-        if is_date_time(self.col.type):
-            max_ = None
-            if self.col.type in {DataType.DATETIME, DataType.DATE}:
-                max_ = max((pd.to_datetime(df[self.col.name]).max() for df in dfs))
-                return None if pd.isnull(max_) else int(max_.timestamp() * 1000)
-            elif self.col.type == DataType.TIME:
-                max_ = max((pd.to_timedelta(df[self.col.name]).max() for df in dfs))
-                return None if pd.isnull(max_) else max_.seconds
-        return None
+        if is_quantifiable(column.type):
+            chunk_max = df[column.name].max()
+        elif is_date_time(column.type):
+            if column.type in {DataType.DATETIME, DataType.DATE}:
+                max_val = pd.to_datetime(df[column.name]).max()
+                if not pd.isnull(max_val):
+                    chunk_max = int(max_val.timestamp() * 1000)
+            elif column.type == DataType.TIME:
+                max_val = pd.to_timedelta(df[column.name]).max()
+                if not pd.isnull(max_val):
+                    chunk_max = max_val.seconds
+
+        if chunk_max is None or pd.isnull(chunk_max):
+            return current_max
+
+        if current_max is None:
+            return chunk_max
+
+        return max(current_max, chunk_max)
 
     def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
         """nosql function"""

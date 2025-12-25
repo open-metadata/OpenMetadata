@@ -15,6 +15,8 @@ import { uuid } from '../utils/common';
 export const DATA_CONTRACT_DETAILS = {
   name: `data_contract_${uuid()}`,
   description: 'new data contract description',
+  termsOfService:
+    'This is playwright article body here you can add rich text and block, it also support the slash command.',
   displayName: `Data Contract_${uuid()}`,
   description2: 'Modified Data Contract Description',
 };
@@ -39,7 +41,7 @@ export const DATA_CONTRACT_SEMANTICS2 = {
   description: 'new data contract semantic description 2',
   rules: [
     {
-      field: 'Name',
+      field: 'Display Name',
       operator: 'Is Set',
     },
   ],
@@ -72,8 +74,35 @@ export const DATA_CONTRACT_CONTAIN_SEMANTICS = {
   ],
 };
 
+export const DATA_CONTRACT_NOT_CONTAIN_SEMANTICS = {
+  name: `data_contract_container_semantic_${uuid()}`,
+  description: 'new data contract semantic contains description ',
+  rules: [
+    {
+      field: 'Tier',
+      operator: 'Not Contains',
+    },
+    {
+      field: 'Tags',
+      operator: 'Not Contains',
+    },
+    {
+      field: 'Glossary Term',
+      operator: 'Not Contains',
+    },
+  ],
+};
+
 export interface DataContractSecuritySlaData {
-  accessPolicyName: string;
+  consumers: {
+    accessPolicyName: string;
+    identities: string[];
+    row_filters: {
+      index: number;
+      column_name: string;
+      values: string[];
+    }[];
+  };
   dataClassificationName: string;
   refreshFrequencyIntervalInput: string;
   maxLatencyValueInput: string;
@@ -82,28 +111,114 @@ export interface DataContractSecuritySlaData {
   refreshFrequencyUnitSelect: string;
   maxLatencyUnitSelect: string;
   retentionUnitSelect: string;
+  timezone: string;
 }
 
 export const DATA_CONTRACT_SECURITY_DETAILS_1: DataContractSecuritySlaData = {
-  accessPolicyName: 'Test Policy Security',
+  consumers: {
+    accessPolicyName: 'Test Policy Security',
+    identities: ['test_1', 'test_2'],
+    row_filters: [
+      {
+        index: 0,
+        column_name: 'Column 1',
+        values: ['value_1', 'value_2'],
+      },
+      {
+        index: 1,
+        column_name: 'Column 2',
+        values: ['value_3', 'value_4'],
+      },
+    ],
+  },
   dataClassificationName: 'PII',
   refreshFrequencyIntervalInput: '10',
   maxLatencyValueInput: '20',
   retentionPeriodInput: '30',
-  availability: '12:15 UTC',
+  availability: '12:15',
+  timezone: 'GMT+09:00 (Asia/Tokyo)',
   refreshFrequencyUnitSelect: 'Day',
   maxLatencyUnitSelect: 'Hour',
   retentionUnitSelect: 'Week',
 };
 
 export const DATA_CONTRACT_SECURITY_DETAILS_2: DataContractSecuritySlaData = {
-  accessPolicyName: 'Updated Policy Security',
+  consumers: {
+    accessPolicyName: 'Updated Policy Security',
+    identities: ['test_3', 'test_4'],
+    row_filters: [
+      {
+        index: 0,
+        column_name: 'Column 3',
+        values: ['value_5', 'value_6'],
+      },
+      {
+        index: 1,
+        column_name: 'Column 4',
+        values: ['value_7', 'value_8'],
+      },
+    ],
+  },
   dataClassificationName: 'PersonalData',
   refreshFrequencyIntervalInput: '50',
   maxLatencyValueInput: '60',
   retentionPeriodInput: '70',
-  availability: '05:34 UTC',
+  availability: '05:34',
+  timezone: 'GMT+02:00 (Europe/Athens)',
   refreshFrequencyUnitSelect: 'Hour',
   maxLatencyUnitSelect: 'Minute',
   retentionUnitSelect: 'Year',
+};
+
+export const DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS = {
+  consumers: {
+    accessPolicyName: 'Updated Policy Security',
+    identities: ['test_1', 'test_2', 'test_3', 'test_4'],
+    row_filters: [
+      {
+        index: 0,
+        column_name: 'Column 3',
+        values: ['value_1', 'value_2', 'value_5', 'value_6'],
+      },
+      {
+        index: 1,
+        column_name: 'Column 4',
+        values: ['value_3', 'value_4', 'value_7', 'value_8'],
+      },
+    ],
+  },
+} as DataContractSecuritySlaData;
+
+export const DATA_CONTRACT_SECURITY_CONSUMER_DETAILS = {
+  accessPolicyName: 'Test Consumer Security 2',
+  identities: ['identity_1', 'identity_2'],
+  row_filters: [
+    {
+      index: 0,
+      column_name: 'Consumer_Column_1',
+      values: ['column_value_1', 'column_value_2'],
+    },
+    {
+      index: 1,
+      column_name: 'Consumer_Column_2',
+      values: ['column_value_3', 'column_value_4'],
+    },
+  ],
+};
+
+export const DATA_CONTRACT_SEMANTIC_OPERATIONS = {
+  is: 'Is',
+  is_not: 'Is Not',
+  any_in: 'Any in',
+  not_in: 'Not in',
+  is_set: 'Is Set',
+  is_not_set: 'Is Not Set',
+  less: '<',
+  greater: '>',
+  less_equal: '<=',
+  greater_equal: '>=',
+  contains: 'Contains',
+  not_contains: 'Not contains',
+  between: 'Between',
+  not_between: 'Not between',
 };

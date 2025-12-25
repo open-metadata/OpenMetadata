@@ -39,6 +39,7 @@ export interface DatabaseSchemaPageTabProps {
   activeTab: EntityTabs;
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
+  viewCustomPropertiesPermission: boolean;
   databaseSchemaPermission: OperationPermission;
   storedProcedureCount: number;
   getEntityFeedCount: () => void;
@@ -81,6 +82,7 @@ class DatabaseSchemaClassBase {
       EntityTabs.TABLE,
       EntityTabs.STORED_PROCEDURE,
       EntityTabs.ACTIVITY_FEED,
+      EntityTabs.CONTRACT,
       EntityTabs.CUSTOM_PROPERTIES,
     ].map((tab: EntityTabs) => ({
       id: tab,

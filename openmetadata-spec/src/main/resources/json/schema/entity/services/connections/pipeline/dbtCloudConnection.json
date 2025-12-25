@@ -55,6 +55,14 @@
           "type": "string"
         }
       },
+      "environmentIds": {
+        "title": "Environment Ids",
+        "description": "List of IDs of your DBT cloud environments separated by comma `,`",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
       "numberOfRuns": {
         "title": "Number of Runs",
         "description": "Number of runs to fetch from DBT cloud",
