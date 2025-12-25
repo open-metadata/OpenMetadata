@@ -210,6 +210,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // This allows special characters in entity names that were permitted in Jetty 11
     configureUriCompliance(catalogConfig);
 
+    // Configure ServletHandler to preserve encoded slashes in paths
+    // This is needed for entity names containing slashes (e.g., "domain.name/with-slash")
+    configureServletHandler(environment);
+
     validateConfiguration(catalogConfig);
 
     // Instantiate incident severity classifier
@@ -478,6 +482,24 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           LOG.info("Set URI compliance to UNSAFE for admin connector");
         }
       }
+    }
+  }
+
+  /**
+   * Configure the ServletHandler to NOT decode ambiguous URI characters like %2F (encoded slash).
+   * This is necessary because entity names can contain slashes (e.g., "domain.name/with-slash")
+   * which get URL-encoded to %2F. Without this setting, Jetty would decode %2F to / during path
+   * parsing, breaking JAX-RS route matching for paths like /name/{name}.
+   *
+   * See: https://jetty.org/docs/jetty/12/programming-guide/server/compliance.html
+   */
+  private void configureServletHandler(Environment environment) {
+    MutableServletContextHandler contextHandler = environment.getApplicationContext();
+    org.eclipse.jetty.ee10.servlet.ServletHandler servletHandler =
+        contextHandler.getServletHandler();
+    if (servletHandler != null) {
+      servletHandler.setDecodeAmbiguousURIs(false);
+      LOG.info("Configured ServletHandler to NOT decode ambiguous URIs (preserving %2F in paths)");
     }
   }
 
