@@ -12,14 +12,11 @@
 name: ESLint and Prettier
 
 on:
-  # Trigger analysis when pushing in master or pull requests, and when creating
-  # a pull request.
-  push:
-    branches:
-      - main
-      - "0.[0-9]+.[0-9]+"
+  # Trigger analysis when creating or updating a pull request.
   pull_request_target:
     types: [opened, synchronize, reopened, labeled]
+    paths:
+      - 'openmetadata-ui/src/main/resources/ui/**'
 
 permissions:
   contents: read
@@ -70,40 +67,37 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+          cache: 'yarn'
+          cache-dependency-path: 'openmetadata-ui/src/main/resources/ui/yarn.lock'
 
       - name: Install dependencies
-        run: |
-          cd openmetadata-ui/src/main/resources/ui
-          yarn install --frozen-lockfile
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: yarn install --frozen-lockfile
 
       - name: Run ESLint
         id: eslint
         continue-on-error: true
-        run: |
-          cd openmetadata-ui/src/main/resources/ui
-          yarn run lint
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: yarn run lint
 
       - name: Run Prettier check
         id: prettier
         continue-on-error: true
-        run: |
-          cd openmetadata-ui/src/main/resources/ui
-          npx prettier . --config './.prettierrc.yaml' --ignore-path './.prettierignore' --check
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npx prettier . --config './.prettierrc.yaml' --ignore-path './.prettierignore' --check
 
       - name: Run License Header check
         id: license
         continue-on-error: true
-        run: |
-          cd openmetadata-ui/src/main/resources/ui
-          yarn run license-header-check
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: yarn run license-header-check
 
       - name: Check import organization
         id: imports
         continue-on-error: true
-        run: |
-          cd openmetadata-ui/src/main/resources/ui
-          npx organize-imports-cli --check 'src/**/*.{ts,tsx,js,jsx}'
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npx organize-imports-cli --check 'src/**/*.{ts,tsx,js,jsx}'
 
       - name: Save check outcome
         id: git
