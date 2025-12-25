@@ -85,6 +85,7 @@ mock_dbt_config = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
+            "enableVersionValidation": False,
             "securityConfig": {
                 "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGc"
                 "iOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE"
@@ -1142,7 +1143,8 @@ class DbtUnitTest(TestCase):
         }
 
         dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
-            manifest_meta=manifest_meta
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
         )
 
         expected_tags = [
@@ -1199,7 +1201,8 @@ class DbtUnitTest(TestCase):
         }
 
         dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
-            manifest_meta=manifest_meta
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
         )
 
         # Should have 3 tags: 1 glossary + 1 tier + 1 classification
@@ -1211,7 +1214,8 @@ class DbtUnitTest(TestCase):
         # Test with empty tags list
         manifest_meta = {"openmetadata": {"tags": []}}
         dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
-            manifest_meta=manifest_meta
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
         )
         self.assertEqual(dbt_meta_tags, [])
 
@@ -1221,7 +1225,8 @@ class DbtUnitTest(TestCase):
             "openmetadata": {"tags": ["InvalidTag"]}  # Missing classification part
         }
         dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
-            manifest_meta=manifest_meta
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
         )
         # Should return empty list as invalid tags are skipped
         self.assertEqual(dbt_meta_tags, [])
@@ -1229,7 +1234,8 @@ class DbtUnitTest(TestCase):
         # Test with None tags
         manifest_meta = {"openmetadata": {"tags": None}}
         dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
-            manifest_meta=manifest_meta
+            manifest_meta=manifest_meta,
+            table_fqn="test_service.test_db.test_schema.test_table",
         )
         self.assertEqual(dbt_meta_tags, [])
 

@@ -1358,7 +1358,6 @@ class DbtSource(DbtServiceSource):
                     or []
                 )
 
-
             if (
                 dbt_meta_info.openmetadata
                 and dbt_meta_info.openmetadata.customProperties
