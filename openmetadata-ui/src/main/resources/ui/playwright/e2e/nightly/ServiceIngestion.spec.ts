@@ -24,7 +24,6 @@ import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestion
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
 import PostgresIngestionClass from '../../support/entity/ingestion/PostgresIngestionClass';
 import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/RedshiftWithDBTIngestionClass';
-import SnowflakeIngestionClass from '../../support/entity/ingestion/SnowflakeIngestionClass';
 import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
 import { TableClass } from '../../support/entity/TableClass';
 import {
@@ -45,7 +44,9 @@ const services = [
   BigQueryIngestionClass,
   KafkaIngestionClass,
   MlFlowIngestionClass,
-  SnowflakeIngestionClass,
+  //Skipping Snowflake since instance in temperary down
+  // @mohittilala unskip once we have a stable snowflake instance
+  // SnowflakeIngestionClass,
   SupersetIngestionClass,
   PostgresIngestionClass,
   RedshiftWithDBTIngestionClass,
