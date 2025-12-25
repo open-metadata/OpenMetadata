@@ -67,6 +67,7 @@ import {
   verifyDomain,
 } from '../../utils/domain';
 import {
+  assignGlossaryTerm,
   createAnnouncement,
   deleteAnnouncement,
   editAnnouncement,
@@ -1878,20 +1879,11 @@ test.describe('Domain Tree View Functionality', () => {
     page,
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
-    const testClassification = new ClassificationClass({
-      provider: 'system',
-      mutuallyExclusive: false,
-    });
-    const testTag = new TagClass({
-      classification: testClassification.data.name,
-    });
     const testGlossary = new Glossary();
     const testGlossaryTerm = new GlossaryTerm(testGlossary);
     const testDomain = new Domain();
 
     try {
-      await testClassification.create(apiContext);
-      await testTag.create(apiContext);
       await testGlossary.create(apiContext);
       await testGlossaryTerm.create(apiContext);
       await testDomain.create(apiContext);
@@ -1903,16 +1895,15 @@ test.describe('Domain Tree View Functionality', () => {
       await selectDomain(page, testDomain.data);
       await page.waitForLoadState('networkidle');
 
-      await page.waitForSelector('[data-testid="tags-container"]', {
-        state: 'visible',
-      });
       await page.waitForSelector('[data-testid="glossary-container"]', {
         state: 'visible',
       });
 
-      await addTagsAndGlossaryToDomain(page, {
-        tagFqn: testTag.responseData.fullyQualifiedName,
-        glossaryTermFqn: testGlossaryTerm.responseData.fullyQualifiedName,
+      // Add only glossary term to domain (no tags)
+      await assignGlossaryTerm(page, {
+        displayName: testGlossaryTerm.data.displayName,
+        name: testGlossaryTerm.data.name,
+        fullyQualifiedName: testGlossaryTerm.responseData.fullyQualifiedName,
       });
 
       await visitGlossaryPage(page, testGlossary.data.displayName);
@@ -1949,8 +1940,6 @@ test.describe('Domain Tree View Functionality', () => {
       await testDomain.delete(apiContext);
       await testGlossaryTerm.delete(apiContext);
       await testGlossary.delete(apiContext);
-      await testTag.delete(apiContext);
-      await testClassification.delete(apiContext);
       await afterAction();
     }
   });
