@@ -89,7 +89,7 @@ jobs:
         continue-on-error: true
         run: |
           cd openmetadata-ui/src/main/resources/ui
-          yarn run pretty --check
+          npx prettier . --config './.prettierrc.yaml' --ignore-path './.prettierignore' --check
 
       - name: Run License Header check
         id: license
@@ -119,7 +119,7 @@ jobs:
           body: |
             **The ESLint/Prettier checks failed.**
 
-            Please run `make ui-lint-fix` in the root of your repository to automatically fix linting issues, or run the following commands manually:
+            Please run `make lint-fix` in the root of your repository to automatically fix linting issues, or run the following commands manually:
             ```bash
             cd openmetadata-ui/src/main/resources/ui
             yarn run lint:fix
