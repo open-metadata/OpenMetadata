@@ -11,7 +11,7 @@
 """
 DBT service Topology.
 """
-
+import traceback
 from abc import ABC, abstractmethod
 from typing import Iterable, List
 
@@ -22,6 +22,9 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.dbtPipeline import DbtPipeline
 from metadata.generated.schema.tests.basic import TestCaseResult
@@ -42,7 +45,10 @@ from metadata.ingestion.source.database.dbt.constants import (
     REQUIRED_NODE_KEYS,
     REQUIRED_RESULTS_KEYS,
 )
-from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
+from metadata.ingestion.source.database.dbt.dbt_config import (
+    DBTConfigException,
+    get_dbt_details,
+)
 from metadata.ingestion.source.database.dbt.models import (
     DbtFiles,
     DbtFilteredModel,
@@ -243,10 +249,19 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Prepare the DBT files
         """
-        dbt_files = get_dbt_details(self.source_config.dbtConfigSource)
-        for dbt_file in dbt_files:
-            self.context.get().dbt_file = dbt_file
-            yield dbt_file
+        try:
+            dbt_files = get_dbt_details(self.source_config.dbtConfigSource)
+            for dbt_file in dbt_files:
+                self.context.get().dbt_file = dbt_file
+                yield dbt_file
+        except DBTConfigException as exc:
+            self.status.failed(
+                StackTraceError(
+                    name="DBT Configuration Error",
+                    error=str(exc),
+                    stackTrace=traceback.format_exc(),
+                )
+            )
 
     def get_dbt_objects(self) -> Iterable[DbtObjects]:
         """

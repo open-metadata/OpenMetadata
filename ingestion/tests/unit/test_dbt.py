@@ -4,6 +4,7 @@ Test dbt
 
 import json
 import uuid
+from copy import deepcopy
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, PropertyMock, patch
@@ -2033,6 +2034,28 @@ class DbtUnitTest(TestCase):
         expected_keywords = ["none", "null"]
         self.assertEqual(NONE_KEYWORDS_LIST, expected_keywords)
 
+    @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.test_connection")
+    def test_override_lineage_config_captured(self, test_connection):
+        """Test that overrideLineage config is properly captured"""
+        test_connection.return_value = False
+
+        # Test with overrideLineage set to True
+        config_with_override = deepcopy(mock_dbt_config)
+        config_with_override["source"]["sourceConfig"]["config"][
+            "overrideLineage"
+        ] = True
+
+        config = OpenMetadataWorkflowConfig.model_validate(config_with_override)
+        dbt_source = DbtSource.create(
+            config_with_override["source"],
+            OpenMetadata(config.workflowConfig.openMetadataServerConfig),
+        )
+
+        self.assertTrue(dbt_source.source_config.overrideLineage)
+
+        # Test default (when not set) is False
+        self.assertFalse(self.dbt_source_obj.source_config.overrideLineage)
+
     def test_constants_exposure_type_map(self):
         """Test ExposureTypeMap constant"""
         from metadata.ingestion.source.database.dbt.constants import ExposureTypeMap
@@ -2320,3 +2343,239 @@ class DbtUnitTest(TestCase):
 
         self.assertEqual(len(tag_names_used), 1)
         self.assertEqual(tag_names_used[0], "process_tag")
+
+
+class TestDownloadDbtFiles(TestCase):
+    """
+    Test cases for download_dbt_files function to verify manifest enforcement
+    """
+
+    def test_download_dbt_files_manifest_found(self):
+        """Test that download_dbt_files yields DbtFiles when manifest is found"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_MANIFEST_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import download_dbt_files
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}, "sources": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            blob_grouped = {"/path/to/dbt": [f"/path/to/dbt/{DBT_MANIFEST_FILE_NAME}"]}
+
+            result = list(
+                download_dbt_files(
+                    blob_grouped_by_directory=blob_grouped,
+                    config=MagicMock(),
+                    client=None,
+                    bucket_name=None,
+                )
+            )
+
+            self.assertEqual(len(result), 1)
+            self.assertIsNotNone(result[0].dbt_manifest)
+
+    def test_download_dbt_files_no_manifest_raises_exception(self):
+        """Test that download_dbt_files raises DBTConfigException when no manifest found"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_CATALOG_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            DBTConfigException,
+            download_dbt_files,
+        )
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            # Only catalog file, no manifest
+            blob_grouped = {"/path/to/dbt": [f"/path/to/dbt/{DBT_CATALOG_FILE_NAME}"]}
+
+            with self.assertRaises(DBTConfigException) as context:
+                list(
+                    download_dbt_files(
+                        blob_grouped_by_directory=blob_grouped,
+                        config=MagicMock(),
+                        client=None,
+                        bucket_name=None,
+                    )
+                )
+
+            self.assertIn("No valid dbt manifest.json found", str(context.exception))
+
+    def test_download_dbt_files_empty_directory_raises_exception(self):
+        """Test that download_dbt_files raises DBTConfigException for empty blob directory"""
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            DBTConfigException,
+            download_dbt_files,
+        )
+
+        # Empty blob grouped dictionary
+        blob_grouped = {}
+
+        with self.assertRaises(DBTConfigException) as context:
+            list(
+                download_dbt_files(
+                    blob_grouped_by_directory=blob_grouped,
+                    config=MagicMock(),
+                    client=None,
+                    bucket_name=None,
+                )
+            )
+
+        self.assertIn("No valid dbt manifest.json found", str(context.exception))
+        self.assertIn("No dbt artifacts found", str(context.exception))
+
+    def test_download_dbt_files_multiple_dirs_one_manifest_succeeds(self):
+        """Test that download_dbt_files succeeds when at least one directory has manifest"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_CATALOG_FILE_NAME,
+            DBT_MANIFEST_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import download_dbt_files
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}, "sources": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            blob_grouped = {
+                # First directory has only catalog (will fail)
+                "/path/to/dbt1": [f"/path/to/dbt1/{DBT_CATALOG_FILE_NAME}"],
+                # Second directory has manifest (will succeed)
+                "/path/to/dbt2": [f"/path/to/dbt2/{DBT_MANIFEST_FILE_NAME}"],
+            }
+
+            result = list(
+                download_dbt_files(
+                    blob_grouped_by_directory=blob_grouped,
+                    config=MagicMock(),
+                    client=None,
+                    bucket_name=None,
+                )
+            )
+
+            # Should have one successful result from the directory with manifest
+            self.assertEqual(len(result), 1)
+            self.assertIsNotNone(result[0].dbt_manifest)
+
+    def test_download_dbt_files_multiple_dirs_no_manifest_raises(self):
+        """Test that download_dbt_files raises when no directory has manifest"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_CATALOG_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            DBTConfigException,
+            download_dbt_files,
+        )
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            # Neither directory has manifest
+            blob_grouped = {
+                "/path/to/dbt1": [f"/path/to/dbt1/{DBT_CATALOG_FILE_NAME}"],
+                "/path/to/dbt2": [f"/path/to/dbt2/{DBT_CATALOG_FILE_NAME}"],
+            }
+
+            with self.assertRaises(DBTConfigException) as context:
+                list(
+                    download_dbt_files(
+                        blob_grouped_by_directory=blob_grouped,
+                        config=MagicMock(),
+                        client=None,
+                        bucket_name=None,
+                    )
+                )
+
+            self.assertIn("No valid dbt manifest.json found", str(context.exception))
+
+    def test_download_dbt_files_collects_errors(self):
+        """Test that download_dbt_files collects and reports errors from failed directories"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_CATALOG_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import (
+            DBTConfigException,
+            download_dbt_files,
+        )
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            blob_grouped = {
+                "/path/to/dbt1": [f"/path/to/dbt1/{DBT_CATALOG_FILE_NAME}"],
+                "/path/to/dbt2": [f"/path/to/dbt2/{DBT_CATALOG_FILE_NAME}"],
+            }
+
+            with self.assertRaises(DBTConfigException) as context:
+                list(
+                    download_dbt_files(
+                        blob_grouped_by_directory=blob_grouped,
+                        config=MagicMock(),
+                        client=None,
+                        bucket_name=None,
+                    )
+                )
+
+            error_message = str(context.exception)
+            # Should contain error details from both directories
+            self.assertIn("Manifest file not found at:", error_message)
+
+    def test_download_dbt_files_with_all_artifacts(self):
+        """Test download_dbt_files with all dbt artifacts present"""
+        from metadata.ingestion.source.database.dbt.constants import (
+            DBT_CATALOG_FILE_NAME,
+            DBT_MANIFEST_FILE_NAME,
+            DBT_RUN_RESULTS_FILE_NAME,
+            DBT_SOURCES_FILE_NAME,
+        )
+        from metadata.ingestion.source.database.dbt.dbt_config import download_dbt_files
+
+        mock_reader = MagicMock()
+        mock_reader.read.return_value = '{"nodes": {}, "sources": {}}'
+
+        with patch(
+            "metadata.ingestion.source.database.dbt.dbt_config.get_reader",
+            return_value=mock_reader,
+        ):
+            blob_grouped = {
+                "/path/to/dbt": [
+                    f"/path/to/dbt/{DBT_MANIFEST_FILE_NAME}",
+                    f"/path/to/dbt/{DBT_CATALOG_FILE_NAME}",
+                    f"/path/to/dbt/{DBT_RUN_RESULTS_FILE_NAME}.json",
+                    f"/path/to/dbt/{DBT_SOURCES_FILE_NAME}",
+                ]
+            }
+
+            result = list(
+                download_dbt_files(
+                    blob_grouped_by_directory=blob_grouped,
+                    config=MagicMock(),
+                    client=None,
+                    bucket_name=None,
+                )
+            )
+
+            self.assertEqual(len(result), 1)
+            self.assertIsNotNone(result[0].dbt_manifest)
+            self.assertIsNotNone(result[0].dbt_catalog)
+            self.assertIsNotNone(result[0].dbt_run_results)
+            self.assertIsNotNone(result[0].dbt_sources)
